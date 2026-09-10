@@ -5,10 +5,10 @@ import { color, corner, leading, radius, space, surface, weight } from "@/styles
  * The fixtures' own scaffolding.
  *
  * These files are not the product — they are the frame the product is photographed in — but
- * they compile through the same pipeline, so Tailwind cannot be removed while they still speak
- * it. Sixty-eight class strings lived here, invisible to the migration's own scanner because it
- * only ever read `src`, and invisible to `check-dead-styles` for the same reason: a rule kept
- * alive by a fixture was reported as dead.
+ * they compile through the same pipeline, which is why Tailwind could not leave while they
+ * still spoke it. Sixty-eight class strings lived here, invisible to the migration's own
+ * scanner because it only ever read `src`, and invisible to `check-dead-styles` for the same
+ * reason: a rule kept alive by a fixture was reported as dead.
  *
  * One module for four files, deliberately. A fixture's job is to hold still, not to grow a
  * vocabulary.

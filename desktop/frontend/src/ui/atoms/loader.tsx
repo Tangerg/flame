@@ -1,5 +1,4 @@
 import * as stylex from "@stylexjs/stylex";
-import { cn } from "@/lib/classNames";
 import { color, motion, type, weight } from "@/styles/tokens.stylex";
 
 type LoaderSize = "sm" | "md" | "lg";
@@ -7,7 +6,6 @@ type LoaderSize = "sm" | "md" | "lg";
 export interface LoaderProps {
   size?: LoaderSize;
   text?: string;
-  className?: string;
 }
 
 /**
@@ -26,9 +24,12 @@ export interface LoaderProps {
  * announcer's own test is built on. The visible label cannot take its place either, since it
  * counts elapsed time and would announce a new one every second.
  *
- * First component on StyleX. `className` survives on purpose: every caller is still Tailwind,
- * and a migration that demands both ends move at once is a rewrite. `stylex.props()` yields a
- * class list like any other, so the incoming one composes after it and still wins.
+ * It was the first component on StyleX, and it kept a `className` prop so that callers still
+ * writing utilities could reach it. Both callers are StyleX now and neither passed one, so the
+ * prop, the merge behind it and the escape hatch itself were scaffolding holding up a migration
+ * that had finished — and the comment here still said the callers were Tailwind. A caller that
+ * needs to reach in takes `styles?: StyleXArray<…>` like every other atom, which composes inside
+ * one `stylex.props()` call instead of racing it on bundle order.
  */
 const styles = stylex.create({
   root: {
@@ -53,10 +54,9 @@ const styles = stylex.create({
 
 const SIZE = { sm: type.uiXs, md: type.uiSm, lg: type.uiMd } as const;
 
-export function Loader({ size = "md", text: label = "Thinking", className }: LoaderProps) {
-  const props = stylex.props(styles.root, styles.still, SIZE[size]);
+export function Loader({ size = "md", text: label = "Thinking" }: LoaderProps) {
   return (
-    <span data-slot="loader" {...props} className={cn(props.className, className)}>
+    <span data-slot="loader" {...stylex.props(styles.root, styles.still, SIZE[size])}>
       {label}
     </span>
   );

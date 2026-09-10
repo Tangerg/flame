@@ -30,8 +30,6 @@ const sp = stylex.create({
   body: { marginTop: space.s6, paddingBottom: space.s12 },
   backRow: { paddingInline: space.s4, paddingBottom: space.s4 },
   back: { marginBottom: space.s3, alignSelf: "flex-start" },
-  // The back arrow leads rather than accompanies, so it opts out of the glyph step.
-  backGlyph: { opacity: 1 },
 });
 
 const GROUPS: { id: string; labelKey: string }[] = [
@@ -143,7 +141,9 @@ function SettingsRailHeader({
           onClick={selectWorkspaceChat}
           className={stylex.props(sp.back).className}
         >
-          <Icon name="arrow-left" size="md" className={stylex.props(sp.backGlyph).className} />
+          {/* Leads rather than accompanies, so it keeps full strength — through the attribute
+              the glyph-step rule excludes, not through an opacity that out-ranks it. */}
+          <Icon name="arrow-left" size="md" full />
           <span>{t("settings.backToApp")}</span>
         </Button>
         <SearchField

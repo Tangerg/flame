@@ -13653,3 +13653,126 @@ DESIGN.md 的圆角表把 **index rows 和 dock tabs 都写在 `sm`（6px）**�
 圆角这条线本身是干净的 —— 1660 个角、三档、零例外。
 真缺陷不在"角有多圆"，而在**一个关系被写成了两个档位**：
 它只在被肉眼校准过的那一档对，用户一动滑块就露出来。
+
+## Round 214 —— 一个测试在 Tailwind 走后瞎了，这是第三次
+
+### 审计范围与证据
+
+本轮起点是 `fontSmoothing`（最后一个没被量过的外观偏好）。中途用户问「Tailwind
+是否已经移除干净」，于是把这条线也实测了一遍 —— 结果在那里找到了本轮真正的缺陷。
+
+### 一、`fontSmoothing`：干净的
+
+它改的是**栅格化**，不是几何：不动任何盒子、不进任何 computed length、也不会把
+golden 推过 diff 阈值。所以套件里没有任何审计能看见它，而它唯一的测试断言的是
+「那个自定义属性等于刚刚传进去的字符串」—— 那是**管道测试**，属性不再作用于任何
+东西时它一样绿。
+
+于是读像素：
+
+| 量了什么 | 结果 |
+| --- | --- |
+| 两档下侧栏有多少像素不同 | **4.65%**（11504/247500），平均差 16.8/255 |
+| `auto` 相对 `antialiased` 的墨量 | **重 5.7%** —— 方向正确（`antialiased` 更轻） |
+| 平台 | Taskfile：**"Darwin is the only shipping target"** —— 复选框正好只出现在唯一认这个属性的平台上，**不是死控件** |
+
+新守卫 `visual/fontSmoothing.visual.spec.ts` 问两件事：改了没有、以及
+**`antialiased` 是不是更轻的那一档**。第二问才是带语义的：一个「接线正确但布尔反了」
+的实现能通过第一问。
+
+| 破坏验证 | 结果 |
+| --- | --- |
+| 布尔反转 | 报 `auto 比 antialiased 轻 -5.4%`，红 |
+| 整行 setProperty 删掉 | 报 `changed 0.00% of the region`，红 |
+
+**顺手删掉一处实测是死的声明**：`-moz-osx-font-smoothing`（globals.css + adapter 各一处）。
+不是推断——`CSS.supports` 返回 false、`setProperty` 把值丢在地上、computed 为空。
+而 `globals.css` 自己开头第 6 行就写着"不转录 `-moz-*` 这类为本应用永不运行的浏览器
+做的规范化——This ships in one WebKit webview"。**规则早就写下了，只是这一行违反了它。**
+
+### 二、Tailwind：构建干净，但一个测试瞎了
+
+先给结论，逐项实测：
+
+| 检查 | 结果 |
+| --- | --- |
+| `package.json` / 已安装依赖（含传递） | **零** tailwindcss / tailwind-merge / cva / autoprefixer |
+| `package-lock.json` 提及 | **0** |
+| `tailwind.config.*` / vite 插件 | **无** |
+| CSS 里 `@tailwind` / `@apply` / `@theme` 等 at-rule | **无**（命中的全是注释散文） |
+| `cn()` | 就是 `clsx` |
+| `check:classes` | 905 文件 / 70 个自定义类，**全部解析通过** |
+
+**但 `visual/cascade.visual.spec.ts` 的整个函数体是死的。** 它靠
+`rule.layer === "utilities"` 找 Tailwind 的 utility 层；Tailwind 走了，那个 layer
+不存在，数组为空，双层循环一次都不执行 —— **它一直在报绿，同时什么都没看。**
+
+量出来的证据：shell 路线 1227 条样式规则，**1201 条 unlayered、26 条在 `base`、
+`utilities` 零条。**
+
+这是**同一件事在本仓库发生的第三次**：`check-interactive-chrome` 九条规则里八条
+在同一个 commit 里集体失明、`check-authored-classes` 在那个 commit 里直接死掉 ——
+两者自己的头注释都写着。**一个按「它所针对的机制」写的守卫，会在那个机制离开时
+静默死亡，而通过的测试和瞎掉的测试长得一模一样。**
+
+### 三、重写后它找到的真缺陷（一个）
+
+StyleX 现在发的是**无层**原子规则，每条都带 `:not(#\#)`（(2,n,0)/(3,n,0)），
+而 globals.css 里有原子类表达不了的**后代规则**。两边同时给一个元素的同一个属性
+赋值时，StyleX 靠特异性赢，**stylesheet 那条就是死文本**。
+
+跨 6 条路线扫完，全产品只有 **1 处**：
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| settings「Back to app」按钮里的 `arrow-left` | `backGlyph: { opacity: 1 }`，靠 StyleX 压过 `[data-slot="button"] svg:not([data-glyph="full"])` | `<Icon … full />` |
+| 该图标 vs 产品里其它按钮图标 | 满强度 vs `--glyph-step` = 0.8，**全产品唯一一个不一致的字形** | 一致（机制内的满强度） |
+
+意图本身是对的（注释写着"the back arrow leads rather than accompanies"），
+**错的是表达方式**：设计早就为此准备了逃逸口 —— `Icon` 的 `full` prop，
+globals.css 那条规则的注释里就写着 "The escape is `Icon`'s own `full` prop"，
+而规则本身正是 `svg:not([data-glyph="full"])`。call site 用**特异性运气**
+重新实现了一个已经存在的机制。
+
+### 四、还清理了 Tailwind 迁移留下的脚手架
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| `Loader` 的 `className` prop | 注释写"every caller is still Tailwind"为它辩护 | **删除** —— 两个 call site 都不传，且违反"留口子用 `styles?: StyleXArray`、不是 `className`" |
+| `postcss.config.mjs` | "Tailwind is NOT here. **It keeps** its own Vite plugin" | 改成过去时，保留"为什么链子长这样"的史料 |
+| `stylex.css` | "Tailwind **keeps** its Vite plugin" | 同上 |
+| `visual/fixtureStyles.ts` | "Tailwind **cannot be removed** while…" | 同上 |
+
+其余 60 余处 Tailwind 提及是**过去时的史料**（"Under Tailwind that worked; under
+StyleX it does not"），属于"防好心改回去"的 why 注释，**故意不动**。
+
+### 五、我自己又犯了同一类错，两次
+
+- **`ls` 的假否定**：`ls tailwind.config.* postcss.config.*` 里第一个 glob 不匹配，
+  **zsh 直接放弃整条命令**，于是我的 `|| echo "none"` 报了"none"——
+  而 `postcss.config.mjs` 就在那儿。一个什么都没读却报告"干净"的检查。
+- **floor 放在了错的量上**：重写第一版把 floor 放在"规则总数"上（~1227，稳稳过线）。
+  可老审计**不是因为 stylesheet 空了而死，是因为一个 filter 不再匹配而死** ——
+  规则总数完全不受影响。改成对**比较的两侧分别设 floor**，并验证：
+  把 StyleX 的识别串改坏 → **红**。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 找到并治本的缺陷 | **2**（瞎掉的审计；唯一一个绕过 glyph-step 的图标）|
+| 删除的死代码 | 3（`-moz-osx-font-smoothing` ×2、`Loader.className`）|
+| 修正的过期注释 | 4 处现在时的 Tailwind 声明 |
+| 新守卫 | 1（fontSmoothing，2 个破坏验证全红）|
+| 重写守卫 | 1（cascade，2 个破坏验证全红，含"filter 失明"本身）|
+| typecheck / lint / prettier / knip / 7 守卫 | 全绿 |
+| 单测 | 2437 通过 |
+| 视觉套件 | **736 全通过**（17.2m，零失败；+1）—— glyph 机制改动**零 golden 移动**（渲染值本就是 1，换的是机制） |
+| **阻塞（同 Round 213，未变）** | `src/rpc` 4 个测试：runtime 发布的 `segment.finished.json` 缺 `contextTokens`。`<scope>` 禁止改 runtime。 |
+
+### 一句话
+
+用户问的是"Tailwind 移除干净了吗"—— 代码和构建是干净的，
+**但有一个审计还站在 Tailwind 的位置上看，因此什么都看不见。**
+移除一个框架的成本不止在改代码，还在那些**按它写的守卫**：
+它们不会报错，只会开始报告一切正常。

@@ -118,6 +118,10 @@ const hex = (name: string) => {
 // The one free input that changes SIZE rather than colour: a family whose metrics differ from
 // the bundled one makes every fixed-height control a question.
 const requestedUiFont = query.get("ui-font") ?? undefined;
+// The one preference that changes RASTERISATION rather than geometry: it moves no box and
+// appears in no computed length, so the only place it exists is the pixels.
+const requestedSmoothing = query.get("smoothing");
+const fontSmoothing = requestedSmoothing === null ? undefined : requestedSmoothing !== "off";
 // The radius preference multiplies through one ladder, which is a promise about every corner
 // in the product rather than about the tokens — so it can only be checked by reading corners.
 const requestedRadius = Number(query.get("radius"));
@@ -240,6 +244,7 @@ useAppearanceStore.setState({
   ...(customTheme ? { theme: "custom" as const, customTheme } : {}),
   ...(requestedUiFont ? { uiFont: requestedUiFont } : {}),
   ...(radiusScale !== undefined ? { radiusScale } : {}),
+  ...(fontSmoothing !== undefined ? { fontSmoothing } : {}),
 });
 // Both halves of what `appearancePainter` installs: the pane and the sidebar footer read
 // the preference through this port, so painting without binding it renders a broken

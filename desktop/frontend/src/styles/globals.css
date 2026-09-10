@@ -733,8 +733,10 @@ html {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
+  /* No `-moz-osx-font-smoothing` beside it: the reflex pairing normalises a browser this ships
+     in none of, per the reset's own rule at the top of this file. Measured, not assumed —
+     `CSS.supports` is false for it and `setProperty` drops the value on the floor. */
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
 }

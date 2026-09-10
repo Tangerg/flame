@@ -161,7 +161,6 @@ function applyFonts(
 ): void {
   const root = document.documentElement;
   root.style.setProperty("-webkit-font-smoothing", fontSmoothing ? "antialiased" : "auto");
-  root.style.setProperty("-moz-osx-font-smoothing", fontSmoothing ? "grayscale" : "auto");
 
   if (uiFont) {
     root.style.setProperty(
