@@ -141,6 +141,30 @@ func (f *fakePreparedWaitingCancellation) Discard() error {
 	return nil
 }
 
+// TestPreparedWaitingSubtreeCancellationRefusesATypedNilChange pins the only
+// place the executor change is proved present. Apply, Continue and Discard
+// dereference it, so a typed nil admitted here would panic rather than fail.
+// Everything else in the fixture is what the other tests build and keep.
+func TestPreparedWaitingSubtreeCancellationRefusesATypedNilChange(t *testing.T) {
+	var typedNil *fakePreparedWaitingCancellation
+	if _, err := NewPreparedWaitingSubtreeCancellation(
+		[]string{"member_a"}, nil, nil,
+		testExecutorCheckpoint(), testChildCancellationResult(),
+		&fakePreparedWaitingCancellation{},
+	); err != nil {
+		t.Fatalf("a complete prepared cancellation was refused: %v", err)
+	}
+	for _, change := range []WaitingSubtreeChange{nil, typedNil} {
+		if _, err := NewPreparedWaitingSubtreeCancellation(
+			[]string{"member_a"}, nil, nil,
+			testExecutorCheckpoint(), testChildCancellationResult(),
+			change,
+		); err == nil {
+			t.Fatalf("prepared cancellation accepted a %T executor change", change)
+		}
+	}
+}
+
 func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 	canceled := []string{"member_a"}
 	paused := []string{"member_b"}

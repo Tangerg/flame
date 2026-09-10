@@ -55,9 +55,6 @@ func (i interactionWaitingSubtreeChangeState) String() string {
 func (i *interactionWaitingSubtreeChange) Apply(
 	disposition runs.WaitingSubtreeDisposition,
 ) error {
-	if i == nil || i.session == nil || i.prepared == nil {
-		return errors.New("agentexec: invalid waiting Interaction subtree change")
-	}
 	if !disposition.Valid() {
 		return fmt.Errorf("agentexec: invalid waiting subtree disposition %q", disposition)
 	}
@@ -104,9 +101,6 @@ func (i *interactionWaitingSubtreeChange) Apply(
 }
 
 func (i *interactionWaitingSubtreeChange) Continue(ctx context.Context) error {
-	if i == nil || i.session == nil || i.prepared == nil {
-		return errors.New("agentexec: invalid waiting Interaction subtree change")
-	}
 	if ctx == nil {
 		return errors.New("agentexec: waiting Interaction subtree continuation context is required")
 	}
@@ -133,9 +127,6 @@ func (i *interactionWaitingSubtreeChange) Continue(ctx context.Context) error {
 }
 
 func (i *interactionWaitingSubtreeChange) Discard() error {
-	if i == nil || i.session == nil || i.prepared == nil {
-		return errors.New("agentexec: invalid waiting Interaction subtree change")
-	}
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	if i.state != interactionWaitingSubtreeChangePrepared {

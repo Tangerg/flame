@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -85,7 +86,7 @@ func (p PreparedWaitingSubtreeCancellation) Discard() error {
 // Validate verifies the Application projection and one-shot executor
 // capability without interpreting the opaque checkpoint payload.
 func (p PreparedWaitingSubtreeCancellation) Validate() error {
-	if p.change == nil {
+	if dependency.Missing(p.change) {
 		return errors.New("runs: prepared waiting subtree cancellation has no executor change")
 	}
 	if err := p.checkpoint.Validate(); err != nil {
