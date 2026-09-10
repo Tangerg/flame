@@ -426,6 +426,11 @@ func (d *Decision) Fold(block, ask bool, reason, inject, rewrite string) {
 	if block && !d.Block {
 		d.Block = true
 		d.Reason = reason
+		// A denial is final, so an escalation or rewrite an earlier hook asked
+		// for no longer applies. Folding in a different order must not decide
+		// the call differently.
+		d.Ask = false
+		d.RewriteArguments = ""
 	}
 	if ask && !d.Block {
 		d.Ask = true
@@ -439,7 +444,7 @@ func (d *Decision) Fold(block, ask bool, reason, inject, rewrite string) {
 		}
 		d.InjectContext += inject
 	}
-	if rewrite != "" && d.RewriteArguments == "" {
+	if rewrite != "" && d.RewriteArguments == "" && !d.Block {
 		d.RewriteArguments = rewrite
 	}
 }
