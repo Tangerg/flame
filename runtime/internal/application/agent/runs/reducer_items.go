@@ -57,6 +57,28 @@ func (r *reducer) itemIdentity(id string, occurredAt time.Time) transcript.ItemI
 	}
 }
 
+// openTextStream returns the stream a delta extends, starting it when the
+// first delta arrives. A started stream announces its transcript Item, which
+// is the step both streaming kinds must take and neither may take twice.
+func (r *reducer) openTextStream(
+	current *openText,
+	kind transcript.ItemKind,
+) (*openText, []ProjectionEvent, error) {
+	if current != nil {
+		return current, nil, nil
+	}
+	id, err := r.nextItemID()
+	if err != nil {
+		return nil, nil, err
+	}
+	stream := newOpenText(r.itemIdentity(id, r.now()))
+	start, err := newTransientItemStart(stream.itemIdentity(), kind)
+	if err != nil {
+		return nil, nil, err
+	}
+	return stream, []ProjectionEvent{ItemStarted{Item: start}}, nil
+}
+
 func (r *reducer) appendText(text string) ([]ProjectionEvent, error) {
 	if text == "" {
 		return nil, nil
@@ -65,19 +87,11 @@ func (r *reducer) appendText(text string) ([]ProjectionEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	var out []ProjectionEvent
-	if r.text == nil {
-		id, identityErr := r.nextItemID()
-		if identityErr != nil {
-			return nil, identityErr
-		}
-		r.text = newOpenText(r.itemIdentity(id, r.now()))
-		start, err := newTransientItemStart(r.text.itemIdentity(), transcript.AgentMessage)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, ItemStarted{Item: start})
+	stream, out, err := r.openTextStream(r.text, transcript.AgentMessage)
+	if err != nil {
+		return nil, err
 	}
+	r.text = stream
 	r.text.append(text)
 	return append(out, ItemChanged{
 		ItemID: r.text.itemID(),
@@ -93,19 +107,11 @@ func (r *reducer) appendReasoning(text string) ([]ProjectionEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	var out []ProjectionEvent
-	if r.reasoning == nil {
-		id, identityErr := r.nextItemID()
-		if identityErr != nil {
-			return nil, identityErr
-		}
-		r.reasoning = newOpenText(r.itemIdentity(id, r.now()))
-		start, err := newTransientItemStart(r.reasoning.itemIdentity(), transcript.Reasoning)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, ItemStarted{Item: start})
+	stream, out, err := r.openTextStream(r.reasoning, transcript.Reasoning)
+	if err != nil {
+		return nil, err
 	}
+	r.reasoning = stream
 	r.reasoning.append(text)
 	return append(out, ItemChanged{
 		ItemID: r.reasoning.itemID(),
