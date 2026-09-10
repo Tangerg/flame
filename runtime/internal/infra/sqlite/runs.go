@@ -105,7 +105,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 			`INSERT INTO runs(
 			   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
 			   state, active_segment_id, provider, model, reasoning_effort, goal_incarnation_id, max_total_tokens, max_steps, max_budget_usd,
-			   capabilities, message_mark, started_at, updated_at)
+			   capabilities, message_mark, created_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			admitted.ID(), admitted.SessionID(),
 			lineage.SpawnedByItemID, lineage.ParentRunID, lineage.RootRunID,
@@ -751,7 +751,7 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		   state, outcome, provider, model, reasoning_effort, goal_incarnation_id,
 		   detail, steps, active_duration_ns, usage, context_tokens, problem,
 		   max_total_tokens, max_steps, max_budget_usd,
-		   capabilities, message_mark, started_at, finished_at, updated_at)
+		   capabilities, message_mark, created_at, finished_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		value.ID(), value.SessionID(),
 		lineage.SpawnedByItemID, lineage.ParentRunID, lineage.RootRunID,

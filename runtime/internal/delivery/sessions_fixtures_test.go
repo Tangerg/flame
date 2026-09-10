@@ -49,7 +49,7 @@ func insertSessionFixture(
 		Title:     title,
 		Workspace: workspace,
 		Selection: fixtureDefaultModelSelection(),
-		StartedAt: time.Now(),
+		CreatedAt: time.Now(),
 	})
 	if err != nil {
 		return session.Session{}, err

@@ -364,7 +364,7 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		ownCapabilities     string
 		rootCapabilities    sql.NullString
 		durationNs          int64
-		startedAt           int64
+		createdAt           int64
 		finishedAt          int64
 		updatedAt           int64
 		interruptsSuspended sql.NullString
@@ -376,7 +376,7 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		&provider, &model, &reasoningEffort, &goalIncarnationID, &detail,
 		&steps, &durationNs, &usage, &contextTokens, &problem,
 		&maxTotalTokens, &maxSteps, &maxBudgetUSD, &ownCapabilities, &rootCapabilities,
-		&messageMark, &startedAt, &finishedAt, &updatedAt, &interruptsSuspended,
+		&messageMark, &createdAt, &finishedAt, &updatedAt, &interruptsSuspended,
 	); err != nil {
 		return rundomain.Run{}, fmt.Errorf("scan run row: %w", err)
 	}
@@ -424,7 +424,7 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		GoalIncarnationID: goalIncarnationID, ActiveSegmentID: activeSegmentID, Detail: detail,
 		Metrics: metrics, ContextTokens: contextTokens,
 		Limits: limits, Capabilities: capabilitiesValue,
-		CreatedAt: time.Unix(0, startedAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
+		CreatedAt: time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
 		MessageMark: messageMark,
 	}
 

@@ -285,7 +285,7 @@ func TestRestoreSessionPresentsTheCommittedReplacementRevision(t *testing.T) {
 	stores := newMutationStores("")
 	stores.pending = map[string][]runs.Pending{}
 	current := testsupport.MustRestoreSession(session.Snapshot{
-		ID: "ses_1", Workspace: testsupport.MustWorkspace("/workspace"), StartedAt: time.Unix(1, 0).UTC(),
+		ID: "ses_1", Workspace: testsupport.MustWorkspace("/workspace"), CreatedAt: time.Unix(1, 0).UTC(),
 		UpdatedAt: time.Unix(1, 0).UTC(), Revision: 4,
 	})
 	stores.current = &current
@@ -293,7 +293,7 @@ func TestRestoreSessionPresentsTheCommittedReplacementRevision(t *testing.T) {
 
 	view, err := coordinator.restoreSession(t.Context(), Snapshot{
 		Session: testsupport.MustRestoreSession(session.Snapshot{
-			ID: "ses_1", Workspace: testsupport.MustWorkspace("/workspace"), StartedAt: time.Unix(1, 0).UTC(),
+			ID: "ses_1", Workspace: testsupport.MustWorkspace("/workspace"), CreatedAt: time.Unix(1, 0).UTC(),
 			UpdatedAt: time.Unix(1, 0).UTC(), Revision: 1,
 		}),
 	}, true)

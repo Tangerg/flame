@@ -254,7 +254,7 @@ func (c *Coordinator) view(value session.Session, activity Activity) (View, erro
 		Model:           selection.Model(),
 		ReasoningEffort: selection.ReasoningEffort(),
 		Activity:        activity,
-		CreatedAt:       value.StartedAt(), UpdatedAt: value.UpdatedAt(),
+		CreatedAt:       value.CreatedAt(), UpdatedAt: value.UpdatedAt(),
 		Favorite: value.Favorite(), Revision: value.Revision(),
 	}, nil
 }

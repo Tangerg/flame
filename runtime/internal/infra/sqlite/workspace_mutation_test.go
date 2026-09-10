@@ -16,7 +16,7 @@ func seedWorkspaceMutationSession(t *testing.T, db *sql.DB, sessionID, cwd strin
 	t.Helper()
 	if err := NewSessionStore(db).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{
 		ID: sessionID, Workspace: testsupport.MustWorkspace(cwd),
-		StartedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0), Revision: 1,
+		CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0), Revision: 1,
 	})); err != nil {
 		t.Fatalf("seed Session %q: %v", sessionID, err)
 	}

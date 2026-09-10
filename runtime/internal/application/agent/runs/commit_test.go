@@ -198,7 +198,7 @@ func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
 	createdAt := time.Date(2026, 8, 15, 1, 2, 3, 0, time.UTC)
 	initialSession := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session", Workspace: testsupport.MustWorkspace("/work"),
-		StartedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
+		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
 	})
 	child := run.Draft{
 		RunID: "run_child", SessionID: initialSession.ID(), SegmentID: "segment_child",
@@ -400,7 +400,7 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	}
 	initialSession := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session", Workspace: testsupport.MustWorkspace("/work"),
-		StartedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
+		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
 	})
 	events := []EventCommit{{
 		RunID: admission.RunID, SessionID: admission.SessionID, SegmentID: admission.SegmentID,

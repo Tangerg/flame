@@ -13,7 +13,7 @@ func TestSessionStorePersistsExactReplacement(t *testing.T) {
 	store := newTempDB(t)
 	current := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_1", Title: "Before", Workspace: testsupport.MustWorkspace("/work"),
-		StartedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0), Revision: 1,
+		CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0), Revision: 1,
 	})
 	if err := store.Insert(t.Context(), current); err != nil {
 		t.Fatalf("Insert: %v", err)

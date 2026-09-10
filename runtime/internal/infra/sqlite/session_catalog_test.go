@@ -20,7 +20,7 @@ func TestSessionCatalogStoreAppliesLiteralSearchWorkspaceAndKeysetTogether(t *te
 	}
 	for index := range fixtures {
 		createdAt := time.Unix(int64(index+1), 0).UTC()
-		fixtures[index].StartedAt = createdAt
+		fixtures[index].CreatedAt = createdAt
 		fixtures[index].UpdatedAt = createdAt
 		fixtures[index].Revision = 1
 		if err := store.Insert(t.Context(), testsupport.MustRestoreSession(fixtures[index])); err != nil {

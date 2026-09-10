@@ -44,11 +44,11 @@ func (s *SessionStore) Save(
 		return fmt.Errorf("sqlite: normalize Session workspace search material: %w", err)
 	}
 	result, err := conn(ctx, s.db).ExecContext(ctx, `UPDATE sessions SET
-		title = ?, title_search = ?, workspace_path = ?, workspace_search = ?, parent_id = ?, started_at = ?, updated_at = ?,
+		title = ?, title_search = ?, workspace_path = ?, workspace_search = ?, parent_id = ?, created_at = ?, updated_at = ?,
 		provider = ?, model = ?, reasoning_effort = ?, favorite = ?, isolated = ?, revision = ?
 		WHERE id = ? AND revision = ?`,
 		snapshot.Title, titleSearch, snapshot.Workspace.Path(), workspaceSearch, snapshot.ParentID,
-		snapshot.StartedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
+		snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
 		snapshot.Selection.Provider(), snapshot.Selection.Model(), snapshot.Selection.ReasoningEffort(),
 		boolToInt(snapshot.Favorite), boolToInt(snapshot.Isolated),
 		snapshot.Revision, snapshot.ID, expectedRevision,
@@ -95,7 +95,7 @@ func (s *SessionStore) execInsert(ctx context.Context, executor execer, value se
 	_, err = executor.ExecContext(ctx,
 		`INSERT INTO sessions(`+sessionColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		snapshot.ID, snapshot.Title, titleSearch, snapshot.Workspace.Path(), workspaceSearch, snapshot.ParentID,
-		snapshot.StartedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
+		snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
 		snapshot.Selection.Provider(), snapshot.Selection.Model(), snapshot.Selection.ReasoningEffort(),
 		boolToInt(snapshot.Favorite), boolToInt(snapshot.Isolated),
 		snapshot.Revision,

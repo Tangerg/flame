@@ -13,11 +13,11 @@ func MustRestoreSession(snapshot session.Snapshot) session.Session {
 	if snapshot.Workspace.Path() == "" {
 		snapshot.Workspace = MustWorkspace("/fixture")
 	}
-	if snapshot.StartedAt.IsZero() {
-		snapshot.StartedAt = time.Unix(1, 0).UTC()
+	if snapshot.CreatedAt.IsZero() {
+		snapshot.CreatedAt = time.Unix(1, 0).UTC()
 	}
 	if snapshot.UpdatedAt.IsZero() {
-		snapshot.UpdatedAt = snapshot.StartedAt
+		snapshot.UpdatedAt = snapshot.CreatedAt
 	}
 	if snapshot.Revision == 0 {
 		snapshot.Revision = 1

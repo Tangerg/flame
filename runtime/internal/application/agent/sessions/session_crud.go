@@ -97,7 +97,7 @@ func (c *Coordinator) Create(ctx context.Context, title, cwd string) (session.Se
 	}
 	created, err := session.New(session.Draft{
 		ID: c.newID(), Title: title, Workspace: workspace,
-		Selection: c.defaultModelSelection, StartedAt: c.now(),
+		Selection: c.defaultModelSelection, CreatedAt: c.now(),
 	})
 	if err != nil {
 		return session.Session{}, err
@@ -140,7 +140,7 @@ func (c *Coordinator) PrepareScheduled(
 		return session.Session{}, nil, fmt.Errorf("sessions: scheduled model selection is not admitted: %w", admitErr)
 	}
 	created, err := session.New(session.Draft{
-		ID: id, Title: title, Workspace: workspace, Selection: selection, StartedAt: c.now(),
+		ID: id, Title: title, Workspace: workspace, Selection: selection, CreatedAt: c.now(),
 	})
 	if err != nil {
 		return session.Session{}, nil, err

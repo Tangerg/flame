@@ -49,7 +49,7 @@ func putTestSession(t *testing.T, rt *stubRuntime) {
 
 	if _, err := insertSessionSnapshot(t.Context(), rt.sess, session.Snapshot{
 		ID: sessionID, Title: sessionID, Workspace: testsupport.MustWorkspace(t.TempDir()),
-		StartedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(1, 0).UTC(), Revision: 1,
+		CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(1, 0).UTC(), Revision: 1,
 	}); err != nil {
 		t.Fatalf("putSession %s: %v", sessionID, err)
 	}

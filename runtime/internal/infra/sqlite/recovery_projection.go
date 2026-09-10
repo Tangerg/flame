@@ -16,7 +16,7 @@ func (r *RunStore) ListNonTerminalRuns(ctx context.Context) ([]run.Run, error) {
 		   FROM runs AS r
 		   `+runReadJoins+`
 		  WHERE r.state != ?
-		  ORDER BY r.started_at, r.run_id`,
+		  ORDER BY r.created_at, r.run_id`,
 		runStateTerminal.databaseValue())
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list non-terminal Runs: %w", err)

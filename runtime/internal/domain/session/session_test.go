@@ -18,7 +18,7 @@ func TestSessionOwnsExactSelectionAcrossEditAndFork(t *testing.T) {
 		t.Fatalf("initial selection: %v", err)
 	}
 	parent := mustNew(t, Draft{
-		ID: "ses_parent", Workspace: mustWorkspace(t, "/work"), Selection: initial, StartedAt: startedAt,
+		ID: "ses_parent", Workspace: mustWorkspace(t, "/work"), Selection: initial, CreatedAt: startedAt,
 	})
 	if parent.Selection() != initial {
 		t.Fatalf("initial selection = %v, want %v", parent.Selection(), initial)
@@ -46,7 +46,7 @@ func TestSessionConstruction(t *testing.T) {
 	selection := mustModelSelection(t, "provider", "model")
 	created, err := New(Draft{
 		ID: "ses_root", Title: "  Research  ", Workspace: mustWorkspace(t, "/work/project"),
-		Selection: selection, StartedAt: startedAt,
+		Selection: selection, CreatedAt: startedAt,
 	})
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -56,24 +56,24 @@ func TestSessionConstruction(t *testing.T) {
 		t.Fatalf("created Session = %+v", created.Snapshot())
 	}
 	if created.ParentID() != "" || created.Revision() != 1 ||
-		!created.StartedAt().Equal(startedAt) || !created.UpdatedAt().Equal(startedAt) {
+		!created.CreatedAt().Equal(startedAt) || !created.UpdatedAt().Equal(startedAt) {
 		t.Fatalf("created lifecycle = %+v", created.Snapshot())
 	}
-	if created.StartedAt().Location() != time.UTC || created.UpdatedAt().Location() != time.UTC {
+	if created.CreatedAt().Location() != time.UTC || created.UpdatedAt().Location() != time.UTC {
 		t.Fatal("construction did not canonicalize times to UTC")
 	}
 }
 
 func TestSessionConstructionRejectsInvalidState(t *testing.T) {
 	selection := mustModelSelection(t, "provider", "model")
-	valid := Draft{ID: "ses_1", Workspace: mustWorkspace(t, "/work"), Selection: selection, StartedAt: time.Unix(1, 0)}
+	valid := Draft{ID: "ses_1", Workspace: mustWorkspace(t, "/work"), Selection: selection, CreatedAt: time.Unix(1, 0)}
 	tests := map[string]Draft{
-		"missing identity":   {Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
-		"spaced identity":    {ID: " ses_1", Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
-		"control identity":   {ID: "ses_\n1", Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
-		"oversized identity": {ID: strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1), Workspace: valid.Workspace, Selection: selection, StartedAt: valid.StartedAt},
-		"missing workspace":  {ID: valid.ID, Selection: selection, StartedAt: valid.StartedAt},
-		"missing selection":  {ID: valid.ID, Workspace: valid.Workspace, StartedAt: valid.StartedAt},
+		"missing identity":   {Workspace: valid.Workspace, Selection: selection, CreatedAt: valid.CreatedAt},
+		"spaced identity":    {ID: " ses_1", Workspace: valid.Workspace, Selection: selection, CreatedAt: valid.CreatedAt},
+		"control identity":   {ID: "ses_\n1", Workspace: valid.Workspace, Selection: selection, CreatedAt: valid.CreatedAt},
+		"oversized identity": {ID: strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1), Workspace: valid.Workspace, Selection: selection, CreatedAt: valid.CreatedAt},
+		"missing workspace":  {ID: valid.ID, Selection: selection, CreatedAt: valid.CreatedAt},
+		"missing selection":  {ID: valid.ID, Workspace: valid.Workspace, CreatedAt: valid.CreatedAt},
 		"missing start time": {ID: valid.ID, Workspace: valid.Workspace, Selection: selection},
 	}
 	for name, draft := range tests {
@@ -87,7 +87,7 @@ func TestSessionConstructionRejectsInvalidState(t *testing.T) {
 
 func TestSessionValidateForRequiresExactIdentity(t *testing.T) {
 	value := mustNew(t, Draft{
-		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), StartedAt: time.Unix(1, 0),
+		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), CreatedAt: time.Unix(1, 0),
 	})
 	if err := value.ValidateFor("ses_1"); err != nil {
 		t.Fatalf("ValidateFor exact identity: %v", err)
@@ -120,7 +120,7 @@ func TestWorkspaceRejectsNonExactPaths(t *testing.T) {
 
 func TestSessionApplyOwnsNormalizationRevisionAndTime(t *testing.T) {
 	startedAt := time.Unix(1, 0).UTC()
-	current := mustNew(t, Draft{ID: "ses_1", Title: "Before", Workspace: mustWorkspace(t, "/work"), StartedAt: startedAt})
+	current := mustNew(t, Draft{ID: "ses_1", Title: "Before", Workspace: mustWorkspace(t, "/work"), CreatedAt: startedAt})
 	title := "  After  "
 	selection := mustModelSelection(t, "provider", "model")
 	favorite := true
@@ -144,7 +144,7 @@ func TestSessionApplyOwnsNormalizationRevisionAndTime(t *testing.T) {
 
 func TestSessionApplyNoopAndConflicts(t *testing.T) {
 	startedAt := time.Unix(1, 0).UTC()
-	current := mustNew(t, Draft{ID: "ses_1", Title: "Same", Workspace: mustWorkspace(t, "/work"), StartedAt: startedAt})
+	current := mustNew(t, Draft{ID: "ses_1", Title: "Same", Workspace: mustWorkspace(t, "/work"), CreatedAt: startedAt})
 	title := " Same "
 	unmoved, changed, err := current.Apply(Patch{Title: &title}, startedAt.Add(time.Second))
 	if err != nil || changed || unmoved.Snapshot() != current.Snapshot() {
@@ -168,7 +168,7 @@ func TestSessionFork(t *testing.T) {
 	isolated := true
 	parent := mustNew(t, Draft{
 		ID: "ses_parent", Title: "Research", Workspace: mustWorkspace(t, "/work/project"),
-		Selection: mustModelSelection(t, "provider", "model"), StartedAt: startedAt,
+		Selection: mustModelSelection(t, "provider", "model"), CreatedAt: startedAt,
 	})
 	parent, _, _ = parent.Apply(Patch{Isolated: &isolated}, startedAt.Add(time.Second))
 	childAt := startedAt.Add(2 * time.Second)
@@ -181,14 +181,14 @@ func TestSessionFork(t *testing.T) {
 		t.Fatalf("child = %+v", child.Snapshot())
 	}
 	if child.Selection() != parent.Selection() || child.Favorite() || child.Revision() != 1 ||
-		!child.StartedAt().Equal(childAt) || !child.UpdatedAt().Equal(childAt) {
+		!child.CreatedAt().Equal(childAt) || !child.UpdatedAt().Equal(childAt) {
 		t.Fatalf("child fresh state = %+v", child.Snapshot())
 	}
 }
 
 func TestSessionGeneratedTitleDoesNotOverrideUserTitle(t *testing.T) {
 	startedAt := time.Unix(1, 0).UTC()
-	untitled := mustNew(t, Draft{ID: "ses_1", Workspace: mustWorkspace(t, "/work"), StartedAt: startedAt})
+	untitled := mustNew(t, Draft{ID: "ses_1", Workspace: mustWorkspace(t, "/work"), CreatedAt: startedAt})
 	named, changed, err := untitled.NameIfUntitled(" Generated ", startedAt.Add(time.Second))
 	if err != nil || !changed || named.Title() != "Generated" {
 		t.Fatalf("generated title = %+v, changed=%v, err=%v", named.Snapshot(), changed, err)
@@ -200,8 +200,8 @@ func TestSessionGeneratedTitleDoesNotOverrideUserTitle(t *testing.T) {
 }
 
 func TestSessionRestoreReplacementKeepsTargetRevisionSpace(t *testing.T) {
-	current := mustNew(t, Draft{ID: "ses_1", Title: "Current", Workspace: mustWorkspace(t, "/old"), StartedAt: time.Unix(1, 0)})
-	restored := mustNew(t, Draft{ID: "ses_1", Title: "Archive", Workspace: mustWorkspace(t, "/archive"), StartedAt: time.Unix(2, 0)})
+	current := mustNew(t, Draft{ID: "ses_1", Title: "Current", Workspace: mustWorkspace(t, "/old"), CreatedAt: time.Unix(1, 0)})
+	restored := mustNew(t, Draft{ID: "ses_1", Title: "Archive", Workspace: mustWorkspace(t, "/archive"), CreatedAt: time.Unix(2, 0)})
 	restored, err := restored.InstallRestoredWorkspace(mustWorkspace(t, "/canonical"))
 	if err != nil {
 		t.Fatalf("InstallRestoredWorkspace: %v", err)
@@ -218,7 +218,7 @@ func TestSessionRestoreReplacementKeepsTargetRevisionSpace(t *testing.T) {
 
 func TestSessionRevisionOverflow(t *testing.T) {
 	current, err := Restore(Snapshot{
-		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), StartedAt: time.Unix(1, 0),
+		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), CreatedAt: time.Unix(1, 0),
 		Selection: mustModelSelection(t, "provider", "model"),
 		UpdatedAt: time.Unix(1, 0), Revision: exactint.Maximum,
 	})
@@ -230,7 +230,7 @@ func TestSessionRevisionOverflow(t *testing.T) {
 		t.Fatalf("overflow error = %v, want ErrInvalid", err)
 	}
 	_, err = Restore(Snapshot{
-		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), StartedAt: time.Unix(1, 0),
+		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), CreatedAt: time.Unix(1, 0),
 		Selection: mustModelSelection(t, "provider", "model"),
 		UpdatedAt: time.Unix(1, 0), Revision: exactint.Maximum + 1,
 	})

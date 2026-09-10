@@ -63,7 +63,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			workspace_path TEXT    NOT NULL CHECK (workspace_path <> ''),
 			workspace_search TEXT  NOT NULL CHECK (workspace_search <> ''),
 			parent_id   TEXT    NOT NULL DEFAULT '',
-			started_at  INTEGER NOT NULL,
+			created_at  INTEGER NOT NULL,
 			updated_at  INTEGER NOT NULL,
 			provider    TEXT    NOT NULL CHECK (provider <> ''),
 			model       TEXT    NOT NULL CHECK (model <> ''),
@@ -150,7 +150,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			max_budget_usd     REAL,
 			capabilities       TEXT    NOT NULL DEFAULT '',
 			message_mark       INTEGER NOT NULL DEFAULT -1,
-			started_at         INTEGER NOT NULL,
+			created_at         INTEGER NOT NULL,
 			finished_at        INTEGER NOT NULL DEFAULT 0,
 			updated_at         INTEGER NOT NULL,
 			CHECK (

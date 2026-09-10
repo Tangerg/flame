@@ -39,7 +39,7 @@ type Draft struct {
 	Title     string
 	Workspace Workspace
 	Selection modelref.Selection
-	StartedAt time.Time
+	CreatedAt time.Time
 }
 
 // Patch is the editable surface of a user-facing Session. Nil fields are left
@@ -68,7 +68,7 @@ type Snapshot struct {
 	Workspace Workspace
 	Selection modelref.Selection
 	ParentID  string
-	StartedAt time.Time
+	CreatedAt time.Time
 	UpdatedAt time.Time
 	Favorite  bool
 	Isolated  bool
@@ -84,7 +84,7 @@ type Session struct {
 	workspace Workspace
 	selection modelref.Selection
 	parentID  string
-	startedAt time.Time
+	createdAt time.Time
 	updatedAt time.Time
 	favorite  bool
 	isolated  bool
@@ -95,11 +95,11 @@ type Session struct {
 // Fresh interactive creation and scheduled creation share this same domain
 // meaning; only the caller's source of their identity differs.
 func New(draft Draft) (Session, error) {
-	startedAt := canonicalTime(draft.StartedAt)
+	createdAt := canonicalTime(draft.CreatedAt)
 	snapshot := Snapshot{
 		ID: draft.ID, Title: strings.TrimSpace(draft.Title),
 		Workspace: draft.Workspace, Selection: draft.Selection,
-		StartedAt: startedAt, UpdatedAt: startedAt, Revision: 1,
+		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
 	}
 	return Restore(snapshot)
 }
@@ -114,7 +114,7 @@ func Restore(snapshot Snapshot) (Session, error) {
 	value := Session{
 		id: snapshot.ID, title: snapshot.Title, workspace: snapshot.Workspace,
 		selection: snapshot.Selection, parentID: snapshot.ParentID,
-		startedAt: canonicalTime(snapshot.StartedAt),
+		createdAt: canonicalTime(snapshot.CreatedAt),
 		updatedAt: canonicalTime(snapshot.UpdatedAt),
 		favorite:  snapshot.Favorite, isolated: snapshot.Isolated,
 		revision: revision,
@@ -186,7 +186,7 @@ func (s Session) NameIfUntitled(title string, updatedAt time.Time) (Session, boo
 // isolation choice and exact model selection, starts a fresh conversation with
 // no favorite flag, and records immutable lineage back to s. An empty title uses
 // the parent's human-readable fork title.
-func (s Session) Fork(id, title string, startedAt time.Time) (Session, error) {
+func (s Session) Fork(id, title string, createdAt time.Time) (Session, error) {
 	if s.id == "" {
 		return Session{}, fmt.Errorf("%w: parent was never constructed", ErrInvalid)
 	}
@@ -198,10 +198,10 @@ func (s Session) Fork(id, title string, startedAt time.Time) (Session, error) {
 			title = s.title + " (fork)"
 		}
 	}
-	startedAt = canonicalTime(startedAt)
+	createdAt = canonicalTime(createdAt)
 	return Restore(Snapshot{
 		ID: id, Title: title, Workspace: s.workspace, ParentID: s.id,
-		StartedAt: startedAt, UpdatedAt: startedAt,
+		CreatedAt: createdAt, UpdatedAt: createdAt,
 		Selection: s.selection, Isolated: s.isolated, Revision: 1,
 	})
 }
@@ -243,7 +243,7 @@ func (s *Session) advance(previous Session, updatedAt time.Time) error {
 	if updatedAt.IsZero() {
 		return fmt.Errorf("%w: update time is required", ErrInvalid)
 	}
-	if updatedAt.Before(previous.updatedAt) || updatedAt.Before(s.startedAt) {
+	if updatedAt.Before(previous.updatedAt) || updatedAt.Before(s.createdAt) {
 		return fmt.Errorf("%w: update time precedes Session history", ErrInvalid)
 	}
 	revision, err := previous.revision.Next()
@@ -279,10 +279,10 @@ func (s Session) validate() error {
 	if s.parentID == s.id {
 		return fmt.Errorf("%w: invalid parent identity", ErrInvalid)
 	}
-	if s.startedAt.IsZero() || s.updatedAt.IsZero() {
+	if s.createdAt.IsZero() || s.updatedAt.IsZero() {
 		return fmt.Errorf("%w: start and update times are required", ErrInvalid)
 	}
-	if s.updatedAt.Before(s.startedAt) {
+	if s.updatedAt.Before(s.createdAt) {
 		return fmt.Errorf("%w: update time precedes start time", ErrInvalid)
 	}
 	if s.revision.IsZero() {
@@ -309,7 +309,7 @@ func (s Session) ValidateFor(expectedID string) error {
 func (s Session) Snapshot() Snapshot {
 	return Snapshot{
 		ID: s.id, Title: s.title, Workspace: s.workspace, Selection: s.selection,
-		ParentID: s.parentID, StartedAt: s.startedAt, UpdatedAt: s.updatedAt,
+		ParentID: s.parentID, CreatedAt: s.createdAt, UpdatedAt: s.updatedAt,
 		Favorite: s.favorite, Isolated: s.isolated, Revision: s.revision.Value(),
 	}
 }
@@ -329,8 +329,8 @@ func (s Session) Selection() modelref.Selection { return s.selection }
 // ParentID returns the immutable parent Session identity, or empty for a root.
 func (s Session) ParentID() string { return s.parentID }
 
-// StartedAt returns when the Session aggregate originated.
-func (s Session) StartedAt() time.Time { return s.startedAt }
+// CreatedAt returns when the Session aggregate originated.
+func (s Session) CreatedAt() time.Time { return s.createdAt }
 
 // UpdatedAt returns the time of the most recent aggregate replacement.
 func (s Session) UpdatedAt() time.Time { return s.updatedAt }
@@ -347,7 +347,7 @@ func (s Session) Revision() uint64 { return s.revision.Value() }
 func (s Session) sameValue(other Session) bool {
 	return s.id == other.id && s.title == other.title && s.workspace == other.workspace &&
 		s.selection.Equal(other.selection) && s.parentID == other.parentID &&
-		s.startedAt.Equal(other.startedAt) && s.favorite == other.favorite &&
+		s.createdAt.Equal(other.createdAt) && s.favorite == other.favorite &&
 		s.isolated == other.isolated
 }
 

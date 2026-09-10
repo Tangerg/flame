@@ -190,7 +190,7 @@ func (p PortableSession) session() (session.Session, error) {
 	}
 	return session.Restore(session.Snapshot{
 		ID: p.ID, Title: p.Title, Workspace: workspace, Selection: p.Selection,
-		StartedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
 		Favorite: p.Favorite, Revision: 1,
 	})
 }
@@ -236,7 +236,7 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 			Title:     normalized.Session.Title(),
 			CWD:       normalized.Session.Workspace().Path(),
 			Selection: normalized.Session.Selection(),
-			CreatedAt: normalized.Session.StartedAt(),
+			CreatedAt: normalized.Session.CreatedAt(),
 			UpdatedAt: normalized.Session.UpdatedAt(),
 			Favorite:  normalized.Session.Favorite(),
 		},

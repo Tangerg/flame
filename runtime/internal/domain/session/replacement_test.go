@@ -8,7 +8,7 @@ import (
 
 func TestReplacementOwnsInitialAndExactNextRevision(t *testing.T) {
 	current := mustNew(t, Draft{
-		ID: "ses_1", Title: "Before", Workspace: mustWorkspace(t, "/work"), StartedAt: time.Unix(1, 0),
+		ID: "ses_1", Title: "Before", Workspace: mustWorkspace(t, "/work"), CreatedAt: time.Unix(1, 0),
 	})
 	initial, err := InitialReplacement(current)
 	if err != nil {
@@ -34,7 +34,7 @@ func TestReplacementOwnsInitialAndExactNextRevision(t *testing.T) {
 
 func TestReplacementRejectsInvalidRevisionOrIdentity(t *testing.T) {
 	current := mustNew(t, Draft{
-		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), StartedAt: time.Unix(1, 0),
+		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), CreatedAt: time.Unix(1, 0),
 	})
 	title := "Second"
 	second, _, err := current.Apply(Patch{Title: &title}, time.Unix(2, 0))
@@ -46,7 +46,7 @@ func TestReplacementRejectsInvalidRevisionOrIdentity(t *testing.T) {
 	}
 
 	other := mustNew(t, Draft{
-		ID: "ses_2", Workspace: mustWorkspace(t, "/work"), StartedAt: time.Unix(1, 0),
+		ID: "ses_2", Workspace: mustWorkspace(t, "/work"), CreatedAt: time.Unix(1, 0),
 	})
 	otherTitle := "Other"
 	otherNext, _, err := other.Apply(Patch{Title: &otherTitle}, time.Unix(2, 0))
@@ -61,7 +61,7 @@ func TestReplacementRejectsInvalidRevisionOrIdentity(t *testing.T) {
 	}
 	older, err := Restore(Snapshot{
 		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), Selection: second.Selection(),
-		StartedAt: second.StartedAt(), UpdatedAt: second.StartedAt(), Revision: second.Revision() + 1,
+		CreatedAt: second.CreatedAt(), UpdatedAt: second.CreatedAt(), Revision: second.Revision() + 1,
 	})
 	if err != nil {
 		t.Fatalf("restore older replacement fixture: %v", err)

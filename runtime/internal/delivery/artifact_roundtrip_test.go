@@ -355,7 +355,7 @@ func seedMaximalSession(t *testing.T, rt *stubRuntime) string {
 	if _, err := insertSessionSnapshot(ctx, rt.sess, session.Snapshot{
 		ID: sessionID, Title: "Everything", Workspace: testsupport.MustWorkspace(cwd),
 		Selection: selection,
-		StartedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(9, 0).UTC(),
+		CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(9, 0).UTC(),
 		Favorite: true, Revision: 1,
 	}); err != nil {
 		t.Fatalf("seed session: %v", err)

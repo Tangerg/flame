@@ -827,7 +827,7 @@ func TestCommitOpeningRollsBackScheduledSession(t *testing.T) {
 	draft := testsupport.RunDraft(run.Draft{RunID: "run_scheduled", SessionID: "ses_scheduled", SegmentID: "seg_open", CreatedAt: created})
 	scheduled := testsupport.MustRestoreSession(session.Snapshot{
 		ID: draft.SessionID, Title: "scheduled", Workspace: testsupport.MustWorkspace("/work"),
-		StartedAt: created, UpdatedAt: created, Revision: 1,
+		CreatedAt: created, UpdatedAt: created, Revision: 1,
 	})
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_claimed_resume"), draft,
@@ -885,7 +885,7 @@ func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 	})
 	manualSession := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_manual", Workspace: testsupport.MustWorkspace("/work"),
-		StartedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
+		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
 	})
 	manualDraft := run.Draft{
 		RunID: "run_manual", SessionID: manualSession.ID(), SegmentID: "seg_manual",
@@ -920,7 +920,7 @@ func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 	}
 	missingSession := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_manual_missing", Workspace: testsupport.MustWorkspace("/work"),
-		StartedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
+		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
 	})
 	missingDraft := run.Draft{
 		RunID: "run_manual_missing", SessionID: missingSession.ID(), SegmentID: "seg_manual_missing",
@@ -956,7 +956,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	goals := sqlite.NewGoalStore(db)
 	sessions := sqlite.NewSessionStore(db)
 	goalSession := testsupport.MustRestoreSession(session.Snapshot{
-		ID: "ses_goal", Workspace: testsupport.MustWorkspace("/work"), StartedAt: created, UpdatedAt: created, Revision: 1,
+		ID: "ses_goal", Workspace: testsupport.MustWorkspace("/work"), CreatedAt: created, UpdatedAt: created, Revision: 1,
 	})
 	if insertErr := sessions.Insert(ctx, goalSession); insertErr != nil {
 		t.Fatalf("seed goal session: %v", insertErr)

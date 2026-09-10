@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-const sessionColumns = `id, title, title_search, workspace_path, workspace_search, parent_id, started_at, updated_at, provider, model, reasoning_effort, favorite, isolated, revision`
+const sessionColumns = `id, title, title_search, workspace_path, workspace_search, parent_id, created_at, updated_at, provider, model, reasoning_effort, favorite, isolated, revision`
 
 // rowToSession decodes one DB row into a product session.Session. Execution
 // continuation state deliberately lives in its dedicated sidecar table, never
@@ -18,7 +18,7 @@ func rowToSession(scanner interface {
 }) (session.Session, error) {
 	var (
 		snapshot        session.Snapshot
-		startedAtNanos  int64
+		createdAtNanos  int64
 		updatedAtNanos  int64
 		favoriteInt     int64
 		isolatedInt     int64
@@ -31,7 +31,7 @@ func rowToSession(scanner interface {
 	)
 	if err := scanner.Scan(
 		&snapshot.ID, &snapshot.Title, &titleSearch, &workspacePath, &workspaceSearch, &snapshot.ParentID,
-		&startedAtNanos, &updatedAtNanos, &provider, &model, &reasoningEffort,
+		&createdAtNanos, &updatedAtNanos, &provider, &model, &reasoningEffort,
 		&favoriteInt, &isolatedInt, &snapshot.Revision,
 	); err != nil {
 		return session.Session{}, err
@@ -44,7 +44,7 @@ func rowToSession(scanner interface {
 	if err != nil || workspaceSearch != expectedWorkspaceSearch {
 		return session.Session{}, fmt.Errorf("sqlite: Session %q has invalid workspace search material", snapshot.ID)
 	}
-	snapshot.StartedAt = time.Unix(0, startedAtNanos).UTC()
+	snapshot.CreatedAt = time.Unix(0, createdAtNanos).UTC()
 	snapshot.UpdatedAt = time.Unix(0, updatedAtNanos).UTC()
 	snapshot.Favorite = favoriteInt != 0
 	snapshot.Isolated = isolatedInt != 0

@@ -297,7 +297,7 @@ func parkWithGoalLease(
 	ctx := context.Background()
 	startedAt := time.Unix(0, 0).UTC()
 	value := testsupport.MustRestoreSession(session.Snapshot{
-		ID: sessionID, Workspace: testsupport.MustWorkspace("/work"), StartedAt: startedAt, UpdatedAt: startedAt,
+		ID: sessionID, Workspace: testsupport.MustWorkspace("/work"), CreatedAt: startedAt, UpdatedAt: startedAt,
 	})
 	if err := sessions.Insert(ctx, value); err != nil {
 		t.Fatalf("insert Session: %v", err)

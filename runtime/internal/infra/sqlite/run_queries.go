@@ -17,7 +17,7 @@ const runColumns = `r.run_id, r.session_id, r.spawned_by_item_id, r.parent_run_i
 	r.provider, r.model, r.reasoning_effort, r.goal_incarnation_id, r.detail,
 	r.steps, r.active_duration_ns, r.usage, r.context_tokens, r.problem,
 	r.max_total_tokens, r.max_steps, r.max_budget_usd, r.capabilities, tree_root.capabilities,
-	r.message_mark, r.started_at, r.finished_at, r.updated_at, i.payload`
+	r.message_mark, r.created_at, r.finished_at, r.updated_at, i.payload`
 
 // runReadJoins materializes the root-owned capabilities and pending set for
 // every Run in the tree. scanRun filters the aggregate payload by source Run ID,
@@ -63,13 +63,13 @@ func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []ru
 		args = append(args, columns...)
 	}
 	if beforeRunID != "" {
-		conditions = append(conditions, `(r.started_at < ? OR (r.started_at = ? AND r.run_id < ?))`)
+		conditions = append(conditions, `(r.created_at < ? OR (r.created_at = ? AND r.run_id < ?))`)
 		args = append(args, beforeStartedAt, beforeStartedAt, beforeRunID)
 	}
 	if len(conditions) > 0 {
 		query += ` WHERE ` + strings.Join(conditions, ` AND `)
 	}
-	query += ` ORDER BY r.started_at DESC, r.run_id DESC`
+	query += ` ORDER BY r.created_at DESC, r.run_id DESC`
 	if limit > 0 {
 		query += ` LIMIT ?`
 		args = append(args, limit)
@@ -190,7 +190,7 @@ func (r *RunStore) RunsWithAncestors(ctx context.Context, runIDs []string) ([]ru
 		 FROM runs AS r
 		 `+runReadJoins+`
 		 WHERE r.run_id IN (SELECT run_id FROM lineage)
-		 ORDER BY r.started_at DESC, r.run_id DESC`, args...)
+		 ORDER BY r.created_at DESC, r.run_id DESC`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: read runs with ancestors: %w", err)
 	}
@@ -219,7 +219,7 @@ func (r *RunStore) ListRuns(ctx context.Context, sessionID string) ([]rundomain.
 		`SELECT `+runColumns+`
 		 FROM runs AS r
 		 `+runReadJoins+`
-		 WHERE r.session_id = ? ORDER BY r.started_at, r.run_id`, sessionID)
+		 WHERE r.session_id = ? ORDER BY r.created_at, r.run_id`, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list runs: %w", err)
 	}

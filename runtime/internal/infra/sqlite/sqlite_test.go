@@ -72,7 +72,7 @@ func TestSessionSchemaOwnsExactWorkspacePath(t *testing.T) {
 	}
 
 	const insert = `INSERT INTO sessions(
-		id, title, title_search, workspace_path, workspace_search, parent_id, started_at, updated_at,
+		id, title, title_search, workspace_path, workspace_search, parent_id, created_at, updated_at,
 		provider, model, favorite, isolated, revision
 	) VALUES (?, '', '', ?, ?, '', 1, 1, 'provider', 'model', 0, 0, 1)`
 	if _, err := db.Exec(insert, "ses_empty", "", ""); err == nil {
@@ -463,7 +463,7 @@ func TestRevisionTablesRejectNumbersOutsideTheExactEnvelope(t *testing.T) {
 	for _, revision := range []uint64{0, exactint.Maximum + 1} {
 		for name, statement := range map[string]string{
 			"sessions": `INSERT INTO sessions(
-				id, title, title_search, workspace_path, workspace_search, started_at, updated_at,
+				id, title, title_search, workspace_path, workspace_search, created_at, updated_at,
 				provider, model, revision
 			) VALUES ('ses_revision', '', '', '/work', '/work', 1, 1, 'provider', 'model', ?)`,
 			"session_plans": `INSERT INTO session_plans(session_id, steps, revision, updated_at)

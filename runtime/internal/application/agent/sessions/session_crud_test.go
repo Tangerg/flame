@@ -201,16 +201,16 @@ func TestCoordinatorGetProtectsPointRead(t *testing.T) {
 func TestCoordinatorListProtectsCompleteCatalog(t *testing.T) {
 	latest := time.Unix(30, 0).UTC()
 	favoriteB := testsupport.MustRestoreSession(session.Snapshot{
-		ID: "ses_b", Favorite: true, StartedAt: latest.Add(-time.Second), UpdatedAt: latest,
+		ID: "ses_b", Favorite: true, CreatedAt: latest.Add(-time.Second), UpdatedAt: latest,
 	})
 	favoriteA := testsupport.MustRestoreSession(session.Snapshot{
-		ID: "ses_a", Favorite: true, StartedAt: latest.Add(-time.Second), UpdatedAt: latest,
+		ID: "ses_a", Favorite: true, CreatedAt: latest.Add(-time.Second), UpdatedAt: latest,
 	})
 	older := testsupport.MustRestoreSession(session.Snapshot{
-		ID: "ses_old", Favorite: true, StartedAt: latest.Add(-2 * time.Second), UpdatedAt: latest.Add(-time.Second),
+		ID: "ses_old", Favorite: true, CreatedAt: latest.Add(-2 * time.Second), UpdatedAt: latest.Add(-time.Second),
 	})
 	unfavorite := testsupport.MustRestoreSession(session.Snapshot{
-		ID: "ses_z", StartedAt: latest.Add(-time.Second), UpdatedAt: latest.Add(time.Second),
+		ID: "ses_z", CreatedAt: latest.Add(-time.Second), UpdatedAt: latest.Add(time.Second),
 	})
 	for name, values := range map[string][]session.Session{
 		"invalid aggregate":  {{}},
@@ -263,7 +263,7 @@ func TestPrepareScheduledBuildsOneUnpersistedInitialAggregate(t *testing.T) {
 	if current.ID() != "ses_scheduled" || current.Title() != "Scheduled" ||
 		current.Workspace().Path() != "/resolved/scheduled" ||
 		current.Selection() != mustTestSelection(t, "provider", "model") ||
-		current.Revision() != 1 || !current.StartedAt().Equal(createdAt) {
+		current.Revision() != 1 || !current.CreatedAt().Equal(createdAt) {
 		t.Fatalf("scheduled aggregate = %+v", current.Snapshot())
 	}
 	if store.inserted.ID() != "" {
@@ -295,7 +295,7 @@ func TestPrepareScheduledReusesCommittedAggregateWithoutWorkspaceAdmission(t *te
 
 func TestGeneratedTitleLosesToConcurrentUserTitle(t *testing.T) {
 	current := testsupport.MustRestoreSession(session.Snapshot{
-		ID: "ses_1", Workspace: testsupport.MustWorkspace("/repo"), StartedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0),
+		ID: "ses_1", Workspace: testsupport.MustWorkspace("/repo"), CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0),
 	})
 	store := &generatedTitleRaceStore{crudSessionStore: &crudSessionStore{current: current}}
 	coordinator := mustNewCoordinator(testDependencies(&crudStores{session: store}, Dependencies{
@@ -636,7 +636,7 @@ func sessionRows(ids ...string) []session.Session {
 	for i, id := range ids {
 		updatedAt := time.Unix(0, int64(len(ids)-i)).UTC()
 		out = append(out, testsupport.MustRestoreSession(session.Snapshot{
-			ID: id, Workspace: testsupport.MustWorkspace("/repo"), StartedAt: updatedAt, UpdatedAt: updatedAt,
+			ID: id, Workspace: testsupport.MustWorkspace("/repo"), CreatedAt: updatedAt, UpdatedAt: updatedAt,
 		}))
 	}
 	return out
