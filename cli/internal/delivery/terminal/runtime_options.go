@@ -286,25 +286,7 @@ func (a *app) PrepareDeleteApprovalRule(identity string) error {
 }
 
 func resolveApprovalRule(rules []protocol.ApprovalRule, identity string) (protocol.ApprovalRule, error) {
-	for _, rule := range rules {
-		if rule.ID == identity {
-			return rule, nil
-		}
-	}
-	var matches []protocol.ApprovalRule
-	for _, rule := range rules {
-		if strings.HasPrefix(rule.ID, identity) {
-			matches = append(matches, rule)
-		}
-	}
-	switch len(matches) {
-	case 0:
-		return protocol.ApprovalRule{}, errors.New("approval rule not found: " + identity)
-	case 1:
-		return matches[0], nil
-	default:
-		return protocol.ApprovalRule{}, errors.New("approval rule identity is ambiguous; use the full id")
-	}
+	return resolveByID(rules, identity, "approval rule", func(rule protocol.ApprovalRule) string { return rule.ID })
 }
 
 type approvalRuleDeletionResult struct {

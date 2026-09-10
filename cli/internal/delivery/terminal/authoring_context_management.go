@@ -160,23 +160,5 @@ func resolveRecipeInvocation(recipes []workspace.AuthoringRecipe, argument strin
 }
 
 func resolveRecipe(recipes []workspace.AuthoringRecipe, identity string) (workspace.AuthoringRecipe, error) {
-	for _, recipe := range recipes {
-		if recipe.Name == identity {
-			return recipe, nil
-		}
-	}
-	var matches []workspace.AuthoringRecipe
-	for _, recipe := range recipes {
-		if strings.HasPrefix(recipe.Name, identity) {
-			matches = append(matches, recipe)
-		}
-	}
-	switch len(matches) {
-	case 0:
-		return workspace.AuthoringRecipe{}, errors.New("recipe not found: " + identity)
-	case 1:
-		return matches[0], nil
-	default:
-		return workspace.AuthoringRecipe{}, errors.New("recipe name is ambiguous; use the full name")
-	}
+	return resolveByName(recipes, identity, "recipe", func(recipe workspace.AuthoringRecipe) string { return recipe.Name })
 }

@@ -106,23 +106,9 @@ func parseDiagnosticToolInvocation(argument string) (string, json.RawMessage, er
 }
 
 func resolveDiagnosticTool(tools []workspace.DiagnosticToolDescriptor, identity string) (workspace.DiagnosticToolDescriptor, error) {
-	for _, tool := range tools {
-		if tool.Name == identity {
-			return tool.Clone(), nil
-		}
+	tool, err := resolveByName(tools, identity, "diagnostic tool", func(tool workspace.DiagnosticToolDescriptor) string { return tool.Name })
+	if err != nil {
+		return workspace.DiagnosticToolDescriptor{}, err
 	}
-	var matches []workspace.DiagnosticToolDescriptor
-	for _, tool := range tools {
-		if strings.HasPrefix(tool.Name, identity) {
-			matches = append(matches, tool)
-		}
-	}
-	switch len(matches) {
-	case 0:
-		return workspace.DiagnosticToolDescriptor{}, errors.New("diagnostic tool not found: " + identity)
-	case 1:
-		return matches[0].Clone(), nil
-	default:
-		return workspace.DiagnosticToolDescriptor{}, errors.New("diagnostic tool name is ambiguous; use the full name")
-	}
+	return tool.Clone(), nil
 }

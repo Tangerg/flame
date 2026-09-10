@@ -204,25 +204,7 @@ func (a *app) loadAgentMemoryItem(argument, label string, apply func(agent.Memor
 }
 
 func resolveAgentMemory(items []protocol.AgentMemoryItem, identity string) (protocol.AgentMemoryItem, error) {
-	for _, item := range items {
-		if item.ID == identity {
-			return item, nil
-		}
-	}
-	var matches []protocol.AgentMemoryItem
-	for _, item := range items {
-		if strings.HasPrefix(item.ID, identity) {
-			matches = append(matches, item)
-		}
-	}
-	switch len(matches) {
-	case 0:
-		return protocol.AgentMemoryItem{}, errors.New("agent memory not found: " + identity)
-	case 1:
-		return matches[0], nil
-	default:
-		return protocol.AgentMemoryItem{}, errors.New("agent memory identity is ambiguous; use the full id")
-	}
+	return resolveByID(items, identity, "agent memory", func(item protocol.AgentMemoryItem) string { return item.ID })
 }
 
 func parseAgentMemoryTarget(argument, workspace string) (agent.MemoryTarget, error) {
