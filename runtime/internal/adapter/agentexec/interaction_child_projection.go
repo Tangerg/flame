@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -252,20 +251,9 @@ func (i *interactionSession) finishDelegateTool(
 // contract at the Runtime projection boundary. Runtime must persist the exact
 // model-visible value, not reconstruct it later from the client transcript.
 func delegateFailureModelResult(call corechat.ToolCall, diagnostic string) corechat.ToolResult {
-	diagnostic = strings.TrimSpace(diagnostic)
+	diagnostic = boundDiagnostic(diagnostic, maximumDelegateDiagnosticBytes)
 	if diagnostic == "" {
 		diagnostic = "Interaction operation failed"
-	}
-	const maximumDiagnosticBytes = 2048
-	if len(diagnostic) > maximumDiagnosticBytes {
-		diagnostic = diagnostic[:maximumDiagnosticBytes]
-		for !utf8.ValidString(diagnostic) {
-			diagnostic = diagnostic[:len(diagnostic)-1]
-		}
-		diagnostic = strings.TrimSpace(diagnostic)
-		if diagnostic == "" {
-			diagnostic = "Interaction operation failed"
-		}
 	}
 	return corechat.ToolResult{
 		ID: call.ID, Name: call.Name,
@@ -279,15 +267,9 @@ func delegateStartFailureModelResult(
 	code string,
 	message string,
 ) corechat.ToolResult {
-	// Agent Failure bounds its message before Interaction builds the Delegate
-	// diagnostic. Retaining that ordering keeps the durable value byte-identical.
-	const maximumAgentFailureBytes = 4096
 	message = strings.TrimSpace(message)
 	if message == "" {
 		message = "unknown error"
-	}
-	if len(message) > maximumAgentFailureBytes {
-		message = message[:maximumAgentFailureBytes]
 	}
 	return delegateFailureModelResult(
 		call,
