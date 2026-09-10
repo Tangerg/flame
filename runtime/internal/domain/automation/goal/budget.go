@@ -228,6 +228,25 @@ func (r RunRecord) Describes(value run.Run) error {
 	return nil
 }
 
+// ValidateCharge proves the optional accounting record filed against value is
+// exactly the charge value implies: a Goal-owned Run carries one that describes
+// it, and a Run outside every Goal carries none. The same three writers that
+// share Describes also share this pairing, so it means one thing for all of
+// them. It reports the defect as a phrase, leaving each caller its own way of
+// failing.
+func ValidateCharge(value run.Run, record *RunRecord) error {
+	if value.GoalIncarnationID() == "" {
+		if record != nil {
+			return fmt.Errorf("Run %q is outside every Goal and carries a charge", value.ID())
+		}
+		return nil
+	}
+	if record == nil {
+		return fmt.Errorf("Goal-owned Run %q carries no charge", value.ID())
+	}
+	return record.Describes(value)
+}
+
 // RecordRun returns one replacement revision even when accounting also derives
 // a pause or budget block.
 func (g Goal) RecordRun(record RunRecord) (Goal, error) {

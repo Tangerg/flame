@@ -259,16 +259,7 @@ func validateTerminalRunReplacement(replacement rundomain.Replacement) error {
 }
 
 func validateTerminalGoalRun(run rundomain.Run, record *goal.RunRecord) error {
-	if run.GoalIncarnationID() == "" {
-		if record != nil {
-			return fmt.Errorf("sessions: terminal plan non-Goal Run %q carries a Goal Run", run.ID())
-		}
-		return nil
-	}
-	if record == nil {
-		return fmt.Errorf("sessions: terminal plan Goal-owned Run %q has no Goal Run", run.ID())
-	}
-	if err := record.Describes(run); err != nil {
+	if err := goal.ValidateCharge(run, record); err != nil {
 		return fmt.Errorf("sessions: terminal plan Goal Run: %w", err)
 	}
 	return nil

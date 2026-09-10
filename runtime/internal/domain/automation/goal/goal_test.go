@@ -598,4 +598,25 @@ func TestRunRecordDescribesItsTerminalRun(t *testing.T) {
 	if err := matching.Describes(running); err == nil {
 		t.Fatal("a charge described a Run that has not finished")
 	}
+
+	// Whether a charge belongs at all is the other half, and every writer that
+	// files one asks it before asking whether the charge matches.
+	if err := ValidateCharge(terminal, &matching); err != nil {
+		t.Fatalf("a Goal-owned Run with its own charge was refused: %v", err)
+	}
+	if err := ValidateCharge(terminal, nil); err == nil {
+		t.Fatal("a Goal-owned Run with no charge was accepted")
+	}
+	outsideSnapshot := terminal.Snapshot()
+	outsideSnapshot.GoalIncarnationID = ""
+	outside, err := run.Restore(outsideSnapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateCharge(outside, nil); err != nil {
+		t.Fatalf("a Run outside every Goal was refused for carrying no charge: %v", err)
+	}
+	if err := ValidateCharge(outside, &matching); err == nil {
+		t.Fatal("a Run outside every Goal accepted a charge")
+	}
 }

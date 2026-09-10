@@ -456,19 +456,7 @@ func (e EventCommit) validateLifecycle() error {
 }
 
 func validateTerminalGoalRun(value run.Run, record *goal.RunRecord) error {
-	if value.GoalIncarnationID() == "" {
-		if record != nil {
-			return fmt.Errorf("runs: non-Goal Run %q carries a Goal Run", value.ID())
-		}
-		return nil
-	}
-	if !value.Lineage().IsRoot() {
-		return fmt.Errorf("runs: child Run %q carries a root Goal incarnation", value.ID())
-	}
-	if record == nil {
-		return fmt.Errorf("runs: Goal-owned terminal Run %q has no Goal Run", value.ID())
-	}
-	if err := record.Describes(value); err != nil {
+	if err := goal.ValidateCharge(value, record); err != nil {
 		return fmt.Errorf("runs: terminal Goal Run: %w", err)
 	}
 	return nil
