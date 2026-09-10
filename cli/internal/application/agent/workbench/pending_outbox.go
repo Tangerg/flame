@@ -107,25 +107,6 @@ func (s *Store) RequeuePendingResume(
 	return clonePendingResume(pending), nil
 }
 
-// DiscardPendingResume retires terminal authoring state for a session that the
-// runtime has deleted or replaced. It never runs as part of ordinary session
-// navigation, where the outstanding command must remain recoverable.
-func (s *Store) DiscardPendingResume(sessionID string) error {
-	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
-		return err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if _, exists := s.pendingResumes[sessionID]; !exists {
-		return nil
-	}
-	if err := s.saveSessionStateWithResume(sessionID, s.drafts[sessionID], s.pendingRuns[sessionID], nil); err != nil {
-		return err
-	}
-	delete(s.pendingResumes, sessionID)
-	return nil
-}
-
 func (s *Store) retirePendingResume(sessionID string, commandID agent.CommandID) error {
 	if err := commandID.Validate(); err != nil {
 		return err

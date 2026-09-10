@@ -236,20 +236,6 @@ func validateInstructions(instructions string) error {
 	return nil
 }
 
-// NextRevision returns the only legal successor of this stored Schedule's
-// current revision. Persistence paths that mutate operational fields use this
-// behavior instead of spelling arithmetic in SQL.
-func (s Schedule) NextRevision() (uint64, error) {
-	if err := s.id.Validate(); err != nil {
-		return 0, err
-	}
-	next, err := s.revision.Next()
-	if err != nil {
-		return 0, ErrRevisionExhausted
-	}
-	return next.Value(), nil
-}
-
 // ScheduledAfter validates s and returns a copy with NextRunAt matching its
 // enabled state. Disabled schedules always have a zero NextRunAt.
 func (s Schedule) ScheduledAfter(after time.Time) (Schedule, error) {
