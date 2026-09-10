@@ -1,7 +1,6 @@
 package run
 
 import (
-	"math"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +19,12 @@ func TestFailureRetryAfterSecondsNeverShortensProviderHint(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			failure := Failure{RetryAfter: test.delay}
+			failure := Failure{Kind: FailureRateLimited, RetryAfter: test.delay}
+			// Rounding is only asked of delays the domain admits, so a fixture
+			// Validate rejects would prove nothing about a reachable projection.
+			if err := failure.Validate(); err != nil {
+				t.Fatalf("fixture is not a legal Failure: %v", err)
+			}
 			if got := failure.RetryAfterSeconds(); got != test.want {
 				t.Fatalf("RetryAfterSeconds() = %d, want %d", got, test.want)
 			}
@@ -47,10 +51,19 @@ func TestRetryAfterWholeSecondRepresentationIsClosed(t *testing.T) {
 	if _, err := RetryAfterFromSeconds(maximumSeconds + 1); err == nil {
 		t.Fatal("RetryAfterFromSeconds accepted an overflowing delay")
 	}
+	if _, err := RetryAfterFromSeconds(-1); err == nil {
+		t.Fatal("RetryAfterFromSeconds accepted a negative delay")
+	}
 	if err := (Failure{Kind: FailureRateLimited, RetryAfter: MaximumRetryAfter + time.Nanosecond}).Validate(); err == nil {
 		t.Fatal("Failure.Validate accepted a delay that cannot round-trip through seconds")
 	}
-	if got := (Failure{RetryAfter: time.Duration(math.MaxInt64)}).RetryAfterSeconds(); got != maximumSeconds {
-		t.Fatalf("RetryAfterSeconds(max duration) = %d, want %d", got, maximumSeconds)
+	// The largest delay the domain admits is the one rounding must still carry
+	// whole, since nothing beyond it can reach a projection.
+	widest := Failure{Kind: FailureRateLimited, RetryAfter: MaximumRetryAfter}
+	if err := widest.Validate(); err != nil {
+		t.Fatalf("widest legal delay was rejected: %v", err)
+	}
+	if got := widest.RetryAfterSeconds(); got != maximumSeconds {
+		t.Fatalf("RetryAfterSeconds(widest legal delay) = %d, want %d", got, maximumSeconds)
 	}
 }

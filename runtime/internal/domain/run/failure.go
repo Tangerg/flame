@@ -77,14 +77,10 @@ func (f Failure) Validate() error {
 
 // RetryAfterSeconds returns the shortest whole-second delay that does not
 // shorten the provider's retry hint. Durable and wire representations use
-// seconds, while provider protocols may supply finer-grained delays.
+// seconds, while provider protocols may supply finer-grained delays. Validate
+// bounds the delay to the representable whole-second range before a Failure can
+// reach a projection, so rounding up is all this owes its callers.
 func (f Failure) RetryAfterSeconds() int {
-	if f.RetryAfter <= 0 {
-		return 0
-	}
-	if f.RetryAfter > MaximumRetryAfter {
-		return int(MaximumRetryAfter / time.Second)
-	}
 	seconds := f.RetryAfter / time.Second
 	if f.RetryAfter%time.Second != 0 {
 		seconds++
