@@ -35,6 +35,9 @@ func TestRunAccountingCodecRejectsOldSentinelsAndMalformedPolicies(t *testing.T)
 		"unknown type":         `{"steps":1,"limits":{"type":"sometimes"}}`,
 		"unknown field":        `{"steps":1,"limits":{"type":"unlimited","legacy":true}}`,
 		"trailing value":       `{"steps":1,"limits":{"type":"unlimited"}} {}`,
+		"duplicate member":     `{"steps":1,"steps":2,"limits":{"type":"unlimited"}}`,
+		"duplicate nested":     `{"steps":1,"limits":{"type":"unlimited","maxSteps":null,"maxSteps":null}}`,
+		"escaped duplicate":    `{"steps":1,"\u0073teps":2,"limits":{"type":"unlimited"}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			var row runAccountingRow
