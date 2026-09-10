@@ -75,9 +75,11 @@ const RULES = [
     // A call site cannot participate in that decision, only overrule it. Under Tailwind
     // `focus-visible:outline-none` was a `@layer utilities` rule that the unlayered global one
     // beat, so suppressing the browser default at a call site was harmless and this guard said
-    // so in as many words. StyleX inverted it: every declaration carries three `:not(#\#)`, so
-    // `outline: "none"` in a style object outranks the global rule at (3,n,0) against (0,4,3)
-    // and takes the design's ring down with the browser's. Twenty call sites said it, most of
+    // so in as many words. StyleX inverted it: `#\#` is an ID selector, so every `:not(#\#)` it
+    // stamps on a declaration is an ID-level unit while the global rule carries none — that rule
+    // is (0,4,3), so a single one already beats it. `outline: "none"` in a style object therefore
+    // outranks it and takes the design's ring down with the browser's. (The count is StyleX's own
+    // precedence encoding, measured 1 to 8 on a live route, not the constant this once claimed.) Twenty call sites said it, most of
     // them on `Button` — 109 of 121 keyboard-reachable controls that had NOT opted out showed
     // nothing at all, and the two audits either side of this both looked past it: one checks
     // the ring has room to draw, the other checks the opt-outs keep their promise.

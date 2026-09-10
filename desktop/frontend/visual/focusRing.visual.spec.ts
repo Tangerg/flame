@@ -106,8 +106,10 @@ test("no focus ring is cut off by something that clips", async ({ page }) => {
 
 // Whether a control shows a ring is decided in globals.css, by two attributes it reads. The
 // question this file never asked is whether the decision reaches the screen — and it did not.
-// A StyleX declaration carries three `:not(#\#)`, so `outline: "none"` in a style object beats
-// the global rule at (3,n,0) against (0,4,3). Twenty call sites had written it, most by way of
+// `#\#` is an ID selector, so every `:not(#\#)` StyleX stamps on a declaration counts as an ID
+// and the global rule carries none of them — it is (0,4,3). So `outline: "none"` in a style
+// object beats it on the strength of a SINGLE one; the count varies (measured 1 to 8, most at 3
+// or 4) because it is how StyleX encodes its own precedence, not a fixed number. Twenty call sites had written it, most by way of
 // `Button`, and 109 of 121 keyboard-reachable controls that had NOT opted out showed nothing at
 // all. Under Tailwind the same line was a `@layer utilities` rule the global one beat, so it
 // was genuinely harmless there and the chrome guard blessed it in writing; the migration

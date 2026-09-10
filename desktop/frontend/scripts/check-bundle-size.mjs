@@ -58,7 +58,12 @@ const INDEX_HTML = join(DIST, "index.html");
 // That note called the double count TRANSIENT and predicted the ceiling would
 // come back "well under the old 135 KB" once every file had migrated. The
 // migration is now complete and the prediction was WRONG. Measured with the
-// business layer empty of class attributes:
+// business layer empty of class attributes — and read the table as the dated
+// snapshot it is, taken while Tailwind was still in the bundle, which is why it
+// has a row for it. The counts have moved since (884 atomic rules and 2884
+// occurrences of the padding on a live route, against the 821 and 2630 below);
+// what has not moved is the SHAPE of the answer, which is the reason the
+// ceiling sits where it does.
 //
 //   @layer utilities (Tailwind)   24.4 KB   18%
 //   StyleX (unlayered)            57.4 KB   42%   821 atomic rules

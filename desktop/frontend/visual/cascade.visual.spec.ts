@@ -16,7 +16,9 @@ import { expect, test } from "./test";
 // one. Hence the floor at the bottom of this file, which the old version had no equivalent of.
 //
 // The conflict the product can actually have now is the same shape with both sides renamed.
-// StyleX emits UNLAYERED atomic rules, each carrying `:not(#\#)` — so (2,n,0) or (3,n,0) — and
+// StyleX emits UNLAYERED atomic rules, each carrying at least one `:not(#\#)` — an ID-level
+// unit, since `#\#` is an ID selector, so one is already more than any rule in globals.css has —
+// and
 // globals.css holds descendant rules that no atomic class can express. When both set one
 // property on one element, StyleX wins on specificity and the stylesheet's declaration is dead
 // text. That inversion is not hypothetical: it is exactly how twenty call sites' `outline:

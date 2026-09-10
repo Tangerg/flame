@@ -825,9 +825,15 @@ body {
 
    Suppressing the browser's own outline in POINTER modality is the other half of that gate, and
    it has to live here beside it. It was being said at each call site instead — twenty times, as
-   `outline: "none"` in a StyleX object — and a StyleX declaration carries three `:not(#\#)`, so
-   it outranks BOTH rules here and took the design's ring down with the browser's. Measured: 109
-   of 121 keyboard-reachable controls that had not opted out showed nothing at all. */
+   `outline: "none"` in a StyleX object — which outranks BOTH rules here and took the design's
+   ring down with the browser's. Measured: 109 of 121 keyboard-reachable controls that had not
+   opted out showed nothing at all.
+
+   Why it outranks them: `#\#` is an ID selector, so every `:not(#\#)` StyleX stamps on a
+   declaration is an ID-level unit, and these rules carry no ID — the one above is (0,4,3).
+   ONE is therefore already enough. How many a given declaration gets is StyleX's own
+   precedence encoding rather than a constant: measured across a live route, 1 to 8 of them,
+   most at 3 or 4, with the deeper counts on pseudo-classes and pseudo-elements. */
 html:not([data-pointer])
   :focus-visible:not([data-chrome-focus]):not(input):not(textarea):not([contenteditable]) {
   outline: 1.5px solid var(--color-focus-ring);
