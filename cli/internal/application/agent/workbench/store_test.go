@@ -159,7 +159,7 @@ func TestStorePreservesCachedDraftWhenDurableDeletionFails(t *testing.T) {
 		t.Fatal(writeFileErr)
 	}
 
-	if discardDraftErr := store.DiscardDraft(sessionID); discardDraftErr == nil {
+	if discardDraftErr := store.SaveDraft(sessionID, agent.Message{}); discardDraftErr == nil {
 		t.Fatal("durable draft deletion unexpectedly succeeded")
 	}
 	got, ok := store.Draft(sessionID)
@@ -293,7 +293,7 @@ func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
 			}
 			if phase == "stash saved" || phase == "source retired" {
 				next := tailStashes(append(slices.Clone(store.stashes), transfer.Stash), store.stashCapacity)
-				if saveErr := store.save("stashes.json", next); saveErr != nil {
+				if saveErr := store.save(stashesName, next); saveErr != nil {
 					t.Fatal(saveErr)
 				}
 			}
@@ -850,14 +850,14 @@ func TestStoreRejectsInvalidDurableCatalogValues(t *testing.T) {
 	}{
 		{
 			name: "duplicate stash identity",
-			file: "stashes.json",
+			file: stashesName,
 			body: `{"version":1,"value":[` +
 				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:00Z","Message":{"Text":"first"}},` +
 				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:01Z","Message":{"Text":"second"}}]}`,
 		},
 		{
 			name: "empty stash prompt",
-			file: "stashes.json",
+			file: stashesName,
 			body: `{"version":1,"value":[` +
 				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:00Z","Message":{"Text":""}}]}`,
 		},

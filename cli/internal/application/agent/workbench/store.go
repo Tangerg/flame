@@ -22,6 +22,7 @@ const (
 	defaultHistoryCapacity   = 1000
 	defaultStashCapacity     = 100
 	defaultWorkspaceCapacity = 50
+	stashesName              = "stashes.json"
 	stashTransferName        = "stash-transfer.json"
 	sessionDeletionsName     = "session-deletions.json"
 )
@@ -274,15 +275,9 @@ func (s *Store) SaveDraft(sessionID string, message agent.Message) error {
 	return nil
 }
 
-// DiscardDraft retires authoring state for a session that no longer exists.
-// It is intentionally distinct from saving an empty draft at call sites: the
-// caller is expressing a lifecycle transition, not an editor value change.
-func (s *Store) DiscardDraft(sessionID string) error {
-	return s.SaveDraft(sessionID, agent.Message{})
-}
-
-// StashPrompt preserves a prompt independently of its session draft.
-func (s *Store) StashPrompt(message agent.Message) (Stash, error) {
+// newStash mints the value both stash entry points store. They differ in what
+// else the write moves, not in what a stash is.
+func (s *Store) newStash(message agent.Message) (Stash, error) {
 	message = message.Clone()
 	if message.IsEmpty() {
 		return Stash{}, errors.New("cannot stash an empty prompt")
@@ -295,11 +290,20 @@ func (s *Store) StashPrompt(message agent.Message) (Stash, error) {
 	if err := stash.Validate(); err != nil {
 		return Stash{}, err
 	}
+	return stash, nil
+}
+
+// StashPrompt preserves a prompt independently of its session draft.
+func (s *Store) StashPrompt(message agent.Message) (Stash, error) {
+	stash, err := s.newStash(message)
+	if err != nil {
+		return Stash{}, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	next := append(slices.Clone(s.stashes), stash)
 	next = tailStashes(next, s.stashCapacity)
-	if err := s.save("stashes.json", next); err != nil {
+	if err := s.save(stashesName, next); err != nil {
 		return Stash{}, err
 	}
 	s.stashes = next
@@ -314,19 +318,11 @@ func (s *Store) StashDraft(sessionID string, message agent.Message) (Stash, erro
 	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return Stash{}, err
 	}
-	message = message.Clone()
-	if message.IsEmpty() {
-		return Stash{}, errors.New("cannot stash an empty prompt")
-	}
-	identity := make([]byte, 8)
-	if _, err := io.ReadFull(s.random, identity); err != nil {
-		return Stash{}, fmt.Errorf("create stash id: %w", err)
-	}
-	stash := Stash{ID: hex.EncodeToString(identity), CreatedAt: s.now().UTC(), Message: message}
-	if err := stash.Validate(); err != nil {
+	stash, err := s.newStash(message)
+	if err != nil {
 		return Stash{}, err
 	}
-	transfer := stashTransfer{SessionID: sessionID, Draft: message, Stash: stash}
+	transfer := stashTransfer{SessionID: sessionID, Draft: stash.Message, Stash: stash}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -339,7 +335,7 @@ func (s *Store) StashDraft(sessionID string, message agent.Message) (Stash, erro
 	if err := s.save(stashTransferName, transfer); err != nil {
 		return Stash{}, fmt.Errorf("save stash transfer: %w", err)
 	}
-	if err := s.save("stashes.json", next); err != nil {
+	if err := s.save(stashesName, next); err != nil {
 		if cleanupErr := s.remove(stashTransferName); cleanupErr != nil {
 			failure := errors.Join(err, fmt.Errorf("retire prompt stash transfer: %w", cleanupErr))
 			return Stash{}, s.blockWrites(failure)
@@ -347,7 +343,7 @@ func (s *Store) StashDraft(sessionID string, message agent.Message) (Stash, erro
 		return Stash{}, err
 	}
 	if err := s.saveSessionState(sessionID, agent.Message{}, s.pendingRuns[sessionID]); err != nil {
-		rollbackErr := s.save("stashes.json", previous)
+		rollbackErr := s.save(stashesName, previous)
 		if rollbackErr != nil {
 			s.stashes = next
 			return Stash{}, errors.Join(
@@ -358,7 +354,7 @@ func (s *Store) StashDraft(sessionID string, message agent.Message) (Stash, erro
 		if cleanupErr := s.remove(stashTransferName); cleanupErr != nil {
 			// Re-publish the intended stash so a surviving journal always describes
 			// a forward-recoverable state rather than reviving a rolled-back move.
-			if restoreErr := s.save("stashes.json", next); restoreErr != nil {
+			if restoreErr := s.save(stashesName, next); restoreErr != nil {
 				failure := errors.Join(
 					fmt.Errorf("clear session draft: %w", err),
 					fmt.Errorf("remove stash transfer: %w", cleanupErr),
@@ -405,7 +401,7 @@ func (s *Store) recoverStashTransfer() error {
 			return errors.New("stash transfer identity belongs to another prompt")
 		case index < 0:
 			next := tailStashes(append(slices.Clone(s.stashes), transfer.Stash), s.stashCapacity)
-			if err := s.save("stashes.json", next); err != nil {
+			if err := s.save(stashesName, next); err != nil {
 				return fmt.Errorf("save recovered prompt stash: %w", err)
 			}
 			s.stashes = next
@@ -457,7 +453,7 @@ func (s *Store) DeleteStash(id string) (bool, error) {
 	if len(next) == len(s.stashes) {
 		return false, nil
 	}
-	if err := s.save("stashes.json", next); err != nil {
+	if err := s.save(stashesName, next); err != nil {
 		return false, err
 	}
 	s.stashes = next

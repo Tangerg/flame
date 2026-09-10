@@ -53,7 +53,7 @@ func (s *Store) loadState() error {
 	if err := validateHistory(s.history); err != nil {
 		return fmt.Errorf("load prompt history: %w", err)
 	}
-	if err := s.loadOptional("stashes.json", &s.stashes); err != nil {
+	if err := s.loadOptional(stashesName, &s.stashes); err != nil {
 		return fmt.Errorf("load prompt stashes: %w", err)
 	}
 	if err := validateStashes(s.stashes); err != nil {
