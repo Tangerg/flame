@@ -29,7 +29,7 @@ type activeDurationClock struct {
 	segmentStartedAt time.Time
 }
 
-// startRunCallError identifies an error returned by RunLifecycle.StartRun
+// startRunCallError identifies an error returned by Lifecycle.StartRun
 // itself. Protocol validation failures after a successful call are deliberately
 // excluded: the runtime already acknowledged the command, so replaying the
 // mutation cannot repair its malformed receipt.
@@ -178,7 +178,7 @@ func (a *app) requeueDefinitivelyRefusedStart(input agent.StartRun, failure erro
 
 func openStartRun(
 	ctx context.Context,
-	runtime runworkflow.RunLifecycle,
+	runtime runworkflow.Lifecycle,
 	command agent.StartRun,
 	policy retry.ReconnectPolicy,
 	admit mutation.Admission,

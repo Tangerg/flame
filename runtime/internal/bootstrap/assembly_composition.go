@@ -163,7 +163,7 @@ func buildWorkspaceComposition(
 	}
 	workspaceSkills, err := workspace.NewSkills(
 		scope,
-		promptsource.NewWorkspaceSkills(cfg.SkillsUserDir),
+		promptsource.NewSkills(cfg.SkillsUserDir),
 		skillStore,
 		skillLibraries,
 		authoredWatch,

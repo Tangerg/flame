@@ -357,7 +357,7 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: build workspace vcs: %w", err)
 	}
 	workspaceDiscovery, err := workspace.NewDiscovery(
-		workspaceServices.scope, sessionCoordinator, promptsource.AgentDocs{}, promptsource.NewWorkspaceRecipes(cfg.RecipesGlobalDir),
+		workspaceServices.scope, sessionCoordinator, promptsource.AgentDocs{}, promptsource.NewRecipes(cfg.RecipesGlobalDir),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: build workspace discovery: %w", err)

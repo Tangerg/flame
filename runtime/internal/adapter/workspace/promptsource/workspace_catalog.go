@@ -6,32 +6,32 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
-// WorkspaceRecipes lists project recipes layered over one configured global
+// Recipes lists project recipes layered over one configured global
 // directory.
-type WorkspaceRecipes struct{ userDir string }
+type Recipes struct{ userDir string }
 
-// NewWorkspaceRecipes returns the workspace discovery adapter for recipes.
-func NewWorkspaceRecipes(userDir string) WorkspaceRecipes {
-	return WorkspaceRecipes{userDir: userDir}
+// NewRecipes returns the workspace discovery adapter for recipes.
+func NewRecipes(userDir string) Recipes {
+	return Recipes{userDir: userDir}
 }
 
-var _ workspaceapp.RecipeLister = WorkspaceRecipes{}
+var _ workspaceapp.RecipeLister = Recipes{}
 
-func (w WorkspaceRecipes) List(ctx context.Context, cwd string) ([]workspaceapp.Recipe, error) {
+func (w Recipes) List(ctx context.Context, cwd string) ([]workspaceapp.Recipe, error) {
 	return listRecipes(ctx, recipeDir(cwd), w.userDir)
 }
 
-// WorkspaceSkills lists project Skills layered over one configured user
+// Skills lists project Skills layered over one configured user
 // directory.
-type WorkspaceSkills struct{ userDir string }
+type Skills struct{ userDir string }
 
-// NewWorkspaceSkills returns the workspace Skill-discovery adapter.
-func NewWorkspaceSkills(userDir string) WorkspaceSkills {
-	return WorkspaceSkills{userDir: userDir}
+// NewSkills returns the workspace Skill-discovery adapter.
+func NewSkills(userDir string) Skills {
+	return Skills{userDir: userDir}
 }
 
-var _ workspaceapp.SkillCatalog = WorkspaceSkills{}
+var _ workspaceapp.SkillCatalog = Skills{}
 
-func (w WorkspaceSkills) List(ctx context.Context, cwd string) ([]workspaceapp.SkillSummary, error) {
+func (w Skills) List(ctx context.Context, cwd string) ([]workspaceapp.SkillSummary, error) {
 	return ListSkills(ctx, cwd, w.userDir)
 }

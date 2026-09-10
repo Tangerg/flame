@@ -25,7 +25,7 @@ type SessionReader interface {
 	GetSession(context.Context, string) (agent.SessionSnapshot, error)
 }
 
-type RunLifecycle interface {
+type Lifecycle interface {
 	StartRun(context.Context, agent.StartRun) (agent.SegmentStream, error)
 	ResumeRun(context.Context, agent.ResumeRun) (agent.SegmentStream, error)
 	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
@@ -34,7 +34,7 @@ type RunLifecycle interface {
 }
 
 type Runtime interface {
-	RunLifecycle
+	Lifecycle
 	SessionReader
 }
 
@@ -140,7 +140,7 @@ type cancellationWatcher struct {
 
 func watchCancellation(
 	ctx context.Context,
-	runtime RunLifecycle,
+	runtime Lifecycle,
 	runID string,
 	replayPolicy mutation.ReplayPolicy,
 ) *cancellationWatcher {
@@ -167,7 +167,7 @@ func (c *cancellationWatcher) Finish(cancelRun bool) error {
 
 func cancelAbandonedRun(
 	ctx context.Context,
-	runtime RunLifecycle,
+	runtime Lifecycle,
 	runID string,
 	replayPolicy mutation.ReplayPolicy,
 ) error {

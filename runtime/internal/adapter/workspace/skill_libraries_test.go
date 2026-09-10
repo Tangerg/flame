@@ -35,7 +35,7 @@ func TestProjectSkillsWithEmptyUserLibrary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	useCases, err := workspaceapp.NewSkills(scope, promptsource.NewWorkspaceSkills(userRoot), store, libraries, observations, nil)
+	useCases, err := workspaceapp.NewSkills(scope, promptsource.NewSkills(userRoot), store, libraries, observations, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

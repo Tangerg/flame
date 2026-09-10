@@ -128,7 +128,7 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 
 func openStartRunWithBackoff(
 	ctx context.Context,
-	runtime runworkflow.RunLifecycle,
+	runtime runworkflow.Lifecycle,
 	command agent.StartRun,
 	replay commandreplay.Guard,
 	profile *runtimebinding.Profile,
