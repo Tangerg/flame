@@ -23,6 +23,10 @@ func NewScheduleStore(db *sql.DB) *ScheduleStore {
 	return &ScheduleStore{db: db}
 }
 
+// scheduleColumns is the schedules row in scan order. Every read shares it so
+// a column added to the table cannot reach one query and miss another.
+const scheduleColumns = `id, title, instructions, cwd, provider, model, reasoning_effort, cron, enabled, last_run_at, next_run_at, created_at, revision`
+
 func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule) error {
 	if err := scheduled.Validate(); err != nil {
 		return fmt.Errorf("sqlite: validate initial schedule: %w", err)
@@ -75,7 +79,7 @@ func (s *ScheduleStore) Get(ctx context.Context, id string) (schedule.Schedule, 
 		return schedule.Schedule{}, err
 	}
 	row := conn(ctx, s.db).QueryRowContext(ctx,
-		`SELECT id, title, instructions, cwd, provider, model, reasoning_effort, cron, enabled, last_run_at, next_run_at, created_at, revision
+		`SELECT `+scheduleColumns+`
 		 FROM schedules WHERE id = ?`, id)
 	sc, err := scanSchedule(row.Scan)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -100,7 +104,7 @@ func (s *ScheduleStore) ListPage(ctx context.Context, afterCreatedAt time.Time, 
 			return nil, fmt.Errorf("sqlite: schedule page anchor: %w", err)
 		}
 	}
-	query := `SELECT id, title, instructions, cwd, provider, model, reasoning_effort, cron, enabled, last_run_at, next_run_at, created_at, revision
+	query := `SELECT ` + scheduleColumns + `
 		 FROM schedules`
 	var args []any
 	if !afterCreatedAt.IsZero() || afterID != "" {
@@ -119,7 +123,7 @@ func (s *ScheduleStore) Due(ctx context.Context, now time.Time, limit int) ([]sc
 		return nil, errors.New("sqlite: schedule due limit must be positive")
 	}
 	return s.query(ctx, "list due schedules",
-		`SELECT id, title, instructions, cwd, provider, model, reasoning_effort, cron, enabled, last_run_at, next_run_at, created_at, revision
+		`SELECT `+scheduleColumns+`
 		 FROM schedules
 		 WHERE enabled = 1 AND next_run_at > 0 AND next_run_at <= ?
 		 ORDER BY next_run_at, id
