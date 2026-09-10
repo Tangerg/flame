@@ -307,15 +307,15 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	}
 	tree, processes, err := decodeInteractionCheckpointTree(wire.Tree)
 	if err != nil {
-		return interactionCheckpointState{}, err
+		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint tree: %w", err)
 	}
 	instructions, err := decodeInteractionCheckpointInstructions(wire.Instructions)
 	if err != nil {
-		return interactionCheckpointState{}, err
+		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint instructions: %w", err)
 	}
 	callsByProcess, err := decodeInteractionCheckpointMembers(wire.Members, processes)
 	if err != nil {
-		return interactionCheckpointState{}, err
+		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint members: %w", err)
 	}
 	carriedCallCount, err := decodeInteractionCallCounts(wire.Carried)
 	if err != nil {
@@ -360,7 +360,7 @@ func decodeInteractionCheckpointTree(
 ) (agent.TreeSnapshot, map[agent.ProcessID]struct{}, error) {
 	tree, err := agent.ParseTreeSnapshot(wire)
 	if err != nil {
-		return agent.TreeSnapshot{}, nil, fmt.Errorf("agentexec: decode Interaction checkpoint tree: %w", err)
+		return agent.TreeSnapshot{}, nil, err
 	}
 	processes := make(map[agent.ProcessID]struct{}, len(tree.ProcessSnapshots()))
 	for _, snapshot := range tree.ProcessSnapshots() {
@@ -376,7 +376,7 @@ func decodeInteractionCheckpointInstructions(messages []corechat.Message) ([]cor
 		if err == nil {
 			err = errors.New("instruction context contains a non-system message")
 		}
-		return nil, fmt.Errorf("agentexec: Interaction checkpoint instructions: %w", err)
+		return nil, err
 	}
 	return instructions, nil
 }
@@ -389,21 +389,21 @@ func decodeInteractionCheckpointMembers(
 	previousMember := ""
 	for index, member := range values {
 		if index > 0 && member.MemberID <= previousMember {
-			return nil, errors.New("agentexec: Interaction checkpoint members are not canonical")
+			return nil, errors.New("not in canonical order")
 		}
 		processID, err := agent.ParseProcessID(member.MemberID)
 		if err != nil {
-			return nil, fmt.Errorf("agentexec: Interaction checkpoint member: %w", err)
+			return nil, fmt.Errorf("member identity: %w", err)
 		}
 		if _, found := processes[processID]; !found {
-			return nil, errors.New("agentexec: Interaction checkpoint accounting names a foreign member")
+			return nil, errors.New("names a foreign member")
 		}
 		models, err := decodeInteractionCallCounts(member.Models)
 		if err != nil || len(models) == 0 {
 			if err == nil {
 				err = errors.New("member call counts are empty")
 			}
-			return nil, fmt.Errorf("agentexec: Interaction checkpoint member %s: %w", processID, err)
+			return nil, fmt.Errorf("member %s: %w", processID, err)
 		}
 		members[processID] = models
 		previousMember = member.MemberID
@@ -420,17 +420,17 @@ func decodeInteractionModelContexts(
 	previous := ""
 	for index, value := range values {
 		if index > 0 && value.MemberID <= previous {
-			return nil, errors.New("model contexts are not canonical")
+			return nil, errors.New("not in canonical order")
 		}
 		processID, err := agent.ParseProcessID(value.MemberID)
 		if err != nil {
-			return nil, fmt.Errorf("model context member identity: %w", err)
+			return nil, fmt.Errorf("member identity: %w", err)
 		}
 		if _, found := processes[processID]; !found {
-			return nil, errors.New("model context names a foreign member")
+			return nil, errors.New("names a foreign member")
 		}
 		if len(callsByProcess[processID]) == 0 {
-			return nil, errors.New("model context has no matching member accounting")
+			return nil, errors.New("has no matching member accounting")
 		}
 		calibration, err := NewModelContextTokenCalibration(
 			value.ReportedTokens,
@@ -466,7 +466,7 @@ func (w interactionPendingSteerWire) decode(
 ) (agent.SignalID, pendingInteractionSteer, error) {
 	var zeroSignalID agent.SignalID
 	if previousSignalID != "" && w.SignalID <= previousSignalID || len(w.Content) == 0 {
-		return zeroSignalID, pendingInteractionSteer{}, errors.New("pending steers are not canonical")
+		return zeroSignalID, pendingInteractionSteer{}, errors.New("not in canonical order")
 	}
 	signalID, err := agent.ParseSignalID(w.SignalID)
 	if err != nil {
@@ -493,23 +493,23 @@ func decodeInteractionPendingContinuation(
 	}
 	processID, err := agent.ParseProcessID(wire.MemberID)
 	if err != nil || processID != rootID {
-		return nil, errors.New("pending continuation does not name the root member")
+		return nil, errors.New("does not name the root member")
 	}
 	if err := resourceid.ValidateItem(wire.ItemID); err != nil {
-		return nil, fmt.Errorf("pending continuation Item: %w", err)
+		return nil, fmt.Errorf("Item: %w", err)
 	}
 	if len(wire.Content) == 0 {
-		return nil, errors.New("pending continuation has no product content")
+		return nil, errors.New("has no product content")
 	}
 	content := make([]transcript.ContentBlock, len(wire.Content))
 	for index, block := range wire.Content {
 		content[index], err = block.decode()
 		if err != nil {
-			return nil, fmt.Errorf("pending continuation content %d: %w", index, err)
+			return nil, fmt.Errorf("content %d: %w", index, err)
 		}
 	}
 	if _, err := runs.MaterializeUserMessage(content); err != nil {
-		return nil, fmt.Errorf("pending continuation message: %w", err)
+		return nil, fmt.Errorf("message: %w", err)
 	}
 	return &pendingInteractionContinuation{
 		processID: processID, itemID: wire.ItemID, content: content,
@@ -563,10 +563,10 @@ func decodeInteractionCallCounts(values []interactionModelCallsWire) (map[string
 	previous := ""
 	for index, value := range values {
 		if _, err := modelref.NewModelIdentity(value.Model); err != nil {
-			return nil, fmt.Errorf("model call counts: models[%d]: %w", index, err)
+			return nil, fmt.Errorf("models[%d]: %w", index, err)
 		}
 		if value.Calls <= 0 || index > 0 && value.Model <= previous {
-			return nil, errors.New("model call counts are not canonical")
+			return nil, errors.New("not in canonical order")
 		}
 		result[value.Model] = value.Calls
 		previous = value.Model

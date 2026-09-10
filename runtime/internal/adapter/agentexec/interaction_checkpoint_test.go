@@ -228,3 +228,49 @@ func TestDecodeInteractionModelContextsRejectsForeignOrUnaccountedMember(t *test
 		t.Fatal("unaccounted model context decoded")
 	}
 }
+
+// TestCheckpointDecodeErrorsNameTheirSectionExactlyOnce pins where the section
+// context lives. decodeInteractionCheckpointPayload names the checkpoint
+// section that failed; a section decoder reports only the defect. A decoder
+// that spelled the owner itself would double it in the message an operator
+// reads.
+func TestCheckpointDecodeErrorsNameTheirSectionExactlyOnce(t *testing.T) {
+	for _, section := range []struct {
+		name string
+		call func() error
+	}{
+		{name: "members", call: func() error {
+			_, err := decodeInteractionCheckpointMembers(
+				[]interactionMemberCallsWire{{MemberID: "b"}, {MemberID: "a"}}, nil)
+			return err
+		}},
+		{name: "model contexts", call: func() error {
+			_, err := decodeInteractionModelContexts(
+				[]interactionModelContextWire{{MemberID: "b"}, {MemberID: "a"}}, nil, nil)
+			return err
+		}},
+		{name: "carried calls", call: func() error {
+			_, err := decodeInteractionCallCounts(
+				[]interactionModelCallsWire{{Model: "b", Calls: 1}, {Model: "a", Calls: 1}})
+			return err
+		}},
+	} {
+		t.Run(section.name, func(t *testing.T) {
+			err := section.call()
+			if err == nil {
+				t.Fatal("malformed section decoded")
+			}
+			if strings.Contains(err.Error(), "agentexec:") {
+				t.Errorf("section decoder names its own owner: %v", err)
+			}
+		})
+	}
+
+	_, err := decodeInteractionCheckpointPayload([]byte(`{"tree":{}}`))
+	if err == nil {
+		t.Fatal("empty checkpoint tree decoded")
+	}
+	if count := strings.Count(err.Error(), "agentexec: Interaction checkpoint"); count != 1 {
+		t.Fatalf("payload error names its section %d times: %v", count, err)
+	}
+}
