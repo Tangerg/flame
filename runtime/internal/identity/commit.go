@@ -19,17 +19,10 @@ func NewCommit() CommitID {
 }
 
 func ParseCommit(raw string) (CommitID, error) {
-	if len(raw) <= len(CommitPrefix) || len(raw) > MaximumResourceCharacters || !strings.HasPrefix(raw, CommitPrefix) {
+	if err := ValidateURISafeASCII(raw, MaximumResourceCharacters); err != nil {
 		return CommitID{}, ErrInvalidCommit
 	}
-	for index := range len(raw) {
-		character := raw[index]
-		if character >= 'a' && character <= 'z' ||
-			character >= 'A' && character <= 'Z' ||
-			character >= '0' && character <= '9' ||
-			character == '-' || character == '_' || character == '.' || character == ':' {
-			continue
-		}
+	if len(raw) <= len(CommitPrefix) || !strings.HasPrefix(raw, CommitPrefix) {
 		return CommitID{}, ErrInvalidCommit
 	}
 	return CommitID{value: raw}, nil

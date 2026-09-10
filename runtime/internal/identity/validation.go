@@ -48,6 +48,28 @@ func ValidateText(value string, maximumCharacters int) error {
 	return nil
 }
 
+// ValidateURISafeASCII is the byte envelope shared by every identity that must
+// survive a URI path segment unescaped: 1 to maximumBytes of unreserved ASCII.
+// Like ValidateText it reports the defect as a phrase, so each caller names the
+// kind it validated. A byte is a character here because the set is ASCII.
+func ValidateURISafeASCII(value string, maximumBytes int) error {
+	envelope := fmt.Errorf("must contain 1 to %d URI-safe ASCII bytes", maximumBytes)
+	if len(value) == 0 || len(value) > maximumBytes {
+		return envelope
+	}
+	for index := range len(value) {
+		character := value[index]
+		if character >= 'a' && character <= 'z' ||
+			character >= 'A' && character <= 'Z' ||
+			character >= '0' && character <= '9' ||
+			character == '-' || character == '_' || character == '.' || character == ':' {
+			continue
+		}
+		return envelope
+	}
+	return nil
+}
+
 // ValidateEventIdentity owns the whole replay-cursor identity: the EventPrefix a
 // transport frames an application cursor with, inside the envelope
 // MaximumEventCharacters sizes for exactly that framed shape.

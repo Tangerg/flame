@@ -133,18 +133,8 @@ func decodeReplayCursor(token string) (replayPosition, error) {
 }
 
 func validateReplayEpochText(epoch string) error {
-	if len(epoch) == 0 || len(epoch) > maximumReplayEpochBytes {
-		return fmt.Errorf("replay epoch must contain 1 to %d URI-safe ASCII bytes", maximumReplayEpochBytes)
-	}
-	for index := range len(epoch) {
-		character := epoch[index]
-		if character >= 'a' && character <= 'z' ||
-			character >= 'A' && character <= 'Z' ||
-			character >= '0' && character <= '9' ||
-			character == '-' || character == '_' || character == '.' || character == ':' {
-			continue
-		}
-		return fmt.Errorf("replay epoch must contain 1 to %d URI-safe ASCII bytes", maximumReplayEpochBytes)
+	if err := runtimeidentity.ValidateURISafeASCII(epoch, maximumReplayEpochBytes); err != nil {
+		return fmt.Errorf("replay epoch %w", err)
 	}
 	return nil
 }

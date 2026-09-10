@@ -10,18 +10,8 @@ type value struct {
 }
 
 func validate(kind, text string) error {
-	if len(text) == 0 || len(text) > MaximumExecutorIdentityBytes {
-		return fmt.Errorf("%s must contain 1 to %d URI-safe ASCII bytes", kind, MaximumExecutorIdentityBytes)
-	}
-	for index := range len(text) {
-		character := text[index]
-		if character >= 'a' && character <= 'z' ||
-			character >= 'A' && character <= 'Z' ||
-			character >= '0' && character <= '9' ||
-			character == '-' || character == '_' || character == '.' || character == ':' {
-			continue
-		}
-		return fmt.Errorf("%s must contain 1 to %d URI-safe ASCII bytes", kind, MaximumExecutorIdentityBytes)
+	if err := ValidateURISafeASCII(text, MaximumExecutorIdentityBytes); err != nil {
+		return fmt.Errorf("%s %w", kind, err)
 	}
 	return nil
 }
@@ -37,10 +27,10 @@ func parse(kind, text string) (value, error) {
 // byte envelope is established there, so the only identity that can reach a
 // caller without it is the zero one.
 func requireConstructed(kind, text string) error {
-	if text == "" {
-		return fmt.Errorf("%s must contain 1 to %d URI-safe ASCII bytes", kind, MaximumExecutorIdentityBytes)
+	if text != "" {
+		return nil
 	}
-	return nil
+	return validate(kind, text)
 }
 
 // Executor identities travel as fields of the Run facts, checkpoints and
