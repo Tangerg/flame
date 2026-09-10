@@ -158,3 +158,41 @@ func steerTestPending(
 	}
 	return pending
 }
+
+// TestSteerSettlementRefusesAnotherCommandsSteer pins the half of the claim the
+// existing tests never exercised: a settlement naming a steer that some newer
+// command already replaced. The stale identity has to be well-formed, or the
+// shape check refuses it first and the claim is never asked.
+func TestSteerSettlementRefusesAnotherCommandsSteer(t *testing.T) {
+	store, err := OpenDirectory(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sessionID := "ses_steer_identity"
+	attachment := steerTestAttachment(t.TempDir())
+	source := agent.Message{Text: "/steer inspect the parser", Attachments: []agent.Attachment{attachment}}
+	if err := store.SaveDraft(sessionID, source); err != nil {
+		t.Fatal(err)
+	}
+	pending := steerTestPending(t, sessionID, attachment)
+	if err := store.StagePendingSteer(pending, source); err != nil {
+		t.Fatal(err)
+	}
+
+	stale := agent.CommandID("cli_22222222222222222222222222222222")
+	if err := stale.Validate(); err != nil {
+		t.Fatalf("the stale identity is malformed, so the claim would never be asked: %v", err)
+	}
+	if stale == pending.CommandID() {
+		t.Fatal("the stale identity is the staged one")
+	}
+	if err := store.AcknowledgePendingSteer(sessionID, stale); err == nil {
+		t.Fatal("acknowledgement settled a steer it does not name")
+	}
+	if _, err := store.RejectPendingSteer(sessionID, stale, agent.Message{}); err == nil {
+		t.Fatal("rejection settled a steer it does not name")
+	}
+	if _, found := store.PendingSteer(sessionID); !found {
+		t.Fatal("a refused settlement discarded the steer that is still pending")
+	}
+}

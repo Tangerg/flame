@@ -186,6 +186,17 @@ func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft agent.Messag
 
 // AcknowledgePendingSteer consumes the exact accepted command, records its
 // semantic prompt history idempotently, and preserves any newer session draft.
+// claimPendingSteerLocked returns the steer a settlement names. Acknowledgement
+// and rejection are the same claim asked twice, so they answer with one spelling
+// rather than each deciding for itself which steer it is finishing.
+func (s *Store) claimPendingSteerLocked(sessionID string, commandID agent.CommandID) (PendingSteer, error) {
+	pending, exists := s.pendingSteers[sessionID]
+	if !exists || pending.command.CommandID != commandID {
+		return PendingSteer{}, errors.New("pending steer command identity changed")
+	}
+	return pending, nil
+}
+
 func (s *Store) AcknowledgePendingSteer(sessionID string, commandID agent.CommandID) error {
 	if err := commandID.Validate(); err != nil {
 		return err
@@ -195,9 +206,9 @@ func (s *Store) AcknowledgePendingSteer(sessionID string, commandID agent.Comman
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	pending, exists := s.pendingSteers[sessionID]
-	if !exists || pending.command.CommandID != commandID {
-		return errors.New("pending steer command identity changed")
+	pending, err := s.claimPendingSteerLocked(sessionID, commandID)
+	if err != nil {
+		return err
 	}
 
 	if err := s.recordPromptHistoryLocked(commandID, pending.command.Message.Clone()); err != nil {
@@ -237,9 +248,9 @@ func (s *Store) RejectPendingSteer(
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	pending, exists := s.pendingSteers[sessionID]
-	if !exists || pending.command.CommandID != commandID {
-		return agent.Message{}, errors.New("pending steer command identity changed")
+	pending, err := s.claimPendingSteerLocked(sessionID, commandID)
+	if err != nil {
+		return agent.Message{}, err
 	}
 	if current, present := s.drafts[sessionID]; present != !currentDraft.IsEmpty() ||
 		(present && !current.Equal(currentDraft)) {
