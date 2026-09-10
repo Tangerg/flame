@@ -259,7 +259,8 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
         <PillButton
           variant="accent"
           size="sm"
-          disabled={!valid || saving}
+          disabled={!valid}
+          pending={saving}
           onClick={() => void onSave()}
         >
           {saving ? t("mcp.saving") : isEdit ? t("mcp.save") : t("mcp.add")}
@@ -267,7 +268,8 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
         <PillButton
           variant="outlined"
           size="sm"
-          disabled={!valid || feedback.state === "busy"}
+          disabled={!valid}
+          pending={feedback.state === "busy"}
           onClick={() => void onTest()}
         >
           {feedback.state === "busy" ? t("mcp.testing") : t("mcp.test")}
@@ -276,7 +278,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
           {t("common.cancel")}
         </PillButton>
         {isEdit && (
-          <PillButton variant="danger" size="sm" disabled={saving} onClick={() => void onDelete()}>
+          <PillButton variant="danger" size="sm" pending={saving} onClick={() => void onDelete()}>
             {t("mcp.delete")}
           </PillButton>
         )}

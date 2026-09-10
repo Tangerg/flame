@@ -79,14 +79,14 @@ export function CwdMissingBanner() {
                 <BannerAction
                   label={t("cwdMissing.action.apply")}
                   onClick={() => void submit()}
-                  disabled={busy}
+                  pending={busy}
                   primary
                   tone="warning"
                 />
                 <BannerAction
                   label={t("cwdMissing.action.cancel")}
                   onClick={() => setEditing(false)}
-                  disabled={busy}
+                  pending={busy}
                 />
               </div>
             ) : (

@@ -138,7 +138,8 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
         <PillButton
           variant="accent"
           size="sm"
-          disabled={!canSaveScheduleDraft(draft, busy)}
+          disabled={!canSaveScheduleDraft(draft)}
+          pending={busy}
           onClick={onSave}
         >
           {busy ? t("schedules.saving") : t("schedules.save")}

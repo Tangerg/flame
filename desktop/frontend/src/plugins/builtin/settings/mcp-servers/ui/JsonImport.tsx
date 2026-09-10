@@ -81,7 +81,8 @@ export function JsonImport() {
         <PillButton
           variant="accent"
           size="sm"
-          disabled={!text.trim() || busy}
+          disabled={!text.trim()}
+          pending={busy}
           onClick={() => void onImport()}
         >
           {busy ? t("mcp.importing") : t("mcp.import.confirm")}

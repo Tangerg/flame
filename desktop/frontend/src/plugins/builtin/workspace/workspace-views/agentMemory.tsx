@@ -69,7 +69,7 @@ function PendingRow({ item }: { item: AgentMemoryEntry }) {
         <PillButton
           size="sm"
           variant="danger"
-          disabled={busy}
+          pending={busy}
           onClick={() => run(() => reviewAgentMemory(item.id, "reject"))}
         >
           {t("agentMemory.reject")}
@@ -77,7 +77,7 @@ function PendingRow({ item }: { item: AgentMemoryEntry }) {
         <PillButton
           size="sm"
           variant="solid"
-          disabled={busy}
+          pending={busy}
           onClick={() => run(() => reviewAgentMemory(item.id, "approve"))}
         >
           {t("agentMemory.approve")}
@@ -146,14 +146,14 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
               icon="star"
               size="sm"
               active={item.pinned}
-              disabled={busy}
+              pending={busy}
               aria-label={item.pinned ? t("agentMemory.unpin") : t("agentMemory.pin")}
               onClick={() => run(() => setAgentMemoryPinned(item.id, !item.pinned))}
             />
             <IconButton
               icon="edit"
               size="sm"
-              disabled={busy}
+              pending={busy}
               aria-label={t("agentMemory.edit")}
               onClick={() => {
                 setDraft(item.content);
@@ -163,7 +163,7 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
             <IconButton
               icon="trash"
               size="sm"
-              disabled={busy}
+              pending={busy}
               aria-label={t("agentMemory.delete")}
               onClick={() => run(() => deleteAgentMemory(item.id))}
             />
@@ -172,10 +172,10 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
       </div>
       {editing && (
         <div {...stylex.props(vs.formLine)}>
-          <PillButton size="sm" variant="accent" disabled={!dirty || busy} onClick={save}>
+          <PillButton size="sm" variant="accent" disabled={!dirty} pending={busy} onClick={save}>
             {t("agentMemory.save")}
           </PillButton>
-          <PillButton size="sm" disabled={busy} onClick={() => setEditing(false)}>
+          <PillButton size="sm" pending={busy} onClick={() => setEditing(false)}>
             {t("agentMemory.cancel")}
           </PillButton>
         </div>
@@ -227,12 +227,12 @@ function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
         ink="soft"
       />
       <div {...stylex.props(vocab.line, vocab.min)}>
-        <PillButton size="sm" variant="accent" disabled={!canSave || busy} onClick={submit}>
+        <PillButton size="sm" variant="accent" disabled={!canSave} pending={busy} onClick={submit}>
           {t("agentMemory.save")}
         </PillButton>
         <PillButton
           size="sm"
-          disabled={busy}
+          pending={busy}
           onClick={() => {
             setDraft("");
             setOpen(false);

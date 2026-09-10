@@ -263,7 +263,8 @@ function DiagnosticToolInvocationMaterial({
         <PillButton
           size="sm"
           variant="accent"
-          disabled={!enabled || running}
+          disabled={!enabled}
+          pending={running}
           onClick={() => void invoke()}
         >
           {running ? t("tools.diagnostics.running") : t("tools.diagnostics.run")}

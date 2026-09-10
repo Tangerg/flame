@@ -49,7 +49,7 @@ function ScheduleActionButton({
       aria-label={label}
       aria-expanded={active}
       aria-busy={busy}
-      disabled={busy}
+      pending={busy}
       title={title}
       onClick={onClick}
       tone={tone}

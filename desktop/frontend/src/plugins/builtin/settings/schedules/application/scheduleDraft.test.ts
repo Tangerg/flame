@@ -71,18 +71,15 @@ describe("scheduleDraft", () => {
     });
   });
 
-  it("requires instructions and cron while respecting the busy flag", () => {
+  // Validity only. It used to fold in the in-flight flag as a second argument, which made one
+  // predicate answer two questions and left the form's save button spelling "cannot act" and
+  // "is acting" as the same `disabled` — so activating it blurred the button. In-flight is the
+  // call site's `pending` now.
+  it("requires instructions and cron", () => {
     const draft = initialScheduleDraft();
 
-    expect(canSaveScheduleDraft({ ...draft, instructions: "run", cron: "0 * * * *" }, false)).toBe(
-      true,
-    );
-    expect(canSaveScheduleDraft({ ...draft, instructions: "", cron: "0 * * * *" }, false)).toBe(
-      false,
-    );
-    expect(canSaveScheduleDraft({ ...draft, instructions: "run", cron: "" }, false)).toBe(false);
-    expect(canSaveScheduleDraft({ ...draft, instructions: "run", cron: "0 * * * *" }, true)).toBe(
-      false,
-    );
+    expect(canSaveScheduleDraft({ ...draft, instructions: "run", cron: "0 * * * *" })).toBe(true);
+    expect(canSaveScheduleDraft({ ...draft, instructions: "", cron: "0 * * * *" })).toBe(false);
+    expect(canSaveScheduleDraft({ ...draft, instructions: "run", cron: "" })).toBe(false);
   });
 });

@@ -168,7 +168,8 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             data-goal="summary"
             variant="bare"
             size="xs"
-            disabled={pending !== null || !canEdit}
+            disabled={!canEdit}
+            pending={pending !== null}
             flex="fill"
             className={stylex.props(gs.summary).className}
             onClick={openEditor}

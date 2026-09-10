@@ -134,6 +134,31 @@ const RULES = [
     appliesTo: () => true,
   },
   {
+    // "This action is in flight" is not "this action is unavailable", and only the tab order
+    // shows the difference. `disabled` is enforced by the platform making the element
+    // unfocusable, so a control that disables itself while its own work runs blurs whoever was
+    // standing on it: measured on Settings → Connection, pressing Enter on Refresh put focus on
+    // `<body>` 120ms later and left it there. Forty-four call sites said it this way under eight
+    // flag names, which is every async action in the product dropping the keyboard user's place.
+    //
+    // `pending` on the button primitive says it with `aria-disabled` instead — same words to a
+    // screen reader, same appearance, still a tab stop, and the click refused in the component.
+    //
+    // The flag names are a list rather than a shape, because "in flight" has no syntax. It is
+    // the eight this codebase actually used, so a ninth spelling passes; a name is cheaper to
+    // add here than the defect is to find. A genuinely unavailable action — an invalid form, a
+    // row with nothing selected — is still `disabled`, and combining the two in one expression
+    // is what hid this: `!valid || saving` reads as one fact and is two.
+    pattern:
+      /disabled=\{[^}]*\b(?:busy|saving|signingIn|reconnecting|importing|submitting|testing|inFlight)\b/g,
+    message:
+      "in-flight spelled as `disabled` — it un-focuses the control the user just activated; use `pending`",
+    // Form controls keep `disabled`: `aria-disabled` leaves a switch togglable and an input
+    // typable, so the swap only applies to things that ACT.
+    appliesTo: (_line, _rel, _selector, jsxTag) =>
+      ["Button", "PillButton", "TextButton", "IconButton", "BannerAction"].includes(jsxTag),
+  },
+  {
     pattern: /transition(?:Property|-property)?: *"?[^";]*\ball\b/g,
     message:
       "`transition-all` couples unrelated properties — enumerate only the properties that move",
@@ -169,6 +194,12 @@ for (const path of walk(SRC)) {
   // file. Only the line carrying the brace is needed: a selector prettier has wrapped keeps
   // its most specific part there.
   let selector = "";
+  // Which ELEMENT a JSX prop belongs to. Same reason the CSS selector is tracked above: a prop
+  // on a multi-line element sits on a line with no tag on it, so a rule that reads only its own
+  // line cannot tell a `<Switch>` from a `<Button>` — and the in-flight rule below has to,
+  // because a switch keeps `disabled` and a button does not. Reading the line alone flagged all
+  // three form controls in the tree.
+  let jsxTag = "";
   let inBlockComment = false;
   lines.forEach((line, index) => {
     // A `/* */` block's CONTINUATION lines open with prose, not with a comment marker, so the
@@ -180,6 +211,8 @@ for (const path of walk(SRC)) {
       inBlockComment = marker === "/*";
     }
     if (wasInComment || /\/\*/.test(line)) return;
+    const opensTag = [...line.matchAll(/<([A-Z][A-Za-z0-9.]*)/g)].pop();
+    if (opensTag) jsxTag = opensTag[1];
     if (extname(path) === ".css") {
       const opens = /^([^{}]*)\{\s*$/.exec(line);
       if (opens) selector = opens[1].trim();
@@ -189,7 +222,7 @@ for (const path of walk(SRC)) {
     // spelling out the pattern they forbid — so a guard reading prose flags its own warning.
     if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) return;
     for (const { pattern, message, appliesTo } of RULES) {
-      if (!appliesTo(line, rel, selector)) continue;
+      if (!appliesTo(line, rel, selector, jsxTag)) continue;
       for (const match of line.matchAll(pattern)) {
         violations.push(`${rel}:${index + 1}  ${match[0]}  — ${message}`);
       }

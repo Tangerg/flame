@@ -8,6 +8,7 @@ export function BannerAction({
   primary,
   tone = "negative",
   disabled,
+  pending,
 }: {
   icon?: IconName;
   label: string;
@@ -15,6 +16,7 @@ export function BannerAction({
   primary?: boolean;
   tone?: "negative" | "warning";
   disabled?: boolean;
+  pending?: boolean;
 }) {
   return (
     <Button
@@ -23,6 +25,7 @@ export function BannerAction({
       tone={primary ? tone : undefined}
       onClick={onClick}
       disabled={disabled}
+      pending={pending}
     >
       {icon && <Icon name={icon} size="xs" />}
       <span>{label}</span>

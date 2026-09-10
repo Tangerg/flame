@@ -251,7 +251,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
             icon="download"
             title={t("message.image.download")}
             aria-busy={saving}
-            disabled={saving}
+            pending={saving}
             onClick={() => void saveActiveImage()}
             variant="media"
             size="xl"

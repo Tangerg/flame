@@ -114,13 +114,21 @@ const styles = stylex.create({
 
   // How a press is answered, and neither step answers one a disabled control cannot accept.
   press: {
-    scale: { default: null, ":active": "var(--press-scale)", ":is(:disabled):active": 1 },
+    scale: {
+      default: null,
+      ":active": "var(--press-scale)",
+      ':is(:disabled, [aria-disabled="true"]):active': 1,
+    },
   },
   // The filled circle's step: a plate that shrinks reads as a bug rather than a press, and a
   // half-pixel drop reads as one. It had been a string constant in the composer, which made
   // "how a press is answered" two mechanisms — one here and one in a plugin.
   nudge: {
-    translate: { default: null, ":active": "0 0.5px", ":is(:disabled):active": null },
+    translate: {
+      default: null,
+      ":active": "0 0.5px",
+      ':is(:disabled, [aria-disabled="true"]):active': null,
+    },
   },
 
   ghost: {
@@ -151,14 +159,14 @@ const styles = stylex.create({
       ":hover": surface.ctaHover,
       // A filled action that cannot act reads as broken at 64% of its own fill, so it takes a
       // neutral plate instead — the composer's send button had been spelling this out.
-      ":disabled": surface.surface2,
+      ':is(:disabled, [aria-disabled="true"])': surface.surface2,
     },
-    color: { default: color.ctaText, ":disabled": color.fgFaint },
+    color: { default: color.ctaText, ':is(:disabled, [aria-disabled="true"])': color.fgFaint },
     // …and having answered, it does not answer twice. The fade a ring below applies is the
     // GENERIC way to say "cannot be used", for a control with no answer of its own. Stacked on
     // this plate it took the glyph from 4.9:1 to 1.9:1 — a disabled control still has to be
     // readable, because reading it is how you work out what would enable it.
-    opacity: { default: null, ":disabled": 1 },
+    opacity: { default: null, ':is(:disabled, [aria-disabled="true"])': 1 },
   },
   // The action wears its consequence: no plate at rest, the tone's own wash under the pointer.
   // The tone decides which, so this is one rule rather than a variant named after a colour.
@@ -245,7 +253,7 @@ const styles = stylex.create({
   quietWarning: { color: { default: color.fgFaint, ":hover": color.warning } },
 
   // Two strengths of "off": unavailable right now, versus does not apply here at all.
-  faded: { opacity: { default: null, ":disabled": 0.25 } },
+  faded: { opacity: { default: null, ':is(:disabled, [aria-disabled="true"])': 0.25 } },
 
   // Most buttons hold their width in a row; one that stands in for a field takes the space
   // instead. The parent decides that, so it is a step rather than something a class adds.

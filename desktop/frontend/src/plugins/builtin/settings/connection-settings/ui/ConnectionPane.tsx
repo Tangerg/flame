@@ -186,7 +186,7 @@ export function ConnectionPane() {
                 type="button"
                 variant="soft"
                 size="sm"
-                disabled={
+                pending={
                   refreshing || service.phase === "checking" || service.phase === "reconnecting"
                 }
                 onClick={() => void refresh()}

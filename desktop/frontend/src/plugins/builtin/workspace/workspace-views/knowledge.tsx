@@ -127,12 +127,19 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
             ink="soft"
           />
           <div {...stylex.props(vocab.line, vocab.min)}>
-            <PillButton size="sm" variant="accent" disabled={!dirty || saving} onClick={save}>
+            <PillButton
+              size="sm"
+              variant="accent"
+              disabled={!dirty}
+              pending={saving}
+              onClick={save}
+            >
               {saving ? t("knowledge.saving") : t("knowledge.save")}
             </PillButton>
             <PillButton
               size="sm"
-              disabled={!dirty || saving}
+              disabled={!dirty}
+              pending={saving}
               onClick={() => setEditor((current) => current.reconcile(listedDocument).revert())}
             >
               {t("knowledge.revert")}

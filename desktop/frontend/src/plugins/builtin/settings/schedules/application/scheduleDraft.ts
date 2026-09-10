@@ -29,8 +29,8 @@ export function initialScheduleDraft(
   };
 }
 
-export function canSaveScheduleDraft(draft: ScheduleDraft, busy: boolean): boolean {
-  return draft.instructions.trim() !== "" && draft.cron.trim() !== "" && !busy;
+export function canSaveScheduleDraft(draft: ScheduleDraft): boolean {
+  return draft.instructions.trim() !== "" && draft.cron.trim() !== "";
 }
 
 export function scheduleInputFromDraft(draft: ScheduleDraft): ScheduleConfigInput {

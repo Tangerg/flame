@@ -76,13 +76,21 @@ describe("Provider role mutation material", () => {
     fireEvent.click(trigger);
     fireEvent.click(await screen.findByRole("menuitem", { name: "Use main model" }));
     await waitFor(() => expect(provider.setUtilityRole).toHaveBeenCalledOnce());
-    const disabledWhilePending = (trigger as HTMLButtonElement).disabled;
+
+    // In flight it is `aria-disabled`, not `disabled` — the trigger has to stay a tab stop or
+    // activating it would blur whoever activated it. So the guarantee is checked as the
+    // guarantee rather than as an attribute: a second activation must not reach the port.
+    const ariaDisabledWhilePending = trigger.getAttribute("aria-disabled");
+    const focusableWhilePending = !(trigger as HTMLButtonElement).disabled;
     const showedPendingFeedback = screen.queryByText("Saving…") !== null;
+    fireEvent.click(trigger);
 
     resolve({ ok: true });
     await waitFor(() => expect(screen.queryByText("Saving…")).toBeNull());
 
-    expect(disabledWhilePending).toBe(true);
+    expect(ariaDisabledWhilePending).toBe("true");
+    expect(focusableWhilePending).toBe(true);
     expect(showedPendingFeedback).toBe(true);
+    expect(provider.setUtilityRole).toHaveBeenCalledOnce();
   });
 });

@@ -115,7 +115,7 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
           <PillButton
             size="sm"
             variant="danger"
-            disabled={busy}
+            pending={busy}
             onClick={() => void act(() => rejectSkillProposal(handle))}
           >
             {t("skillProposals.reject")}
@@ -123,7 +123,7 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
           <PillButton
             size="sm"
             variant="solid"
-            disabled={busy}
+            pending={busy}
             onClick={() => void act(() => approveSkillProposal(handle))}
           >
             {t("skillProposals.approve")}

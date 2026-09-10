@@ -131,19 +131,26 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
       </div>
 
       <div {...stylex.props(ss.afterRow, vocab.line)}>
-        <Button variant="primary" size="sm" disabled={!dirty || !valid || saving} onClick={onSave}>
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={!dirty || !valid}
+          pending={saving}
+          onClick={onSave}
+        >
           {saving ? t("providers.saving") : t("providers.save")}
         </Button>
         <Button
           variant="outline"
           size="sm"
-          disabled={!enabled || feedback.state === "busy"}
+          disabled={!enabled}
+          pending={feedback.state === "busy"}
           onClick={onTest}
         >
           {feedback.state === "busy" ? t("providers.testing") : t("providers.test")}
         </Button>
         {hasStoredKey && (
-          <Button variant="ghost" size="sm" disabled={saving} onClick={onClearKey}>
+          <Button variant="ghost" size="sm" pending={saving} onClick={onClearKey}>
             {t("providers.apiKey.clear")}
           </Button>
         )}

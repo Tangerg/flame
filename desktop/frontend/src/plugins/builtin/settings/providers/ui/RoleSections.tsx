@@ -81,7 +81,7 @@ export function UtilityModelSection() {
               variant="outline"
               size="md"
               press="none"
-              disabled={busy}
+              pending={busy}
               aria-label={t("providers.utility.title")}
             >
               {busy ? (
@@ -179,7 +179,7 @@ export function EmbeddingModelSection() {
               variant="outline"
               size="md"
               press="none"
-              disabled={busy}
+              pending={busy}
               aria-label={t("providers.embedding.title")}
             >
               {busy ? (

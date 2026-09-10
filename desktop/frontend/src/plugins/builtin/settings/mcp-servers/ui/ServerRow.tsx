@@ -114,7 +114,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
             <PillButton
               variant="accent"
               size="sm"
-              disabled={signingIn}
+              pending={signingIn}
               onClick={() => void onSignIn()}
             >
               {t(signingIn ? "mcp.signingIn" : "mcp.signIn")}

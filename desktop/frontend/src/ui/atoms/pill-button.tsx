@@ -19,7 +19,11 @@ const styles = stylex.create({
     transitionTimingFunction: "var(--ease-out)",
     // A disabled control does not answer a press. `Button` had guarded this; this one had not,
     // so a pill that could not act still shrank under the pointer.
-    scale: { default: null, ":active": "var(--press-scale)", ":is(:disabled):active": 1 },
+    scale: {
+      default: null,
+      ":active": "var(--press-scale)",
+      ':is(:disabled, [aria-disabled="true"]):active': 1,
+    },
   },
   outlined: {
     borderWidth: "0.5px",

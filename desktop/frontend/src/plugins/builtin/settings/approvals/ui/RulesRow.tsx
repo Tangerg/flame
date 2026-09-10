@@ -87,7 +87,7 @@ export function RulesRow() {
           {(rows) => (
             <div {...stylex.props(r.list)}>
               <div {...stylex.props(ss.end)}>
-                <TextButton disabled={busy} onClick={() => run(() => forgetApprovalRules(rows))}>
+                <TextButton pending={busy} onClick={() => run(() => forgetApprovalRules(rows))}>
                   {t("approvals.clearAll")}
                 </TextButton>
               </div>
@@ -122,7 +122,7 @@ export function RulesRow() {
                     className={stylex.props(vocab.hold).className}
                     aria-label={t("approvals.forget", { tool: rule.tool })}
                     aria-busy={busy}
-                    disabled={busy}
+                    pending={busy}
                     onClick={() => run(() => forgetApprovalRule(rule.id))}
                   />
                 </div>

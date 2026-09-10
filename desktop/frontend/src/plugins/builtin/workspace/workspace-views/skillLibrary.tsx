@@ -103,7 +103,7 @@ function SkillRow({ skill }: { skill: ManagedSkill }) {
       <PillButton
         size="sm"
         variant={archived ? "outlined" : "danger"}
-        disabled={busy}
+        pending={busy}
         onClick={() => void onAction()}
       >
         {archived ? t("skillLibrary.restore") : t("skillLibrary.archive")}

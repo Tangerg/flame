@@ -144,12 +144,12 @@ export function TextEditorDialog({
               <Button
                 type="button"
                 variant="soft"
-                disabled={busy}
+                pending={busy}
                 onClick={() => onOpenChange(false)}
               >
                 {cancelLabel}
               </Button>
-              <Button type="submit" variant="primary" disabled={busy || saveDisabled}>
+              <Button type="submit" variant="primary" disabled={saveDisabled} pending={busy}>
                 {busy ? savingLabel : saveLabel}
               </Button>
             </div>

@@ -13851,3 +13851,107 @@ they were there so a utility could be generated from them." —— **这是同�
 三个死 token 只是症状。根因是**类名有守卫、自定义属性没有** ——
 而我为它写守卫的过程本身证明了为什么它一直没有：
 这个检查有四种"报绿却什么都没查"的写法，我把四种都写了一遍。
+
+## Round 216 —— 每一个异步动作都会把键盘用户的位置弄丢
+
+### 证据（先量，再改）
+
+样式面已收尾，转到指南里没审计过的部分。`ui_rules` 5 要求"存在异步操作时应具备
+明确的 loading/success/error 反馈"、"禁止点击后没有即时反馈"，8 要求"键盘 focus
+清晰、连续"。
+
+先量：`Button` **完全没有** pending / busy / loading 词汇。产品里"动作在飞"这个
+事实被手写了 **14 个 flag、8 个名字**（`busy` / `saving` / `pending` / `signingIn` /
+`running` / `reconnecting` / `importing` / `testing`），**44 个 call site 全部
+用同一种方式表达它：`disabled`。**
+
+然后在真实控件上量后果 —— Settings → Connection 的 Refresh：
+
+| 时刻 | `document.activeElement` |
+| --- | --- |
+| 按 Enter 前 | `button "Refresh"` |
+| +120ms | **`body`** |
+| +1.3s（工作已完成） | **`body`** |
+
+**键盘用户按一下 Refresh，就丢掉了自己在文档里的位置，而且再也回不来。**
+根因不是 React：`disabled` 的语义是"动作不可用"，平台用**让元素不可聚焦**来执行它，
+所以一个在自己工作期间禁用自己的控件，会把正站在它上面的人挤走。
+
+### 治本：`pending` ≠ `disabled`
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| 「动作在飞」的表达 | `disabled`（平台强制不可聚焦） | `pending` → `aria-disabled`，**仍在 tab 序里** |
+| 拒绝重复点击 | 平台拒绝 | 组件拒绝（`onClick` 短路）—— 否则就是拿丢焦点换重复提交 |
+| 所有者 | 44 个 call site，8 个名字 | **`ButtonPrimitive` 一处** |
+| 视觉 | — | **不变**：7 处 `:disabled` 选择器扩成 `:is(:disabled, [aria-disabled="true"])`，特异性完全相同 |
+
+**为什么放在 primitive 而不是 `Button`**：`Button` / `PillButton` / `TextButton`
+都包着它，把这个事实写三遍正是本轮要修的病。`IconButton` / `BannerAction` 透传即得。
+
+**验证不可用与在飞是两件事，必须拆开**：12 个 call site 把两者写在一个表达式里
+（`!valid || saving`、`!dirty || busy`、`!enabled || running`…），读起来像一个事实、
+其实是两个。全部拆成 `disabled={!valid} pending={saving}`。
+`canSaveScheduleDraft(draft, busy)` 这个谓词同时回答两个问题，参数已去掉。
+
+**表单控件保持 `disabled`**：`aria-disabled` 不会阻止 switch 被拨动、不会阻止
+输入框被打字。`<Switch>` / `<TextArea>` / 一个文本框各自留在原样 —— 我的批量替换
+一开始误伤了其中两个，被 guard 逐个报出来才改回。
+
+### 覆盖范围
+
+| 元素 | 站点数 |
+| --- | --- |
+| `PillButton` | 18 |
+| `Button` | 7 |
+| `IconButton` | 6 |
+| `BannerAction` | 3 |
+| `TextButton` | 1 |
+| 表单控件（**故意不动**） | 6 |
+
+顺带一个好消息：这些按钮**本来就有**正向的在飞信号（`{saving ? t("…saving") : t("…save")}`
+换文案），所以换机制不需要新造 spinner，也不产生视觉变化。
+
+### 守卫（3 层，都验证过会失败）
+
+1. `src/ui/atoms/button.test.tsx`（新，4 个测试）—— 钉住机制：`aria-disabled="true"` 且
+   `disabled === false` 且 `tabIndex >= 0`；pending 时点击不触发 `onClick`；非 pending 正常；
+   `disabled` 仍然是真 `disabled`。
+2. `check-interactive-chrome` 新增第 10 条规则 —— in-flight flag 出现在 `disabled={}` 里即
+   build 失败。**验证：把一处改回 `disabled={busy}` → 红。**
+3. `RoleSections.test.tsx` 改成断言**保证本身**而不是属性：pending 期间再点一次，
+   `setUtilityRole` 仍然只被调用一次。
+
+### 我又踩了同一类坑
+
+- **批量替换按行匹配，认不出元素**：多行 JSX 里 `disabled={busy}` 那一行没有标签名，
+  于是 `<Switch>` 和一个文本框被一起改成了 `pending`。
+- **guard 也犯了同一个错**：第一版 `appliesTo` 只读自己那一行，于是把三个表单控件
+  全报成违规。改成像它已有的 CSS selector 追踪那样**追踪外层 JSX 标签** —— 同一个文件里
+  已经有这个机制，我却没用。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 治本的缺陷 | **1**（每个异步动作都丢焦点，44 个 call site） |
+| 拆开的复合表达式 | 12 |
+| 收敛的所有者 | 8 个名字 / 44 处 → `ButtonPrimitive` 一处 |
+| 新测试 | 4（Button pending） |
+| 新守卫规则 | 1（已验证会失败） |
+| typecheck | 只剩 runtime contract 那一个（非本轮） |
+| lint / prettier / knip / 全部样式守卫 | 全绿 |
+| 单测 | **2440 通过**；失败 5 个全部是 `src/rpc` 契约（非本轮） |
+| 视觉套件 | **736 全通过**（12.9m，零失败）—— **零 golden 移动**：选择器扩写后特异性相同，外观逐像素不变 |
+
+### 报告但未修（超出本轮范围，有证据）
+
+**表单字段也会丢焦点**：焦点在 `<TextArea>` 里按 Cmd+Enter 提交 → 它自己变
+`disabled={busy}` → 焦点同样掉到 `body`。对输入框而言正确的写法是 `readOnly` +
+`aria-disabled`（而不是 `aria-disabled` 单独用，那样仍可打字），这是另一套改动，
+没有和动作控件混在一起做。
+
+### 一句话
+
+`disabled` 说的是"这个动作不可用"，而平台执行它的方式是**让元素不可聚焦**。
+把"正在执行"也说成同一个词，代价就是：**每一次异步操作都把刚刚操作它的人挤走。**
