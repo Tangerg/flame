@@ -77,27 +77,16 @@ type Failure struct {
 var _ protocol.ProblemError = (*Failure)(nil)
 
 func (f *Failure) Error() string {
-	if f == nil {
-		return ""
-	}
 	if f.data.Detail != "" {
 		return f.data.Detail
 	}
 	return f.data.Type
 }
 
-func (f *Failure) Unwrap() error {
-	if f == nil {
-		return nil
-	}
-	return f.cause
-}
+func (f *Failure) Unwrap() error { return f.cause }
 
 // Problem returns a defensive copy of the client-visible problem.
 func (f *Failure) Problem() protocol.ProblemData {
-	if f == nil {
-		return protocol.ProblemData{}
-	}
 	return cloneProblemData(f.data)
 }
 

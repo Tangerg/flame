@@ -124,18 +124,10 @@ type FailureError struct {
 }
 
 func (f *FailureError) Error() string {
-	if f == nil {
-		return "run failure"
-	}
 	if f.Err != nil {
 		return f.Err.Error()
 	}
 	return "run failure: " + f.Kind.String()
 }
 
-func (f *FailureError) Unwrap() error {
-	if f == nil {
-		return nil
-	}
-	return f.Err
-}
+func (f *FailureError) Unwrap() error { return f.Err }
