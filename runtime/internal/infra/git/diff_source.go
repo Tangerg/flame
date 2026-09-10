@@ -61,16 +61,12 @@ func gitPathRelativeToWorkspace(dir, path string) (string, error) {
 	if path == "" {
 		return ".", nil
 	}
-	if !filepath.IsAbs(path) {
-		relative := filepath.Clean(path)
-		if relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-			return "", fmt.Errorf("git: path %q is outside workspace %q", path, dir)
+	relative := filepath.Clean(path)
+	if filepath.IsAbs(path) {
+		var err error
+		if relative, err = filepath.Rel(dir, path); err != nil {
+			return "", fmt.Errorf("git: resolve workspace-relative path: %w", err)
 		}
-		return filepath.ToSlash(relative), nil
-	}
-	relative, err := filepath.Rel(dir, path)
-	if err != nil {
-		return "", fmt.Errorf("git: resolve workspace-relative path: %w", err)
 	}
 	if relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("git: path %q is outside workspace %q", path, dir)

@@ -130,8 +130,11 @@ type listDirectory struct {
 }
 
 func resolveListDirectory(root, sub string) (listDirectory, error) {
-	if path.IsAbs(sub) || sub == ".." || strings.HasPrefix(sub, "../") {
-		return listDirectory{}, fmt.Errorf("%w: %q escapes the workspace", errInvalidListPath, sub)
+	// Containment below is a physical decision that also settles symlink
+	// aliases; only "this is not a workspace-relative path at all" has to be
+	// answered before resolving.
+	if path.IsAbs(sub) {
+		return listDirectory{}, fmt.Errorf("%w: %q is not relative to the workspace", errInvalidListPath, sub)
 	}
 	physicalRoot, err := pathidentity.Resolve("", root)
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -352,5 +353,37 @@ func TestListFilesHonorsCancellation(t *testing.T) {
 	_, err := ListFiles(ctx, t.TempDir(), workspaceapp.FileListOptions{Recursive: true, IncludeIgnored: true})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("ListFiles() error = %v, want context.Canceled", err)
+	}
+}
+
+// TestResolveListDirectoryNamesTheDefectItRejects separates the two ways a
+// listing path can be illegal. An absolute path inside the workspace does not
+// escape it; it simply is not the relative path this listing accepts, and an
+// operator told otherwise looks for the wrong mistake.
+func TestResolveListDirectoryNamesTheDefectItRejects(t *testing.T) {
+	root := t.TempDir()
+	inside := filepath.Join(root, "inside")
+	if err := os.Mkdir(inside, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name string
+		sub  string
+		want string
+	}{
+		{name: "absolute inside the workspace", sub: inside, want: "is not relative to the workspace"},
+		{name: "absolute outside the workspace", sub: t.TempDir(), want: "is not relative to the workspace"},
+		{name: "parent directory", sub: "..", want: "escapes the workspace"},
+		{name: "below the parent directory", sub: "../elsewhere", want: "escapes the workspace"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := resolveListDirectory(root, test.sub)
+			if err == nil {
+				t.Fatalf("resolveListDirectory(%q) was accepted", test.sub)
+			}
+			if !errors.Is(err, errInvalidListPath) || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("resolveListDirectory(%q) error = %v, want %q", test.sub, err, test.want)
+			}
+		})
 	}
 }
