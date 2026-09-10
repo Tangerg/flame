@@ -12,6 +12,10 @@ export const UI_DENSITY_MODES = ["compact", "comfortable", "spacious"] as const;
 export type UiDensity = (typeof UI_DENSITY_MODES)[number];
 export const DEFAULT_UI_DENSITY: UiDensity = "comfortable";
 
+/** The step the app opens on. Named because the ink ladder is anchored to it: below it
+ *  ink holds still, above it ink keeps pace with the surfaces the slider is moving. */
+export const DEFAULT_CONTRAST = 25;
+
 export interface CustomTheme {
   bg: string;
   fg: string;

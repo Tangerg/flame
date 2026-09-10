@@ -89,6 +89,7 @@ interface FixtureRoute {
   density?: "compact" | "comfortable" | "spacious";
   overlay?: VisualShellOverlay;
   locale?: string;
+  contrast?: number;
 }
 
 async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
@@ -113,6 +114,7 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   if (route.pane) query.set("pane", route.pane);
   if (route.locale) query.set("locale", route.locale);
   if (route.density) query.set("density", route.density);
+  if (route.contrast !== undefined) query.set("contrast", String(route.contrast));
 
   await page.goto(`${VISUAL_URL}?${query}`);
   await page.locator("html[data-visual-ready]").waitFor();
@@ -235,6 +237,30 @@ for (const pane of VISUAL_SETTINGS_PANES) {
       await openFixture(page, { fixture: "workspace", state: "settings", theme, pane });
 
       await expectNoWcagViolations(page);
+    });
+  }
+}
+
+// The contrast preference is the third thing that hides a surface's real colours, and the one
+// that hides them from the criterion that cares. It walks every step of the region ladder
+// TOWARD the ink — `--color-surface-2` IS the text colour at `--depth-step` over the surface —
+// so at the top of the range a control named Contrast was lowering text contrast: the status
+// pill measured 3.75:1 in dark, and it had been failing from about three-quarters up.
+//
+// Audited at both ends rather than at samples in between, because the ends are where the ladder
+// and the ink are furthest apart, and the ink is anchored so the middle cannot fail first.
+for (const contrast of [0, 100]) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`WCAG audit the workspace at contrast ${contrast} ${theme}`, async ({ page }) => {
+      await openFixture(page, { fixture: "workspace", state: "dock-light", theme, contrast });
+
+      await expectNoWcagViolations(page, [RAIL_TARGET_SIZE]);
+    });
+
+    test(`WCAG audit the work index at contrast ${contrast} ${theme}`, async ({ page }) => {
+      await openFixture(page, { fixture: "shell", state: "populated", theme, contrast });
+
+      await expectNoWcagViolations(page, [RAIL_TARGET_SIZE]);
     });
   }
 }

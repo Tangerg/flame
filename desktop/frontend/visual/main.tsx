@@ -90,6 +90,14 @@ const requestedFontSize = query.get("font-size");
 // the pipeline overwrites all thirteen, so a spec can only see the setting by asking for it.
 const requestedDensity = query.get("density");
 const density = UI_DENSITY_MODES.find((mode) => mode === requestedDensity);
+// The contrast slider walks every surface step toward the ink, so it is an axis an audit has
+// to be able to reach — and it had no way to. Seeding the persisted store instead needed two
+// navigations and a version that matches, which is a lot of ways to test nothing.
+const requestedContrast = Number(query.get("contrast"));
+const contrast =
+  Number.isFinite(requestedContrast) && query.get("contrast") !== null
+    ? Math.min(100, Math.max(0, requestedContrast))
+    : undefined;
 // Which view a full-placement state opens. The default covers the shape nineteen of the
 // twenty-one views share; a spec names one of the other two.
 const requestedFullView = query.get("full-view") ?? undefined;
@@ -200,6 +208,7 @@ useAppearanceStore.setState({
     ? { fontSize: Number(requestedFontSize) }
     : {}),
   ...(density ? { density } : {}),
+  ...(contrast !== undefined ? { contrast } : {}),
 });
 // Both halves of what `appearancePainter` installs: the pane and the sidebar footer read
 // the preference through this port, so painting without binding it renders a broken

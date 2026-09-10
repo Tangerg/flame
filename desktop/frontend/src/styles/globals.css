@@ -416,9 +416,21 @@
 
   --color-text: #1e1f22;
   --color-text-bright: #000000;
-  --color-text-soft: #3d4147;
-  --color-text-muted: #5a5d63;
-  --color-text-faint: #63666d;
+  --color-text-soft: color-mix(
+    in oklab,
+    var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)),
+    #3d4147
+  );
+  --color-text-muted: color-mix(
+    in oklab,
+    var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)),
+    #5a5d63
+  );
+  --color-text-faint: color-mix(
+    in oklab,
+    var(--color-text) max(0%, calc((var(--depth-step) - 4%) * 3)),
+    #63666d
+  );
   --color-text-on-accent: #ffffff;
   --color-text-on-warning: #000000;
 
@@ -886,9 +898,21 @@ html.theme-dark {
 
   --color-text: #e3e5e9;
   --color-text-bright: #ffffff;
-  --color-text-soft: #c6c9cf;
-  --color-text-muted: #aaaeb5;
-  --color-text-faint: #95999f;
+  --color-text-soft: color-mix(
+    in oklab,
+    var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
+    #c6c9cf
+  );
+  --color-text-muted: color-mix(
+    in oklab,
+    var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
+    #aaaeb5
+  );
+  --color-text-faint: color-mix(
+    in oklab,
+    var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
+    #95999f
+  );
   --color-text-on-accent: #ffffff;
   --color-text-on-warning: #000000;
 

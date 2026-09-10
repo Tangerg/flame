@@ -379,7 +379,7 @@ describe("UI preference DOM synchronization", () => {
     useAppearanceStore.getState().setMotionScale(0);
 
     const root = document.documentElement;
-    expect(root.style.getPropertyValue("--depth-step")).toBe("10.0%");
+    expect(root.style.getPropertyValue("--depth-step")).toBe("10%");
     expect(root.style.getPropertyValue("--radius-scale")).toBe("1.25");
     expect(root.style.getPropertyValue("--motion-scale")).toBe("0");
     expect(root.dataset.motion).toBe("off");
@@ -395,8 +395,8 @@ describe("UI preference DOM synchronization", () => {
     await registerSchemePair();
     useAppearanceStore.getState().setContrast(25);
     useAppearanceStore.getState().setTheme("light");
-    expect(document.documentElement.style.getPropertyValue("--depth-step")).toBe("4.0%");
+    expect(document.documentElement.style.getPropertyValue("--depth-step")).toBe("4%");
     useAppearanceStore.getState().setTheme("dark");
-    expect(document.documentElement.style.getPropertyValue("--depth-step")).toBe("8.0%");
+    expect(document.documentElement.style.getPropertyValue("--depth-step")).toBe("8%");
   });
 });

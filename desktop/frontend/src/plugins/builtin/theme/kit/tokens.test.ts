@@ -45,7 +45,7 @@ describe("buildTokenMap", () => {
     expect(tokens["color-bg"]).toBe("#0a0a0a");
     expect(tokens["color-surface"]).toBe("#1a1a1a");
     expect(tokens["color-text"]).toBe("#eeeeee");
-    expect(tokens["color-text-faint"]).toBe("#666666");
+    expect(tokens["color-text-faint"]).toContain("#666666");
     expect(tokens["color-border"]).toBe("#2a2a2a");
     expect(tokens["color-negative"]).toBe("#ff5555");
   });
@@ -131,25 +131,41 @@ describe("buildTokenMap", () => {
     expect(tokens["color-accent"]).toBe("#999999");
   });
 
-  it("explicit ink soft/muted/faint pass through verbatim", () => {
+  // The theme's ink is what the app opens on, and it stays exactly that until the contrast
+  // slider moves off its default: the mix resolves to 0% there, so the value IS the literal.
+  // Above the default the ink keeps pace with the surfaces the slider is walking toward it —
+  // without that, a control named Contrast lowered text contrast to 3.75:1.
+  it("carries the theme's ink, anchored so the default resolves to it", () => {
     const tokens = buildTokenMap(makeSpec());
-    expect(tokens["color-text-soft"]).toBe("#cccccc");
-    expect(tokens["color-text-muted"]).toBe("#999999");
-    expect(tokens["color-text-faint"]).toBe("#666666");
+    for (const [rung, ink] of [
+      ["soft", "#cccccc"],
+      ["muted", "#999999"],
+      ["faint", "#666666"],
+    ] as const) {
+      expect(tokens[`color-text-${rung}`]).toBe(
+        `color-mix(in oklab, var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)), ${ink})`,
+      );
+    }
+  });
+
+  it("anchors the ink to the step its own scheme opens on", () => {
+    const light = buildTokenMap(makeSpec({ scheme: "light" }));
+    const dark = buildTokenMap(makeSpec({ scheme: "dark" }));
+    expect(light["color-text-muted"]).toContain("var(--depth-step) - 4%");
+    expect(dark["color-text-muted"]).toContain("var(--depth-step) - 8%");
   });
 
   it("keeps the omitted faint ink at the readable muted fallback", () => {
     const tokens = buildTokenMap(makeSpec({ ink: { text: "#eeeeee", textBright: "#ffffff" } }));
     expect(tokens["color-text"]).toBe("#eeeeee");
-    expect(tokens["color-text-soft"]).toBe(
+    expect(tokens["color-text-soft"]).toContain(
       "color-mix(in oklab, var(--color-text) 82%, transparent)",
     );
-    expect(tokens["color-text-muted"]).toBe(
-      "color-mix(in oklab, var(--color-text) 56%, transparent)",
-    );
-    expect(tokens["color-text-faint"]).toBe(
-      "color-mix(in oklab, var(--color-text) 56%, transparent)",
-    );
+    for (const rung of ["muted", "faint"] as const) {
+      expect(tokens[`color-text-${rung}`]).toContain(
+        "color-mix(in oklab, var(--color-text) 56%, transparent)",
+      );
+    }
   });
 
   it("SCHEME_ICON maps dark/light to moon/sun", () => {

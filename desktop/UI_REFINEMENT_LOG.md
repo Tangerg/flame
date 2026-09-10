@@ -13226,3 +13226,93 @@ fixture=workspace&state=settings   atReady=13  settled=73   path=13,68,68,73,73,
 ### 一句话
 
 这一轮的起点是"证明我的探针真的在看"。**那个用来自证的数字，比它要证明的结论重要得多。**
+
+## Round 209 —— 一个叫「对比度」的控件，在降低文字对比度
+
+先说两条查过、干净的线：
+
+- **golden 有没有在页面还没稳的时候截图**：55 条路线里只有 2 条在 `data-visual-ready` 时像素还在动，
+  而这 2 条正好是 `openFixture` 已经单独等过的那两条。给它们跑完各自的 settle 之后，
+  最坏残差是 **1 个像素**，而 golden 的容差是 **40** —— 安全，而且不是巧合。
+- **视觉风格**：内置只有 `flame` 一个，fixture 也钉死它。没有未覆盖的轴。
+
+### 真正没被覆盖的轴：对比度
+
+`contrast` 是一个用户偏好（0–100 的滑块），它拥有 `--depth-step`，
+而 `--depth-step` 推导出 `surface-2/3/4` 和 hover/selected 的 wash。
+**它不是 fixture 参数**，所以每一条审计、每一张 golden 都只跑在一个点上。
+
+把它跑起来，深色 + contrast ≥ 75 就红：
+
+```
+color-contrast 3.75:1  #aaaeb5 on #4b4e53   AgentStatusPill
+```
+
+### 根因：滑块推着表面走向墨，而墨一动不动
+
+```
+--color-surface-2 = color-mix(text @ var(--depth-step), surface)   ← 滑块推它
+--color-text-muted = #aaaeb5                                        ← 不动
+```
+
+`--color-surface-2` **就是文字颜色**按 `--depth-step` 混在表面上。滑块从 4% 拉到 20%，
+表面一路走向墨，而墨站在原地 —— 间距自然收窄。**一个叫「对比度」的控件在降低文字对比度。**
+
+我先走错过一条路：仓库里有一句 *"a control's fill must hold still while the contrast slider
+moves the regions"*，我据此以为根因是「控件借用了区域台阶」，打算给控件加一层固定的 plate。
+量了一下 —— **25 个消费方几乎全是控件**（chip / badge / tag / button / select / pill / segmented…）。
+如果控件都不该跟着走，这个滑块就几乎什么都不动了，那不是它的本意。
+那句话是写给 `sunken` 的，不是通则。**所以根因不是「谁用了台阶」，是「墨没有跟着台阶走」。**
+
+### 治本：墨跟着台阶走，锚在默认档位上
+
+```
+--color-text-muted: color-mix(
+  in oklab,
+  var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
+  #aaaeb5
+);
+```
+
+三件事同时成立：
+
+| | |
+| --- | --- |
+| **默认逐字节不变** | 默认档位上 `--depth-step - 8% = 0`，混合比例是 0%，值**就是**旁边那个字面量。实测默认 muted 解析结果与改动前完全一致，**717 项视觉套件零 golden 移动**。 |
+| **层级按构造保持** | soft / muted / faint 移动同样的量，所以三级之间的差保持不变，变的是整条墨梯与表面的距离。 |
+| **两个方向都对** | 浅色下墨变深、深色下墨变亮 —— 因为都朝 `--color-text` 混，而两个主题的 text 本来就在相反方向。 |
+
+系数 3 是**量出来的，不是挑的**：2.5 时最差的一对停在 **4.48:1**，差 0.02。
+
+### 顺带清掉的坏味道
+
+`contrast: 25` 是 store 里唯一一个没有名字的默认值，而它的兄弟都有
+（`DEFAULT_ACCENT_TINT` / `DEFAULT_UI_DENSITY`）。现在是 `DEFAULT_CONTRAST`，
+并且**墨的锚点直接读它** —— 锚点和默认值不可能再分家。
+
+`depthStep` 原来输出 `"4.0%"`，而 prettier 把 CSS 里写成 `4%`，镜像测试比的是文本 ——
+改成按 CSS 的写法输出，两边天然一致。
+
+### 新覆盖
+
+`contrast` 成了 fixture 参数（和 `density` / `font-size` 并列），
+审计新增**滑块两端 × 明暗 × 两条路线 = 8 条**。
+**验证过会失败**：把跟踪系数设回 0 → 精确报出 `3.75:1  #aaaeb5 on #4b4e53`。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 对比度全区间的 WCAG 违规 | 深色 ≥75 失败 → **0**（5 档 × 明暗 × 4 路线全绿）|
+| 默认外观 | **逐字节不变**，0 张 golden 移动 |
+| 没有名字的默认值 | 1 → **0** |
+| 覆盖的外观轴 | theme / density / font-size / width / 交互 → **+contrast** |
+| 单测 | **265 全通过** |
+| 视觉套件 | **717 全通过**（12.8m，零失败；+8）|
+| typecheck / lint / prettier / knip / 8 个守卫 | 全绿 |
+
+### 一句话
+
+我差点把「控件不该用区域台阶」当成根因去改 25 个调用点。
+**量了一下才发现那句话是写给一个 token 的，不是通则** ——
+真正的根因是一条**只推动了一半**的推导：滑块拿走了表面，忘了带上墨。

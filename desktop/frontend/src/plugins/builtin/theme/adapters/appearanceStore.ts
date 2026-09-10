@@ -6,6 +6,7 @@ import type { Paired } from "@/lib/persistedStore";
 import {
   ACCENT_TINTS,
   DEFAULT_ACCENT_TINT,
+  DEFAULT_CONTRAST,
   DEFAULT_UI_DENSITY,
   UI_DENSITY_MODES,
   type AppearanceEdit,
@@ -46,7 +47,7 @@ export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>(
       visualStyle: "flame",
       accent: "#3574f0",
       customTheme: { bg: "#0f1117", fg: "#e6e8ee" },
-      contrast: 25,
+      contrast: DEFAULT_CONTRAST,
       accentTint: DEFAULT_ACCENT_TINT,
       uiFont: "",
       codeFont: "",
