@@ -75,10 +75,7 @@ func (t *ToolAuthorizer) AuthorizeTool(
 	case approval.GatePass:
 		return ToolAuthorizationDecision{}, nil
 	case approval.GateDeny:
-		return ToolAuthorizationDecision{
-			Denied: true,
-			Reason: approvalDenialMessage(plan.Denial, request.ToolName),
-		}, nil
+		return DenyTool(approvalDenialMessage(plan.Denial, request.ToolName)), nil
 	case approval.GatePrompt:
 		prompt := runs.ApprovalPrompt{
 			CallID:       request.CallID,
@@ -89,7 +86,7 @@ func (t *ToolAuthorizer) AuthorizeTool(
 			Reason:       approvalPromptReason(plan.PromptCause),
 			Rememberable: true,
 		}
-		return ToolAuthorizationDecision{Approval: &prompt}, nil
+		return AskToolApproval(prompt)
 	default:
 		return ToolAuthorizationDecision{}, errors.New("agentexec: Tool approval policy returned an unknown action")
 	}
@@ -124,7 +121,7 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 		}
 	}
 	if !resolution.Approved {
-		return ToolAuthorizationDecision{Denied: true, Reason: denialReason(resolution.Reason)}, nil
+		return DenyTool(denialReason(resolution.Reason)), nil
 	}
 	effective := cmp.Or(resolution.Arguments, request.Arguments.Canonical())
 	arguments, err := tool.ParseArguments(effective)
@@ -134,7 +131,7 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 	if arguments.Canonical() == request.Arguments.Canonical() {
 		return ToolAuthorizationDecision{}, nil
 	}
-	return ToolAuthorizationDecision{EffectiveArguments: &arguments}, nil
+	return AllowToolWithArguments(arguments), nil
 }
 
 func validateToolAuthorizationRequest(request ToolAuthorizationRequest) error {

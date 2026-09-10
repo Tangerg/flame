@@ -638,7 +638,7 @@ func (p *promptingInteractionAuthorizer) AuthorizeTool(
 		SafetyClass: request.SafetyClass, Risk: domaintool.RiskHigh,
 		Reason: "This Tool changes external state.", Rememberable: true,
 	}
-	return ToolAuthorizationDecision{Approval: &prompt}, nil
+	return AskToolApproval(prompt)
 }
 
 func (p *promptingInteractionAuthorizer) ResolveToolApproval(
@@ -649,19 +649,19 @@ func (p *promptingInteractionAuthorizer) ResolveToolApproval(
 ) (ToolAuthorizationDecision, error) {
 	p.resolved++
 	if !resolution.Approved {
-		return ToolAuthorizationDecision{Denied: true, Reason: "denied by user"}, nil
+		return DenyTool("denied by user"), nil
 	}
 	if resolution.Arguments == "" {
-		return ToolAuthorizationDecision{}, nil
+		return AllowTool(), nil
 	}
 	arguments, err := domaintool.ParseArguments(resolution.Arguments)
 	if err != nil {
-		return ToolAuthorizationDecision{}, err
+		return AllowTool(), err
 	}
 	if request.ToolName == "" {
-		return ToolAuthorizationDecision{}, errors.New("missing Tool identity")
+		return AllowTool(), errors.New("missing Tool identity")
 	}
-	return ToolAuthorizationDecision{EffectiveArguments: &arguments}, nil
+	return AllowToolWithArguments(arguments), nil
 }
 
 func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {

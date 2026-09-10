@@ -1317,21 +1317,21 @@ func (concurrentInteractionTool) ConcurrencyKey(toolcontract.Invocation) (string
 type allowInteractionTools struct{}
 
 func (allowInteractionTools) AuthorizeTool(context.Context, ToolAuthorizationRequest) (ToolAuthorizationDecision, error) {
-	return ToolAuthorizationDecision{}, nil
+	return AllowTool(), nil
 }
 
 func (allowInteractionTools) ResolveToolApproval(context.Context, ToolAuthorizationRequest, runs.ApprovalPrompt, interrupt.Resolution) (ToolAuthorizationDecision, error) {
-	return ToolAuthorizationDecision{}, nil
+	return AllowTool(), nil
 }
 
 type denyingInteractionTools struct{ reason string }
 
 func (d denyingInteractionTools) AuthorizeTool(context.Context, ToolAuthorizationRequest) (ToolAuthorizationDecision, error) {
-	return ToolAuthorizationDecision{Denied: true, Reason: d.reason}, nil
+	return DenyTool(d.reason), nil
 }
 
 func (d denyingInteractionTools) ResolveToolApproval(context.Context, ToolAuthorizationRequest, runs.ApprovalPrompt, interrupt.Resolution) (ToolAuthorizationDecision, error) {
-	return ToolAuthorizationDecision{Denied: true, Reason: d.reason}, nil
+	return DenyTool(d.reason), nil
 }
 
 type selectiveDenyInteractionTools struct {
@@ -1345,12 +1345,12 @@ func (s selectiveDenyInteractionTools) AuthorizeTool(
 	request ToolAuthorizationRequest,
 ) (ToolAuthorizationDecision, error) {
 	if request.ToolName != s.name {
-		return ToolAuthorizationDecision{}, nil
+		return AllowTool(), nil
 	}
 	if s.waitBeforeDenial != nil {
 		<-s.waitBeforeDenial
 	}
-	return ToolAuthorizationDecision{Denied: true, Reason: s.reason}, nil
+	return DenyTool(s.reason), nil
 }
 
 func (s selectiveDenyInteractionTools) ResolveToolApproval(

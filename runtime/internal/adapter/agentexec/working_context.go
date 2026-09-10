@@ -239,22 +239,18 @@ func (w *WorkingContextComposer) BeforeToolUse(
 			Arguments: input.Arguments.Canonical(),
 		},
 	})
-	projected := InteractionToolHookDecision{
-		Denied:          decision.Block,
-		Reason:          strings.TrimSpace(decision.Reason),
-		RequireApproval: decision.Ask,
+	if decision.Block {
+		return DenyToolHook(decision.Reason), nil
 	}
-	if projected.Denied && projected.Reason == "" {
-		projected.Reason = "denied by a PreToolUse hook"
-	}
+	var rewrittenArguments *tool.Arguments
 	if rewritten := strings.TrimSpace(decision.RewriteArguments); rewritten != "" {
 		arguments, err := tool.ParseArguments(rewritten)
 		if err != nil {
 			return InteractionToolHookDecision{}, fmt.Errorf("agentexec: parse pre-Tool hook argument rewrite: %w", err)
 		}
-		projected.EffectiveArguments = &arguments
+		rewrittenArguments = &arguments
 	}
-	return projected, nil
+	return AllowToolHook(decision.Ask, rewrittenArguments), nil
 }
 
 // AfterToolUse runs the observe-only post-call hook. Its decision cannot alter

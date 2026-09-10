@@ -284,16 +284,13 @@ func (o *observedInteractionTool) prepare(
 		if beforeToolUseErr != nil {
 			return tool.Arguments{}, false, "", fmt.Errorf("agentexec: run pre-Tool hook: %w", beforeToolUseErr)
 		}
-		if validateHookDecisionErr := validateHookDecision(decision); validateHookDecisionErr != nil {
-			return tool.Arguments{}, false, "", validateHookDecisionErr
+		if rewritten, ok := decision.EffectiveArguments(); ok {
+			arguments = rewritten
 		}
-		if decision.EffectiveArguments != nil {
-			arguments = *decision.EffectiveArguments
+		if reason, denied := decision.Denied(); denied {
+			return arguments, true, reason, nil
 		}
-		if decision.Denied {
-			return arguments, true, decision.Reason, nil
-		}
-		forceApproval = decision.RequireApproval
+		forceApproval = decision.RequiresApproval()
 	}
 	if !o.interpreter.UsesStandardPolicy(name) {
 		if forceApproval {
@@ -309,17 +306,14 @@ func (o *observedInteractionTool) prepare(
 	if err != nil {
 		return tool.Arguments{}, false, "", fmt.Errorf("agentexec: authorize Tool %q: %w", name, err)
 	}
-	if err := validateToolAuthorizationDecision(decision); err != nil {
-		return tool.Arguments{}, false, "", err
+	if rewritten, ok := decision.EffectiveArguments(); ok {
+		arguments = rewritten
 	}
-	if decision.EffectiveArguments != nil {
-		arguments = *decision.EffectiveArguments
+	if reason, denied := decision.Denied(); denied {
+		return arguments, true, reason, nil
 	}
-	if decision.Denied {
-		return arguments, true, decision.Reason, nil
-	}
-	if decision.Approval != nil {
-		return o.requestToolApproval(ctx, request, *decision.Approval)
+	if prompt, ok := decision.Approval(); ok {
+		return o.requestToolApproval(ctx, request, prompt)
 	}
 	return o.applyDoomLoopBrake(ctx, callID, name, arguments, false, "")
 }
@@ -453,14 +447,12 @@ func (o *observedInteractionTool) resolveToolApproval(
 	if err != nil {
 		return tool.Arguments{}, false, "", fmt.Errorf("agentexec: resolve Tool %q approval: %w", request.ToolName, err)
 	}
-	if err := validateToolAuthorizationDecision(decision); err != nil {
-		return tool.Arguments{}, false, "", err
-	}
 	arguments := request.Arguments
-	if decision.EffectiveArguments != nil {
-		arguments = *decision.EffectiveArguments
+	if rewritten, ok := decision.EffectiveArguments(); ok {
+		arguments = rewritten
 	}
-	return arguments, decision.Denied, decision.Reason, nil
+	reason, denied := decision.Denied()
+	return arguments, denied, reason, nil
 }
 
 func (o *observedInteractionTool) activity(name string, arguments tool.Arguments) string {

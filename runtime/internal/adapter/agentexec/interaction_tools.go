@@ -2,7 +2,6 @@ package agentexec
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -55,15 +54,63 @@ type ToolAuthorizationRequest struct {
 	RequireApproval bool
 }
 
-// ToolAuthorizationDecision is one definite pre-call decision. Denied calls return
-// Reason to the model as a recoverable Tool result. EffectiveArguments is nil
-// to preserve the model arguments or non-nil to replace them atomically before
-// the ToolCallStarted fact is committed.
+// ToolAuthorizationDecision is one definite pre-call decision: the call is
+// denied for a stated reason, it waits for a durable human answer, or it
+// proceeds — optionally with arguments policy replaced atomically before the
+// ToolCallStarted fact is committed. Naming the outcome is the only way to
+// build one, so no decision can deny a call and rewrite it too.
 type ToolAuthorizationDecision struct {
-	Denied             bool
-	Reason             string
-	EffectiveArguments *tool.Arguments
-	Approval           *runs.ApprovalPrompt
+	reason    string
+	arguments *tool.Arguments
+	approval  *runs.ApprovalPrompt
+}
+
+// AllowTool proceeds with the model's own arguments.
+func AllowTool() ToolAuthorizationDecision { return ToolAuthorizationDecision{} }
+
+// AllowToolWithArguments proceeds with arguments policy replaced.
+func AllowToolWithArguments(arguments tool.Arguments) ToolAuthorizationDecision {
+	return ToolAuthorizationDecision{arguments: &arguments}
+}
+
+// DenyTool refuses the call. The reason reaches the model as a recoverable Tool
+// result, so a blank one becomes the generic wording rather than nothing.
+func DenyTool(reason string) ToolAuthorizationDecision {
+	return ToolAuthorizationDecision{reason: toolDenialReason(reason)}
+}
+
+// AskToolApproval waits for a durable human answer to prompt.
+func AskToolApproval(prompt runs.ApprovalPrompt) (ToolAuthorizationDecision, error) {
+	if err := (runs.Interrupt{Kind: interrupt.Approval, Approval: &prompt}).Validate(); err != nil {
+		return ToolAuthorizationDecision{}, fmt.Errorf("agentexec: invalid Tool approval plan: %w", err)
+	}
+	return ToolAuthorizationDecision{approval: &prompt}, nil
+}
+
+// Denied reports the refusal and the reason shown to the model.
+func (d ToolAuthorizationDecision) Denied() (string, bool) { return d.reason, d.reason != "" }
+
+// EffectiveArguments reports the replacement arguments, when policy supplied any.
+func (d ToolAuthorizationDecision) EffectiveArguments() (tool.Arguments, bool) {
+	if d.arguments == nil {
+		return tool.Arguments{}, false
+	}
+	return *d.arguments, true
+}
+
+// Approval reports the prompt this call waits on, when it waits on one.
+func (d ToolAuthorizationDecision) Approval() (runs.ApprovalPrompt, bool) {
+	if d.approval == nil {
+		return runs.ApprovalPrompt{}, false
+	}
+	return *d.approval, true
+}
+
+func toolDenialReason(reason string) string {
+	if trimmed := strings.TrimSpace(reason); trimmed != "" {
+		return trimmed
+	}
+	return "denied by Tool policy"
 }
 
 // InteractionToolAuthorizer evaluates Runtime Tool policy and resolves its
@@ -92,14 +139,43 @@ type InteractionToolHookInput struct {
 	CallError error
 }
 
-// InteractionToolHookDecision is the pre-call hook result. A hook may rewrite
-// arguments or deny the invocation but cannot request human input.
+// InteractionToolHookDecision is the pre-call hook result: the call is denied
+// for a stated reason, or it proceeds — escalated to human review, carrying
+// rewritten arguments, or both. A denial carries neither, so the outcome names
+// itself the same way the authorization decision does.
 type InteractionToolHookDecision struct {
-	Denied             bool
-	Reason             string
-	EffectiveArguments *tool.Arguments
-	RequireApproval    bool
+	reason          string
+	arguments       *tool.Arguments
+	requireApproval bool
 }
+
+// AllowToolHook proceeds, optionally escalating to human review and optionally
+// with arguments a hook rewrote.
+func AllowToolHook(requireApproval bool, arguments *tool.Arguments) InteractionToolHookDecision {
+	return InteractionToolHookDecision{requireApproval: requireApproval, arguments: arguments}
+}
+
+// DenyToolHook refuses the call, naming the hook when the hook did not.
+func DenyToolHook(reason string) InteractionToolHookDecision {
+	if trimmed := strings.TrimSpace(reason); trimmed != "" {
+		return InteractionToolHookDecision{reason: trimmed}
+	}
+	return InteractionToolHookDecision{reason: "denied by a PreToolUse hook"}
+}
+
+// Denied reports the refusal and the reason shown to the model.
+func (d InteractionToolHookDecision) Denied() (string, bool) { return d.reason, d.reason != "" }
+
+// EffectiveArguments reports the rewritten arguments, when a hook supplied any.
+func (d InteractionToolHookDecision) EffectiveArguments() (tool.Arguments, bool) {
+	if d.arguments == nil {
+		return tool.Arguments{}, false
+	}
+	return *d.arguments, true
+}
+
+// RequiresApproval reports a hook escalating a call the gate would have passed.
+func (d InteractionToolHookDecision) RequiresApproval() bool { return d.requireApproval }
 
 // InteractionToolHooks owns Runtime lifecycle extensions around ordinary Tool
 // calls. PostToolUse is observational: its error is recorded by the caller but
@@ -108,44 +184,4 @@ type InteractionToolHookDecision struct {
 type InteractionToolHooks interface {
 	BeforeToolUse(ctx context.Context, input InteractionToolHookInput) (InteractionToolHookDecision, error)
 	AfterToolUse(ctx context.Context, input InteractionToolHookInput) error
-}
-
-func validateToolAuthorizationDecision(decision ToolAuthorizationDecision) error {
-	if decision.Denied && (decision.EffectiveArguments != nil || decision.Approval != nil) {
-		return errors.New("agentexec: denied Tool authorization carries an argument rewrite or approval")
-	}
-	if decision.Approval != nil && decision.EffectiveArguments != nil {
-		return errors.New("agentexec: pending Tool approval rewrites arguments outside its prompt")
-	}
-	if decision.Reason != strings.TrimSpace(decision.Reason) {
-		return errors.New("agentexec: Tool authorization decision reason has surrounding whitespace")
-	}
-	if !decision.Denied && decision.Reason != "" {
-		return errors.New("agentexec: allowed Tool authorization decision carries a denial reason")
-	}
-	if decision.Denied && decision.Reason == "" {
-		return errors.New("agentexec: denied Tool authorization decision requires a reason")
-	}
-	if decision.Approval != nil {
-		if err := (runs.Interrupt{Kind: interrupt.Approval, Approval: decision.Approval}).Validate(); err != nil {
-			return fmt.Errorf("agentexec: invalid Tool approval plan: %w", err)
-		}
-	}
-	return nil
-}
-
-func validateHookDecision(decision InteractionToolHookDecision) error {
-	if decision.Denied && (decision.EffectiveArguments != nil || decision.RequireApproval) {
-		return errors.New("agentexec: denied Tool hook decision rewrites arguments or requests approval")
-	}
-	if decision.Reason != strings.TrimSpace(decision.Reason) {
-		return errors.New("agentexec: Tool hook decision reason has surrounding whitespace")
-	}
-	if !decision.Denied && !decision.RequireApproval && decision.Reason != "" {
-		return errors.New("agentexec: allowed Tool hook decision carries a denial reason")
-	}
-	if decision.Denied && decision.Reason == "" {
-		return errors.New("agentexec: denied Tool hook decision requires a reason")
-	}
-	return nil
 }

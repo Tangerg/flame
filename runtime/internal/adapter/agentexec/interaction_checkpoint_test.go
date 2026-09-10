@@ -274,3 +274,39 @@ func TestCheckpointDecodeErrorsNameTheirSectionExactlyOnce(t *testing.T) {
 		t.Fatalf("payload error names its section %d times: %v", count, err)
 	}
 }
+
+// TestToolDecisionsNameOneOutcome pins what the removed combination validators
+// used to check at run time: a denial carries a reason and nothing else, and an
+// allowed call carries no reason. The pairs those checks rejected can no longer
+// be written, so only the wording is left to prove.
+func TestToolDecisionsNameOneOutcome(t *testing.T) {
+	for _, blank := range []string{"", "   ", "\n\t"} {
+		reason, denied := DenyTool(blank).Denied()
+		if !denied || reason != "denied by Tool policy" {
+			t.Fatalf("DenyTool(%q) = (%q, %v)", blank, reason, denied)
+		}
+		hookReason, hookDenied := DenyToolHook(blank).Denied()
+		if !hookDenied || hookReason != "denied by a PreToolUse hook" {
+			t.Fatalf("DenyToolHook(%q) = (%q, %v)", blank, hookReason, hookDenied)
+		}
+	}
+	stated := DenyTool("  the gate refused it  ")
+	if reason, denied := stated.Denied(); !denied || reason != "the gate refused it" {
+		t.Fatalf("stated denial = (%q, %v)", reason, denied)
+	}
+	if _, ok := stated.EffectiveArguments(); ok {
+		t.Fatal("a denial carries replacement arguments")
+	}
+	if _, ok := stated.Approval(); ok {
+		t.Fatal("a denial waits on an approval")
+	}
+	if _, denied := AllowTool().Denied(); denied {
+		t.Fatal("AllowTool denies the call")
+	}
+	if _, denied := AllowToolHook(true, nil).Denied(); denied {
+		t.Fatal("an escalating hook denies the call")
+	}
+	if !AllowToolHook(true, nil).RequiresApproval() {
+		t.Fatal("an escalating hook does not require approval")
+	}
+}
