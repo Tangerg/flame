@@ -240,7 +240,7 @@ func (s *segmentPump) handleChildRunStartOutcome(
 			managed.startedAt = request.StartedAt
 			s.coordinator.activatePreparedChild(s.spec, s.routes, prepared)
 			publication, publishErr := s.publisher.publish(s.ownerCtx, prepared.route, prepared.batch)
-			if publishErr != nil || publication.finished || publication.parked {
+			if publishErr != nil || publication.finished() {
 				if publishErr == nil {
 					publishErr = fmt.Errorf("runs: child member %q start unexpectedly reached a boundary", event.Member.MemberID)
 				}
@@ -342,7 +342,7 @@ func (s *segmentPump) handleAuthoritativeFact(
 		route.reducer.forgetToolEnds(batch.settledToolCallIDs)
 		return result, err
 	}
-	if publication.finished || publication.parked {
+	if publication.finished() {
 		return result, errors.New("runs: authoritative model/tool fact crossed a segment boundary")
 	}
 	route.reducer = speculative
@@ -425,8 +425,8 @@ func (s *segmentPump) handleUnknownEffects(
 	for {
 		publication, publishErr := s.publisher.publishTerminalAtomically(s.ownerCtx, route, batch)
 		if publishErr == nil {
-			route.segmentFinished = publication.finished
-			s.rootFinished = publication.finished
+			route.segmentFinished = publication.finished()
+			s.rootFinished = publication.finished()
 			s.rootParked = false
 			return nil
 		}
@@ -458,8 +458,8 @@ func (s *segmentPump) handleTreeBarrier(event ExecutorEvent, barrier TreeInterru
 		return
 	}
 	if publication.published {
-		s.rootFinished = publication.finished
-		s.rootParked = publication.parked
+		s.rootFinished = publication.finished()
+		s.rootParked = publication.parked()
 	}
 }
 
@@ -516,12 +516,12 @@ func (s *segmentPump) handleExecutionFact(member ExecutorMember, executionFact E
 	if !publication.published {
 		return false, nil
 	}
-	route.segmentFinished = publication.finished
+	route.segmentFinished = publication.finished()
 	if route != s.routes.root {
 		return true, nil
 	}
-	s.rootFinished = s.rootFinished || publication.finished
-	s.rootParked = s.rootParked || publication.parked
+	s.rootFinished = s.rootFinished || publication.finished()
+	s.rootParked = s.rootParked || publication.parked()
 	// A committed root boundary is the last event this Segment can durably
 	// support. Leave a park alive for resume and never consume buffered events
 	// after a terminal transition.
@@ -621,13 +621,13 @@ func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute)
 		s.fail(err)
 		return false
 	}
-	route.segmentFinished = publication.finished
-	if !publication.finished || publication.parked {
+	route.segmentFinished = publication.finished()
+	if !publication.finished() || publication.parked() {
 		s.fail(fmt.Errorf(
 			"runs: synthesized terminal for run %q produced finished=%t parked=%t",
 			route.runID,
-			publication.finished,
-			publication.parked,
+			publication.finished(),
+			publication.parked(),
 		))
 		return false
 	}

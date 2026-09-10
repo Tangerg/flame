@@ -10,11 +10,25 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
+// segmentBoundary names what publishing did to the source segment. A Run parks
+// by ending its segment, so parking is a way of finishing rather than a state
+// beside it, and the two cannot disagree.
+type segmentBoundary uint8
+
+const (
+	boundaryNone segmentBoundary = iota
+	boundaryFinished
+	boundaryParked
+)
+
+// reductionPublication reports what publishing a batch did.
 type reductionPublication struct {
 	published bool
-	finished  bool
-	parked    bool
+	boundary  segmentBoundary
 }
+
+func (p reductionPublication) finished() bool { return p.boundary != boundaryNone }
+func (p reductionPublication) parked() bool   { return p.boundary == boundaryParked }
 
 // treePublisher owns the batch boundary between source-Run reductions and
 // their persisted and live projections. Every child keeps its own Run/Segment
@@ -245,7 +259,7 @@ func (t treePublisher) publishTerminalAtomically(
 	if combined.GoalRun != nil {
 		t.publications.publishGoalMoved(t.rootSpec.SessionID)
 	}
-	return reductionPublication{published: true, finished: true}, nil
+	return reductionPublication{published: true, boundary: boundaryFinished}, nil
 }
 
 // combineTerminalEventCommit materializes the one write-set that the reducer
@@ -357,7 +371,7 @@ func (t treePublisher) publishTreeBarrier(
 		projected.route.segmentFinished = true
 		t.publications.publishWaitingMoved(t.rootSpec.SessionID, projected.route.runID)
 	}
-	return reductionPublication{published: true, finished: true, parked: true}, nil
+	return reductionPublication{published: true, boundary: boundaryParked}, nil
 }
 
 func (t treePublisher) reduceTreeBarrier(
