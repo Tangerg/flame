@@ -625,3 +625,56 @@ func toolNames(catalog []toolcontract.Tool) []string {
 	}
 	return names
 }
+
+// TestPlanAttemptDetachesTheSessionItHandsBack pins the step both Reconnect and
+// Authorize depend on: the caller is given the live session to close, and the
+// server must no longer point at it. Leaving it attached would close a session
+// the server still resolves tools through.
+func TestPlanAttemptDetachesTheSessionItHandsBack(t *testing.T) {
+	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "test-server", Version: "v1"}, nil)
+	addRemoteTool(t, remote, "first")
+	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(
+		func(*http.Request) *sdkmcp.Server { return remote },
+		nil,
+	))
+	t.Cleanup(httpServer.Close)
+
+	config := ServerConfig{Name: testMCPServerName("detach"), Transport: TransportHTTP, Endpoint: httpServer.URL}
+	c, _, err := Dial(t.Context(), t.Context(), []ServerConfig{config}, nil)
+	if err != nil {
+		t.Fatalf("Dial: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := c.Shutdown(context.WithoutCancel(t.Context())); err != nil {
+			t.Errorf("Shutdown: %v", err)
+		}
+	})
+
+	detached, _, attempt, err := c.planAttempt(t.Context(), config.Name, func(s *server) (ServerConfig, error) {
+		return s.config, nil
+	})
+	if err != nil {
+		t.Fatalf("planAttempt: %v", err)
+	}
+	defer c.finishAttempt(attempt)
+	if detached == nil {
+		t.Fatal("planAttempt returned no session to close")
+	}
+
+	c.mu.Lock()
+	live := c.find(config.Name)
+	stillAttached, tools, state := live.session, live.tools, live.state
+	c.mu.Unlock()
+	if stillAttached != nil {
+		t.Fatal("the server still points at the session the caller was told to close")
+	}
+	if tools != nil {
+		t.Fatalf("the server kept %d tools proved on a detached session", len(tools))
+	}
+	if state != mcpserver.ConnectionConnecting {
+		t.Fatalf("state after detaching = %v, want connecting", state)
+	}
+	if err := c.closeSession(t.Context(), detached); err != nil {
+		t.Errorf("closeSession: %v", err)
+	}
+}

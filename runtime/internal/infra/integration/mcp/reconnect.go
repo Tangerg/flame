@@ -8,6 +8,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/modelcontextprotocol/go-sdk/auth"
+	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/httporigin"
@@ -18,25 +19,44 @@ import (
 // the tool sink so the model immediately sees the refreshed server. The status
 // walks connecting -> (connected | failed). Returns [ErrUnknownServer] for an
 // unconfigured name.
-func (c *Connections) Reconnect(ctx context.Context, name mcpserver.ServerName) error {
+// planAttempt claims a known, open server and detaches its live session under
+// one hold of the lock: the session to close, the configuration to dial, and the
+// attempt that owns the outcome. plan decides what to dial and may refuse, and
+// every way out releases the lock, so no caller unlocks by hand on a rejection.
+func (c *Connections) planAttempt(
+	ctx context.Context,
+	name mcpserver.ServerName,
+	plan func(*server) (ServerConfig, error),
+) (*sdkmcp.ClientSession, ServerConfig, *connectionAttempt, error) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.closed {
-		c.mu.Unlock()
-		return ErrConnectionsClosed
+		return nil, ServerConfig{}, nil, ErrConnectionsClosed
 	}
 	configuredServer := c.find(name)
 	if configuredServer == nil {
-		c.mu.Unlock()
-		return fmt.Errorf("%w: %q", ErrUnknownServer, name)
+		return nil, ServerConfig{}, nil, fmt.Errorf("%w: %q", ErrUnknownServer, name)
+	}
+	cfg, err := plan(configuredServer)
+	if err != nil {
+		return nil, ServerConfig{}, nil, err
 	}
 	detachedSession := configuredServer.session
 	configuredServer.session = nil
 	configuredServer.tools = nil
 	configuredServer.state = mcpserver.ConnectionConnecting
-	cfg := configuredServer.config
-	cfg.OAuthHandler = configuredServer.oauth // reuse this session's sign-in (nil for non-OAuth)
-	attempt := c.beginAttempt(ctx, configuredServer)
-	c.mu.Unlock()
+	return detachedSession, cfg, c.beginAttempt(ctx, configuredServer), nil
+}
+
+func (c *Connections) Reconnect(ctx context.Context, name mcpserver.ServerName) error {
+	detachedSession, cfg, attempt, err := c.planAttempt(ctx, name, func(configuredServer *server) (ServerConfig, error) {
+		reused := configuredServer.config
+		reused.OAuthHandler = configuredServer.oauth // reuse this session's sign-in (nil for non-OAuth)
+		return reused, nil
+	})
+	if err != nil {
+		return err
+	}
 	defer c.finishAttempt(attempt)
 
 	// Publish the connecting state before closing/dialing: no new Run may keep
@@ -118,31 +138,18 @@ func reusableOAuth(current, candidate ServerConfig, handler auth.OAuthHandler) a
 // [oauthFlowTimeout] elapses. Returns
 // [ErrUnknownServer] for an unconfigured name. Serialized with the other dials.
 func (c *Connections) Authorize(ctx context.Context, name mcpserver.ServerName) (err error) {
-	c.mu.Lock()
-	if c.closed {
-		c.mu.Unlock()
-		return ErrConnectionsClosed
+	detachedSession, cfg, attempt, err := c.planAttempt(ctx, name, func(configuredServer *server) (ServerConfig, error) {
+		if configuredServer.config.Transport != TransportHTTP {
+			return ServerConfig{}, errors.New("mcp: OAuth applies to HTTP servers only")
+		}
+		if configuredServer.config.Authorization != "" {
+			return ServerConfig{}, errors.New("mcp: clear static Authorization before starting OAuth")
+		}
+		return configuredServer.config, nil
+	})
+	if err != nil {
+		return err
 	}
-	configuredServer := c.find(name)
-	if configuredServer == nil {
-		c.mu.Unlock()
-		return fmt.Errorf("%w: %q", ErrUnknownServer, name)
-	}
-	if configuredServer.config.Transport != TransportHTTP {
-		c.mu.Unlock()
-		return errors.New("mcp: OAuth applies to HTTP servers only")
-	}
-	if configuredServer.config.Authorization != "" {
-		c.mu.Unlock()
-		return errors.New("mcp: clear static Authorization before starting OAuth")
-	}
-	detachedSession := configuredServer.session
-	configuredServer.session = nil
-	configuredServer.tools = nil
-	configuredServer.state = mcpserver.ConnectionConnecting
-	cfg := configuredServer.config
-	attempt := c.beginAttempt(ctx, configuredServer)
-	c.mu.Unlock()
 	defer c.finishAttempt(attempt)
 
 	c.publishTools()
