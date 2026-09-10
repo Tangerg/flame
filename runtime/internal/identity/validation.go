@@ -19,18 +19,30 @@ var (
 // ValidateResource enforces the shared opaque resource envelope without
 // assigning meaning to an identity or normalizing caller material.
 func ValidateResource(kind, value string, maximumCharacters int) error {
+	if err := identityText(value, maximumCharacters); err != nil {
+		return fmt.Errorf("%s identity %w", kind, err)
+	}
+	return nil
+}
+
+// identityText is what every exact identity must be, whatever it names: a
+// non-empty, valid UTF-8 string within its envelope, carrying no whitespace or
+// non-printing character. It reports the defect as a phrase so a resource
+// identity can name its kind and a model identity can carry the sentinel its
+// callers branch on.
+func identityText(value string, maximumCharacters int) error {
 	if value == "" {
-		return fmt.Errorf("%s identity is empty", kind)
+		return errors.New("is empty")
 	}
 	if !utf8.ValidString(value) {
-		return fmt.Errorf("%s identity is not valid UTF-8", kind)
+		return errors.New("is not valid UTF-8")
 	}
 	if characters := utf8.RuneCountInString(value); characters > maximumCharacters {
-		return fmt.Errorf("%s identity has %d characters, maximum is %d", kind, characters, maximumCharacters)
+		return fmt.Errorf("has %d characters, maximum is %d", characters, maximumCharacters)
 	}
 	for _, character := range value {
 		if unicode.IsSpace(character) || !unicode.IsPrint(character) {
-			return fmt.Errorf("%s identity contains whitespace or a non-printing character", kind)
+			return errors.New("contains whitespace or a non-printing character")
 		}
 	}
 	return nil
@@ -84,19 +96,8 @@ func ValidateModelSelection(provider, model, reasoningEffort string) error {
 }
 
 func validateModelIdentity(value string, maximumCharacters int, identityError error) error {
-	if value == "" {
-		return fmt.Errorf("%w: empty", identityError)
-	}
-	if !utf8.ValidString(value) {
-		return fmt.Errorf("%w: invalid UTF-8", identityError)
-	}
-	if characters := utf8.RuneCountInString(value); characters > maximumCharacters {
-		return fmt.Errorf("%w: %d characters exceeds %d", identityError, characters, maximumCharacters)
-	}
-	for _, character := range value {
-		if unicode.IsSpace(character) || !unicode.IsPrint(character) {
-			return fmt.Errorf("%w: contains whitespace or a non-printing character", identityError)
-		}
+	if err := identityText(value, maximumCharacters); err != nil {
+		return fmt.Errorf("%w: %v", identityError, err)
 	}
 	return nil
 }
