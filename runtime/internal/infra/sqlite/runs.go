@@ -788,22 +788,7 @@ func runCapabilitiesForStorage(value rundomain.Run) rundomain.Capabilities {
 // row before terminalizing the Run in the same transaction; the proposed
 // aggregate transition remains the authority for whether the write is legal.
 func (r *RunStore) runForTransition(ctx context.Context, runID string) (rundomain.Run, bool, error) {
-	if err := validateRunResource("read Run for transition", runID); err != nil {
-		return rundomain.Run{}, false, err
-	}
-	row := conn(ctx, r.db).QueryRowContext(ctx,
-		`SELECT `+runColumns+`
-		 FROM runs AS r
-		 `+runReadJoins+`
-		 WHERE r.run_id = ?`, runID)
-	value, err := scanRunForRecovery(row)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		return rundomain.Run{}, false, nil
-	case err != nil:
-		return rundomain.Run{}, false, fmt.Errorf("sqlite: read Run %q for transition: %w", runID, err)
-	}
-	return value, true, nil
+	return r.readRun(ctx, "read Run for transition", runID, scanRunForRecovery)
 }
 
 // coarseState is the column value a Run in state s is stored under. It routes

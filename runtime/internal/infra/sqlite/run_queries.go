@@ -96,8 +96,15 @@ func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []ru
 }
 
 // Run returns one Run by id alone, whatever state it is in.
-func (r *RunStore) Run(ctx context.Context, runID string) (rundomain.Run, bool, error) {
-	if err := validateRunResource("read Run", runID); err != nil {
+// readRun answers one Run row through the caller's scanner. Which row, what
+// its absence means and how a failure reads are the same for every reader;
+// only what a stored Run must satisfy to be decodable differs.
+func (r *RunStore) readRun(
+	ctx context.Context,
+	operation, runID string,
+	scan func(scanRow) (rundomain.Run, error),
+) (rundomain.Run, bool, error) {
+	if err := validateRunResource(operation, runID); err != nil {
 		return rundomain.Run{}, false, err
 	}
 	row := conn(ctx, r.db).QueryRowContext(ctx,
@@ -105,14 +112,18 @@ func (r *RunStore) Run(ctx context.Context, runID string) (rundomain.Run, bool, 
 		 FROM runs AS r
 		 `+runReadJoins+`
 		 WHERE r.run_id = ?`, runID)
-	run, err := scanRun(row)
+	run, err := scan(row)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return rundomain.Run{}, false, nil
 	case err != nil:
-		return rundomain.Run{}, false, fmt.Errorf("sqlite: read run %q: %w", runID, err)
+		return rundomain.Run{}, false, fmt.Errorf("sqlite: %s %q: %w", operation, runID, err)
 	}
 	return run, true, nil
+}
+
+func (r *RunStore) Run(ctx context.Context, runID string) (rundomain.Run, bool, error) {
+	return r.readRun(ctx, "read Run", runID, scanRun)
 }
 
 // Tree resolves runID to its tree root and returns that root plus every
