@@ -91,6 +91,7 @@ interface FixtureRoute {
   locale?: string;
   contrast?: number;
   accent?: string;
+  custom?: { readonly bg: string; readonly fg: string };
 }
 
 async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
@@ -117,6 +118,10 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   if (route.density) query.set("density", route.density);
   if (route.contrast !== undefined) query.set("contrast", String(route.contrast));
   if (route.accent) query.set("accent", route.accent);
+  if (route.custom) {
+    query.set("custom-bg", route.custom.bg);
+    query.set("custom-fg", route.custom.fg);
+  }
 
   await page.goto(`${VISUAL_URL}?${query}`);
   await page.locator("html[data-visual-ready]").waitFor();
@@ -241,6 +246,64 @@ for (const pane of VISUAL_SETTINGS_PANES) {
       await expectNoWcagViolations(page);
     });
   }
+}
+
+// A custom palette is the freest preference of all — two colours, given directly — and its whole
+// ink ladder is DERIVED from them. It was derived as fixed percentages of the way from the
+// background to the ink, and a percentage buys a look rather than a ratio: handed this product's
+// own dark colours, its muted rung measured 4.19:1 and its faint rung 2.43:1, where the
+// hand-written themes clear 5.75 on the same rung. The derivation, not the colours.
+//
+// Read through elements rather than off the custom properties, because these resolve to
+// `color-mix(...)` expressions — asking for the property gives the text, and a first attempt at
+// this measured the authored string, got black for every rung, and reported three identical
+// ratios that happened to look plausible.
+const CUSTOM_PALETTES = [
+  { bg: "#ffffff", fg: "#000000" },
+  { bg: "#1d1f23", fg: "#e3e5e9" },
+  { bg: "#f5f0e8", fg: "#2b2a26" },
+  { bg: "#101820", fg: "#c8d0d8" },
+] as const;
+
+for (const custom of CUSTOM_PALETTES) {
+  test(`a custom palette's ink reads on its own surface ${custom.bg}`, async ({ page }) => {
+    await openFixture(page, { fixture: "agent", state: "narrative", custom });
+
+    const rungs = await page.evaluate(() => {
+      const luminance = (css: string) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = canvas.height = 1;
+        const context = canvas.getContext("2d")!;
+        // The canvas resolves `color-mix(in oklab, ...)` and hands back sRGB pixels, which is
+        // the only place in the page that will.
+        context.fillStyle = css;
+        context.fillRect(0, 0, 1, 1);
+        const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
+        return [r, g, b]
+          .map((value) => {
+            const scaled = (value ?? 0) / 255;
+            return scaled <= 0.03928 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;
+          })
+          .reduce((total, channel, index) => total + [0.2126, 0.7152, 0.0722][index]! * channel, 0);
+      };
+      const style = getComputedStyle(document.documentElement);
+      const authored = (name: string) => style.getPropertyValue(name).trim();
+      const ratio = (one: string, two: string) => {
+        const [lighter, darker] = [luminance(one), luminance(two)].sort((a, b) => b - a);
+        return (lighter! + 0.05) / (darker! + 0.05);
+      };
+      const surface = authored("--color-surface");
+      return {
+        soft: ratio(surface, authored("--color-text-soft")),
+        muted: ratio(surface, authored("--color-text-muted")),
+        faint: ratio(surface, authored("--color-text-faint")),
+      };
+    });
+
+    for (const [rung, measured] of Object.entries(rungs)) {
+      expect(measured, `${rung} ink on a custom surface`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
 }
 
 // The accent is a colour the user picks with no constraint on it, and the ink that sits on the

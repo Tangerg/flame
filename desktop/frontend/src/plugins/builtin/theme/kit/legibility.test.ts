@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { WCAG_AA_NON_TEXT, WCAG_AA_TEXT, contrastRatio, inkOnFill } from "./legibility";
+import {
+  WCAG_AA_NON_TEXT,
+  WCAG_AA_TEXT,
+  contrastRatio,
+  inkOnFill,
+  legibleMix,
+  mixOklab,
+} from "./legibility";
 
 describe("contrastRatio", () => {
   // The two anchors the criterion itself is defined against, so a wrong coefficient or a
@@ -66,5 +73,51 @@ describe("inkOnFill", () => {
   it("answers differently for a mark than for a label", () => {
     expect(inkOnFill("#ffffff", "#3574f0", WCAG_AA_TEXT)).toBe("#000000");
     expect(inkOnFill("#ffffff", "#3574f0", WCAG_AA_NON_TEXT)).toBe("#ffffff");
+  });
+});
+
+describe("mixOklab", () => {
+  // The ends are the only points a mix cannot get wrong, so they are where a swapped argument
+  // or an inverted weight shows up. That the MIDDLE matches the browser is pinned by
+  // `visual/oklabPrediction.visual.spec.ts`, which paints it and reads the pixels back.
+  it("returns each end at its own extreme", () => {
+    expect(mixOklab("#3574f0", "#ffffff", 100).toLowerCase()).toBe("#3574f0");
+    expect(mixOklab("#3574f0", "#ffffff", 0).toLowerCase()).toBe("#ffffff");
+  });
+
+  it("moves toward the ink as its share grows", () => {
+    const steps = [0, 25, 50, 75, 100].map((pct) =>
+      contrastRatio(mixOklab("#000000", "#ffffff", pct), "#ffffff"),
+    );
+    for (let i = 1; i < steps.length; i += 1) expect(steps[i]!).toBeGreaterThan(steps[i - 1]!);
+  });
+});
+
+describe("legibleMix", () => {
+  // The case that started this: the product's own dark colours, handed to the derivation that
+  // builds a custom palette. The designed rung reads 2.4:1 and has to be raised.
+  it("raises a rung that does not read", () => {
+    const floor = 34;
+    const chosen = legibleMix("#e3e5e9", "#1d1f23", "#1d1f23", floor, WCAG_AA_TEXT);
+    expect(chosen).toBeGreaterThan(floor);
+    expect(contrastRatio(mixOklab("#e3e5e9", "#1d1f23", chosen), "#1d1f23")).toBeGreaterThanOrEqual(
+      WCAG_AA_TEXT,
+    );
+  });
+
+  it("leaves a rung that already reads exactly where the design put it", () => {
+    const floor = 88;
+    expect(legibleMix("#000000", "#ffffff", "#ffffff", floor, WCAG_AA_TEXT)).toBe(floor);
+  });
+
+  // An ink the user chose too close to their own background cannot be rescued by mixing — the
+  // most this can do is stop mixing. Stated as the property rather than a number: the first
+  // pair tried here was `#909090`, which is 5.10:1 against that background, so a 93% mix
+  // cleared it and the case was not the one it claimed to be.
+  it("gives up at the ink itself when even that does not read", () => {
+    const ink = "#5a5a5a";
+    const fill = "#202020";
+    expect(contrastRatio(ink, fill)).toBeLessThan(WCAG_AA_TEXT);
+    expect(legibleMix(ink, fill, fill, 28, WCAG_AA_TEXT)).toBe(100);
   });
 });

@@ -107,6 +107,20 @@ const contrast =
 // twenty-one views share; a spec names one of the other two.
 const requestedFullView = query.get("full-view") ?? undefined;
 const requestedLocale = query.get("locale") ?? "en";
+// A custom palette is two colours the user gives directly, which makes it the freest of the
+// appearance preferences and the last one a fixture could not reach. `theme` stays light/dark
+// because the class bootstrap below needs one of those; the painter resolves the real scheme
+// from the base colour it is handed.
+const hex = (name: string) => {
+  const value = query.get(name);
+  return value !== null && /^#[\da-f]{6}$/i.test(value) ? value : undefined;
+};
+const customBase = hex("custom-bg");
+const customInk = hex("custom-fg");
+const customTheme =
+  customBase !== undefined && customInk !== undefined
+    ? { bg: customBase, fg: customInk }
+    : undefined;
 
 rootElement.classList.remove("theme-light", "theme-dark");
 rootElement.classList.add(`theme-${theme}`);
@@ -215,6 +229,7 @@ useAppearanceStore.setState({
   ...(density ? { density } : {}),
   ...(contrast !== undefined ? { contrast } : {}),
   ...(accent !== undefined ? { accent } : {}),
+  ...(customTheme ? { theme: "custom" as const, customTheme } : {}),
 });
 // Both halves of what `appearancePainter` installs: the pane and the sidebar footer read
 // the preference through this port, so painting without binding it renders a broken

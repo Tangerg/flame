@@ -13,6 +13,7 @@ import { useAppearanceStore } from "../adapters/appearanceStore";
 import { colorThemeContribution } from "../kit/colorThemeContribution";
 import type { ColorThemePluginSpec } from "../kit/types";
 import type { CustomTheme } from "../kit/appearance";
+import { WCAG_AA_TEXT, legibleMix, mixOklab } from "../kit/legibility";
 
 const CUSTOM_THEME_ID = "custom";
 
@@ -31,7 +32,10 @@ function deriveCustomSpec(ct: CustomTheme, accent: string, contrast: number): Co
   const p = (lo: number, hi: number) => Math.round(lo + (hi - lo) * k);
   const scheme: Scheme = colord(bg).isDark() ? "dark" : "light";
   const extreme = scheme === "dark" ? "#ffffff" : "#000000";
-  const chrome = mix(fg, p(4, 12), bg);
+  const chromePct = p(4, 12);
+  const chrome = mix(fg, chromePct, bg);
+  const plane = mixOklab(fg, bg, chromePct);
+  const legible = (floorPct: number) => legibleMix(fg, bg, plane, floorPct, WCAG_AA_TEXT);
   return {
     id: CUSTOM_THEME_ID,
     label: "Custom",
@@ -50,9 +54,14 @@ function deriveCustomSpec(ct: CustomTheme, accent: string, contrast: number): Co
     ink: {
       text: fg,
       textBright: mix(fg, 80, extreme), // nudge toward pure white/black
-      textSoft: mix(fg, p(86, 94), bg),
-      textMuted: mix(fg, p(45, 75), bg),
-      textFaint: mix(fg, p(28, 52), bg),
+      // Each rung is the share the design asks for, or the smallest share that READS, whichever
+      // is further. A percentage buys a look and not a ratio: at the designed 53% and 34% these
+      // measured 4.19 and 2.43 against the surface when handed this product's OWN dark colours,
+      // while the hand-written themes clear 5.75 on the same rung. `chrome` rather than `bg`
+      // because that is the plane most text sits on, and it has already stepped toward the ink.
+      textSoft: mix(fg, legible(p(86, 94)), bg),
+      textMuted: mix(fg, legible(p(45, 75)), bg),
+      textFaint: mix(fg, legible(p(28, 52)), bg),
     },
     borders: {
       border: mix(fg, p(8, 22), bg),
