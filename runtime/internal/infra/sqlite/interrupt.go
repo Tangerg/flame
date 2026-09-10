@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -559,14 +558,14 @@ func scanPending(row scanRow) (InterruptRecord, error) {
 		return InterruptRecord{}, fmt.Errorf("sqlite: decode interrupts: %w", err)
 	}
 	var continuationValues []continuationRow
-	if decodeInterruptJSONErr := decodeInterruptJSON(continuations, &continuationValues); decodeInterruptJSONErr != nil {
+	if decodeInterruptJSONErr := decodeStoredJSON([]byte(continuations), &continuationValues); decodeInterruptJSONErr != nil {
 		return InterruptRecord{}, fmt.Errorf("sqlite: decode interrupt continuations: %w", decodeInterruptJSONErr)
 	}
 	if p.Continuations, err = continuationsFromRows(continuationValues); err != nil {
 		return InterruptRecord{}, fmt.Errorf("sqlite: decode interrupt continuations: %w", err)
 	}
 	var bindingValues []interruptBindingRow
-	if decodeInterruptJSONErr := decodeInterruptJSON(encodedBindings, &bindingValues); decodeInterruptJSONErr != nil {
+	if decodeInterruptJSONErr := decodeStoredJSON([]byte(encodedBindings), &bindingValues); decodeInterruptJSONErr != nil {
 		return InterruptRecord{}, fmt.Errorf("sqlite: decode input-request bindings: %w", decodeInterruptJSONErr)
 	}
 	p.Bindings = interruptBindingsFromRows(bindingValues)
@@ -597,26 +596,10 @@ func decodeInterrupts(payload string) ([]transcript.Interrupt, error) {
 		return nil, nil
 	}
 	var rows []interruptPayload
-	if err := decodeInterruptJSON(payload, &rows); err != nil {
+	if err := decodeStoredJSON([]byte(payload), &rows); err != nil {
 		return nil, err
 	}
 	return interruptsFromPayloads(rows)
-}
-
-func decodeInterruptJSON(encoded string, target any) error {
-	decoder := json.NewDecoder(strings.NewReader(encoded))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(target); err != nil {
-		return err
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("stored interrupt JSON has a trailing value")
-		}
-		return fmt.Errorf("stored interrupt JSON trailing value: %w", err)
-	}
-	return nil
 }
 
 func drainedToolRows(tools []DrainedToolRecord) []drainedToolRow {

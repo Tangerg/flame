@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
@@ -345,21 +344,12 @@ func encodeExecutorPolicy(checkpoint ExecutorCheckpointRecord) ([]byte, error) {
 }
 
 func decodeExecutorPolicy(data string) (ExecutorCheckpointRecord, error) {
-	decoder := json.NewDecoder(strings.NewReader(data))
-	decoder.DisallowUnknownFields()
 	var wire executorPolicyWire
-	if err := decoder.Decode(&wire); err != nil {
+	if err := decodeStoredJSON([]byte(data), &wire); err != nil {
 		return ExecutorCheckpointRecord{}, err
 	}
 	if wire.Capabilities == nil {
 		return ExecutorCheckpointRecord{}, errors.New("policy capabilities are required")
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return ExecutorCheckpointRecord{}, errors.New("policy has a trailing JSON value")
-		}
-		return ExecutorCheckpointRecord{}, fmt.Errorf("policy trailing JSON: %w", err)
 	}
 	scope := ExecutorScopeRecord{
 		SessionID:         wire.Scope.SessionID,
@@ -424,21 +414,12 @@ func encodeExecutorUsage(usage accounting.Snapshot) ([]byte, error) {
 }
 
 func decodeExecutorUsage(data string) (accounting.Snapshot, error) {
-	decoder := json.NewDecoder(strings.NewReader(data))
-	decoder.DisallowUnknownFields()
 	var wire executorUsageWire
-	if err := decoder.Decode(&wire); err != nil {
+	if err := decodeStoredJSON([]byte(data), &wire); err != nil {
 		return accounting.Snapshot{}, err
 	}
 	if wire.Models == nil {
 		return accounting.Snapshot{}, errors.New("usage models must be an array")
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return accounting.Snapshot{}, errors.New("usage has a trailing JSON value")
-		}
-		return accounting.Snapshot{}, fmt.Errorf("usage trailing JSON: %w", err)
 	}
 	usage := accounting.Snapshot{Models: make([]accounting.ModelUsage, len(wire.Models))}
 	for index, model := range wire.Models {

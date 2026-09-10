@@ -1,12 +1,9 @@
 package sqlite
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -129,15 +126,7 @@ func encodeTranscriptItem(item transcript.Item) ([]byte, error) {
 
 func decodeTranscriptItem(data []byte) (transcript.ItemSnapshot, error) {
 	var payload transcriptItemPayload
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&payload); err != nil {
-		return transcript.ItemSnapshot{}, err
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		if err == nil {
-			err = errors.New("multiple JSON values")
-		}
+	if err := decodeStoredJSON(data, &payload); err != nil {
 		return transcript.ItemSnapshot{}, err
 	}
 	if !payload.Status.Valid() {

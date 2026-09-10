@@ -1,12 +1,10 @@
 package sqlite
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"time"
 
@@ -192,15 +190,7 @@ func decodeRunCapabilities(encoded string) (rundomain.Capabilities, error) {
 		return rundomain.Capabilities{}, nil
 	}
 	var row runCapabilitiesRow
-	decoder := json.NewDecoder(bytes.NewReader([]byte(encoded)))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&row); err != nil {
-		return rundomain.Capabilities{}, fmt.Errorf("decode run capabilities: %w", err)
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		if err == nil {
-			err = errors.New("multiple JSON values")
-		}
+	if err := decodeStoredJSON([]byte(encoded), &row); err != nil {
 		return rundomain.Capabilities{}, fmt.Errorf("decode run capabilities: %w", err)
 	}
 	capabilities := rundomain.Capabilities{ChildRuns: row.ChildRuns}

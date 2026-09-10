@@ -38,7 +38,7 @@ func TestRunAccountingCodecRejectsOldSentinelsAndMalformedPolicies(t *testing.T)
 	} {
 		t.Run(name, func(t *testing.T) {
 			var row runAccountingRow
-			if err := decodeInterruptJSON(encoded, &row); err == nil {
+			if err := decodeStoredJSON([]byte(encoded), &row); err == nil {
 				_, _, err = row.values()
 				if err == nil {
 					t.Fatalf("stored accounting %s was accepted", encoded)

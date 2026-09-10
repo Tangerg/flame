@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -379,15 +377,7 @@ func encodeGoalBudget(budget goal.Budget) (string, error) {
 
 func decodeGoalBudget(encoded string) (goal.Budget, error) {
 	var row storedGoalBudget
-	decoder := json.NewDecoder(strings.NewReader(encoded))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&row); err != nil {
-		return goal.Budget{}, err
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		if err == nil {
-			err = errors.New("multiple JSON values")
-		}
+	if err := decodeStoredJSON([]byte(encoded), &row); err != nil {
 		return goal.Budget{}, err
 	}
 	switch row.Type {
