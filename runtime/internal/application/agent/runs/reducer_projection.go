@@ -296,9 +296,6 @@ func (r *reducer) goalTurn(run run.Run) (*goal.RunRecord, error) {
 		Outcome:       outcome,
 		CompletedAt:   run.FinishedAt(),
 	}
-	if record.CompletedAt.IsZero() {
-		record.CompletedAt = r.now()
-	}
 	record.Steps = run.Metrics().Steps()
 	cost, err := run.Metrics().Cost()
 	if err != nil {

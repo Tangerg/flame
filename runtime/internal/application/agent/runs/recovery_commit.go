@@ -543,26 +543,16 @@ func validateRecoveryGoalRuns(records []goal.RunRecord, lostByID map[string]rund
 	}
 	seen := make(map[string]struct{}, len(records))
 	for index, record := range records {
-		if err := record.Validate(); err != nil {
-			return fmt.Errorf("runs: recovery commit Goal Run[%d]: %w", index, err)
-		}
 		if _, duplicate := seen[record.RunID]; duplicate {
 			return fmt.Errorf("runs: recovery commit repeats Goal Run for Run %q", record.RunID)
 		}
 		seen[record.RunID] = struct{}{}
-		run, found := expected[record.RunID]
-		outcome, terminal := run.Outcome()
-		if !found || !terminal {
+		lost, found := expected[record.RunID]
+		if !found {
 			return fmt.Errorf("runs: recovery commit Goal Run names unowned Run %q", record.RunID)
 		}
-		cost, err := run.Metrics().Cost()
-		if err != nil {
-			return fmt.Errorf("runs: recovery commit Goal Run %q cost: %w", run.ID(), err)
-		}
-		if record.SessionID != run.SessionID() || record.IncarnationID != run.GoalIncarnationID() ||
-			record.Outcome != outcome || !record.Cost.Equal(cost) ||
-			record.Steps != run.Metrics().Steps() || !record.CompletedAt.Equal(run.FinishedAt()) {
-			return fmt.Errorf("runs: recovery commit Goal Run differs from lost Run %q", run.ID())
+		if err := goalRunRecordDescribes(record, lost); err != nil {
+			return fmt.Errorf("runs: recovery commit Goal Run[%d]: %w", index, err)
 		}
 	}
 	if len(seen) != len(expected) {
