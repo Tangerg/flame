@@ -381,6 +381,28 @@ func decodeInteractionCheckpointInstructions(messages []corechat.Message) ([]cor
 	return instructions, nil
 }
 
+// admitCheckpointMember admits one row of a member-keyed checkpoint list: an
+// identity strictly after the previous row's, parseable, and belonging to this
+// checkpoint's Processes. Two lists are keyed by member and are read back in the
+// order they were written, so a row out of order has to mean the same in both.
+func admitCheckpointMember(
+	memberID, previousMemberID string,
+	index int,
+	processes map[agent.ProcessID]struct{},
+) (agent.ProcessID, error) {
+	if index > 0 && memberID <= previousMemberID {
+		return agent.ProcessID{}, errors.New("not in canonical order")
+	}
+	processID, err := agent.ParseProcessID(memberID)
+	if err != nil {
+		return agent.ProcessID{}, fmt.Errorf("member identity: %w", err)
+	}
+	if _, found := processes[processID]; !found {
+		return agent.ProcessID{}, errors.New("names a foreign member")
+	}
+	return processID, nil
+}
+
 func decodeInteractionCheckpointMembers(
 	values []interactionMemberCallsWire,
 	processes map[agent.ProcessID]struct{},
@@ -388,15 +410,9 @@ func decodeInteractionCheckpointMembers(
 	members := make(map[agent.ProcessID]map[string]int, len(values))
 	previousMember := ""
 	for index, member := range values {
-		if index > 0 && member.MemberID <= previousMember {
-			return nil, errors.New("not in canonical order")
-		}
-		processID, err := agent.ParseProcessID(member.MemberID)
+		processID, err := admitCheckpointMember(member.MemberID, previousMember, index, processes)
 		if err != nil {
-			return nil, fmt.Errorf("member identity: %w", err)
-		}
-		if _, found := processes[processID]; !found {
-			return nil, errors.New("names a foreign member")
+			return nil, err
 		}
 		models, err := decodeInteractionCallCounts(member.Models)
 		if err != nil || len(models) == 0 {
@@ -419,15 +435,9 @@ func decodeInteractionModelContexts(
 	contexts := make(map[agent.ProcessID]ModelContextTokenCalibration, len(values))
 	previous := ""
 	for index, value := range values {
-		if index > 0 && value.MemberID <= previous {
-			return nil, errors.New("not in canonical order")
-		}
-		processID, err := agent.ParseProcessID(value.MemberID)
+		processID, err := admitCheckpointMember(value.MemberID, previous, index, processes)
 		if err != nil {
-			return nil, fmt.Errorf("member identity: %w", err)
-		}
-		if _, found := processes[processID]; !found {
-			return nil, errors.New("names a foreign member")
+			return nil, err
 		}
 		if len(callsByProcess[processID]) == 0 {
 			return nil, errors.New("has no matching member accounting")

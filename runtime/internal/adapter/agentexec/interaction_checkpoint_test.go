@@ -209,6 +209,37 @@ func TestModelContextTokenCalibrationKeepsExactMaxIntDelta(t *testing.T) {
 	}
 }
 
+// TestAdmitCheckpointMemberOwnsBothMemberListRules tests the rule where it
+// lives. Through either decoder a rejected row is also rejected by the check
+// after it, so neither list can show which one refused.
+func TestAdmitCheckpointMemberOwnsBothMemberListRules(t *testing.T) {
+	first, err := agent.ParseProcessID("process:a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := agent.ParseProcessID("process:b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	known := map[agent.ProcessID]struct{}{first: {}, second: {}}
+
+	if _, err := admitCheckpointMember(first.String(), "", 0, known); err != nil {
+		t.Fatalf("the first row of a known member list was refused: %v", err)
+	}
+	if _, err := admitCheckpointMember(second.String(), first.String(), 1, known); err != nil {
+		t.Fatalf("an ascending known member was refused: %v", err)
+	}
+	if _, err := admitCheckpointMember(first.String(), second.String(), 1, known); err == nil {
+		t.Fatal("a member out of canonical order was admitted")
+	}
+	if _, err := admitCheckpointMember(first.String(), first.String(), 1, known); err == nil {
+		t.Fatal("a repeated member was admitted")
+	}
+	if _, err := admitCheckpointMember(second.String(), "", 0, map[agent.ProcessID]struct{}{first: {}}); err == nil {
+		t.Fatal("a member outside the checkpoint was admitted")
+	}
+}
+
 func TestDecodeInteractionModelContextsRejectsForeignOrUnaccountedMember(t *testing.T) {
 	processID, err := agent.ParseProcessID("process:context")
 	if err != nil {
