@@ -23,7 +23,7 @@ const titleMaxRunes = 80
 
 // modelTitleGenerator produces a short, human-readable Session title from the
 // opening user message. It uses one middleware-free call to the typically
-// cheaper utility model. A nil generator or Resolver uses only the deterministic
+// cheaper utility model. A nil Resolver uses only the deterministic
 // opening-message fallback.
 type modelTitleGenerator struct {
 	client modeladapter.AuxiliaryResolver
@@ -53,7 +53,7 @@ func (g *modelTitleGenerator) Generate(ctx context.Context, firstMessage string)
 		return "", nil
 	}
 	fallback := sanitizeTitle(msg)
-	if g == nil || g.client == nil {
+	if g.client == nil {
 		return fallback, nil
 	}
 	if runes := []rune(msg); len(runes) > titleMaxInputRunes {

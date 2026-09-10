@@ -676,9 +676,6 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 }
 
 func (e *Effects) applyModelInvocations(ctx context.Context, commit runs.EventCommit) error {
-	if len(commit.ModelInvocations) == 0 {
-		return nil
-	}
 	for _, invocation := range commit.ModelInvocations {
 		var err error
 		switch invocation.State {
@@ -713,9 +710,6 @@ func (e *Effects) applyModelInvocations(ctx context.Context, commit runs.EventCo
 }
 
 func (e *Effects) applyToolInvocations(ctx context.Context, commit runs.EventCommit) error {
-	if len(commit.ToolInvocations) == 0 {
-		return nil
-	}
 	for _, invocation := range commit.ToolInvocations {
 		var err error
 		switch invocation.State {
