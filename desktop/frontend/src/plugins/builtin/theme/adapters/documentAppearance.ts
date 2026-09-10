@@ -121,6 +121,18 @@ function applyColorTheme(
   //
   // Read back what the browser resolved rather than recomputing each theme's expression here,
   // so a palette that defines its CTA some other way is covered by the same two lines.
+  //
+  // This works because of exactly one property of custom properties, and it is worth naming so
+  // nobody "fixes" it: `getPropertyValue` hands back the COMPUTED value, and computing a custom
+  // property substitutes `var()`. `globals.css` says `--color-cta: var(--color-accent)` and this
+  // reads `#2b5fd0` — measured, along with a pale accent arriving as `#ffcb00` and the ink below
+  // correctly flipping to black.
+  //
+  // What computing a custom property does NOT do is evaluate anything else. A token authored as
+  // `color-mix(…)` or `calc(…)` arrives here as that text — `--color-text-muted` and
+  // `--color-surface-2` both would — and `colord` cannot parse it. So this pair is safe only
+  // while the CTA and the accent resolve to a colour literal or a chain of `var()`s to one; a
+  // palette that mixes its CTA needs the value painted onto a probe and read back instead.
   const declaredInk = spec?.tokens?.["color-text-on-accent"] ?? "#ffffff";
   const resolved = (name: string) => getComputedStyle(root).getPropertyValue(name).trim();
   root.style.setProperty(

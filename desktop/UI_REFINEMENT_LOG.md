@@ -14246,3 +14246,77 @@ tabular 字形。结果按模块级 Map 缓存——一次会话内答案不会�
 
 Round 212 在守卫里发现 `document.fonts.check()` 会撒谎，并把结论写进了那条守卫的注释——
 **却没人去看生产代码里是不是也在用它。** 用了，而且正是决定"picker 给你哪些字体"的那一处。
+
+## Round 221 —— 把「守卫说不可信的 API」在生产代码里挨个查一遍，结果推翻了我自己的一个结论
+
+Round 220 的漏法是：**一个 API 在守卫注释里被判定为撒谎，生产代码里却还在用它，
+没人回头看。** 这一类可以机械地查，于是把本会话点名过的每个 API 都对 `src/` 查了一遍。
+
+| API | 守卫的判定 | 生产代码 |
+| --- | --- | --- |
+| `document.fonts.check()` | 对不存在的字族返回 true | **上一轮已修**，`src/` 里已无 |
+| `:has(:focus-visible)` | 匹配但在 Chromium 里从不失效 | 未使用（只在注释里解释为什么不用） |
+| `colord.extend()` | 会污染共享实例（禁止的 ambient global） | 未使用；`legibility.ts` 自己写出相对亮度 |
+| canvas `fillStyle` 吃 `color-mix()`/`oklab()` | **我以为它会静默变黑** | **判定本身是错的 —— 见下** |
+| `getPropertyValue` 读自定义属性 | 「返回作者写的文本」 | **4 处，全部正确 —— 但规则要说准** |
+
+### 一、我推翻了自己的结论：canvas `fillStyle` 是接受 `color-mix()` 的
+
+Round 211 我记下"fillStyle 静默拒绝 `color-mix(...)` 和 `oklab()`，回落成黑色"。
+这一轮拿哨兵测了（先设 `#00ff00`，再设目标值，看赋值有没有被吃掉）：
+
+| 输入 | `fillStyle` 变成 | 画出来的像素 |
+| --- | --- | --- |
+| `#5a5d63` | `#5a5d63` | rgb(90,93,99) ✓ |
+| `color-mix(in oklab, #1e1f22 50%, #5a5d63)` | `oklab(0.3586…)` | rgb(59,61,65) ✓ |
+| `--color-text-muted` 的真实文本（含 `max()`/`calc()`） | `oklab(0.4778…)` | rgb(90,93,99) ✓ |
+| `--color-surface-2`（含换行） | `oklab(0.9434…)` | rgb(234,236,240) ✓ |
+
+**全部被接受、像素全部正确。** 这件事要紧，因为 `closure.visual.spec.ts` 的
+对比度守卫正是靠 canvas 解析这些 `color-mix` 的 ink 档位——**如果我的旧结论是对的，
+那条 WCAG 守卫一直在算黑色的亮度、在浅色面上轻松通过、什么都没保证。**
+实测证明它是可靠的。
+
+### 二、`getPropertyValue` 的规则要说准，不然会有人去"修"能用的代码
+
+准确的规则是：它返回**计算值**，而计算一个自定义属性**会做 `var()` 代换**、
+**但不会求值 `calc()` / `color-mix()`**。
+
+实测：`globals.css` 写的是 `--color-cta: var(--color-accent)`，读出来是 `#2b5fd0`；
+换成淡黄 accent 读出来 `#ffcb00`，而 `--color-cta-text` 正确翻成 `#000000`。
+所以 Round 210 那两行是对的。
+
+而 `--color-text-muted` 读出来是
+`"color-mix(in oklab, #1e1f22 max(0%, calc((4% - 4%) * 3)), #5a5d63)"`，
+`--color-surface-2` 甚至**带换行**。
+
+四处生产读取逐个查过：
+- `sidebar.tsx` / `DockResizer.tsx` —— `parseFloat` 解析，但那两个属性都是**同一批代码
+  自己用 JS 写进去的**纯数值（`${px}px` / `${ratio}`），读回自己写的东西，安全。
+- `MermaidBlock.tsx` —— 把 6 个 token 当颜色字符串交给 Mermaid，其中三个是
+  `color-mix(...)` 文本。**能用，因为它原样交回给 CSS**：实测渲染出的 SVG 里，
+  会画的元素（path/rect/text/polygon…）用的颜色**两个主题下都是 0 个非主题色**，
+  `color-mix` 的两档正确解析成 oklab。（`svg`/`defs`/`marker`/`g` 上的
+  `rgb(0,0,0)` 是 `fill` 的初始值，那些元素本身不画东西。）
+- `documentAppearance.ts` —— 靠 `var()` 代换，正确。
+
+已把那处注释改成精确版本，并写明边界：**这一对只在 CTA 与 accent 最终解析为颜色字面量
+（或一串指向字面量的 `var()`）时成立**；哪天有调色板用 `color-mix` 定义 CTA，
+就必须改成画到探针上再读回来。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 新缺陷 | **0** —— 这一族在生产代码里是干净的 |
+| 推翻的错误结论 | **1**（canvas `fillStyle` 接受 `color-mix`/`oklab`） |
+| 因此确认可靠的守卫 | 1（`closure` 的 ink 对比度审计） |
+| 改精确的注释 | 1（含边界条件） |
+| 生产行为改动 | **零** |
+| lint / prettier / typecheck / knip / 守卫 | 全绿；主题单测 89 通过 |
+
+### 一句话
+
+这一轮没找到缺陷，却发现**我自己写下的一条"这个 API 会撒谎"的结论是错的** ——
+而那条错误结论如果留着，下一个人会照它去"修"两处本来正确的代码：
+CTA 的墨色判定，和那条真的在起作用的 WCAG 对比度守卫。
