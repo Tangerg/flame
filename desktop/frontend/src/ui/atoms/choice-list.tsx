@@ -32,8 +32,11 @@ const styles = stylex.create({
     textAlign: "left",
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.fast,
-    cursor: { default: null, ":disabled": "not-allowed" },
-    opacity: { default: null, ":disabled": "var(--control-disabled-opacity)" },
+    cursor: { default: null, ':is(:disabled, [aria-disabled="true"])': "not-allowed" },
+    opacity: {
+      default: null,
+      ':is(:disabled, [aria-disabled="true"])': "var(--control-disabled-opacity)",
+    },
   },
   // A chosen row keeps the wash whether or not the pointer is on it; an open one only borrows it.
   rowChosen: { backgroundColor: surface.hover },
@@ -69,6 +72,8 @@ interface ChoiceListProps {
   values: readonly string[];
   labelledBy: string;
   disabled?: boolean;
+  /** The answer this list belongs to is being submitted. See `TextField`'s `pending`. */
+  pending?: boolean;
   onValueChange: (value: string[]) => void;
   children: ReactNode;
 }
@@ -79,6 +84,7 @@ export function ChoiceList({
   values,
   labelledBy,
   disabled,
+  pending,
   onValueChange,
   children,
 }: ChoiceListProps) {
@@ -94,18 +100,26 @@ export function ChoiceList({
     "aria-labelledby": labelledBy,
     className: stylex.props(styles.list).className,
     disabled,
-    onKeyDown: selectNumberedChoice,
+    // In flight it stays focusable and announces itself as disabled, and the CHANGE is refused
+    // here — `disabled` would take the group out of the tab order, so answering a question by
+    // keyboard blurred the person answering it.
+    "aria-disabled": pending ? true : undefined,
+    onKeyDown: pending ? undefined : selectNumberedChoice,
   };
 
   return multiple ? (
-    <CheckboxGroupPrimitive {...shared} value={value} onValueChange={onValueChange}>
+    <CheckboxGroupPrimitive
+      {...shared}
+      value={value}
+      onValueChange={pending ? undefined : onValueChange}
+    >
       {children}
     </CheckboxGroupPrimitive>
   ) : (
     <RadioGroupPrimitive
       {...shared}
       value={value[0]}
-      onValueChange={(selected) => onValueChange([selected])}
+      onValueChange={pending ? undefined : (selected) => onValueChange([selected])}
     >
       {children}
     </RadioGroupPrimitive>
@@ -120,6 +134,8 @@ interface ChoiceOptionProps {
   label: string;
   description?: string;
   disabled?: boolean;
+  /** The answer this option belongs to is being submitted. */
+  pending?: boolean;
   onReselect?: () => void;
   children: ReactNode;
 }
@@ -132,6 +148,7 @@ export function ChoiceOption({
   label,
   description,
   disabled,
+  pending,
   onReselect,
   children,
 }: ChoiceOptionProps) {
@@ -145,11 +162,12 @@ export function ChoiceOption({
   const common = {
     value,
     disabled,
+    "aria-disabled": pending ? true : undefined,
     nativeButton: true,
     "aria-label": label,
     "aria-description": description || undefined,
     onClick: () => {
-      if (!disabled && !multiple && selected) onReselect?.();
+      if (!disabled && !pending && !multiple && selected) onReselect?.();
     },
     render: <Pressable />,
   };

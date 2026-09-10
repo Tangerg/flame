@@ -66,7 +66,7 @@ export function CwdMissingBanner() {
                   }}
                   placeholder={t("cwdMissing.placeholder")}
                   aria-label={t("cwdMissing.placeholder")}
-                  disabled={busy}
+                  pending={busy}
                   spellCheck={false}
                   // oxlint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus

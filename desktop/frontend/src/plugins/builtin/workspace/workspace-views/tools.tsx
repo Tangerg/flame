@@ -244,7 +244,7 @@ function DiagnosticToolInvocationMaterial({
           font="mono"
           invalid={argumentsError !== null}
           aria-invalid={argumentsError !== null}
-          disabled={running}
+          pending={running}
           spellCheck={false}
           onChange={(event) => {
             onArgumentsTextChange(event.target.value);

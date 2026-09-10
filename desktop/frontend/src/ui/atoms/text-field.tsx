@@ -34,8 +34,11 @@ const styles = stylex.create({
     transitionDuration: motion.color,
     transitionTimingFunction: "var(--ease-out)",
     "::placeholder": { color: color.fgFaint },
-    cursor: { default: null, ":disabled": "not-allowed" },
-    opacity: { default: null, ":disabled": "var(--control-disabled-opacity)" },
+    cursor: { default: null, ':is(:disabled, [aria-disabled="true"])': "not-allowed" },
+    opacity: {
+      default: null,
+      ':is(:disabled, [aria-disabled="true"])': "var(--control-disabled-opacity)",
+    },
   },
   boxed: {
     borderRadius: radius.field,
@@ -99,6 +102,19 @@ type SharedProps = {
   ink?: FieldInk;
   invalid?: boolean;
   className?: string;
+  /**
+   * The action this field belongs to is in flight.
+   *
+   * NOT `disabled`, for the reason `ButtonPrimitive.pending` gives: the platform enforces
+   * `disabled` by making the element unfocusable, so a field that disables itself on submit
+   * blurs whoever submitted from inside it. Measured on the relocate banner — type a path,
+   * press Enter, and focus is on `<body>` 120ms later and stays there.
+   *
+   * `aria-disabled` alone would leave it typable, so this is `readOnly` as well: the field can
+   * still be read and copied from, the caret stays where it was, and nothing can be changed
+   * while the work runs.
+   */
+  pending?: boolean;
 };
 
 function edge(variant: FieldEdge, invalid: boolean) {
@@ -118,6 +134,7 @@ export function TextField({
   ink = "default",
   invalid = false,
   className,
+  pending,
   ...props
 }: TextFieldProps) {
   const styled = stylex.props(
@@ -133,6 +150,8 @@ export function TextField({
   return (
     <InputPrimitive
       {...props}
+      readOnly={pending || props.readOnly}
+      aria-disabled={pending ? true : props["aria-disabled"]}
       data-slot="text-field"
       data-variant={variant}
       {...styled}
@@ -160,6 +179,7 @@ export function TextArea({
   invalid = false,
   autosize = false,
   className,
+  pending,
   ...props
 }: TextAreaProps) {
   const well = variant === "well";
@@ -175,7 +195,15 @@ export function TextArea({
     well && [WELL_SURFACE.face, type.code],
     autosize && styles.autosize,
   );
-  return <TextAreaPrimitive {...props} {...styled} className={cn(styled.className, className)} />;
+  return (
+    <TextAreaPrimitive
+      {...props}
+      readOnly={pending || props.readOnly}
+      aria-disabled={pending ? true : props["aria-disabled"]}
+      {...styled}
+      className={cn(styled.className, className)}
+    />
+  );
 }
 
 const SEARCH_GLYPH: Record<FieldSize, IconSize> = { sm: "xs", md: "sm", lg: "md" };

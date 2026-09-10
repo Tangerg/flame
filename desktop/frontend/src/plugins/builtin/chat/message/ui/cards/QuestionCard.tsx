@@ -373,7 +373,8 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
             value={activeDraft.selected}
             values={activeQuestion.options.map((option) => option.label)}
             labelledBy={promptId}
-            disabled={!runtimeAvailable || actions.pending}
+            disabled={!runtimeAvailable}
+            pending={actions.pending}
             onValueChange={(selected) => selectOptions(activeQuestion, selected)}
           >
             {activeQuestion.options.map((option, optionIndex) => {
@@ -391,7 +392,8 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
                   ordinal={optionIndex + 1}
                   label={option.label}
                   description={option.description}
-                  disabled={!runtimeAvailable || actions.pending}
+                  disabled={!runtimeAvailable}
+                  pending={actions.pending}
                   onReselect={() => selectOptions(activeQuestion, [option.label])}
                 >
                   <span {...stylex.props(qc.optionLine)}>
@@ -429,7 +431,8 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
               value={activeDraft.text}
               aria-label={activeQuestion.prompt}
               placeholder={t("question.freetext.placeholder")}
-              disabled={!runtimeAvailable || actions.pending}
+              disabled={!runtimeAvailable}
+              pending={actions.pending}
               onChange={handleAnswerChange}
               onCompositionStart={handleCompositionStart}
               onCompositionEnd={handleCompositionEnd}
@@ -460,7 +463,8 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
               value={activeDraft.text}
               aria-label={activeQuestion.prompt}
               placeholder={t("question.freetext.placeholder")}
-              disabled={!runtimeAvailable || actions.pending}
+              disabled={!runtimeAvailable}
+              pending={actions.pending}
               onChange={handleAnswerChange}
               onCompositionStart={handleCompositionStart}
               onCompositionEnd={handleCompositionEnd}

@@ -135,7 +135,7 @@ export function TextEditorDialog({
                 font="sans"
                 aria-label={label}
                 value={value}
-                disabled={busy}
+                pending={busy}
                 onKeyDown={submitShortcut}
                 onChange={(event) => onChange(event.target.value)}
               />

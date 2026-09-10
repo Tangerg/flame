@@ -13955,3 +13955,72 @@ they were there so a utility could be generated from them." —— **这是同�
 
 `disabled` 说的是"这个动作不可用"，而平台执行它的方式是**让元素不可聚焦**。
 把"正在执行"也说成同一个词，代价就是：**每一次异步操作都把刚刚操作它的人挤走。**
+
+## Round 217 —— 同一个缺陷的另一半：工作是从表单字段里发起的
+
+### 证据
+
+上一轮修的是**发起**异步工作的控件（按钮）。这一轮量另一半：工作**从哪里**发起。
+
+在真实控件上量 —— agent `cwd-missing` 状态的 relocate 输入框，输入路径后按 Enter：
+
+| 时刻 | `document.activeElement` |
+| --- | --- |
+| 按 Enter 前 | `input [New absolute path]` |
+| +120ms | **`body`** |
+| +1.3s | **`body`** |
+
+同一个机制、同一个后果：`disabled` 让元素不可聚焦，而**提交动作正是从这个字段里发出的**，
+所以提交的人立刻被挤走。
+
+### 治本：字段的 `pending` 比按钮多一步
+
+`aria-disabled` 单独用**不够** —— 它不阻止打字。所以字段的 `pending` 是
+**`readOnly` + `aria-disabled`**：内容仍可读可复制、光标停在原处、期间不可修改。
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| `TextField` / `TextArea` | `disabled={busy}` | `pending` → `readOnly` + `aria-disabled` |
+| `ChoiceList` / `ChoiceOption` | `disabled={…}` | `pending` → `aria-disabled` + 拒绝 change / keydown / reselect |
+| 所有者 | 5 个 call site 各自 `disabled` | `text-field.tsx` 的 `SharedProps` 一处 + `choice-list.tsx` |
+| 视觉 | — | **不变**：4 处 `:disabled` 扩成 `:is(:disabled, [aria-disabled="true"])` |
+
+`ChoiceList` 尤其要紧：**答案是靠"选"提交的**，所以提交的那一刻键盘正在这个组上。
+
+### 两个量出来的负面结论（没有改）
+
+1. **`<Switch>` 不丢焦点。** 在 Settings → Schedules 上量：切换它，焦点全程停在原处
+   （before / +120ms / +1.3s 都是 `span [Enable schedule]`）。所以它没有要修的缺陷，
+   而 `aria-disabled` 反而会让它仍可拨动 —— **保持 `disabled`**，并在守卫里写明它
+   为什么不在名单里。
+2. **修复生效，但 +1.3s 时焦点仍会到 `body`** —— 原因不同：fixture 里没有 runtime，
+   我的探针触发了真实 HTTP 调用并 `ERR_CONNECTION_REFUSED`，banner 随之改变渲染路径。
+   **这个读数是被污染的，不能当作产品行为。** 机制本身在 +120ms 已经证明成立
+   （`readOnly=true ariaDisabled=true`，焦点保持）。
+
+### 守卫
+
+- `src/ui/atoms/field-pending.test.tsx`（新，4 个测试）—— 字段 pending 时 `disabled===false`、
+  `readOnly===true`、`aria-disabled==="true"`、仍可聚焦；choice list pending 时点击不触发
+  `onValueChange`；非 pending 正常可写。
+- `check-interactive-chrome` 第 10 条规则的标签名单从 5 个扩到 **9 个**（加入
+  `TextField` / `TextArea` / `ChoiceList` / `ChoiceOption`），`Switch` 明确排除并写明理由。
+  **验证：把量到的那个字段改回 `disabled={busy}` → 红。**
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 治本的缺陷 | **1**（提交动作发起处丢焦点） |
+| 量出来的负面结论 | 2（Switch 干净；+1.3s 读数被 fixture 污染） |
+| 新测试 | 4 |
+| 守卫覆盖 | 5 个标签 → 9 个 |
+| typecheck | 只剩 runtime contract 那一个（非本轮） |
+| lint / prettier / knip / 全部样式守卫 | 全绿 |
+| 单测 | **2444 通过**；失败 5 个全是 `src/rpc` 契约（非本轮） |
+| 视觉套件 | **736 全通过**（13.2m，零失败）—— **零 golden 移动** |
+
+### 一句话
+
+按钮那一半是"按下去的人被挤走"，这一半是"**在里面打字的人被挤走**" ——
+同一个 `disabled`，同一个平台规则，只是字段还需要 `readOnly` 才能既不可改、又不失焦。

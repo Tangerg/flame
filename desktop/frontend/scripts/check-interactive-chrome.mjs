@@ -153,10 +153,26 @@ const RULES = [
       /disabled=\{[^}]*\b(?:busy|saving|signingIn|reconnecting|importing|submitting|testing|inFlight)\b/g,
     message:
       "in-flight spelled as `disabled` — it un-focuses the control the user just activated; use `pending`",
-    // Form controls keep `disabled`: `aria-disabled` leaves a switch togglable and an input
-    // typable, so the swap only applies to things that ACT.
+    // The list is what has a `pending` to move to. Buttons START the work; fields and choice
+    // lists are what it is started FROM, and they lost focus the same way — measured on the
+    // relocate banner, where typing a path and pressing Enter put focus on `<body>`. A field's
+    // `pending` is `readOnly` as well as `aria-disabled`, because `aria-disabled` alone leaves
+    // it typable.
+    //
+    // `Switch` is deliberately absent: measured on Settings → Schedules, toggling it never
+    // moved focus, so it has no defect to fix and `aria-disabled` would leave it togglable.
     appliesTo: (_line, _rel, _selector, jsxTag) =>
-      ["Button", "PillButton", "TextButton", "IconButton", "BannerAction"].includes(jsxTag),
+      [
+        "Button",
+        "PillButton",
+        "TextButton",
+        "IconButton",
+        "BannerAction",
+        "TextField",
+        "TextArea",
+        "ChoiceList",
+        "ChoiceOption",
+      ].includes(jsxTag),
   },
   {
     pattern: /transition(?:Property|-property)?: *"?[^";]*\ball\b/g,
