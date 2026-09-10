@@ -522,3 +522,36 @@ func TestReplayRejectsUnknownStoredOutcomeFields(t *testing.T) {
 		}
 	}
 }
+
+type countingSteerService struct{ calls atomic.Int64 }
+
+func (s *countingSteerService) SteerRun(context.Context, protocol.SteerRunRequest) error {
+	s.calls.Add(1)
+	return nil
+}
+
+// TestAcknowledgementReplaysWithoutReExecuting covers the replay path of a
+// command that answers with no data. A nil Meta.Result is how the catalog says
+// so — the surface contract derives the binding's error-only signature from it
+// — and decodeStoredValue answers that with the same empty value the live path
+// returns. Nothing else exercised the pair, and reflect.New(nil) is what a
+// mismatch between them reaches on a retry.
+func TestAcknowledgementReplaysWithoutReExecuting(t *testing.T) {
+	service := &countingSteerService{}
+	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: newMemoryIdempotencyStore()})
+	options := Options{IdempotencyKey: "steer-once"}
+	request := protocol.SteerRunRequest{
+		RunID: "run_1", ExpectedSegmentID: "seg_1",
+		Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "wait"}},
+	}
+
+	if _, err := endpoint.Call[protocol.SteerRunRequest, struct{}](t.Context(), "runs.steer", request, options); err != nil {
+		t.Fatalf("first steer: %v", err)
+	}
+	if _, err := endpoint.Call[protocol.SteerRunRequest, struct{}](t.Context(), "runs.steer", request, options); err != nil {
+		t.Fatalf("replayed steer: %v", err)
+	}
+	if calls := service.calls.Load(); calls != 1 {
+		t.Fatalf("SteerRun calls = %d, want 1", calls)
+	}
+}
