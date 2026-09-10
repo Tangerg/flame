@@ -16,7 +16,6 @@ func TestOperationalIdentitiesAreExactBoundedAndDistinct(t *testing.T) {
 		{name: "run", call: ValidateRun},
 		{name: "segment", call: ValidateSegment},
 		{name: "item", call: ValidateItem},
-		{name: "schedule", call: ValidateSchedule},
 	} {
 		t.Run(rule.name, func(t *testing.T) {
 			for _, invalid := range []string{

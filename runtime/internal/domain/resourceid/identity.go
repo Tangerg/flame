@@ -51,10 +51,6 @@ func ValidateItem(text string) error {
 	return runtimeidentity.ValidateResource("item", text, runtimeidentity.MaximumResourceCharacters)
 }
 
-func ValidateSchedule(text string) error {
-	return runtimeidentity.ValidateResource("schedule", text, runtimeidentity.MaximumResourceCharacters)
-}
-
 // SessionID is one exact durable Session identity.
 type SessionID struct{ value }
 
