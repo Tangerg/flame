@@ -1439,8 +1439,8 @@ func TestPublishedLimitWireConstraints(t *testing.T) {
 	run := RunLimits{MaxSteps: &negativeSteps}
 	assertConstraintField(t, run.ValidateWire(), "RunLimits", "maxSteps")
 
-	artifact := ArtifactRunLimits{MaxBudgetUSD: &negativeBudget}
-	assertConstraintField(t, artifact.ValidateWire(), "ArtifactRunLimits", "maxBudgetUsd")
+	budget := RunLimits{MaxBudgetUSD: &negativeBudget}
+	assertConstraintField(t, budget.ValidateWire(), "RunLimits", "maxBudgetUsd")
 
 	assertConstraintField(t, (RunLimits{}).ValidateWire(), "RunLimits", "maxTotalTokens|maxSteps|maxBudgetUsd")
 	zeroContext := int64(0)

@@ -49,7 +49,6 @@ export type WireTypeName =
   | "ArtifactQuestionField"
   | "ArtifactQuestionOption"
   | "ArtifactRun"
-  | "ArtifactRunLimits"
   | "ArtifactRunMetrics"
   | "ArtifactSession"
   | "ArtifactToolInvocation"
@@ -786,7 +785,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       createdAt: text(),
       finishedAt: text(),
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      limits: ref(() => CHECKS.ArtifactRunLimits),
+      limits: ref(() => CHECKS.RunLimits),
       messageMark: allOf([integer(), minimum(0)]),
       metrics: ref(() => CHECKS.ArtifactRunMetrics),
       model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -818,14 +817,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({}, ["rootRunId"]),
       fields({}, ["parentRunId", "spawnedByItemId"]),
     ),
-  ]),
-  ArtifactRunLimits: allOf([
-    object({
-      maxBudgetUsd: allOf([numeric(), exclusiveMinimum(0)]),
-      maxSteps: allOf([integer(), minimum(1)]),
-      maxTotalTokens: allOf([integer(), minimum(1)]),
-    }, []),
-    anyOf([fields({}, ["maxTotalTokens"]), fields({}, ["maxSteps"]), fields({}, ["maxBudgetUsd"])]),
   ]),
   ArtifactRunMetrics: object({
     activeDurationMillis: allOf([integer(), minimum(0), maximum(9223372036854)]),

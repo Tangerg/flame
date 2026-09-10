@@ -1660,15 +1660,6 @@ func (r RunLimits) ValidateWire() error {
 	)
 }
 
-func (a ArtifactRunLimits) ValidateWire() error {
-	return collectWireViolations("ArtifactRunLimits",
-		optionalPositiveNumber("maxTotalTokens", a.MaxTotalTokens),
-		optionalPositiveNumber("maxSteps", a.MaxSteps),
-		optionalPositiveNumber("maxBudgetUsd", a.MaxBudgetUSD),
-		requiredAnyWhen(true, []string{"maxTotalTokens", "maxSteps", "maxBudgetUsd"}, a),
-	)
-}
-
 func (m ModelTokenLimits) ValidateWire() error {
 	return collectWireViolations("ModelTokenLimits",
 		optionalPositiveNumber("contextWindow", m.ContextWindow),

@@ -366,7 +366,7 @@ func registerRunValues(s *Shapes) {
 			{Field: "stop", Kind: ConstraintUniqueItems},
 		},
 	})
-	for _, limits := range []any{protocol.RunLimits{}, protocol.ArtifactRunLimits{}} {
+	for _, limits := range []any{protocol.RunLimits{}} {
 		s.valueConstraint(FieldConstraintSpec{
 			GoType: reflect.TypeOf(limits),
 			Constraints: []FieldConstraint{

@@ -178,7 +178,7 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 	if err != nil {
 		return sessions.PortableRun{}, invalidArtifact(path, "invalid model selection: %v", err)
 	}
-	limits, err := portableLimitsFromArtifact(artifact.Limits)
+	limits, err := limitsFromWire(artifact.Limits)
 	if err != nil {
 		return sessions.PortableRun{}, invalidArtifact(path+".limits", "%v", err)
 	}
@@ -257,15 +257,6 @@ func portableMetricsFromArtifact(path string, artifact protocol.ArtifactRunMetri
 		return run.Metrics{}, invalidArtifact(path, "%v", err)
 	}
 	return metrics, nil
-}
-
-func portableLimitsFromArtifact(artifact *protocol.ArtifactRunLimits) (run.Limits, error) {
-	if artifact == nil {
-		return run.UnlimitedLimits(), nil
-	}
-	return run.NewLimits(run.LimitValues{
-		MaxTotalTokens: artifact.MaxTotalTokens, MaxSteps: artifact.MaxSteps, MaxBudgetUSD: artifact.MaxBudgetUSD,
-	})
 }
 
 func portableUsageFromArtifact(artifact *protocol.ArtifactUsage) *accounting.Usage {

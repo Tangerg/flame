@@ -240,7 +240,7 @@ export interface ArtifactRun {
   createdAt: string;
   finishedAt: string;
   id: string;
-  limits?: ArtifactRunLimits;
+  limits?: RunLimits;
   messageMark: number;
   metrics: ArtifactRunMetrics;
   model: string;
@@ -253,12 +253,6 @@ export interface ArtifactRun {
   sessionId: string;
   spawnedByItemId?: string;
   updatedAt: string;
-}
-
-export interface ArtifactRunLimits {
-  maxBudgetUsd?: number;
-  maxSteps?: number;
-  maxTotalTokens?: number;
 }
 
 export interface ArtifactRunMetrics {

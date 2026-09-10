@@ -661,9 +661,6 @@ TypeScript validator from this single registry projection.
 | `RunLimits` | `maxTotalTokens` | `positive` |
 | `RunLimits` | `maxSteps` | `positive` |
 | `RunLimits` | `maxBudgetUsd` | `positive` |
-| `ArtifactRunLimits` | `maxTotalTokens` | `positive` |
-| `ArtifactRunLimits` | `maxSteps` | `positive` |
-| `ArtifactRunLimits` | `maxBudgetUsd` | `positive` |
 | `ModelTokenLimits` | `contextWindow` | `positive` |
 | `ModelTokenLimits` | `maxInputTokens` | `positive` |
 | `ModelTokenLimits` | `maxOutputTokens` | `positive` |

@@ -1355,7 +1355,7 @@
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
         "limits": {
-          "$ref": "#/$defs/ArtifactRunLimits"
+          "$ref": "#/$defs/RunLimits"
         },
         "messageMark": {
           "type": "integer",
@@ -1476,44 +1476,6 @@
               "spawnedByItemId"
             ]
           }
-        }
-      ]
-    },
-    "ArtifactRunLimits": {
-      "type": "object",
-      "properties": {
-        "maxBudgetUsd": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "maxSteps": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "maxTotalTokens": {
-          "type": "integer",
-          "minimum": 1
-        }
-      },
-      "allOf": [
-        {
-          "anyOf": [
-            {
-              "required": [
-                "maxTotalTokens"
-              ]
-            },
-            {
-              "required": [
-                "maxSteps"
-              ]
-            },
-            {
-              "required": [
-                "maxBudgetUsd"
-              ]
-            }
-          ]
         }
       ]
     },

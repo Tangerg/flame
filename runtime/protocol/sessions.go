@@ -240,7 +240,7 @@ type ArtifactRun struct {
 	// Limits and Metrics split the same way the live wire does. The archive has
 	// to move with it: leaving the old combined shape here would keep a second,
 	// older account of what a run cost alive inside the export format.
-	Limits        *ArtifactRunLimits `json:"limits,omitempty"`
+	Limits        *RunLimits         `json:"limits,omitempty"`
 	Metrics       ArtifactRunMetrics `json:"metrics"`
 	ContextTokens int64              `json:"contextTokens,omitempty"`
 	// ProtocolProfile is the contract the run published under, required on a root
@@ -255,15 +255,6 @@ type ArtifactRun struct {
 	FinishedAt      time.Time           `json:"finishedAt,omitzero"`
 	UpdatedAt       time.Time           `json:"updatedAt,omitzero"`
 	MessageMark     int                 `json:"messageMark"`
-}
-
-// ArtifactRunLimits is the bounded allowance a portable run was admitted under.
-// Every present field is strictly positive and at least one is present; an
-// omitted ArtifactRun.limits means unlimited.
-type ArtifactRunLimits struct {
-	MaxTotalTokens *int64   `json:"maxTotalTokens,omitempty"`
-	MaxSteps       *int     `json:"maxSteps,omitempty"`
-	MaxBudgetUSD   *float64 `json:"maxBudgetUsd,omitempty"`
 }
 
 // ArtifactRunMetrics is what a portable run consumed.

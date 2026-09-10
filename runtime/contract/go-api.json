@@ -2962,7 +2962,7 @@
             },
             {
               "name": "Limits",
-              "type": "*ArtifactRunLimits",
+              "type": "*RunLimits",
               "tag": "json:\"limits,omitempty\""
             },
             {
@@ -3004,33 +3004,6 @@
               "name": "MessageMark",
               "type": "int",
               "tag": "json:\"messageMark\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "ArtifactRunLimits",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "MaxTotalTokens",
-              "type": "*int64",
-              "tag": "json:\"maxTotalTokens,omitempty\""
-            },
-            {
-              "name": "MaxSteps",
-              "type": "*int",
-              "tag": "json:\"maxSteps,omitempty\""
-            },
-            {
-              "name": "MaxBudgetUSD",
-              "type": "*float64",
-              "tag": "json:\"maxBudgetUsd,omitempty\""
             }
           ],
           "methods": [

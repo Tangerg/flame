@@ -3649,18 +3649,6 @@
       ]
     },
     {
-      "type": "ArtifactRunLimits",
-      "rules": [
-        {
-          "requiredAny": [
-            "maxTotalTokens",
-            "maxSteps",
-            "maxBudgetUsd"
-          ]
-        }
-      ]
-    },
-    {
       "type": "ModelTokenLimits",
       "rules": [
         {
@@ -6488,23 +6476,6 @@
     },
     {
       "type": "RunLimits",
-      "rules": [
-        {
-          "field": "maxTotalTokens",
-          "constraint": "positive"
-        },
-        {
-          "field": "maxSteps",
-          "constraint": "positive"
-        },
-        {
-          "field": "maxBudgetUsd",
-          "constraint": "positive"
-        }
-      ]
-    },
-    {
-      "type": "ArtifactRunLimits",
       "rules": [
         {
           "field": "maxTotalTokens",

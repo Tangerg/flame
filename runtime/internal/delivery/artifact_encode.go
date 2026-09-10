@@ -80,7 +80,7 @@ func artifactRunFromPortable(run sessions.PortableRun) (protocol.ArtifactRun, er
 		ReasoningEffort: run.Selection.ReasoningEffort(),
 		ParentRunID:     run.ParentRunID,
 		RootRunID:       run.RootRunID,
-		Limits:          artifactLimitsFromDomain(run.Limits),
+		Limits:          presentLimits(run.Limits),
 		Metrics:         artifactMetricsFromDomain(run.Metrics),
 		ContextTokens:   run.ContextTokens,
 		ProtocolProfile: presentArtifactProtocolProfile(run.Capabilities),
@@ -136,23 +136,6 @@ func artifactMetricsFromDomain(metrics run.Metrics) protocol.ArtifactRunMetrics 
 		Steps:                metrics.Steps(),
 		ActiveDurationMillis: metrics.ActiveDuration().Milliseconds(),
 	}
-}
-
-func artifactLimitsFromDomain(limits run.Limits) *protocol.ArtifactRunLimits {
-	if limits.Unlimited() {
-		return nil
-	}
-	wire := &protocol.ArtifactRunLimits{}
-	if value, limited := limits.MaxTotalTokens(); limited {
-		wire.MaxTotalTokens = &value
-	}
-	if value, limited := limits.MaxSteps(); limited {
-		wire.MaxSteps = &value
-	}
-	if value, limited := limits.MaxBudgetUSD(); limited {
-		wire.MaxBudgetUSD = &value
-	}
-	return wire
 }
 
 func artifactUsageFromDomain(usage *accounting.Usage) *protocol.ArtifactUsage {
