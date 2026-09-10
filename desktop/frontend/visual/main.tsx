@@ -93,6 +93,11 @@ const density = UI_DENSITY_MODES.find((mode) => mode === requestedDensity);
 // The contrast slider walks every surface step toward the ink, so it is an axis an audit has
 // to be able to reach — and it had no way to. Seeding the persisted store instead needed two
 // navigations and a version that matches, which is a lot of ways to test nothing.
+// The accent is a free-form colour the user picks, and `--color-text-on-accent` is a fixed
+// white the theme declares — so it is an axis where the two halves can come apart.
+const requestedAccent = query.get("accent");
+const accent =
+  requestedAccent !== null && /^#[\da-f]{6}$/i.test(requestedAccent) ? requestedAccent : undefined;
 const requestedContrast = Number(query.get("contrast"));
 const contrast =
   Number.isFinite(requestedContrast) && query.get("contrast") !== null
@@ -209,6 +214,7 @@ useAppearanceStore.setState({
     : {}),
   ...(density ? { density } : {}),
   ...(contrast !== undefined ? { contrast } : {}),
+  ...(accent !== undefined ? { accent } : {}),
 });
 // Both halves of what `appearancePainter` installs: the pane and the sidebar footer read
 // the preference through this port, so painting without binding it renders a broken

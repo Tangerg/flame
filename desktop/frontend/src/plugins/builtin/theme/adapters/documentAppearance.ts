@@ -20,6 +20,7 @@ import { ACCENT, COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
 import { subscribeContributions } from "@/plugins/sdk";
 import { lookupExtensionByKey, lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
 import { accentTintedNeutral } from "../kit/accentTint";
+import { WCAG_AA_NON_TEXT, WCAG_AA_TEXT, inkOnFill } from "../kit/legibility";
 import { depthStep } from "../kit/tokens";
 import { visualStyleMotionTokens } from "../visualStyles/tokens";
 import { resolveThemeScheme } from "../application/themeScheme";
@@ -74,6 +75,18 @@ function neutralOverride(
   };
 }
 
+/**
+ * The ink that sits ON the accent, which has to follow the accent.
+ *
+ * A theme declares one — white, for the blue it ships with — and the accent is a colour the
+ * user picks freely, so the two came apart the moment anyone chose a pale one: white on a soft
+ * yellow measured 1.39:1 against the 4.5:1 the criterion asks for, and `--color-cta-text` reads
+ * this token, so every primary button went with it.
+ *
+ * The theme's own choice is kept whenever it reads, so a palette that has thought about this
+ * keeps its answer and the default is untouched; only an accent that breaks it gets overruled,
+ * by whichever pole is further from it.
+ */
 function applyColorTheme(
   theme: ColorThemeId,
   accent: string,
@@ -99,10 +112,31 @@ function applyColorTheme(
   root.style.setProperty("--color-accent-border", colord(liveAccent).darken(0.08).toHex());
   root.style.setProperty("--color-accent-press", colord(liveAccent).darken(0.16).toHex());
   root.style.setProperty("--depth-step", depthStep(scheme, contrast));
+
+  // Ink follows the fill it will sit ON, and there are two of them. A mark sits on
+  // `--color-accent`; a button's label sits on `--color-cta`, which a theme may define as a
+  // different shade — flame's dark CTA is the accent's border shade, two steps of luminance
+  // away. One token served both, so it could not be right for both, and the accent is a colour
+  // the user picks freely: white on a soft yellow measured 1.39:1.
+  //
+  // Read back what the browser resolved rather than recomputing each theme's expression here,
+  // so a palette that defines its CTA some other way is covered by the same two lines.
+  const declaredInk = spec?.tokens?.["color-text-on-accent"] ?? "#ffffff";
+  const resolved = (name: string) => getComputedStyle(root).getPropertyValue(name).trim();
+  root.style.setProperty(
+    "--color-text-on-accent",
+    inkOnFill(declaredInk, resolved("--color-accent"), WCAG_AA_NON_TEXT),
+  );
+  root.style.setProperty(
+    "--color-cta-text",
+    inkOnFill(declaredInk, resolved("--color-cta"), WCAG_AA_TEXT),
+  );
   appliedColorTokens.push(
     "--color-accent",
     "--color-accent-border",
     "--color-accent-press",
+    "--color-text-on-accent",
+    "--color-cta-text",
     "--depth-step",
   );
 

@@ -90,6 +90,7 @@ interface FixtureRoute {
   overlay?: VisualShellOverlay;
   locale?: string;
   contrast?: number;
+  accent?: string;
 }
 
 async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
@@ -115,6 +116,7 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   if (route.locale) query.set("locale", route.locale);
   if (route.density) query.set("density", route.density);
   if (route.contrast !== undefined) query.set("contrast", String(route.contrast));
+  if (route.accent) query.set("accent", route.accent);
 
   await page.goto(`${VISUAL_URL}?${query}`);
   await page.locator("html[data-visual-ready]").waitFor();
@@ -237,6 +239,57 @@ for (const pane of VISUAL_SETTINGS_PANES) {
       await openFixture(page, { fixture: "workspace", state: "settings", theme, pane });
 
       await expectNoWcagViolations(page);
+    });
+  }
+}
+
+// The accent is a colour the user picks with no constraint on it, and the ink that sits on the
+// accent is one the THEME declares — so the two can come apart, and did: white on a soft yellow
+// measured 1.39:1. Asserted on the tokens rather than through axe, because the ink only reaches
+// the screen where a primary button happens to be enabled, and its absence from a fixture is
+// not evidence.
+//
+// Two pairs, not one: a mark sits on `--color-accent` and a label on `--color-cta`, which this
+// theme defines as a different shade, and the criterion asks 3 of the first and 4.5 of the
+// second. One token used to serve both.
+const ACCENTS = ["#ffe066", "#a8e6a3", "#00b3ff", "#111111", "#f5c2e7"] as const;
+
+for (const accent of ACCENTS) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`ink stays legible on the accent ${accent} ${theme}`, async ({ page }) => {
+      await openFixture(page, { fixture: "agent", state: "narrative", theme, accent });
+
+      const pairs = await page.evaluate(() => {
+        const style = getComputedStyle(document.documentElement);
+        const value = (name: string) => style.getPropertyValue(name).trim();
+        const channels = (css: string) => {
+          const context = document.createElement("canvas").getContext("2d")!;
+          context.fillStyle = css;
+          const packed = Number.parseInt((context.fillStyle as string).slice(1), 16);
+          return [(packed >> 16) & 255, (packed >> 8) & 255, packed & 255];
+        };
+        const luminance = (css: string) =>
+          channels(css)
+            .map((channel) => {
+              const scaled = channel / 255;
+              return scaled <= 0.03928 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;
+            })
+            .reduce(
+              (total, channel, index) => total + [0.2126, 0.7152, 0.0722][index]! * channel,
+              0,
+            );
+        const ratio = (one: string, two: string) => {
+          const [lighter, darker] = [luminance(one), luminance(two)].sort((a, b) => b - a);
+          return (lighter! + 0.05) / (darker! + 0.05);
+        };
+        return {
+          mark: ratio(value("--color-accent"), value("--color-text-on-accent")),
+          label: ratio(value("--color-cta"), value("--color-cta-text")),
+        };
+      });
+
+      expect(pairs.mark, "a mark on the accent").toBeGreaterThanOrEqual(3);
+      expect(pairs.label, "a button's label on the CTA fill").toBeGreaterThanOrEqual(4.5);
     });
   }
 }
