@@ -14670,3 +14670,40 @@ feedback（未经用户动作的写入会是真缺陷）。去读代码：`rate(
 
 刚开的通道是干净的 —— 但它现在**被监听着**，所以下一次有人漏掉一个 `.catch()`，
 套件会红，而不是像上一轮那样在 738 个绿灯里躺着。
+
+## Round 228 —— 键盘契约的另一半（Round 225 只做了 Escape）
+
+Round 225 说要查「roving tabindex、Escape、方向键、类型提前搜索」，**实际只量了 Escape**。
+这轮补完剩下的。
+
+| 量的性质 | 结果 |
+| --- | --- |
+| roving tabindex：每个复合控件恰好一个可 tab 项 | **所有已渲染的 tablist 都是 1**（dock 6 项、Settings 导航 12 项、五个 Segmented） |
+| tablist 方向键 | ArrowRight 移动 ✓；End 跳到末项 ✓ |
+| 菜单方向键 | **9 个菜单（≥2 项）全部响应 ArrowDown** |
+| 目录/模型选择器的键盘筛选 | `workspace.visual.spec.ts` 已有覆盖（填入→Enter 提交） |
+
+### 两个"看起来是缺陷"的读数，查完都不是
+
+1. **3 个 tablist 的可 tab 项是 0** —— 查下去：`itemRendered=false`、`itemBox=0x0`，
+   它们在未渲染的面板里（Diff 视图的两个 Segmented、settings 路线下的 dock 标签）。
+   **不可聚焦是对的。**
+2. **Settings 那个 12 项导航按 ArrowRight 不动** —— 它是 `aria-orientation="vertical"`，
+   ARIA 规定纵向列表用上下键，**ArrowRight 本就该没反应**（同一个列表按 End 正常跳到
+   "Brand icons"）。**是我第一版探针按错了轴**，不是缺陷。
+
+另外记一下：`Segmented` 在 DOM 里是 `role="tab"` 而不是 `role="radio"`，
+所以第一版找 `[role="radio"]` 什么都没找到 —— 它们已经被上面的 tablist 检查覆盖。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 找到的缺陷 | **0** |
+| 查完否掉的读数 | 2（未渲染面板；纵向列表的轴） |
+| 生产代码改动 | **零** |
+
+### 一句话
+
+补完了自己上一轮只做了一半的检查 —— 而两个看起来像缺陷的读数，
+一个是**面板本来就没渲染**，另一个是**我按错了方向键**。
