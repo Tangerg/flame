@@ -25,13 +25,13 @@ var (
 	_ headless.TextProjector = (*userMessageBlock)(nil)
 )
 
-func newUserMessageBlock(theme kit.Theme, body string) *userMessageBlock {
-	return newUserMessageBlockAs(theme, "you", body, true)
-}
+// selfSpeaker labels the operator's own turn. A block is styled as the
+// operator's exactly when it carries this label, so the two cannot disagree.
+const selfSpeaker = "you"
 
-func newUserMessageBlockAs(theme kit.Theme, speaker, body string, own bool) *userMessageBlock {
+func newUserMessageBlock(theme kit.Theme, speaker, body string) *userMessageBlock {
 	message := &kit.Entry{Theme: theme, Label: speaker, Body: body}
-	if own {
+	if speaker == selfSpeaker {
 		message.LabelStyle = theme.Accent
 	}
 	return &userMessageBlock{

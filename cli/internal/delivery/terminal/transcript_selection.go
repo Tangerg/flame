@@ -360,7 +360,9 @@ func (t *transcriptView) readerTargetForSelected() (readerTarget, bool) {
 	case *markdownBlock:
 		title = block.speaker
 	case *userMessageBlock:
-		title = "you"
+		if strings.TrimSpace(block.message.Label) != "" {
+			title = block.message.Label
+		}
 	case *kit.Entry:
 		if strings.TrimSpace(block.Label) != "" {
 			title = block.Label

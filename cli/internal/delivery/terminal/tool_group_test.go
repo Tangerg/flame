@@ -59,7 +59,7 @@ func TestAdjacentResourceToolsShareOneDisclosureWithoutLosingChildDetails(t *tes
 func TestAConversationBlockClosesToolAdjacency(t *testing.T) {
 	view := testTranscriptView(t)
 	first := view.addGroupedTool("run-1", resourceTool(view, agent.ToolRead, "read · a.go", "a"))
-	view.Append(newUserMessageBlock(view.theme, "semantic boundary"))
+	view.Append(newUserMessageBlock(view.theme, selfSpeaker, "semantic boundary"))
 	second := view.addGroupedTool("run-1", resourceTool(view, agent.ToolWeb, "web · docs", "docs"))
 	if first == second || view.content.Len() != 3 {
 		t.Fatalf("boundary did not split groups: first %p second %p blocks %d", first, second, view.content.Len())

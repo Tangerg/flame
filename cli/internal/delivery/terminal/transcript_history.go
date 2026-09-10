@@ -74,7 +74,7 @@ func (h *transcriptHistory) Speaker(block agent.Block) string {
 	if !known || lineage.IsRoot() {
 		switch block.Kind {
 		case agent.BlockUser:
-			return "you"
+			return selfSpeaker
 		case agent.BlockReasoning:
 			return "thinking"
 		default:

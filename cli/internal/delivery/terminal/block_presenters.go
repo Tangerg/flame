@@ -24,9 +24,9 @@ func presentUser(p BlockPresentation, block agent.Block) []headless.Block {
 	}
 	speaker := p.Speaker
 	if speaker == "" {
-		speaker = "you"
+		speaker = selfSpeaker
 	}
-	return []headless.Block{newUserMessageBlockAs(p.Theme, speaker, body, speaker == "you")}
+	return []headless.Block{newUserMessageBlock(p.Theme, speaker, body)}
 }
 
 func presentMarkdown(speaker string) func(BlockPresentation, agent.Block) []headless.Block {

@@ -1044,3 +1044,31 @@ func beginTestTool(view *transcriptView, call agent.ToolCall) *toolBlock {
 	view.tools[transcriptBlockKey("", "tool")] = liveTool{ids: []headless.BlockID{blockID}, blocks: []trackedTool{tracked}}
 	return block
 }
+
+// TestReaderTargetTitlesAUserBlockByItsOwnSpeaker pins that a user block opened
+// in the reader is attributed to whoever authored it. A subagent's input is a
+// user block too, and titling it "you" hands the operator someone else's words.
+func TestReaderTargetTitlesAUserBlockByItsOwnSpeaker(t *testing.T) {
+	for _, test := range []struct{ name, speaker string }{
+		{name: "operator", speaker: selfSpeaker},
+		{name: "subagent", speaker: "subagent input · run_abc"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			clipboard := new(recordingClipboard)
+			view := newTranscriptView(
+				kit.Dark(), kit.Unicode(), input.Wheel{}, highlight.New("github-dark"), 24, false, clipboard,
+			)
+			t.Cleanup(view.Close)
+			view.Append(newUserMessageBlock(view.theme, test.speaker, "inspect this repository"))
+			headless.NewRoot(view).Draw(grid.NewSurface(48, 8).View())
+
+			target, ok := view.selectedReaderTarget()
+			if !ok {
+				t.Fatal("a user message block offers no reader target")
+			}
+			if target.document.Title != test.speaker {
+				t.Fatalf("reader title = %q, want %q", target.document.Title, test.speaker)
+			}
+		})
+	}
+}
