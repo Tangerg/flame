@@ -286,18 +286,8 @@ func validateTerminalGoalRun(run rundomain.Run, record *goal.RunRecord) error {
 	if record == nil {
 		return fmt.Errorf("sessions: terminal plan Goal-owned Run %q has no Goal Run", run.ID())
 	}
-	if err := record.Validate(); err != nil {
+	if err := record.Describes(run); err != nil {
 		return fmt.Errorf("sessions: terminal plan Goal Run: %w", err)
-	}
-	cost, err := run.Metrics().Cost()
-	if err != nil {
-		return fmt.Errorf("sessions: terminal plan Goal Run cost: %w", err)
-	}
-	outcome, terminal := run.Outcome()
-	if !terminal || record.SessionID != run.SessionID() || record.IncarnationID != run.GoalIncarnationID() ||
-		record.RunID != run.ID() || record.Outcome != outcome || !record.Cost.Equal(cost) ||
-		record.Steps != run.Metrics().Steps() || !record.CompletedAt.Equal(run.FinishedAt()) {
-		return fmt.Errorf("sessions: terminal plan Goal Run differs from Run %q", run.ID())
 	}
 	return nil
 }

@@ -204,6 +204,30 @@ func (r RunRecord) Validate() error {
 	return nil
 }
 
+// Describes proves this accounting record is exactly the terminal Run it names.
+// Every writer of a Goal charge derives the record from the same Run — the live
+// commit, boot recovery, and a terminal plan write-set — so all of them have to
+// agree on what "exactly" means. It reports the defect as a phrase, leaving each
+// caller its own way of failing.
+func (r RunRecord) Describes(value run.Run) error {
+	if err := r.Validate(); err != nil {
+		return err
+	}
+	// A Run that has not finished has no outcome, and a validated record always
+	// names one, so the comparison below is what refuses it.
+	outcome, _ := value.Outcome()
+	cost, err := value.Metrics().Cost()
+	if err != nil {
+		return fmt.Errorf("cost: %w", err)
+	}
+	if r.SessionID != value.SessionID() || r.IncarnationID != value.GoalIncarnationID() ||
+		r.RunID != value.ID() || r.Outcome != outcome || !r.Cost.Equal(cost) ||
+		r.Steps != value.Metrics().Steps() || !r.CompletedAt.Equal(value.FinishedAt()) {
+		return fmt.Errorf("differs from Run %q", value.ID())
+	}
+	return nil
+}
+
 // RecordRun returns one replacement revision even when accounting also derives
 // a pause or budget block.
 func (g Goal) RecordRun(record RunRecord) (Goal, error) {

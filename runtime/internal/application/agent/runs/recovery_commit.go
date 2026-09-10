@@ -544,7 +544,7 @@ func validateRecoveryGoalRuns(records []goal.RunRecord, lostByID map[string]rund
 		if !found {
 			return fmt.Errorf("runs: recovery commit Goal Run names unowned Run %q", record.RunID)
 		}
-		if err := goalRunRecordDescribes(record, lost); err != nil {
+		if err := record.Describes(lost); err != nil {
 			return fmt.Errorf("runs: recovery commit Goal Run[%d]: %w", index, err)
 		}
 	}

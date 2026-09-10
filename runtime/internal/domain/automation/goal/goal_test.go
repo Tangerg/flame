@@ -523,3 +523,79 @@ func testGoalFor(t *testing.T, sessionID, incarnationID string, budget Budget) G
 	}
 	return value
 }
+
+// TestRunRecordDescribesItsTerminalRun pins the rule three write-sets used to
+// spell out for themselves: a Goal charge is exactly the terminal Run it names.
+// Every field is a fact the record copied, so changing any one of them means
+// the charge no longer describes the Run it is charged for.
+func TestRunRecordDescribesItsTerminalRun(t *testing.T) {
+	completed := run.OutcomeCompleted
+	usd := 1.25
+	metrics, err := run.NewMetrics(&accounting.Usage{Total: accounting.Totals{CostUSD: &usd}}, 3, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	createdAt := time.Unix(1, 0).UTC()
+	finishedAt := time.Unix(2, 0).UTC()
+	selection, err := modelref.New("provider", "model")
+	if err != nil {
+		t.Fatal(err)
+	}
+	terminal, err := run.Restore(run.Snapshot{
+		SessionID: "session_1", ID: "run_1", ModelSelection: selection,
+		GoalIncarnationID: "incarnation_1", State: run.Completed, Outcome: &completed,
+		Metrics: metrics, CreatedAt: createdAt, FinishedAt: finishedAt, UpdatedAt: finishedAt,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cost, err := terminal.Metrics().Cost()
+	if err != nil {
+		t.Fatal(err)
+	}
+	matching := RunRecord{
+		SessionID: "session_1", IncarnationID: "incarnation_1", RunID: "run_1",
+		Outcome: completed, Cost: cost, Steps: 3, CompletedAt: finishedAt,
+	}
+	if err := matching.Describes(terminal); err != nil {
+		t.Fatalf("a record copied from the Run does not describe it: %v", err)
+	}
+
+	otherCost, err := accounting.NewCost(2.50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name   string
+		differ func(*RunRecord)
+	}{
+		{name: "session", differ: func(r *RunRecord) { r.SessionID = "session_other" }},
+		{name: "incarnation", differ: func(r *RunRecord) { r.IncarnationID = "incarnation_other" }},
+		{name: "run", differ: func(r *RunRecord) { r.RunID = "run_other" }},
+		{name: "outcome", differ: func(r *RunRecord) { r.Outcome = run.OutcomeCanceled }},
+		{name: "cost", differ: func(r *RunRecord) { r.Cost = otherCost }},
+		{name: "steps", differ: func(r *RunRecord) { r.Steps = 4 }},
+		{name: "completion time", differ: func(r *RunRecord) { r.CompletedAt = finishedAt.Add(time.Second) }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			record := matching
+			test.differ(&record)
+			if err := record.Describes(terminal); err == nil {
+				t.Fatalf("a record whose %s differs still describes the Run", test.name)
+			}
+		})
+	}
+
+	running, err := run.Restore(run.Snapshot{
+		SessionID: "session_1", ID: "run_1", ModelSelection: selection,
+		GoalIncarnationID: "incarnation_1", State: run.Running, ActiveSegmentID: "segment_1",
+		Metrics: metrics, CreatedAt: createdAt, UpdatedAt: createdAt,
+		MessageMark: run.UnknownMessageMark,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := matching.Describes(running); err == nil {
+		t.Fatal("a charge described a Run that has not finished")
+	}
+}

@@ -468,7 +468,7 @@ func validateTerminalGoalRun(value run.Run, record *goal.RunRecord) error {
 	if record == nil {
 		return fmt.Errorf("runs: Goal-owned terminal Run %q has no Goal Run", value.ID())
 	}
-	if err := goalRunRecordDescribes(*record, value); err != nil {
+	if err := record.Describes(value); err != nil {
 		return fmt.Errorf("runs: terminal Goal Run: %w", err)
 	}
 	return nil
@@ -478,25 +478,6 @@ func validateTerminalGoalRun(value run.Run, record *goal.RunRecord) error {
 // terminal Run it names. The live commit and boot recovery write this record
 // from the same Run, so both must agree on what "exactly" means. It reports the
 // defect as a phrase, so each caller keeps its own way of failing.
-func goalRunRecordDescribes(record goal.RunRecord, value run.Run) error {
-	if err := record.Validate(); err != nil {
-		return err
-	}
-	outcome, terminal := value.Outcome()
-	if !terminal {
-		return fmt.Errorf("names Run %q, which is not terminal", value.ID())
-	}
-	cost, err := value.Metrics().Cost()
-	if err != nil {
-		return fmt.Errorf("cost: %w", err)
-	}
-	if record.SessionID != value.SessionID() || record.IncarnationID != value.GoalIncarnationID() ||
-		record.RunID != value.ID() || record.Outcome != outcome || !record.Cost.Equal(cost) ||
-		record.Steps != value.Metrics().Steps() || !record.CompletedAt.Equal(value.FinishedAt()) {
-		return fmt.Errorf("differs from Run %q", value.ID())
-	}
-	return nil
-}
 
 func (e EventCommit) isEmpty() bool {
 	return len(e.Items) == 0 &&
