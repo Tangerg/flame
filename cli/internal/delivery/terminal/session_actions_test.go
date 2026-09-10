@@ -63,9 +63,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 		if saveDraftErr := store.SaveDraft(sessionID, agent.Message{Text: sessionID + " draft"}); saveDraftErr != nil {
 			t.Fatal(saveDraftErr)
 		}
-		if _, enqueueErr := queue.Enqueue(sessionID, agent.Message{Text: sessionID + " queued"}); enqueueErr != nil {
-			t.Fatal(enqueueErr)
-		}
+		enqueueTestPrompt(t, queue, sessionID, agent.Message{Text: sessionID + " queued"})
 		approval := agent.Approval{
 			RunID: sessionID + "_run", ItemID: sessionID + "_approval", Title: "Approve",
 			Tool: &agent.ToolCall{Kind: agent.ToolRead, Name: "read", Path: "README.md", Status: agent.ToolRunning},
@@ -161,10 +159,7 @@ func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 		t.Fatal(saveDraftErr)
 	}
 	queue := promptqueue.New()
-	_, err = queue.Enqueue(sessionID, agent.Message{Text: "keep queued prompt"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	enqueueTestPrompt(t, queue, sessionID, agent.Message{Text: "keep queued prompt"})
 	entries, err := os.ReadDir(filepath.Join(directory, "sessions"))
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("session state files = %d, %v", len(entries), err)

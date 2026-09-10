@@ -5,8 +5,18 @@ import (
 	"math"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
+
+// enqueue mirrors the authoring transaction: the command identity is allocated
+// before the queue sees it, exactly as the terminal allocates it.
+func enqueue(q *Queue, sessionID string, message agent.Message) (Entry, error) {
+	return q.EnqueueCommand(
+		mutation.NewCommandID(), sessionID, message,
+		agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+	)
+}
 
 func TestEntryIdentityRejectsZeroAndAllocationOverflow(t *testing.T) {
 	t.Parallel()
@@ -18,7 +28,7 @@ func TestEntryIdentityRejectsZeroAndAllocationOverflow(t *testing.T) {
 	}
 	queue := New()
 	queue.nextID = math.MaxUint64
-	if _, err := queue.Enqueue("session", agent.Message{Text: "must not wrap"}); err == nil {
+	if _, err := enqueue(queue, "session", agent.Message{Text: "must not wrap"}); err == nil {
 		t.Fatal("exhausted queue identity sequence wrapped")
 	}
 	if snapshot := queue.Snapshot("session"); len(snapshot.Entries) != 0 {
@@ -34,14 +44,14 @@ func sameDispatchReservation(left, right State) bool {
 
 func TestQueueKeepsSessionQueuesIsolatedAndSnapshotsDetached(t *testing.T) {
 	queue := New()
-	first, err := queue.Enqueue("one", agent.Message{Text: "first"})
+	first, err := enqueue(queue, "one", agent.Message{Text: "first"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, enqueueErr := queue.Enqueue("two", agent.Message{Text: "other session"}); enqueueErr != nil {
+	if _, enqueueErr := enqueue(queue, "two", agent.Message{Text: "other session"}); enqueueErr != nil {
 		t.Fatal(enqueueErr)
 	}
-	second, err := queue.Enqueue("one", agent.Message{Text: "second"})
+	second, err := enqueue(queue, "one", agent.Message{Text: "second"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,9 +71,9 @@ func TestQueueKeepsSessionQueuesIsolatedAndSnapshotsDetached(t *testing.T) {
 
 func TestQueueUpdatesMovesRemovesAndClearsByStableIdentity(t *testing.T) {
 	queue := New()
-	first, _ := queue.Enqueue("session", agent.Message{Text: "first"})
-	second, _ := queue.Enqueue("session", agent.Message{Text: "second"})
-	third, _ := queue.Enqueue("session", agent.Message{Text: "third"})
+	first, _ := enqueue(queue, "session", agent.Message{Text: "first"})
+	second, _ := enqueue(queue, "session", agent.Message{Text: "second"})
+	third, _ := enqueue(queue, "session", agent.Message{Text: "third"})
 
 	if err := queue.Update("session", second.ID, agent.Message{Text: "edited"}); err != nil {
 		t.Fatal(err)
@@ -92,9 +102,9 @@ func TestQueueUpdatesMovesRemovesAndClearsByStableIdentity(t *testing.T) {
 
 func TestQueuePromotesAnEntryWithoutChangingItsIdentity(t *testing.T) {
 	queue := New()
-	first, _ := queue.Enqueue("session", agent.Message{Text: "first"})
-	second, _ := queue.Enqueue("session", agent.Message{Text: "second"})
-	third, _ := queue.Enqueue("session", agent.Message{Text: "third"})
+	first, _ := enqueue(queue, "session", agent.Message{Text: "first"})
+	second, _ := enqueue(queue, "session", agent.Message{Text: "second"})
+	third, _ := enqueue(queue, "session", agent.Message{Text: "third"})
 
 	if err := queue.Promote("session", third.ID); err != nil {
 		t.Fatal(err)
@@ -114,8 +124,8 @@ func TestQueuePromotesAnEntryWithoutChangingItsIdentity(t *testing.T) {
 
 func TestQueueHoldsTheFrontEntryUntilEditingReleasesIt(t *testing.T) {
 	queue := New()
-	first, _ := queue.Enqueue("session", agent.Message{Text: "first"})
-	second, _ := queue.Enqueue("session", agent.Message{Text: "second"})
+	first, _ := enqueue(queue, "session", agent.Message{Text: "first"})
+	second, _ := enqueue(queue, "session", agent.Message{Text: "second"})
 	if err := queue.Hold("session", first.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -143,10 +153,10 @@ func TestQueueHoldsTheFrontEntryUntilEditingReleasesIt(t *testing.T) {
 
 func TestQueueRejectsInvalidMessagesWithoutMutation(t *testing.T) {
 	queue := New()
-	if _, err := queue.Enqueue("", agent.Message{Text: "valid"}); !errors.Is(err, ErrSessionIDRequired) {
+	if _, err := enqueue(queue, "", agent.Message{Text: "valid"}); !errors.Is(err, ErrSessionIDRequired) {
 		t.Fatalf("empty session returned %v", err)
 	}
-	if _, err := queue.Enqueue("session", agent.Message{}); err == nil {
+	if _, err := enqueue(queue, "session", agent.Message{}); err == nil {
 		t.Fatal("empty message was accepted")
 	}
 	if snapshot := queue.Snapshot("session"); len(snapshot.Entries) != 0 {
@@ -156,7 +166,7 @@ func TestQueueRejectsInvalidMessagesWithoutMutation(t *testing.T) {
 
 func TestQueueRejectsInvalidRunOptionsWithoutMutation(t *testing.T) {
 	queue := New()
-	existing, err := queue.Enqueue("session", agent.Message{Text: "existing"})
+	existing, err := enqueue(queue, "session", agent.Message{Text: "existing"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,8 +202,8 @@ func TestQueueRejectsInvalidRunOptionsWithoutMutation(t *testing.T) {
 
 func TestQueueRestoresAnExactSnapshotAfterARejectedTransaction(t *testing.T) {
 	queue := New()
-	first, _ := queue.Enqueue("session", agent.Message{Text: "first"})
-	second, _ := queue.Enqueue("session", agent.Message{Text: "second"})
+	first, _ := enqueue(queue, "session", agent.Message{Text: "first"})
+	second, _ := enqueue(queue, "session", agent.Message{Text: "second"})
 	if err := queue.Hold("session", first.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +229,7 @@ func TestQueueRestoresAnExactSnapshotAfterARejectedTransaction(t *testing.T) {
 	if after.Entries[0].CommandID != first.CommandID || after.Entries[0].Message.Text != "first" || !after.Entries[0].Held {
 		t.Fatalf("restored first entry = %+v", after.Entries[0])
 	}
-	next, err := queue.Enqueue("session", agent.Message{Text: "third"})
+	next, err := enqueue(queue, "session", agent.Message{Text: "third"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +240,7 @@ func TestQueueRestoresAnExactSnapshotAfterARejectedTransaction(t *testing.T) {
 
 func TestQueueRestoresDurableCommandsWithFreshLocalIdentities(t *testing.T) {
 	queue := New()
-	if _, err := queue.Enqueue("other", agent.Message{Text: "advance local identity"}); err != nil {
+	if _, err := enqueue(queue, "other", agent.Message{Text: "advance local identity"}); err != nil {
 		t.Fatal(err)
 	}
 	commands := []agent.StartRun{
@@ -280,7 +290,7 @@ func TestQueueRestoresADurableDispatchReservationAtomically(t *testing.T) {
 
 func TestQueueRejectsAnInvalidDurableDispatchWithoutMutation(t *testing.T) {
 	queue := New()
-	existing, _ := queue.Enqueue("session", agent.Message{Text: "existing"})
+	existing, _ := enqueue(queue, "session", agent.Message{Text: "existing"})
 	before := queue.State("session")
 	commands := []agent.StartRun{
 		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
@@ -298,9 +308,9 @@ func TestQueueRejectsAnInvalidDurableDispatchWithoutMutation(t *testing.T) {
 
 func TestDispatchReservationProtectsRuntimeIdentityFromPriorityEdits(t *testing.T) {
 	queue := New()
-	first, _ := queue.Enqueue("session", agent.Message{Text: "opening"})
-	second, _ := queue.Enqueue("session", agent.Message{Text: "send next"})
-	third, _ := queue.Enqueue("session", agent.Message{Text: "leave last"})
+	first, _ := enqueue(queue, "session", agent.Message{Text: "opening"})
+	second, _ := enqueue(queue, "session", agent.Message{Text: "send next"})
+	third, _ := enqueue(queue, "session", agent.Message{Text: "leave last"})
 
 	dispatching, ok := queue.BeginDispatch("session")
 	if !ok || dispatching.ID != first.ID {
@@ -337,8 +347,8 @@ func TestDispatchReservationProtectsRuntimeIdentityFromPriorityEdits(t *testing.
 
 func TestRestoreStatePreservesDispatchReservation(t *testing.T) {
 	queue := New()
-	first, _ := queue.Enqueue("session", agent.Message{Text: "opening"})
-	second, _ := queue.Enqueue("session", agent.Message{Text: "queued"})
+	first, _ := enqueue(queue, "session", agent.Message{Text: "opening"})
+	second, _ := enqueue(queue, "session", agent.Message{Text: "queued"})
 	if _, ok := queue.BeginDispatch("session"); !ok {
 		t.Fatal("could not reserve the front entry")
 	}
@@ -364,8 +374,8 @@ func TestRestoreStatePreservesDispatchReservation(t *testing.T) {
 
 func TestRestoreStateRejectsInvalidDispatchWithoutChangingTheQueue(t *testing.T) {
 	queue := New()
-	first, _ := queue.Enqueue("session", agent.Message{Text: "first"})
-	second, _ := queue.Enqueue("session", agent.Message{Text: "second"})
+	first, _ := enqueue(queue, "session", agent.Message{Text: "first"})
+	second, _ := enqueue(queue, "session", agent.Message{Text: "second"})
 	before := queue.State("session")
 	invalid := before
 	invalid.Dispatching = new(second.ID)
@@ -382,7 +392,7 @@ func TestRestoreStateRejectsInvalidDispatchWithoutChangingTheQueue(t *testing.T)
 
 func TestRejectedDispatchIsReidentifiedAndReleasedAtomically(t *testing.T) {
 	queue := New()
-	first, _ := queue.Enqueue("session", agent.Message{Text: "retry me"})
+	first, _ := enqueue(queue, "session", agent.Message{Text: "retry me"})
 	if _, ok := queue.BeginDispatch("session"); !ok {
 		t.Fatal("could not reserve dispatch")
 	}
@@ -401,7 +411,7 @@ func TestRejectedDispatchIsReidentifiedAndReleasedAtomically(t *testing.T) {
 
 func TestReleasingDispatchReturnsTheSameCommandToFIFO(t *testing.T) {
 	queue := New()
-	first, _ := queue.Enqueue("session", agent.Message{Text: "opening"})
+	first, _ := enqueue(queue, "session", agent.Message{Text: "opening"})
 	if queue.ReleaseDispatch("session") {
 		t.Fatal("empty dispatch release reported a state change")
 	}

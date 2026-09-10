@@ -71,11 +71,6 @@ func New() *Queue {
 	}
 }
 
-func (q *Queue) Enqueue(sessionID string, message agent.Message) (Entry, error) {
-	commandID := mutation.NewCommandID()
-	return q.EnqueueCommand(commandID, sessionID, message, agent.RunOptions{Limits: agent.UnlimitedRunLimits()})
-}
-
 // EnqueueCommand preserves a mutation identity already allocated by the
 // authoring transaction. Queue edits allocate a new identity because changing
 // content creates a different runtime operation fingerprint.

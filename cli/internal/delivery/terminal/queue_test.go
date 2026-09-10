@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/input"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
@@ -25,16 +26,26 @@ import (
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
+// enqueueTestPrompt allocates the command identity before the queue sees it,
+// exactly as the app does when it enqueues an authored prompt.
+func enqueueTestPrompt(t *testing.T, queue *promptqueue.Queue, sessionID string, message agent.Message) promptqueue.Entry {
+	t.Helper()
+	entry, err := queue.EnqueueCommand(
+		mutation.NewCommandID(), sessionID, message,
+		agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return entry
+}
+
 func testQueueEntryID(t *testing.T, value uint64) promptqueue.EntryID {
 	t.Helper()
 	queue := promptqueue.New()
 	var entry promptqueue.Entry
 	for index := uint64(0); index < value; index++ {
-		var err error
-		entry, err = queue.Enqueue("ses_test", agent.Message{Text: "test entry"})
-		if err != nil {
-			t.Fatal(err)
-		}
+		entry = enqueueTestPrompt(t, queue, "ses_test", agent.Message{Text: "test entry"})
 	}
 	return entry.ID
 }
@@ -141,9 +152,7 @@ func testQueueDrawer(t *testing.T, messages ...agent.Message) (*queueDrawer, *pr
 	t.Helper()
 	queue := promptqueue.New()
 	for _, message := range messages {
-		if _, err := queue.Enqueue("session", message); err != nil {
-			t.Fatal(err)
-		}
+		enqueueTestPrompt(t, queue, "session", message)
 	}
 	bindings, err := configuredKeyBindings(settings.Default())
 	if err != nil {
@@ -391,9 +400,7 @@ func TestClosingQueueDrawerReleasesItsEditedEntry(t *testing.T) {
 
 func TestQueueDrawerReleasesTheOriginalSessionWhenSnapshotChanges(t *testing.T) {
 	drawer, queue := testQueueDrawer(t, agent.Message{Text: "old session prompt"})
-	if _, err := queue.Enqueue("next-session", agent.Message{Text: "next session prompt"}); err != nil {
-		t.Fatal(err)
-	}
+	enqueueTestPrompt(t, queue, "next-session", agent.Message{Text: "next session prompt"})
 	drawer.Focus(true)
 	drawer.Handle(input.Key{Code: input.Enter})
 	if !queue.Snapshot("session").Entries[0].Held {
