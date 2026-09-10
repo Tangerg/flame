@@ -78,13 +78,6 @@ func presentStoredPlan(sessionID string, current plan.Current) protocol.Plan {
 	return out
 }
 
-// presentPlanSteps is the list a portable archive carries: the same items as
-// the live projection, through the same presenter, with none of the revision or
-// timestamp the archive deliberately leaves behind.
-func presentPlanSteps(steps []plan.Step) []protocol.PlanStep {
-	return presentPlanStepList(steps)
-}
-
 func presentPlanStatus(status plan.Status) protocol.PlanStatus {
 	switch status {
 	case plan.StatusPending:

@@ -6,7 +6,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -52,7 +51,7 @@ func artifactFromPortable(portable sessions.PortableSnapshot) (protocol.SessionA
 		Version:  protocol.SessionArtifactVersion,
 		Session:  artifactSessionFromPortable(portable.Session),
 		Messages: messages, Runs: runs, Items: items, ToolResults: toolResults,
-		Plan: presentPlanSteps(portable.Plan),
+		Plan: presentPlanStepList(portable.Plan),
 	}, nil
 }
 
@@ -81,7 +80,7 @@ func artifactRunFromPortable(run sessions.PortableRun) (protocol.ArtifactRun, er
 		ParentRunID:     run.ParentRunID,
 		RootRunID:       run.RootRunID,
 		Limits:          presentLimits(run.Limits),
-		Metrics:         artifactMetricsFromDomain(run.Metrics),
+		Metrics:         presentMetrics(run.Metrics),
 		ContextTokens:   run.ContextTokens,
 		ProtocolProfile: presentArtifactProtocolProfile(run.Capabilities),
 		Outcome: protocol.ArtifactOutcome{
@@ -123,41 +122,6 @@ func artifactOutcomeType(outcome run.Outcome) (protocol.ArtifactOutcomeType, err
 	default:
 		return "", fmt.Errorf("unknown value %q", outcome)
 	}
-}
-
-func artifactMetricsFromDomain(metrics run.Metrics) protocol.RunMetrics {
-	usage, reported := metrics.Usage()
-	var usageRef *accounting.Usage
-	if reported {
-		usageRef = &usage
-	}
-	return protocol.RunMetrics{
-		Usage:                artifactUsageFromDomain(usageRef),
-		Steps:                metrics.Steps(),
-		ActiveDurationMillis: metrics.ActiveDuration().Milliseconds(),
-	}
-}
-
-func artifactUsageFromDomain(usage *accounting.Usage) *protocol.Usage {
-	if usage == nil {
-		return nil
-	}
-	out := &protocol.Usage{
-		InputTokens: usage.Total.InputTokens, OutputTokens: usage.Total.OutputTokens,
-		CacheReadTokens: usage.Total.CacheReadTokens, CacheWriteTokens: usage.Total.CacheWriteTokens,
-		ReasoningTokens: usage.Total.ReasoningTokens, CostUSD: usage.Total.CostUSD,
-	}
-	if len(usage.ByModel) != 0 {
-		out.ByModel = make(map[string]protocol.ModelUsage, len(usage.ByModel))
-		for model, values := range usage.ByModel {
-			out.ByModel[model] = protocol.ModelUsage{
-				InputTokens: values.InputTokens, OutputTokens: values.OutputTokens,
-				CacheReadTokens: values.CacheReadTokens, CacheWriteTokens: values.CacheWriteTokens,
-				ReasoningTokens: values.ReasoningTokens, CostUSD: values.CostUSD,
-			}
-		}
-	}
-	return out
 }
 
 func artifactRunFailureFromDomain(failure *run.Failure) (*protocol.ArtifactProblem, error) {
