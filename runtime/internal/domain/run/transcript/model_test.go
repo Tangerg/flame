@@ -118,6 +118,61 @@ func TestItemValidateOwnsPayloadInvariants(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "message without content",
+			snapshot: transcript.ItemSnapshot{
+				Identity: identity, Kind: transcript.AgentMessage, Status: transcript.ItemCompleted,
+				MessagePhase: transcript.MessageFinalAnswer,
+			},
+			wantErr: true,
+		},
+		{
+			name: "reasoning without text",
+			snapshot: transcript.ItemSnapshot{
+				Identity: identity, Kind: transcript.Reasoning, Status: transcript.ItemCompleted,
+			},
+			wantErr: true,
+		},
+		{
+			name: "question without a prompt",
+			snapshot: transcript.ItemSnapshot{
+				Identity: identity, Kind: transcript.QuestionItem, Status: transcript.ItemCompleted,
+			},
+			wantErr: true,
+		},
+	}
+	// Only a ToolCall has a lifecycle of its own; every other kind exists only
+	// as a settled fact. One rule, so one table over the kinds it governs.
+	settled := map[transcript.ItemKind]transcript.ItemSnapshot{
+		transcript.UserMessage: {
+			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
+		},
+		transcript.AgentMessage: {
+			MessagePhase: transcript.MessageFinalAnswer,
+			Content:      []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
+		},
+		transcript.Reasoning: {Text: "thinking"},
+		transcript.QuestionItem: {Question: &transcript.Question{
+			Fields: []transcript.QuestionField{
+				{Prompt: "pick", Header: "Pick", Kind: transcript.QuestionText},
+			},
+		}},
+		transcript.Compaction: {Summary: "folded"},
+	}
+	for kind, payload := range settled {
+		for _, status := range []transcript.ItemStatus{transcript.ItemCompleted, transcript.ItemRunning, transcript.ItemIncomplete} {
+			snapshot := payload
+			snapshot.Identity, snapshot.Kind, snapshot.Status = identity, kind, status
+			tests = append(tests, struct {
+				name     string
+				snapshot transcript.ItemSnapshot
+				wantErr  bool
+			}{
+				name:     string(kind) + " " + string(status),
+				snapshot: snapshot,
+				wantErr:  status != transcript.ItemCompleted,
+			})
+		}
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

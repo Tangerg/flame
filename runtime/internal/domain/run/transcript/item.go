@@ -306,24 +306,20 @@ func (i Item) validate() error {
 		}
 	}
 	switch i.kind {
-	case UserMessage:
-		if i.status != ItemCompleted || len(i.content) == 0 {
-			return errors.New("transcript: message must be complete with content")
+	case UserMessage, AgentMessage:
+		if len(i.content) == 0 {
+			return errors.New("transcript: message has no content")
 		}
-	case AgentMessage:
-		if i.status != ItemCompleted || len(i.content) == 0 {
-			return errors.New("transcript: message must be complete with content")
-		}
-		if !i.messagePhase.Valid() {
+		if i.kind == AgentMessage && !i.messagePhase.Valid() {
 			return fmt.Errorf("transcript: unknown AgentMessage phase %q", i.messagePhase)
 		}
 	case Reasoning:
-		if i.status != ItemCompleted || i.text == "" {
-			return errors.New("transcript: reasoning must be complete with text")
+		if i.text == "" {
+			return errors.New("transcript: reasoning has no text")
 		}
 	case QuestionItem:
-		if i.status != ItemCompleted || i.question == nil {
-			return errors.New("transcript: question must be a complete prompt")
+		if i.question == nil {
+			return errors.New("transcript: question has no prompt")
 		}
 		if err := i.question.Validate(); err != nil {
 			return err
@@ -333,9 +329,6 @@ func (i Item) validate() error {
 			return err
 		}
 	case Compaction:
-		if i.status != ItemCompleted {
-			return errors.New("transcript: compaction must be complete")
-		}
 		if strings.TrimSpace(i.summary) == "" {
 			return errors.New("transcript: compaction summary is required")
 		}
@@ -344,6 +337,11 @@ func (i Item) validate() error {
 		}
 	default:
 		return fmt.Errorf("transcript: unknown Item kind %q", i.kind)
+	}
+	// Only a ToolCall has a lifecycle of its own. Every other kind exists only
+	// as a settled fact, so its status is not a variant-by-variant question.
+	if i.kind != ToolCall && i.status != ItemCompleted {
+		return fmt.Errorf("transcript: %s must be complete", i.kind)
 	}
 	return i.rejectDisallowedPayload()
 }
