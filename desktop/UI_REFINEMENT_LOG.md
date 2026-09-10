@@ -14746,3 +14746,77 @@ Round 224 只用克隆 DOM 摸过 304 个 turn 的滚动，没量过"读者的�
 
 锚定这条线是干净的；而它旁边那条更要紧的（**只在底部时才跟随**）
 **现有 fixture 一次都没能触发过** —— 缺的是 harness，不是产品。
+
+## Round 230 —— 想补上 Round 229 记的那个 harness 缺口，结果连"这个缺口能不能补"都量错了两次
+
+Round 229 记下：**没有 fixture 会随时间产出新内容**，所以"只在读者已在底部时才跟随"
+这条契约无法触发。这一轮去补它 —— 最后**全部回退**，但量出了三件确定的事。
+
+### 一、流式回放本身是可行的（已验证，随后回退）
+
+fixture 每个状态本来就带一串**真实 wire 事件**（`item.started` / `item.completed` /
+`segment.progress`），非流式路径只是在首屏前把它们一次折完。给
+`installVisualAgentFixture` 加一个 `stream=<ms>` 后逐条提交：
+
+| | 结果 |
+| --- | --- |
+| 事件逐条落地 | `data-visual-streamed` 1→2→…→6 ✓ |
+| 六次提交是否被 store 接受 | `yyyyyy`（全部接受）✓ |
+| 内容是否真的增加 | 文本长度 **187 → 1582** ✓ |
+
+### 二、我的探针一直在量 fixture 自己的侧栏，不是 transcript
+
+"取最高的可滚动元素"这个启发式，在**短 transcript 的状态**上选中的是
+**fixture 自己那个 23 项状态列表**（862px），而不是 transcript。
+证据：整个页面只有两个可滚动元素 ——
+`div[...inAside=true] h=862` 与 `div.msg-scroll-viewport h=2326`。
+
+后果有两处：
+- 我的 tailFollow 规格**把 MessageStream 的跟随逻辑整段删掉都照样通过** ——
+  因为它根本没在量那个元素。
+- **Round 229 关于短状态的读数（55px 范围、加载不在底部）也是那个侧栏的**，
+  已在此更正；那一轮关于 `long-content` 的读数不受影响（transcript 才是更高的那个）。
+
+### 三、这个缺口没法靠"组合已有数据"补上（fold 亲口否掉）
+
+改用命名选择器 `.msg-scroll-viewport` 之后真相露出来：
+
+- `answer-opening` 的 transcript **流完之后才刚好溢出**（1120×720 下 674 → 696，
+  范围 22px）—— **不存在"既有底部、又还在来内容"的那一刻**，分支无从触发。
+- `long-content` 溢出 ~1500px，但**一条尾部事件都没有**。
+
+于是我试图把前者的实况尾部流到后者的长历史上（`stream-from`），理由是"两半都是
+canonical 数据"。**fold 当场拒绝**：
+
+```
+agent.fold.runStatusMismatch:event=segment.progress;run=run_root;status=finished;expected=running
+```
+
+`long-content` 的 run 是 **finished**，实况尾部要求 **running** —— 组合出来的事件序列
+本身是非法的。**reducer 是对的，我的理由是错的。**
+
+### 结论与处置
+
+真正补上这个缺口，需要**新写一份"长历史 + 运行中"的 snapshot**，那是**创作 fixture
+数据**，不是"组合已有的"。这一轮不做这件事。
+
+而 `stream` 这个能力**目前没有任何合法用途**（唯一想用它的规格没法成立），
+按我自己在 Round 225 对 `Tooltip.suppressed` 用过的同一条标准 —— **没有用处的机制不留** ——
+连同 `stream-from` 一起全部回退。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 找到的产品缺陷 | **0** |
+| 自查掉的测量错误 | **2**（探针量的是 fixture 侧栏；"组合即合法"的推理被 fold 否掉） |
+| 回退的机制 | 2（`stream`、`stream-from`） |
+| 更正的既往结论 | 1（Round 229 短状态读数） |
+| 生产代码改动 | **零** |
+| lint / typecheck | 全绿（只剩 runtime contract 那一个） |
+
+### 一句话
+
+我写了一条规格来验证"跟随尾部"，**把被测逻辑整段删掉它依然通过** ——
+因为它量的是 fixture 自己的侧栏。而当我终于量对了元素，
+**fold 告诉我这个缺口根本不能靠拼接现有数据来补。**
