@@ -240,15 +240,29 @@ func TestBucketsBySpendRanksByCostDesc(t *testing.T) {
 }
 
 func TestAccumulatorRejectsOverflowWithoutMutation(t *testing.T) {
-	a := usageAccumulator{}
-	if err := a.addRun(accounting.Totals{InputTokens: math.MaxInt64, CostUSD: usd(math.MaxFloat64)}); err != nil {
+	// A cost that overflows refuses the fold on its own, so the token ceiling
+	// has to be reached carrying a cost the accumulator can still add.
+	tokens := usageAccumulator{}
+	if err := tokens.addRun(accounting.Totals{InputTokens: math.MaxInt64, CostUSD: usd(1)}); err != nil {
 		t.Fatal(err)
 	}
-	before := a
-	if err := a.addRun(accounting.Totals{InputTokens: 1, CostUSD: usd(math.MaxFloat64)}); err == nil {
-		t.Fatal("overflowing aggregate was accepted")
+	beforeTokens := tokens
+	if err := tokens.addRun(accounting.Totals{InputTokens: 1, CostUSD: usd(1)}); err == nil {
+		t.Fatal("overflowing token total was accepted")
 	}
-	if a != before {
-		t.Fatalf("failed aggregation mutated accumulator: before=%+v after=%+v", before, a)
+	if tokens != beforeTokens {
+		t.Fatalf("failed token aggregation mutated accumulator: before=%+v after=%+v", beforeTokens, tokens)
+	}
+
+	cost := usageAccumulator{}
+	if err := cost.addRun(accounting.Totals{CostUSD: usd(math.MaxFloat64)}); err != nil {
+		t.Fatal(err)
+	}
+	beforeCost := cost
+	if err := cost.addRun(accounting.Totals{CostUSD: usd(math.MaxFloat64)}); err == nil {
+		t.Fatal("overflowing cost was accepted")
+	}
+	if cost != beforeCost {
+		t.Fatalf("failed cost aggregation mutated accumulator: before=%+v after=%+v", beforeCost, cost)
 	}
 }

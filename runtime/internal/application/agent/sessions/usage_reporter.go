@@ -212,16 +212,12 @@ type usageAccumulator struct {
 	runs         int
 }
 
+// addRun folds one Run's metering into this bucket. The bucket starts at its
+// zero value and no one else writes it, and this method commits a fold only
+// after proving every addition, so what it reads back is what it last proved.
+// Only the incoming totals are unproven here, and the sums below need them
+// non-negative.
 func (u *usageAccumulator) addRun(usage accounting.Totals) error {
-	if u.runs < 0 || (!u.costObserved && u.cost != (accounting.Cost{})) {
-		return fmt.Errorf("usage accumulator is invalid")
-	}
-	if err := u.tokens.Validate(); err != nil {
-		return fmt.Errorf("usage accumulator: %w", err)
-	}
-	if err := u.cost.Validate(); err != nil {
-		return fmt.Errorf("usage accumulator: %w", err)
-	}
 	if err := usage.Validate(); err != nil {
 		return err
 	}
