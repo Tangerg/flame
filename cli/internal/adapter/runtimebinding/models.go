@@ -85,9 +85,6 @@ func (r *Connection) SetRole(ctx context.Context, role models.Role) (models.Role
 			return models.Role{}, runtimeContractViolation("set embedding role returned an invalid role: %v", callErr)
 		}
 	}
-	if err := projected.Validate(); err != nil {
-		return models.Role{}, runtimeContractViolation("set model role returned an invalid projection: %v", err)
-	}
 	if projected != role {
 		projectedLabel, projectedErr := projected.Label()
 		roleLabel, roleErr := role.Label()

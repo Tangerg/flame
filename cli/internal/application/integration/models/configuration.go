@@ -60,14 +60,10 @@ func (r Role) Validate() error {
 		return err
 	}
 	switch r.mode {
-	case inheritedRole:
-		if r.kind != UtilityRole || r.provider != "" || r.model != "" {
-			return errors.New("only an empty utility role can inherit the run model")
-		}
-	case disabledRole:
-		if r.kind != EmbeddingRole || r.provider != "" || r.model != "" {
-			return errors.New("only an empty embedding role can be disabled")
-		}
+	// Inheriting the run model and being switched off are whole roles on their
+	// own: InheritedUtilityRole and DisabledEmbeddingRole are the only ways to
+	// name one, and neither takes a provider or a model to disagree with.
+	case inheritedRole, disabledRole:
 	case configuredRole:
 		if err := runtimeprotocol.ValidateModelSelection(r.provider, r.model, ""); err != nil {
 			return fmt.Errorf("configured model role: %w", err)

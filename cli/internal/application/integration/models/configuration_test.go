@@ -22,6 +22,12 @@ func TestRoleAndProviderChangesHaveExplicitSemantics(t *testing.T) {
 	if _, err := NewConfiguredRole(UtilityRole, " deepseek", "chat"); err == nil {
 		t.Fatal("non-canonical role was constructed")
 	}
+	// A mode the constructors do set, paired with a kind they never name: the
+	// zero value is refused by either check, so this is what proves the kind is
+	// its own question.
+	if _, err := NewConfiguredRole(RoleKind("neither"), "deepseek", "chat"); err == nil {
+		t.Fatal("role of an unknown kind was constructed")
+	}
 	secret := ValueChange{Kind: protocol.ProviderConfigSet, Value: "secret"}
 	update := UpdateProvider{Provider: "deepseek", APIKey: &secret}
 	if err := update.Validate(); err != nil {
