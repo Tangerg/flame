@@ -544,7 +544,20 @@
   --button-join-seam: color-mix(in oklab, var(--color-cta-text) 20%, transparent);
   --field-radius: var(--shape-md);
   --segmented-radius: var(--shape-md);
-  --segment-radius: var(--shape-sm);
+  /* The chip inside the track is not a rung of its own. It sits behind the track's border and
+     padding, so its corner is the track's corner set back by exactly that distance — the same
+     derivation `--composer-attachment-radius` uses for an attachment sitting inside the
+     composer.
+
+     Written as two independent rungs it drifted with the user's radius preference: the track
+     takes `--corner-scale` at `md` and `sm` does not, so the gap between the pair went
+     2.4px / 4.0px / 5.6px across sharp / default / soft where concentricity asks for a
+     constant 3px, and the chip read progressively squarer inside its own track. One
+     relationship needs one owner, not two rungs that happen to agree at one setting. */
+  --segment-radius: max(
+    0px,
+    calc(var(--segmented-radius) - var(--control-edge-width) - var(--spacing) * 0.5)
+  );
   --surface-card-radius: var(--shape-md);
   --row-radius: var(--shape-lg);
   --floating-panel-radius: var(--shape-xl);

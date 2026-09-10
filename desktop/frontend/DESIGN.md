@@ -377,13 +377,21 @@ multiplies through.
 | `none`     | 0px    | Full-bleed bars                                                                                                             |
 | `2xs`      | 2px    | Small marks inside a control — key caps, checkboxes, swatches                                                               |
 | `xs`       | 4px    | Anything that is really a tag — badges, inline code                                                                         |
-| `sm`       | 6px    | Controls: buttons, chips, index rows, dock tabs                                                                             |
+| `sm`       | 6px    | Controls a hand hits directly: buttons, the segments inside a track, the tooltip tip                                        |
 | `md`       | 8px    | Cards, text fields, segmented tracks                                                                                        |
-| `lg`       | 10px   | Blocks inside the conversation: code, diagrams, images, banners                                                             |
+| `lg`       | 10px   | Blocks inside the conversation — code, diagrams, images, banners — and the surfaces that are the top of a panel: index rows, dock tabs |
 | `xl`       | 12px   | Every floating panel and modal, through `--floating-panel-radius`                                                           |
 | `bubble`   | 16px   | The user's own message, and the cards that answer it                                                                        |
 | `composer` | 20px   | The composer and the surfaces that echo it                                                                                  |
 | `pill`     | 9999px | Circles and lozenges: dots, tracks and thumbs, the status pill, circular icon wells, the count badge, a selected choice row |
+
+An index row and a dock tab take `lg` rather than the control rung, and the
+distinction is what each one IS rather than how tall it is. A tab is the top of
+the panel beneath it, so its corner is that panel's corner; at a control rung it
+read as a segmented control that had lost its track. A row is a slab the pointer
+lands on, not a button standing in a bar. (This table said `sm` for both while
+the code said `lg` — the reason lived in a comment that was deleted, so it is
+written here, where it is the design's own statement rather than an aside.)
 
 ### Corner curve
 

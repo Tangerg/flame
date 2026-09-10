@@ -13535,3 +13535,121 @@ Zapfino 会溢出（最多 11px，`overflow: visible`，也就是真的画到控
 
 这一轮没找到产品缺陷，却在自己的守卫里找到一个 ——
 **一个用来证明"我确实在测量"的断言，本身什么都没测量。**
+
+## Round 213 —— 圆角这条线是干净的，除了一处「一个关系，两个所有者」
+
+### 审计范围与证据
+
+`radiusScale` 是最后两个没被量过的外观偏好之一。DESIGN.md 把它写成**对产品的
+承诺**、不是对 token 的承诺 —— "the visual style owns the ladder; the user's
+radius preference multiplies through"，NEVER 里还有 "no mixed scales on one
+screen, no step invented at a call site"。token 测试看不见这两句：它读的就是
+ladder 自己那个 `calc()`，只会自我同意。**只有角能回答。**
+
+于是给 fixture 加了 `radius` 参数（和 209–212 的 `contrast` / `accent` /
+`custom-bg` / `ui-font` 同一套），把三档（0.6 sharp / 1 default / 1.4 soft）下
+产品真正画出来的每一个角都读出来。
+
+| 量了什么 | 结果 |
+| --- | --- |
+| 五条路线 × 三档 × 每个角 | **1660 个角** |
+| 偏好没乘到的角 | **0** |
+| 同心关系被打破的嵌套对 | **1**（见下） |
+| 「同心圆角」在 DESIGN.md 里 | **没写** —— 只在 refactor-prompt 的 ui_rules 4 里 |
+
+### 三个否定结论（有证据的干净）
+
+1. **偏好确实乘穿了全部。** 1660 个角，三档，零例外。故意把一档从 `--radius-scale`
+   摘下来（`--shape-lg`），**680 个角立刻掉出来** —— 不是审计是空的。
+2. **不存在「call site 自己发明的档位」。** 全库只有三处 `borderRadius: 0`
+   （lightbox / progress-bar square / button 的 join 边），都是几何取消、不是档位。
+3. **1.4 档下 73 个短控件会变成胶囊**（`lg` 12.5px 落在 34px 行、`md` 10px 落在
+   28px 轨道上，×1.4 越过半高）。**但这不算缺陷** —— DESIGN.md 的 `pill` 一行本来就
+   写着 "a selected choice row"，胶囊化的选中行在这套语言里是合法形状。记在这里，
+   免得下一轮再当新发现挖一遍。
+
+### 唯一的真缺陷：分段控件的 chip 不同心，而且越调越歪
+
+轨道在 `md`，chip 在 `sm`，而 `--corner-scale: 1.25` **只作用于 `md` 及以上**。
+两个独立档位描述的是**同一个关系**（chip 嵌在轨道里，中间只隔 1px 边 + 2px padding），
+于是这个关系随偏好漂移：
+
+| radius 档 | 轨道 | chip | 同心应为 | 误差 |
+| --- | --- | --- | --- | --- |
+| 0.6 sharp | 6px | 3.6px | 3px | **+0.60px** |
+| 1 default | 10px | 6px | 7px | **−1.00px** |
+| 1.4 soft | 14px | 8.4px | 11px | **−2.60px** |
+
+只在**被肉眼校准过的那一档**接近，两边都歪 —— 这正是"一个事实两个所有者"的形状。
+
+**根因修复**：`--segment-radius` 不再是一个档位，而是从轨道推导出来的**退让**，
+和产品里已有的 `--composer-attachment-radius`（附件嵌在 composer 里）同一个写法：
+
+```css
+--segment-radius: max(
+  0px,
+  calc(var(--segmented-radius) - var(--control-edge-width) - var(--spacing) * 0.5)
+);
+```
+
+改后三档误差**全部 0.00**。两处都改（`globals.css` 是首屏兜底，
+`visualStyles/tokens.ts` 才是运行时真所有者 —— 这一点是被测试打脸打出来的：
+只改 globals.css 去做"破坏验证"，守卫照样全绿，因为 visual style 覆盖了它）。
+
+### 顺手修掉的文档漂移
+
+DESIGN.md 的圆角表把 **index rows 和 dock tabs 都写在 `sm`（6px）**，
+而实现里两者都在 `lg`（12.5px）—— 量出来的，不是读出来的。
+
+而且实现是**对的**：`git log -L` 找到 dock tab 选 `lg` 的理由写在一条注释里
+（"a tab is the top of the panel under it, so its corner is the panel's own；在
+`xs` 档它读起来像丢了轨道的分段控件"），那条注释在 `f0418f0e`
+（"drop every comment from the view layer"）被删了。于是**理由无处存身、文档还在说反话** ——
+下一个人照文档把行圆角"修"回 6px，就会撤掉一个深思过的决定。
+
+已把表改成实现的真相，并把理由写回 DESIGN.md（设计文档自己的陈述，而不是代码旁的旁注）。
+
+### 守卫（两条，都验证过会失败）
+
+`visual/radiusLadder.visual.spec.ts`：
+
+1. **每个角都在 ladder 上** —— 允许恰好两种形态：**成比例**（它是一个档位）或
+   **同心**（它嵌在别人里，退让恒定、整对一起动）。第二条写成不变量而不是豁免名单
+   —— 第一版只懂成比例、把唯一那个同心角写成具名豁免，结果**我这轮新增的同心角
+   当场把它打红**；一个"设计每做对一次就得改一次"的守卫是坏味道。
+   退让还必须**可传递**（轨道 → tab → chip 三层，tab 本身已经是一次退让）。
+2. **分段 chip 在三档下都同心**。
+
+| 破坏验证 | 结果 |
+| --- | --- |
+| `--shape-lg` 从 `--radius-scale` 摘下 | **680 个角掉出**，红 |
+| `segment-radius` 冻成字面量（在**真所有者**处） | **200 个角掉出**，红 |
+| chip 退回自己的档位 `var(--shape-sm)` | 报 **+0.60 / −1.00 / −2.60**，红 |
+
+### 我的守卫又差点是瞎的（两次）
+
+- **豁免名单 vs 不变量**：见上。
+- **0px 祖先是万能挡箭牌**：同心分支一开始只查"退让恒定"。一个角为 `0px` 的祖先
+  天然满足它（0 乘任何数还是 0，退让恒定等于负的自身半径），于是**把 segment 冻成
+  字面量照样全绿**。加上"祖先必须真有圆角、且不能比孩子更圆"才堵住。
+- 还有一次假失败：和后台跑着的视觉套件抢 4174 端口，读到一堆
+  `12.5px → 12.5px`。单独重跑即消失 —— 先证伪再动代码，省了一次错误的"根因"。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 找到并治本的缺陷 | **1**（同心退让漂移，三档误差 → 全 0.00）|
+| 修掉的文档漂移 | **1**（DESIGN.md 圆角表 + 找回被删的理由）|
+| 覆盖的外观轴 | **+radiusScale**（1660 个角 × 3 档 × 5 条路线）|
+| 新守卫 | 2 条，**三个破坏验证全部红过** |
+| 视觉套件 | **735 全通过**（14.2m，零失败；+2）—— 同心修改**零 golden 移动**：default 档只差 1px，在套件的 diff 阈值以下，真正的收益在非默认档 |
+| typecheck / lint / prettier / 18 个守卫 / bundle | 全绿 |
+| 主题单测 | 89 全通过 |
+| **阻塞（超出授权范围）** | `src/rpc` 3 个文件 4 个测试失败：`runtime/contract/samples/segment.finished.json` 缺 `contextTokens`，而 `schema.json` 要求它 —— 是 runtime 自己发布的样本不满足自己发布的 schema。`<scope>` 禁止改 runtime/协议，故只记录不动手。 |
+
+### 一句话
+
+圆角这条线本身是干净的 —— 1660 个角、三档、零例外。
+真缺陷不在"角有多圆"，而在**一个关系被写成了两个档位**：
+它只在被肉眼校准过的那一档对，用户一动滑块就露出来。

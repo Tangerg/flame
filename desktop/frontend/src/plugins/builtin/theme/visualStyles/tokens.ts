@@ -76,7 +76,11 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "button-radius": "var(--shape-sm)",
   "field-radius": "var(--shape-md)",
   "segmented-radius": "var(--shape-md)",
-  "segment-radius": "var(--shape-sm)",
+  // The chip is inside the track, so its corner is the track's corner set back by the border
+  // and padding between them rather than a rung of its own. See globals.css for what the two
+  // independent rungs cost.
+  "segment-radius":
+    "max(0px, calc(var(--segmented-radius) - var(--control-edge-width) - var(--spacing) * 0.5))",
   "surface-card-radius": "var(--shape-md)",
   "row-radius": "var(--shape-lg)",
   "floating-panel-radius": "var(--shape-xl)",
