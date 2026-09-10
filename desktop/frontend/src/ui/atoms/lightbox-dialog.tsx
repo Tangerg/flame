@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import type { ReactElement, ReactNode } from "react";
+import { useRef, type ReactElement, type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { radius, space, surface } from "@/styles/tokens.stylex";
 import { DialogPrimitive } from "@/ui/primitives";
@@ -91,12 +91,28 @@ export function LightboxDialog({
   className,
 }: LightboxDialogProps) {
   const panel = stylex.props(modalPanel(), styles[kind]);
+  // Focus the PANEL on open, not the first tabbable control in it.
+  //
+  // Base UI's default is the first tabbable element, and in a lightbox that is an icon button
+  // with a tip — so opening one put focus on a control the person never navigated to, its
+  // tooltip opened, and the tooltip then sat above the dialog on the dismiss stack and ate the
+  // first Escape. Measured: the image gallery focused "Download image", and Escape #1 closed
+  // that tip while the dialog stayed; Escape #2 closed the dialog. Pressing Escape once, which
+  // is the whole contract, appeared to do nothing.
+  //
+  // Focusing the panel is also the conventional answer — the dialog announces its own title,
+  // and the first Tab reaches the controls. Safe for the gallery's arrow keys, which are bound
+  // on `window` rather than on any control.
+  const popupRef = useRef<HTMLDivElement>(null);
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Trigger render={trigger} />
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop {...stylex.props(MODAL_SCRIM, styles.dismiss)} />
         <DialogPrimitive.Popup
+          ref={popupRef}
+          initialFocus={popupRef}
+          tabIndex={-1}
           aria-describedby={undefined}
           {...panel}
           className={cn(panel.className, className)}
