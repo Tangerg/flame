@@ -72,7 +72,15 @@ function WorkspaceStateSidebar({ state }: { state: VisualWorkspaceState }) {
     return () => observer.disconnect();
   }, [state]);
   return (
-    <div {...stylex.props(fx.pane)}>
+    <div
+      // The harness's own chrome, named so a sweep can tell it from the product. Measured
+      // before this existed: on the agent route 23 of 51 buttons and 146 of 527 elements
+      // belonged to this state switcher, and on the workspace route 28 of 52 and 198 of 773 —
+      // so an audit that walked the page was reporting coverage of the test scaffold, and
+      // would have reported a defect in it as a defect in the product.
+      data-fixture-chrome=""
+      {...stylex.props(fx.pane)}
+    >
       {/* Empty, the way the product's drawer header is: the sidebar control is placed at
           the window-controls gutter and the header content box starts at the same edge, so
           anything written here is painted under the control. This caption is scaffolding

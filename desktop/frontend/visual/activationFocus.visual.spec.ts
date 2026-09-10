@@ -53,9 +53,9 @@ base("activating a control never leaves focus on nothing", async ({ page }) => {
     await page.locator("html[data-visual-ready]").waitFor();
     await page.waitForTimeout(300);
 
-    const total = await page.locator('[data-slot="button"]').count();
+    const total = await page.locator('[data-slot="button"]:not([data-fixture-chrome] *)').count();
     for (let index = 0; index < Math.min(total, PER_ROUTE); index += 1) {
-      const control = page.locator('[data-slot="button"]').nth(index);
+      const control = page.locator('[data-slot="button"]:not([data-fixture-chrome] *)').nth(index);
       if ((await control.count()) === 0) continue;
       const name = await control.evaluate(
         (node) =>
@@ -91,7 +91,12 @@ base("activating a control never leaves focus on nothing", async ({ page }) => {
   }
 
   // Floor, not a target: an audit that activated nothing agrees with every product.
-  expect(activated, "the sweep has to actually activate controls").toBeGreaterThan(60);
+  //
+  // It was 60 when this swept the page. Excluding `[data-fixture-chrome]` — the harness's own
+  // state switcher, which is 23 of 51 buttons on the agent route and 28 of 52 on the workspace
+  // one — took the real count to 41. The floor is now under the product's own number rather
+  // than under a number the test scaffold was helping to reach.
+  expect(activated, "the sweep has to actually activate controls").toBeGreaterThan(30);
   expect(orphaned, "controls that left focus on `<body>`").toEqual([]);
   expect(unexpected, "console complaints other than the fixture's missing runtime").toEqual([]);
   // Not asserted, only surfaced: a control that cannot take focus is a different question, and

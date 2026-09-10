@@ -34,14 +34,14 @@ test("one Escape closes what a control opened, and focus comes back", async ({ p
     await page.goto(`/visual/?${route}&theme=light`);
     await page.locator("html[data-visual-ready]").waitFor();
     await page.waitForTimeout(300);
-    const total = await page.locator("[aria-haspopup]").count();
+    const total = await page.locator("[aria-haspopup]:not([data-fixture-chrome] *)").count();
 
     for (let index = 0; index < Math.min(total, 12); index += 1) {
       await page.goto(`/visual/?${route}&theme=light`);
       await page.locator("html[data-visual-ready]").waitFor();
       await page.waitForTimeout(250);
 
-      const trigger = page.locator("[aria-haspopup]").nth(index);
+      const trigger = page.locator("[aria-haspopup]:not([data-fixture-chrome] *)").nth(index);
       if ((await trigger.count()) === 0) continue;
       const name = await trigger.evaluate(
         (node) =>

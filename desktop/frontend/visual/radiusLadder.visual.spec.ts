@@ -24,9 +24,11 @@ import { expect, test } from "./test";
 // radius as a named exception; the next concentric radius added to the product failed it, which
 // is a guard that has to be edited every time the design does the right thing.
 //
-// Measured when written: 1660 corners across five routes, all three scales, none off either
-// branch. Unhooking one rung (`--shape-lg` from `--radius-scale`) strands 680 of them; freezing
-// a concentric one (`segment-radius` at a literal) strands 200.
+// Measured: 1252 corners across five routes, all three scales, none off either branch.
+// Unhooking one rung (`--shape-lg` from `--radius-scale`) strands 680 of them; freezing a
+// concentric one (`segment-radius` at a literal) strands 200. It read 1660 before the harness's
+// own state switcher was excluded — a quarter of what it called coverage was the test
+// scaffold's corners, which follow no ladder this product owns.
 //
 // What it deliberately does NOT catch: a concentric pair spelled as two independent rungs. Both
 // are proportional, so both pass — which is right, because this audit asks whether the ladder
@@ -97,6 +99,10 @@ async function read(
 
     const out: Record<string, Corners> = {};
     for (const element of document.querySelectorAll("*")) {
+      // The harness's own state switcher is not the product. Measured before it was excluded:
+      // it contributed about a quarter of the elements on these routes, so its corners were
+      // being counted as coverage of a ladder it does not use.
+      if (element.closest("[data-fixture-chrome]")) continue;
       const box = element.getBoundingClientRect();
       if (box.width < 2 || box.height < 2) continue;
       const own = radii(element);

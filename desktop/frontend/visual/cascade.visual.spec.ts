@@ -142,6 +142,9 @@ test("no declaration is decided by StyleX out-ranking a stylesheet rule", async 
 
       const out: Conflict[] = [];
       for (const element of document.querySelectorAll("*")) {
+        // Same reason as `radiusLadder`: the fixture's own chrome is not the product, and a
+        // conflict inside it would be reported as one in the shell.
+        if (element.closest("[data-fixture-chrome]")) continue;
         for (const atomic of fromStylex) {
           if (!matches(element, atomic.selector)) continue;
           const wanted = normalise(atomic.properties);
