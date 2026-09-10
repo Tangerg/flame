@@ -8,10 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
 
-var (
-	ErrProviderIdentityMismatch = errors.New("model: provider registry identity mismatch")
-	ErrCredentialUnavailable    = errors.New("model: provider credential is unavailable")
-)
+var ErrCredentialUnavailable = errors.New("model: provider credential is unavailable")
 
 // providerClientInputs is the adapter-owned construction boundary. It keeps
 // validated domain values intact until the exact call that needs primitives.
@@ -22,7 +19,7 @@ type providerClientInputs struct {
 
 func resolveProviderClientInputs(expectedID string, entry provider.Provider) (providerClientInputs, error) {
 	if entry.ID() != expectedID {
-		return providerClientInputs{}, fmt.Errorf("%w: got %q for %q", ErrProviderIdentityMismatch, entry.ID(), expectedID)
+		return providerClientInputs{}, fmt.Errorf("model: provider registry identity mismatch: got %q for %q", entry.ID(), expectedID)
 	}
 	profile, found := llm.LookupProvider(llm.Provider(expectedID))
 	if !found {
