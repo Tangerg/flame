@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -102,5 +103,40 @@ func TestMessageStoreReadRejectsMalformedRows(t *testing.T) {
 
 	if messages, err := store.Read(t.Context(), "conv"); err == nil {
 		t.Fatalf("read silently returned %d messages after skipping a malformed durable row", len(messages))
+	}
+}
+
+// TestMessageStore_ReplaceRollsBackAsOneStep pins what makes Replace safe for
+// retention: its DELETE and INSERT belong to one transaction, and that
+// transaction is the caller's when there is one. A rewrite that fails leaves
+// the prior history whole rather than a wiped conversation.
+func TestMessageStore_ReplaceRollsBackAsOneStep(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlite.NewMessageStore(db)
+	if err := store.Write(t.Context(), "conv",
+		chat.NewUserMessage(chat.NewTextPart("one")), chat.NewUserMessage(chat.NewTextPart("two"))); err != nil {
+		t.Fatal(err)
+	}
+
+	abandoned := errors.New("rewrite abandoned")
+	if err := sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
+		if replaceErr := store.Replace(ctx, "conv", chat.NewUserMessage(chat.NewTextPart("replacement"))); replaceErr != nil {
+			return replaceErr
+		}
+		return abandoned
+	}); !errors.Is(err, abandoned) {
+		t.Fatalf("transaction error = %v, want the abandoned rewrite", err)
+	}
+
+	messages, err := store.Read(t.Context(), "conv")
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+	if len(messages) != 2 {
+		t.Fatalf("history after an abandoned rewrite = %d messages, want the original 2", len(messages))
 	}
 }

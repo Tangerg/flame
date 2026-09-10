@@ -101,26 +101,14 @@ func (m *MessageStore) Replace(ctx context.Context, conversationID string, messa
 	if err := history.ConversationID(conversationID).Validate(); err != nil {
 		return err
 	}
+	// Clear and Write fold into this transaction rather than committing on
+	// their own, so the rewrite is the single atomic step the contract above
+	// describes.
 	return RunInTx(ctx, m.db, func(ctx context.Context) error {
-		q := conn(ctx, m.db)
-		if _, err := q.ExecContext(ctx,
-			`DELETE FROM messages WHERE conversation_id = ?`, conversationID,
-		); err != nil {
-			return fmt.Errorf("sqlite: replace clear messages: %w", err)
+		if err := m.Clear(ctx, conversationID); err != nil {
+			return err
 		}
-		for _, msg := range messages {
-			data, err := json.Marshal(msg)
-			if err != nil {
-				return fmt.Errorf("sqlite: marshal message: %w", err)
-			}
-			if _, err := q.ExecContext(ctx,
-				`INSERT INTO messages(conversation_id, message) VALUES (?, ?)`,
-				conversationID, string(data),
-			); err != nil {
-				return fmt.Errorf("sqlite: replace append message: %w", err)
-			}
-		}
-		return nil
+		return m.Write(ctx, conversationID, messages...)
 	})
 }
 
