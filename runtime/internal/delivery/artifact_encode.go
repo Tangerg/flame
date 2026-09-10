@@ -186,14 +186,6 @@ func artifactToolFailureFromDomain(failure *tool.Failure) (*protocol.ArtifactPro
 }
 
 func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, error) {
-	status, err := artifactItemStatus(item.Status())
-	if err != nil {
-		return protocol.ArtifactItem{}, fmt.Errorf("item %q status: %w", item.ID(), err)
-	}
-	kind, err := artifactItemType(item.Kind())
-	if err != nil {
-		return protocol.ArtifactItem{}, fmt.Errorf("item %q type: %w", item.ID(), err)
-	}
 	var failureRef *tool.Failure
 	if failure, present := item.Failure(); present {
 		failureRef = &failure
@@ -202,14 +194,10 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 	if err != nil {
 		return protocol.ArtifactItem{}, fmt.Errorf("item %q error: %w", item.ID(), err)
 	}
-	safetyClass, err := artifactSafetyClass(item.SafetyClass())
-	if err != nil {
-		return protocol.ArtifactItem{}, fmt.Errorf("item %q safety class: %w", item.ID(), err)
-	}
 	out := protocol.ArtifactItem{
-		ID: item.ID(), RunID: item.RunID(), Status: status,
-		Type: kind, Phase: presentMessagePhase(item.MessagePhase()), Text: item.Text(), Redacted: item.Redacted(),
-		SafetyClass: safetyClass, ApprovalDecision: presentItemApprovalDecision(item.ApprovalDecision()), Error: problem,
+		ID: item.ID(), RunID: item.RunID(), Status: presentItemStatus(item.Status()),
+		Type: presentItemKind(item.Kind()), Phase: presentMessagePhase(item.MessagePhase()), Text: item.Text(), Redacted: item.Redacted(),
+		SafetyClass: presentSafetyClass(item.SafetyClass()), ApprovalDecision: presentItemApprovalDecision(item.ApprovalDecision()), Error: problem,
 		Summary: item.Summary(), DroppedMessages: item.DroppedMessages(),
 	}
 	content := item.Content()
@@ -224,11 +212,8 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 		}
 	}
 	if value, present := item.Question(); present {
-		question, err := artifactQuestionFromDomain(value)
-		if err != nil {
-			return protocol.ArtifactItem{}, fmt.Errorf("item %q question: %w", item.ID(), err)
-		}
-		out.Question = question
+		question := presentQuestion(value)
+		out.Question = &question
 	}
 	if invocation, present := item.ToolInvocation(); present {
 		tool := protocol.ToolInvocation{Name: invocation.Name, Arguments: invocation.Arguments.Map()}
@@ -245,68 +230,4 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 		out.CreatedAt = item.OccurredAt()
 	}
 	return out, nil
-}
-
-func artifactItemStatus(status transcript.ItemStatus) (protocol.ItemStatus, error) {
-	switch status {
-	case transcript.ItemRunning:
-		return protocol.ItemStatusRunning, nil
-	case transcript.ItemCompleted:
-		return protocol.ItemStatusCompleted, nil
-	case transcript.ItemIncomplete:
-		return protocol.ItemStatusIncomplete, nil
-	default:
-		return "", fmt.Errorf("unknown value %q", status)
-	}
-}
-
-func artifactItemType(kind transcript.ItemKind) (protocol.ItemType, error) {
-	if !kind.Valid() {
-		return "", fmt.Errorf("unknown value %q", kind)
-	}
-	return protocol.ItemType(kind), nil
-}
-
-func artifactQuestionFromDomain(question transcript.Question) (*protocol.Question, error) {
-	fields := make([]protocol.QuestionField, len(question.Fields))
-	for index, field := range question.Fields {
-		var options []protocol.QuestionOption
-		if len(field.Options) > 0 {
-			options = make([]protocol.QuestionOption, len(field.Options))
-			for optionIndex, option := range field.Options {
-				options[optionIndex] = protocol.QuestionOption{Label: option.Label, Description: option.Description, Preview: option.Preview}
-			}
-		}
-		var fieldType protocol.QuestionFieldType
-		switch field.Kind {
-		case transcript.QuestionText:
-			fieldType = protocol.QuestionFieldText
-		case transcript.QuestionChoice:
-			fieldType = protocol.QuestionFieldChoice
-		default:
-			return nil, fmt.Errorf("field %d has unknown type %q", index, field.Kind)
-		}
-		fields[index] = protocol.QuestionField{
-			Prompt: field.Prompt, Header: field.Header, Type: fieldType,
-			Options: options, Multiple: field.Multiple, AllowCustom: field.AllowCustom,
-		}
-	}
-	return &protocol.Question{Fields: fields, Answers: transcript.CloneAnswers(question.Answers)}, nil
-}
-
-func artifactSafetyClass(class tool.SafetyClass) (protocol.SafetyClass, error) {
-	switch class {
-	case "":
-		return "", nil
-	case tool.SafetyClassSafe:
-		return protocol.SafetyClassSafe, nil
-	case tool.SafetyClassWrite:
-		return protocol.SafetyClassWrite, nil
-	case tool.SafetyClassExec:
-		return protocol.SafetyClassExec, nil
-	case tool.SafetyClassNetwork:
-		return protocol.SafetyClassNetwork, nil
-	default:
-		return "", fmt.Errorf("unknown value %q", class)
-	}
 }
