@@ -147,9 +147,11 @@ func (r RecoveryCommit) Validate() error {
 		rootIDs = append(rootIDs, rootID)
 	}
 	slices.Sort(rootIDs)
-	lostSessionIDs, err := recoveryLostSessionIDs(rootIDs, lostByID)
-	if err != nil {
-		return err
+	lostSessionIDs := r.lostRootSessionIDs()
+	for index := 1; index < len(lostSessionIDs); index++ {
+		if lostSessionIDs[index-1] == lostSessionIDs[index] {
+			return fmt.Errorf("runs: recovery commit loses two root Runs in Session %q", lostSessionIDs[index])
+		}
 	}
 	expectedOrder := make([]string, 0, len(state.LostRuns))
 	for _, rootID := range rootIDs {
@@ -171,12 +173,15 @@ func (r RecoveryCommit) Validate() error {
 	); err != nil {
 		return err
 	}
-	recoveredSessionIDs, err := recoverySessionIDs(state.PreservedSessionIDs, lostSessionIDs)
-	if err != nil {
+	if err := validateCanonicalSessionIdentities("preserved Session", state.PreservedSessionIDs); err != nil {
 		return err
 	}
+	recoveredSessionIDs := r.RecoveredSessionIDs()
 	recoveredSessions := make(map[string]struct{}, len(recoveredSessionIDs))
-	for _, sessionID := range recoveredSessionIDs {
+	for index, sessionID := range recoveredSessionIDs {
+		if index > 0 && recoveredSessionIDs[index-1] == sessionID {
+			return fmt.Errorf("runs: recovery commit both loses and preserves Session %q", sessionID)
+		}
 		recoveredSessions[sessionID] = struct{}{}
 	}
 	if err := validateRecoveryModelInvocations(state.ModelInvocations, lostByID, recoveredSessions); err != nil {
@@ -641,53 +646,23 @@ func validateCanonicalSessionIdentities(name string, values []string) error {
 	return nil
 }
 
-func recoveryLostSessionIDs(
-	rootIDs []string,
-	lostByID map[string]rundomain.Replacement,
-) ([]string, error) {
-	values := make([]string, len(rootIDs))
-	seen := make(map[string]string, len(rootIDs))
-	for index, rootID := range rootIDs {
-		sessionID := lostByID[rootID].State().SessionID()
-		if otherRoot, duplicate := seen[sessionID]; duplicate {
-			return nil, fmt.Errorf(
-				"runs: recovery commit lost roots %q and %q share Session %q",
-				otherRoot,
-				rootID,
-				sessionID,
-			)
-		}
-		seen[sessionID] = rootID
-		values[index] = sessionID
-	}
-	slices.Sort(values)
-	return values, nil
-}
-
-func recoverySessionIDs(preserved, lost []string) ([]string, error) {
-	if err := validateCanonicalSessionIdentities("preserved Session", preserved); err != nil {
-		return nil, err
-	}
-	values := append(slices.Clone(lost), preserved...)
-	slices.Sort(values)
-	for index := 1; index < len(values); index++ {
-		if values[index-1] == values[index] {
-			return nil, fmt.Errorf("runs: recovery commit both loses and preserves Session %q", values[index])
-		}
-	}
-	return values, nil
-}
-
-// RecoveredSessionIDs derives the exact Sessions whose abandoned callback
-// ledgers may be retired. Validate must succeed before this projection is used.
-func (r RecoveryCommit) RecoveredSessionIDs() []string {
-	values := slices.Clone(r.state.PreservedSessionIDs)
+func (r RecoveryCommit) lostRootSessionIDs() []string {
+	values := make([]string, 0, len(r.state.LostRuns))
 	for _, recovery := range r.state.LostRuns {
-		lost := recovery.State()
-		if lost.Lineage().IsRoot() {
+		if lost := recovery.State(); lost.Lineage().IsRoot() {
 			values = append(values, lost.SessionID())
 		}
 	}
 	slices.Sort(values)
-	return slices.Compact(values)
+	return values
+}
+
+// RecoveredSessionIDs is the one derivation of which Sessions this recovery
+// owns, and so of which abandoned callback ledgers may be retired: every
+// preserved waiting Session plus the Session of every lost root. Validate
+// proves the result carries no repeat, so no reader has to defend against one.
+func (r RecoveryCommit) RecoveredSessionIDs() []string {
+	values := append(r.lostRootSessionIDs(), r.state.PreservedSessionIDs...)
+	slices.Sort(values)
+	return values
 }

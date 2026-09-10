@@ -947,6 +947,12 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	if err := wrongInvocationSegment.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted an invocation outside its recovered active Segment")
 	}
+	preservedLostSession := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		state.PreservedSessionIDs = []string{root.SessionID()}
+	})
+	if err := preservedLostSession.Validate(); err == nil {
+		t.Fatal("RecoveryCommit.Validate accepted a Session that is both lost and preserved")
+	}
 }
 
 func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.T) {
