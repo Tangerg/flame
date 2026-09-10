@@ -150,14 +150,11 @@ func (f *Finalizer) snapshot(ctx context.Context, sessionID, cwd, runID string) 
 	return nil
 }
 
+// title generates and applies one Session title. NewFinalizer sets the three
+// title ports together or leaves all three unset, and Finish reaches this only
+// when they are set and the opening text has content, so what is left here is
+// the generation itself.
 func (f *Finalizer) title(ctx context.Context, sessionID, prompt string) error {
-	if f.sessionTitles == nil {
-		return errors.New("segment: Session title use cases are unavailable")
-	}
-	prompt = strings.TrimSpace(prompt)
-	if prompt == "" {
-		return nil
-	}
 	needed, err := f.sessionTitles.NeedsGeneratedTitle(ctx, sessionID)
 	if err != nil {
 		return fmt.Errorf("segment: inspect Session %q for title generation: %w", sessionID, err)
@@ -165,10 +162,7 @@ func (f *Finalizer) title(ctx context.Context, sessionID, prompt string) error {
 	if !needed {
 		return nil
 	}
-	if f.titles == nil {
-		return errors.New("segment: title generation is unavailable")
-	}
-	title, generationErr := f.titles.Generate(ctx, prompt)
+	title, generationErr := f.titles.Generate(ctx, strings.TrimSpace(prompt))
 	title = strings.TrimSpace(title)
 	if title == "" && generationErr == nil {
 		return fmt.Errorf("segment: generated title for session %q is empty", sessionID)

@@ -31,10 +31,32 @@ func TestNewRejectsMalformedDependencies(t *testing.T) {
 	}
 }
 
+// TestNewFinalizerRejectsPartialTitleMaintenance pins what Finish and title
+// then rely on: the three title ports arrive together or not at all, so neither
+// re-checks any of them.
 func TestNewFinalizerRejectsPartialTitleMaintenance(t *testing.T) {
-	_, err := NewFinalizer(FinalizerConfig{Titles: &TitleMaintenance{}})
-	if err == nil || !strings.Contains(err.Error(), "session titles") {
-		t.Fatalf("NewFinalizer error = %v", err)
+	stores := &fakeStores{session: &fakeSession{}}
+	complete := TitleMaintenance{Sessions: stores.session, Generator: stores, Tasks: inlineTaskLauncher{}}
+	if _, err := NewFinalizer(FinalizerConfig{Titles: &complete}); err != nil {
+		t.Fatalf("complete title maintenance: %v", err)
+	}
+	for _, test := range []struct {
+		name string
+		want string
+		drop func(*TitleMaintenance)
+	}{
+		{name: "sessions", want: "session titles", drop: func(m *TitleMaintenance) { m.Sessions = nil }},
+		{name: "generator", want: "title generator", drop: func(m *TitleMaintenance) { m.Generator = nil }},
+		{name: "tasks", want: "task launcher", drop: func(m *TitleMaintenance) { m.Tasks = nil }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			partial := complete
+			test.drop(&partial)
+			_, err := NewFinalizer(FinalizerConfig{Titles: &partial})
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("NewFinalizer error = %v, want one naming %q", err, test.want)
+			}
+		})
 	}
 }
 
