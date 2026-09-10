@@ -23,10 +23,40 @@ const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
 const VISUAL_URL = "http://127.0.0.1:4174/visual/";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] as const;
 
-/** No exclusions: platform window controls are outside the document, and every
- *  application-owned target stays inside the audit. */
-async function expectNoWcagViolations(page: Page): Promise<void> {
-  const { violations } = await new AxeBuilder({ page }).withTags([...WCAG_TAGS]).analyze();
+/**
+ * One criterion, on one surface, that the design answers through an exception the criterion
+ * itself grants. Written as a rule plus a container so it cannot silently cover anything else,
+ * and each one carries the reason it is allowed.
+ */
+interface WcagException {
+  readonly rule: string;
+  readonly within: string;
+  readonly because: string;
+}
+
+/** Platform window controls are outside the document, and every application-owned target stays
+ *  inside the audit. The only exceptions are named, scoped and reasoned above. */
+async function expectNoWcagViolations(
+  page: Page,
+  exceptions: readonly WcagException[] = [],
+): Promise<void> {
+  const raw = await new AxeBuilder({ page }).withTags([...WCAG_TAGS]).analyze();
+  const excused = await Promise.all(
+    raw.violations.map(async (violation) => {
+      const match = exceptions.find((exception) => exception.rule === violation.id);
+      if (!match) return violation;
+      const outside = [];
+      for (const node of violation.nodes) {
+        const contained = await page.evaluate(
+          ([selector, within]) => document.querySelector(selector)?.closest(within) !== null,
+          [node.target.join(" "), match.within] as const,
+        );
+        if (!contained) outside.push(node);
+      }
+      return outside.length === 0 ? null : { ...violation, nodes: outside };
+    }),
+  );
+  const violations = excused.filter((violation) => violation !== null);
   expect(
     violations,
     violations
@@ -179,6 +209,63 @@ for (const pane of VISUAL_SETTINGS_PANES) {
     });
   }
 }
+
+// A surface a WIDTH hides is the same blind spot as one an interaction hides. The audit runs at
+// the default viewport, and the narrative's turn rail only mounts at 1440px — so a whole
+// navigation region had never been audited. It is a minimap: one 9px row per turn, deliberately
+// ("the height is the rail's rhythm, not the mark's"), and at that pitch no arrangement can
+// satisfy WCAG 2.5.8 by size or by spacing. The criterion grants an exception for a function
+// reachable another way, and the test below this one proves that is true here rather than
+// asserting it — every turn the rail points at carries its own focusable content.
+const RAIL_TARGET_SIZE: WcagException = {
+  rule: "target-size",
+  within: "nav[aria-label]",
+  because:
+    "a minimap tick is a pointer shortcut to a turn whose content is reachable on its own; see the test that proves each turn is",
+};
+
+const WIDE_VIEWPORT = { width: 1472, height: 900 } as const;
+
+for (const state of VISUAL_AGENT_STATES) {
+  test(`WCAG audit agent ${state} at a width that mounts the turn rail`, async ({ page }) => {
+    await page.setViewportSize({ ...WIDE_VIEWPORT });
+    await openFixture(page, { fixture: "agent", state });
+
+    await expectNoWcagViolations(page, [RAIL_TARGET_SIZE]);
+  });
+}
+
+// What the exception above rests on. If a turn ever stopped carrying content of its own, the
+// rail would become the only way to reach it and the exception would no longer hold — so this
+// is the assertion, not the sentence.
+test("every turn the rail points at is reachable without the rail", async ({ page }) => {
+  await page.setViewportSize({ ...WIDE_VIEWPORT });
+  await openFixture(page, { fixture: "agent", state: "narrative" });
+
+  const counted = await page.evaluate(() => {
+    const rail = document.querySelector("nav[aria-label]");
+    const ticks = rail?.querySelectorAll("button").length ?? 0;
+    // `data-turn-id` is the product's own marker for a turn, which is what the rail indexes.
+    const turnsWithOwnControls = [...document.querySelectorAll("[data-turn-id]")].filter((turn) =>
+      turn.querySelector('button, [tabindex]:not([tabindex="-1"])'),
+    ).length;
+    return {
+      ticks,
+      turnsWithOwnControls,
+      railMounted: (rail as HTMLElement | null)?.offsetParent !== null,
+    };
+  });
+
+  expect(
+    counted.railMounted,
+    "this width has to mount the rail, or the exception is untested",
+  ).toBe(true);
+  expect(counted.ticks, "the rail has to be showing turns").toBeGreaterThan(0);
+  expect(
+    counted.turnsWithOwnControls,
+    "a turn with no control of its own would leave the rail as its only route",
+  ).toBeGreaterThanOrEqual(counted.ticks);
+});
 
 // Everything else a person can OPEN from the workspace. A surface that exists only after an
 // interaction is audited only if someone writes the interaction down, and this file has learned
