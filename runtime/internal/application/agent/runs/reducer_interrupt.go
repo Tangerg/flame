@@ -90,9 +90,7 @@ func (r *reducer) projectToolApproval(
 	interruptIndex int,
 	prompt ApprovalPrompt,
 ) error {
-	if err := r.closeSuspendedToolAttempt(ref); err != nil {
-		return err
-	}
+	r.endToolAttempt(ref)
 	item, publishStart, err := r.approvalItem(prompt, ref)
 	if err != nil {
 		return err
@@ -325,9 +323,7 @@ func (r *reducer) removeDrained(itemID string) {
 }
 
 func (r *reducer) incompleteStartedToolItem(ref *openTool) (ItemCompleted, error) {
-	if err := r.closeSuspendedToolAttempt(ref); err != nil {
-		return ItemCompleted{}, err
-	}
+	r.endToolAttempt(ref)
 	item, err := r.runningToolItem(ref)
 	if err != nil {
 		return ItemCompleted{}, err
@@ -356,19 +352,17 @@ func (r *reducer) abandonUnstartedToolItem(ref *openTool) (ItemCompleted, error)
 }
 
 func (r *reducer) suspendedToolItem(ref *openTool) (transcript.Item, error) {
-	if err := r.closeSuspendedToolAttempt(ref); err != nil {
-		return transcript.Item{}, err
-	}
+	r.endToolAttempt(ref)
 	return r.runningToolItem(ref)
 }
 
-func (r *reducer) closeSuspendedToolAttempt(ref *openTool) error {
-	finishedAt := r.now()
-	if finishedAt.Before(ref.attemptStartedAt) {
-		return fmt.Errorf("tool call %q finish time precedes start time", ref.callID)
-	}
-	ref.finishedAt = finishedAt
-	return nil
+// endToolAttempt stamps the moment this attempt stopped occupying its tool.
+// Suspension, approval and completion all end one. Whether the window it closes
+// is coherent is settled by ToolInvocationCommit, which compares these same two
+// times, and by the transcript Item that carries the attempt; this owes them the
+// reading rather than a third opinion on it.
+func (r *reducer) endToolAttempt(ref *openTool) {
+	ref.finishedAt = r.now()
 }
 
 func (r *reducer) questionInterrupt(in Interrupt) (transcript.Item, transcript.Interrupt, error) {

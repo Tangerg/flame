@@ -125,6 +125,12 @@ func TestEventCommitToolJournalOwnsMatchingItemState(t *testing.T) {
 			CallID: "call_1", ItemID: running.ID(), SegmentID: "segment_1",
 			State: ToolInvocationIncomplete, StartedAt: startedAt, FinishedAt: finishedAt,
 		}},
+		// The attempt window is this commit's own fact: the Item beside it stays
+		// legal, so nothing else here can notice that the window runs backwards.
+		{name: "inverted attempt window", items: []transcript.Item{completed}, invocation: ToolInvocationCommit{
+			CallID: "call_1", ItemID: completed.ID(), SegmentID: "segment_1",
+			State: ToolInvocationCompleted, StartedAt: finishedAt, FinishedAt: startedAt,
+		}, wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

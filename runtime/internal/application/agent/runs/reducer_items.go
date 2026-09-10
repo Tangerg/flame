@@ -499,11 +499,7 @@ func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocati
 		cloned.ModelResult = &modelResult
 	}
 	cloned.MutatedPaths = slices.Clone(e.MutatedPaths)
-	finishedAt := r.now()
-	if finishedAt.Before(ref.attemptStartedAt) {
-		return nil, nil, nil, fmt.Errorf("tool call %q finish time precedes start time", e.CallID)
-	}
-	ref.finishedAt = finishedAt
+	r.endToolAttempt(ref)
 	ref.end = &cloned
 	return r.flushEndedTools()
 }
