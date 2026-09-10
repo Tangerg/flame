@@ -71,6 +71,17 @@ func (s *Store) RejectPendingResume(sessionID string, commandID agent.CommandID)
 // RequeuePendingResume atomically gives a decision a fresh runtime identity
 // after the owning store's authoritative waiting projection proves the old
 // command did not commit before its replay guarantee expired.
+// claimPendingResumeLocked returns the resume a settlement names. Requeueing and
+// retiring ask the same claim, so they cannot disagree about which outstanding
+// command they are finishing.
+func (s *Store) claimPendingResumeLocked(sessionID string, commandID agent.CommandID) (PendingResume, error) {
+	pending, exists := s.pendingResumes[sessionID]
+	if !exists || pending.Command.CommandID != commandID {
+		return PendingResume{}, errors.New("pending resume command identity changed")
+	}
+	return pending, nil
+}
+
 func (s *Store) RequeuePendingResume(
 	sessionID string,
 	commandID agent.CommandID,
@@ -88,9 +99,9 @@ func (s *Store) RequeuePendingResume(
 	replacement := mutation.NewCommandID()
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	pending, exists := s.pendingResumes[sessionID]
-	if !exists || pending.Command.CommandID != commandID {
-		return PendingResume{}, errors.New("pending resume command identity changed")
+	pending, err := s.claimPendingResumeLocked(sessionID, commandID)
+	if err != nil {
+		return PendingResume{}, err
 	}
 	pending = clonePendingResume(pending)
 	pending.Command.CommandID = replacement
@@ -116,9 +127,8 @@ func (s *Store) retirePendingResume(sessionID string, commandID agent.CommandID)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	pending, exists := s.pendingResumes[sessionID]
-	if !exists || pending.Command.CommandID != commandID {
-		return errors.New("pending resume command identity changed")
+	if _, err := s.claimPendingResumeLocked(sessionID, commandID); err != nil {
+		return err
 	}
 	if err := s.saveSessionStateWithResume(sessionID, s.drafts[sessionID], s.pendingRuns[sessionID], nil); err != nil {
 		return err

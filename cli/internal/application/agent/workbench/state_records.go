@@ -297,12 +297,20 @@ func (s *Store) saveSessionStateRecordUnfenced(
 	return s.save(name, state)
 }
 
-func (s *Store) save(name string, value any) error {
+// writable reports whether a durable write may proceed. An incomplete
+// transaction bars every further write until the Store is reopened, and a Store
+// with no persistence at all writes nowhere; both writers ask here so a barred
+// Store cannot be barred for one of them and open for the other.
+func (s *Store) writable() (bool, error) {
 	if s.writeBarrier != nil {
-		return s.writeBarrier
+		return false, s.writeBarrier
 	}
-	if s.persistence == nil {
-		return nil
+	return s.persistence != nil, nil
+}
+
+func (s *Store) save(name string, value any) error {
+	if ok, err := s.writable(); err != nil || !ok {
+		return err
 	}
 	encoded, err := json.MarshalIndent(envelope[any]{Version: formatVersion, Value: value}, "", "  ")
 	if err != nil {
@@ -316,11 +324,8 @@ func (s *Store) save(name string, value any) error {
 }
 
 func (s *Store) remove(name string) error {
-	if s.writeBarrier != nil {
-		return s.writeBarrier
-	}
-	if s.persistence == nil {
-		return nil
+	if ok, err := s.writable(); err != nil || !ok {
+		return err
 	}
 	return s.persistence.Remove(name)
 }
