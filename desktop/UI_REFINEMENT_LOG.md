@@ -14392,3 +14392,72 @@ CTA 的墨色判定，和那条真的在起作用的 WCAG 对比度守卫。
 
 三处注释互相印证同一个数字，**这恰恰是它没被质疑过的原因** ——
 而它们共同漏掉的那句话（`#\#` 是 ID 选择器，所以一个就够）才是结论成立的理由。
+
+## Round 223–224 —— 三态是完整的；`content-visibility` 在规模下是站得住的
+
+两轮都是**干净的否定**，合并记录。近五轮里有四轮产品改动为零 —— 这本身是个信号，
+记在这里免得下轮重挖同样的矿。
+
+### 223：loading / empty / error 三态（`ui_rules` 5）
+
+`pending` 那半（"动作在飞"）Round 216–217 已经做了，这轮量另外三态。
+
+| 状态 | 标题 + 解释 | 可执行动作 | 非颜色信号 |
+| --- | --- | --- | --- |
+| `dock-empty` | "Nothing to compare / The working tree has no uncommitted changes." | 无（正确 —— 无事可做） | 图标 |
+| `dock-loading` | "Loading" | 无 | **`aria-live` 区域** |
+| `dock-error` | "Couldn't load the diff / The runtime rejected the request." | **Retry** | 图标 |
+| `dock-feature-off` | "Skills are off / This runtime doesn't advertise the skills feature." | 无（正确） | 图标 |
+| `agent/error`（`provider_rejected`） | 有码 + 人话 | Open timeline / Diagnostics / Dismiss，**没有 Retry** | `role="alert"` + 图标 |
+| `agent/error-retryable` | 有 | **Retry** + 三个 | `role="alert"` |
+| `agent/recovery`（`run_lost`） | 有 | **Retry** + 三个 | `role="alert"` |
+| `agent/cwd-missing` | 路径 + 原因 | **Relocate…** | `role="alert"` |
+| `agent/empty` | 标题 **"What should we build?"** | 新会话入口 | — |
+| `canceled` / `terminal` | 标题 "Agent · canceled/terminal" | 无 alert（**正确**，不是错误） | 标题本身 |
+
+**没有一个状态只靠颜色说话，也没有一个是空白面板。** `provider_rejected` 恰好没有
+Retry 也是对的 —— fixture 注释写着它是 banner 拒绝重试的错误码之一。
+
+（过程中两次读错元素：第一次抓到 fixture 自己的状态切换侧栏，五个状态**输出完全相同**；
+第二次抓到 transcript 的第一条消息。都是靠"几个不同状态给出同一个读数"这个特征发现的。）
+
+### 224：`content-visibility` 在真实规模下（我自己早先记下的未验证项）
+
+fixture 最多只有 8 个被跳过的 turn、总高 2326px —— **根本到不了产品规模**，
+这正是当初记下"没人验证过"的原因。于是在页面里**克隆真实 turn** 造出 304 个
+（克隆带着同样的 class，所以容器化和 intrinsic size 都是产品的），再从底部逐屏滚到顶：
+
+| 量到的 | 值 |
+| --- | --- |
+| turn 数 / 真实高度范围 | 304 / **28px – 528px**（相差二十倍） |
+| 底部时 scrollHeight | 70143px |
+| 滚完后 scrollHeight | 53866px → **收缩 23%** |
+| 内容跳动 > 24px 的往返 | **2 / 40** |
+
+**要紧的那条成立**：内容基本不跳（浏览器的 scroll anchoring 在起作用）。
+估值偏高的代价落在**滚动条**上 —— 回看长会话时滑块会一边滚一边变大。
+
+**故意不去把 220px 调成实测均值 ~177px**：那是一个 fixture 的内容分布，而 turn 高度
+本身就差二十倍，按这一个样本拟合就是过拟合；而 `auto` 关键字本来就会在某个 turn
+被看过之后用真实高度替换估值。已把测量结果写在那个数字旁边 ——
+**它此前没有任何依据的记录**。
+
+**另一个诚实的限制**：我试着去掉 `auto` 关键字做破坏验证，两组数字**逐位相同** ——
+说明我的探针分辨不出 `auto` 的作用（它的效果只在**第二次**经过同一段内容时出现）。
+所以我既不声称 `auto` 是承重的，也不保留一条分辨不出差别的守卫。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 找到的缺陷 | **0**（两轮都是干净否定） |
+| 补上依据的魔法数字 | 1（`contain-intrinsic-size` 的 220px） |
+| 自查掉的读错元素 | 2 |
+| 明确记下的探针局限 | 1（分辨不出 `auto`） |
+| 生产行为改动 | **零** |
+| lint / prettier / 单测 | 全绿（panel 26 用例通过） |
+
+### 一句话
+
+两轮零缺陷。有价值的产出是**给一个没有依据的魔法数字补上了实测依据**，
+以及承认我的探针**分辨不出自己想验证的那个关键字** —— 后者比一条假绿的守卫值钱。
