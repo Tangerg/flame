@@ -7,8 +7,8 @@ import "testing"
 // Refresh permits consecutive mutations.
 func TestTracker(t *testing.T) {
 	path := "/workspace/foo.go"
-	one := fingerprintOf([]byte("one"))
-	two := fingerprintOf([]byte("two"))
+	one := contentFingerprint{1}
+	two := contentFingerprint{2}
 	tr := newReadTracker()
 	const sess = "s1"
 
@@ -40,7 +40,7 @@ func TestTracker(t *testing.T) {
 
 func TestResolverForgetsOnlyRequestedSessionHistory(t *testing.T) {
 	path := "/workspace/foo.go"
-	content := fingerprintOf([]byte("content"))
+	content := contentFingerprint{3}
 	tracker := newReadTracker()
 	tracker.record("restored", path, content)
 	tracker.record("untouched", path, content)
@@ -57,7 +57,7 @@ func TestResolverForgetsOnlyRequestedSessionHistory(t *testing.T) {
 }
 
 func TestResolverForgetsWorkspaceReadsAcrossSessions(t *testing.T) {
-	content := fingerprintOf([]byte("content"))
+	content := contentFingerprint{3}
 	tracker := newReadTracker()
 	tracker.record("owner", "/workspace/a.go", content)
 	tracker.record("sibling", "/workspace/nested/b.go", content)

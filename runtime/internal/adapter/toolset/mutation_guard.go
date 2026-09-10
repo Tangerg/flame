@@ -209,17 +209,6 @@ func observeFingerprintExistingFile(ctx context.Context, path string, maxBytes i
 	return fingerprintObservation{fingerprint: fingerprint, info: current}, true, nil
 }
 
-func fingerprintFile(ctx context.Context, path string, maxBytes int64) (contentFingerprint, error) {
-	observation, exists, err := observeFingerprintExistingFile(ctx, path, maxBytes)
-	if err != nil {
-		return contentFingerprint{}, err
-	}
-	if !exists {
-		return contentFingerprint{}, os.ErrNotExist
-	}
-	return observation.fingerprint, nil
-}
-
 func sameFingerprintObservation(left, right fingerprintObservation) bool {
 	return left.fingerprint == right.fingerprint && fileinput.SameVersion(left.info, right.info)
 }
