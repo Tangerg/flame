@@ -40,6 +40,15 @@ async function expectNoWcagViolations(
   page: Page,
   exceptions: readonly WcagException[] = [],
 ): Promise<void> {
+  // What an audit means depends on how much of the page it saw, and `data-visual-ready` is
+  // not that: a pane's Suspense chunk resolving is what clears `aria-busy`, and its own data
+  // arrives after. Measured pane by pane, this was auditing 14 of the plugins pane's 47
+  // controls, 17 of the usage pane's 50 and 48 of the appearance pane's 81, and reporting the
+  // same green as an audit over all of them. Twelve dock routes were short too, by less.
+  //
+  // It lives here rather than in `openFixture` because completeness is what an AUDIT's result
+  // rests on; a golden that raced its own content would be flaky, and they are not.
+  await settleByCount(page, 'button, input, textarea, [role="tab"]');
   const raw = await new AxeBuilder({ page }).withTags([...WCAG_TAGS]).analyze();
   const excused = await Promise.all(
     raw.violations.map(async (violation) => {
@@ -156,6 +165,26 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
     // Scoped to the pane's own section: the dock keeps its own skeletons, which never
     // settle in a fixture that seeds no data for them and say nothing about this pane.
     await expect(page.locator('main section [aria-busy="true"]')).toHaveCount(0);
+  }
+}
+
+/**
+ * Unchanged for a RUN of readings, not for two.
+ *
+ * A pane arrives in bursts with gaps longer than one interval — the settings route was measured
+ * going 13, 68, 68, 73 — so two equal readings land on a plateau and call it finished. Four in
+ * a row spans the gap, and the cap is the way out rather than the target.
+ */
+async function settleByCount(page: Page, selector: string): Promise<void> {
+  const STABLE_READINGS = 4;
+  let previous = -1;
+  let stable = 0;
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const count = await page.locator(selector).count();
+    stable = count === previous ? stable + 1 : 0;
+    previous = count;
+    if (count > 0 && stable >= STABLE_READINGS) return;
+    await page.waitForTimeout(120);
   }
 }
 
