@@ -14,6 +14,7 @@ import {
   reportPluginError,
   SLASH_COMMAND,
 } from "@/plugins/sdk";
+import { focusComposer } from "./focus";
 
 export interface SubmitDeps {
   value: string;
@@ -46,6 +47,21 @@ export function submitComposer({
     hasImages: images.length > 0,
     hasPastes: pastes.length > 0,
   };
+  // Clearing the draft is what makes the send button unavailable, and a `disabled` control
+  // cannot hold focus — so sending with the keyboard left focus on `<body>`, and the next Tab
+  // restarted at the top of the document instead of continuing from the composer. Measured on
+  // the narrative and dock routes.
+  //
+  // The two belong together, which is why they are one function: the focus return was first
+  // written inside `accept`, and `accept` is only reached by a submit MODE. An ordinary message
+  // takes the default path at the bottom of this file and a slash command takes the middle one,
+  // so the fix ran for neither and the measurement did not budge. `clear()` is the moment a
+  // submit is accepted — this file's own invariant — so it is the moment focus comes back.
+  const consume = () => {
+    clear();
+    focusComposer();
+  };
+
   for (const mode of lookupExtensionPoint(COMPOSER_SUBMIT_MODE)) {
     let matches = false;
     try {
@@ -66,10 +82,10 @@ export function submitComposer({
       if (accepted) return;
       accepted = true;
       if (intent.historyText) recordHistory(intent.historyText);
-      clear();
+      consume();
     };
     try {
-      mode.submit({ ...modeDraft, accept, clear });
+      mode.submit({ ...modeDraft, accept, clear: consume });
     } catch (error) {
       reportPluginError(
         lookupExtensionOwner(COMPOSER_SUBMIT_MODE, mode.id) ?? "unknown",
@@ -95,12 +111,12 @@ export function submitComposer({
         const owner = lookupSlashCommandOwner(slash.cmd) ?? "unknown";
         reportPluginError(owner, "command", err, `command: ${slash.cmd}`);
       });
-      clear();
+      consume();
       return;
     }
   }
   if (!canSend()) return;
   if (!sendInput(buildInput(intent.body, images))) return;
   if (intent.historyText) recordHistory(intent.historyText);
-  clear();
+  consume();
 }
