@@ -36,6 +36,30 @@ type TreeResumeDraft struct {
 // correspondence are checked while the owner creates the draft; persistence
 // additionally proves that its root has a durable answer claim before
 // reopening any Run.
+// ValidateForTree verifies the draft and both identities that scope it. A
+// commit reasoning about one Session's root Run needs both, and asking for them
+// together is what stops one being checked while the other is assumed.
+func (t TreeResumeDraft) ValidateForTree(expectedSessionID, expectedRootRunID string) error {
+	if err := t.Validate(); err != nil {
+		return err
+	}
+	if t.SessionID != expectedSessionID {
+		return fmt.Errorf(
+			"run: tree resume Session %q does not match requested identity %q",
+			t.SessionID,
+			expectedSessionID,
+		)
+	}
+	if t.RootRunID != expectedRootRunID {
+		return fmt.Errorf(
+			"run: tree resume root %q does not match requested identity %q",
+			t.RootRunID,
+			expectedRootRunID,
+		)
+	}
+	return nil
+}
+
 func (t TreeResumeDraft) Validate() error {
 	if err := resourceid.ValidateRun(t.RootRunID); err != nil {
 		return fmt.Errorf("run: tree resume root %w", err)

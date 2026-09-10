@@ -273,11 +273,8 @@ func validateWaitingCancellationBoundary(c waitingSubtreeCancellationState) erro
 		!c.RootRun.Lineage().IsRoot() || c.RootRun.State() != rundomain.Waiting {
 		return errors.New("runs: waiting cancellation root snapshot is invalid")
 	}
-	if err := c.ExpectedPending.Validate(); err != nil {
+	if err := c.ExpectedPending.ValidateForTree(c.SessionID, c.RootRunID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation expected Pending: %w", err)
-	}
-	if c.ExpectedPending.RootRunID != c.RootRunID || c.ExpectedPending.SessionID != c.SessionID {
-		return errors.New("runs: waiting cancellation expected Pending scope mismatch")
 	}
 	rootContinuation, found := c.ExpectedPending.RootContinuation()
 	if !found {
@@ -311,19 +308,13 @@ func validateWaitingCancellationDispositionEnvelope(c waitingSubtreeCancellation
 		return errors.New("runs: waiting cancellation requires exactly one surviving disposition")
 	}
 	if c.RemainingPending == nil {
-		if err := c.Resume.Validate(); err != nil {
+		if err := c.Resume.ValidateForTree(c.SessionID, c.RootRunID); err != nil {
 			return fmt.Errorf("runs: waiting cancellation Resume: %w", err)
-		}
-		if c.Resume.RootRunID != c.RootRunID || c.Resume.SessionID != c.SessionID {
-			return errors.New("runs: waiting cancellation Resume scope mismatch")
 		}
 		return nil
 	}
-	if err := c.RemainingPending.Validate(); err != nil {
+	if err := c.RemainingPending.ValidateForTree(c.SessionID, c.RootRunID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation reduced Pending: %w", err)
-	}
-	if c.RemainingPending.RootRunID != c.RootRunID || c.RemainingPending.SessionID != c.SessionID {
-		return errors.New("runs: waiting cancellation reduced Pending scope mismatch")
 	}
 	if len(c.OpeningEvents) != 0 {
 		return errors.New("runs: waiting cancellation still parked carries opening events")

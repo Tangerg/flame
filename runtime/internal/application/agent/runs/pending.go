@@ -195,6 +195,23 @@ func (p Pending) ValidateForRoot(expectedRootRunID string) error {
 	if err := p.Validate(); err != nil {
 		return err
 	}
+	return p.requireRoot(expectedRootRunID)
+}
+
+// ValidateForTree verifies the complete hand-off and both identities that scope
+// it. A commit reasoning about one Session's root Run needs both, and asking for
+// them together is what stops one being checked while the other is assumed.
+func (p Pending) ValidateForTree(expectedSessionID, expectedRootRunID string) error {
+	if err := p.Validate(); err != nil {
+		return err
+	}
+	if err := p.requireSession(expectedSessionID); err != nil {
+		return err
+	}
+	return p.requireRoot(expectedRootRunID)
+}
+
+func (p Pending) requireRoot(expectedRootRunID string) error {
 	if p.RootRunID != expectedRootRunID {
 		return fmt.Errorf(
 			"interrupts: pending root %q does not match requested identity %q",
@@ -212,6 +229,10 @@ func (p Pending) ValidateForSession(expectedSessionID string) error {
 	if err := p.Validate(); err != nil {
 		return err
 	}
+	return p.requireSession(expectedSessionID)
+}
+
+func (p Pending) requireSession(expectedSessionID string) error {
 	if p.SessionID != expectedSessionID {
 		return fmt.Errorf(
 			"interrupts: pending Session %q does not match requested identity %q",
