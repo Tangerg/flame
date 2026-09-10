@@ -20,10 +20,9 @@ import (
 // segment identity, replay windows and dedup keys that exist to make a
 // reconnecting consumer correct and would be noise in a pipe.
 type NDJSON struct {
-	enc       *json.Encoder
-	err       error
-	scope     runScope
-	sessionID string
+	enc   *json.Encoder
+	err   error
+	scope runScope
 }
 
 // NewNDJSON builds an event-stream renderer over w.
@@ -45,7 +44,6 @@ func (n *NDJSON) Begin(run agent.Run, _ agent.RunOptions) error {
 		n.err = fmt.Errorf("begin NDJSON: %w", err)
 		return n.err
 	}
-	n.sessionID = run.SessionID
 	return nil
 }
 
@@ -262,7 +260,6 @@ func (n *NDJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 		n.err = fmt.Errorf("render NDJSON snapshot: %w", err)
 		return n.err
 	}
-	n.sessionID = snapshot.Session.ID
 	frame := eventRecord{
 		Type: "run.snapshot", RunID: target.ID, SessionID: snapshot.Session.ID, Status: string(target.Status),
 		Transcript: make([]blockFrame, 0, len(snapshot.Transcript)),
