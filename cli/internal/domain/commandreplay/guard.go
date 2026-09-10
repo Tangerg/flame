@@ -51,9 +51,6 @@ func (g Guard) Validate() error {
 		if strings.TrimSpace(g.namespace) == "" || g.namespace != strings.TrimSpace(g.namespace) || g.until.IsZero() {
 			return errors.New("protected command replay guard is incomplete")
 		}
-		if g.until.Location() != time.UTC {
-			return errors.New("protected command replay guard deadline is not UTC")
-		}
 		return nil
 	default:
 		return fmt.Errorf("command replay guard has unknown kind %q", g.kind)

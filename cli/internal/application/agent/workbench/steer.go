@@ -70,9 +70,6 @@ func (p PendingSteer) Validate() error {
 	if p.stagedAt.IsZero() {
 		return errors.New("pending steer staging time is empty")
 	}
-	if p.stagedAt.Location() != time.UTC {
-		return errors.New("pending steer staging time must be UTC")
-	}
 	if err := p.replay.Validate(); err != nil {
 		return err
 	}

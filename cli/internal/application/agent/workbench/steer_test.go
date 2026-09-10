@@ -1,6 +1,7 @@
 package workbench
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"testing"
 	"time"
@@ -122,6 +123,32 @@ func TestPendingSteerOwnsDetachedCommandMaterial(t *testing.T) {
 	command.Message.Attachments[0].Name = "mutated.txt"
 	if pending.Message().Text != "inspect the parser" || pending.Message().Attachments[0].Name != "notes.txt" {
 		t.Fatal("caller mutation changed durable steer ownership")
+	}
+}
+
+func TestPendingSteerSpellsOneStagingTimeWhateverZoneItArrivesIn(t *testing.T) {
+	utc := steerTestPending(t, "ses_steer", steerTestAttachment(t.TempDir()))
+	zoned, err := NewPendingSteer(
+		utc.SessionID(),
+		utc.Command(),
+		utc.StagedAt().In(time.FixedZone("east", 8*60*60)),
+		utc.Replay(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The staging time is persisted through pendingSteerRecord, and time.Time
+	// keeps its zone through JSON. One instant must be one durable record.
+	utcJSON, err := json.Marshal(utc.record())
+	if err != nil {
+		t.Fatal(err)
+	}
+	zonedJSON, err := json.Marshal(zoned.record())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(zonedJSON) != string(utcJSON) {
+		t.Fatalf("steer record = %s, want %s", zonedJSON, utcJSON)
 	}
 }
 

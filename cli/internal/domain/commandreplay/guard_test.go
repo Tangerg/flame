@@ -26,6 +26,33 @@ func TestGuardRequiresAnExplicitProtectionKind(t *testing.T) {
 	}
 }
 
+func TestProtectedGuardSpellsOneDeadlineWhateverZoneItArrivesIn(t *testing.T) {
+	t.Parallel()
+
+	instant := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
+	zoned, err := NewProtectedGuard("runtime-a", instant.In(time.FixedZone("east", 8*60*60)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	utc, err := NewProtectedGuard("runtime-a", instant)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The deadline is durable, and time.Time keeps its zone through JSON. Two
+	// callers naming the same instant must not persist two different guards.
+	zonedJSON, err := json.Marshal(zoned)
+	if err != nil {
+		t.Fatal(err)
+	}
+	utcJSON, err := json.Marshal(utc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(zonedJSON) != string(utcJSON) {
+		t.Fatalf("guard JSON = %s, want %s", zonedJSON, utcJSON)
+	}
+}
+
 func TestGuardJSONUsesOneStrictExplicitUnion(t *testing.T) {
 	t.Parallel()
 

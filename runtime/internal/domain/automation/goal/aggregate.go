@@ -258,9 +258,6 @@ func (g Goal) ValidateSnapshot() error {
 	if g.createdAt.IsZero() || g.updatedAt.IsZero() {
 		return fmt.Errorf("%w: creation and update times are required", ErrInvalid)
 	}
-	if g.createdAt.Location() != time.UTC || g.updatedAt.Location() != time.UTC {
-		return fmt.Errorf("%w: times must be UTC", ErrInvalid)
-	}
 	if g.updatedAt.Before(g.createdAt) {
 		return fmt.Errorf("%w: update time precedes creation", ErrInvalid)
 	}
