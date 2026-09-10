@@ -2,8 +2,8 @@ package agentexec
 
 import (
 	"fmt"
-	"unicode"
-	"unicode/utf8"
+
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 const maximumDeploymentIdentityCharacters = 256
@@ -17,21 +17,8 @@ type deploymentIdentity struct {
 }
 
 func parseDeploymentIdentity(kind, text string) (deploymentIdentity, error) {
-	if text == "" {
-		return deploymentIdentity{}, fmt.Errorf("%s is empty", kind)
-	}
-	if !utf8.ValidString(text) {
-		return deploymentIdentity{}, fmt.Errorf("%s is not valid UTF-8", kind)
-	}
-	if characters := utf8.RuneCountInString(text); characters > maximumDeploymentIdentityCharacters {
-		return deploymentIdentity{}, fmt.Errorf(
-			"%s has %d characters, maximum is %d", kind, characters, maximumDeploymentIdentityCharacters,
-		)
-	}
-	for _, character := range text {
-		if unicode.IsSpace(character) || !unicode.IsPrint(character) {
-			return deploymentIdentity{}, fmt.Errorf("%s contains whitespace or a non-printing character", kind)
-		}
+	if err := runtimeidentity.ValidateText(text, maximumDeploymentIdentityCharacters); err != nil {
+		return deploymentIdentity{}, fmt.Errorf("%s %w", kind, err)
 	}
 	return deploymentIdentity{text: text}, nil
 }

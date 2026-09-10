@@ -3,10 +3,10 @@ package conversation
 import (
 	"errors"
 	"fmt"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/Tangerg/scope/core/chat"
+
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 const MaximumToolCallIdentityCharacters = 512
@@ -21,24 +21,8 @@ type ToolCallIdentity struct {
 }
 
 func NewToolCallIdentity(value string) (ToolCallIdentity, error) {
-	if value == "" {
-		return ToolCallIdentity{}, fmt.Errorf("%w: empty", ErrToolCallIdentity)
-	}
-	if !utf8.ValidString(value) {
-		return ToolCallIdentity{}, fmt.Errorf("%w: invalid UTF-8", ErrToolCallIdentity)
-	}
-	if characters := utf8.RuneCountInString(value); characters > MaximumToolCallIdentityCharacters {
-		return ToolCallIdentity{}, fmt.Errorf(
-			"%w: %d characters exceeds %d",
-			ErrToolCallIdentity,
-			characters,
-			MaximumToolCallIdentityCharacters,
-		)
-	}
-	for _, character := range value {
-		if unicode.IsSpace(character) || !unicode.IsPrint(character) {
-			return ToolCallIdentity{}, fmt.Errorf("%w: contains whitespace or a non-printing character", ErrToolCallIdentity)
-		}
+	if err := runtimeidentity.ValidateText(value, MaximumToolCallIdentityCharacters); err != nil {
+		return ToolCallIdentity{}, fmt.Errorf("%w: %v", ErrToolCallIdentity, err)
 	}
 	return ToolCallIdentity{value: value}, nil
 }

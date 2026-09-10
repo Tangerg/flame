@@ -19,18 +19,18 @@ var (
 // ValidateResource enforces the shared opaque resource envelope without
 // assigning meaning to an identity or normalizing caller material.
 func ValidateResource(kind, value string, maximumCharacters int) error {
-	if err := identityText(value, maximumCharacters); err != nil {
+	if err := ValidateText(value, maximumCharacters); err != nil {
 		return fmt.Errorf("%s identity %w", kind, err)
 	}
 	return nil
 }
 
-// identityText is what every exact identity must be, whatever it names: a
+// ValidateText is what every exact identity must be, whatever it names: a
 // non-empty, valid UTF-8 string within its envelope, carrying no whitespace or
-// non-printing character. It reports the defect as a phrase so a resource
-// identity can name its kind and a model identity can carry the sentinel its
-// callers branch on.
-func identityText(value string, maximumCharacters int) error {
+// non-printing character. It reports the defect as a phrase, so each caller
+// keeps its own way of failing — naming the kind it validated, or carrying the
+// sentinel its callers branch on.
+func ValidateText(value string, maximumCharacters int) error {
 	if value == "" {
 		return errors.New("is empty")
 	}
@@ -96,7 +96,7 @@ func ValidateModelSelection(provider, model, reasoningEffort string) error {
 }
 
 func validateModelIdentity(value string, maximumCharacters int, identityError error) error {
-	if err := identityText(value, maximumCharacters); err != nil {
+	if err := ValidateText(value, maximumCharacters); err != nil {
 		return fmt.Errorf("%w: %v", identityError, err)
 	}
 	return nil
