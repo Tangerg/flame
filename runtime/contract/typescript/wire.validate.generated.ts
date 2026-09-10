@@ -38,20 +38,16 @@ export type WireTypeName =
   | "ApprovalRule"
   | "ApprovalRuleDecision"
   | "ApprovalRuleScope"
-  | "ArtifactContentBlock"
   | "ArtifactItem"
-  | "ArtifactModelUsage"
   | "ArtifactOutcome"
   | "ArtifactOutcomeType"
   | "ArtifactProblem"
   | "ArtifactProblemType"
   | "ArtifactQuestion"
   | "ArtifactQuestionField"
-  | "ArtifactQuestionOption"
   | "ArtifactRun"
   | "ArtifactRunMetrics"
   | "ArtifactSession"
-  | "ArtifactToolInvocation"
   | "ArtifactToolResult"
   | "ArtifactUsage"
   | "CancelRunRequest"
@@ -455,29 +451,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   ApprovalRuleDecision: enumOf(["allow", "deny"]),
   ApprovalRuleScope: enumOf(["session", "project", "global"]),
-  ArtifactContentBlock: allOf([
-    object({
-      data: text(),
-      mime: allOf([text(), pattern("^image/")]),
-      text: allOf([text(), pattern("\\S")]),
-      type: ref(() => CHECKS.ContentBlockType),
-    }, []),
-    oneOf([
-      fields({
-        data: absent(),
-        mime: absent(),
-        type: literal("text"),
-      }, ["text", "type"]),
-      fields({
-        text: absent(),
-        type: literal("image"),
-      }, ["data", "mime", "type"]),
-    ]),
-  ]),
   ArtifactItem: allOf([
     object({
       approvalDecision: ref(() => CHECKS.ApprovalDecision),
-      content: array(ref(() => CHECKS.ArtifactContentBlock)),
+      content: array(ref(() => CHECKS.ContentBlock)),
       createdAt: text(),
       droppedMessages: allOf([integer(), minimum(0)]),
       durationMillis: allOf([integer(), minimum(0), maximum(9223372036854)]),
@@ -493,7 +470,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       status: ref(() => CHECKS.ItemStatus),
       summary: text(),
       text: text(),
-      tool: ref(() => CHECKS.ArtifactToolInvocation),
+      tool: ref(() => CHECKS.ToolInvocation),
       type: ref(() => CHECKS.ItemType),
     }, []),
     oneOf([
@@ -612,14 +589,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({}, ["finishedAt"]),
     ),
   ]),
-  ArtifactModelUsage: object({
-    cacheReadTokens: allOf([integer(), minimum(0)]),
-    cacheWriteTokens: allOf([integer(), minimum(0)]),
-    costUsd: allOf([numeric(), minimum(0)]),
-    inputTokens: allOf([integer(), minimum(0)]),
-    outputTokens: allOf([integer(), minimum(0)]),
-    reasoningTokens: allOf([integer(), minimum(0)]),
-  }, []),
   ArtifactOutcome: allOf([
     object({
       detail: text(),
@@ -758,7 +727,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       allowCustom: flag(),
       header: allOf([text(), maxLength(12)]),
       multiple: flag(),
-      options: allOf([array(ref(() => CHECKS.ArtifactQuestionOption)), minItems(2), maxItems(4)]),
+      options: allOf([array(ref(() => CHECKS.QuestionOption)), minItems(2), maxItems(4)]),
       prompt: allOf([text(), pattern("\\S")]),
       type: ref(() => CHECKS.QuestionFieldType),
     }, []),
@@ -774,11 +743,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["options", "prompt", "type"]),
     ]),
   ]),
-  ArtifactQuestionOption: object({
-    description: text(),
-    label: allOf([text(), pattern("\\S")]),
-    preview: text(),
-  }, ["label"]),
   ArtifactRun: allOf([
     object({
       contextTokens: allOf([integer(), minimum(0)]),
@@ -834,11 +798,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     updatedAt: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["createdAt", "id", "model", "provider", "title", "updatedAt", "workspace"]),
-  ArtifactToolInvocation: object({
-    arguments: record(anything()),
-    name: allOf([text(), pattern("\\S")]),
-    result: anything(),
-  }, ["arguments", "name"]),
   ArtifactToolResult: object({
     body: allOf([text(), minLength(1)]),
     createdAt: text(),
@@ -848,7 +807,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     toolName: allOf([text(), pattern("\\S")]),
   }, ["body", "createdAt", "id", "itemId", "preview", "toolName"]),
   ArtifactUsage: object({
-    byModel: allOf([record(ref(() => CHECKS.ArtifactModelUsage)), propertyNames(allOf([maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]))]),
+    byModel: allOf([record(ref(() => CHECKS.ModelUsage)), propertyNames(allOf([maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]))]),
     cacheReadTokens: allOf([integer(), minimum(0)]),
     cacheWriteTokens: allOf([integer(), minimum(0)]),
     costUsd: allOf([numeric(), minimum(0)]),

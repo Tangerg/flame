@@ -287,22 +287,13 @@ const (
 )
 
 type ArtifactUsage struct {
-	InputTokens      int64                         `json:"inputTokens,omitempty"`
-	OutputTokens     int64                         `json:"outputTokens,omitempty"`
-	CacheReadTokens  int64                         `json:"cacheReadTokens,omitempty"`
-	CacheWriteTokens int64                         `json:"cacheWriteTokens,omitempty"`
-	ReasoningTokens  int64                         `json:"reasoningTokens,omitempty"`
-	CostUSD          *float64                      `json:"costUsd,omitempty"`
-	ByModel          map[string]ArtifactModelUsage `json:"byModel,omitempty"`
-}
-
-type ArtifactModelUsage struct {
-	InputTokens      int64    `json:"inputTokens,omitempty"`
-	OutputTokens     int64    `json:"outputTokens,omitempty"`
-	CacheReadTokens  int64    `json:"cacheReadTokens,omitempty"`
-	CacheWriteTokens int64    `json:"cacheWriteTokens,omitempty"`
-	ReasoningTokens  int64    `json:"reasoningTokens,omitempty"`
-	CostUSD          *float64 `json:"costUsd,omitempty"`
+	InputTokens      int64                 `json:"inputTokens,omitempty"`
+	OutputTokens     int64                 `json:"outputTokens,omitempty"`
+	CacheReadTokens  int64                 `json:"cacheReadTokens,omitempty"`
+	CacheWriteTokens int64                 `json:"cacheWriteTokens,omitempty"`
+	ReasoningTokens  int64                 `json:"reasoningTokens,omitempty"`
+	CostUSD          *float64              `json:"costUsd,omitempty"`
+	ByModel          map[string]ModelUsage `json:"byModel,omitempty"`
 }
 
 // ArtifactItem is the durable transcript representation. It is not the live
@@ -323,24 +314,17 @@ type ArtifactItem struct {
 	FinishedAt     time.Time `json:"finishedAt,omitzero"`
 	DurationMillis *int64    `json:"durationMillis,omitempty"`
 
-	Content          []ArtifactContentBlock  `json:"content,omitempty"`
-	Phase            MessagePhase            `json:"phase,omitempty"`
-	Text             string                  `json:"text,omitempty"`
-	Redacted         bool                    `json:"redacted,omitempty"`
-	Question         *ArtifactQuestion       `json:"question,omitempty"`
-	Tool             *ArtifactToolInvocation `json:"tool,omitempty"`
-	SafetyClass      SafetyClass             `json:"safetyClass,omitempty"`
-	ApprovalDecision ApprovalDecision        `json:"approvalDecision,omitempty"`
-	Error            *ArtifactProblem        `json:"error,omitempty"`
-	Summary          string                  `json:"summary,omitempty"`
-	DroppedMessages  int                     `json:"droppedMessages,omitempty"`
-}
-
-type ArtifactContentBlock struct {
-	Type ContentBlockType `json:"type"`
-	Text string           `json:"text,omitempty"`
-	Mime string           `json:"mime,omitempty"`
-	Data string           `json:"data,omitempty"`
+	Content          []ContentBlock    `json:"content,omitempty"`
+	Phase            MessagePhase      `json:"phase,omitempty"`
+	Text             string            `json:"text,omitempty"`
+	Redacted         bool              `json:"redacted,omitempty"`
+	Question         *ArtifactQuestion `json:"question,omitempty"`
+	Tool             *ToolInvocation   `json:"tool,omitempty"`
+	SafetyClass      SafetyClass       `json:"safetyClass,omitempty"`
+	ApprovalDecision ApprovalDecision  `json:"approvalDecision,omitempty"`
+	Error            *ArtifactProblem  `json:"error,omitempty"`
+	Summary          string            `json:"summary,omitempty"`
+	DroppedMessages  int               `json:"droppedMessages,omitempty"`
 }
 
 type ArtifactQuestion struct {
@@ -349,24 +333,12 @@ type ArtifactQuestion struct {
 }
 
 type ArtifactQuestionField struct {
-	Prompt      string                   `json:"prompt"`
-	Header      string                   `json:"header,omitempty"`
-	Type        QuestionFieldType        `json:"type"`
-	Options     []ArtifactQuestionOption `json:"options,omitempty"`
-	Multiple    bool                     `json:"multiple,omitempty"`
-	AllowCustom bool                     `json:"allowCustom,omitempty"`
-}
-
-type ArtifactQuestionOption struct {
-	Label       string `json:"label"`
-	Description string `json:"description,omitempty"`
-	Preview     string `json:"preview,omitempty"`
-}
-
-type ArtifactToolInvocation struct {
-	Name      string         `json:"name"`
-	Arguments map[string]any `json:"arguments"`
-	Result    any            `json:"result,omitempty"`
+	Prompt      string            `json:"prompt"`
+	Header      string            `json:"header,omitempty"`
+	Type        QuestionFieldType `json:"type"`
+	Options     []QuestionOption  `json:"options,omitempty"`
+	Multiple    bool              `json:"multiple,omitempty"`
+	AllowCustom bool              `json:"allowCustom,omitempty"`
 }
 
 type ArtifactProblem struct {

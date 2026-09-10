@@ -27,7 +27,7 @@ func validArtifact() protocol.SessionArtifact {
 		}},
 		Items: []protocol.ArtifactItem{{
 			ID: "item_1", RunID: "run_1", Status: "completed", CreatedAt: finished,
-			Type: "userMessage", Content: []protocol.ArtifactContentBlock{{Type: "text", Text: "hello"}},
+			Type: "userMessage", Content: []protocol.ContentBlock{{Type: "text", Text: "hello"}},
 		}},
 	}
 }
@@ -138,7 +138,7 @@ func TestPortableArtifactDecoderPreservesCanonicalToolResult(t *testing.T) {
 	artifact.Items[0] = protocol.ArtifactItem{
 		ID: "item_1", RunID: "run_1", Status: "completed", Type: "toolCall",
 		StartedAt: at, FinishedAt: at, DurationMillis: valuePtr(int64(0)),
-		Tool: &protocol.ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{}, Result: map[string]any{"stdout": "raw"}},
+		Tool: &protocol.ToolInvocation{Name: "shell", Arguments: map[string]any{}, Result: map[string]any{"stdout": "raw"}},
 	}
 	portable, err := portableArtifactFromWire(artifact)
 	if err != nil {
@@ -162,7 +162,7 @@ func TestPortableArtifactDecoderPreservesCanceledToolFailure(t *testing.T) {
 		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusIncomplete,
 		Type: protocol.ItemTypeToolCall, StartedAt: at, FinishedAt: at,
 		DurationMillis: valuePtr(int64(0)),
-		Tool:           &protocol.ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{}},
+		Tool:           &protocol.ToolInvocation{Name: "shell", Arguments: map[string]any{}},
 		Error:          &protocol.ArtifactProblem{Type: protocol.ArtifactProblemToolCanceled},
 	}
 	portable, err := portableArtifactFromWire(artifact)
@@ -184,7 +184,7 @@ func TestPortableArtifactDecoderRejectsImpossibleToolTiming(t *testing.T) {
 			ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
 			StartedAt: startedAt, FinishedAt: finishedAt,
 			DurationMillis: valuePtr(int64(1500)), Type: protocol.ItemTypeToolCall,
-			Tool: &protocol.ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{}},
+			Tool: &protocol.ToolInvocation{Name: "shell", Arguments: map[string]any{}},
 		}
 		return artifact
 	}
@@ -218,7 +218,7 @@ func TestPortableArtifactDecoderRejectsToolDurationOutsideWireBounds(t *testing.
 		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
 		StartedAt: startedAt, FinishedAt: startedAt.Add(time.Second),
 		DurationMillis: valuePtr(protocol.MaximumDurationMilliseconds + 1), Type: protocol.ItemTypeToolCall,
-		Tool: &protocol.ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{}},
+		Tool: &protocol.ToolInvocation{Name: "shell", Arguments: map[string]any{}},
 	}
 	_, err := portableArtifactFromWire(artifact)
 	if !errors.Is(err, protocol.ErrInvalidParams) {
@@ -245,7 +245,7 @@ func TestPortableArtifactDecoderAcceptsToolExecutionShorterThanLifecycle(t *test
 		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
 		StartedAt: startedAt, FinishedAt: startedAt.Add(1500 * time.Millisecond),
 		DurationMillis: valuePtr(int64(500)), Type: protocol.ItemTypeToolCall,
-		Tool: &protocol.ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{}},
+		Tool: &protocol.ToolInvocation{Name: "shell", Arguments: map[string]any{}},
 	}
 	portable, err := portableArtifactFromWire(artifact)
 	if err != nil {
@@ -264,7 +264,7 @@ func TestPortableArtifactDecoderPreservesUnknownToolExecutionDuration(t *testing
 		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusIncomplete,
 		StartedAt: startedAt, FinishedAt: startedAt.Add(1500 * time.Millisecond),
 		Type: protocol.ItemTypeToolCall,
-		Tool: &protocol.ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{}},
+		Tool: &protocol.ToolInvocation{Name: "shell", Arguments: map[string]any{}},
 	}
 	portable, err := portableArtifactFromWire(artifact)
 	if err != nil {
@@ -287,7 +287,7 @@ func TestArtifactV17RejectsSyntheticLifecyclesForCompleteFacts(t *testing.T) {
 			name: "running user message",
 			item: protocol.ArtifactItem{
 				Status: protocol.ItemStatusRunning, Type: protocol.ItemTypeUserMessage,
-				Content: []protocol.ArtifactContentBlock{{Type: protocol.ContentBlockText, Text: "hello"}},
+				Content: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "hello"}},
 			},
 		},
 		{

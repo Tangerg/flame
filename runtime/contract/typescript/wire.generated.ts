@@ -179,26 +179,13 @@ export type ApprovalRuleDecision = "allow" | "deny";
 
 export type ApprovalRuleScope = "session" | "project" | "global";
 
-export type ArtifactContentBlock =
-  | { type: "text"; text: string }
-  | { type: "image"; data: string; mime: string };
-
 export type ArtifactItem =
-  | { type: "userMessage"; content: ArtifactContentBlock[]; createdAt: string; id: string; runId: string; status: "completed" }
-  | { type: "agentMessage"; content: ArtifactContentBlock[]; createdAt: string; id: string; phase: MessagePhase; runId: string; status: "completed" }
+  | { type: "userMessage"; content: ContentBlock[]; createdAt: string; id: string; runId: string; status: "completed" }
+  | { type: "agentMessage"; content: ContentBlock[]; createdAt: string; id: string; phase: MessagePhase; runId: string; status: "completed" }
   | { type: "reasoning"; createdAt: string; id: string; redacted?: boolean; runId: string; status: "completed"; text: string }
   | { type: "question"; createdAt: string; id: string; question: ArtifactQuestion; runId: string; status: "completed" }
-  | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internalError" | "deniedByUser" | "toolFailed" | "childRunCanceled" | "toolCanceled" }; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: "completed" | "incomplete"; tool: ArtifactToolInvocation }
+  | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internalError" | "deniedByUser" | "toolFailed" | "childRunCanceled" | "toolCanceled" }; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: "completed" | "incomplete"; tool: ToolInvocation }
   | { type: "compaction"; createdAt: string; droppedMessages?: number; id: string; runId: string; status: "completed"; summary: string };
-
-export interface ArtifactModelUsage {
-  cacheReadTokens?: number;
-  cacheWriteTokens?: number;
-  costUsd?: number;
-  inputTokens?: number;
-  outputTokens?: number;
-  reasoningTokens?: number;
-}
 
 export type ArtifactOutcome =
   | { type: "completed" }
@@ -227,13 +214,7 @@ export interface ArtifactQuestion {
 
 export type ArtifactQuestionField =
   | { type: "text"; header?: string; prompt: string }
-  | { type: "choice"; allowCustom?: boolean; header?: string; multiple?: boolean; options: ArtifactQuestionOption[]; prompt: string };
-
-export interface ArtifactQuestionOption {
-  description?: string;
-  label: string;
-  preview?: string;
-}
+  | { type: "choice"; allowCustom?: boolean; header?: string; multiple?: boolean; options: QuestionOption[]; prompt: string };
 
 export interface ArtifactRun {
   contextTokens?: number;
@@ -273,12 +254,6 @@ export interface ArtifactSession {
   workspace: WorkspaceRef;
 }
 
-export interface ArtifactToolInvocation {
-  arguments: Record<string, unknown>;
-  name: string;
-  result?: unknown;
-}
-
 export interface ArtifactToolResult {
   body: string;
   createdAt: string;
@@ -289,7 +264,7 @@ export interface ArtifactToolResult {
 }
 
 export interface ArtifactUsage {
-  byModel?: Record<string, ArtifactModelUsage>;
+  byModel?: Record<string, ModelUsage>;
   cacheReadTokens?: number;
   cacheWriteTokens?: number;
   costUsd?: number;

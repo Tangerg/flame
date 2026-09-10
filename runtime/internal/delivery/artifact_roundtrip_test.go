@@ -186,7 +186,7 @@ func TestImportRefusesAChildWhoseRootProfileDisallowsChildren(t *testing.T) {
 			ID: "item_spawn", RunID: "run_root", Status: protocol.ItemStatusCompleted,
 			StartedAt: at, FinishedAt: at, DurationMillis: valuePtr(int64(0)),
 			Type: protocol.ItemTypeToolCall,
-			Tool: &protocol.ArtifactToolInvocation{Name: "delegate_task", Arguments: map[string]any{}},
+			Tool: &protocol.ToolInvocation{Name: "delegate_task", Arguments: map[string]any{}},
 		}},
 	}
 

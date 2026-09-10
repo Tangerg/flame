@@ -1604,20 +1604,6 @@ func (a ArtifactItem) ValidateWire() error {
 	)
 }
 
-func (a ArtifactContentBlock) ValidateWire() error {
-	return collectWireViolations("ArtifactContentBlock",
-		optionalTextPattern("text", a.Text, "\\S"),
-		optionalTextPattern("mime", a.Mime, "^image/"),
-		closedEnum("type", string(a.Type), []string{"text", "image"}, false),
-		requiredWhen(wireFieldEquals(a, "type", "text"), "text", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "text"), "mime", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "text"), "data", a),
-		requiredWhen(wireFieldEquals(a, "type", "image"), "mime", a),
-		requiredWhen(wireFieldEquals(a, "type", "image"), "data", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "image"), "text", a),
-	)
-}
-
 func (d DiffRow) ValidateWire() error {
 	return collectWireViolations("DiffRow",
 		optionalPositiveScalarNumber("leftLine", d.LeftLine),
@@ -2117,26 +2103,9 @@ func (a ArtifactUsage) ValidateWire() error {
 	)
 }
 
-func (a ArtifactModelUsage) ValidateWire() error {
-	return collectWireViolations("ArtifactModelUsage",
-		nonNegativeNumber("inputTokens", a.InputTokens),
-		nonNegativeNumber("outputTokens", a.OutputTokens),
-		nonNegativeNumber("cacheReadTokens", a.CacheReadTokens),
-		nonNegativeNumber("cacheWriteTokens", a.CacheWriteTokens),
-		nonNegativeNumber("reasoningTokens", a.ReasoningTokens),
-		optionalNonNegativeNumber("costUsd", a.CostUSD),
-	)
-}
-
 func (t ToolInvocation) ValidateWire() error {
 	return collectWireViolations("ToolInvocation",
 		requiredTextPattern("name", t.Name, "\\S"),
-	)
-}
-
-func (a ArtifactToolInvocation) ValidateWire() error {
-	return collectWireViolations("ArtifactToolInvocation",
-		requiredTextPattern("name", a.Name, "\\S"),
 	)
 }
 
@@ -2232,12 +2201,6 @@ func (a ArtifactQuestion) ValidateWire() error {
 func (q QuestionOption) ValidateWire() error {
 	return collectWireViolations("QuestionOption",
 		requiredTextPattern("label", q.Label, "\\S"),
-	)
-}
-
-func (a ArtifactQuestionOption) ValidateWire() error {
-	return collectWireViolations("ArtifactQuestionOption",
-		requiredTextPattern("label", a.Label, "\\S"),
 	)
 }
 

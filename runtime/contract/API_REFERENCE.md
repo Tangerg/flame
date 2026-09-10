@@ -422,13 +422,6 @@ Forbidden on every variant: `durable`.
 | `toolCall` | `id`, `runId`, `status`, `startedAt`, `tool` | `finishedAt`, `durationMillis`, `safetyClass`, `approvalDecision`, `error` |
 | `compaction` | `id`, `runId`, `status`, `createdAt`, `summary` | `droppedMessages` |
 
-### `ArtifactContentBlock`
-
-| tag | required | optional |
-| --- | --- | --- |
-| `text` | `text` | — |
-| `image` | `mime`, `data` | — |
-
 ### `DiffRow`
 
 | tag | required | optional |
@@ -559,20 +552,11 @@ TypeScript validator from this single registry projection.
 | `ArtifactUsage` | `costUsd` | `nonNegative` |
 | `ArtifactUsage` | `byModel` | `identityPropertyNames` |
 | `ArtifactUsage` | `byModel` | `maxPropertyNameLength(256)` |
-| `ArtifactModelUsage` | `inputTokens` | `nonNegative` |
-| `ArtifactModelUsage` | `outputTokens` | `nonNegative` |
-| `ArtifactModelUsage` | `cacheReadTokens` | `nonNegative` |
-| `ArtifactModelUsage` | `cacheWriteTokens` | `nonNegative` |
-| `ArtifactModelUsage` | `reasoningTokens` | `nonNegative` |
-| `ArtifactModelUsage` | `costUsd` | `nonNegative` |
 | `ArtifactProblem` | `retryAfterSeconds` | `positive` |
 | `ArtifactProblem` | `retryAfterSeconds` | `maximum(9223372036)` |
 | `ContentBlock` | `text` | `pattern("\\S")` |
 | `ContentBlock` | `mime` | `pattern("^image/")` |
-| `ArtifactContentBlock` | `text` | `pattern("\\S")` |
-| `ArtifactContentBlock` | `mime` | `pattern("^image/")` |
 | `ToolInvocation` | `name` | `pattern("\\S")` |
-| `ArtifactToolInvocation` | `name` | `pattern("\\S")` |
 | `RunSummary` | `id` | `nonEmpty` |
 | `RunSummary` | `id` | `identity` |
 | `RunSummary` | `id` | `maxLength(256)` |
@@ -681,7 +665,6 @@ TypeScript validator from this single registry projection.
 | `ArtifactQuestionField` | `options` | `minItems(2)` |
 | `ArtifactQuestionField` | `options` | `maxItems(4)` |
 | `QuestionOption` | `label` | `pattern("\\S")` |
-| `ArtifactQuestionOption` | `label` | `pattern("\\S")` |
 | `InterruptResponseValue` | `answers` | `nonEmptyItems` |
 | `StartRunResponse` | `runId` | `nonEmpty` |
 | `StartRunResponse` | `runId` | `identity` |

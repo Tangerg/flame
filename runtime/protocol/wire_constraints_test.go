@@ -1169,14 +1169,14 @@ func TestContentBlocksRequireSemanticTextAndImageMediaType(t *testing.T) {
 		t.Fatalf("ValidateWire rejected image-only content: %v", err)
 	}
 
-	artifactBlank := ArtifactContentBlock{Type: ContentBlockText, Text: " \n\t"}
-	assertConstraintField(t, artifactBlank.ValidateWire(), "ArtifactContentBlock", "text")
+	artifactBlank := ContentBlock{Type: ContentBlockText, Text: " \n\t"}
+	assertConstraintField(t, artifactBlank.ValidateWire(), "ContentBlock", "text")
 	for _, test := range []struct {
 		shape   string
 		content WireValidator
 	}{
 		{shape: "ContentBlock", content: ContentBlock{Type: ContentBlockImage, Mime: "text/plain", Data: "AA=="}},
-		{shape: "ArtifactContentBlock", content: ArtifactContentBlock{Type: ContentBlockImage, Mime: "text/plain", Data: "AA=="}},
+		{shape: "ContentBlock", content: ContentBlock{Type: ContentBlockImage, Mime: "text/plain", Data: "AA=="}},
 	} {
 		assertConstraintField(t, test.content.ValidateWire(), test.shape, "mime")
 	}
@@ -1190,7 +1190,7 @@ func TestToolInvocationsRequireNonBlankNames(t *testing.T) {
 		invocation WireValidator
 	}{
 		{shape: "ToolInvocation", invocation: ToolInvocation{Name: " \t", Arguments: map[string]any{}}},
-		{shape: "ArtifactToolInvocation", invocation: ArtifactToolInvocation{Name: " \t", Arguments: map[string]any{}}},
+		{shape: "ToolInvocation", invocation: ToolInvocation{Name: " \t", Arguments: map[string]any{}}},
 	} {
 		assertConstraintField(t, test.invocation.ValidateWire(), test.shape, "name")
 	}
@@ -1247,7 +1247,7 @@ func TestItemTimingVocabularyIsVariantExclusive(t *testing.T) {
 	artifactToolCall := ArtifactItem{
 		ID: "item_tool", RunID: "run_1", Status: ItemStatusIncomplete,
 		Type: ItemTypeToolCall, StartedAt: at, FinishedAt: finishedAt,
-		Tool: &ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{"command": "pwd"}},
+		Tool: &ToolInvocation{Name: "shell", Arguments: map[string]any{"command": "pwd"}},
 	}
 	if err := artifactToolCall.ValidateWire(); err != nil {
 		t.Fatalf("artifact tool-call timing: %v", err)
@@ -1363,7 +1363,7 @@ func TestItemStatusesMatchTheirLifecycleOwners(t *testing.T) {
 		}, {
 			name:  "portable artifact has no running tool",
 			shape: "ArtifactItem", field: "status",
-			value: ArtifactItem{ID: "item_tool", RunID: "run_1", Status: ItemStatusRunning, Type: ItemTypeToolCall, StartedAt: at, Tool: &ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{"command": "pwd"}}},
+			value: ArtifactItem{ID: "item_tool", RunID: "run_1", Status: ItemStatusRunning, Type: ItemTypeToolCall, StartedAt: at, Tool: &ToolInvocation{Name: "shell", Arguments: map[string]any{"command": "pwd"}}},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -1611,7 +1611,7 @@ func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {
 		},
 		{
 			name: "artifact model key too long", shape: "ArtifactUsage", field: "byModel[\"" + strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1) + "\"]",
-			value: ArtifactUsage{ByModel: map[string]ArtifactModelUsage{
+			value: ArtifactUsage{ByModel: map[string]ModelUsage{
 				strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1): {},
 			}},
 		},
@@ -2074,7 +2074,7 @@ func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 		{shape: "ArtifactRunMetrics", field: "activeDurationMillis", value: ArtifactRunMetrics{ActiveDurationMillis: tooLongDuration}},
 		{shape: "ArtifactUsage", field: "inputTokens", value: ArtifactUsage{InputTokens: -1}},
 		{shape: "ArtifactUsage", field: "costUsd", value: ArtifactUsage{CostUSD: &cost}},
-		{shape: "ArtifactModelUsage", field: "reasoningTokens", value: ArtifactModelUsage{ReasoningTokens: -1}},
+		{shape: "ModelUsage", field: "reasoningTokens", value: ModelUsage{ReasoningTokens: -1}},
 		{shape: "ArtifactItem", field: "droppedMessages", value: ArtifactItem{DroppedMessages: -1}},
 		{shape: "ArtifactItem", field: "durationMillis", value: ArtifactItem{DurationMillis: &tooLongDuration}},
 		{shape: "ArtifactProblem", field: "retryAfterSeconds", value: ArtifactProblem{RetryAfterSeconds: -1}},
@@ -2105,7 +2105,7 @@ func TestSessionArtifactFailureTaxonomiesAreContextual(t *testing.T) {
 	completedTool := ArtifactItem{
 		ID: "item_1", RunID: "run_1", Status: ItemStatusCompleted,
 		Type: ItemTypeToolCall, StartedAt: at, FinishedAt: at,
-		Tool:  &ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{}},
+		Tool:  &ToolInvocation{Name: "shell", Arguments: map[string]any{}},
 		Error: &ArtifactProblem{Type: ArtifactProblemToolFailed},
 	}
 	assertConstraintField(t, completedTool.ValidateWire(), "ArtifactItem", "error")

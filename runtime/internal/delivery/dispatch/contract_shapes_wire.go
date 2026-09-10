@@ -493,14 +493,6 @@ func registerArtifactUnions(s *Shapes) {
 		},
 	})
 
-	s.union(UnionSpec{
-		GoType:        typeOf[protocol.ArtifactContentBlock](),
-		Discriminator: "type",
-		Variants: []VariantSpec{
-			{Tag: string(protocol.ContentBlockText), Required: []string{"text"}},
-			{Tag: string(protocol.ContentBlockImage), Required: []string{"mime", "data"}},
-		},
-	})
 }
 
 func registerDiffUnions(s *Shapes) {

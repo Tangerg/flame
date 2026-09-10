@@ -148,9 +148,9 @@ func artifactUsageFromDomain(usage *accounting.Usage) *protocol.ArtifactUsage {
 		ReasoningTokens: usage.Total.ReasoningTokens, CostUSD: usage.Total.CostUSD,
 	}
 	if len(usage.ByModel) != 0 {
-		out.ByModel = make(map[string]protocol.ArtifactModelUsage, len(usage.ByModel))
+		out.ByModel = make(map[string]protocol.ModelUsage, len(usage.ByModel))
 		for model, values := range usage.ByModel {
-			out.ByModel[model] = protocol.ArtifactModelUsage{
+			out.ByModel[model] = protocol.ModelUsage{
 				InputTokens: values.InputTokens, OutputTokens: values.OutputTokens,
 				CacheReadTokens: values.CacheReadTokens, CacheWriteTokens: values.CacheWriteTokens,
 				ReasoningTokens: values.ReasoningTokens, CostUSD: values.CostUSD,
@@ -250,13 +250,13 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 	}
 	content := item.Content()
 	if len(content) != 0 {
-		out.Content = make([]protocol.ArtifactContentBlock, len(content))
+		out.Content = make([]protocol.ContentBlock, len(content))
 		for index, block := range content {
 			encoded, err := encodeContent(block)
 			if err != nil {
 				return protocol.ArtifactItem{}, fmt.Errorf("item %q content %d: %w", item.ID(), index, err)
 			}
-			out.Content[index] = protocol.ArtifactContentBlock{Type: encoded.kind, Text: encoded.text, Mime: encoded.mime, Data: encoded.data}
+			out.Content[index] = protocol.ContentBlock{Type: encoded.kind, Text: encoded.text, Mime: encoded.mime, Data: encoded.data}
 		}
 	}
 	if value, present := item.Question(); present {
@@ -267,7 +267,7 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 		out.Question = question
 	}
 	if invocation, present := item.ToolInvocation(); present {
-		tool := protocol.ArtifactToolInvocation{Name: invocation.Name, Arguments: invocation.Arguments.Map()}
+		tool := protocol.ToolInvocation{Name: invocation.Name, Arguments: invocation.Arguments.Map()}
 		if invocation.Result != nil {
 			tool.Result = invocation.Result.Any()
 		}
@@ -306,11 +306,11 @@ func artifactItemType(kind transcript.ItemKind) (protocol.ItemType, error) {
 func artifactQuestionFromDomain(question transcript.Question) (*protocol.ArtifactQuestion, error) {
 	fields := make([]protocol.ArtifactQuestionField, len(question.Fields))
 	for index, field := range question.Fields {
-		var options []protocol.ArtifactQuestionOption
+		var options []protocol.QuestionOption
 		if len(field.Options) > 0 {
-			options = make([]protocol.ArtifactQuestionOption, len(field.Options))
+			options = make([]protocol.QuestionOption, len(field.Options))
 			for optionIndex, option := range field.Options {
-				options[optionIndex] = protocol.ArtifactQuestionOption{Label: option.Label, Description: option.Description, Preview: option.Preview}
+				options[optionIndex] = protocol.QuestionOption{Label: option.Label, Description: option.Description, Preview: option.Preview}
 			}
 		}
 		var fieldType protocol.QuestionFieldType

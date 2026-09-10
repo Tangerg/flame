@@ -393,7 +393,7 @@ func portableItemKind(path string, value protocol.ItemType) (transcript.ItemKind
 	return kind, nil
 }
 
-func portableContentFromArtifact(path string, artifact protocol.ArtifactContentBlock) (transcript.ContentBlock, error) {
+func portableContentFromArtifact(path string, artifact protocol.ContentBlock) (transcript.ContentBlock, error) {
 	decoded, decodeErr := decodeContent(encodedContent{
 		kind: artifact.Type, text: artifact.Text, mime: artifact.Mime, data: artifact.Data,
 	})
@@ -453,7 +453,7 @@ func portableSafetyClass(path string, value protocol.SafetyClass) (tool.SafetyCl
 	}
 }
 
-func portableToolFromArtifact(path string, artifact protocol.ArtifactToolInvocation) (transcript.ToolInvocation, error) {
+func portableToolFromArtifact(path string, artifact protocol.ToolInvocation) (transcript.ToolInvocation, error) {
 	arguments, err := tool.ArgumentsFromMap(artifact.Arguments)
 	if err != nil {
 		return transcript.ToolInvocation{}, invalidArtifact(path+".arguments", "%v", err)

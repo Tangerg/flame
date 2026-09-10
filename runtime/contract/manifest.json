@@ -3570,25 +3570,6 @@
       ]
     },
     {
-      "type": "ArtifactContentBlock",
-      "discriminator": "type",
-      "variants": [
-        {
-          "tag": "text",
-          "required": [
-            "text"
-          ]
-        },
-        {
-          "tag": "image",
-          "required": [
-            "mime",
-            "data"
-          ]
-        }
-      ]
-    },
-    {
       "type": "DiffRow",
       "discriminator": "type",
       "variants": [
@@ -5984,35 +5965,6 @@
       ]
     },
     {
-      "type": "ArtifactModelUsage",
-      "rules": [
-        {
-          "field": "inputTokens",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "outputTokens",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "cacheReadTokens",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "cacheWriteTokens",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "reasoningTokens",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "costUsd",
-          "constraint": "nonNegative"
-        }
-      ]
-    },
-    {
       "type": "ArtifactProblem",
       "rules": [
         {
@@ -6039,29 +5991,7 @@
       ]
     },
     {
-      "type": "ArtifactContentBlock",
-      "rules": [
-        {
-          "field": "text",
-          "constraint": "pattern(\"\\\\S\")"
-        },
-        {
-          "field": "mime",
-          "constraint": "pattern(\"^image/\")"
-        }
-      ]
-    },
-    {
       "type": "ToolInvocation",
-      "rules": [
-        {
-          "field": "name",
-          "constraint": "pattern(\"\\\\S\")"
-        }
-      ]
-    },
-    {
-      "type": "ArtifactToolInvocation",
       "rules": [
         {
           "field": "name",
@@ -6599,15 +6529,6 @@
     },
     {
       "type": "QuestionOption",
-      "rules": [
-        {
-          "field": "label",
-          "constraint": "pattern(\"\\\\S\")"
-        }
-      ]
-    },
-    {
-      "type": "ArtifactQuestionOption",
       "rules": [
         {
           "field": "label",

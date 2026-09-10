@@ -488,53 +488,6 @@
         "global"
       ]
     },
-    "ArtifactContentBlock": {
-      "type": "object",
-      "properties": {
-        "data": {
-          "type": "string"
-        },
-        "mime": {
-          "type": "string",
-          "pattern": "^image/"
-        },
-        "text": {
-          "type": "string",
-          "pattern": "\\S"
-        },
-        "type": {
-          "$ref": "#/$defs/ContentBlockType"
-        }
-      },
-      "oneOf": [
-        {
-          "properties": {
-            "data": false,
-            "mime": false,
-            "type": {
-              "const": "text"
-            }
-          },
-          "required": [
-            "text",
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "text": false,
-            "type": {
-              "const": "image"
-            }
-          },
-          "required": [
-            "data",
-            "mime",
-            "type"
-          ]
-        }
-      ]
-    },
     "ArtifactItem": {
       "type": "object",
       "properties": {
@@ -544,7 +497,7 @@
         "content": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/ArtifactContentBlock"
+            "$ref": "#/$defs/ContentBlock"
           }
         },
         "createdAt": {
@@ -605,7 +558,7 @@
           "type": "string"
         },
         "tool": {
-          "$ref": "#/$defs/ArtifactToolInvocation"
+          "$ref": "#/$defs/ToolInvocation"
         },
         "type": {
           "$ref": "#/$defs/ItemType"
@@ -866,35 +819,6 @@
           }
         }
       ]
-    },
-    "ArtifactModelUsage": {
-      "type": "object",
-      "properties": {
-        "cacheReadTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "cacheWriteTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "costUsd": {
-          "type": "number",
-          "minimum": 0
-        },
-        "inputTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "outputTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "reasoningTokens": {
-          "type": "integer",
-          "minimum": 0
-        }
-      }
     },
     "ArtifactOutcome": {
       "type": "object",
@@ -1275,7 +1199,7 @@
           "minItems": 2,
           "maxItems": 4,
           "items": {
-            "$ref": "#/$defs/ArtifactQuestionOption"
+            "$ref": "#/$defs/QuestionOption"
           }
         },
         "prompt": {
@@ -1313,24 +1237,6 @@
             "type"
           ]
         }
-      ]
-    },
-    "ArtifactQuestionOption": {
-      "type": "object",
-      "properties": {
-        "description": {
-          "type": "string"
-        },
-        "label": {
-          "type": "string",
-          "pattern": "\\S"
-        },
-        "preview": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "label"
       ]
     },
     "ArtifactRun": {
@@ -1554,24 +1460,6 @@
         "workspace"
       ]
     },
-    "ArtifactToolInvocation": {
-      "type": "object",
-      "properties": {
-        "arguments": {
-          "type": "object",
-          "additionalProperties": {}
-        },
-        "name": {
-          "type": "string",
-          "pattern": "\\S"
-        },
-        "result": {}
-      },
-      "required": [
-        "arguments",
-        "name"
-      ]
-    },
     "ArtifactToolResult": {
       "type": "object",
       "properties": {
@@ -1617,7 +1505,7 @@
         "byModel": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/$defs/ArtifactModelUsage"
+            "$ref": "#/$defs/ModelUsage"
           },
           "propertyNames": {
             "maxLength": 256,

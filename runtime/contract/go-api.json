@@ -2576,38 +2576,6 @@
           "underlying": "string"
         },
         {
-          "name": "ArtifactContentBlock",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Type",
-              "type": "ContentBlockType",
-              "tag": "json:\"type\""
-            },
-            {
-              "name": "Text",
-              "type": "string",
-              "tag": "json:\"text,omitempty\""
-            },
-            {
-              "name": "Mime",
-              "type": "string",
-              "tag": "json:\"mime,omitempty\""
-            },
-            {
-              "name": "Data",
-              "type": "string",
-              "tag": "json:\"data,omitempty\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
           "name": "ArtifactItem",
           "kind": "struct",
           "fields": [
@@ -2653,7 +2621,7 @@
             },
             {
               "name": "Content",
-              "type": "[]ArtifactContentBlock",
+              "type": "[]ContentBlock",
               "tag": "json:\"content,omitempty\""
             },
             {
@@ -2678,7 +2646,7 @@
             },
             {
               "name": "Tool",
-              "type": "*ArtifactToolInvocation",
+              "type": "*ToolInvocation",
               "tag": "json:\"tool,omitempty\""
             },
             {
@@ -2705,48 +2673,6 @@
               "name": "DroppedMessages",
               "type": "int",
               "tag": "json:\"droppedMessages,omitempty\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "ArtifactModelUsage",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "InputTokens",
-              "type": "int64",
-              "tag": "json:\"inputTokens,omitempty\""
-            },
-            {
-              "name": "OutputTokens",
-              "type": "int64",
-              "tag": "json:\"outputTokens,omitempty\""
-            },
-            {
-              "name": "CacheReadTokens",
-              "type": "int64",
-              "tag": "json:\"cacheReadTokens,omitempty\""
-            },
-            {
-              "name": "CacheWriteTokens",
-              "type": "int64",
-              "tag": "json:\"cacheWriteTokens,omitempty\""
-            },
-            {
-              "name": "ReasoningTokens",
-              "type": "int64",
-              "tag": "json:\"reasoningTokens,omitempty\""
-            },
-            {
-              "name": "CostUSD",
-              "type": "*float64",
-              "tag": "json:\"costUsd,omitempty\""
             }
           ],
           "methods": [
@@ -2868,7 +2794,7 @@
             },
             {
               "name": "Options",
-              "type": "[]ArtifactQuestionOption",
+              "type": "[]QuestionOption",
               "tag": "json:\"options,omitempty\""
             },
             {
@@ -2880,33 +2806,6 @@
               "name": "AllowCustom",
               "type": "bool",
               "tag": "json:\"allowCustom,omitempty\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "ArtifactQuestionOption",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Label",
-              "type": "string",
-              "tag": "json:\"label\""
-            },
-            {
-              "name": "Description",
-              "type": "string",
-              "tag": "json:\"description,omitempty\""
-            },
-            {
-              "name": "Preview",
-              "type": "string",
-              "tag": "json:\"preview,omitempty\""
             }
           ],
           "methods": [
@@ -3098,33 +2997,6 @@
           ]
         },
         {
-          "name": "ArtifactToolInvocation",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Name",
-              "type": "string",
-              "tag": "json:\"name\""
-            },
-            {
-              "name": "Arguments",
-              "type": "map[string]any",
-              "tag": "json:\"arguments\""
-            },
-            {
-              "name": "Result",
-              "type": "any",
-              "tag": "json:\"result,omitempty\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
           "name": "ArtifactToolResult",
           "kind": "struct",
           "fields": [
@@ -3202,7 +3074,7 @@
             },
             {
               "name": "ByModel",
-              "type": "map[string]ArtifactModelUsage",
+              "type": "map[string]ModelUsage",
               "tag": "json:\"byModel,omitempty\""
             }
           ],

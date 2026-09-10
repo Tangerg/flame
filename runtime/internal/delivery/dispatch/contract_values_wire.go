@@ -253,9 +253,6 @@ func registerArtifactValues(s *Shapes) {
 			{Field: "costUsd", Kind: ConstraintNonNegative},
 		}, modelUsageMapIdentities("byModel")...),
 	})
-	nonNegative[protocol.ArtifactModelUsage](s,
-		"inputTokens", "outputTokens", "cacheReadTokens", "cacheWriteTokens", "reasoningTokens", "costUsd",
-	)
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ArtifactProblem](),
 		Constraints: []FieldConstraint{
@@ -266,27 +263,17 @@ func registerArtifactValues(s *Shapes) {
 }
 
 func registerRunValues(s *Shapes) {
-	for _, contentType := range []reflect.Type{
-		typeOf[protocol.ContentBlock](),
-		typeOf[protocol.ArtifactContentBlock](),
-	} {
-		s.valueConstraint(FieldConstraintSpec{
-			GoType: contentType,
-			Constraints: []FieldConstraint{
-				{Field: "text", Kind: ConstraintPattern, Value: `\S`},
-				{Field: "mime", Kind: ConstraintPattern, Value: `^image/`},
-			},
-		})
-	}
-	for _, invocationType := range []reflect.Type{
-		typeOf[protocol.ToolInvocation](),
-		typeOf[protocol.ArtifactToolInvocation](),
-	} {
-		s.valueConstraint(FieldConstraintSpec{
-			GoType:      invocationType,
-			Constraints: []FieldConstraint{{Field: "name", Kind: ConstraintPattern, Value: `\S`}},
-		})
-	}
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.ContentBlock](),
+		Constraints: []FieldConstraint{
+			{Field: "text", Kind: ConstraintPattern, Value: `\S`},
+			{Field: "mime", Kind: ConstraintPattern, Value: `^image/`},
+		},
+	})
+	s.valueConstraint(FieldConstraintSpec{
+		GoType:      typeOf[protocol.ToolInvocation](),
+		Constraints: []FieldConstraint{{Field: "name", Kind: ConstraintPattern, Value: `\S`}},
+	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.RunSummary](),
 		Constraints: append(append(append(append(append(append(requiredResourceIdentity("id"),
@@ -417,17 +404,12 @@ func registerRunValues(s *Shapes) {
 			},
 		})
 	}
-	for _, optionType := range []reflect.Type{
-		typeOf[protocol.QuestionOption](),
-		typeOf[protocol.ArtifactQuestionOption](),
-	} {
-		s.valueConstraint(FieldConstraintSpec{
-			GoType: optionType,
-			Constraints: []FieldConstraint{
-				{Field: "label", Kind: ConstraintPattern, Value: `\S`},
-			},
-		})
-	}
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.QuestionOption](),
+		Constraints: []FieldConstraint{
+			{Field: "label", Kind: ConstraintPattern, Value: `\S`},
+		},
+	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.InterruptResponseValue](),
 		Constraints: []FieldConstraint{{Field: "answers", Kind: ConstraintNonEmptyItems}},
