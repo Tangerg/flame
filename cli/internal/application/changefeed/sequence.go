@@ -1,9 +1,6 @@
 package changefeed
 
-import (
-	"errors"
-	"math"
-)
+import "errors"
 
 type sequence struct {
 	value uint64
@@ -42,7 +39,8 @@ func (t *SequenceTracker) Observe(next uint64) (SequenceDisposition, error) {
 	if next <= t.last.value {
 		return SequenceStale, nil
 	}
-	if t.last.value != math.MaxUint64 && next == t.last.value+1 {
+	// next is already greater than the watermark, so the successor cannot wrap.
+	if next == t.last.value+1 {
 		t.last.value = next
 		return SequenceContiguous, nil
 	}
