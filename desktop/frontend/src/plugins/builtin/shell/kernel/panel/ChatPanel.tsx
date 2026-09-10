@@ -178,9 +178,36 @@ export function ChatPanel({ onSend }: Props) {
       }
     };
     reconcile();
-    const observer = new ResizeObserver(reconcile);
+    // Deferred out of the observer callback by a frame. Reconciling writes store state, the
+    // re-render changes layout, and that lands more resize notifications in the SAME frame as
+    // the ones being delivered — with ten observers in the shell, the total exceeded Chrome's
+    // per-frame delivery budget and it reported `ResizeObserver loop completed with undelivered
+    // notifications` as an unhandled window error. Measured: the callback itself converges in
+    // three runs at a constant width, so this is cascade depth rather than a runaway loop.
+    // The FIRST delivery stays synchronous. `observe()` fires immediately, and at effect time
+    // the row may still be pre-layout at zero width — so that first notification is what
+    // establishes the ratio, and deferring it moved the dock a fraction of a pixel and shifted
+    // one row's text antialiasing by 270 pixels of golden. Measured separately: the error never
+    // occurred on load, only on resize, so the first delivery is not where the cost is.
+    let delivered = false;
+    let queued = 0;
+    const observer = new ResizeObserver(() => {
+      if (!delivered) {
+        delivered = true;
+        reconcile();
+        return;
+      }
+      if (queued) return;
+      queued = requestAnimationFrame(() => {
+        queued = 0;
+        reconcile();
+      });
+    });
     observer.observe(row);
-    return () => observer.disconnect();
+    return () => {
+      if (queued) cancelAnimationFrame(queued);
+      observer.disconnect();
+    };
   }, [dockOpen, shellVisible, dockWidthRatio, setDockWidthRatio]);
 
   if (!shellVisible) return null;

@@ -925,8 +925,16 @@ for (const theme of ["light", "dark"] as const) {
     // is — `[data-slot="mermaid-full"] svg` centres it and lifts the `max-width` the inline
     // stage imposes — and a descendant rule is exactly the kind nothing else here can check.
     // Being visible says nothing about being the right size.
+    // The budget covers a measured failure mode, not a guess. This golden is bimodal: four runs
+    // in five come out at 0 pixels and the fifth at exactly 476, which is a one-pixel row along
+    // the panel's bottom edge — Mermaid sizes its own SVG from glyph layout it does not repeat
+    // exactly, so the panel's height lands on a different fraction and its edge antialiases
+    // differently. At 400 the suite went red on roughly one run in five, and the mode is
+    // discrete rather than gradual, so the number has to clear it rather than sit under it.
+    // Verified not to be caused by the lightbox now focusing its panel: removing that still
+    // reproduced 476 once in five.
     await expect(enlarged).toHaveScreenshot(`markdown-mermaid-full-${theme}.png`, {
-      maxDiffPixels: 400,
+      maxDiffPixels: 700,
     });
     await page.keyboard.press("Escape");
   });
