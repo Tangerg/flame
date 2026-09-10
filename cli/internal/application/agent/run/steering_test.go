@@ -36,7 +36,7 @@ func TestRecoverReplaysAndAcknowledgesTheExactDurableSteer(t *testing.T) {
 	store, pending := fixture.store, fixture.pending
 	runtime := new(steerRuntimeStub)
 	fixture.now = pending.StagedAt().Add(time.Minute)
-	if err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff()); err != nil {
+	if err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), fastBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
 	if len(runtime.requests) != 1 || !runtime.requests[0].Equal(pending.Command()) {
@@ -56,7 +56,7 @@ func TestRecoverReturnsAttachmentsAfterAReplayableRefusal(t *testing.T) {
 	store, pending := fixture.store, fixture.pending
 	runtime := &steerRuntimeStub{err: agent.ErrStaleSegment}
 	fixture.now = pending.StagedAt().Add(time.Minute)
-	if err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff()); err != nil {
+	if err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), fastBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
 	if _, found := store.PendingSteer(pending.SessionID()); found {
@@ -76,7 +76,7 @@ func TestRecoverRefusesToGuessAtOrAfterTheReplayDeadline(t *testing.T) {
 			store, pending := fixture.store, fixture.pending
 			runtime := new(steerRuntimeStub)
 			fixture.now = pending.Replay().Until().Add(offset)
-			err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff())
+			err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), fastBackoff(t))
 			if !errors.Is(err, ErrSteerReplayUnavailable) {
 				t.Fatalf("expired replay error = %v, want ErrSteerReplayUnavailable", err)
 			}
@@ -119,7 +119,7 @@ func TestRecoverContinuesPastAnUnreplayableSteer(t *testing.T) {
 	fixture.now = expired.StagedAt().Add(90 * time.Minute)
 	runtime := new(steerRuntimeStub)
 	err = RecoverSteers(
-		t.Context(), runtime, fixture.store, fixture.policy(t), retry.ImmediateBackoff(),
+		t.Context(), runtime, fixture.store, fixture.policy(t), fastBackoff(t),
 	)
 	if !errors.Is(err, ErrSteerReplayUnavailable) {
 		t.Fatalf("recovery error = %v, want deferred expired steer", err)
@@ -141,7 +141,7 @@ func TestDeliverPreservesACommandRejectedByAnotherRuntimeStore(t *testing.T) {
 	pending := fixture.pending
 	runtime := &steerRuntimeStub{err: agent.ErrCommandStoreMismatch}
 	fixture.now = pending.StagedAt().Add(time.Minute)
-	result, err := DeliverSteer(t.Context(), runtime, pending, fixture.policy(t), retry.ImmediateBackoff())
+	result, err := DeliverSteer(t.Context(), runtime, pending, fixture.policy(t), fastBackoff(t))
 	if !errors.Is(err, agent.ErrCommandStoreMismatch) || result.Outcome != mutation.Unknown {
 		t.Fatalf("store mismatch settlement = outcome %v, error %v", result.Outcome, err)
 	}
@@ -160,7 +160,7 @@ func TestRecoverStopsRetryingWhenTheReplayGuaranteeExpires(t *testing.T) {
 		fixture.now = pending.Replay().Until()
 		runtime.err = nil
 	}
-	err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff())
+	err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), fastBackoff(t))
 	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
 		t.Fatalf("recovery error = %v", err)
 	}
@@ -193,13 +193,13 @@ func TestUnavailableRuntimeSeparatesFreshSteerDeliveryFromColdRecovery(t *testin
 		t.Fatal(err)
 	}
 	runtime := &steerRuntimeStub{err: agent.ErrDisconnected}
-	result, err := DeliverSteer(t.Context(), runtime, pending, policy, retry.ImmediateBackoff())
+	result, err := DeliverSteer(t.Context(), runtime, pending, policy, fastBackoff(t))
 	if result.Outcome != mutation.Unknown || !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) || len(runtime.requests) != 1 {
 		t.Fatalf("fresh delivery = outcome %v, error %v, requests %+v", result.Outcome, err, runtime.requests)
 	}
 
 	runtime = new(steerRuntimeStub)
-	err = RecoverSteers(t.Context(), runtime, store, policy, retry.ImmediateBackoff())
+	err = RecoverSteers(t.Context(), runtime, store, policy, fastBackoff(t))
 	if err == nil || len(runtime.requests) != 0 {
 		t.Fatalf("cold recovery = %v, requests %+v", err, runtime.requests)
 	}
@@ -255,4 +255,15 @@ func stagedSteer(t *testing.T) *steerFixture {
 	}
 	fixture.pending = pending
 	return fixture
+}
+
+// fastBackoff is an ordinary bounded schedule whose floor is short enough that
+// a retry loop finishes within a test. Production configures the same shape.
+func fastBackoff(t testing.TB) retry.Backoff {
+	t.Helper()
+	backoff, err := retry.NewBackoff(time.Nanosecond, time.Nanosecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return backoff
 }

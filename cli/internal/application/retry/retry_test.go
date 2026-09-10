@@ -16,6 +16,18 @@ func TestWaitHonorsCancellation(t *testing.T) {
 	}
 }
 
+func TestWaitStopsACanceledLoopEvenWhenTheDelayHasElapsed(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	// A select between a ready timer and a closed Done channel picks either
+	// arm, so one attempt proves nothing about which one it prefers.
+	for range 100 {
+		if err := Wait(ctx, time.Nanosecond); !errors.Is(err, context.Canceled) {
+			t.Fatalf("Wait error = %v", err)
+		}
+	}
+}
+
 func TestBackoffBoundsAnOperationOwnedRetrySchedule(t *testing.T) {
 	backoff, err := NewBackoff(100*time.Millisecond, 5*time.Second)
 	if err != nil {
@@ -37,20 +49,22 @@ func TestBackoffBoundsAnOperationOwnedRetrySchedule(t *testing.T) {
 	}
 }
 
-func TestBackoffRequiresNamedImmediateOrBoundedPolicy(t *testing.T) {
+func TestBackoffRejectsAnUnconfiguredScheduleAndAnUncountedFailure(t *testing.T) {
 	t.Parallel()
-	if delay, err := ImmediateBackoff().Delay(1); err != nil || delay != 0 {
-		t.Fatalf("immediate delay = (%s, %v)", delay, err)
-	}
-	for _, backoff := range []Backoff{{}, {mode: backoffImmediate, base: time.Second}} {
-		if _, err := backoff.Delay(1); !errors.Is(err, ErrInvalidBackoff) {
-			t.Fatalf("invalid backoff %+v = %v", backoff, err)
-		}
+	if _, err := (Backoff{}).Delay(1); !errors.Is(err, ErrInvalidBackoff) {
+		t.Fatalf("zero backoff delay = %v", err)
 	}
 	for _, bounds := range [][2]time.Duration{{0, time.Second}, {time.Second, time.Millisecond}} {
 		if _, err := NewBackoff(bounds[0], bounds[1]); !errors.Is(err, ErrInvalidBackoff) {
 			t.Fatalf("NewBackoff(%s, %s) = %v", bounds[0], bounds[1], err)
 		}
+	}
+	backoff, err := NewBackoff(time.Second, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := backoff.Delay(0); !errors.Is(err, ErrInvalidBackoff) {
+		t.Fatalf("Delay(0) = %v", err)
 	}
 }
 

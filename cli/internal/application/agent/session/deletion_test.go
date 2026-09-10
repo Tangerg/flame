@@ -45,7 +45,7 @@ func TestRecoverDoesNotReplayADeletionIntoAnotherRuntimeStore(t *testing.T) {
 	runtime := new(deletionRuntimeStub)
 	err = RecoverDeletions(
 		t.Context(), runtime, store,
-		replayPolicy(t, "runtime-b", time.Hour, time.Now), retry.ImmediateBackoff(),
+		replayPolicy(t, "runtime-b", time.Hour, time.Now), fastBackoff(t),
 	)
 	if err == nil {
 		t.Fatal("cross-store deletion recovery unexpectedly succeeded")
@@ -87,7 +87,7 @@ func TestRecoverRetiresAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) {
 	runtime := &deletionRuntimeStub{readErr: agent.ErrSessionNotFound}
 	err = RecoverDeletions(
 		t.Context(), runtime, store,
-		replayPolicy(t, "runtime-a", time.Hour, time.Now), retry.ImmediateBackoff(),
+		replayPolicy(t, "runtime-a", time.Hour, time.Now), fastBackoff(t),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -116,7 +116,7 @@ func TestExecuteConfirmsAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) 
 	runtime := &deletionRuntimeStub{readErr: agent.ErrSessionNotFound}
 	result, err := Delete(
 		t.Context(), runtime, store, request.SessionID,
-		replayPolicy(t, "runtime-a", time.Hour, time.Now), retry.ImmediateBackoff(),
+		replayPolicy(t, "runtime-a", time.Hour, time.Now), fastBackoff(t),
 	)
 	if err != nil || result.Outcome != mutation.Confirmed || result.Request != request {
 		t.Fatalf("settlement = %+v, %v", result, err)
@@ -142,7 +142,7 @@ func TestExecuteRejectsAnExpiredDeletionWhenTheSessionStillExists(t *testing.T) 
 	runtime := new(deletionRuntimeStub)
 	result, err := Delete(
 		t.Context(), runtime, store, request.SessionID,
-		replayPolicy(t, "runtime-a", time.Hour, time.Now), retry.ImmediateBackoff(),
+		replayPolicy(t, "runtime-a", time.Hour, time.Now), fastBackoff(t),
 	)
 	if err != nil || result.Outcome != mutation.Rejected || result.Request != request {
 		t.Fatalf("settlement = %+v, %v", result, err)
@@ -161,7 +161,7 @@ func TestSettlePreservesDeletionRejectedByAnotherRuntimeStore(t *testing.T) {
 	policy := replayPolicy(t, "runtime-a", time.Hour, time.Now)
 	outcome, err := settleDeletion(
 		t.Context(), runtime, request, protectedGuard(t, "runtime-a", deadline),
-		policy, retry.ImmediateBackoff(), false,
+		policy, fastBackoff(t), false,
 	)
 	if outcome != mutation.Unknown || !errors.Is(err, agent.ErrCommandStoreMismatch) {
 		t.Fatalf("store mismatch settlement = outcome %v, error %v", outcome, err)
@@ -190,7 +190,7 @@ func TestRecoverRejectsAnUncommittedDeletionWhenReplayExpires(t *testing.T) {
 		now = deadline
 		runtime.deleteErr = nil
 	}
-	if err := RecoverDeletions(t.Context(), runtime, store, policy, retry.ImmediateBackoff()); err != nil {
+	if err := RecoverDeletions(t.Context(), runtime, store, policy, fastBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
 	if runtime.deletes != 1 || runtime.reads != 1 {
@@ -220,7 +220,7 @@ func TestRecoverConvergesADeletionCommittedAsReplayExpires(t *testing.T) {
 		now = deadline
 		runtime.readErr = agent.ErrSessionNotFound
 	}
-	if err := RecoverDeletions(t.Context(), runtime, store, policy, retry.ImmediateBackoff()); err != nil {
+	if err := RecoverDeletions(t.Context(), runtime, store, policy, fastBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
 	if runtime.deletes != 1 || runtime.reads != 1 {
@@ -256,4 +256,15 @@ func replayPolicy(
 		t.Fatal(err)
 	}
 	return policy
+}
+
+// fastBackoff is an ordinary bounded schedule whose floor is short enough that
+// a retry loop finishes within a test. Production configures the same shape.
+func fastBackoff(t testing.TB) retry.Backoff {
+	t.Helper()
+	backoff, err := retry.NewBackoff(time.Nanosecond, time.Nanosecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return backoff
 }

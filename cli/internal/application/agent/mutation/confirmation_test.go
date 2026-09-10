@@ -81,7 +81,7 @@ func TestOutcomeHasOneSharedStableIdentity(t *testing.T) {
 
 func TestConfirmStopsAtARuntimeStoreMismatch(t *testing.T) {
 	attempts := 0
-	_, err := confirm(t.Context(), retry.ImmediateBackoff(), func(context.Context) (struct{}, error) {
+	_, err := confirm(t.Context(), fastBackoff(t), func(context.Context) (struct{}, error) {
 		attempts++
 		return struct{}{}, agent.ErrCommandStoreMismatch
 	})
@@ -104,7 +104,7 @@ func TestConfirmRejectsAnUnconfiguredBackoffBeforeMutationIO(t *testing.T) {
 
 func TestConfirmRetriesAnUncertainMutationWithTheSameOwner(t *testing.T) {
 	attempts := 0
-	result, err := confirm(t.Context(), retry.ImmediateBackoff(), func(context.Context) (string, error) {
+	result, err := confirm(t.Context(), fastBackoff(t), func(context.Context) (string, error) {
 		attempts++
 		if attempts < 3 {
 			return "", context.DeadlineExceeded
@@ -119,7 +119,7 @@ func TestConfirmRetriesAnUncertainMutationWithTheSameOwner(t *testing.T) {
 func TestConfirmStopsAtOwnerCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	attempts := 0
-	_, err := confirm(ctx, retry.ImmediateBackoff(), func(context.Context) (struct{}, error) {
+	_, err := confirm(ctx, fastBackoff(t), func(context.Context) (struct{}, error) {
 		attempts++
 		cancel()
 		return struct{}{}, context.DeadlineExceeded
@@ -133,7 +133,7 @@ func TestConfirmAdmittedFencesEveryRuntimeAttempt(t *testing.T) {
 	replayable := true
 	attempts := 0
 	_, err := ConfirmAdmitted(
-		t.Context(), retry.ImmediateBackoff(),
+		t.Context(), fastBackoff(t),
 		func() error {
 			if !replayable {
 				return ErrReplayGuaranteeUnavailable
@@ -189,7 +189,7 @@ func TestUnavailableRuntimeAdmitsOneFreshAttemptButNoRetryOrRecovery(t *testing.
 	}
 	attempts := 0
 	_, err = ConfirmAdmitted(
-		t.Context(), retry.ImmediateBackoff(), FreshReplayAdmission(policy, guard),
+		t.Context(), fastBackoff(t), FreshReplayAdmission(policy, guard),
 		func(context.Context) (struct{}, error) {
 			attempts++
 			return struct{}{}, agent.ErrDisconnected
@@ -201,7 +201,7 @@ func TestUnavailableRuntimeAdmitsOneFreshAttemptButNoRetryOrRecovery(t *testing.
 
 	attempts = 0
 	_, err = ConfirmAdmitted(
-		t.Context(), retry.ImmediateBackoff(), ReplayAdmission(policy, guard),
+		t.Context(), fastBackoff(t), ReplayAdmission(policy, guard),
 		func(context.Context) (struct{}, error) {
 			attempts++
 			return struct{}{}, nil
@@ -210,4 +210,15 @@ func TestUnavailableRuntimeAdmitsOneFreshAttemptButNoRetryOrRecovery(t *testing.
 	if !errors.Is(err, ErrReplayGuaranteeUnavailable) || attempts != 0 {
 		t.Fatalf("unprotected recovery = %v after %d attempts", err, attempts)
 	}
+}
+
+// fastBackoff is an ordinary bounded schedule whose floor is short enough that
+// a retry loop finishes within a test. Production configures the same shape.
+func fastBackoff(t testing.TB) retry.Backoff {
+	t.Helper()
+	backoff, err := retry.NewBackoff(time.Nanosecond, time.Nanosecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return backoff
 }
