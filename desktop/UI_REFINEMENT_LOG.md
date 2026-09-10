@@ -14179,3 +14179,70 @@ seam 已存在；但会**默默拿掉用户的一个选择**）；② 在 picker
 
 "数字不抖"这条承诺在默认字体上是真的 —— 而我第一次去验证"换字体还真不真"时，
 **量的是一份根本不在 picker 里的字体列表。**
+
+## Round 220 —— 字体 picker 列的八个字体里，只有一个真的存在
+
+用户选择了「用容量探针过滤候选」。去实现时，在同一个函数里撞到一个更大的缺陷。
+
+### 先量到的真缺陷：`document.fonts.check()` 对所有字体都回答 true
+
+`browserFontAvailability.ts` 用 `document.fonts.check()` 判断字体是否安装。
+**Round 212 已经证明这个 API 对不存在的字族返回 `true`** —— 当时是在视觉守卫里
+发现的，而**同一个陷阱在生产代码里也有一份，没人回头看**。
+
+实测（本机）：
+
+| 字体 | `document.fonts.check` | 实测（哨兵栈宽度比较） |
+| --- | --- | --- |
+| SF Pro Text / SF Pro Display / Inter / Segoe UI / Roboto / Ubuntu / Cantarell | **全部 true** | **全部未安装** |
+| Helvetica Neue / Arial | true | 已安装 |
+| `NoSuchFamilyInstalled_ZZZ` | **true** | 未安装 |
+
+**后果**：picker 列出 8 个字体，其中只有 1 个真的存在；选中另外 7 个中任何一个，
+都会静默回落到系统栈——一个"改了没反应"的设置项。更糟的是"使用自定义"这个
+复选框会把 `fonts[0]` 设为默认值，而 `fonts[0]` 正是**未安装的 `SF Pro Text`**。
+
+### 治本：一个测量原语，回答两个问题
+
+`isAvailable` 换成 Round 212 已经验证过的办法：把同一串字符分别用
+`"X", serif` 和 `serif`（以及 monospace 哨兵）渲染，**宽度相同就说明 X 没生效**。
+两个哨兵都比，避免某个字体恰好和其中一个 metrics 相同而被误判为缺失。
+
+`hasTabularFigures` 用同一个原语：`"0000000000"` 与 `"1111111111"` 宽度相同才算有
+tabular 字形。结果按模块级 Map 缓存——一次会话内答案不会变，而每次测量都是一次
+强制 layout。
+
+`useSystemFonts` 两道过滤合成**一条规则**（picker 只提供产品能兑现的字体），
+顺序不可换：先问"装了吗"，因为对没装的字体问 tabular 只是在量回落字体。
+
+### 修改前 / 修改后（浏览器实测）
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| UI picker 列出 | `["SF Pro Text","SF Pro Display","Inter","Helvetica Neue","Segoe UI","Roboto","Ubuntu","Cantarell"]` —— **7 个是幻影** | `["Helvetica Neue"]` |
+| 勾选"使用自定义"默认选中 | `SF Pro Text`（**未安装**） | `Helvetica Neue` |
+| `Arial`（21.4px 抖动） | 提供 | 已排除 |
+
+### 守卫
+
+- `systemFonts.test.ts`（新，5 个测试）—— 用假 port 测那条规则：只提供已安装的、
+  丢掉没有 tabular 的、**对没装的字体无论 tabular 怎么答都不提供**（顺序不变量）、
+  code 候选问同样两个问题、空列表也是合法结果（picker 自带"默认"项）。
+- **破坏验证**：把 `isAvailable` 改回 `document.fonts.check()` →
+  列表当场从 1 个膨胀到 **8 个**。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 治本的缺陷 | **2**（幻影字体列表；`Arial` 无 tabular） |
+| 收敛 | 两个问题共用一个测量原语 + 结果缓存 |
+| 新测试 | 5 |
+| lint / prettier / knip / port-surface / 全部守卫 | 全绿 |
+| 单测 | **2449 通过**；失败 5 个全是 `src/rpc` 契约（非本轮） |
+| 视觉套件 | **737 全通过**（14.3m，零失败）—— 零 golden 移动（picker 的列表只在展开时可见，默认态不变） |
+
+### 一句话
+
+Round 212 在守卫里发现 `document.fonts.check()` 会撒谎，并把结论写进了那条守卫的注释——
+**却没人去看生产代码里是不是也在用它。** 用了，而且正是决定"picker 给你哪些字体"的那一处。

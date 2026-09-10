@@ -36,14 +36,21 @@ const CANDIDATE_CODE_FONTS = [
 ];
 
 /**
- * The list of font families to show in the picker, filtered down to
- * what's actually installed on the user's machine. Memoised per `mono`
- * so the picker doesn't re-detect on every render.
+ * The families the picker offers: installed on this machine, and able to keep the design's
+ * promise about numbers. Memoised per `mono` so the picker does not re-probe on every render.
+ *
+ * The two filters are ONE rule — the picker only offers a face the product can honour — and
+ * they run in this order because asking whether a missing family has tabular figures measures
+ * the fallback instead. That the second filter is a no-op for monospace is a property of
+ * monospace rather than a special case worth writing here.
+ *
+ * An empty result is a usable picker: the control's own default entry resolves to the native
+ * system stack, which is what the app runs on before anyone overrides anything.
  */
 export function useSystemFonts(mono: boolean): string[] {
   return useMemo(() => {
     const candidates = mono ? CANDIDATE_CODE_FONTS : CANDIDATE_UI_FONTS;
-    const { isAvailable } = fontAvailability();
-    return candidates.filter((family) => isAvailable(family));
+    const { isAvailable, hasTabularFigures } = fontAvailability();
+    return candidates.filter((family) => isAvailable(family) && hasTabularFigures(family));
   }, [mono]);
 }
