@@ -394,3 +394,16 @@ func drawToolBlock(block *toolBlock, width int) string {
 	block.Draw(surface.View())
 	return strings.Join(surface.Rows(), "\n")
 }
+
+// TestSectionLanguageDefaultsToPlainText pins the answer sixteen code sections
+// stopped repeating. Rendering does not observe the language, so nothing else
+// would notice this default changing.
+func TestSectionLanguageDefaultsToPlainText(t *testing.T) {
+	t.Parallel()
+	if got := sectionLanguage(ToolSection{}); got != "text" {
+		t.Fatalf("unset section language = %q, want plain text", got)
+	}
+	if got := sectionLanguage(ToolSection{Language: "go"}); got != "go" {
+		t.Fatalf("declared section language = %q, want it kept", got)
+	}
+}

@@ -70,7 +70,7 @@ func schedulesDocument(schedules []protocol.Schedule) readerDocument {
 		}
 		sections = append(sections,
 			ToolSection{Title: title, Style: toolSectionParagraph, Text: scheduled.Instructions, Links: true},
-			ToolSection{Title: "Configuration", Style: toolSectionCode, Language: "text", Text: strings.Join(metadata, "\n")},
+			ToolSection{Title: "Configuration", Style: toolSectionCode, Text: strings.Join(metadata, "\n")},
 		)
 	}
 	return readerDocument{Title: "Scheduled runs", Detail: fmt.Sprintf("%d configured", len(schedules)), Sections: sections}

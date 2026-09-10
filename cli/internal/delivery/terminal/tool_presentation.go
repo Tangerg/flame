@@ -73,7 +73,7 @@ func presentShellTool(call agent.ToolCall) ToolPresentation {
 	return ToolPresentation{
 		Label: shellToolLabel(call),
 		Sections: toolSections(call, ToolSection{
-			Title: "Output", Style: toolSectionCode, Language: "text", Text: call.Output,
+			Title: "Output", Style: toolSectionCode, Text: call.Output,
 		}),
 	}
 }
@@ -82,7 +82,7 @@ func presentEditTool(call agent.ToolCall) ToolPresentation {
 	return ToolPresentation{
 		Label: toolKindLabel("edit", toolPrimary(call.Path, call.Summary)),
 		Sections: toolSections(call, ToolSection{
-			Title: "Output", Style: toolSectionCode, Language: "text", Text: call.Output,
+			Title: "Output", Style: toolSectionCode, Text: call.Output,
 		}),
 	}
 }
@@ -127,7 +127,7 @@ func presentUnknownTool(call agent.ToolCall) ToolPresentation {
 	return ToolPresentation{
 		Label: unknownToolLabel(call),
 		Sections: toolSections(call, ToolSection{
-			Title: "Output", Style: toolSectionCode, Language: "text", Text: call.Output,
+			Title: "Output", Style: toolSectionCode, Text: call.Output,
 		}),
 	}
 }
@@ -146,7 +146,7 @@ func toolSections(call agent.ToolCall, output ToolSection) []ToolSection {
 	}
 	if len(metadata) > 0 {
 		sections = append(sections, ToolSection{
-			Title: "Execution", Style: toolSectionCode, Language: "text", Text: strings.Join(metadata, "\n"),
+			Title: "Execution", Style: toolSectionCode, Text: strings.Join(metadata, "\n"),
 		})
 	}
 	if len(call.ArgumentsJSON) != 0 {

@@ -229,7 +229,7 @@ func (t *toolBlock) rebuild() {
 	if err != nil {
 		presentation = ToolPresentation{
 			Label:    unknownToolLabel(t.call),
-			Sections: []ToolSection{{Title: "Presentation error", Style: toolSectionCode, Language: "text", Text: err.Error()}},
+			Sections: []ToolSection{{Title: "Presentation error", Style: toolSectionCode, Text: err.Error()}},
 		}
 	}
 	t.presentation = presentation
@@ -274,11 +274,7 @@ func renderToolSections(p BlockPresentation, sections []ToolSection, truncate bo
 			paragraph.SetLinks(kit.LinkConfig{Enabled: section.Links})
 			blocks = append(blocks, paragraph)
 		case toolSectionCode:
-			language := section.Language
-			if language == "" {
-				language = "text"
-			}
-			code := kit.NewCode(p.Syntax.Lines(language, value))
+			code := kit.NewCode(p.Syntax.Lines(sectionLanguage(section), value))
 			if section.LineNumbers {
 				code.Gutter = kit.LineNumbers{Style: p.Theme.Subtle, Separator: p.Glyphs.Vertical}
 			}
@@ -286,6 +282,16 @@ func renderToolSections(p BlockPresentation, sections []ToolSection, truncate bo
 		}
 	}
 	return blocks
+}
+
+// sectionLanguage resolves the highlighter language for a code section. An
+// unset language is plain text, so a section that carries none says nothing
+// rather than repeating this answer.
+func sectionLanguage(section ToolSection) string {
+	if section.Language == "" {
+		return "text"
+	}
+	return section.Language
 }
 
 func truncateToolDetail(value string) string {

@@ -25,7 +25,7 @@ func (a *app) modelsReaderQuery() runtimeReaderQuery {
 			if err != nil {
 				document.Detail += " · incomplete catalog"
 				document.Sections = append([]ToolSection{{
-					Title: "Provider discovery failed", Style: toolSectionCode, Language: "text", Text: err.Error(),
+					Title: "Provider discovery failed", Style: toolSectionCode, Text: err.Error(),
 				}}, document.Sections...)
 			}
 			return document, nil
@@ -47,7 +47,7 @@ func modelCatalogDocument(models []protocol.Model) readerDocument {
 			title += " · deprecated"
 		}
 		sections = append(sections, ToolSection{
-			Title: title, Style: toolSectionCode, Language: "text",
+			Title: title, Style: toolSectionCode,
 			Text: strings.Join(modelCatalogLines(model), "\n"),
 		})
 	}

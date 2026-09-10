@@ -49,7 +49,7 @@ func mcpServersDocument(servers []protocol.MCPServer) readerDocument {
 	sections := make([]ToolSection, 0, len(servers))
 	for _, server := range servers {
 		sections = append(sections, ToolSection{
-			Title: server.Name + " · " + mcpStateLabel(server.Status), Style: toolSectionCode, Language: "text",
+			Title: server.Name + " · " + mcpStateLabel(server.Status), Style: toolSectionCode,
 			Text: mcpServerDetail(server),
 		})
 	}

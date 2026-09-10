@@ -72,7 +72,7 @@ func agentMemoryDocument(target agent.MemoryTarget, items []protocol.AgentMemory
 		}
 		sections = append(sections,
 			ToolSection{Title: state, Style: toolSectionParagraph, Text: item.Content, Links: true},
-			ToolSection{Title: "Provenance", Style: toolSectionCode, Language: "text", Text: strings.Join(metadata, "\n")},
+			ToolSection{Title: "Provenance", Style: toolSectionCode, Text: strings.Join(metadata, "\n")},
 		)
 	}
 	return readerDocument{Title: title, Detail: detail, Sections: sections}

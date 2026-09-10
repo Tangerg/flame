@@ -58,8 +58,8 @@ func hooksDocument(workspacePath string, catalog workspace.HookCatalog) readerDo
 			actionTitle, action = "Shell command", hook.Command
 		}
 		sections = append(sections,
-			ToolSection{Title: string(hook.Event) + " · " + state, Style: toolSectionCode, Language: "text", Text: strings.Join(metadata, "\n")},
-			ToolSection{Title: actionTitle, Style: toolSectionCode, Language: "text", Text: action},
+			ToolSection{Title: string(hook.Event) + " · " + state, Style: toolSectionCode, Text: strings.Join(metadata, "\n")},
+			ToolSection{Title: actionTitle, Style: toolSectionCode, Text: action},
 		)
 	}
 	return readerDocument{Title: "Lifecycle hooks", Detail: detail, Sections: sections}
