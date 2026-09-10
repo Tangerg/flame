@@ -13002,3 +13002,78 @@ if (!focusConversationTool(id) && typeof requestAnimationFrame === "function") {
 上一轮修的是一个缺陷，这一轮搜的是**那个形状**。
 四处里三处是对的 —— 而"搜一遍"的价值恰恰在这里：
 它同时告诉你哪一处该改，和哪三处不该动。
+
+## Round 206 —— 只有交互之后才存在的界面，第三次
+
+先说两条**没有找到缺陷**的线，因为"搜过了、是干净的"和"找到了"一样是结论：
+
+- **被吞掉的 `catch`**：全仓零个空 `catch {}`。逐个读了七处 —— i18n 的两处
+  `localStorage` 可能被禁用、`asyncOwnership` 和 `queryClient` 各写明了理由、
+  RPC 的两处一处**记日志**一处**区分 abort 和真失败**、`runDigest` 是 JSON 兜底。**全部正当。**
+- **没有可访问名字的控件**：hover 扫描里看到三个 `span[checkbox] ""`。查了 axe 的标签集是
+  `wcag2a/2aa/21a/21aa/22aa` 全量 —— 名字缺失早就会红。它们用的是 `aria-labelledby`，
+  是**我的探针没解析**。清白。
+
+### 真正的缺口：只有交互之后才存在的界面
+
+`closure.visual.spec.ts` 自己记着它学过两次这件事 ——
+两个搜索浮层「neither was in this audit until they had a fixture to open them from」，
+以及 schedules 表单「reaching it takes a click」。**每次里面都有真违规在等着。**
+
+所以把工作区里一个人能**打开**的东西都打开，跑 axe：右键菜单、composer 三个弹层、
+dock 目录、goal 编辑器。第三次也有：
+
+```
+target-size: #base-ui-_r_u_  button 22x22  label="Clear goal"
+  Safe clickable space has a diameter of 15.6px instead of at least 24px.
+target-size: #base-ui-_r_10_ button 22x22  label="Pause goal"
+  ... 21.6px instead of at least 24px.
+```
+
+### 根因不是那个 22px 的档位
+
+一开始我以为是 `--control-height-xs: 22px`（21 处 IconButton 在用）低于 24px 的底线。
+**不是。** WCAG 2.5.8 明确允许小于 24px 的目标**靠间距达标**，axe 实现的就是这一条 ——
+所以 22px 这一档本身是合规的，全产品其他地方都靠间距过关。
+
+真正出问题的是这一行：**三个 22px 按钮以 8px 间距挤在一个 `flex: fill` 的宽目标旁边**，
+于是这两个的安全点击空间掉到 15.6px 和 21.6px。
+（用户选了"只修 goal bar 的间距"，档位不动。）
+
+顺带解释了它为什么一直没被抓到：
+`touchTargets.visual.spec.ts` **跑的是粗指针**（`hasTouch`），那里 `@media (pointer: coarse)`
+给每个控件 44px 的地板 —— 它只查触摸下的**重叠**，从不查鼠标下的**尺寸**。
+而路线审计能看到这一行，只是那个视口下的间距恰好算过了线。**它躲在一个布局巧合后面。**
+
+### 改动与验证
+
+`gs.actions`：`gap: s2 → s3`，并在摘要与操作之间加 `marginInlineStart: s2`。
+改完在被审计的视口（1472×900）上 **violations=0**。
+
+**六个交互界面全部纳入审计**，并验证过它们会红：把间距改回 8px → 精确点名 `Clear goal`。
+
+写这六条时踩了一个 Playwright 的坑：一个弹层是 **dialog 里套 listbox**，
+`[role=menu], [role=listbox], [role=dialog]` 的并集匹配到**两个**元素，
+strict locator 直接拒绝 —— 两条测试报的是定位器错误，不是 axe 违规。加 `.first()`。
+
+### golden
+
+8 张移动：agent 的 `running`/`terminal`/`canceled` 与 workspace 的 `dock-light`，各明暗两版
+—— 正好是会显示 goal bar 的那些状态。**看了 diff 图再更新**：226 像素（全图 0.01%），
+红色只落在那三个图标和摘要的截断点上，别处一动没动。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| WCAG target-size 违规 | 2 → **0** |
+| 纳入审计的交互界面 | 2（搜索浮层、schedules 表单）→ **8** |
+| 搜过但干净的线 | `catch` 吞异常、控件缺名 —— **各 0 个缺陷，已记录** |
+| 单测 | **542 全通过**（chat + `src/ui` 分片）|
+| 视觉套件 | **685 全通过**（11.4m，零失败；+6 是新审计）|
+| typecheck / lint / prettier / knip / 9 个守卫 | 全绿 |
+
+### 一句话
+
+`touchTargets` 跑粗指针、路线审计跑静止态 —— 两个守卫各自都对，
+**而缺陷正好落在它们之间那条缝里**：鼠标下的尺寸，只在打开某个东西之后才暴露。

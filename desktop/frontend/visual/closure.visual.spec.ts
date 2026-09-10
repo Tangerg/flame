@@ -180,6 +180,75 @@ for (const pane of VISUAL_SETTINGS_PANES) {
   }
 }
 
+// Everything else a person can OPEN from the workspace. A surface that exists only after an
+// interaction is audited only if someone writes the interaction down, and this file has learned
+// that twice already — the two search overlays, then the schedules form — each time with a real
+// violation waiting inside. The third time found one too: the goal bar's three actions are the
+// 22px control step at 8px spacing beside a full-width summary target, and WCAG 2.5.8 lets a
+// small target pass on SPACING, which those two did not have. Nothing here opens a NEW
+// component so much as it opens the ones the route audits can never reach.
+const INTERACTION_SURFACES: readonly {
+  readonly name: string;
+  readonly route: FixtureRoute;
+  readonly open: (page: Page) => Promise<void>;
+}[] = [
+  {
+    name: "the context menu on a user message",
+    route: { fixture: "agent", state: "idle" },
+    open: async (page) => {
+      await page.locator("[data-user-message-bubble]").first().click({ button: "right" });
+      await expect(page.locator('[role="menu"]')).toBeVisible();
+    },
+  },
+  ...(["Switch model", "Approval mode", "Switch reasoning effort"] as const).map((control) => ({
+    name: `the composer's ${control} popup`,
+    route: { fixture: "workspace" as const, state: "dock-light" },
+    open: async (page: Page) => {
+      await page.getByRole("button", { name: control }).first().click();
+      // `.first()` because a popup is a dialog CONTAINING a listbox, so the union matches both
+      // and a strict locator refuses two.
+      await expect(
+        page.locator('[role="menu"], [role="listbox"], [role="dialog"]').first(),
+      ).toBeVisible();
+    },
+  })),
+  {
+    name: "the dock catalogue",
+    route: { fixture: "workspace", state: "dock-light" },
+    open: async (page) => {
+      await page
+        .getByRole("button", { name: /Browse panels/ })
+        .first()
+        .click();
+      // `.first()` because a popup is a dialog CONTAINING a listbox, so the union matches both
+      // and a strict locator refuses two.
+      await expect(
+        page.locator('[role="menu"], [role="listbox"], [role="dialog"]').first(),
+      ).toBeVisible();
+    },
+  },
+  {
+    name: "the goal editor",
+    route: { fixture: "workspace", state: "dock-light" },
+    open: async (page) => {
+      await page
+        .getByRole("button", { name: /Pursuing goal/ })
+        .first()
+        .click();
+      await expect(page.getByRole("textbox")).toBeVisible();
+    },
+  },
+];
+
+for (const surface of INTERACTION_SURFACES) {
+  test(`WCAG audit ${surface.name}, which a route audit never opens`, async ({ page }) => {
+    await openFixture(page, surface.route);
+    await surface.open(page);
+
+    await expectNoWcagViolations(page);
+  });
+}
+
 // A pane audits the shape it OPENS in, and this one opens showing a list. Its form is a
 // second surface — five fields, a preset group and two actions — that no audit had ever
 // seen, because reaching it takes a click.

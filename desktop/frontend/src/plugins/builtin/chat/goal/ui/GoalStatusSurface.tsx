@@ -70,7 +70,17 @@ const gs = stylex.create({
     opacity: { ":disabled": 1 },
   },
   objective: { marginInlineStart: space.s1 },
-  actions: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s2 },
+  // WCAG 2.5.8 lets a target under 24px pass on SPACING, which is how the 22px control step
+  // clears it everywhere else. Three of them at 8px beside a full-width summary target did
+  // not: axe measured 15.6px and 21.6px of safe clickable space against the 24px it needs.
+  // The step stays 22px — it is not the thing that is wrong — and this row gives it room.
+  actions: {
+    display: "flex",
+    flexShrink: 0,
+    alignItems: "center",
+    gap: space.s3,
+    marginInlineStart: space.s2,
+  },
 });
 
 export function GoalStatusSurface() {
