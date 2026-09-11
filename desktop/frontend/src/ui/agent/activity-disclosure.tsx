@@ -64,6 +64,10 @@ const styles = stylex.create({
   trayNeutral: { backgroundColor: surface.surface2 },
   trayWarning: { backgroundColor: surface.warningBadge },
   trayNegative: { backgroundColor: surface.negativeBadge },
+  // The row's NAME. What keeps it from reaching zero is not a floor here but `trailing` below
+  // being shrinkable — measured in German, `Subagent` came out 1.1px wide while it was the only
+  // item in the row that could give way. A `min-width` floor also fixed it and was dropped: it
+  // widens every label shorter than the floor, which moved rows that were never squeezed.
   label: {
     display: "flex",
     minWidth: 0,
@@ -86,9 +90,23 @@ const styles = stylex.create({
     color: "var(--row-ink)",
   },
   spacer: { minWidth: 0, flex: 1 },
+  /**
+   * The row's ANNOTATION, and therefore the part that yields first.
+   *
+   * This was `flex-shrink: 0` while holding text a locale decides the length of — a status
+   * phrase plus a step count — so a long one took the row and starved the name beside it.
+   * Shrinking is weighted by base size, which is exactly the right distribution here: the
+   * oversized trailing gives up most of any deficit and a short one gives up almost nothing.
+   *
+   * Deliberately NOT `overflow: hidden`, which is the obvious companion to shrinking and was
+   * measured to cost more than it buys: a `StatusDot` paints a pulse OUTSIDE its own box, and
+   * clipping the slot cut the halo off every running row. The children shrink with the slot
+   * and keep their text, so there is nothing here that needs clipping.
+   */
   trailing: {
     display: "flex",
-    flexShrink: 0,
+    minWidth: 0,
+    flexShrink: 1,
     alignItems: "center",
     gap: space.s1_5,
     fontFamily: "var(--font-mono)",

@@ -81,8 +81,13 @@ export const messageStyles = stylex.create({
   },
 
   /** A dot and the word beside it. The ink is the status's, and comes from `toneInk`. */
+  // `minWidth: 0` so it can give way inside the row's trailing slot, which a locale can
+  // overfill: "Eingabe erforderlich" is twice the width of "Needs input". The truncation goes
+  // on the TEXT beside the dot rather than on this box, because a `StatusDot` paints its pulse
+  // outside its own bounds and clipping here cut the halo off every running row.
   statusWord: {
     display: "inline-flex",
+    minWidth: 0,
     alignItems: "center",
     gap: space.s1,
     fontWeight: weight.medium,

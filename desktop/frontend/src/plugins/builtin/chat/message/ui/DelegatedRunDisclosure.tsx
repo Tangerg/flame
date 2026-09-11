@@ -57,9 +57,11 @@ export function DelegatedRunDisclosure({
         <>
           <span {...stylex.props(messageStyles.statusWord, toneInk[model.ink], typeStep.uiXs)}>
             <StatusDot tone={model.dotTone} />
-            {model.statusLabel}
+            <span {...stylex.props(vocab.min, vocab.truncate)}>{model.statusLabel}</span>
           </span>
-          <span {...stylex.props(vocab.faint, typeStep.uiXs, face.mono)}>{model.stepsLabel}</span>
+          <span {...stylex.props(vocab.hold, vocab.faint, typeStep.uiXs, face.mono)}>
+            {model.stepsLabel}
+          </span>
         </>
       }
       actions={
