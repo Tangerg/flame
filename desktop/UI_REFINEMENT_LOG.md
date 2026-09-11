@@ -16797,3 +16797,137 @@ const PAIRS = [
 它每天都在报绿 —— 报的是一个**它已经够不着的地方**。
 最后那次对照最说明问题：**同一个缺陷，旧守卫通过，新守卫报出**，
 而它报出的句子，和当初写下这条守卫的人记在注释里的，是同一句。
+
+## Round 256 —— 换成横扫：三个产品缺陷，和两条一直在钉住缺陷的断言
+
+用户叫停了上一轮的节奏 —— "要一次性把所有的视觉缺陷做了，不要一直在这个上面耗着"。
+前两轮查的是守卫考古（`.group/row`、`.h-px`），那是**元工作**，
+`refactor-prompt.md` 里"不得为了继续迭代而制造工作"说的正是这个。
+
+改法：不再逐个啃，写一次性探针横扫**全部 36 个 fixture 状态 × 多个宽度**，
+一批收齐再一起修。
+
+### 一、第一批探针：390 条 → 6 条 → 1 个真缺陷
+
+刻意避开 `unbreakableContent` 已覆盖的 `overflow: visible` 喷出类，查它的补集。
+
+| 判据 | 首轮 | 收紧后 |
+| --- | --- | --- |
+| 被 `hidden` 静默切掉、无 ellipsis 无 fade | 3 | **0**（全是 `sr-only`） |
+| 渲染中但尺寸为零的交互控件 | 255 | **6** |
+
+两次收敛都是**我自己的判据不严**：
+- `sr-only` 那三条漏过过滤，是因为 `code` 里有换行把输出拆成了两行；
+- 255 条里 249 条的祖先是 `display:none` —— 那种 rect 也是 0×0，但**不在 Tab 顺序里**。
+  判据换成浏览器自己的 `checkVisibility()` 才剩下真的。
+
+**这一课这一轮重复了两次**（后面 dock 那批 200 行同样如此），已写进新守卫的注释。
+
+### 二、缺陷一：内联图片对 data URI 用了 `loading="lazy"`
+
+剩下的 6 条是同一个签名：`long-content` 里两个 `0×0` 的 `<button>`，`tabIndex=0`。
+
+```
+滚到之前： complete:false  naturalWidth:0   渲染 0×0
+滚进视口： complete:true   naturalWidth:240 渲染 240×96
+```
+
+**每张首屏之外的 markdown 图片都占 0 高度，读者滚到它的那一刻 transcript 往下跳 96px** ——
+正好跳在眼睛所在的位置；那个包裹按钮全程以 0×0 留在 Tab 顺序里。
+
+根因不是"缺少占位下限"。看 `MarkdownImage` 的分支：
+非 data URI 的 src 在到达任何 `<img>` 之前就已经走 `missing` 返回了 ——
+**所以这两处 `<img>` 的 src 必定是 data URI**，字节就在内存里，
+`loading="lazy"` 推迟不了任何请求，它唯一的作用就是这个缺陷。
+
+治本是**删掉它**，不是加下限去补偿。
+（这个文件自己的 `missing` 注释早就写明了原则：
+"An image that will not load still holds a box, so the paragraph around it does not reflow." ——
+加载中的路径没遵守。）
+
+### 三、缺陷二：dock 里的名字被挤成 0 宽
+
+第二批探针（滚动无提示 / 截断无出路）在 `dock-skill-proposals` 抓到：
+
+```
+"review-diff"   宽度 0px   内容需要 71px
+```
+
+0 宽 + `overflow:hidden` = **连省略号都没有，文字完全不显示**。
+
+一行里有：名字（唯一带 `vocab.truncate` 的）+ revision 哈希 + scope 徽章 + "Replaces existing"。
+`truncate` 带的 `overflow:hidden` 让 flex item 的 `min-width:auto` 解析成 **0**，chip 不收缩 ——
+**这一行里唯一用来识别它的东西，是唯一被允许消失的东西。**
+
+宽度链：`407(dock内) → 367 → 207(标题列)`，Reject/Approve 吃掉 160px。
+而 `DOCK_MIN_WIDTH_PX = 320` —— **这是产品明确支持的宽度区间**。
+
+修法在样式的拥有者处，不在 callsite：`viewStyles` 新增 `titleLine`，chip 换行而不是挤名字。
+
+### 四、为什么 155 张 golden 一张都没看见
+
+修完跑全套：**742 passed，零张 golden 变化。** 两个缺陷各有各的原因：
+
+| | golden 为什么看不见 |
+| --- | --- |
+| 图片 | 每张含图的 golden 都先 `scrollIntoView` 再拍 —— 缺陷只存在于"还没滚到"的那一刻 |
+| dock 名字 | `workspace.visual.spec.ts` 在 **1472px** 视口拍 dock，同一列是 560px，名字放得下 |
+
+`closure` 里那条 `no text is cut off with no way to read it` 也没抓到 ——
+但要说准确：**不是它有盲点**。它的判据是"文字越过了裁剪边界"，
+而 0 宽盒子的文字从盒子左边起排、够不到面板右缘。是另一类缺陷。
+
+### 五、两条一直在钉住缺陷的断言
+
+去掉 lazy 后只有 2 个测试失败，都在断言 `loading="lazy"`：
+
+```ts
+await expect(preview.locator("img")).toHaveAttribute("loading", "lazy");
+await layOutTranscript(page);
+await preview.evaluate((b) => b.parentElement?.scrollIntoView({ block: "center" }));
+```
+
+**测试把缺陷编码进去了** —— 它必须先滚到图片那里，图片才成立。
+换成钉真正的要求：滚动之前图片就得有盒子。
+
+### 六、缺陷三：Goal 行的两处
+
+读代码找到的，都在用户点名的 goal 渲染里：
+
+- **目标文字**：155px 的容器装 480px 的字符串，没有 `title` 也没有 tooltip ——
+  三分之二的内容唯一的看法是打开编辑器。
+- **静默的空操作**：summary 和铅笔做同一件事，铅笔在 `controlsDisabled` 时禁用、summary 不禁用。
+  runtime 不可用时点 summary 照样开编辑器，然后 `runCommand` 在
+  `!runtimeCommandsAvailable()` 早退 —— **不写、不报错、对话框不关**。
+  修在四个动作唯一的汇合点，复用各自已有的 `fallback` 文案，不动任何 locale。
+
+### 七、新守卫与三向验证
+
+`dockGeometry.visual.spec.ts` 新增"dock 接近下限时名字不得为 0 宽"，12 个视图。
+
+| 验证 | 结果 |
+| --- | --- |
+| 修复在位 | 通过 |
+| 回退产品修复 | `a name the row exists to identify was squeezed out of the row` × 3 |
+| 选择器失效 | `no truncating name was found in any dock view`（floor 报出） |
+
+改写后的图片断言同样做了破坏验证：加回 `loading="lazy"` → `an image below the fold holds no box`。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 扫描规模 | 36 状态 × 4 宽度 |
+| 探针报告 | 390 → 6（两次都是我判据不严） |
+| 修掉的产品缺陷 | **4**（图片跳动 + 零宽 Tab 停靠、dock 名字消失、目标不可读、保存静默失败） |
+| 钉住缺陷的断言 | 2 条，改成防住缺陷 |
+| 新守卫 | 1 条，三向验证 |
+| golden 变化 | **0** —— 没有一个缺陷是 golden 能看见的 |
+
+### 一句话
+
+这一轮真正的发现不是那四个缺陷，
+而是**155 张 golden 对它们一张都没反应**：
+一个只在"还没滚到"时存在，一个只在比拍摄视口窄的窗口里存在。
+截图测的是**被摆好的那一帧**，
+而这两个缺陷都活在**读者到达之前**和**窗口没那么宽的时候**。
