@@ -122,6 +122,21 @@ export const viewStyles = stylex.create({
     alignItems: "baseline",
     gap: space.s2,
   },
+  /**
+   * A row's NAME beside the chips that annotate it — and the chips wrap rather than crowd it.
+   *
+   * The name truncates, which gives a flex item an automatic minimum of zero, while a Tag or a
+   * Badge keeps its width. So the one thing in the row that identifies it was the only thing
+   * allowed to vanish: measured in a 207px dock, `review-diff` rendered at 0px wide beside a
+   * revision hash and two badges that were all fully drawn — not ellipsed, absent.
+   */
+  titleLine: {
+    display: "flex",
+    flexWrap: "wrap",
+    minWidth: 0,
+    alignItems: "center",
+    gap: space.s2,
+  },
 
   pushEnd: { marginInlineStart: "auto" },
 

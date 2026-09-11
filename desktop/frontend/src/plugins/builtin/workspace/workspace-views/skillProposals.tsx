@@ -93,7 +93,7 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
     <div {...stylex.props(vs.gutter, vs.rowPadTall)}>
       <div {...stylex.props(vs.lineTop)}>
         <div {...stylex.props(vocab.fill)}>
-          <div {...stylex.props(vocab.line, vocab.min)}>
+          <div {...stylex.props(vs.titleLine)}>
             <div {...stylex.props(vs.title, vocab.truncate, typeStep.uiMd)}>{proposal.name}</div>
             <Tag className={stylex.props(vocab.figures).className}>
               {proposal.revision.slice(0, 8)}
