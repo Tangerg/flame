@@ -15664,3 +15664,68 @@ a path italic inside a link: 1 control(s) nested inside a link
 **差别只是中间多了一个 `<strong>`**，而跳过判断只看了一层。
 修的时候没有只补那一句，因为同一套遍历在两个插件里各写了一遍：
 **补一处，另一处仍然按构造是错的。**
+
+## Round 241 —— 用鼠标点选输入法候选词后，第一次 Enter 被吞掉
+
+### 一、先把"没测试的模块"这条脉络系统化，顺带修正一次误判
+
+按"有分支逻辑但没同名测试"扫了 chat / agent / shell / ui，头三名是
+fold 层的 `runHandlers.ts`(295 行/65 分支)、`fold.ts`(432/49)、`itemHandlers.ts`(197/37)。
+
+**查了一下，它们其实有 11 个测试文件**（`reducer.*.test.ts` ×8、两个 property test、
+`canonicalSamples.test.ts`）。同名启发式在这里是错的 —— 幸好查了再说。
+
+真正没被任何测试引用的只有四个：`useComposerInputController`、
+`agentSessionRecovery`、`toolPreviewQueries`、`use-scroll-lock`。
+
+### 二、`useComposerInputController` 的 IME 编排
+
+它的纯函数 `composerCompositionKeyIntent` **有测试**；没测的是**控制器里 ref 的编排** ——
+`compositionCommitPending` 什么时候置起、什么时候清掉。读下来有一个洞：
+
+那个标志由 `handleKeyUp` 清除。但**用鼠标点选候选词时，`compositionend` 会触发、
+却没有任何按键事件** —— 标志留在 true，用户接下来真正想发送的那次 Enter 就被吞掉。
+
+驱动四条序列，实测：
+
+| 序列 | 是否发送 | |
+| --- | --- | --- |
+| 无 IME，普通 Enter | 1 | ✓ |
+| 键盘确认：compEnd → Enter | 0 | ✓（那个 Enter 就是确认键） |
+| 键盘确认：compEnd → Enter → keyUp → Enter | 1 | ✓ |
+| **鼠标确认：compEnd（无按键事件）→ Enter** | **0** | ✗ |
+
+**必须按两次 Enter。** 对中文用户是高频路径。
+
+### 三、根因：那个标志在时间上无界
+
+它本意是拦住"与 `compositionend` 来自**同一次物理按键**的那个伪 Enter"——
+两者之间只差一个事件突发（毫秒级）。而鼠标确认后人手移到键盘是数百毫秒。
+
+从 hook 的视角，两种 Enter **除了到达时间以外无法区分**。所以把布尔标志换成时间戳，
+加一个 100ms 的窗口：远高于浏览器派发抖动，远低于把手从鼠标移到键盘。
+
+窗口刻意取在**宽松**一侧：太紧会让确认键把半截消息发出去，太松只是少响应一次 Enter ——
+**只有前者会丢失文本。**
+
+### 四、破坏验证
+
+还原成旧实现，六条断言里**只有鼠标确认那条失败**，其余五条两边都过 ——
+说明窗口没有削弱原有的正确行为。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 修正的自我误判 | 1（fold 层其实有 11 个测试） |
+| 真缺陷 | **1**（鼠标确认后首次 Enter 被吞），驱动真实 hook 量出 |
+| 新测试 | 6 条（2463 → 2469） |
+| 破坏验证 | 精确命中 1/6 |
+
+### 一句话
+
+一个为 IME 设的守卫，**在时间上没有边界** ——
+它拦的是"和 compositionend 同一次按键的伪 Enter"，
+却把几百毫秒后人真正按下的那次也一起拦了。
+两者除了**到达时间**没有任何区别，所以边界就是答案；
+而窗口该偏向哪一侧，取决于两种失败里**哪一种会丢文本**。

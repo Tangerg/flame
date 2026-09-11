@@ -23,6 +23,24 @@ import {
 } from "../application/composerInputEvents";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 
+/**
+ * How long after a composition commits an ordinary Enter can still be the IME's own.
+ *
+ * The flag this bounds exists for one shape: some Chinese IMEs commit with `compositionend`
+ * and then emit a completely ordinary Enter from the SAME physical keypress, which would
+ * otherwise send a half-written message. That Enter arrives in the same input burst.
+ *
+ * Unbounded, the flag also swallows the next Enter after a commit that involved no key at all
+ * — picking a candidate with the mouse. Measured: `compositionend` with no key events, then
+ * Enter, and nothing was sent; the reader has to press Enter twice. Nothing distinguishes the
+ * two Enters except when they arrive, so the window is the discriminator: far above the
+ * browser's dispatch gap, far below moving a hand from the mouse to the keyboard.
+ *
+ * It is deliberately the loose side of that gap. Too tight and a commit sends an unfinished
+ * message; too loose and one Enter is ignored — only one of those loses text.
+ */
+const COMPOSITION_COMMIT_GRACE_MS = 100;
+
 interface Args {
   value: string;
   onChange: (value: string) => void;
@@ -58,7 +76,12 @@ export function useComposerInputController({
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
   const [caret, setCaret] = useState(0);
   const composingRef = useRef(false);
-  const compositionCommitPendingRef = useRef(false);
+  // WHEN the composition committed, not merely that it did — see the grace window above.
+  const compositionCommittedAtRef = useRef<number | null>(null);
+  const commitIsFresh = (): boolean => {
+    const at = compositionCommittedAtRef.current;
+    return at !== null && performance.now() - at <= COMPOSITION_COMMIT_GRACE_MS;
+  };
   const applyMention = useCallback(
     (text: string, next: number) => {
       onChange(text);
@@ -95,7 +118,7 @@ export function useComposerInputController({
     const nativeComposing = (event.nativeEvent as { isComposing?: boolean }).isComposing === true;
     if (composingRef.current && !nativeComposing) {
       composingRef.current = false;
-      compositionCommitPendingRef.current = true;
+      compositionCommittedAtRef.current = performance.now();
     }
     onChange(target.value);
     if (composingRef.current || nativeComposing) return;
@@ -109,19 +132,19 @@ export function useComposerInputController({
 
   const handleCompositionStart = (): void => {
     composingRef.current = true;
-    compositionCommitPendingRef.current = false;
+    compositionCommittedAtRef.current = null;
   };
 
   const handleCompositionEnd = (event: CompositionEvent<HTMLTextAreaElement>): void => {
     composingRef.current = false;
-    compositionCommitPendingRef.current = true;
+    compositionCommittedAtRef.current = performance.now();
     const target = event.currentTarget;
     onChange(target.value);
     setCaret(target.selectionStart ?? target.value.length);
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>): void => {
-    compositionCommitPendingRef.current = false;
+    compositionCommittedAtRef.current = null;
     const files = imageFiles(event.clipboardData?.files);
     const text = files.length > 0 ? "" : (event.clipboardData?.getData("text") ?? "");
     const intent = composerPasteIntent(files, text);
@@ -138,22 +161,22 @@ export function useComposerInputController({
   };
 
   const handleDrop = (files: File[]): void => {
-    compositionCommitPendingRef.current = false;
+    compositionCommittedAtRef.current = null;
     if (files.length === 0 || !acceptsImages) return;
     onAddImages(files);
   };
 
   const clearCompositionCommit = (): void => {
-    compositionCommitPendingRef.current = false;
+    compositionCommittedAtRef.current = null;
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
     const compositionIntent = composerCompositionKeyIntent(
       event.nativeEvent,
       composingRef.current,
-      compositionCommitPendingRef.current,
+      commitIsFresh(),
     );
-    compositionCommitPendingRef.current = false;
+    compositionCommittedAtRef.current = null;
     if (compositionIntent !== null) {
       if (compositionIntent === "committed-enter") event.preventDefault();
       return;
