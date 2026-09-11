@@ -29,7 +29,15 @@ const styles = stylex.create({
   // The one line the eye lands on first, so it opts out of the UI tracking the step carries:
   // a heading read alone does not need the crowding that keeps a dense row legible.
   title: { fontWeight: weight.medium, letterSpacing: "normal", color: color.fg },
-  sub: { maxWidth: "280px", lineHeight: leading.body, color: color.fgMuted },
+  // 280px is narrow, and this line is the one place the app explains itself in prose — through
+  // every locale it ships. A German compound or an API name in the copy (`host.notify()`) has
+  // nowhere to break, and at this measure that paints outside the pane.
+  sub: {
+    maxWidth: "280px",
+    lineHeight: leading.body,
+    color: color.fgMuted,
+    overflowWrap: "break-word",
+  },
   action: { marginTop: space.s1_5 },
 });
 

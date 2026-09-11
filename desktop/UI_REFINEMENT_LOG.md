@@ -15729,3 +15729,83 @@ fold 层的 `runHandlers.ts`(295 行/65 分支)、`fold.ts`(432/49)、`itemHandl
 却把几百毫秒后人真正按下的那次也一起拦了。
 两者除了**到达时间**没有任何区别，所以边界就是答案；
 而窗口该偏向哪一侧，取决于两种失败里**哪一种会丢文本**。
+
+## Round 242 —— 那条"注入 fixture 造不出的条件"的审计，只查了一半的产品
+
+### 一、先是三个负面结果
+
+- **`useScrollLock`**（90 行，无测试）：只有 `Collapsible` 一个消费者，且只在**收起**时上锁。
+  钉住 `scrollTop` 正好让你点的那个折叠控件留在原位、内容向上收 ——
+  比浏览器的 scroll anchoring 更贴合"我点了收起"的预期。**没找到缺陷，不硬凑。**
+- **`toolPreviewQueries`**（54 行）：两个薄查询包装。空 `hits: []` 的处理也是对的
+  （零匹配是真答案，不该再触发在线查询）。**没有值得写测试的缺陷面。**
+- **`study/zcode`**（最后一个没碰的参考）：Tailwind v4 默认刻度
+  （4/6/8/12/16/24px，连 Codex 和 Flame 都有的 10px 档都没有），设计成分低。
+  唯一的产品观察：它把上下文用量按 **7 个类别分色**（`--color-context-breakdown-1..7`），
+  而 Flame 的 `ContextUsageGauge` 只有一个比值 —— 那需要 runtime 按类别上报 token，
+  **协议里只有一个数，而指导禁止主动改协议**。记录，不做。
+
+### 二、然后发现已有的那条审计只查了一半
+
+`unbreakableContent.visual.spec.ts` 用的正是本会话反复奏效的手法 ——
+**注入 fixture 从不产生的条件**（一段无断点的长串），看它会不会画到盒子外面。
+
+但它 `document.querySelector("main")`，**只审 transcript，只在 6 个 agent 状态**。
+注释解释了为什么排除抽屉：agent fixture 里那是脚手架。
+
+**在 workspace fixture 上，dock 就是产品。** 而 dock 里渲染的全是不受控的文本：
+模型写的计划步骤、模型写的记忆条目、第三方技能文件写的描述、`git` 写的 hunk 头。
+
+把根参数化后跑同一套注入，报出 **6 个视图、13 处溢出**：
+
+| 视图 | 溢出 | 文本来源 |
+| --- | --- | --- |
+| Plan | 3 处，最多 1393px | 模型写的计划步骤 |
+| Diff review | 2 处，1310px | `git` 写的 hunk 头（含函数签名） |
+| Agent memory | 2 处，最多 1636px | 模型写的记忆 |
+| Skill library / proposals / recipes | 5 处，最多 1504px | 技能文件写的描述 |
+| Notifications | 1 处，1431px | 见下 |
+
+### 三、修在共享档上，不是逐个补
+
+四处根因其实是三个共享样式缺了断行规则：
+`viewStyles.body`（记忆条目）、`viewStyles.description`（被 4 个视图共用）、
+`codeStyles.hunk`、以及 `StepRow.label`。
+
+hunk 用 `anywhere`（机器输出，和邻居 `codeStyles.wrap` 同款），其余用 `break-word`（散文）。
+**我一度给 hunk 顺手加了 `whiteSpace: "pre-wrap"`，随后删掉了** ——
+那是超出缺陷范围的渲染改动（会改变空白的呈现），而断行本身就够修。
+
+### 四、第 13 处不是模型写的，但我还是修了它
+
+`dock-notifications` 那条是**空态说明文案** `notifications.empty.sub`：
+"Anything a plugin reports via host.notify() will appear here."
+真正的插件通知正文（`NotificationRow`）早就在用 `vocab.wrapText`，本来就安全。
+
+按我自己刚定的界线（settings 的 10 条产品文案不该改，因为"Global corner radius."
+永远不会长出哈希），这条也该排除。**但它有自己的理由**：
+`EmptyState.sub` 的宽度只有 280px，是全应用唯一用散文解释自己的那一行，
+而且要穿过所有语言 —— **德语复合词**和文案里的 API 名（`host.notify()`）都没有断点。
+
+所以修的是 `EmptyState.sub`，理由是本地化，不是为了让测试变绿。
+settings 那 10 条仍然**不改**，也不进审计范围。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 查完确认干净、不硬凑的 | **3**（`useScrollLock` / `toolPreviewQueries` / zcode） |
+| 明确不做并写明理由的 | 1（上下文分类用量，需改协议） |
+| 真缺陷 | **13 处溢出，收敛到 4 个共享样式 + 1 个空态** |
+| 扩宽的守卫 | 1（根参数化，新增 12 个 dock 状态） |
+| 破坏验证 | 还原修复 → 精确报出 13 处，每处带真实文案 |
+| 自己多加又删掉的改动 | 1（hunk 的 `pre-wrap`，超范围） |
+
+### 一句话
+
+这条审计的手法是对的，**它只是没走完产品** ——
+`querySelector("main")` 把它锁在了 transcript 里，
+而模型写的字同样落在 dock 的计划、记忆、技能描述和 diff 头上。
+把根换成参数，同一段注入立刻报出 13 处。
+而第 13 处教了我另一件事：**不该改的和该改的可以长得一模一样** ——
+区别不在"谁写的字"，在于**这一行有没有自己的理由**。

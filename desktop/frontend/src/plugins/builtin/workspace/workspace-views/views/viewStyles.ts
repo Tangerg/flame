@@ -93,7 +93,10 @@ export const viewStyles = stylex.create({
   origin: { marginTop: space.s1, color: color.fgFaint },
   actions: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s2 },
   actionsTight: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s0_5 },
-  body: { color: color.fg, lineHeight: leading.body },
+  // What the agent wrote, so it can contain a path, a hash or an identifier with nowhere to
+  // break. Without this the run paints straight out of the pane; `unbreakableContent` measured
+  // 1636px of it on a memory entry.
+  body: { color: color.fg, lineHeight: leading.body, overflowWrap: "break-word" },
   metaLine: { marginTop: space.s1, display: "flex", alignItems: "center", gap: space.s2 },
   formLine: { marginTop: space.s2, display: "flex", alignItems: "center", gap: space.s2 },
   filterLine: { display: "flex", alignItems: "center", gap: space.s1 },
@@ -125,8 +128,15 @@ export const viewStyles = stylex.create({
   title: { color: color.fg, fontWeight: weight.semibold },
   /** A view's own name in its header: one weight below a row's title. */
   titleMedium: { color: color.fg, fontWeight: weight.medium },
-  /** The line under a title. `leading.body` because it wraps and a title's leading does not. */
-  description: { marginTop: space.s0_5, color: color.fgMuted, lineHeight: leading.body },
+  /** The line under a title. `leading.body` because it wraps and a title's leading does not,
+   *  and the same break rule as `body`: a skill, recipe or proposal describes itself in its
+   *  own words — a third party's file, or the agent's prose. */
+  description: {
+    marginTop: space.s0_5,
+    color: color.fgMuted,
+    lineHeight: leading.body,
+    overflowWrap: "break-word",
+  },
   /** A caption directly under a title, which owns the gap between them. */
   subCaption: { marginTop: space.s0_5, color: color.fgFaint },
   /** The interpunct between two facts in a header: a glyph-only box, so no leading. */
@@ -286,6 +296,9 @@ export const codeStyles = stylex.create({
   gutter: { textAlign: "right", color: color.fgFaint, userSelect: "none" },
   /** Machine output wraps rather than scrolling: a long line is still one line of meaning. */
   wrap: { minWidth: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
+  // `anywhere`, like `wrap` above and for the same reason: a hunk header carries the enclosing
+  // declaration, and a generic signature or a long identifier has nowhere to break. Only the
+  // break — the header's whitespace is already whatever the diff sent.
   hunk: {
     marginTop: space.s2_5,
     borderWidth: 0,
@@ -293,6 +306,7 @@ export const codeStyles = stylex.create({
     paddingInline: space.s3,
     paddingBlock: space.s1,
     color: color.fgFaint,
+    overflowWrap: "anywhere",
   },
   /** A diff read as two columns. Named apart from `settingStyles.split`, which is a row that
    *  holds a label and its control at opposite ends — the two shared one word for a grid and

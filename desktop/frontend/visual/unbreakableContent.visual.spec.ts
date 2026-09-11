@@ -26,40 +26,49 @@ interface Spill {
   sample: string;
 }
 
-async function spills(page: Page): Promise<Spill[]> {
-  return page.evaluate((blob) => {
-    const out: Spill[] = [];
-    // Whatever tag a renderer reached for: the element that HOLDS the text, not one that
-    // contains an element that holds it. A tag list would have missed the `div` and `span`
-    // most of the tool previews are written with.
-    const holdsText = (el: Element) =>
-      [...el.childNodes].some(
-        (node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? "").trim().length > 12,
+async function spills(page: Page, root: string): Promise<Spill[]> {
+  return page.evaluate(
+    ({ blob, root }) => {
+      const out: Spill[] = [];
+      // Whatever tag a renderer reached for: the element that HOLDS the text, not one that
+      // contains an element that holds it. A tag list would have missed the `div` and `span`
+      // most of the tool previews are written with.
+      const holdsText = (el: Element) =>
+        [...el.childNodes].some(
+          (node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? "").trim().length > 12,
+        );
+      // A named root, because the two surfaces this runs on hold different things. On the agent
+      // fixture it is the panel: that fixture fills the drawer with its own caption, and
+      // scaffolding failing a product rule teaches the next reader to add breaking where no
+      // model writes. On the workspace fixture the dock IS the product.
+      const panel = document.querySelector(root);
+      if (!panel) throw new Error(`no ${root} to audit`);
+      const targets = [...panel.querySelectorAll("*")].filter(
+        (el) =>
+          holdsText(el) &&
+          !el.closest("[data-fixture-chrome]") &&
+          !el.closest("[data-slot='composer-root']") &&
+          el.clientWidth > 40,
       );
-    // The panel only. The agent fixture fills the drawer with its own caption, and scaffolding
-    // failing a product rule teaches the next reader to add breaking where no model writes.
-    const panel = document.querySelector("main");
-    if (!panel) throw new Error("no panel to audit");
-    const targets = [...panel.querySelectorAll("*")].filter(
-      (el) => holdsText(el) && !el.closest("[data-slot='composer-root']") && el.clientWidth > 40,
-    );
-    for (const el of targets) {
-      const restore = el.textContent;
-      el.textContent = blob;
-      const style = getComputedStyle(el);
-      if (el.scrollWidth - el.clientWidth > 1 && style.overflowX === "visible") {
-        out.push({
-          tag: el.tagName.toLowerCase(),
-          over: el.scrollWidth - el.clientWidth,
-          wrap: style.overflowWrap,
-          wordBreak: style.wordBreak,
-          sample: (el.getAttribute("class") ?? "").slice(0, 60),
-        });
+      for (const el of targets) {
+        const restore = el.textContent;
+        el.textContent = blob;
+        const style = getComputedStyle(el);
+        if (el.scrollWidth - el.clientWidth > 1 && style.overflowX === "visible") {
+          out.push({
+            tag: el.tagName.toLowerCase(),
+            over: el.scrollWidth - el.clientWidth,
+            wrap: style.overflowWrap,
+            wordBreak: style.wordBreak,
+            sample: (restore ?? "").trim().slice(0, 44),
+          });
+        }
+        el.textContent = restore;
       }
-      el.textContent = restore;
-    }
-    return out;
-  }, UNBREAKABLE);
+      return out;
+    },
+    { blob: UNBREAKABLE, root },
+  );
 }
 
 test("rendered content keeps an unbreakable run inside its column", async ({ page }) => {
@@ -67,7 +76,7 @@ test("rendered content keeps an unbreakable run inside its column", async ({ pag
   for (const state of STATES) {
     await page.goto(`/visual/?fixture=agent&state=${state}&theme=light`);
     await page.waitForSelector("html[data-visual-ready]");
-    for (const spill of await spills(page)) found.push({ state, spill });
+    for (const spill of await spills(page, "main")) found.push({ state, spill });
   }
 
   expect(
@@ -92,5 +101,56 @@ test("a renderer that forbids the break is caught", async ({ page }) => {
     document.head.append(sheet);
   });
 
-  expect((await spills(page)).length).toBeGreaterThan(0);
+  expect((await spills(page, "main")).length).toBeGreaterThan(0);
+});
+
+// The same defect, on the other surface a model writes into.
+//
+// The audit above stops at the transcript, and for one round that looked like the whole of it.
+// It is not: a dock view renders plan steps the agent wrote, memory entries it wrote, skill
+// descriptions a third party's file wrote, and hunk headers `git` wrote — all unbounded, none
+// of them prose. Measured before this existed: the plan pane spilled 1368px, a memory entry
+// 1636px, a skill description 1430px and a diff hunk header 1310px.
+//
+// The dock element itself is the root, not the window. Settings sits on the same fixture and is
+// the app's OWN copy — "Global corner radius." never grows a hash — so auditing it would teach
+// the next reader to add breaking where nothing unbreakable is ever written.
+const DOCK_STATES = [
+  "dock-light",
+  "dock-review",
+  "dock-files",
+  "dock-inbox",
+  "dock-agent-memory",
+  "dock-skill-library",
+  "dock-skill-proposals",
+  "dock-recipes",
+  "dock-knowledge",
+  "dock-timeline",
+  "dock-run-summary",
+  "dock-notifications",
+];
+
+test("a dock view keeps an unbreakable run inside its pane", async ({ page }) => {
+  test.setTimeout(DOCK_STATES.length * 20_000 + 30_000);
+  await page.setViewportSize({ width: 1120, height: 720 });
+
+  const found: { state: string; spill: Spill }[] = [];
+  for (const state of DOCK_STATES) {
+    await page.goto(`/visual/?fixture=workspace&state=${state}&theme=light`);
+    await page.waitForSelector("html[data-visual-ready]");
+    await page.waitForSelector(".agent-context-dock");
+    await page.waitForTimeout(300);
+    for (const spill of await spills(page, ".agent-context-dock")) found.push({ state, spill });
+  }
+
+  expect(
+    found,
+    found
+      .map(
+        ({ state, spill }) =>
+          `\n  ${state}: <${spill.tag}> paints ${spill.over}px outside the dock` +
+          `\n     overflow-wrap: ${spill.wrap}, word-break: ${spill.wordBreak}  on "${spill.sample}"`,
+      )
+      .join(""),
+  ).toEqual([]);
 });
