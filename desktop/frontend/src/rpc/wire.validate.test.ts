@@ -82,9 +82,13 @@ describe("model identity wire constraints", () => {
       path: 'Usage.byModel["bad model"]',
       detail: expect.stringContaining("expected to match"),
     });
+    // The same key, the other rule on it. `propertyNames` carries a pattern AND a length, and
+    // they take separate code paths out of the schema — which is what this file covers. It used
+    // to reach the length through `ArtifactUsage`, a shape the contract no longer has; `Usage`
+    // states the identical bound, so the case survives its type.
     const overlongModel = "m".repeat(MAXIMUM_MODEL_IDENTITY_CHARACTERS + 1);
-    expect(validateWire("ArtifactUsage", { byModel: { [overlongModel]: {} } })).toContainEqual({
-      path: `ArtifactUsage.byModel[${JSON.stringify(overlongModel)}]`,
+    expect(validateWire("Usage", { byModel: { [overlongModel]: {} } })).toContainEqual({
+      path: `Usage.byModel[${JSON.stringify(overlongModel)}]`,
       detail: `expected at most ${MAXIMUM_MODEL_IDENTITY_CHARACTERS} character(s)`,
     });
   });

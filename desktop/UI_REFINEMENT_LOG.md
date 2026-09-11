@@ -16139,3 +16139,80 @@ fixture=workspace&state=dock-file  shifted 0.0007
 为了让一次亚像素报红变绿而给它装容差，是把一条"任何跳动都算"的契约换成"我挑的那个数"。
 Round 236 修的那条是 **50%**，这条差一个数量级。
 记录成基线：若它变频繁，先查的是 `dock-file` 的滚动条出现时机，而不是阈值。
+
+## Round 247 —— 兑现核对：协议没变，但桌面侧有一条测试引用了已消失的类型
+
+### 一、先答上一轮承诺要查的两件事
+
+用户提交了 `feat(runtime,cli): adopt Scope v0.18.0, where a Tool call is its own Process`。
+"Tool call 变成独立 Process" 听着像会波及前端的工具渲染，所以先查：
+
+**改动涉及的目录：`runtime/internal` / `adapter` / `agentexec` / `infra` + go.mod/go.sum。
+`runtime/contract/` 一个字节没动。** wire 契约不变 → **前端无需跟进。**
+
+### 二、然后发现剩下的失败里，有一条是桌面侧的
+
+`npx vitest run src/rpc` 的 5 条失败逐条看清楚：
+
+| 失败 | 归属 |
+| --- | --- |
+| 2 × e2e `keeps the durable compaction winner …` | runtime 行为 |
+| `samples.test.ts` / `schema.test.ts` 的 `segment.finished.json` | **契约内部不一致**，见下 |
+| `wire.validate.test.ts` 的 `ArtifactUsage` | **桌面侧，我的范围** |
+
+`ArtifactUsage` 在 `runtime/contract/` 里已经**完全消失**，
+只剩桌面这一个测试还在引用它 —— 于是整个会话里 `npm run typecheck` 一直挂着一条
+`TS2345: Argument of type '"ArtifactUsage"' is not assignable to parameter of type 'WireTypeName'`。
+
+### 三、修它的时候差点断言一个契约不再承诺的东西
+
+那条断言测的是 `byModel` 键的**长度**上限，而它上面一行测的是同一个键的**模式**。
+两条用了不同类型，说明当初 `Usage` 和 `ArtifactUsage` 的约束不同。
+
+所以不能直接改指向 —— 得先问：**`Usage` 还有长度约束吗？**
+
+第一次探针：`validateWire("Usage", { byModel: { ["m".repeat(200)]: {} } })` → `[]`。
+看着像"没有约束了，这条断言该删"。
+
+**是我的探针错了。** 校验器里写的是 `maxLength(256)`，而我用了 200 —— 根本没超。
+按真实常量 `MAXIMUM_MODEL_IDENTITY_CHARACTERS = 256` 重测：
+`repeat(257)` → `expected at most 256 character(s)` ✓
+
+`Usage` 的约束一模一样，所以那条用例**活过了它的类型**，只是换个入口。
+（也不冗余：同一个键上的 pattern 和 maxLength 是两条规则，
+正是这个文件开头写的"每条编译器翻译的规则各一个用例"。）
+
+### 四、留给用户的一条精确报告
+
+`samples.test.ts` 和 `schema.test.ts` 的两条失败是**同一个根因**，
+而且都在 `runtime/contract/` 内部 —— 样本和它自己的 schema 不一致：
+
+```
+runtime/contract/typescript/samples/segment.finished.json
+  event: { type, outcome, metrics }        ← 没有 contextTokens
+
+wire.validate.generated.ts / manifest.json
+  RunEvent.event.contextTokens             ← 必填
+```
+
+校验器报的是 `RunEvent.event.contextTokens is required`。
+**不动**（指导禁止改协议，且这是用户在途的工作），只把位置和两边的说法记清楚。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 核对承诺 | 2 件全部答完（协议未变 / rpc 状态逐条归属） |
+| 桌面侧修复 | **1**（引用已删除的 wire 类型） |
+| **typecheck** | **整个会话首次完全干净** |
+| 自己探针的错误 | 1（用 200 去试 256 的上限），当场识破 |
+| 精确报给用户的契约不一致 | 1（样本缺 `contextTokens`） |
+| 单测 | 2471 通过，余 4 条全在 rpc/runtime 侧 |
+
+### 一句话
+
+一个只在测试里出现的类型名，把**整个会话的 typecheck** 挂在红灯上 ——
+而修它的正确做法不是换个能编译的名字，
+是先问"**这条断言要测的东西，契约还承诺吗**"。
+我第一次问的时候答错了，因为**拿 200 去试一个 256 的上限**；
+真正的答案让那条用例原封不动地活了下来。
