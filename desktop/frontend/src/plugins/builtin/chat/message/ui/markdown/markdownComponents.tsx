@@ -29,6 +29,24 @@ function visibleText(children: ReactNode): string {
 const WHITESPACE_ONLY = /^\s*$/;
 const HAN_TEXT = /\p{Script=Han}/u;
 
+/**
+ * A table cell that is a NUMBER, so a column of them lines up and cannot wrap.
+ *
+ * `markdown.css` gives the class tabular figures, a floor width and `nowrap`; what decides
+ * which cells get it used to be `/^\d+$/`, which is a whole unsigned integer and nothing else.
+ * The table an agent actually writes is a benchmark or a diff summary — `91.2%`, `4.2s`,
+ * `1,234`, `-3` — and not one of those matched, so the digits in a column sat on proportional
+ * widths and did not align.
+ *
+ * Deliberately a little generous at the tail: a trailing unit of up to three letters (`ms`,
+ * `GB`, `px`) still reads as a quantity. Being wrong that way costs a minimum width on a short
+ * cell; being wrong the other way is a column that does not line up. The expression is anchored
+ * at both ends, so a sentence can never reach it.
+ */
+// Grouping is a comma or one of the two spaces a locale uses for it.
+const NUMERIC_CELL = /^[+-]?\d[\d,\u202f\u00a0]*(?:\.\d+)?\s*(?:%|[a-zA-Z]{1,3})?$/;
+const NUMERIC_CLASS = "md-table-cell-numeric";
+
 type MarkdownImageElementProps = ComponentProps<typeof MarkdownImage> & {
   node?: { tagName?: string };
 };
@@ -224,10 +242,7 @@ const sharedMarkdownComponents: Components = {
   td({ children, className, align, colSpan, rowSpan, style }) {
     return (
       <td
-        className={cn(
-          className,
-          /^\d+$/.test(visibleText(children).trim()) && "md-table-cell-numeric",
-        )}
+        className={cn(className, NUMERIC_CELL.test(visibleText(children).trim()) && NUMERIC_CLASS)}
         align={align}
         colSpan={colSpan}
         rowSpan={rowSpan}

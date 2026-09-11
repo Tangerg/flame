@@ -234,6 +234,33 @@ describe("markdownMessage", () => {
     expect(container.querySelector("td.md-table-cell-numeric")?.textContent).toBe("12");
   });
 
+  // The class carries tabular figures, a floor width and `nowrap`, so which cells get it decides
+  // whether a column of numbers lines up. It used to be `/^\d+$/` — a whole unsigned integer —
+  // and the table an agent writes is a benchmark: percentages, decimals, durations, deltas.
+  it("counts a quantity as numeric however the model spelled it", () => {
+    const quantities = ["12", "91.2%", "4.2s", "1,234", "-3", "+7", "0.5", "128MB"];
+    const prose = ["alpha", "n/a", "2024-01-15", "v1.2.3", "3 of 7", "see 12 rows"];
+
+    const cells = (value: string) => {
+      const { container, unmount } = render(
+        <MarkdownMessage
+          text={`| Name | Value |\n|---|---:|\n| alpha | ${value} |`}
+          reveal="instant"
+        />,
+      );
+      const marked = [...container.querySelectorAll("td.md-table-cell-numeric")].map(
+        (cell) => cell.textContent,
+      );
+      unmount();
+      return marked;
+    };
+
+    expect(quantities.filter((value) => !cells(value).includes(value))).toEqual([]);
+    // And the other half: a cell that merely contains digits is prose, and `nowrap` on prose is
+    // a column that cannot give way.
+    expect(prose.filter((value) => cells(value).length > 0)).toEqual([]);
+  });
+
   it("renders markdown lists", () => {
     const src = "- one\n- two\n- three";
     const { container } = render(<MarkdownMessage text={src} reveal="smooth" />);
