@@ -16041,3 +16041,82 @@ const HAN_TEXT = /\p{Script=Han}/u;
 漏掉一段不是少一处优化，是在一条消息中间**把节奏打断两次**。
 而扩到哪里为止，答案不在"哪些语言像 CJK"，
 在于这条规则真正依赖的属性 —— **有没有词间空格**，韩文因此留在外面。
+
+## Round 246 —— 工具输出里的每个 URL、每个日期，都变成了"打开这个文件"
+
+### 一、先纠正一个我自己的预判
+
+`parseFileRefs` 用一张固定的 `FILE_EXT` 扩展名表，我本来以为缺口在"表里没有的语言"。
+读下去发现 `isFileRef` 有**两条分支**：
+
+```ts
+if (path.includes("/") && /[A-Za-z0-9]/.test(path)) return true;   // 带斜杠：直接算
+...FILE_EXT.has(ext)                                               // 裸文件名：查表
+```
+
+**带 `/` 的路径根本不查表** —— `src/main.zig` 本来就能链接。
+扩展名表只管不带目录的裸文件名，而那是精度取舍，不是缺陷。**这条不动。**
+
+### 二、真正的洞在另一条分支上
+
+那条分支唯一的过滤是"含任意字母**或数字**"。而这个文件的头部注释写着：
+
+> Precision over recall: a token qualifies only with a path separator OR a known
+> source-file extension, so prose like "e.g." and a version "1.2.3" do not light up.
+
+它在**扩展名**那条分支上做到了，在**斜杠**那条上没有。实测真实的工具输出：
+
+| 输入 | 被认成的"文件" |
+| --- | --- |
+| `Cloning into 'repo' from https://github.com/acme/repo.git` | `//github.com/acme/repo.git` |
+| `npm notice See https://npmjs.com/package/left-pad` | `//npmjs.com/package/left-pad` |
+| `listening on http://127.0.0.1:5173/` | `//127.0.0.1` |
+| `rate limit 30/60 requests` | `30/60` |
+| **`on 2024/01/15 the build broke`** | **`2024/01/15`** |
+| `ratio was 3/4 of the budget` | `3/4` |
+
+URL 之所以漏进来：scheme 被当作独立 token 吃掉后，**剩下的 `//host/path` 带着分隔符**，
+于是通过了。而 `git clone` / `npm notice` / dev server 的监听行，打印的从来不止一个 URL。
+
+### 三、两条加法，都是拒绝
+
+```ts
+if (path.startsWith("//")) return false;          // URL 去掉 scheme 后的残体
+if (path.includes("/")) return HAS_LETTER.test(path);   // 路径要命名东西；纯数字加斜杠是算术或日期
+```
+
+`[A-Za-z0-9]` → `[A-Za-z]`：**一个路径要命名什么东西**，
+而 `3/4`、`30/60`、`2024/01/15` 里没有任何东西被命名。
+
+### 四、召回一个没丢
+
+精度修复最容易顺手砍掉真阳性，所以测试**同时钉住另一边**：
+
+`src/app/main.ts` / `a/b.ts` / `.github/workflows/ci.yml` / `PATH=` 里的两个目录 /
+scp 风格的 `/var/log/app.log` / 裸的 `README.md` 和 `package.json` —— 全部照旧链接。
+破坏验证时这条**两边都通过**，正好证明修的是精度、没动召回。
+
+### 已知仍在的限制
+
+`example.com/docs` 这种**不带 scheme 的主机名路径**仍会被认成文件。
+要分辨它需要 TLD 表，那是启发式的继续堆叠；而在工具输出里它比 `https://…` 罕见得多。
+记录，不做。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 纠正的自我预判 | 1（扩展名表不是缺口所在） |
+| 真缺陷 | **1**（斜杠分支的精度洞），6 种真实输出实测 |
+| 新测试 | 3 条（URL / 算术日期 / 召回不丢） |
+| 破坏验证 | 前两条红、第三条两边都绿 |
+| 记录的已知限制 | 1 |
+
+### 一句话
+
+一个文件在自己的第一行写着"**精度优先**"，
+而它把这句话只兑现在两条分支中的一条上 ——
+另一条放行了每一个 URL、每一个比值和每一个日期。
+修的时候真正的功课不是想出拒绝规则，是**同时钉住召回**：
+一个把 `2024/01/15` 挡掉、顺手也把 `.github/workflows/ci.yml` 挡掉的修复，
+只是把缺陷换了个方向。

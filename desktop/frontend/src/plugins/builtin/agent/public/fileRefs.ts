@@ -85,8 +85,18 @@ const FILE_EXT = new Set([
 // The lookbehind is what keeps a match from starting mid-token, inside an email or path.
 const TOKEN = /(?<![\w/.@-])([A-Za-z0-9._\-/]+)(?::(\d+))?(?::(\d+))?/g;
 
+/** A path names something; a run of digits and slashes is arithmetic or a date. */
+const HAS_LETTER = /[A-Za-z]/;
+
 function isFileRef(path: string): boolean {
-  if (path.includes("/") && /[A-Za-z0-9]/.test(path)) return true;
+  // What is left of a URL once its scheme has been matched as its own token: `https://host/p`
+  // arrives here as `//host/p`, which has a separator and would otherwise qualify. A tool that
+  // prints one URL prints several — `git clone`, `npm notice`, a dev server's listen line.
+  if (path.startsWith("//")) return false;
+  // The separator branch used to accept any alphanumeric, which is the same precision hole the
+  // header warns about on the other branch. Measured in ordinary tool output: `rate limit 30/60`
+  // linked `30/60`, `ratio was 3/4` linked `3/4`, and `on 2024/01/15` offered to open a date.
+  if (path.includes("/")) return HAS_LETTER.test(path);
   const dot = path.lastIndexOf(".");
   if (dot <= 0 || dot === path.length - 1) return false;
   return FILE_EXT.has(path.slice(dot + 1).toLowerCase());
