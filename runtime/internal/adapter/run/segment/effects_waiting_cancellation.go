@@ -94,28 +94,11 @@ func (e *Effects) persistWaitingCancellationProjection(
 	ctx context.Context,
 	commit runs.WaitingSubtreeCancellationCommit,
 ) error {
-	messages := commit.ConversationMessages()
-	if len(messages) != 0 {
-		if err := e.conversation.Write(ctx, commit.SessionID(), messages...); err != nil {
-			return fmt.Errorf("segment: append waiting cancellation conversation result: %w", err)
-		}
-	}
 	if err := e.executorCheckpoints.SaveCheckpoint(ctx, commit.Checkpoint()); err != nil {
 		return fmt.Errorf(
 			"segment: persist checkpoint for waiting child Run %q in root Run %q: %w",
 			commit.TargetRunID(),
 			commit.RootRunID(),
-			err,
-		)
-	}
-	if err := e.itemReplacer.ReplaceItem(
-		ctx,
-		commit.ParentItem(),
-	); err != nil {
-		return fmt.Errorf(
-			"segment: replace spawning Item %q for waiting child Run %q: %w",
-			commit.ParentItem().Expected().ID(),
-			commit.TargetRunID(),
 			err,
 		)
 	}

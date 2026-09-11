@@ -1979,18 +1979,19 @@ func TestCommitWaitingSubtreeCancellationCommitsCompleteWriteSet(t *testing.T) {
 	if _, found, getErr := fixture.interrupts.Get(fixture.ctx, fixture.rootRun.ID()); getErr != nil || found {
 		t.Fatalf("open Pending after commit found=%t err=%v, want consumed", found, getErr)
 	}
+	// The spawning Tool stays open and its round stays unwritten: that result
+	// belongs to the model round the parent declared, so only the resumed
+	// executor can place it there in call order.
 	storedItem, found, err := fixture.transcript.Item(fixture.ctx, fixture.parentItem.ID())
 	if err != nil || !found {
 		t.Fatalf("parent Item after commit found=%t err=%v", found, err)
 	}
-	failure, failed := storedItem.Failure()
-	if !failed || failure.Kind != tool.FailureChildRunCanceled {
-		t.Fatalf("parent Item = %+v, want child_run_canceled", storedItem)
+	if _, failed := storedItem.Failure(); failed {
+		t.Fatalf("parent Item = %+v, want the spawning Tool left open", storedItem)
 	}
 	messages, err := fixture.conversation.Read(fixture.ctx, fixture.rootRun.SessionID())
-	wantMessages := fixture.commit.ConversationMessages()
-	if err != nil || !reflect.DeepEqual(messages, wantMessages) {
-		t.Fatalf("conversation after child cancellation = %+v err=%v, want %+v", messages, err, wantMessages)
+	if err != nil || len(messages) != 0 {
+		t.Fatalf("conversation after child cancellation = %+v err=%v, want untouched", messages, err)
 	}
 	for _, terminal := range fixture.commit.TerminalItems() {
 		item, found, itemErr := fixture.transcript.Item(fixture.ctx, terminal.Expected().ID())
@@ -2100,7 +2101,7 @@ func TestCommitWaitingSubtreeCancellationReconcilesAmbiguousCommit(t *testing.T)
 				t.Fatalf("exact replay result = %+v err=%v, want %+v", replayed, err, result)
 			}
 			messages, err := fixture.conversation.Read(fixture.ctx, fixture.commit.SessionID())
-			if err != nil || len(messages) != len(fixture.commit.ConversationMessages()) {
+			if err != nil || len(messages) != 0 {
 				t.Fatalf("conversation after exact replay = %d messages err=%v", len(messages), err)
 			}
 			otherDraft := waitingCancellationDraft(fixture.commit)
@@ -2111,46 +2112,6 @@ func TestCommitWaitingSubtreeCancellationReconcilesAmbiguousCommit(t *testing.T)
 			}
 			requireSQLiteHealthy(t, fixture.ctx, fixture.db)
 		})
-	}
-}
-
-func TestWaitingSubtreeCancellationRejectsStaleParentWithoutApplicationMutation(t *testing.T) {
-	fixture := newWaitingCancellationSQLiteFixture(t)
-	parentItem := fixture.commit.ParentItem()
-	staleSnapshot := parentItem.Expected().Snapshot()
-	staleSnapshot.Identity.OccurredAt = fixture.parentItem.OccurredAt().Add(-time.Second)
-	stale, err := transcript.RestoreItem(staleSnapshot)
-	if err != nil {
-		t.Fatalf("restore stale parent Item: %v", err)
-	}
-	draft := waitingCancellationDraft(fixture.commit)
-	draft.parentItem = testsupport.MustItemReplacement(
-		stale,
-		parentItem.State(),
-	)
-	if _, err := draft.build(); err == nil {
-		t.Fatal("waiting cancellation constructor accepted a stale parent Item")
-	}
-	if _, found, getErr := fixture.interrupts.Get(fixture.ctx, fixture.rootRun.ID()); getErr != nil || !found {
-		t.Fatalf("open Pending after rollback found=%t err=%v, want retained", found, getErr)
-	}
-	storedItem, found, err := fixture.transcript.Item(fixture.ctx, fixture.parentItem.ID())
-	_, hasFailure := storedItem.Failure()
-	if err != nil || !found || hasFailure {
-		t.Fatalf("parent Item after rollback found=%t item=%+v err=%v", found, storedItem, err)
-	}
-	assertStoredRunState(t, fixture.db, fixture.childRun.ID(), "waiting")
-	assertStoredRunState(t, fixture.db, fixture.grandchildRun.ID(), "waiting")
-	assertStoredRunState(t, fixture.db, fixture.rootRun.ID(), "waiting")
-	checkpoint, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, "member_root")
-	if err != nil {
-		t.Fatalf("load rolled-back executor checkpoint: %v", err)
-	}
-	if !reflect.DeepEqual(
-		normalizedExecutorCheckpoint(checkpoint),
-		normalizedExecutorCheckpoint(fixture.originalCheckpoint),
-	) {
-		t.Fatalf("rolled-back executor checkpoint = %+v, want %+v", checkpoint, fixture.originalCheckpoint)
 	}
 }
 
@@ -2174,32 +2135,28 @@ type waitingCancellationSQLiteFixture struct {
 }
 
 type waitingCancellationCommitDraft struct {
-	commitID             runtimeidentity.CommitID
-	targetRunID          string
-	rootRun              run.Run
-	expectedPending      runs.Pending
-	remainingPending     *runs.Pending
-	checkpoint           runs.ExecutorCheckpoint
-	terminalRuns         []run.Replacement
-	terminalItems        []transcript.Replacement
-	parentItem           transcript.Replacement
-	conversationMessages []chat.Message
-	resume               *run.TreeResumeDraft
-	openingEvents        []runs.EventCommit
+	commitID         runtimeidentity.CommitID
+	targetRunID      string
+	rootRun          run.Run
+	expectedPending  runs.Pending
+	remainingPending *runs.Pending
+	checkpoint       runs.ExecutorCheckpoint
+	terminalRuns     []run.Replacement
+	terminalItems    []transcript.Replacement
+	resume           *run.TreeResumeDraft
+	openingEvents    []runs.EventCommit
 }
 
 func waitingCancellationDraft(commit runs.WaitingSubtreeCancellationCommit) waitingCancellationCommitDraft {
 	draft := waitingCancellationCommitDraft{
-		commitID:             commit.CommitID(),
-		targetRunID:          commit.TargetRunID(),
-		rootRun:              commit.RootRun(),
-		expectedPending:      commit.ExpectedPending(),
-		checkpoint:           commit.Checkpoint(),
-		terminalRuns:         commit.TerminalRuns(),
-		terminalItems:        commit.TerminalItems(),
-		parentItem:           commit.ParentItem(),
-		conversationMessages: commit.ConversationMessages(),
-		openingEvents:        commit.OpeningEvents(),
+		commitID:        commit.CommitID(),
+		targetRunID:     commit.TargetRunID(),
+		rootRun:         commit.RootRun(),
+		expectedPending: commit.ExpectedPending(),
+		checkpoint:      commit.Checkpoint(),
+		terminalRuns:    commit.TerminalRuns(),
+		terminalItems:   commit.TerminalItems(),
+		openingEvents:   commit.OpeningEvents(),
 	}
 	if remaining, ok := commit.RemainingPending(); ok {
 		draft.remainingPending = &remaining
@@ -2216,13 +2173,11 @@ func (d waitingCancellationCommitDraft) build() (runs.WaitingSubtreeCancellation
 		return runs.NewParkedSubtreeCancellationCommit(
 			d.commitID, d.targetRunID, d.rootRun, d.expectedPending,
 			*d.remainingPending, d.checkpoint, d.terminalRuns, d.terminalItems,
-			d.parentItem, d.conversationMessages,
 		)
 	case d.remainingPending == nil && d.resume != nil:
 		return runs.NewResumingSubtreeCancellationCommit(
 			d.commitID, d.targetRunID, d.rootRun, d.expectedPending,
-			d.checkpoint, d.terminalRuns, d.terminalItems, d.parentItem,
-			d.conversationMessages, *d.resume, d.openingEvents,
+			d.checkpoint, d.terminalRuns, d.terminalItems, *d.resume, d.openingEvents,
 		)
 	default:
 		return runs.WaitingSubtreeCancellationCommit{}, errors.New(
@@ -2553,14 +2508,6 @@ func newWaitingCancellationSQLiteFixtureAt(
 	if err != nil {
 		t.Fatalf("cancel grandchild fixture: %v", err)
 	}
-	failure := tool.Failure{
-		Kind:   tool.FailureChildRunCanceled,
-		Detail: terminalChild.Detail(),
-	}
-	replacementItem, err := parentItem.AbandonToolCall(&failure, finishedAt)
-	if err != nil {
-		t.Fatalf("settle parent Item: %v", err)
-	}
 	var terminalItems []transcript.Replacement
 	var (
 		remainingPending *runs.Pending
@@ -2570,11 +2517,11 @@ func newWaitingCancellationSQLiteFixtureAt(
 		reduced := pending
 		reduced.Interrupts = slices.Clone(pending.Interrupts[2:])
 		reduced.Bindings = slices.Clone(pending.Bindings[2:])
-		rootContinuation := pending.Continuations[len(pending.Continuations)-1]
-		rootContinuation.DrainedTools = nil
+		// The spawning Tool stays drained: a canceled child does not settle the
+		// model round its parent declared.
 		reduced.Continuations = []runs.Continuation{
 			pending.Continuations[2],
-			rootContinuation,
+			pending.Continuations[len(pending.Continuations)-1],
 		}
 		if err := reduced.Validate(); err != nil {
 			t.Fatalf("reduced Pending fixture: %v", err)
@@ -2625,12 +2572,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 			testsupport.MustRunReplacement(childRun, terminalChild),
 		},
 		terminalItems: terminalItems,
-		parentItem:    testsupport.MustItemReplacement(parentItem, replacementItem),
-		conversationMessages: []chat.Message{chat.NewToolMessage(chat.ToolResult{
-			ID: "provider_child", Name: "delegate_task",
-			Output: chat.NewTextToolOutput("error: tool \"delegate_task\" failed: stop delegated branch"), IsError: true,
-		})},
-		resume: resume,
+		resume:        resume,
 	})
 	return waitingCancellationSQLiteFixture{
 		ctx:                   ctx,

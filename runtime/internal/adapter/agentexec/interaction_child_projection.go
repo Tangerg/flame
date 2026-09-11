@@ -69,6 +69,9 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 	if !readable {
 		return false, nil
 	}
+	i.state.mu.Lock()
+	executing := i.state.boundary == interactionBoundaryInactive
+	i.state.mu.Unlock()
 	blocked := make(map[delegateBatch]struct{})
 	progressed := false
 	for _, managed := range calls {
@@ -103,8 +106,11 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 		}
 		progressed = progressed || projected
 		// A child owns its terminal state independently of sibling completion.
-		// Only parent Tool results wait for the model's declared call order.
-		if _, predecessorPending := blocked[batch]; predecessorPending {
+		// Only parent Tool results wait for the model's declared call order, and
+		// for a Segment to own them: a tree that is parked or crossing a boundary
+		// has not announced the parent's Tool attempt yet, so the result stays
+		// owed until the Segment that reopens it is executing.
+		if _, predecessorPending := blocked[batch]; predecessorPending || !executing {
 			continue
 		}
 		if err := i.finishCompletedDelegateTool(ctx, managed, result); err != nil {

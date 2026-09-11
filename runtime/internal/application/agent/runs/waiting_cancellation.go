@@ -154,16 +154,14 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 }
 
 type waitingCancellationTransformation struct {
-	terminalRuns         []rundomain.Replacement
-	terminalItems        []transcript.Replacement
-	parentItem           transcript.Replacement
-	remaining            *Pending
-	continuation         *treeContinuation
-	checkpoint           ExecutorCheckpoint
-	conversationMessages []corechat.Message
-	root                 rundomain.Run
-	targetRunID          string
-	canceledRunIDs       []string
+	terminalRuns   []rundomain.Replacement
+	terminalItems  []transcript.Replacement
+	remaining      *Pending
+	continuation   *treeContinuation
+	checkpoint     ExecutorCheckpoint
+	root           rundomain.Run
+	targetRunID    string
+	canceledRunIDs []string
 }
 
 // waitingCancellationBuilder owns the pure Application transformation from a
@@ -202,11 +200,7 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 	if err != nil {
 		return waitingCancellationTransformation{}, err
 	}
-	terminalItems, parentItem, continuations, err := w.settleWaitingItems(canceledMembers)
-	if err != nil {
-		return waitingCancellationTransformation{}, err
-	}
-	conversationMessages, err := w.parentConversationMessages(parentItem)
+	terminalItems, continuations, err := w.settleWaitingItems(canceledMembers)
 	if err != nil {
 		return waitingCancellationTransformation{}, err
 	}
@@ -223,48 +217,15 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 		return waitingCancellationTransformation{}, err
 	}
 	return waitingCancellationTransformation{
-		terminalRuns:         terminalRuns,
-		terminalItems:        terminalItems,
-		parentItem:           parentItem,
-		remaining:            remaining,
-		continuation:         continuation,
-		checkpoint:           w.prepared.checkpoint.Clone(),
-		conversationMessages: conversationMessages,
-		root:                 w.plan.root.run,
-		targetRunID:          w.plan.target.run.ID(),
-		canceledRunIDs:       canceledRunIDs,
+		terminalRuns:   terminalRuns,
+		terminalItems:  terminalItems,
+		remaining:      remaining,
+		continuation:   continuation,
+		checkpoint:     w.prepared.checkpoint.Clone(),
+		root:           w.plan.root.run,
+		targetRunID:    w.plan.target.run.ID(),
+		canceledRunIDs: canceledRunIDs,
 	}, nil
-}
-
-func (w waitingCancellationBuilder) parentConversationMessages(
-	parentItem transcript.Replacement,
-) ([]corechat.Message, error) {
-	expectedParent := parentItem.Expected()
-	for _, continuation := range w.plan.pending.Continuations {
-		if continuation.RunID != expectedParent.RunID() {
-			continue
-		}
-		for _, drained := range continuation.DrainedTools {
-			if drained.ItemID != expectedParent.ID() {
-				continue
-			}
-			result := w.prepared.parentToolResult
-			if drained.SourceCallID == "" || result.ID != drained.SourceCallID || result.Name != drained.Name {
-				return nil, fmt.Errorf(
-					"runs: spawning tool %q differs from its prepared cancellation result",
-					drained.ItemID,
-				)
-			}
-			if expectedParent.RunID() != w.plan.root.run.ID() {
-				return nil, nil
-			}
-			return []corechat.Message{corechat.NewToolMessage(result.Clone())}, nil
-		}
-	}
-	return nil, fmt.Errorf(
-		"runs: spawning tool %q has no drained continuation",
-		expectedParent.ID(),
-	)
 }
 
 func (w waitingCancellationBuilder) validate() error {
@@ -375,20 +336,12 @@ func (w waitingCancellationBuilder) terminalProjection(
 
 func (w waitingCancellationBuilder) settleWaitingItems(
 	canceledMembers map[string]struct{},
-) ([]transcript.Replacement, transcript.Replacement, []Continuation, error) {
-	failure := tool.Failure{
-		Kind:   tool.FailureChildRunCanceled,
-		Detail: w.reason,
-	}
+) ([]transcript.Replacement, []Continuation, error) {
+	// The spawning Tool is deliberately left open. Its model-visible result
+	// belongs to the round the parent declared, and only the executor can place it
+	// there in that round's call order, so it stays a drained Tool until the
+	// resumed Segment settles it alongside its siblings.
 	parentItem := w.plan.spawningItem
-	replacement, err := parentItem.AbandonToolCall(&failure, w.finishedAt)
-	if err != nil {
-		return nil, transcript.Replacement{}, nil, fmt.Errorf("runs: classify spawning Item: %w", err)
-	}
-	parentReplacement, err := transcript.NewReplacement(parentItem, replacement)
-	if err != nil {
-		return nil, transcript.Replacement{}, nil, fmt.Errorf("runs: prepare spawning Item replacement: %w", err)
-	}
 	terminalItems := make([]transcript.Replacement, 0, len(w.plan.targetInterruptItems)+len(w.plan.targetDrainedItems))
 	toolItems := slices.Clone(w.plan.targetDrainedItems)
 	for _, item := range w.plan.targetInterruptItems {
@@ -403,17 +356,17 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 		}
 		settled, err := item.AbandonToolCall(&itemFailure, w.finishedAt)
 		if err != nil {
-			return nil, transcript.Replacement{}, nil, fmt.Errorf("runs: settle waiting Item %q: %w", item.ID(), err)
+			return nil, nil, fmt.Errorf("runs: settle waiting Item %q: %w", item.ID(), err)
 		}
 		itemReplacement, err := transcript.NewReplacement(item, settled)
 		if err != nil {
-			return nil, transcript.Replacement{}, nil, fmt.Errorf("runs: prepare waiting Item %q replacement: %w", item.ID(), err)
+			return nil, nil, fmt.Errorf("runs: prepare waiting Item %q replacement: %w", item.ID(), err)
 		}
 		terminalItems = append(terminalItems, itemReplacement)
 	}
 
 	continuations := make([]Continuation, 0, len(w.plan.survivingTree))
-	parentToolSettled := false
+	parentToolRetained := false
 	for _, continuation := range w.plan.pending.Continuations {
 		if _, canceled := canceledMembers[continuation.MemberID]; canceled {
 			continue
@@ -423,18 +376,16 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 		if continuation.RunID == w.plan.target.run.Lineage().ParentRunID {
 			parentInvocation, present := parentItem.ToolInvocation()
 			if !present {
-				return nil, transcript.Replacement{}, nil, fmt.Errorf("runs: spawning Item %q has no invocation", parentItem.ID())
+				return nil, nil, fmt.Errorf("runs: spawning Item %q has no invocation", parentItem.ID())
 			}
 			var matches []DrainedTool
-			clone.DrainedTools = slices.DeleteFunc(clone.DrainedTools, func(tool DrainedTool) bool {
-				if tool.ItemID != parentItem.ID() {
-					return false
+			for _, tool := range clone.DrainedTools {
+				if tool.ItemID == parentItem.ID() {
+					matches = append(matches, tool)
 				}
-				matches = append(matches, tool)
-				return true
-			})
+			}
 			if len(matches) != 1 {
-				return nil, transcript.Replacement{}, nil, fmt.Errorf(
+				return nil, nil, fmt.Errorf(
 					"runs: parent Run %q continuation has %d drained tools for spawning Item %q",
 					continuation.RunID,
 					len(matches),
@@ -444,22 +395,22 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 			tool := matches[0]
 			if tool.Name != parentInvocation.Name ||
 				tool.Arguments != parentInvocation.Arguments.Canonical() {
-				return nil, transcript.Replacement{}, nil, fmt.Errorf(
+				return nil, nil, fmt.Errorf(
 					"runs: spawning Item %q differs from its drained tool identity",
 					parentItem.ID(),
 				)
 			}
-			parentToolSettled = true
+			parentToolRetained = true
 		}
 		continuations = append(continuations, clone)
 	}
-	if !parentToolSettled {
-		return nil, transcript.Replacement{}, nil, fmt.Errorf(
-			"runs: waiting cancellation did not settle spawning Item %q",
+	if !parentToolRetained {
+		return nil, nil, fmt.Errorf(
+			"runs: waiting cancellation lost the drained spawning Item %q",
 			parentItem.ID(),
 		)
 	}
-	return terminalItems, parentReplacement, continuations, nil
+	return terminalItems, continuations, nil
 }
 
 func (w waitingCancellationBuilder) remainingInterruptions(
@@ -608,7 +559,7 @@ func (w waitingCancellationTransformation) durableCommit(
 	}
 	return NewParkedSubtreeCancellationCommit(
 		commitID, w.targetRunID, w.root, expected, *w.remaining,
-		w.checkpoint, w.terminalRuns, w.terminalItems, w.parentItem, w.conversationMessages,
+		w.checkpoint, w.terminalRuns, w.terminalItems,
 	)
 }
 
@@ -620,7 +571,7 @@ func (w waitingCancellationTransformation) resumedDurableCommit(
 ) (WaitingSubtreeCancellationCommit, error) {
 	return NewResumingSubtreeCancellationCommit(
 		commitID, w.targetRunID, w.root, expected, w.checkpoint,
-		w.terminalRuns, w.terminalItems, w.parentItem, w.conversationMessages,
+		w.terminalRuns, w.terminalItems,
 		resume, openingEvents,
 	)
 }

@@ -70,8 +70,11 @@ func (i *interactionSession) continuedDelegateTools() []runs.ExecutorEvent {
 		return nil
 	}
 	calls := make([]*managedDelegateCall, 0, len(i.state.delegateChildren))
-	for processID, managed := range i.state.delegateChildren {
-		if slices.Contains(canceled, processID) || slices.Contains(canceled, managed.identity.parentID) {
+	for _, managed := range i.state.delegateChildren {
+		// A canceled member's own spawning Tool is still owed to its surviving
+		// parent, so it reopens with its siblings. Only a Tool owned by a canceled
+		// member has nobody left to answer to.
+		if slices.Contains(canceled, managed.identity.parentID) {
 			continue
 		}
 		calls = append(calls, managed)
@@ -259,6 +262,12 @@ func (i *interactionSession) toolCallMember(
 ) (runs.ExecutorMember, bool) {
 	callerID, child := relation.ParentID()
 	if !child {
+		return runs.ExecutorMember{}, false
+	}
+	i.state.mu.Lock()
+	retired := i.inCanceledSubtreeLocked(callerID)
+	i.state.mu.Unlock()
+	if retired {
 		return runs.ExecutorMember{}, false
 	}
 	return i.executorMemberByProcessID(callerID)

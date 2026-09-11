@@ -237,18 +237,6 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 			},
 		},
 		{
-			name:      "parent Item",
-			operation: "replace spawning Item",
-			configure: func(fixture *waitingCancellationSQLiteFixture, injected error) {
-				fixture.replaceEffects(func(config *Config) {
-					config.ItemReplacer = failingWaitingItemReplacer{
-						ItemReplacer: fixture.transcript,
-						err:          injected,
-					}
-				})
-			},
-		},
-		{
 			name:      "terminal Run",
 			operation: "terminalize canceled Run",
 			configure: func(fixture *waitingCancellationSQLiteFixture, injected error) {

@@ -214,20 +214,24 @@ func (i *interactionSession) cancelPreparedSubtree(
 func (i *interactionSession) commitSubtreeApplication(
 	change *interactionWaitingSubtreeChange,
 ) {
+	// The Application durably settled the canceled child's own Run, so its Segment
+	// and answer must not be projected again. Its spawning Tool result is a
+	// different fact with a different owner: it belongs to the model round the
+	// parent declared, and only the ordinary reconciliation can place it there in
+	// the order that round was declared in. The binding therefore survives until
+	// that result is projected.
 	for _, managed := range change.retired {
 		managed.mu.Lock()
-		managed.parentToolFinished = true
 		managed.assistantProjected = true
 		managed.segmentProjected = true
 		managed.mu.Unlock()
+		i.committedReplies.forget(managed.childProcessID)
 	}
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
 	i.state.waitingCheckpoint = change.checkpoint.Clone()
-	for _, managed := range change.retired {
-		delete(i.state.delegateChildren, managed.childProcessID)
-		delete(i.state.delegateCalls, managed.identity)
-		i.committedReplies.forget(managed.childProcessID)
+	for _, processID := range change.canceled {
+		i.state.canceledSubtreeRoots[processID] = struct{}{}
 	}
 }
 

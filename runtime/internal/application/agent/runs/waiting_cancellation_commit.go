@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 // WaitingSubtreeCancellationCommit is the immutable write-set for canceling a
@@ -25,19 +24,17 @@ type WaitingSubtreeCancellationCommit struct {
 type waitingSubtreeCancellationState struct {
 	// CommitID identifies the complete cancellation transaction. A cancellation
 	// that resumes the surviving tree reuses its OpeningCommit identity.
-	CommitID             runtimeidentity.CommitID
-	RootRunID            string
-	TargetRunID          string
-	SessionID            string
-	RootRun              rundomain.Run
-	ExpectedPending      Pending
-	RemainingPending     *Pending
-	Checkpoint           ExecutorCheckpoint
-	TerminalRuns         []rundomain.Replacement
-	TerminalItems        []transcript.Replacement
-	ParentItem           transcript.Replacement
-	ConversationMessages []corechat.Message
-	Resume               *rundomain.TreeResumeDraft
+	CommitID         runtimeidentity.CommitID
+	RootRunID        string
+	TargetRunID      string
+	SessionID        string
+	RootRun          rundomain.Run
+	ExpectedPending  Pending
+	RemainingPending *Pending
+	Checkpoint       ExecutorCheckpoint
+	TerminalRuns     []rundomain.Replacement
+	TerminalItems    []transcript.Replacement
+	Resume           *rundomain.TreeResumeDraft
 	// OpeningEvents are nested projections of this cancellation transaction.
 	// Their CommitID must remain zero because CommitID above owns the complete
 	// write-set receipt.
@@ -55,8 +52,6 @@ func NewParkedSubtreeCancellationCommit(
 	checkpoint ExecutorCheckpoint,
 	terminalRuns []rundomain.Replacement,
 	terminalItems []transcript.Replacement,
-	parentItem transcript.Replacement,
-	conversationMessages []corechat.Message,
 ) (WaitingSubtreeCancellationCommit, error) {
 	return newWaitingSubtreeCancellationCommit(waitingSubtreeCancellationState{
 		CommitID: commitID, RootRunID: expectedPending.RootRunID,
@@ -64,7 +59,6 @@ func NewParkedSubtreeCancellationCommit(
 		RootRun: rootRun, ExpectedPending: expectedPending,
 		RemainingPending: &remainingPending, Checkpoint: checkpoint,
 		TerminalRuns: terminalRuns, TerminalItems: terminalItems,
-		ParentItem: parentItem, ConversationMessages: conversationMessages,
 	})
 }
 
@@ -78,8 +72,6 @@ func NewResumingSubtreeCancellationCommit(
 	checkpoint ExecutorCheckpoint,
 	terminalRuns []rundomain.Replacement,
 	terminalItems []transcript.Replacement,
-	parentItem transcript.Replacement,
-	conversationMessages []corechat.Message,
 	resume rundomain.TreeResumeDraft,
 	openingEvents []EventCommit,
 ) (WaitingSubtreeCancellationCommit, error) {
@@ -88,9 +80,8 @@ func NewResumingSubtreeCancellationCommit(
 		TargetRunID: targetRunID, SessionID: expectedPending.SessionID,
 		RootRun: rootRun, ExpectedPending: expectedPending,
 		Checkpoint: checkpoint, TerminalRuns: terminalRuns,
-		TerminalItems: terminalItems, ParentItem: parentItem,
-		ConversationMessages: conversationMessages,
-		Resume:               &resume, OpeningEvents: openingEvents,
+		TerminalItems: terminalItems,
+		Resume:        &resume, OpeningEvents: openingEvents,
 	})
 }
 
@@ -105,7 +96,6 @@ func newWaitingSubtreeCancellationCommit(
 	state.Checkpoint = state.Checkpoint.Clone()
 	state.TerminalRuns = slices.Clone(state.TerminalRuns)
 	state.TerminalItems = slices.Clone(state.TerminalItems)
-	state.ConversationMessages = cloneCommitMessages(state.ConversationMessages)
 	if state.Resume != nil {
 		resume := cloneOpeningResume(*state.Resume)
 		state.Resume = &resume
@@ -163,16 +153,6 @@ func (w WaitingSubtreeCancellationCommit) TerminalItems() []transcript.Replaceme
 	return slices.Clone(w.state.TerminalItems)
 }
 
-// ParentItem returns the spawning Tool Item replacement owned by the parent Run.
-func (w WaitingSubtreeCancellationCommit) ParentItem() transcript.Replacement {
-	return w.state.ParentItem
-}
-
-// ConversationMessages returns isolated provider-context projections.
-func (w WaitingSubtreeCancellationCommit) ConversationMessages() []corechat.Message {
-	return cloneCommitMessages(w.state.ConversationMessages)
-}
-
 // Resume returns the complete surviving-tree continuation when execution resumes.
 func (w WaitingSubtreeCancellationCommit) Resume() (rundomain.TreeResumeDraft, bool) {
 	if w.state.Resume == nil {
@@ -214,12 +194,6 @@ func (w WaitingSubtreeCancellationCommit) Validate() error {
 		return err
 	}
 	if err := validation.validateTerminalItems(); err != nil {
-		return err
-	}
-	if err := validation.validateParentItem(); err != nil {
-		return err
-	}
-	if err := validation.validateConversationMessages(); err != nil {
 		return err
 	}
 	if err := validation.validateDisposition(); err != nil {
@@ -573,22 +547,8 @@ func (w waitingCancellationValidation) validateReducedPendingAndCollectRunIDs() 
 
 func (w waitingCancellationValidation) validateSurvivingContinuations() error {
 	c := w.commit
-	target := w.continuationByRunID[c.TargetRunID]
 	for _, actual := range c.RemainingPending.Continuations {
 		expected := w.continuationByRunID[actual.RunID]
-		if actual.RunID == target.Lineage.ParentRunID {
-			var matched []DrainedTool
-			expected.DrainedTools = slices.DeleteFunc(slices.Clone(expected.DrainedTools), func(candidate DrainedTool) bool {
-				if candidate.ItemID != c.ParentItem.Expected().ID() {
-					return false
-				}
-				matched = append(matched, candidate)
-				return true
-			})
-			if len(matched) != 1 {
-				return fmt.Errorf("runs: waiting cancellation parent continuation has %d spawning tools", len(matched))
-			}
-		}
 		if !sameContinuationValue(actual, expected) {
 			return fmt.Errorf("runs: waiting cancellation changed continuation for Run %q", actual.RunID)
 		}
@@ -618,75 +578,6 @@ func (w waitingCancellationValidation) validateOpeningEvents() error {
 		if _, exists := surviving[event.RunID]; !exists {
 			return fmt.Errorf("runs: waiting cancellation opening event[%d] names removed Run %q", index, event.RunID)
 		}
-	}
-	return nil
-}
-
-func (w waitingCancellationValidation) validateParentItem() error {
-	c := w.commit
-	expected, replacement := c.ParentItem.Expected(), c.ParentItem.State()
-	target := w.continuationByRunID[c.TargetRunID]
-	if expected.ID() == "" || expected.ID() != replacement.ID() ||
-		expected.ID() != target.Lineage.SpawnedByItemID || expected.SessionID() != c.SessionID ||
-		replacement.SessionID() != c.SessionID || expected.RunID() != replacement.RunID() ||
-		expected.RunID() != target.Lineage.ParentRunID {
-		return errors.New("runs: waiting cancellation parent Item identity mismatch")
-	}
-	if expected.Kind() != transcript.ToolCall || expected.Status() != transcript.ItemRunning {
-		return errors.New("runs: waiting cancellation parent replacement changes immutable facts")
-	}
-	if _, present := expected.ToolInvocation(); !present {
-		return errors.New("runs: waiting cancellation parent Item has no invocation")
-	}
-	if _, failed := expected.Failure(); failed {
-		return errors.New("runs: waiting cancellation parent Item already has a failure")
-	}
-	failure, failed := replacement.Failure()
-	if replacement.Status() != transcript.ItemIncomplete || !failed ||
-		failure.Kind != tool.FailureChildRunCanceled {
-		return errors.New("runs: waiting cancellation parent Item lacks child_run_canceled")
-	}
-	want, err := expected.AbandonToolCall(&failure, replacement.FinishedAt())
-	if err != nil || !reflect.DeepEqual(want.Snapshot(), replacement.Snapshot()) {
-		return errors.New("runs: waiting cancellation parent replacement changes immutable facts")
-	}
-	return nil
-}
-
-func (w waitingCancellationValidation) validateConversationMessages() error {
-	c := w.commit
-	parentExpected := c.ParentItem.Expected()
-	if parentExpected.RunID() != c.RootRunID {
-		if len(c.ConversationMessages) != 0 {
-			return errors.New("runs: non-root child cancellation carries root conversation messages")
-		}
-		return nil
-	}
-	parentContinuation := w.continuationByRunID[c.RootRunID]
-	var parentTool DrainedTool
-	found := false
-	for _, drained := range parentContinuation.DrainedTools {
-		if drained.ItemID != parentExpected.ID() {
-			continue
-		}
-		parentTool = drained
-		found = true
-		break
-	}
-	if !found || parentTool.SourceCallID == "" {
-		return errors.New("runs: root child cancellation cannot correlate its model-context Tool result")
-	}
-	if len(c.ConversationMessages) != 1 {
-		return errors.New("runs: waiting cancellation requires one parent tool message")
-	}
-	message := c.ConversationMessages[0]
-	if err := message.Validate(); err != nil || message.Role != corechat.RoleTool ||
-		len(message.Parts) != 1 || message.Parts[0].ToolResult == nil {
-		return errors.New("runs: waiting cancellation has an invalid parent tool message")
-	}
-	result := message.Parts[0].ToolResult
-	if !result.IsError || result.ID != parentTool.SourceCallID || result.Name != parentTool.Name {
-		return errors.New("runs: waiting cancellation conversation result differs from its parent Tool")
 	}
 	return nil
 }

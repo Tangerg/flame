@@ -246,12 +246,13 @@ func (m delegateRestartModel) Stream(ctx context.Context, request *chat.Request)
 	return testsupport.StreamResponse(m.Call(ctx, request))
 }
 
-// TestProtocolReleasesFrozenSiblingWhenItsWaitingPeerIsCanceled holds two
-// children that both need human input. The barrier publishes the wait that has
-// already formed and freezes the other branch at its next safe boundary, so
-// cancelling the published one must release its frozen sibling to raise its own
-// question rather than leave the tree stalled.
-func TestProtocolReleasesFrozenSiblingWhenItsWaitingPeerIsCanceled(t *testing.T) {
+// TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther holds two children that
+// both need human input. The barrier publishes the wait that has already formed
+// and freezes the other branch at its next safe boundary, so cancelling the
+// published one must release its frozen sibling to raise its own question, and
+// answering that one must complete a tree whose durable conversation still
+// matches the model context it is reduced from.
+func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	first := chat.ToolCall{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"waiting sibling A"}`}
@@ -331,7 +332,7 @@ func TestProtocolReleasesFrozenSiblingWhenItsWaitingPeerIsCanceled(t *testing.T)
 	}
 	// The released sibling still has to take its own model turn before it can
 	// raise a question, so the barrier it forms is awaited rather than read.
-	var survivorRunID string
+	var survivorRunID, survivorItemID string
 	deadline := time.Now().Add(5 * time.Second)
 	for survivorRunID == "" {
 		released, listErr := api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: started.RunID})
@@ -340,6 +341,7 @@ func TestProtocolReleasesFrozenSiblingWhenItsWaitingPeerIsCanceled(t *testing.T)
 		}
 		if len(released.Data) == 1 && len(released.Data[0].Interrupts) == 1 {
 			survivorRunID = released.Data[0].Interrupts[0].RunID
+			survivorItemID = released.Data[0].Interrupts[0].ItemID
 			break
 		}
 		if time.Now().After(deadline) {
@@ -350,13 +352,37 @@ func TestProtocolReleasesFrozenSiblingWhenItsWaitingPeerIsCanceled(t *testing.T)
 	if survivorRunID == canceledRunID {
 		t.Fatalf("canceled sibling %s raised another question", canceledRunID)
 	}
-	canceled, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: canceledRunID})
+	// Answering the survivor closes the model round both siblings were declared
+	// in. The canceled sibling's Tool result has to reach the durable
+	// conversation in that round's call order, or the next model call reduces a
+	// context that no longer matches its own history.
+	_, resumed, err := api.ResumeRun(ctx, protocol.ResumeRunRequest{
+		RunID: started.RunID,
+		Responses: []protocol.InterruptResponse{{
+			ItemID:   survivorItemID,
+			Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseAnswer, Answers: [][]string{{"Yes"}}},
+		}},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if canceled.Status != protocol.RunStatusFinished || canceled.Outcome == nil ||
-		canceled.Outcome.Type != protocol.OutcomeCanceled {
-		diagnostic, _ := json.Marshal(canceled)
-		t.Fatalf("canceled sibling = %s", diagnostic)
+	waitForRunEvents(t, collectRunEvents(resumed), "answered surviving sibling")
+	waitForProtocolRunTerminal(t, ctx, api, started.RunID)
+	finished, err := api.ListRuns(ctx, protocol.ListRunsRequest{SessionID: session.ID, IncludeDescendants: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(finished.Data) != 3 {
+		t.Fatalf("waiting sibling tree has %d Runs, want 3", len(finished.Data))
+	}
+	for _, value := range finished.Data {
+		want := protocol.OutcomeCompleted
+		if value.ID == canceledRunID {
+			want = protocol.OutcomeCanceled
+		}
+		if value.Status != protocol.RunStatusFinished || value.Outcome == nil || value.Outcome.Type != want {
+			diagnostic, _ := json.Marshal(value)
+			t.Fatalf("Run did not finish as %s: %s", want, diagnostic)
+		}
 	}
 }

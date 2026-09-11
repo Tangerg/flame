@@ -249,21 +249,12 @@ func TestPrepareWaitingCancellationKeepsSurvivingExternalBoundary(t *testing.T) 
 		transformation.terminalItems[0].State().Status() != transcript.ItemIncomplete {
 		t.Fatalf("terminal Tool Items = %+v, want canceled branch Tool settled once", transformation.terminalItems)
 	}
-	if len(transformation.conversationMessages) != 1 ||
-		transformation.conversationMessages[0].Role != corechat.RoleTool ||
-		transformation.conversationMessages[0].Parts[0].ToolResult == nil ||
-		transformation.conversationMessages[0].Parts[0].ToolResult.ID != "provider_run_a" {
-		t.Fatalf("conversation Messages = %+v, want parent delegate Tool result", transformation.conversationMessages)
-	}
-	if !reflect.DeepEqual(*transformation.conversationMessages[0].Parts[0].ToolResult, testChildCancellationResult()) {
-		t.Fatalf("executor cancellation result was rewritten: %+v", transformation.conversationMessages)
-	}
 	if transformation.remaining == nil ||
 		len(transformation.remaining.Interrupts) != 1 ||
 		transformation.remaining.Interrupts[0].RunID != "run_b" {
 		t.Fatalf("remaining Pending = %+v, want only run_b boundary", transformation.remaining)
 	}
-	assertSettledParentTool(t, transformation, "item_spawn_a", "call_run_a")
+	assertRetainedParentTool(t, transformation, "item_spawn_a", "call_run_a")
 	if got := continuationRunIDs(transformation.continuation.continuations); !slices.Equal(got, []string{"run_b", "run_1"}) {
 		t.Fatalf("continuation Runs = %v, want [run_b run_1]", got)
 	}
@@ -302,7 +293,7 @@ func TestPrepareWaitingCancellationContinuesAfterFinalBoundaryIsRemoved(t *testi
 	if got := continuationRunIDs(transformation.continuation.continuations); !slices.Equal(got, []string{"run_b", "run_1"}) {
 		t.Fatalf("continuation Runs = %v, want [run_b run_1]", got)
 	}
-	assertSettledParentTool(t, transformation, "item_spawn_a", "call_run_a")
+	assertRetainedParentTool(t, transformation, "item_spawn_a", "call_run_a")
 }
 
 func TestPublishWaitingChildCancellationInvalidatesExactReadSet(t *testing.T) {
@@ -670,29 +661,26 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	checkpoint := commit.Checkpoint()
 	terminalRuns := commit.TerminalRuns()
 	terminalItems := commit.TerminalItems()
-	messages := commit.ConversationMessages()
 	withOpening, err := NewResumingSubtreeCancellationCommit(
 		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), expectedPending,
-		checkpoint, terminalRuns, terminalItems, commit.ParentItem(), messages, resume, openingEvents,
+		checkpoint, terminalRuns, terminalItems, resume, openingEvents,
 	)
 	if err != nil {
 		t.Fatalf("waiting cancellation with opening projection: %v", err)
 	}
 	if len(expectedPending.Bindings) == 0 || len(checkpoint.Payload) == 0 ||
-		len(terminalRuns) == 0 || len(terminalItems) == 0 || len(messages) == 0 {
+		len(terminalRuns) == 0 || len(terminalItems) == 0 {
 		t.Fatal("waiting cancellation ownership fixture lacks mutable projections")
 	}
 	wantMemberID := expectedPending.Bindings[0].MemberID
 	wantPayload := string(checkpoint.Payload)
 	wantTerminalRunID := terminalRuns[0].State().ID()
 	wantTerminalItemID := terminalItems[0].State().ID()
-	wantMessage := messages[0].Text()
 	wantResumeSegmentID := resume.Runs[0].SegmentID
 	expectedPending.Bindings[0].MemberID = "member_changed"
 	checkpoint.Payload[0] = 'x'
 	terminalRuns[0] = run.Replacement{}
 	terminalItems[0] = transcript.Replacement{}
-	messages[0].Parts[0].Text = "changed"
 	resume.Runs[0].SegmentID = "segment_changed"
 	openingEvents[0].Items = nil
 
@@ -704,8 +692,6 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	projectedRuns[0] = run.Replacement{}
 	projectedItems := withOpening.TerminalItems()
 	projectedItems[0] = transcript.Replacement{}
-	projectedMessages := withOpening.ConversationMessages()
-	projectedMessages[0].Parts[0].Text = "projected"
 	projectedResume, _ := withOpening.Resume()
 	projectedResume.Runs[0].SegmentID = "segment_projected"
 	projectedOpening := withOpening.OpeningEvents()
@@ -717,7 +703,6 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		string(withOpening.Checkpoint().Payload) != wantPayload ||
 		withOpening.TerminalRuns()[0].State().ID() != wantTerminalRunID ||
 		withOpening.TerminalItems()[0].State().ID() != wantTerminalItemID ||
-		withOpening.ConversationMessages()[0].Text() != wantMessage ||
 		ownedResume.Runs[0].SegmentID != wantResumeSegmentID ||
 		len(ownedOpening[0].Items) != 1 {
 		t.Fatal("waiting cancellation write-set followed caller or accessor mutation")
@@ -729,8 +714,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	nested[0].CommitID = testCommitID("run_commit_waiting_cancel_nested")
 	if _, err := NewResumingSubtreeCancellationCommit(
 		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), commit.ExpectedPending(),
-		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), commit.ParentItem(),
-		commit.ConversationMessages(), ownedResume, nested,
+		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), ownedResume, nested,
 	); err == nil {
 		t.Fatal("waiting cancellation accepted a nested top-level event identity")
 	}
@@ -740,8 +724,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	}
 	if _, err := NewResumingSubtreeCancellationCommit(
 		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), commit.ExpectedPending(),
-		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), commit.ParentItem(),
-		commit.ConversationMessages(), ownedResume, observed,
+		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), ownedResume, observed,
 	); err == nil {
 		t.Fatal("waiting cancellation accepted an execution observation in an opening event")
 	}
@@ -1093,27 +1076,29 @@ func waitingCancellationItems(plan cancellationPlan) map[string]transcript.Item 
 	return items
 }
 
-func assertSettledParentTool(
+// assertRetainedParentTool states that a canceled child leaves its spawning Tool
+// open. That Tool's model-visible result belongs to the round the parent
+// declared, so only the resumed executor can place it there in call order.
+func assertRetainedParentTool(
 	t *testing.T,
 	transformation waitingCancellationTransformation,
 	itemID string,
 	callID string,
 ) {
 	t.Helper()
-	replacement := transformation.parentItem.State()
-	failure, failed := replacement.Failure()
-	if replacement.ID() != itemID || replacement.Status() != transcript.ItemIncomplete ||
-		!failed || failure.Kind != tool.FailureChildRunCanceled {
-		t.Fatalf("parent Item replacement = %+v, want child_run_canceled", replacement)
+	if slices.ContainsFunc(transformation.terminalItems, func(item transcript.Replacement) bool {
+		return item.Expected().ID() == itemID
+	}) {
+		t.Fatalf("spawning Item %q was settled by the Application", itemID)
 	}
 	root, ok := transformation.continuation.root()
 	if !ok {
 		t.Fatal("continuation has no root")
 	}
-	if slices.ContainsFunc(root.DrainedTools, func(tool DrainedTool) bool {
-		return tool.ItemID == itemID || tool.CallID == callID
+	if !slices.ContainsFunc(root.DrainedTools, func(tool DrainedTool) bool {
+		return tool.ItemID == itemID && tool.CallID == callID
 	}) {
-		t.Fatalf("settled Item %q remained in drained tools", itemID)
+		t.Fatalf("spawning Item %q left the drained tools", itemID)
 	}
 }
 
