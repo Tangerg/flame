@@ -16292,3 +16292,83 @@ wire.validate.generated.ts / manifest.json
 而它周围每一条测试都以它自己为真值来源，所以它错的那天，**没有一条会变红**。
 而想把它变成可守的，才发现契约根本不发布这份词汇表：
 **三十个名字里，契约只知道六个。**
+
+## Round 249 —— 把"桌面镜像了哪些契约事实、哪些没人守"扫了一遍
+
+### 一、先把上一轮的形状推广开
+
+Round 248 的发现是"一张手工表必须跟随外部权威，而没有守卫"。
+那就该问：**桌面侧还有哪些事实是从契约镜像过来的，各自守没守？**
+
+现有的 `check:api-consumers` 覆盖 `methods` / `httpEndpoints` / `runtimeTopics` /
+`toolResultPresentations`。契约还发布了 `errors` / `capabilityPolicy` / `features` /
+`notifications` / `runEventPolicy` —— 这些谁在守？
+
+### 二、逐项查完，绝大多数是**类型化**的，不是手写
+
+| 契约事实 | 桌面侧 | 守卫 |
+| --- | --- | --- |
+| `runEventPolicy` 7 个事件类型 | 全部出现，fold 层 11 个测试含 property test | ✓ |
+| `features` 17 个 | `WireFeature` 类型 + `useServerFeature()` | ✓ 改名即编译错误 |
+| `capabilityPolicy` 46 条 | `preflight.ts` **读生成表，从不重述** | ✓ |
+| `errors` 的类型 | `isErrorType<Type extends ProblemData["type"]>` | ✓ 类型取值 |
+| `runChannelTypes` 12 个 | 全部出现，且各有本地化文案 | ✓ `check:locales` |
+
+**这条边界比我预期的干净得多。** 有几处值得单独记：
+`preflight.ts` 的注释写着 "API.md §9 forbids a second switch" ——
+它读契约生成的 `WIRE_CAPABILITY_POLICY`，不自己写一份门控规则。
+
+### 三、找到一处真的：`MAPPED_TYPES`
+
+`lib/rpcErrors.ts` 的 `MAPPED_TYPES: readonly string[]` 是**手写数组** ——
+错误符号 → 文案键的映射表，28 条。
+
+和工具词汇表同一形状，但有个关键差别：**契约发布了错误类型**
+（`types` 32 + `runChannelTypes` 12 + `inlineStatusTypes` 5 = 48），**所以守卫是可建的**。
+
+比对结果：**28 条全是真实契约类型，零幽灵。** 今天是对的。
+
+那 20 个"缺失"是**有意策划的排除** —— 注释在每个缺口处写明了理由
+（两个 replay 拒绝"由重新附着回答，不由一句话回答"，其余协议故障各有自己的路径）。
+
+### 四、守卫只做一个方向，理由写在它自己身上
+
+**不要求完整** —— 那等于要求给 `method_not_found` 写一句文案。
+要求的是反方向：**表里的每个符号都必须是问题真能带着到达的**。
+
+它能抓住的是打错字：`MAPPED_TYPES` 是裸 `string[]`，`"rate_limted"` 能编译；
+而 `check:locales` 会同意它，**因为那个键在每种语言里都存在** ——
+文案只是永远读不到，真实的错误掉进通用那一行。
+
+破坏验证：加一条 `"rate_limted"` →
+`MAPPED_TYPES names rate_limted, which no Runtime problem declares` ✓
+
+成功行按 Round 233 的教训带上了证据：
+`all 28 error symbols the product writes copy for are ones a problem can arrive under (of 48 declared)`
+
+### 五、一条留给用户的契约观察
+
+`multimodal` 这个特性：契约声明了它，**46 条能力策略里出现 0 次**，桌面也不读它。
+而 composer 的图片开关用的是 `useSelectedModel()?.acceptsInput("image")` ——
+**按具体模型判断，比 runtime 级开关更精确**，所以桌面这边是对的。
+
+问题是它在契约那边是不是 vestigial：要么应该用它门控带图片输入的 `runs.start`，
+要么可以删。**不是我的判断**。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 逐项核过的契约事实 | 5 类 |
+| 确认已由类型或生成表守住的 | 4 类 |
+| 找到的手写镜像 | **1**（`MAPPED_TYPES`），今天零幽灵 |
+| 新守卫 | 1（单向 + floor + 证据行，破坏验证过） |
+| 提给用户的契约观察 | 1（`multimodal` 门控 0 条） |
+
+### 一句话
+
+上一轮找到一处"没人看着的正确"，这一轮把整条边界扫完 ——
+**绝大多数根本不需要守卫，因为它们是类型，不是字符串。**
+剩下那一处能守，而它要守的不是"漏了什么"，是"**多了什么**"：
+一个拼错的错误符号能编译、能通过本地化检查、能在每种语言里都有一行文案，
+唯独永远不会被读到。

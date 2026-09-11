@@ -17,6 +17,7 @@ const EVENT_ADAPTER_PATH = resolve(
   "src/plugins/builtin/workspace/adapters/runtimeWorkspaceEvents.ts",
 );
 const TOOL_RESULT_PATH = resolve(ROOT, "src/plugins/sdk/toolResult.ts");
+const RPC_ERRORS_PATH = resolve(ROOT, "src/lib/rpcErrors.ts");
 const TSCONFIG_PATH = resolve(ROOT, "tsconfig.json");
 
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
@@ -27,6 +28,13 @@ const sidecarEndpoints = new Set(
     .map((endpoint) => endpoint.name),
 );
 const runtimeTopics = new Set(manifest.runtimeTopics.map((topic) => topic.type));
+// Every symbol a problem can arrive under: the JSON-RPC faults, the reasons a run channel
+// ends, and the verdicts that ride a successful result.
+const problemTypes = new Set([
+  ...manifest.errors.types.map((error) => error.type),
+  ...manifest.errors.runChannelTypes,
+  ...manifest.errors.inlineStatusTypes,
+]);
 
 // Every tool result the Runtime declares a schema for must have a reader in
 // `plugins/sdk/toolResult.ts`, which is the one place those shapes are read through the
@@ -70,6 +78,7 @@ const sidecarMethodMap = mappedSidecarMethods();
 const consumerCalls = new Map();
 const sidecarConsumerCalls = new Map();
 const discardedResults = [];
+let mappedErrorTypeCount = 0;
 for (const fileName of program.getSourceFileNames()) {
   const source = program.getSourceFile(fileName);
   if (!source) continue;
@@ -152,6 +161,7 @@ checkSidecarConsumers(sidecarEndpoints, sidecarMethodMap, sidecarConsumerCalls, 
 
 checkRuntimeTopics(errors);
 checkToolResultReaders(errors);
+checkMappedErrorTypes(errors);
 if (errors.length > 0) fail(errors);
 
 const callCount =
@@ -159,7 +169,7 @@ const callCount =
   [...sidecarConsumerCalls.values()].reduce((total, locations) => total + locations.size, 0);
 closeCompiler();
 console.log(
-  `check-backend-api-consumers: ${operations.size}/${operations.size} Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct operations, ${materializedOperations.size} materialized through server composites), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader`,
+  `check-backend-api-consumers: ${operations.size}/${operations.size} Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct operations, ${materializedOperations.size} materialized through server composites), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
 );
 
 function creditMaterializedOperationConsumers(methods, consumersByOperation, targetErrors) {
@@ -444,6 +454,38 @@ function stringUnion(source, name) {
       ts.isLiteralTypeNode(type) && ts.isStringLiteral(type.literal) ? [type.literal.text] : [],
     ),
   );
+}
+
+/**
+ * Every symbol `rpcErrors` writes copy for is one a problem can actually arrive under.
+ *
+ * ONE DIRECTION only. The table is a curated subset and says so at each gap — the two replay
+ * refusals are answered by reattaching rather than by a sentence, and the protocol faults have
+ * their own paths. Demanding completeness would be demanding a sentence for `method_not_found`.
+ *
+ * What it catches is the other way round: a symbol nothing can send. `MAPPED_TYPES` is a plain
+ * `string[]`, so a typo compiles, and `check:locales` agrees with it because the key exists in
+ * every locale — the copy is simply never reached, and the error the reader does get falls
+ * through to the generic line.
+ */
+function checkMappedErrorTypes(targetErrors) {
+  const source = program.getSourceFile(RPC_ERRORS_PATH);
+  if (!source) {
+    targetErrors.push(`TypeScript did not load ${relative(ROOT, RPC_ERRORS_PATH)}`);
+    return;
+  }
+  const mapped = stringArray(source, "MAPPED_TYPES");
+  mappedErrorTypeCount = mapped.size;
+  // Floor, not a target: a reader that found nothing agrees with any table.
+  if (mapped.size === 0) {
+    targetErrors.push("MAPPED_TYPES read as empty — this check is measuring nothing");
+    return;
+  }
+  for (const type of mapped) {
+    if (!problemTypes.has(type)) {
+      targetErrors.push(`MAPPED_TYPES names ${type}, which no Runtime problem declares`);
+    }
+  }
 }
 
 function stringArray(source, name) {
