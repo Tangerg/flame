@@ -34,8 +34,14 @@
 //   5. Every `t("literal")` in the tree names a key `en` has. The three rules
 //      above compare catalogs against each other and never look at the code, so
 //      a key that exists nowhere renders as its own name ("runError.unknown")
-//      and no run says a word. Dynamic keys (a table of them, `t(`x.${y}`)`)
-//      can't be checked here and aren't.
+//      and no run says a word. A dynamic key (`t(`x.${y}`)`) generally cannot be
+//      checked and is exempted — see Rule 16 for the three that can.
+//  16. A dynamic key family whose values ARE a table in source is not exempt.
+//      Tool families, their verbs and the error copy come from `TOOL_FAMILIES`
+//      and `MAPPED_TYPES`, so both directions are answerable: a tool added to
+//      the table without copy renders its own key at the reader, and a key left
+//      by a rename is translated into all eight catalogs forever. The fallback
+//      each family reaches for is read from the constant that names it.
 //   6. No copy in `presentation/` or `domain/`. Those rings map a model into a
 //      view model or hold a rule; the words belong to the view, which has a
 //      translator. Five modules had drifted — tool labels, meta chips, a group
@@ -695,6 +701,68 @@ for (const path of sourceFiles(SRC_DIR)) {
     const rest = unnamed.length > 8 ? `, … (+${unnamed.length - 8} more)` : "";
     failures.push(`${unnamed.length} key(s) nothing names — delete them: ${sample}${rest}`);
   }
+}
+
+// Rule 16 — a dynamic key family whose values are a TABLE in source is not exempt from Rule 9.
+//
+// Rule 9 exempts every key under a `t(`prefix.${…}`)` it finds, because a dynamic key usually
+// cannot be enumerated. Three of them can: the tool families and their verbs are `TOOL_FAMILIES`,
+// and the error copy is `MAPPED_TYPES`. Under the blanket exemption a tool added to that table
+// without copy renders its own key at the reader — `tool.doing.someNewThing` — and a key left
+// behind by a rename is translated into all eight catalogs forever. Both directions are checked
+// here. Each family's fallback is READ from the constant that names it, so renaming the constant
+// cannot quietly turn its key into a dead one.
+{
+  const read = (path) => readFileSync(join(SRC_DIR, path), "utf8");
+  const toolFamiliesSource = read("lib/toolFamilies.ts");
+  const constant = (text, name, where) => {
+    const found = text.match(new RegExp(`${name} = "([\\w-]+)"`))?.[1];
+    if (!found) failures.push(`Rule 16: ${where} no longer declares ${name}`);
+    return found;
+  };
+
+  const families = [...toolFamiliesSource.matchAll(/\bid:\s*"([\w-]+)"/g)].map((m) => m[1]);
+  const verbs = [...toolFamiliesSource.matchAll(/\{\s*name:\s*"([\w]+)"/g)].map((m) =>
+    m[1].replace(/_([a-z])/g, (_, initial) => initial.toUpperCase()),
+  );
+  const mappedBlock = read("lib/rpcErrors.ts").match(/MAPPED_TYPES[\s\S]*?\];/)?.[0] ?? "";
+  const mapped = [...mappedBlock.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
+
+  const unplaced = constant(
+    read("plugins/builtin/workspace/application/toolCatalog.ts"),
+    "UNPLACED_FAMILY",
+    "toolCatalog.ts",
+  );
+  const generic = constant(
+    read("plugins/builtin/agent/presentation/toolPresentation.ts"),
+    "GENERIC_VERB_ID",
+    "toolPresentation.ts",
+  );
+
+  const holds = (prefix, produced, label) => {
+    // Floor, not a target: a table that read as empty agrees with any catalog at all.
+    if (produced.length < 2 || produced.some((value) => !value)) {
+      failures.push(`Rule 16 read ${produced.length} value(s) for "${prefix}" — measuring nothing`);
+      return;
+    }
+    const wanted = new Set(produced.map((value) => `${prefix}${value}`));
+    const carried = [...en].filter((key) => key.startsWith(prefix));
+    note(
+      `Rule 16 ${label}`,
+      [...wanted].filter((key) => !carried.includes(key)),
+      "key(s) the table produces that no catalog carries",
+    );
+    note(
+      `Rule 16 ${label}`,
+      carried.filter((key) => !wanted.has(key)),
+      "key(s) under this prefix that nothing produces",
+    );
+  };
+
+  holds("tools.family.", [...families, unplaced], "tool families");
+  holds("tool.doing.", [...verbs, generic], "tool verbs while running");
+  holds("tool.done.", [...verbs, generic], "tool verbs once settled");
+  holds("rpcError.", mapped, "error copy");
 }
 
 if (failures.length > 0) {
