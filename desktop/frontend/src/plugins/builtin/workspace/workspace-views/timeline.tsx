@@ -154,7 +154,7 @@ function TimelineRunHeader({
         className={stylex.props(vocab.hold, vocab.muted).className}
       />
       <div {...stylex.props(vocab.fill, vs.rowPad)}>
-        <div {...stylex.props(vocab.line, vocab.min)}>
+        <div {...stylex.props(vs.titleLine)}>
           <span {...stylex.props(vocab.hold, vs.title, typeStep.uiSm)}>
             {t(child ? "timeline.delegatedRun" : "timeline.rootRun")}
           </span>
