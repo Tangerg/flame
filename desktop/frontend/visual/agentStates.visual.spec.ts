@@ -1069,7 +1069,31 @@ test("context compaction uses the Codex activity row without divider chrome", as
   const compaction = page.getByRole("button", { name: "Context automatically compacted" });
   await compaction.scrollIntoViewIfNeeded();
   await expect(compaction.locator('[data-icon-name="minimize"]')).toBeVisible();
-  await expect(compaction.locator("xpath=..").locator(".h-px")).toHaveCount(0);
+  // "Without divider chrome" is a claim about GEOMETRY, so it is asked that way. This looked
+  // for `.h-px` — the Tailwind utility a hairline used to be spelled with — and Tailwind left:
+  // measured, that selector matches nothing anywhere, so the assertion has been trivially true
+  // for as long as it has been here. A divider today is a `Divider`, which renders a plain
+  // `div` at `height: 1px` with a StyleX class, so there is no name to look for and asking for
+  // one again would set the same trap.
+  //
+  // Verified live: injecting a 200x1 painted div into this subtree makes the reading `["200x1"]`.
+  const row = compaction.locator("xpath=..");
+  const chrome = await row.evaluate((node) => {
+    const kids = [...node.querySelectorAll("*")];
+    const hairlines = kids.filter((element) => {
+      const box = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      const painted =
+        style.backgroundColor !== "rgba(0, 0, 0, 0)" ||
+        Number.parseFloat(style.borderTopWidth) > 0 ||
+        Number.parseFloat(style.borderBottomWidth) > 0;
+      return box.height > 0 && box.height <= 1.5 && box.width >= 24 && painted;
+    });
+    return { examined: kids.length, hairlines: hairlines.map((element) => element.tagName) };
+  });
+  // Floor, not a target: an empty subtree has no divider in it either.
+  expect(chrome.examined, "the compaction row has to have something in it").toBeGreaterThan(3);
+  expect(chrome.hairlines, "divider chrome beside the compaction row").toEqual([]);
   await expect(compaction).toHaveAttribute("aria-expanded", "false");
   await expect(compaction.locator("xpath=..")).toHaveScreenshot("context-compaction-light.png");
 
