@@ -16521,3 +16521,72 @@ or the chips are shrinking while being measured
 我为了防止"测了个寂寞"加的那条 floor，
 恰好就是真实回归会踩中的那一条：
 **一行放不下的工具条，在被测量的时候把自己量成了放得下。**
+
+## Round 252 —— 一条承重注释把理由说反了：它买的是时序，不是同一性
+
+### 一、先查了另一个同形状的候选，结果已经有人做过了
+
+`transcriptTurnContentVisibility` 的**尾部 turn 例外**看着像典型的"fixture 触碰不到的承重机制"——
+注释说若尾部也开 `content-visibility`，HITL 控件会只剩占位符、并从无障碍树掉出去。
+
+**查了：已有守卫。** `agentStates.visual.spec.ts` 的
+"historical turns skip off-screen rendering and the tail turn never does"
+逐个断言除最后一个外都是 `auto`、最后一个是 `visible`；
+单测也钉了 `(true)` 返回 undefined。而且那条守卫的注释里写的，正是我这几轮在用的同一套推理。
+
+### 二、`useCommitThrottle`：零测试，且注释把理由说反了
+
+注释原文：
+
+> at `minMs <= 0` returns the SAME value it was given rather than a committed copy.
+> That identity is load-bearing … **a committed copy is never `===`**.
+
+实测：
+
+| | 结果 |
+| --- | --- |
+| `minMs=0` | 立即返回输入本身 |
+| `minMs=120`，刚变化 | 仍返回旧值（滞后） |
+| `minMs=120`，200ms 后 | 新值，且 **`=== 输入` 为真** |
+
+**"a committed copy is never `===`" 不成立** —— 字符串按值比较，节流追上后就相等了。
+
+这个短路真正买到的是**没有滞后**：走 state 的话，一个已经定稿的值要等一个 timeout 之后
+才变得相等，而 `MarkdownMessage` 读的 `source === text` 就架在它下游 ——
+**历史消息和任何已完成的内容，每次挂载都会有一个窗口报错答案。**
+
+### 三、为什么这条错误注释是危险的
+
+它给出的理由（同一性）对字符串**根本不存在**。
+读到它的人可以完全正确地推断"字符串反正按值相等，走 state 无害"，
+然后删掉短路 —— 他对同一性的判断没错，**对时序的判断错了**，
+而注释没给他时序这个词。
+
+改写后点名真正的代价，并保留 react-pacer 那条理由（它同样是时序，不是同一性）。
+
+### 四、两条测试，各测一半
+
+- **零档**：设定值在**同一次渲染**里就交出来
+- **节流档**：变化后仍给旧值（"the parser is not handed every token"），200ms 后精确追上
+
+破坏验证：把 `return minMs <= 0 ? value : committed` 改成 `return committed` →
+**只红零档那一条**（`the zero case waited for a timeout: expected 'one' to be 'two'`），
+节流档照常绿 —— 两条各测各的。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 查完确认已有守卫的 | 1（尾部 turn 例外） |
+| 改正的承重注释 | **1**（理由说反：时序 ≠ 同一性） |
+| 新测试 | 2（2475 → 2477） |
+| 破坏验证 | 精确命中 1/2 |
+
+### 一句话
+
+这条注释**结论对、理由错** —— 短路确实是承重的，
+但它承的是"**同一次渲染**"，不是"同一个引用"。
+而错误的理由比没有理由更危险：
+它让下一个读者可以**推理正确地**得出错误结论 ——
+字符串确实按值相等，所以"走 state 无害"这句话唯一的问题是，
+它算的是相等，没算**什么时候相等**。

@@ -15,7 +15,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { publishMotionScale } from "@/lib/appearance";
 import { segmentWords } from "@/lib/i18n/segmentWords";
-import { pickRate, useStreamReveal } from "./streamReveal";
+import { pickRate, useCommitThrottle, useStreamReveal } from "./streamReveal";
 
 describe("pickRate — streaming mode (3-tier ladder)", () => {
   it("returns RATE_CRUISE (40 c/s) for small backlogs", () => {
@@ -208,5 +208,41 @@ describe("useStreamReveal — what holds at any rate", () => {
     // advanced while more was arriving would leave the last words of every answer off screen.
     const { final } = play(PROSE, false, "smooth");
     expect(final).toBe(PROSE);
+  });
+});
+
+// The zero case is a short circuit with a consumer: `MarkdownMessage` reads `source === text` to
+// decide what material is on screen, and that read sits downstream of this hook. What the short
+// circuit buys is a render, not a reference — a string committed through state compares equal by
+// value once the trailing timeout fires, so the only thing at stake is WHEN it becomes equal.
+// Both halves are pinned here because a refactor that routes every value through state looks
+// harmless from the identity side and silently costs a window on every mount.
+describe("useCommitThrottle", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("hands back settled text on the same render", () => {
+    const { result, rerender } = renderHook(
+      ({ value }: { value: string }) => useCommitThrottle(value, 0),
+      { initialProps: { value: "one" } },
+    );
+
+    expect(result.current).toBe("one");
+    act(() => rerender({ value: "two" }));
+    expect(result.current, "the zero case waited for a timeout").toBe("two");
+  });
+
+  it("holds a streaming value back, then catches up to it exactly", () => {
+    const { result, rerender } = renderHook(
+      ({ value }: { value: string }) => useCommitThrottle(value, 120),
+      { initialProps: { value: "one" } },
+    );
+
+    act(() => rerender({ value: "two" }));
+    // The whole point of the throttle: the parser is not handed every token.
+    expect(result.current, "the throttle let a change straight through").toBe("one");
+
+    act(() => void vi.advanceTimersByTime(200));
+    expect(result.current).toBe("two");
   });
 });

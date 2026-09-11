@@ -184,11 +184,19 @@ export function useStreamReveal(
 }
 
 /**
- * Trailing-throttles a streaming value, and at `minMs <= 0` returns the SAME value it was
- * given rather than a committed copy. That identity is load-bearing: `MarkdownMessage`
- * compares `source === text` to decide what material is visible, and a committed copy is
- * never `===`. It is also why the throttle here is not `useThrottledValue` from react-pacer,
- * which routes every value through state.
+ * Trailing-throttles a streaming value, and at `minMs <= 0` hands back what it was given on the
+ * SAME render rather than a render later.
+ *
+ * That short circuit is load-bearing, and what it buys is TIMING, not identity — an earlier
+ * version of this comment said the committed copy "is never `===`", which is not true of a
+ * string: once the trailing timeout fires, the committed value compares equal to the input by
+ * value, as measured. What differs is when. Routed through state, a settled value only becomes
+ * equal a timeout after it arrived, and `MarkdownMessage` reads `source === text` to decide
+ * what material is on screen — so history and anything already complete would report the wrong
+ * answer for that window, every time it mounted.
+ *
+ * It is also why this is not `useThrottledValue` from react-pacer, which routes every value
+ * through state and therefore cannot offer the zero case at all.
  */
 export function useCommitThrottle(value: string, minMs: number): string {
   const [committed, setCommitted] = useState(value);
