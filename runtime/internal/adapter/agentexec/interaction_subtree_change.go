@@ -188,10 +188,10 @@ func (i *interactionSession) beginSubtreeApplication(
 	return nil
 }
 
-// cancelPreparedSubtree submits the committed cancellation and replaces the
-// staged cut with the one the tree drained into. The Application already holds
-// the cut this decision was made from; the executor needs the resulting one so a
-// later resume and a restart describe the same tree.
+// cancelPreparedSubtree submits the cancellation the Application has committed.
+// The staged cut is deliberately left alone: it is the one the Application
+// recorded with that decision, and an executor that quietly moved to a different
+// cut would refuse the very continuation its own barrier is still waiting for.
 func (i *interactionSession) cancelPreparedSubtree(
 	change *interactionWaitingSubtreeChange,
 ) error {
@@ -208,18 +208,6 @@ func (i *interactionSession) cancelPreparedSubtree(
 	); err != nil {
 		return fmt.Errorf("agentexec: cancel waiting Interaction subtree: %w", err)
 	}
-	// Nothing needs holding here. A tree that stays waiting is held by the
-	// unanswered external input of the members that survive, and a tree that
-	// resumes is exactly what the committed decision asked for.
-	resultingTree, err := i.engine.CaptureTree(ctx, i.state.process.Relation().RootID())
-	if err != nil {
-		return fmt.Errorf("agentexec: capture canceled Interaction subtree: %w", err)
-	}
-	checkpoint, err := i.executorCheckpoint(resultingTree)
-	if err != nil {
-		return err
-	}
-	change.checkpoint = checkpoint
 	return nil
 }
 

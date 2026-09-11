@@ -245,3 +245,118 @@ type delegateRestartModel struct{ chat.Model }
 func (m delegateRestartModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	return testsupport.StreamResponse(m.Call(ctx, request))
 }
+
+// TestProtocolReleasesFrozenSiblingWhenItsWaitingPeerIsCanceled holds two
+// children that both need human input. The barrier publishes the wait that has
+// already formed and freezes the other branch at its next safe boundary, so
+// cancelling the published one must release its frozen sibling to raise its own
+// question rather than leave the tree stalled.
+func TestProtocolReleasesFrozenSiblingWhenItsWaitingPeerIsCanceled(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("FLAME_HOME", home)
+	first := chat.ToolCall{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"waiting sibling A"}`}
+	second := chat.ToolCall{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"waiting sibling B"}`}
+	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
+		var hasResult, childA, childB bool
+		for _, message := range request.Messages {
+			hasResult = hasResult || message.Role == chat.RoleTool
+			if message.Role == chat.RoleUser {
+				childA = childA || strings.Contains(message.Text(), "waiting sibling A")
+				childB = childB || strings.Contains(message.Text(), "waiting sibling B")
+			}
+		}
+		message := chat.NewAssistantMessage(chat.NewTextPart("continued"))
+		finish := chat.FinishReasonStop
+		switch {
+		case hasResult:
+		case childA || childB:
+			question, callID := "Continue sibling A?", "ask_a"
+			if childB {
+				question, callID = "Continue sibling B?", "ask_b"
+			}
+			message = chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
+				ID: callID, Name: "ask_user",
+				Arguments: `{"questions":[{"question":"` + question + `"}]}`,
+			}))
+			finish = chat.FinishReasonToolCalls
+		default:
+			message = chat.NewAssistantMessage(
+				chat.NewToolCallPart(first), chat.NewToolCallPart(second),
+			)
+			finish = chat.FinishReasonToolCalls
+		}
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, &chat.ResponseMetadata{
+			Model: "claude-test", Usage: chat.Usage{InputTokens: 2, OutputTokens: 1},
+		})
+	})}
+	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
+		ProtocolVersion: protocol.ProtocolVersion,
+		ClientCapabilities: &protocol.ClientCapabilities{
+			Features:       map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
+			InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion},
+		},
+	})
+	runtime, api := openProtocolRuntime(t, model)
+	t.Cleanup(func() {
+		if err := runtime.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
+		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "waiting siblings",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	started, events, err := api.StartRun(ctx, protocol.StartRunRequest{
+		SessionID: session.ID,
+		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "delegate both siblings"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForRunEvents(t, collectRunEvents(events), "first waiting sibling")
+	pending, err := api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: started.RunID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pending.Data) != 1 || len(pending.Data[0].Interrupts) == 0 {
+		t.Fatalf("waiting sibling barrier = %+v", pending)
+	}
+	canceledRunID := pending.Data[0].Interrupts[0].RunID
+	if _, err := api.CancelRun(ctx, protocol.CancelRunRequest{
+		RunID: canceledRunID, Reason: "skip one sibling",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// The released sibling still has to take its own model turn before it can
+	// raise a question, so the barrier it forms is awaited rather than read.
+	var survivorRunID string
+	deadline := time.Now().Add(5 * time.Second)
+	for survivorRunID == "" {
+		released, listErr := api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: started.RunID})
+		if listErr != nil {
+			t.Fatal(listErr)
+		}
+		if len(released.Data) == 1 && len(released.Data[0].Interrupts) == 1 {
+			survivorRunID = released.Data[0].Interrupts[0].RunID
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("frozen sibling was not released into its own barrier: %+v", released)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if survivorRunID == canceledRunID {
+		t.Fatalf("canceled sibling %s raised another question", canceledRunID)
+	}
+	canceled, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: canceledRunID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if canceled.Status != protocol.RunStatusFinished || canceled.Outcome == nil ||
+		canceled.Outcome.Type != protocol.OutcomeCanceled {
+		diagnostic, _ := json.Marshal(canceled)
+		t.Fatalf("canceled sibling = %s", diagnostic)
+	}
+}

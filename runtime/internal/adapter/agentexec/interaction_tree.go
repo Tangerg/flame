@@ -108,8 +108,13 @@ func (i *interactionSession) captureHumanInputBarrier(
 				paused = true
 				continue
 			}
+			// The cut says this member was running; by now it may have finished or
+			// reached a wait, and only a running member can be armed with a pause.
+			// Either way the tree moved under the cut, so the barrier asks again
+			// rather than treating its own stale reading as a fault.
 			if err := process.Pause(ctx, interactionBarrierPauseReason); err != nil &&
-				!errors.Is(err, agent.ErrProcessFinished) {
+				!errors.Is(err, agent.ErrProcessFinished) &&
+				!errors.Is(err, agent.ErrProcessNotRunning) {
 				return agent.TreeSnapshot{}, nil, false, fmt.Errorf("pause Interaction member %s: %w", snapshot.ProcessID(), err)
 			}
 			paused = true
@@ -172,9 +177,12 @@ func (i *interactionSession) pendingInterruptions(
 	interruptions := make([]runs.MemberInterruption, 0, len(pendingInputs))
 	for _, pending := range pendingInputs {
 		processID := pending.ProcessID()
-		member, err := i.toolCallMember(relations[processID])
-		if err != nil {
-			return nil, err
+		member, bound := i.toolCallMember(relations[processID])
+		if !bound {
+			// The cut can outlive a member the product retired, and a Tool wait
+			// belongs to the member that called it. With that member gone the wait
+			// died with it: nobody can be shown it and nobody can answer it.
+			continue
 		}
 		prompt, err := interactioninput.DecodePrompt(pending.Prompt())
 		if err != nil {

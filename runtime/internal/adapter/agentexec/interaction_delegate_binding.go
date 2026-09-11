@@ -252,17 +252,14 @@ func (i *interactionSession) executorMemberByProcessID(
 // toolCallMember resolves the product member that requested one Tool call. The
 // call runs in its own child Process, which spawns no Run and therefore never
 // becomes a member; its durable facts and its input wait alike belong to the
-// Interaction member that called it.
+// Interaction member that called it. An unbound caller means the product has
+// retired that member, so the call has no product owner left.
 func (i *interactionSession) toolCallMember(
 	relation agent.ProcessRelation,
-) (runs.ExecutorMember, error) {
+) (runs.ExecutorMember, bool) {
 	callerID, child := relation.ParentID()
 	if !child {
-		return runs.ExecutorMember{}, errors.New("agentexec: Tool call has no calling Interaction member")
+		return runs.ExecutorMember{}, false
 	}
-	member, bound := i.executorMemberByProcessID(callerID)
-	if !bound {
-		return runs.ExecutorMember{}, fmt.Errorf("agentexec: Tool caller %s has no product binding", callerID)
-	}
-	return member, nil
+	return i.executorMemberByProcessID(callerID)
 }

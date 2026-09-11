@@ -47,9 +47,9 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		return corechat.ToolOutput{}, err
 	}
 	call := invocation.ToolCall()
-	member, err := o.session.toolCallMember(invocation.Relation())
-	if err != nil {
-		return corechat.ToolOutput{}, err
+	member, hasCaller := o.session.toolCallMember(invocation.Relation())
+	if !hasCaller {
+		return corechat.ToolOutput{}, errors.New("agentexec: Tool call has no calling Interaction member")
 	}
 	dispatchKey, addressable := toolCallDispatchKey(invocation)
 	if !addressable {
