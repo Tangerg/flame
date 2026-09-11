@@ -6,6 +6,18 @@
  * differentiation: tone means STATE, so spending it on identity leaves a failed read and a
  * successful one equally alarming. This is the built-in VOCABULARY, not the live inventory —
  * `tools.list` stays the authority for what is exposed.
+ *
+ * WHAT THIS LIST HAS TO FOLLOW, and what nothing checks. The names are the Runtime's, declared
+ * in `runtime/internal/domain/run/tool/tool.go`; the two are in exact agreement today, verified
+ * by comparing both sets. No guard holds them there, and none can from here: the Runtime
+ * Protocol does not publish the built-in vocabulary — six of the thirty names appear anywhere in
+ * `contract/manifest.json`, five of them incidentally, as tools that happen to have a structured
+ * result presentation.
+ *
+ * So a tool added to the Runtime and not added here falls out of every lookup below at once: no
+ * family, so an approval card asks permission for a raw wire name instead of a capability; no
+ * glyph, so the row takes the generic one; no verb, so the catalog reads "Ran". The tests around
+ * this file iterate THIS list, so all of them stay green while it happens.
  */
 export interface ToolFamily {
   /** i18n key suffix: `tools.family.<id>`. */
