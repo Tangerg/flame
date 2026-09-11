@@ -68,6 +68,24 @@ function imageOnlyParagraph(children: ReactNode): ReactElement<MarkdownImageElem
   return material;
 }
 
+/**
+ * Hands every image inside a link over to the link.
+ *
+ * Recursive rather than a check on the link's direct children, because markdown puts emphasis
+ * between them freely — `[**![badge](x)**](url)` is the same shape as `[![badge](x)](url)` and
+ * has the same answer.
+ */
+function imagesDeferToTheLink(children: ReactNode): ReactNode {
+  return Children.map(children, (child) => {
+    if (!isValidElement<MarkdownImageElementProps & { children?: ReactNode }>(child)) return child;
+    if (child.props.node?.tagName === "img") return cloneElement(child, { linked: true });
+    const inner = child.props.children;
+    return inner === undefined
+      ? child
+      : cloneElement(child, { children: imagesDeferToTheLink(inner) });
+  });
+}
+
 type MarkdownElementProps = {
   children?: ReactNode;
   node?: { tagName?: string };
@@ -267,9 +285,20 @@ const sharedMarkdownComponents: Components = {
       </th>
     );
   },
+  // Every prop a PARENT decided has to be named here: this is a forwarding wrapper, so anything
+  // `cloneElement` set upstream — `allowWide` from an image-only paragraph, `linked` from a link
+  // — is dropped unless it is read back out of `rest`.
   img({ src, alt, title, ...rest }) {
-    const allowWide = (rest as { allowWide?: boolean }).allowWide;
-    return <MarkdownImage src={src} alt={alt} title={title} allowWide={allowWide} />;
+    const decided = rest as { allowWide?: boolean; linked?: boolean };
+    return (
+      <MarkdownImage
+        src={src}
+        alt={alt}
+        title={title}
+        allowWide={decided.allowWide}
+        linked={decided.linked}
+      />
+    );
   },
   a({ href, title, children, ...rest }) {
     const r = rest as { "data-file-ref"?: string; "data-file-line"?: string };
@@ -278,7 +307,7 @@ const sharedMarkdownComponents: Components = {
     }
     return (
       <ExternalLink href={href} title={title}>
-        {children}
+        {imagesDeferToTheLink(children)}
       </ExternalLink>
     );
   },

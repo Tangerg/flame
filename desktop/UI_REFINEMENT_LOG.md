@@ -15883,3 +15883,89 @@ Flame 现状比我预期的好：有共享档 `vocab.figures`，而且 `globals.
 **没到位的是"哪一格算数字"这个判断，而它只认了 `12`。**
 而写新判据时真正要想清楚的不是该认哪些，是**认错和认漏哪一个更便宜**：
 多给一个短格子加最小宽度，还是让一整列数字对不齐。
+
+## Round 244 —— 徽章链接：同一个缺陷的第二条入口，而且更常见
+
+### 一、三个负面结果先记下来
+
+1. **`dir="auto"` 只在 markdown 渲染器里。** dock 的计划步骤、记忆条目、通知、
+   会话标题都没有 —— 形状和 Round 242 一样（决定只施加了半个产品）。
+   **但查了参考：Codex 0 处、zcode 0 处、dimagent 9 处。**
+   Flame 在 markdown 里做的已经比它们都多；推广到 dock 是比所有参考走得更远，
+   不是像素级复刻，也不是用户正在撞的问题。**记录，不做。**
+2. **参考实现没有界面截图可比。** `study/chatgpt` 有 659 张图，全是内容素材
+   （示意图、插画），不是 UI 截图。
+3. **`agentSessionRecovery` 的疑似泄漏不成立。** 我怀疑 `pump()` 抛错时
+   stream 没被 `retireRunStream`；查下去 `agentRunPump` 在 `finally` 里
+   `disposeAsyncIterator(iterator)`，所有权释放是完整的。
+
+### 二、然后从上一轮的缺陷倒推，找到了第二条入口
+
+Round 240 修的是"链接里的文件引用变成链接里的按钮"。那本质是 axe 的
+`nested-interactive` 违规，而 WCAG 审计没抓到 —— **因为 fixture 里没有那种内容**。
+
+于是问：**同一个形状还有别的入口吗？** `MarkdownImage` 渲染成 `<button>`（预览触发器），
+而 `[![badge](img)](url)` 是 README 里最常见的写法。实测：
+
+```html
+<a href="…" target="_blank" rel="noopener noreferrer">
+  <button type="button" tabindex="0" aria-label="build" …>
+```
+
+**徽章链接**（build / npm / license badge）产出的正是 `<a>` 里套 `<button>`。
+agent 引用或撰写 README 时会不断产生它 —— 比上一轮那个"链接里的加粗路径"常见得多。
+
+### 三、修法：链接里的图片把控件权交还给链接
+
+这是所有渲染器的答案（GitHub 也是 `<a><img></a>`）。
+`MarkdownImage` 加一个 `linked` 模式：可用时渲染裸 `<img>`，
+不可用时渲染 `<span role="img">` 而**不是 disabled 的按钮** ——
+`disabled` 并不能让 button 不算交互内容。
+
+链接侧递归下发，因为 `[**![badge](x)**](url)` 中间会隔着 emphasis。
+
+### 四、第一版没生效，原因值得记
+
+改完一跑，仍然 `nested=1`。不是逻辑错，是 **`img` 是个转发包装**：
+
+```ts
+img({ src, alt, title, ...rest }) {
+  const allowWide = (rest as { allowWide?: boolean }).allowWide;
+  return <MarkdownImage src={src} alt={alt} title={title} allowWide={allowWide} />;
+}
+```
+
+它只把四个 prop 交给 `MarkdownImage`，我 `cloneElement` 上去的 `linked` 在这里被丢掉。
+`allowWide` 之所以要从 `rest` 里显式读出来，正是同一个原因 ——
+**父组件用 `cloneElement` 决定的任何东西，都必须在这里被点名，否则消失。**
+这条已经写进那个包装的注释里。
+
+### 五、七个用例的实测
+
+| 输入 | 结果 |
+| --- | --- |
+| `[![build](png)](url)` | `<a><img></a>` ✓ |
+| `[**![build](png)**](url)` | `<a><strong><img></strong></a>` ✓ |
+| `[![build](远程图)](url)` | `<a><span role="img">` ✓（非交互占位） |
+| `[![b](png) docs](url)` | `<a><img> docs</a>` ✓ |
+| `![build](png)`（独立图） | 预览按钮，**不变** ✓ |
+| 两张图（图库） | 两个预览按钮，**不变** ✓ |
+| `[docs](url)` | 不变 ✓ |
+
+破坏验证：把 `linked` 从转发里去掉 → 立刻报 `a control nested inside the link`。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 查完确认不做 / 不成立的 | **3** |
+| 真缺陷 | **1**（徽章链接里的嵌套控件），比上一轮同类更常见 |
+| 新测试 | 1 条，4 个必须修 + 2 个必须不变 |
+| 第一版没生效的原因 | 转发包装丢 prop，已写进注释 |
+
+### 一句话
+
+上一轮修完一个 `nested-interactive`，这一轮问的是"**同一个形状还有别的入口吗**" ——
+有，而且是 README 里最常见的那一种。
+而第一版没生效教了另一件事：**一个只转发四个 prop 的包装，
+会安静地吃掉父组件用 `cloneElement` 做的任何决定。**

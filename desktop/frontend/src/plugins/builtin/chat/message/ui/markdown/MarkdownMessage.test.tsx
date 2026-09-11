@@ -137,6 +137,41 @@ describe("markdownMessage", () => {
     expect(trigger?.querySelector("img")?.getAttribute("loading")).toBe("lazy");
   });
 
+  // `[![badge](img)](url)` is the commonest image in anything an agent quotes from a README, and
+  // an image renders its own preview control — so inside a link that produced a `<button>` in an
+  // `<a target="_blank">`: invalid HTML, two tab stops where the reader sees one badge, and one
+  // click that both opened the preview and followed the link. Inside a link the LINK is the
+  // control, which is what every other renderer emits too.
+  it("hands an image inside a link over to the link", () => {
+    const tinyPng =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+    const linked = [
+      `[![build](${tinyPng})](https://example.test)`,
+      // Emphasis between the link and its image is the same shape with a step in the middle.
+      `[**![build](${tinyPng})**](https://example.test)`,
+      // An image the surface refuses to load still may not be a control here: `disabled` does
+      // not stop a button from being interactive content.
+      `[![build](https://img.example/b.png)](https://example.test)`,
+      `[![build](${tinyPng}) docs](https://example.test)`,
+    ];
+    for (const src of linked) {
+      const { container, unmount } = render(<MarkdownMessage text={src} reveal="instant" />);
+      expect(
+        container.querySelectorAll("a button, a a, a input").length,
+        `${src}: a control nested inside the link`,
+      ).toBe(0);
+      expect(container.querySelector("a")).toBeTruthy();
+      unmount();
+    }
+
+    // And an image that is NOT in a link keeps its preview, which is the whole point of it.
+    const { container } = render(
+      <MarkdownMessage text={`![build](${tinyPng})`} reveal="instant" />,
+    );
+    expect(container.querySelector('button[aria-label="build"]')).toBeTruthy();
+  });
+
   it("promotes image-only paragraphs into Codex wide and gallery media blocks", () => {
     const first =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";

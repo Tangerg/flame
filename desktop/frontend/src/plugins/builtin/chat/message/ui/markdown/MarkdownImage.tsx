@@ -55,14 +55,43 @@ interface Props {
   alt?: string;
   title?: string;
   allowWide?: boolean;
+  /**
+   * The image is inside a link, so the LINK is the control and this must not be one.
+   *
+   * `[![badge](img)](url)` is the commonest image in anything an agent quotes, and rendering
+   * its own preview trigger there puts a `<button>` inside an `<a target="_blank">`: invalid
+   * HTML, two tab stops where the reader sees one badge, and one click that both opens the
+   * preview and follows the link. Every other renderer emits `<a><img></a>`, and so does this.
+   */
+  linked?: boolean;
 }
 
-export function MarkdownImage({ src = "", alt = "", title, allowWide = false }: Props) {
+export function MarkdownImage({
+  src = "",
+  alt = "",
+  title,
+  allowWide = false,
+  linked = false,
+}: Props) {
   const t = useT();
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const unavailable = !isInlineMarkdownImage(src) || failedSource === src;
 
   if (unavailable) {
+    // A disabled button is still interactive content, so inside a link it is the same defect.
+    // The glyph stays: what it says is "this image did not load", which is still worth saying.
+    if (linked) {
+      return (
+        <span
+          role="img"
+          aria-label={alt || t("message.image.unavailable")}
+          title={title}
+          className={stylex.props(mi.missing).className}
+        >
+          <Icon name="image" size="md" />
+        </span>
+      );
+    }
     return (
       <Pressable
         type="button"
@@ -73,6 +102,22 @@ export function MarkdownImage({ src = "", alt = "", title, allowWide = false }: 
       >
         <Icon name="image" size="md" />
       </Pressable>
+    );
+  }
+
+  if (linked) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        title={title}
+        loading="lazy"
+        onError={() => setFailedSource(src)}
+        className={cn(
+          "media-edge",
+          stylex.props(mi.image, allowWide ? mi.wide : mi.measured).className,
+        )}
+      />
     );
   }
 
