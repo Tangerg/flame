@@ -3,15 +3,15 @@ package agentexec
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 )
 
 type interactionDeploymentSet struct {
@@ -19,6 +19,7 @@ type interactionDeploymentSet struct {
 	byRef             map[agent.DeploymentRef]agent.Deployment
 	delegatesByParent map[agent.DeploymentRef]map[string]agent.DeploymentRef
 	managedChildren   map[agent.DeploymentRef]struct{}
+	toolChildren      map[agent.DeploymentRef]struct{}
 	treeLimits        agent.TreeLimits
 }
 
@@ -40,6 +41,14 @@ func (i *interactionDeploymentSet) managedChild(reference agent.DeploymentRef) b
 	return found
 }
 
+// toolChild reports whether a child Process is one ordinary Tool call. A Tool
+// call is an Item of the Run that made it, not a Run of its own, so it carries
+// no Delegate binding and projects no child Run.
+func (i *interactionDeploymentSet) toolChild(reference agent.DeploymentRef) bool {
+	_, found := i.toolChildren[reference]
+	return found
+}
+
 func (i *interactionDeploymentSet) delegateTarget(
 	parent agent.DeploymentRef,
 	name string,
@@ -52,12 +61,12 @@ func (i *InteractionExecutor) buildInteractionDeployments(
 	ctx context.Context,
 	session *interactionSession,
 	start runs.RootExecutionStart,
-	client *chatclient.Client,
+	model *observedInteractionModel,
 	counter ModelContextInputTokenCounter,
 	maxModelCalls uint32,
 ) (*interactionDeploymentSet, error) {
 	builder, err := i.newInteractionDeploymentBuilder(
-		ctx, session, start, client, counter, maxModelCalls,
+		ctx, session, start, model, counter, maxModelCalls,
 	)
 	if err != nil {
 		return nil, err
@@ -69,7 +78,7 @@ type interactionDeploymentBuilder struct {
 	executor          *InteractionExecutor
 	session           *interactionSession
 	start             runs.RootExecutionStart
-	client            *chatclient.Client
+	model             *observedInteractionModel
 	counter           ModelContextInputTokenCounter
 	maxModelCalls     uint32
 	delegation        effectiveInteractionDelegation
@@ -84,7 +93,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 	ctx context.Context,
 	session *interactionSession,
 	start runs.RootExecutionStart,
-	client *chatclient.Client,
+	model *observedInteractionModel,
 	counter ModelContextInputTokenCounter,
 	maxModelCalls uint32,
 ) (*interactionDeploymentBuilder, error) {
@@ -97,19 +106,22 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 		return nil, err
 	}
 	builder := &interactionDeploymentBuilder{
-		executor: i, session: session, start: start, client: client, counter: counter,
+		executor: i, session: session, start: start, model: model, counter: counter,
 		maxModelCalls: maxModelCalls, delegation: i.policy.delegation,
 		instructions: instructions, rootManifest: rootManifest,
 		deployments: &interactionDeploymentSet{
 			byRef:             make(map[agent.DeploymentRef]agent.Deployment),
+			toolChildren:      make(map[agent.DeploymentRef]struct{}),
 			delegatesByParent: make(map[agent.DeploymentRef]map[string]agent.DeploymentRef),
 			managedChildren:   make(map[agent.DeploymentRef]struct{}),
-			treeLimits:        agent.TreeLimits{MaxDepth: 1, MaxChildren: 1, MaxActiveChildren: 1, MaxTreeProcesses: 1},
+			treeLimits:        toolTreeLimits(maxModelCalls, i.policy),
 		},
 	}
 	if start.ChildRunAdmissionEnabled {
 		builder.maxDepth = builder.delegation.treeLimits.MaxDepth
-		builder.deployments.treeLimits = builder.delegation.treeLimits
+		builder.deployments.treeLimits = withToolTreeCapacity(
+			builder.delegation.treeLimits, maxModelCalls, i.policy,
+		)
 	}
 	if builder.maxDepth > 0 {
 		builder.delegatedManifest, err = i.resolveInteractionManifest(ctx, domaintool.GroupDelegated)
@@ -148,14 +160,6 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	if err != nil {
 		return agent.Deployment{}, err
 	}
-	definition, err := interaction.NewDefinition(interaction.DefinitionConfig{
-		Name: definitionName, Description: definitionDescription,
-		MaxModelCalls: i.maxModelCalls,
-		Delegates:     delegates,
-	})
-	if err != nil {
-		return agent.Deployment{}, fmt.Errorf("agentexec: build Interaction definition at depth %d: %w", depth, err)
-	}
 	visible, deferred, err := wrapInteractionTools(
 		manifest,
 		i.session,
@@ -166,6 +170,45 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	if err != nil {
 		return agent.Deployment{}, fmt.Errorf("agentexec: wrap Interaction tools at depth %d: %w", depth, err)
 	}
+	// An ordinary Tool is a child Process with its own Deployment now, so the
+	// Tool authority belongs to the Definition rather than to the model
+	// boundary. Flame grants no Framework capability names, so a Tool child runs
+	// under the empty set its parent also holds. A layer with no Tools carries
+	// the zero ToolSet, which is how the absence is spelled.
+	var tools interaction.ToolSet
+	if len(visible)+len(deferred) > 0 {
+		tools, err = interaction.NewToolSet(interaction.ToolSetConfig{
+			Name: definitionName + ".tools", Description: definitionDescription,
+			Tools: visible, DeferredTools: deferred,
+			ImplementationDigest: agent.ComputeDigest([]byte(i.executor.implementationIdentity.String())),
+			ConfigurationDigest:  agent.ComputeDigest([]byte(i.executor.configurationIdentity.String())),
+		})
+		if err != nil {
+			return agent.Deployment{}, fmt.Errorf("agentexec: build Interaction Tool set at depth %d: %w", depth, err)
+		}
+	}
+	definitionConfig := interaction.DefinitionConfig{
+		Name: definitionName, Description: definitionDescription,
+		MaxModelCalls: i.maxModelCalls,
+		Delegates:     delegates,
+	}
+	// Tool scheduling policy belongs to a layer that has Tools. A layer without
+	// them carries neither, so the absence is one fact rather than two.
+	if tools.Valid() {
+		definitionConfig.Tools = tools
+		definitionConfig.ToolBudget = i.executor.policy.toolBudget
+		definitionConfig.MaxConcurrentToolCalls = i.executor.policy.maxConcurrentToolCalls
+		// A Tool call is a child Process, so the Engine has to be able to resolve
+		// the Deployment it runs in through this same resolver.
+		toolDeployment := tools.Deployment()
+		i.deployments.byRef[toolDeployment.DeploymentRef()] = toolDeployment
+		i.deployments.managedChildren[toolDeployment.DeploymentRef()] = struct{}{}
+		i.deployments.toolChildren[toolDeployment.DeploymentRef()] = struct{}{}
+	}
+	definition, err := interaction.NewDefinition(definitionConfig)
+	if err != nil {
+		return agent.Deployment{}, fmt.Errorf("agentexec: build Interaction definition at depth %d: %w", depth, err)
+	}
 	contextReducer := newInteractionModelContextReducer(
 		i.executor.config.ModelContextCompactor,
 		i.executor.config.ModelContextState,
@@ -174,16 +217,16 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 		i.instructions,
 		i.counter,
 	)
-	responseMode := interaction.ModelResponseComplete
-	if i.executor.config.StreamModelResponses {
-		responseMode = interaction.ModelResponseStream
+	// The Dispatcher takes exactly one model capability. Streaming is requested
+	// by configuration but offered only by a provider that has it, so a
+	// non-streaming provider answers complete responses without a second switch.
+	dispatcherConfig := interaction.DispatcherConfig{ModelContextReducer: contextReducer}
+	if i.executor.config.StreamModelResponses && i.model.Streams() {
+		dispatcherConfig.Streamer = i.model
+	} else {
+		dispatcherConfig.Model = i.model
 	}
-	dispatcher, err := interaction.NewDispatcher(definition, interaction.DispatcherConfig{
-		Client: i.client, Tools: visible, DeferredTools: deferred,
-		MaxConcurrentToolCalls: i.executor.policy.maxConcurrentToolCalls,
-		ResponseMode:           responseMode,
-		ModelContextReducer:    contextReducer,
-	})
+	dispatcher, err := interaction.NewDispatcher(definition, dispatcherConfig)
 	if err != nil {
 		return agent.Deployment{}, fmt.Errorf("agentexec: build Interaction dispatcher at depth %d: %w", depth, err)
 	}
@@ -308,4 +351,56 @@ func interactionInstructionContext(messages []corechat.Message) ([]corechat.Mess
 		instructions = append(instructions, messages[index].Clone())
 	}
 	return instructions, nil
+}
+
+// toolTreeLimits sizes a tree whose only children are ordinary Tool calls. Every
+// Tool call is one child Process, and every Tool call originates in a model
+// response, so the Interaction's own model-call ceiling bounds how many a Run
+// can make: maxModelCalls responses, each requesting at most one batch.
+// MaxChildren and MaxTreeProcesses are lifetime counts, so they are the first
+// ceiling Flame has ever placed on Tool calls per Run; ToolBatchCeiling raises
+// it without touching this derivation.
+func toolTreeLimits(maxModelCalls uint32, policy interactionExecutionPolicy) agent.TreeLimits {
+	calls := toolCallCeiling(maxModelCalls, policy)
+	return agent.TreeLimits{
+		MaxDepth: 2, MaxChildren: calls,
+		MaxActiveChildren: uint32(policy.maxConcurrentToolCalls),
+		MaxTreeProcesses:  calls + 1,
+	}
+}
+
+// withToolTreeCapacity widens delegation limits so each Interaction layer can
+// still call its Tools. A delegated layer is a Process that also spawns one
+// child per Tool call, so the delegate ceilings alone would starve them.
+func withToolTreeCapacity(
+	limits agent.TreeLimits,
+	maxModelCalls uint32,
+	policy interactionExecutionPolicy,
+) agent.TreeLimits {
+	calls := toolCallCeiling(maxModelCalls, policy)
+	limits.MaxDepth++
+	limits.MaxChildren = saturatingAdd(limits.MaxChildren, calls)
+	limits.MaxActiveChildren = saturatingAdd(limits.MaxActiveChildren, uint32(policy.maxConcurrentToolCalls))
+	limits.MaxTreeProcesses = saturatingAdd(
+		limits.MaxTreeProcesses, saturatingMultiply(limits.MaxTreeProcesses, calls),
+	)
+	return limits
+}
+
+func toolCallCeiling(maxModelCalls uint32, policy interactionExecutionPolicy) uint32 {
+	return saturatingMultiply(maxModelCalls, policy.toolBatchCeiling)
+}
+
+func saturatingAdd(left, right uint32) uint32 {
+	if left > math.MaxUint32-right {
+		return math.MaxUint32
+	}
+	return left + right
+}
+
+func saturatingMultiply(left, right uint32) uint32 {
+	if left != 0 && right > math.MaxUint32/left {
+		return math.MaxUint32
+	}
+	return left * right
 }

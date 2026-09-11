@@ -14,10 +14,10 @@ type interactionWaitingSubtreeChange struct {
 	mu sync.Mutex
 
 	session    *interactionSession
-	prepared   *agent.PreparedWaitingSubtreeCancellation
 	checkpoint runs.ExecutorCheckpoint
+	targetID   agent.ProcessID
+	reason     string
 	canceled   []agent.ProcessID
-	paused     []agent.ProcessID
 	retired    []*managedDelegateCall
 	stopExpiry func() bool
 	state      interactionWaitingSubtreeChangeState
@@ -72,18 +72,13 @@ func (i *interactionWaitingSubtreeChange) Apply(
 	if err := i.session.beginSubtreeApplication(i); err != nil {
 		return err
 	}
-	// The Application transaction is already authoritative. Agent Framework staged every
-	// fallible Process change during Prepare, so its apply gate cannot be revoked
-	// by the request that initiated the product command.
-	err := i.prepared.Apply()
+	// The Application has durably committed this cancellation, so submitting it
+	// to the executor happens here rather than during preparation: a requested
+	// cancellation is accepted immediately and cannot be revoked, and preparation
+	// must stay abandonable.
+	err := i.session.cancelPreparedSubtree(i)
 	if err == nil {
 		i.session.commitSubtreeApplication(i)
-	}
-	if err != nil {
-		if discardErr := i.prepared.Discard(); discardErr != nil &&
-			!errors.Is(discardErr, agent.ErrPreparedWaitingSubtreeCancellationResolved) {
-			err = errors.Join(err, fmt.Errorf("discard failed prepared Interaction subtree: %w", discardErr))
-		}
 	}
 	switch {
 	case err != nil:
@@ -116,9 +111,16 @@ func (i *interactionWaitingSubtreeChange) Continue(ctx context.Context) error {
 	// Continue is the first operation that can advance the Process tree after the
 	// Application durably opened the replacement product Segment.
 	i.session.segmentClock.start()
-	resumeCtx, cancelResume := context.WithTimeout(ctx, authoritativeProjectionTimeout)
-	err := i.session.resumePausedProcesses(resumeCtx, i.paused)
-	cancelResume()
+	// Which members survive this cancellation is a product fact the preparation
+	// already projected. Which Processes the boundary actually holds is an
+	// execution fact the installed cut owns, and only those need resuming: a
+	// surviving member may have been waiting rather than paused.
+	paused, err := i.session.pausedProcessIDs()
+	if err == nil {
+		resumeCtx, cancelResume := context.WithTimeout(ctx, authoritativeProjectionTimeout)
+		err = i.session.resumePausedProcesses(resumeCtx, paused)
+		cancelResume()
+	}
 	i.session.finishSubtreeContinuation(i, err)
 	if err != nil {
 		return fmt.Errorf("agentexec: continue applied waiting Interaction subtree: %w", err)
@@ -133,9 +135,9 @@ func (i *interactionWaitingSubtreeChange) Discard() error {
 		return nil
 	}
 	i.stopExpirationLocked()
-	if err := i.prepared.Discard(); err != nil {
-		return fmt.Errorf("agentexec: discard waiting Interaction subtree: %w", err)
-	}
+	// Preparation only read the tree, so releasing this boundary is the whole
+	// rollback: an abandoned command leaves the Interaction exactly as parked as
+	// it was, with the target still waiting for its answer.
 	i.state = interactionWaitingSubtreeChangeDiscarded
 	i.session.finishSubtreeDiscard(i)
 	return nil
@@ -183,6 +185,41 @@ func (i *interactionSession) beginSubtreeApplication(
 	}
 	i.state.boundary = interactionBoundarySubtreeApplying
 	change.retired = managedCalls
+	return nil
+}
+
+// cancelPreparedSubtree submits the committed cancellation and replaces the
+// staged cut with the one the tree drained into. The Application already holds
+// the cut this decision was made from; the executor needs the resulting one so a
+// later resume and a restart describe the same tree.
+func (i *interactionSession) cancelPreparedSubtree(
+	change *interactionWaitingSubtreeChange,
+) error {
+	ctx, cancel := context.WithTimeout(
+		context.WithoutCancel(i.lifetime.execution), authoritativeProjectionTimeout,
+	)
+	defer cancel()
+	target, found := i.engine.Process(change.targetID)
+	if !found {
+		return fmt.Errorf("agentexec: waiting subtree target %s is unavailable", change.targetID)
+	}
+	if err := target.RequestCancellation(
+		runExecutionContext(ctx, i.scope, i.start), change.reason,
+	); err != nil {
+		return fmt.Errorf("agentexec: cancel waiting Interaction subtree: %w", err)
+	}
+	// Nothing needs holding here. A tree that stays waiting is held by the
+	// unanswered external input of the members that survive, and a tree that
+	// resumes is exactly what the committed decision asked for.
+	resultingTree, err := i.engine.CaptureTree(ctx, i.state.process.Relation().RootID())
+	if err != nil {
+		return fmt.Errorf("agentexec: capture canceled Interaction subtree: %w", err)
+	}
+	checkpoint, err := i.executorCheckpoint(resultingTree)
+	if err != nil {
+		return err
+	}
+	change.checkpoint = checkpoint
 	return nil
 }
 

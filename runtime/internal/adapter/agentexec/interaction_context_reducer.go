@@ -8,7 +8,7 @@ import (
 	"reflect"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	coremetadata "github.com/Tangerg/scope/core/metadata"
 )

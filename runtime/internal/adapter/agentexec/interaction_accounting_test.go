@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	"github.com/Tangerg/scope/core/chat"
 )
 

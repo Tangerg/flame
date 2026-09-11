@@ -7,16 +7,20 @@ import (
 	"iter"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 )
 
+// observedInteractionModel projects one resolved provider instance as the
+// Interaction model boundary. Call and Stream are separate capabilities of that
+// instance, so a provider without streaming simply has no streamer here.
 type observedInteractionModel struct {
-	inner   *chatclient.Client
-	session *interactionSession
+	model    corechat.Model
+	streamer corechat.Streamer
+	session  *interactionSession
 }
 
 func (o *observedInteractionModel) Call(
@@ -32,7 +36,7 @@ func (o *observedInteractionModel) Call(
 	if beginExternalCallErr := attempt.beginExternalCall(); beginExternalCallErr != nil {
 		return nil, beginExternalCallErr
 	}
-	response, err := o.inner.Call(ctx, request)
+	response, err := o.model.Call(ctx, request)
 	if err != nil {
 		if projectionErr := o.fail(ctx, invocation, callID); projectionErr != nil {
 			attempt.recordProjectionFailure(projectionErr)
@@ -82,7 +86,7 @@ func (o *observedInteractionModel) Stream(
 			return
 		}
 		var accumulated corechat.ResponseAccumulator
-		for chunk, streamErr := range o.inner.Stream(ctx, request) {
+		for chunk, streamErr := range o.streamer.Stream(ctx, request) {
 			if streamErr != nil {
 				yield(nil, o.finishFailedStream(ctx, invocation, attempt, callID, streamErr))
 				return
@@ -254,17 +258,23 @@ func (o *observedInteractionModel) complete(
 	return o.session.registerDelegateCalls(invocation, modelOutput.Message)
 }
 
-func newObservedInteractionClient(
-	inner *chatclient.Client,
+// newObservedInteractionModel wraps the resolved provider so every model call
+// is attributed before it leaves the Runtime. Streaming is offered only when the
+// provider itself streams; the Dispatcher takes exactly one of the two.
+func newObservedInteractionModel(
+	model corechat.Model,
+	streamer corechat.Streamer,
 	session *interactionSession,
-) (*chatclient.Client, error) {
-	observed := &observedInteractionModel{inner: inner, session: session}
-	client, err := chatclient.New(observed, chatclient.Config{Streamer: observed})
-	if err != nil {
-		return nil, err
+) (*observedInteractionModel, error) {
+	if dependency.Missing(model) {
+		return nil, errors.New("agentexec: Interaction model is required")
 	}
-	return &client, nil
+	return &observedInteractionModel{model: model, streamer: streamer, session: session}, nil
 }
+
+// Streams reports whether this boundary can serve the Dispatcher's streaming
+// capability.
+func (o *observedInteractionModel) Streams() bool { return !dependency.Missing(o.streamer) }
 
 func modelUsage(
 	response *corechat.Response,

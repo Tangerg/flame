@@ -57,7 +57,7 @@ func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Sele
 	if err != nil {
 		return nil, err
 	}
-	m, err := llm.BuildEmbeddingModel(spec)
+	m, err := llm.BuildEmbeddingModel(ctx, spec)
 	if err != nil {
 		return nil, err
 	}

@@ -39,6 +39,12 @@ func (i *interactionSession) admitProcess(
 	if !deployments.managedChild(admission.DeploymentRef()) {
 		return errors.New("agentexec: unmanaged child Process is outside the Runtime projection contract")
 	}
+	// An ordinary Tool call runs as a child Process of the Interaction it belongs
+	// to. It is projected as a Tool Item of its parent Run by the Tool boundary,
+	// so admission has no separate product fact to commit.
+	if deployments.toolChild(admission.DeploymentRef()) {
+		return nil
+	}
 	parentID, _ := relation.ParentID()
 	childKey, _ := relation.ChildKey()
 	identity := delegateCallIdentity{parentID: parentID, childKey: childKey}
@@ -129,6 +135,14 @@ func (i *interactionSession) acknowledgeProcessStartOutcome(
 		if outcome.Status() != agent.ProcessStartOutcomeStatusStarted {
 			return errors.New("agentexec: accepted Interaction root aborted during initialization")
 		}
+		return nil
+	}
+	i.state.mu.Lock()
+	deployments := i.state.deployments
+	i.state.mu.Unlock()
+	// A Tool call's child Process carries no Delegate binding, so its start
+	// outcome has nothing to acknowledge against one.
+	if deployments != nil && deployments.toolChild(admission.DeploymentRef()) {
 		return nil
 	}
 	parentID, _ := relation.ParentID()

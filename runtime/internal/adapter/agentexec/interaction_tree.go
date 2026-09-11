@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
 
 const interactionBarrierPauseReason = "runtime human-input tree barrier"
@@ -67,14 +67,24 @@ func (i *interactionSession) captureHumanInputBarrier(
 	ctx context.Context,
 ) (agent.TreeSnapshot, []runs.MemberInterruption, bool, error) {
 	root := i.state.processHandle()
-	if root == nil || root.Status() != agent.StatusWaiting {
-		return agent.TreeSnapshot{}, nil, false, errors.New("agentexec: Interaction root is not waiting")
+	if root == nil {
+		return agent.TreeSnapshot{}, nil, false, runs.ErrExecutorNotLive
 	}
 	// CaptureTree freezes dispatch while awaiting in-flight effects. An internal
 	// Delegate join can still need another child to start before an effect returns.
-	pending, err := i.hasPendingToolInput(ctx)
-	if err != nil || !pending {
-		return agent.TreeSnapshot{}, nil, false, err
+	inspection, readable := i.inspectTree(ctx)
+	if !readable {
+		return agent.TreeSnapshot{}, nil, false, nil
+	}
+	// A root that is not waiting is not yet a barrier rather than a fault: the
+	// reconciler asks again. This is the only place that decides it, so the
+	// caller no longer pre-reads a status that could move before the cut.
+	rootMember, found := inspection.Process(root.ID())
+	if !found || rootMember.Snapshot.Status() != agent.StatusWaiting {
+		return agent.TreeSnapshot{}, nil, false, nil
+	}
+	if !externallyAddressedWait(inspection) {
+		return agent.TreeSnapshot{}, nil, false, nil
 	}
 	for {
 		tree, err := i.engine.CaptureTree(ctx, root.Relation().RootID())
@@ -111,27 +121,38 @@ func (i *interactionSession) captureHumanInputBarrier(
 	}
 }
 
-func (i *interactionSession) hasPendingToolInput(ctx context.Context) (bool, error) {
-	processes, err := i.managedProcesses()
+// inspectTree reads every member of this Interaction's tree in one pass. A
+// Process no longer answers for itself: Status, unknown Effects and the wait it
+// is addressed by are all facts of one inspection, so asking per member would
+// compose an answer out of readings taken at different moments. Every way the
+// reading can fail — a closed Engine, a tree that is gone, a caller that stopped
+// waiting — reports that no reading is available, never that the Run is broken,
+// so this answers availability instead of handing callers an error to classify.
+func (i *interactionSession) inspectTree(ctx context.Context) (agent.TreeInspection, bool) {
+	root := i.state.processHandle()
+	if root == nil {
+		return agent.TreeInspection{}, false
+	}
+	inspection, err := i.engine.InspectTree(ctx, root.Relation().RootID())
 	if err != nil {
-		return false, err
+		return agent.TreeInspection{}, false
 	}
-	for _, process := range processes {
-		if process.Status() != agent.StatusWaiting {
+	return inspection, true
+}
+
+// externallyAddressedWait reports whether any member holds a wait only the host
+// can answer. The barrier needs that proof before it freezes dispatch, and the
+// same inspection that proved the root is waiting already carries it.
+func externallyAddressedWait(inspection agent.TreeInspection) bool {
+	for _, member := range inspection.Processes {
+		if member.Snapshot.Status() != agent.StatusWaiting {
 			continue
 		}
-		_, found, err := interaction.PendingToolInputFromProcess(ctx, process)
-		if errors.Is(err, agent.ErrProcessFinished) {
-			continue
-		}
-		if err != nil {
-			return false, fmt.Errorf("inspect Interaction member %s input: %w", process.ID(), err)
-		}
-		if found {
-			return true, nil
+		if kind, addressed := member.Snapshot.WaitKind(); addressed && kind == agent.WaitKindExternal {
+			return true
 		}
 	}
-	return false, nil
+	return false
 }
 
 func (i *interactionSession) pendingInterruptions(
@@ -140,24 +161,27 @@ func (i *interactionSession) pendingInterruptions(
 	if !tree.Valid() {
 		return nil, errors.New("agentexec: inspect pending inputs from invalid Interaction tree")
 	}
-	interruptions := make([]runs.MemberInterruption, 0)
+	pendingInputs, err := interaction.PendingToolInputs(tree)
+	if err != nil {
+		return nil, fmt.Errorf("inspect Interaction tree inputs: %w", err)
+	}
+	relations := make(map[agent.ProcessID]agent.ProcessRelation, len(tree.ProcessSnapshots()))
 	for _, snapshot := range tree.ProcessSnapshots() {
-		pending, found, err := interaction.PendingToolInputFromSnapshot(snapshot)
+		relations[snapshot.ProcessID()] = snapshot.Relation()
+	}
+	interruptions := make([]runs.MemberInterruption, 0, len(pendingInputs))
+	for _, pending := range pendingInputs {
+		processID := pending.ProcessID()
+		member, err := i.toolCallMember(relations[processID])
 		if err != nil {
-			return nil, fmt.Errorf("inspect Interaction member %s input: %w", snapshot.ProcessID(), err)
-		}
-		if !found {
-			continue
-		}
-		if _, bound := i.executorMemberByProcessID(snapshot.ProcessID()); !bound {
-			return nil, fmt.Errorf("pending Interaction member %s has no product binding", snapshot.ProcessID())
+			return nil, err
 		}
 		prompt, err := interactioninput.DecodePrompt(pending.Prompt())
 		if err != nil {
-			return nil, fmt.Errorf("decode Interaction member %s prompt: %w", snapshot.ProcessID(), err)
+			return nil, fmt.Errorf("decode Interaction member %s prompt: %w", member.MemberID, err)
 		}
 		interruptions = append(interruptions, runs.MemberInterruption{
-			MemberID: snapshot.ProcessID().String(), RequestID: pending.WaitID().String(), Interrupt: prompt,
+			MemberID: member.MemberID, RequestID: pending.WaitID().String(), Interrupt: prompt,
 		})
 	}
 	slices.SortFunc(interruptions, func(left, right runs.MemberInterruption) int {
@@ -194,39 +218,62 @@ func (i *interactionSession) managedProcesses() ([]*agent.Process, error) {
 	return processes, nil
 }
 
-func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.EffectID, error) {
-	processes, err := i.managedProcesses()
-	if err != nil {
-		return nil, err
+func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.EffectID, bool) {
+	inspection, readable := i.inspectTree(ctx)
+	if !readable {
+		return nil, false
 	}
 	ids := make([]agent.EffectID, 0)
-	for _, process := range processes {
-		unknown, err := process.UnknownEffectIDs(ctx)
-		if errors.Is(err, agent.ErrProcessFinished) {
-			continue
-		}
-		if err != nil {
-			return nil, fmt.Errorf("inspect Interaction member %s effects: %w", process.ID(), err)
-		}
-		ids = append(ids, unknown...)
+	for _, member := range inspection.Processes {
+		ids = append(ids, member.Snapshot.UnknownEffectIDs()...)
 	}
 	slices.SortFunc(ids, func(left, right agent.EffectID) int {
 		return strings.Compare(left.String(), right.String())
 	})
 	ids = slices.Compact(ids)
-	return ids, nil
+	return ids, true
 }
 
-func (i *interactionSession) pausedProcessIDs() ([]agent.ProcessID, error) {
+// stagedTree returns the frozen cut this Interaction published its waiting
+// boundary from. Answers and paused members are both read from it rather than
+// from a fresh capture, so they describe the same moment the Interrupts did.
+func (i *interactionSession) stagedTree() (agent.TreeSnapshot, error) {
 	i.state.mu.Lock()
 	checkpoint := i.state.waitingCheckpoint.Clone()
 	i.state.mu.Unlock()
 	state, err := decodeInteractionCheckpointPayload(checkpoint.Payload)
 	if err != nil {
+		return agent.TreeSnapshot{}, err
+	}
+	return state.tree, nil
+}
+
+// stagedPendingInputs indexes the Tool waits of the staged cut by their WaitID.
+// A member may hold several concurrent waits, so the wait — not the member that
+// owns it — is what an answer addresses.
+func (i *interactionSession) stagedPendingInputs() (map[agent.WaitID]interaction.PendingToolInput, error) {
+	tree, err := i.stagedTree()
+	if err != nil {
+		return nil, err
+	}
+	pendingInputs, err := interaction.PendingToolInputs(tree)
+	if err != nil {
+		return nil, fmt.Errorf("inspect staged Interaction inputs: %w", err)
+	}
+	byWait := make(map[agent.WaitID]interaction.PendingToolInput, len(pendingInputs))
+	for _, pending := range pendingInputs {
+		byWait[pending.WaitID()] = pending
+	}
+	return byWait, nil
+}
+
+func (i *interactionSession) pausedProcessIDs() ([]agent.ProcessID, error) {
+	tree, err := i.stagedTree()
+	if err != nil {
 		return nil, err
 	}
 	paused := make([]agent.ProcessID, 0)
-	for _, snapshot := range state.tree.ProcessSnapshots() {
+	for _, snapshot := range tree.ProcessSnapshots() {
 		if snapshot.Status() == agent.StatusPaused {
 			paused = append(paused, snapshot.ProcessID())
 		}
@@ -238,14 +285,22 @@ func (i *interactionSession) resumePausedProcesses(
 	ctx context.Context,
 	processIDs []agent.ProcessID,
 ) error {
+	// Every member is proved paused from one inspection before any of them is
+	// resumed, so a member that already left the boundary cannot be discovered
+	// half way through resuming its siblings.
+	inspection, readable := i.inspectTree(ctx)
+	if !readable {
+		return runs.ErrExecutorNotLive
+	}
 	processes := make([]*agent.Process, len(processIDs))
 	for index, processID := range processIDs {
+		member, inspected := inspection.Process(processID)
+		if !inspected || member.Snapshot.Status() != agent.StatusPaused {
+			return fmt.Errorf("agentexec: Interaction member %s left its paused boundary", processID)
+		}
 		process, found := i.engine.Process(processID)
 		if !found {
 			return fmt.Errorf("agentexec: paused Interaction member %s is unavailable", processID)
-		}
-		if process.Status() != agent.StatusPaused {
-			return fmt.Errorf("agentexec: Interaction member %s left its paused boundary", processID)
 		}
 		processes[index] = process
 	}

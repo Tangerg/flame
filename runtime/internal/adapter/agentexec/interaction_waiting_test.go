@@ -19,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	infraexec "github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -703,15 +702,12 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 		})
 	}
 	t.Run("wrong deployment", func(t *testing.T) {
-		client, err := chatclient.New(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 			return nil, errors.New("model must not be called while restoring")
-		}), chatclient.Config{})
-		if err != nil {
-			t.Fatal(err)
-		}
+		})
 		executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 			Lifetime:     t.Context(),
-			ChatResolver: staticInteractionChatResolver(client), BuildID: interactionTestBuildID,
+			ChatResolver: staticInteractionChatResolver(model), BuildID: interactionTestBuildID,
 			ImplementationIdentity: "interaction-observation-test-build",
 			ConfigurationIdentity:  "different-deployment-configuration",
 		})

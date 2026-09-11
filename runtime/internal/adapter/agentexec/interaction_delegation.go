@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -81,11 +81,9 @@ func effectiveDelegation(values InteractionDelegationPolicyValues) (effectiveInt
 	if !treeLimits.Valid() {
 		return effectiveInteractionDelegation{}, errors.New("agentexec: Interaction delegation tree limits are invalid")
 	}
-	budget, err := agent.NewBudget(agent.BudgetConfig{
-		Steps: childSteps, Effects: childEffects, Signals: childSignals,
-	})
-	if err != nil {
-		return effectiveInteractionDelegation{}, fmt.Errorf("agentexec: Interaction delegation budget: %w", err)
+	budget := agent.Budget{Steps: childSteps, Effects: childEffects, Signals: childSignals}
+	if !budget.Valid() {
+		return effectiveInteractionDelegation{}, errors.New("agentexec: Interaction delegation budget is invalid")
 	}
 	return effectiveInteractionDelegation{treeLimits: treeLimits, processBudget: budget}, nil
 }
@@ -99,11 +97,11 @@ func delegateSubtreeBudget(base agent.Budget, processLevels uint32) (agent.Budge
 		base.Signals > math.MaxUint64/scale {
 		return agent.Budget{}, errors.New("agentexec: delegated subtree budget overflows")
 	}
-	budget, err := agent.NewBudget(agent.BudgetConfig{
+	budget := agent.Budget{
 		Steps: base.Steps * scale, Effects: base.Effects * scale, Signals: base.Signals * scale,
-	})
-	if err != nil {
-		return agent.Budget{}, fmt.Errorf("agentexec: delegated subtree budget: %w", err)
+	}
+	if !budget.Valid() {
+		return agent.Budget{}, errors.New("agentexec: delegated subtree budget is invalid")
 	}
 	return budget, nil
 }

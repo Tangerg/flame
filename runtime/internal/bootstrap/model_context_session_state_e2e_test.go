@@ -172,7 +172,7 @@ func newSessionStateE2ERuntime(
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := chatclient.New(model, chatclient.Config{Streamer: model})
+	client, err := chatclient.New(model, chatclient.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

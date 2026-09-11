@@ -120,6 +120,7 @@ func encodeInteractionCheckpointPayload(
 	if _, err := interactionInstructionContext(wire.Instructions); err != nil {
 		return nil, err
 	}
+	accounted := make(map[agent.ProcessID]struct{}, len(usageByProcess))
 	for processID, byModel := range usageByProcess {
 		models, err := interactionCallCounts(byModel)
 		if err != nil {
@@ -128,6 +129,7 @@ func encodeInteractionCheckpointPayload(
 		if len(models) == 0 {
 			continue
 		}
+		accounted[processID] = struct{}{}
 		wire.Members = append(wire.Members, interactionMemberCallsWire{
 			MemberID: processID.String(), Models: models,
 		})
@@ -140,7 +142,7 @@ func encodeInteractionCheckpointPayload(
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: encode carried Interaction accounting: %w", err)
 	}
-	wire.Contexts, err = encodeInteractionModelContexts(contextByProcess)
+	wire.Contexts, err = encodeInteractionModelContexts(contextByProcess, accounted)
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: encode Interaction model contexts: %w", err)
 	}
@@ -161,11 +163,19 @@ func encodeInteractionCheckpointPayload(
 	return payload, nil
 }
 
+// encodeInteractionModelContexts carries a calibration only for a member this
+// checkpoint also accounts model calls for. The calibration is a projection of
+// those calls, so a member that made none has nothing to carry and a restore
+// would rightly refuse a calibration it cannot attribute.
 func encodeInteractionModelContexts(
 	contexts map[agent.ProcessID]ModelContextTokenCalibration,
+	accounted map[agent.ProcessID]struct{},
 ) ([]interactionModelContextWire, error) {
 	values := make([]interactionModelContextWire, 0, len(contexts))
 	for processID, calibration := range contexts {
+		if _, counted := accounted[processID]; !counted {
+			continue
+		}
 		if !processID.Valid() {
 			return nil, errors.New("model context calibration has an invalid Process identity")
 		}

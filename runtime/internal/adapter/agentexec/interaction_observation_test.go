@@ -21,7 +21,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -731,16 +730,13 @@ func TestInteractionExecutorDoesNotCallToolWhenToolStartCommitFails(t *testing.T
 	if toolCalls != 0 {
 		t.Fatalf("Tool calls = %d, want 0", toolCalls)
 	}
-	if len(payloadsOf[runs.UnknownEffectsDetected](events)) != 0 {
-		t.Fatalf("pre-Tool failure became unknown: %#v", events)
-	}
+	assertUnrecordedToolCallTerminal(t, events)
 	model.mu.Lock()
 	remainingResponses := len(model.responses)
 	model.mu.Unlock()
 	if remainingResponses != 1 {
 		t.Fatalf("remaining model responses = %d, want no model turn after rejected Tool start", remainingResponses)
 	}
-	assertInternalProjectionTerminal(t, events)
 }
 
 func TestInteractionExecutorStopsWhenPreparationFailureCannotCommit(t *testing.T) {
@@ -779,10 +775,7 @@ func TestInteractionExecutorStopsWhenPreparationFailureCannotCommit(t *testing.T
 	if remainingResponses != 1 {
 		t.Fatalf("remaining model responses = %d, want no model turn after rejected preparation result", remainingResponses)
 	}
-	if len(payloadsOf[runs.UnknownEffectsDetected](events)) != 0 {
-		t.Fatalf("preparation failure became an unknown external effect: %#v", events)
-	}
-	assertInternalProjectionTerminal(t, events)
+	assertUnrecordedToolCallTerminal(t, events)
 }
 
 type failingPreparationHooks struct{}
@@ -793,6 +786,21 @@ func (failingPreparationHooks) BeforeToolUse(context.Context, InteractionToolHoo
 
 func (failingPreparationHooks) AfterToolUse(context.Context, InteractionToolHookInput) error {
 	return nil
+}
+
+// assertUnrecordedToolCallTerminal states the outcome of a Tool call the Host
+// could not durably record. Interaction gives a model call a definite
+// host-failure settlement but deliberately gives a Tool none, so the Tool Effect
+// stays unknown and the Run's fate belongs to the Coordinator that owns unknown
+// work, not to an executor-projected terminal.
+func assertUnrecordedToolCallTerminal(t *testing.T, events []runs.ExecutorEvent) {
+	t.Helper()
+	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
+		t.Fatalf("unrecorded Tool call observations = %#v, want one unknown Effect", unknown)
+	}
+	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 0 {
+		t.Fatalf("unknown Tool Effect was projected as a definite terminal: %#v", ended)
+	}
 }
 
 func assertInternalProjectionTerminal(t *testing.T, events []runs.ExecutorEvent) {
@@ -1218,10 +1226,7 @@ func TestInteractionExecutorTerminatesWhenAutomaticDenialCommitFails(t *testing.
 	if remainingResponses != 1 {
 		t.Fatalf("remaining model responses = %d, want no model turn after rejected denial", remainingResponses)
 	}
-	if len(payloadsOf[runs.UnknownEffectsDetected](events)) != 0 {
-		t.Fatalf("pre-Tool denial failure became unknown: %#v", events)
-	}
-	assertInternalProjectionTerminal(t, events)
+	assertUnrecordedToolCallTerminal(t, events)
 }
 
 func TestInteractionExecutorPreservesNoProgressDoomLoopBrake(t *testing.T) {
@@ -1532,15 +1537,11 @@ func newObservedTestInteractionExecutor(
 	extra InteractionExecutorConfig,
 ) *InteractionExecutor {
 	t.Helper()
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	var counter modeladapter.InputTokenCounter
 	if modelCounter, ok := model.(modeladapter.InputTokenCounter); ok {
 		counter = modelCounter
 	}
-	extra.ChatResolver = interactionChatResolver(client, counter)
+	extra.ChatResolver = interactionChatResolver(model, counter)
 	extra.Lifetime = t.Context()
 	extra.ImplementationIdentity = "interaction-observation-test-build"
 	extra.ConfigurationIdentity = "interaction-observation-test-config"

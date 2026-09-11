@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -30,10 +29,6 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	t.Helper()
 
 	model := newWaitingDelegateModel()
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	question, err := toolcontract.NewFunc(toolcontract.FuncConfig{
 		Name: "ask", Description: "Ask the user for the value required by delegated work.",
 	}, waitingDelegateQuestion)
@@ -42,7 +37,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	}
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(client),
+		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: identity + "-build",
 		ConfigurationIdentity:  identity + "-config",
 		DefaultMaxModelCalls:   uint32Pointer(4),

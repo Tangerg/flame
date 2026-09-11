@@ -110,8 +110,25 @@ func assertWaitingDelegateBoundary(t *testing.T, barrier runs.TreeBarrierCommit)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if processCount := len(checkpointState.tree.ProcessSnapshots()); processCount != 2 {
-		t.Fatalf("checkpoint Process count = %d, want 2", processCount)
+	// The cut also carries the Tool child that holds the input wait, which is an
+	// execution detail of the member that called it rather than a member of its
+	// own. What the barrier must agree on is that every member it suspends was
+	// captured, and that no Interrupt is addressed to anything else.
+	captured := make(map[string]struct{}, len(checkpointState.tree.ProcessSnapshots()))
+	for _, snapshot := range checkpointState.tree.ProcessSnapshots() {
+		captured[snapshot.ProcessID().String()] = struct{}{}
+	}
+	members := make(map[string]struct{}, len(pending.Continuations))
+	for _, continuation := range pending.Continuations {
+		if _, present := captured[continuation.MemberID]; !present {
+			t.Fatalf("suspended member %s is missing from the checkpoint cut", continuation.MemberID)
+		}
+		members[continuation.MemberID] = struct{}{}
+	}
+	for _, binding := range pending.Bindings {
+		if _, member := members[binding.MemberID]; !member {
+			t.Fatalf("Interrupt is addressed to %s, which is not a suspended member", binding.MemberID)
+		}
 	}
 }
 

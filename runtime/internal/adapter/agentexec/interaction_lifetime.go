@@ -8,6 +8,21 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
+// errInteractionReleased reports that a projection could not be delivered
+// because this session's owner began releasing it. Release is a lifecycle fact
+// rather than a Run failure: the owner that released the session publishes the
+// authoritative terminal, so a reconciler that meets this has no fact of its own.
+var errInteractionReleased = errors.New("agentexec: execution released before projection")
+
+// releasedDuringProjection reports that a reconciler lost its ability to publish
+// rather than that it found a broken Run. A caller that stopped waiting and an
+// owner that began release are both this session ending, not failing.
+func releasedDuringProjection(err error) bool {
+	return errors.Is(err, errInteractionReleased) ||
+		errors.Is(err, context.Canceled) ||
+		errors.Is(err, context.DeadlineExceeded)
+}
+
 // interactionLifetime owns every goroutine and channel whose lifetime is the
 // staged Interaction session. The execution context follows the external
 // owner; its reconciliation child can stop before post-Run maintenance without
@@ -107,7 +122,7 @@ func (i *interactionLifetime) sendAuthoritative(
 	case i.events <- event:
 		return nil
 	case <-i.releasing:
-		return errors.New("agentexec: execution released before authoritative fact commit")
+		return errInteractionReleased
 	case <-ctx.Done():
 		return ctx.Err()
 	}

@@ -53,7 +53,7 @@ func TestOllamaCompatibleChatUsesProviderScopedV1Protocol(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	model, err := buildOllamaChatModel(
+	model, err := buildOllamaChatModel(t.Context(),
 		mustClientSpec(t, ProviderOllama, "qwen3:8b", "", server.URL),
 		chat.Options{Model: "qwen3:8b"},
 	)
@@ -93,7 +93,7 @@ func TestOllamaCompatibleEmbeddingUsesV1Protocol(t *testing.T) {
 	if err := opts.Validate(); err != nil {
 		t.Fatalf("Options.Validate: %v", err)
 	}
-	model, err := buildOllamaEmbeddingModel(
+	model, err := buildOllamaEmbeddingModel(t.Context(),
 		mustClientSpec(t, ProviderOllama, "nomic-embed-text", "configured-key", server.URL+"/v1/"),
 		opts,
 	)

@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -18,9 +19,9 @@ const (
 // buildOllamaChatModel uses the daemon's supported OpenAI-compatible surface.
 // Keeping the protocol adapter provider-scoped preserves ollama/* extension
 // ownership without importing Ollama's server repository into the Runtime.
-func buildOllamaChatModel(spec ClientSpec, opts chat.Options) (chat.Model, error) {
+func buildOllamaChatModel(ctx context.Context, spec ClientSpec, opts chat.Options) (chat.Model, error) {
 	apiKey, httpClient := ollamaProtocolAuthentication(spec)
-	return openaiprotocol.NewCompatibleChatCompletions(openaiprotocol.ChatCompletionsConfig{
+	return openaiprotocol.NewCompatibleChatCompletions(ctx, openaiprotocol.ChatCompletionsConfig{
 		APIKey:         apiKey,
 		DefaultOptions: opts,
 		BaseURL:        ollamaOpenAIBaseURL(spec.sdkBaseURL()),
@@ -32,9 +33,9 @@ func buildOllamaChatModel(spec ClientSpec, opts chat.Options) (chat.Model, error
 
 // buildOllamaEmbeddingModel uses /v1/embeddings for the same reason as chat:
 // Runtime needs a client protocol, not Ollama's model-management server module.
-func buildOllamaEmbeddingModel(spec ClientSpec, opts embedding.Options) (embedding.Model, error) {
+func buildOllamaEmbeddingModel(ctx context.Context, spec ClientSpec, opts embedding.Options) (embedding.Model, error) {
 	apiKey, httpClient := ollamaProtocolAuthentication(spec)
-	return openaiprotocol.NewEmbeddingModel(openaiprotocol.EmbeddingModelConfig{
+	return openaiprotocol.NewEmbeddingModel(ctx, openaiprotocol.EmbeddingModelConfig{
 		Provider:       ollamaProtocolProvider,
 		APIKey:         apiKey,
 		DefaultOptions: opts,

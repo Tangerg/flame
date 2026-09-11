@@ -24,23 +24,36 @@ type InputTokenCounter interface {
 // the capabilities Runtime consumes. Its client and optional token counter
 // always share the same underlying model and credential snapshot.
 type ResolvedChat struct {
-	client            *chatclient.Client
+	model             corechat.Model
 	inputTokenCounter InputTokenCounter
 }
 
 // NewResolvedChat validates and freezes one resolved chat construction.
-func NewResolvedChat(client *chatclient.Client, counter InputTokenCounter) (ResolvedChat, error) {
-	if client == nil {
-		return ResolvedChat{}, errors.New("model: resolved chat client is nil")
+func NewResolvedChat(model corechat.Model, counter InputTokenCounter) (ResolvedChat, error) {
+	if dependency.Missing(model) {
+		return ResolvedChat{}, errors.New("model: resolved chat model is nil")
 	}
 	if counter != nil && dependency.Missing(counter) {
 		return ResolvedChat{}, errors.New("model: resolved chat input token counter is nil")
 	}
-	return ResolvedChat{client: client, inputTokenCounter: counter}, nil
+	return ResolvedChat{model: model, inputTokenCounter: counter}, nil
 }
 
-// Client returns the ordinary chat projection.
-func (r ResolvedChat) Client() *chatclient.Client { return r.client }
+// Model returns the exact provider instance every other projection is taken
+// from. Streaming and token counting are optional capabilities of that one
+// instance, so a caller that needs them asks it rather than a second build.
+func (r ResolvedChat) Model() corechat.Model { return r.model }
+
+// Streamer returns the streaming projection when this provider has one.
+func (r ResolvedChat) Streamer() (corechat.Streamer, bool) {
+	streamer, ok := r.model.(corechat.Streamer)
+	return streamer, ok
+}
+
+// Client returns the ordinary call projection over the same instance.
+func (r ResolvedChat) Client() (chatclient.Client, error) {
+	return chatclient.New(r.model, chatclient.Config{})
+}
 
 // InputTokenCounter returns the optional complete-request counting projection.
 func (r ResolvedChat) InputTokenCounter() (InputTokenCounter, bool) {
@@ -83,7 +96,7 @@ func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelref.Selec
 	if err != nil {
 		return ResolvedChat{}, err
 	}
-	client, counter, err := llm.BuildChat(spec)
+	client, counter, err := llm.BuildChat(ctx, spec)
 	if err != nil {
 		return ResolvedChat{}, err
 	}

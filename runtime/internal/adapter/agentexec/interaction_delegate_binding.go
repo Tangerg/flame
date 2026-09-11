@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -247,4 +247,22 @@ func (i *interactionSession) executorMemberByProcessID(
 	}
 	managed.mu.Unlock()
 	return member, true
+}
+
+// toolCallMember resolves the product member that requested one Tool call. The
+// call runs in its own child Process, which spawns no Run and therefore never
+// becomes a member; its durable facts and its input wait alike belong to the
+// Interaction member that called it.
+func (i *interactionSession) toolCallMember(
+	relation agent.ProcessRelation,
+) (runs.ExecutorMember, error) {
+	callerID, child := relation.ParentID()
+	if !child {
+		return runs.ExecutorMember{}, errors.New("agentexec: Tool call has no calling Interaction member")
+	}
+	member, bound := i.executorMemberByProcessID(callerID)
+	if !bound {
+		return runs.ExecutorMember{}, fmt.Errorf("agentexec: Tool caller %s has no product binding", callerID)
+	}
+	return member, nil
 }

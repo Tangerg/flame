@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
 )
 
 // BeginContinuation converts every validated application answer into an
@@ -101,26 +100,29 @@ func (i *interactionSession) prepareContinuationAnswers(
 			len(orderedAnswers), len(interruptions),
 		)
 	}
+	stagedInputs, err := i.stagedPendingInputs()
+	if err != nil {
+		return nil, err
+	}
 	prepared := make([]preparedInteractionAnswer, 0, len(orderedAnswers))
 	for index, answer := range orderedAnswers {
 		expected := interruptions[index]
 		if answer.MemberID != expected.MemberID || answer.RequestID != expected.RequestID {
 			return nil, errors.New("agentexec: interrupt answer set differs from the staged Interaction inputs")
 		}
-		processID, err := agent.ParseProcessID(answer.MemberID)
+		waitID, err := agent.ParseWaitID(answer.RequestID)
 		if err != nil {
-			return nil, fmt.Errorf("agentexec: parse answered Interaction member: %w", err)
+			return nil, fmt.Errorf("agentexec: parse answered Interaction input: %w", err)
 		}
-		process, found := i.engine.Process(processID)
+		// The answer addresses a wait, not a member. The Tool child holding that
+		// wait is the staged cut's own fact, so the member never has to name it.
+		pending, found := stagedInputs[waitID]
 		if !found {
-			return nil, errors.New("agentexec: answered Interaction member is unavailable")
-		}
-		pending, found, err := interaction.PendingToolInputFromProcess(ctx, process)
-		if err != nil {
-			return nil, fmt.Errorf("agentexec: inspect pending Interaction input: %w", err)
-		}
-		if !found || answer.RequestID != pending.WaitID().String() {
 			return nil, errors.New("agentexec: interrupt answer does not address the active Interaction input")
+		}
+		process, found := i.engine.Process(pending.ProcessID())
+		if !found {
+			return nil, errors.New("agentexec: answered Interaction input is unavailable")
 		}
 		response, err := interactioninput.EncodeResolution(answer.Resolution)
 		if err != nil {
@@ -170,7 +172,7 @@ func (i *interactionSession) deliverContinuationAnswers(
 		}()
 	}
 	for _, answer := range answers {
-		accepted, err := answer.process.DeliverSignal(deliveryContext, answer.signal)
+		accepted, err := answer.process.DeliverSignals(deliveryContext, answer.signal)
 		if err != nil {
 			return fmt.Errorf("agentexec: deliver Interaction answer Signal: %w", err)
 		}

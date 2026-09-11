@@ -56,10 +56,11 @@ func LiveUtilityClient(
 				err,
 			)
 		}
-		if resolved.Client() == nil {
-			return nil, errors.New("auxiliary model: resolved client is nil")
+		client, err := resolved.Client()
+		if err != nil {
+			return nil, fmt.Errorf("auxiliary model: chat client: %w", err)
 		}
-		return resolved.Client(), nil
+		return &client, nil
 	}, nil
 }
 

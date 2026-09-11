@@ -138,8 +138,10 @@ type RunningSubtreeCanceler interface {
 	) error
 }
 
-// WaitingSubtreeCancellationPreparer freezes one exact waiting executor tree
-// and returns its prospective product projection plus a one-shot change. The
+// WaitingSubtreeCancellationPreparer projects one exact waiting executor tree as
+// this cancellation would leave it and returns that projection plus a one-shot
+// change. Preparation only reads: the tree is already parked on an unanswered
+// external boundary, and the cancellation itself is submitted by Apply. The
 // implementation may use a matching live tree or restore only the supplied
 // opaque checkpoint; it never reads Application persistence.
 type WaitingSubtreeCancellationPreparer interface {
@@ -168,8 +170,8 @@ func (w WaitingSubtreeDisposition) Valid() bool {
 }
 
 // WaitingSubtreeChange is the one-shot executor capability attached to a
-// prepared cancellation. Apply installs the committed tree disposition after
-// the application transaction succeeds. Continue advances a disposition that
+// prepared cancellation. Apply submits the cancellation and installs the
+// committed tree disposition after the application transaction succeeds. Continue advances a disposition that
 // removed the final external boundary; it is a distinct activation phase so an
 // execution failure cannot be mistaken for a failed state installation.
 // Discard idempotently releases a change that was not applied.

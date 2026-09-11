@@ -17,9 +17,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 )
 
 func uint32Pointer(value uint32) *uint32 { return &value }
@@ -108,13 +107,9 @@ func TestDelegateSubtreeBudgetReservesEveryRemainingProcessLevel(t *testing.T) {
 
 func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	model := newDelegatingStubModel()
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(client),
+		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-delegate-test-build",
 		ConfigurationIdentity:  "interaction-delegate-test-config", DefaultMaxModelCalls: uint32Pointer(4),
 		BuildID: interactionTestBuildID,
@@ -248,13 +243,9 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 
 func TestInteractionExecutorCancelsRunningDelegateAndKeepsRootRunning(t *testing.T) {
 	model := newCancelableDelegateModel()
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(client),
+		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-running-cancel-test-build",
 		ConfigurationIdentity:  "interaction-running-cancel-test-config", DefaultMaxModelCalls: uint32Pointer(4),
 		BuildID: interactionTestBuildID,
@@ -463,7 +454,15 @@ func TestInteractionExecutorInternalDelegateWaitDoesNotFreezeRunningChild(t *tes
 		t.Fatalf("active executions = %d, want one root tree", len(active))
 	}
 	execution := active[0]
-	for execution.state.processHandle().Status() != agent.StatusWaiting {
+	for {
+		inspection, readable := execution.inspectTree(ctx)
+		if !readable {
+			t.Fatal("Interaction tree is not inspectable")
+		}
+		root, inspected := inspection.Process(execution.state.processHandle().ID())
+		if inspected && root.Snapshot.Status() == agent.StatusWaiting {
+			break
+		}
 		select {
 		case <-ctx.Done():
 			t.Fatal("root did not wait for its running child")
@@ -594,13 +593,9 @@ type delegateTreeFixture struct {
 
 func startDelegateTree(t *testing.T, model chat.Model, input string) *delegateTreeFixture {
 	t.Helper()
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(client),
+		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-delegate-tree-test-build",
 		ConfigurationIdentity:  "interaction-delegate-tree-test-config", DefaultMaxModelCalls: uint32Pointer(6),
 		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,

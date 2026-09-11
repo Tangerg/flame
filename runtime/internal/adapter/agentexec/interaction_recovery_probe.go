@@ -2,6 +2,7 @@ package agentexec
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -60,7 +61,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	}
 	process, err := assembled.engine.RestoreTree(ctx, assembled.deployment, state.tree)
 	if err != nil {
-		_ = assembled.engine.Close()
+		_ = assembled.engine.Close(ctx)
 		return false, nil
 	}
 	defer discardRestoredInteraction(assembled, process)
@@ -72,9 +73,9 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	); initializeRestoredContinuationErr != nil {
 		return false, nil
 	}
-	unknown, err := assembled.unknownEffectIDs(ctx)
-	if err != nil {
-		return false, fmt.Errorf("agentexec: inspect Interaction checkpoint effects: %w", err)
+	unknown, readable := assembled.unknownEffectIDs(ctx)
+	if !readable {
+		return false, errors.New("agentexec: Interaction checkpoint tree cannot be inspected")
 	}
 	if len(unknown) > 0 {
 		return false, nil

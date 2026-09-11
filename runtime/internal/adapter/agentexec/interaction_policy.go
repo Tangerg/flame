@@ -2,13 +2,32 @@ package agentexec
 
 import (
 	"fmt"
+
 	"github.com/Tangerg/flame/runtime/internal/dependency"
+	agent "github.com/Tangerg/scope/agent"
 	"time"
 )
 
 const (
 	defaultInteractionDeltaBuffer         = 256
 	defaultInteractionConcurrentToolCalls = 1
+)
+
+// A Tool call is one child Process: it executes once and then settles. Its
+// budget is transferred permanently out of the parent's, so it is sized for a
+// single call plus the input rounds that call may take, not for an Interaction.
+// Signals are the bound on how many times a Tool may come back to the user,
+// which is a limit Flame did not previously express at all.
+const (
+	defaultInteractionToolSteps   = 8
+	defaultInteractionToolEffects = 8
+	defaultInteractionToolSignals = 32
+
+	// defaultInteractionToolBatchCeiling bounds how many Tool calls one model
+	// response may turn into child Processes. It is the per-response half of the
+	// lifetime Tool-call ceiling; the other half is the Interaction's own
+	// model-call limit.
+	defaultInteractionToolBatchCeiling = 16
 )
 
 // interactionExecutionPolicy is the validated, immutable execution policy
@@ -22,6 +41,8 @@ type interactionExecutionPolicy struct {
 	unknownEffectPollInterval time.Duration
 	statePollInterval         time.Duration
 	delegation                effectiveInteractionDelegation
+	toolBudget                agent.Budget
+	toolBatchCeiling          uint32
 	toolResultOffload         toolResultOffloadPolicy
 }
 
@@ -50,6 +71,16 @@ func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactio
 	if err != nil {
 		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: Interaction delegation policy: %w", err)
 	}
+	toolBudget, err := effectiveToolBudget(config)
+	if err != nil {
+		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: Interaction Tool policy: %w", err)
+	}
+	toolBatchCeiling, err := positiveOrDefault(
+		config.ToolBatchCeiling, defaultInteractionToolBatchCeiling, "Tool batch ceiling",
+	)
+	if err != nil {
+		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: Interaction Tool policy: %w", err)
+	}
 	toolResultOffload, err := newToolResultOffloadPolicy(config.ToolResultOffload)
 	if err != nil {
 		return interactionExecutionPolicy{}, err
@@ -64,8 +95,31 @@ func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactio
 		unknownEffectPollInterval: unknownPoll,
 		statePollInterval:         statePoll,
 		delegation:                delegation,
+		toolBudget:                toolBudget,
+		toolBatchCeiling:          toolBatchCeiling,
 		toolResultOffload:         toolResultOffload,
 	}, nil
+}
+
+// effectiveToolBudget resolves the allocation each ordinary Tool child receives.
+func effectiveToolBudget(config InteractionExecutorConfig) (agent.Budget, error) {
+	steps, err := positiveOrDefault(config.ToolSteps, defaultInteractionToolSteps, "Tool steps")
+	if err != nil {
+		return agent.Budget{}, err
+	}
+	effects, err := positiveOrDefault(config.ToolEffects, defaultInteractionToolEffects, "Tool effects")
+	if err != nil {
+		return agent.Budget{}, err
+	}
+	signals, err := positiveOrDefault(config.ToolSignals, defaultInteractionToolSignals, "Tool signals")
+	if err != nil {
+		return agent.Budget{}, err
+	}
+	budget := agent.Budget{Steps: steps, Effects: effects, Signals: signals}
+	if !budget.Valid() {
+		return agent.Budget{}, fmt.Errorf("Tool budget is invalid")
+	}
+	return budget, nil
 }
 
 // positiveNumber is every limit shape Interaction policy and delegation accept:

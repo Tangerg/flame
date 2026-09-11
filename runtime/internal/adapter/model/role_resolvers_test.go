@@ -3,12 +3,12 @@ package model
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 )
 
 type recordingChatResolver struct {
@@ -38,26 +38,26 @@ func (*pointerInputTokenCounter) CountInputTokens(
 }
 
 func TestResolvedChatRejectsTypedNilInputTokenCounter(t *testing.T) {
-	client := newTestChatClient(t)
+	model := newTestChatModel(t)
 	var counter *pointerInputTokenCounter
 
-	resolved, err := NewResolvedChat(client, counter)
+	resolved, err := NewResolvedChat(model, counter)
 
-	if err == nil || resolved.Client() != nil {
+	if err == nil || !dependency.Missing(resolved.Model()) {
 		t.Fatalf("NewResolvedChat typed-nil counter = (%v, %v), want invalid construction", resolved, err)
 	}
 }
 
 func TestLiveUtilityClientResolvesMainForEveryUse(t *testing.T) {
 	selection := mustRoleSelection(t, "anthropic", "claude-test")
-	client := newTestChatClient(t)
+	model := newTestChatModel(t)
 	calls := 0
 	resolver := recordingChatResolver{resolve: func(got modelref.Selection) (ResolvedChat, error) {
 		calls++
 		if got != selection {
 			t.Fatalf("selection = %#v, want %#v", got, selection)
 		}
-		return mustResolvedChat(t, client, nil), nil
+		return mustResolvedChat(t, model, nil), nil
 	}}
 	resolve, err := LiveUtilityClient(resolver, selection, staticRoleSource{})
 	if err != nil {
@@ -69,8 +69,11 @@ func TestLiveUtilityClientResolvesMainForEveryUse(t *testing.T) {
 	if firstErr != nil || secondErr != nil {
 		t.Fatalf("resolve errors = (%v, %v)", firstErr, secondErr)
 	}
-	if first != client || second != client {
-		t.Fatalf("resolved clients = (%p, %p), want (%p, %p)", first, second, client, client)
+	// A client is a projection of the resolved model, so each resolution builds
+	// its own. What must hold is that both are usable and that neither was
+	// served from a cache.
+	if first == nil || second == nil {
+		t.Fatalf("resolved clients = (%v, %v), want two usable clients", first, second)
 	}
 	if calls != 2 {
 		t.Fatalf("resolver calls = %d, want 2 current-registry reads", calls)
@@ -81,14 +84,14 @@ func TestLiveUtilityClientReturnsConfiguredRoleFailureWithoutFallback(t *testing
 	mainSelection := mustRoleSelection(t, "anthropic", "claude-main")
 	utilityRole := mustRole(t, "openai", "utility-model")
 	utilitySelection := utilityRole.Selection()
-	client := newTestChatClient(t)
+	model := newTestChatModel(t)
 	var resolved []modelref.Selection
 	resolver := recordingChatResolver{resolve: func(selection modelref.Selection) (ResolvedChat, error) {
 		resolved = append(resolved, selection)
 		if selection.Equal(utilitySelection) {
 			return ResolvedChat{}, errors.New("utility provider unavailable")
 		}
-		return mustResolvedChat(t, client, nil), nil
+		return mustResolvedChat(t, model, nil), nil
 	}}
 	resolve, err := LiveUtilityClient(resolver, mainSelection, staticRoleSource{role: utilityRole})
 	if err != nil {
@@ -122,20 +125,16 @@ func mustRole(t testing.TB, providerID, model string) modelref.Role {
 	return role
 }
 
-func newTestChatClient(t testing.TB) *chatclient.Client {
+func newTestChatModel(t testing.TB) chat.Model {
 	t.Helper()
-	client, err := chatclient.New(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+	return chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return nil, errors.New("unused test model")
-	}), chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return &client
+	})
 }
 
-func mustResolvedChat(t testing.TB, client *chatclient.Client, counter InputTokenCounter) ResolvedChat {
+func mustResolvedChat(t testing.TB, model chat.Model, counter InputTokenCounter) ResolvedChat {
 	t.Helper()
-	resolved, err := NewResolvedChat(client, counter)
+	resolved, err := NewResolvedChat(model, counter)
 	if err != nil {
 		t.Fatal(err)
 	}

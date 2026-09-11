@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	agent "github.com/Tangerg/scope/agent"
 )
 
-// PrepareWaitingSubtreeCancellation freezes one exact waiting Interaction tree
-// until the returned Application capability is applied or discarded.
+// PrepareWaitingSubtreeCancellation projects one exact waiting Interaction tree
+// as this cancellation would leave it, and claims the tree's boundary until the
+// returned Application capability is applied or discarded. It changes nothing:
+// the cancellation is submitted by Apply, once the Application has committed it.
 func (i *InteractionExecutor) PrepareWaitingSubtreeCancellation(
 	ctx context.Context,
 	request runs.WaitingSubtreeCancellationRequest,
@@ -88,14 +91,6 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 			"%w: Interaction tree has an active observer",
 			runs.ErrExecutionClaimed,
 		)
-	case !isInteractionWaitingBoundary(i.state.process.Status()):
-		status := i.state.process.Status()
-		i.state.mu.Unlock()
-		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(
-			"%w: Interaction root is %s",
-			runs.ErrExecutionClaimed,
-			status,
-		)
 	}
 	if !executorCheckpointsEqual(i.state.waitingCheckpoint, expectedCheckpoint) {
 		i.state.mu.Unlock()
@@ -115,38 +110,40 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 	i.state.subtreePrepared = preparedSignal
 	i.state.mu.Unlock()
 
-	frameworkChange, err := i.engine.PrepareWaitingSubtreeCancellation(
-		ctx,
-		rootID,
-		targetID,
-		reason,
-	)
-	if err != nil {
+	// A requested cancellation is committed the moment it is submitted and drains
+	// from there, so the executor cannot hold a tree that has already been asked
+	// to cancel. Preparation therefore decides against the cut this tree is
+	// already parked on, which nothing can advance while its input stays
+	// unanswered, and leaves the submission itself to Apply.
+	if _, found := i.engine.Process(targetID); !found {
 		i.failSubtreePreparation(preparedSignal)
-		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(
-			"agentexec: prepare waiting Interaction subtree: %w",
-			err,
-		)
+		return runs.PreparedWaitingSubtreeCancellation{}, errors.New("agentexec: waiting subtree target is unavailable")
 	}
 	discard := true
 	defer func() {
 		if discard {
-			_ = frameworkChange.Discard()
+			_ = i.discardPreparedSubtree(context.WithoutCancel(ctx))
 		}
 	}()
-	resultingTree := frameworkChange.ResultingSnapshot()
+	stagedTree, err := i.stagedTree()
+	if err != nil {
+		i.failSubtreePreparation(preparedSignal)
+		return runs.PreparedWaitingSubtreeCancellation{}, err
+	}
+	canceled, paused := i.partitionCapturedSubtree(stagedTree, targetID)
+	resultingTree, err := i.engine.CaptureTree(ctx, rootID)
+	if err != nil {
+		i.failSubtreePreparation(preparedSignal)
+		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(
+			"agentexec: capture waiting Interaction subtree: %w",
+			err,
+		)
+	}
 	checkpoint, err := i.executorCheckpoint(resultingTree)
 	if err != nil {
 		i.failSubtreePreparation(preparedSignal)
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
-	interruptions, err := i.pendingInterruptions(resultingTree)
-	if err != nil {
-		i.failSubtreePreparation(preparedSignal)
-		return runs.PreparedWaitingSubtreeCancellation{}, err
-	}
-	canceled := frameworkChange.CanceledProcessIDs()
-	paused := frameworkChange.PausedProcessIDs()
 	canceledMembers, err := i.executorMemberIDs(canceled)
 	if err != nil {
 		i.failSubtreePreparation(preparedSignal)
@@ -157,9 +154,22 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 		i.failSubtreePreparation(preparedSignal)
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
+	interruptions, err := i.pendingInterruptions(resultingTree)
+	if err != nil {
+		i.failSubtreePreparation(preparedSignal)
+		return runs.PreparedWaitingSubtreeCancellation{}, err
+	}
+	// The cut still shows the target's own input wait, because the accepted
+	// cancellation is draining rather than finished. An Interrupt owned by a
+	// member this preparation ends is no longer pending: it dies with the member,
+	// and only the surviving members still await an answer.
+	interruptions = slices.DeleteFunc(interruptions, func(interruption runs.MemberInterruption) bool {
+		return slices.Contains(canceledMembers, interruption.MemberID)
+	})
 	change := &interactionWaitingSubtreeChange{
-		session: i, prepared: frameworkChange, checkpoint: checkpoint.Clone(),
-		canceled: slices.Clone(canceled), paused: slices.Clone(paused),
+		session: i, checkpoint: checkpoint.Clone(),
+		targetID: targetID, reason: reason,
+		canceled: slices.Clone(canceled),
 	}
 	managed.mu.Lock()
 	// The target is the host-canceled root of this prepared subtree. Descendants
@@ -238,4 +248,73 @@ func (i *interactionSession) completeSubtreePreparation(
 	i.state.subtreePrepared = nil
 	close(preparedSignal)
 	return nil
+}
+
+// partitionCapturedSubtree reads the outcome of a requested cancellation out of
+// the cut that captured it. A member the cancellation took is terminal in the
+// cut; every other member was quiesced by the capture and is the set Continue
+// has to resume. The target itself is always the canceled root of this subtree.
+// partitionCapturedSubtree splits the product members of one captured cut into
+// the target's subtree, which the accepted cancellation ends, and the members it
+// leaves quiesced. The cut freezes the tree at a Strategy-safe boundary while
+// that cancellation is still draining, so lineage states which side a member is
+// on and a status read would only describe how far the drain had got. A Tool
+// call's child Process is not a member of its own: it travels with the member
+// that called it, whichever side that member lands on.
+func (i *interactionSession) partitionCapturedSubtree(
+	tree agent.TreeSnapshot,
+	targetID agent.ProcessID,
+) (canceled []agent.ProcessID, quiesced []agent.ProcessID) {
+	i.state.mu.Lock()
+	deployments := i.state.deployments
+	i.state.mu.Unlock()
+	parents := capturedParents(tree)
+	canceled = make([]agent.ProcessID, 0)
+	quiesced = make([]agent.ProcessID, 0)
+	for _, snapshot := range tree.ProcessSnapshots() {
+		if deployments != nil && deployments.toolChild(snapshot.DeploymentRef()) {
+			continue
+		}
+		processID := snapshot.ProcessID()
+		if descendsFrom(parents, processID, targetID) {
+			canceled = append(canceled, processID)
+			continue
+		}
+		quiesced = append(quiesced, processID)
+	}
+	slices.SortFunc(canceled, func(left, right agent.ProcessID) int {
+		return strings.Compare(left.String(), right.String())
+	})
+	slices.SortFunc(quiesced, func(left, right agent.ProcessID) int {
+		return strings.Compare(left.String(), right.String())
+	})
+	return canceled, quiesced
+}
+
+func capturedParents(tree agent.TreeSnapshot) map[agent.ProcessID]agent.ProcessID {
+	parents := make(map[agent.ProcessID]agent.ProcessID, len(tree.ProcessSnapshots()))
+	for _, snapshot := range tree.ProcessSnapshots() {
+		if parentID, child := snapshot.Relation().ParentID(); child {
+			parents[snapshot.ProcessID()] = parentID
+		}
+	}
+	return parents
+}
+
+func descendsFrom(
+	parents map[agent.ProcessID]agent.ProcessID,
+	processID agent.ProcessID,
+	ancestorID agent.ProcessID,
+) bool {
+	for range len(parents) + 1 {
+		if processID == ancestorID {
+			return true
+		}
+		parentID, child := parents[processID]
+		if !child {
+			return false
+		}
+		processID = parentID
+	}
+	return false
 }

@@ -17,9 +17,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -53,16 +52,12 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 			}, 2, 1), nil
 		}
 	})
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	question, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "ask", Description: "Ask for a value."}, waitingDelegateQuestion)
 	if err != nil {
 		t.Fatal(err)
 	}
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
-		Lifetime: t.Context(), ChatResolver: staticInteractionChatResolver(client),
+		Lifetime: t.Context(), ChatResolver: staticInteractionChatResolver(model),
 		ImplementationIdentity: "completed-sibling-build", ConfigurationIdentity: "completed-sibling-config",
 		DefaultMaxModelCalls: uint32Pointer(6), MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
 		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},

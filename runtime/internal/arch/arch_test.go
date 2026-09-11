@@ -434,8 +434,8 @@ func TestApplicationDoesNotInterpretExecutorContinuationState(t *testing.T) {
 func TestAgentFrameworkStaysBehindAgentexec(t *testing.T) {
 	const agentexecDir = "internal/adapter/agentexec"
 	allowedImports := map[string]struct{}{
-		"github.com/Tangerg/scope/agent":             {},
-		"github.com/Tangerg/scope/agent/interaction": {},
+		"github.com/Tangerg/scope/agent":                      {},
+		"github.com/Tangerg/scope/agent/strategy/interaction": {},
 	}
 	root := moduleRoot(t)
 	fset := token.NewFileSet()

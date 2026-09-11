@@ -32,7 +32,7 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 		t.Fatal(err)
 	}
 	model := &longContextModel{}
-	client, err := chatclient.New(model, chatclient.Config{Streamer: model})
+	client, err := chatclient.New(model, chatclient.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}

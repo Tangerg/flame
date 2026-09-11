@@ -17,7 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -42,12 +42,27 @@ func (o *observedInteractionTool) Definition() corechat.ToolDefinition {
 func (o *observedInteractionTool) Unwrap() toolcontract.Tool { return o.inner }
 
 func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.Invocation) (corechat.ToolOutput, error) {
-	invocation, attempt, arguments, callID, err := o.attributedInvocation(ctx, bound)
+	invocation, arguments, callID, err := o.attributedInvocation(ctx, bound)
 	if err != nil {
 		return corechat.ToolOutput{}, err
 	}
 	call := invocation.ToolCall()
+	member, err := o.session.toolCallMember(invocation.Relation())
+	if err != nil {
+		return corechat.ToolOutput{}, err
+	}
+	dispatchKey, addressable := toolCallDispatchKey(invocation)
+	if !addressable {
+		return corechat.ToolOutput{}, errors.New("agentexec: Tool call has no calling Interaction member")
+	}
+	// A Tool call runs in its own child Process, so it inherits neither the
+	// Interaction's execution context nor the product cancellation plane bound to
+	// the caller's own Effects. Both belong to the Run that made the call, which
+	// this binding already knows.
+	ctx = runExecutionContext(ctx, o.session.scope, o.start)
 	ctx = interactioninput.WithCapabilities(ctx, o.start.InterruptKinds)
+	ctx, finishDispatch := o.session.beginDispatch(ctx, dispatchKey)
+	defer finishDispatch()
 	effectiveArguments, denied, denialReason, prepareErr := o.prepare(ctx, callID, call.Name, arguments)
 	if prepareErr != nil {
 		// Only definite model-visible failures enter durable Tool settlement.
@@ -59,7 +74,6 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		arguments = effectiveArguments
 	}
 	rawArguments := arguments.Canonical()
-	member := o.session.executorMember(invocation.Relation())
 	start := runs.ToolCallStarted{
 		CallID: callID, ModelCallSequence: invocation.ModelCallSequence(),
 		ToolCallIndex: invocation.ToolCallIndex(), SourceCallID: call.ID, ToolName: call.Name,
@@ -67,13 +81,11 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		SafetyClass: o.interpreter.SafetyClass(call.Name),
 	}
 	if err := o.session.commitFact(ctx, member, start); err != nil {
-		failure := interaction.HostFailure(fmt.Errorf("agentexec: commit Tool call start: %w", err))
-		attempt.recordProjectionFailure(failure)
-		return corechat.ToolOutput{}, failure
+		return corechat.ToolOutput{}, o.projectionFailure(fmt.Errorf("agentexec: commit Tool call start: %w", err))
 	}
 	o.session.accounting.recordToolCall()
 	if denied {
-		return o.settleDeniedToolCall(ctx, attempt, invocation, member, callID, arguments, denialReason)
+		return o.settleDeniedToolCall(ctx, invocation, member, callID, arguments, denialReason)
 	}
 	ctx = toolset.WithToolAdvertiser(ctx, func(names ...string) error {
 		return interaction.AdvertiseTools(ctx, names...)
@@ -85,12 +97,9 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	var output corechat.ToolOutput
 	callErr := prepareErr
 	if callErr == nil {
-		output, callErr = o.invoke(ctx, attempt, corechat.ToolCall{
+		output, callErr = o.invoke(ctx, corechat.ToolCall{
 			ID: call.ID, Name: call.Name, Arguments: rawArguments,
 		})
-	}
-	if attemptErr := attempt.indeterminateFailure(); attemptErr != nil {
-		return corechat.ToolOutput{}, attemptErr
 	}
 	if errors.Is(context.Cause(ctx), errInteractionRunCanceled) &&
 		(errors.Is(callErr, context.Canceled) || errors.Is(callErr, context.DeadlineExceeded)) {
@@ -125,16 +134,16 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		callErr,
 	)
 	// A later concurrent Tool may finish before an earlier model-declared call.
-	// Its commit receipt intentionally waits for the canonical durable prefix;
-	// the Effect context and executor release own that wait, not an arbitrary local
-	// timeout that could misclassify a healthy long-running sibling as unknown.
-	projectionCtx, cancelProjection := attempt.projectionContext(context.WithoutCancel(ctx))
-	defer cancelProjection()
+	// Its commit receipt intentionally waits for the canonical durable prefix, so
+	// this settlement outlives the Tool Effect that is already over; the executor
+	// release owns that wait, not an arbitrary local timeout that could
+	// misclassify a healthy long-running sibling as unknown.
+	projectionCtx := context.WithoutCancel(ctx)
 	commitErr := o.session.commitFact(projectionCtx, member, end)
 	if commitErr != nil {
-		failure := interaction.HostFailure(fmt.Errorf("agentexec: commit Tool result: %w", commitErr))
-		attempt.recordProjectionFailure(failure)
-		return corechat.ToolOutput{}, failure
+		return corechat.ToolOutput{}, o.projectionFailure(
+			fmt.Errorf("agentexec: commit Tool result: %w", commitErr),
+		)
 	}
 	o.session.toolOutcomes.record(call.Name, arguments, modelOutput, callErr)
 	o.projectToolOutcome(projectionCtx, member, call.Name, callErr == nil)
@@ -149,53 +158,53 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 // projection as an execution failure, preserving its model-visible result.
 func (o *observedInteractionTool) invoke(
 	ctx context.Context,
-	attempt *dispatchAttempt,
 	call corechat.ToolCall,
 ) (corechat.ToolOutput, error) {
 	bound, err := o.binding.Prepare(call)
 	if err != nil {
 		return corechat.ToolOutput{}, fmt.Errorf("agentexec: prepare Tool %q invocation: %w", call.Name, err)
 	}
-	if err := attempt.beginExternalCall(); err != nil {
-		return corechat.ToolOutput{}, err
-	}
 	return o.binding.Call(ctx, bound)
+}
+
+// projectionFailure refuses to produce a Tool result the Host could not record.
+// Unlike a model call, a Tool has no definite host-failure settlement: its
+// Effect stays unknown until the Host resolves it, so every refusal here leaves
+// the Run for the unknown reporter to settle and wakes it directly.
+func (o *observedInteractionTool) projectionFailure(cause error) error {
+	o.session.lifetime.wakeUnknown()
+	return interaction.HostFailure(cause)
 }
 
 func (o *observedInteractionTool) attributedInvocation(
 	ctx context.Context,
 	bound toolcontract.Invocation,
-) (interaction.ToolInvocation, *dispatchAttempt, tool.Arguments, string, error) {
+) (interaction.ToolInvocation, tool.Arguments, string, error) {
 	invocation, ok := interaction.ToolInvocationFromContext(ctx)
 	if !ok {
-		return interaction.ToolInvocation{}, nil, tool.Arguments{}, "", errors.New("agentexec: Tool call has no Interaction attribution")
-	}
-	attempt, err := dispatchAttemptFrom(ctx, invocation.EffectID())
-	if err != nil {
-		return interaction.ToolInvocation{}, nil, tool.Arguments{}, "", err
+		return interaction.ToolInvocation{}, tool.Arguments{}, "", errors.New("agentexec: Tool call has no Interaction attribution")
 	}
 	call := invocation.ToolCall()
 	rawArguments := string(bound.Arguments())
 	if call.Name != o.Definition().Name || call.Arguments != rawArguments {
-		return interaction.ToolInvocation{}, nil, tool.Arguments{}, "", errors.New("agentexec: Tool invocation differs from its bound executable")
+		return interaction.ToolInvocation{}, tool.Arguments{}, "", errors.New("agentexec: Tool invocation differs from its bound executable")
 	}
 	if _, err := conversation.NewToolCallIdentity(call.ID); err != nil {
-		return interaction.ToolInvocation{}, nil, tool.Arguments{}, "", fmt.Errorf("agentexec: Tool invocation: %w", err)
+		return interaction.ToolInvocation{}, tool.Arguments{}, "", fmt.Errorf("agentexec: Tool invocation: %w", err)
 	}
 	arguments, err := tool.ParseArguments(rawArguments)
 	if err != nil {
-		return interaction.ToolInvocation{}, nil, tool.Arguments{}, "", fmt.Errorf("agentexec: parse Tool %q arguments: %w", call.Name, err)
+		return interaction.ToolInvocation{}, tool.Arguments{}, "", fmt.Errorf("agentexec: parse Tool %q arguments: %w", call.Name, err)
 	}
 	callIdentity, err := toolInvocationID(invocation)
 	if err != nil {
-		return interaction.ToolInvocation{}, nil, tool.Arguments{}, "", err
+		return interaction.ToolInvocation{}, tool.Arguments{}, "", err
 	}
-	return invocation, attempt, arguments, callIdentity.String(), nil
+	return invocation, arguments, callIdentity.String(), nil
 }
 
 func (o *observedInteractionTool) settleDeniedToolCall(
 	ctx context.Context,
-	attempt *dispatchAttempt,
 	invocation interaction.ToolInvocation,
 	member runs.ExecutorMember,
 	callID string,
@@ -210,9 +219,9 @@ func (o *observedInteractionTool) settleDeniedToolCall(
 	end := o.finishedFact(callID, arguments, denialOutput, &modelResult, nil, nil, errors.New(reason))
 	end.Failure = &tool.Failure{Kind: tool.FailureDenied}
 	if err := o.session.commitFact(ctx, member, end); err != nil {
-		failure := interaction.HostFailure(fmt.Errorf("agentexec: commit denied Tool result: %w", err))
-		attempt.recordProjectionFailure(failure)
-		return corechat.ToolOutput{}, failure
+		return corechat.ToolOutput{}, o.projectionFailure(
+			fmt.Errorf("agentexec: commit denied Tool result: %w", err),
+		)
 	}
 	o.session.toolOutcomes.record(invocation.ToolCall().Name, arguments, denialOutput, errors.New(reason))
 	return denialOutput, nil

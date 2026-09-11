@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"path/filepath"
 	"testing"
 
@@ -41,16 +42,16 @@ func TestChatResolverRejectsUnconfigured(t *testing.T) {
 		t.Fatal(err)
 	}
 	resolved, err := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-pro"))
-	if err != nil || resolved.Client() == nil {
-		t.Fatalf("ResolveChat after configure: client=%v err=%v", resolved.Client(), err)
+	if err != nil || dependency.Missing(resolved.Model()) {
+		t.Fatalf("ResolveChat after configure: client=%v err=%v", resolved.Model(), err)
 	}
-	// Client construction is cheap and immutable. Re-resolving deliberately
+	// Model construction is cheap and immutable. Re-resolving deliberately
 	// avoids a process-lifetime cache retaining old credential generations.
-	if c2, _ := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-pro")); c2.Client() == resolved.Client() {
+	if c2, _ := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-pro")); c2.Model() == resolved.Model() {
 		t.Error("resolver retained a process-lifetime client")
 	}
 	// A different model on the same provider builds a distinct client.
-	if c3, _ := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-flash")); c3.Client() == resolved.Client() {
+	if c3, _ := r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-flash")); c3.Model() == resolved.Model() {
 		t.Error("different model should resolve a distinct client")
 	}
 }
@@ -69,8 +70,8 @@ func TestChatResolverBuildsOptionalCredentialProviderWithoutRegistryRow(t *testi
 		t.Fatal(err)
 	}
 	resolved, err := resolver.ResolveChat(t.Context(), selection)
-	if err != nil || resolved.Client() == nil {
-		t.Fatalf("ResolveChat optional credential provider = %v, %v", resolved.Client(), err)
+	if err != nil || dependency.Missing(resolved.Model()) {
+		t.Fatalf("ResolveChat optional credential provider = %v, %v", resolved.Model(), err)
 	}
 }
 

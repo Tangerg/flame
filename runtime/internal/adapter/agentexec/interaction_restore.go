@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
 
 func (i *interactionSession) initializeRestoredContinuation(
@@ -22,15 +22,19 @@ func (i *interactionSession) initializeRestoredContinuation(
 	if boundary != interactionBoundaryWaiting && boundary != interactionBoundaryContinuationStaged {
 		return errors.New("invalid restored Interaction boundary")
 	}
-	if root == nil || root.ID() != checkpoint.tree.RootID() ||
-		!isInteractionWaitingBoundary(root.Status()) {
-		return fmt.Errorf("%w: restored Interaction root is not at a waiting boundary", runs.ErrExecutorStateLost)
-	}
 	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot, len(checkpoint.tree.ProcessSnapshots()))
 	for _, snapshot := range checkpoint.tree.ProcessSnapshots() {
 		snapshots[snapshot.ProcessID()] = snapshot
 	}
-	members, err := restoredWaitingMembers(continuation, snapshots, root.ID())
+	// The boundary being restored is the checkpoint's, so the checkpoint is what
+	// has to carry it. A live status would describe the tree after restore
+	// rather than the cut this continuation answers.
+	rootSnapshot, captured := snapshots[checkpoint.tree.RootID()]
+	if root == nil || root.ID() != checkpoint.tree.RootID() || !captured ||
+		!isInteractionWaitingBoundary(rootSnapshot.Status()) {
+		return fmt.Errorf("%w: restored Interaction root is not at a waiting boundary", runs.ErrExecutorStateLost)
+	}
+	members, err := i.restoredWaitingMembers(continuation, snapshots, root.ID())
 	if err != nil {
 		return err
 	}
@@ -62,11 +66,17 @@ func (i *interactionSession) initializeRestoredContinuation(
 	return nil
 }
 
-func restoredWaitingMembers(
+func (i *interactionSession) restoredWaitingMembers(
 	continuation runs.WaitingContinuation,
 	snapshots map[agent.ProcessID]agent.ProcessSnapshot,
 	rootID agent.ProcessID,
 ) (map[agent.ProcessID]runs.WaitingMember, error) {
+	i.state.mu.Lock()
+	deployments := i.state.deployments
+	i.state.mu.Unlock()
+	if deployments == nil {
+		return nil, errors.New("agentexec: Interaction deployments are unavailable")
+	}
 	members := make(map[agent.ProcessID]runs.WaitingMember, len(continuation.Members))
 	runByProcess := make(map[agent.ProcessID]string, len(continuation.Members))
 	for _, member := range continuation.Members {
@@ -100,7 +110,7 @@ func restoredWaitingMembers(
 		}
 	}
 	for processID, snapshot := range snapshots {
-		if snapshot.Status().Terminal() {
+		if snapshot.Status().Terminal() || deployments.toolChild(snapshot.DeploymentRef()) {
 			continue
 		}
 		if _, survives := members[processID]; !survives {

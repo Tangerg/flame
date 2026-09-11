@@ -24,7 +24,7 @@ func (i *interactionSession) sendExecutorRequest(
 	case i.lifetime.events <- event:
 		return nil
 	case <-i.lifetime.releasing:
-		return errors.New("agentexec: execution released before executor request")
+		return errInteractionReleased
 	case <-ctx.Done():
 		return ctx.Err()
 	}
@@ -62,6 +62,13 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 		parentID          agent.ProcessID
 		modelCallSequence uint32
 	}
+	// One inspection decides which delegated children have finished. Asking each
+	// child separately would compose the answer out of readings taken at
+	// different moments, and this reconciliation publishes terminal facts.
+	inspection, readable := i.inspectTree(ctx)
+	if !readable {
+		return false, nil
+	}
 	blocked := make(map[delegateBatch]struct{})
 	progressed := false
 	for _, managed := range calls {
@@ -76,8 +83,13 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 		if done || !processID.Valid() {
 			continue
 		}
+		member, inspected := inspection.Process(processID)
+		if !inspected || !member.Snapshot.Status().Terminal() {
+			blocked[batch] = struct{}{}
+			continue
+		}
 		process, found := i.engine.Process(processID)
-		if !found || !process.Status().Terminal() {
+		if !found {
 			blocked[batch] = struct{}{}
 			continue
 		}

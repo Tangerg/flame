@@ -85,7 +85,7 @@ func (Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
 	if err != nil {
 		return err
 	}
-	client, _, err := llm.BuildChat(spec)
+	client, _, err := llm.BuildChat(ctx, spec)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func remoteModelIDs(ctx context.Context, inputs providerClientInputs) ([]string,
 		}
 		return nil, err
 	}
-	if _, _, err := llm.BuildChat(spec); err != nil {
+	if _, _, err := llm.BuildChat(ctx, spec); err != nil {
 		return nil, err
 	}
 	return inputs.profile.ListModels(ctx, baseURL, inputs.apiKey())

@@ -19,7 +19,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -358,7 +358,9 @@ func (i *interactionSession) reconcileExecutionState() {
 		progressed, err := i.reconcileCompletedDelegateChildren(ctx)
 		cancel()
 		if err != nil {
-			i.publishProjectionFailure(err)
+			if !releasedDuringProjection(err) {
+				i.publishProjectionFailure(err)
+			}
 			return
 		}
 		if progressed {
@@ -378,14 +380,13 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 		return false
 	}
 	i.state.mu.Unlock()
-	if process.Status() != agent.StatusWaiting {
-		return false
-	}
 	ctx, cancel := context.WithTimeout(i.lifetime.reconciling, authoritativeProjectionTimeout)
 	defer cancel()
 	snapshot, interruptions, found, err := i.captureHumanInputBarrier(ctx)
 	if err != nil {
-		i.publishProjectionFailure(err)
+		if !releasedDuringProjection(err) {
+			i.publishProjectionFailure(err)
+		}
 		return false
 	}
 	if !found {
@@ -394,7 +395,9 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	// Capture can settle a sibling that was still running at the preflight.
 	// Its product terminal must precede the waiting members from this cut.
 	if _, err := i.reconcileCompletedDelegateChildren(ctx); err != nil {
-		i.publishProjectionFailure(err)
+		if !releasedDuringProjection(err) {
+			i.publishProjectionFailure(err)
+		}
 		return false
 	}
 	checkpoint, err := i.executorCheckpoint(snapshot)
@@ -408,8 +411,10 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 		return false
 	}
 	i.state.mu.Lock()
+	// The captured cut is the authority on what was waiting; re-reading a live
+	// status here would describe a different moment than the checkpoint does.
 	if i.state.finished || i.state.boundary != interactionBoundaryInactive ||
-		i.state.process != process || process.Status() != agent.StatusWaiting {
+		i.state.process != process {
 		i.state.mu.Unlock()
 		return false
 	}
@@ -441,8 +446,7 @@ func (i *interactionSession) stageContinuation(checkpoint runs.ExecutorCheckpoin
 	if i.state.finished || i.state.process == nil {
 		return runs.ErrExecutorNotLive
 	}
-	if i.state.boundary != interactionBoundaryWaiting || i.state.observerWasAttached ||
-		!isInteractionWaitingBoundary(i.state.process.Status()) {
+	if i.state.boundary != interactionBoundaryWaiting || i.state.observerWasAttached {
 		return runs.ErrExecutionClaimed
 	}
 	if !executorCheckpointsEqual(i.state.waitingCheckpoint, checkpoint) {
@@ -458,8 +462,7 @@ func (i *interactionSession) beginContinuation(allowedInterrupts []interrupt.Kin
 	if i.state.finished || i.state.process == nil {
 		return runs.ErrExecutorNotLive
 	}
-	if i.state.boundary != interactionBoundaryContinuationStaged || !i.state.observerWasAttached ||
-		!isInteractionWaitingBoundary(i.state.process.Status()) {
+	if i.state.boundary != interactionBoundaryContinuationStaged || !i.state.observerWasAttached {
 		return errors.New("agentexec: Interaction continuation was not staged and observed")
 	}
 	if !slices.Equal(i.start.InterruptKinds, allowedInterrupts) {
@@ -489,8 +492,8 @@ func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
 func (i *interactionSession) reportUnknownEffects() bool {
 	ctx, cancel := context.WithTimeout(i.lifetime.reconciling, authoritativeProjectionTimeout)
 	defer cancel()
-	ids, err := i.unknownEffectIDs(ctx)
-	if err != nil || len(ids) == 0 {
+	ids, readable := i.unknownEffectIDs(ctx)
+	if !readable || len(ids) == 0 {
 		return false
 	}
 	i.state.mu.Lock()
@@ -511,12 +514,24 @@ func (i *interactionSession) await() {
 	result, err := i.state.process.Await(joinCtx)
 	if err == nil {
 		projectionCtx, cancel := context.WithTimeout(joinCtx, authoritativeProjectionTimeout)
-		_, err = i.reconcileCompletedDelegateChildren(projectionCtx)
+		_, sweepErr := i.reconcileCompletedDelegateChildren(projectionCtx)
 		cancel()
+		// A last sweep the owner released out from under has not found a broken
+		// Run. The terminal published below is the authoritative fact either way.
+		if !releasedDuringProjection(sweepErr) {
+			err = sweepErr
+		}
 	}
 	i.stopReconciliation()
 	if err == nil {
-		err = i.engine.Close()
+		// A Tool call and a Delegate both outlive the result of the member that
+		// made them: Await reports the root's outcome while its descendants are
+		// still being reaped. The Engine closes only once the whole tree is
+		// finished, so the join is what proves that, not the root result.
+		err = i.state.process.Join(joinCtx)
+	}
+	if err == nil {
+		err = i.engine.Close(joinCtx)
 	}
 	if err == nil {
 		err = i.publishResult(result)
@@ -605,7 +620,7 @@ func (i *interactionSession) release(ctx context.Context) error {
 	i.state.mu.Unlock()
 	if !begun {
 		i.failStart()
-		return i.engine.Close()
+		return i.engine.Close(ctx)
 	}
 	if process != nil && !finished {
 		if err := process.Kill(ctx, interactionReleaseReason); err != nil && !errors.Is(err, agent.ErrProcessFinished) {
@@ -615,7 +630,7 @@ func (i *interactionSession) release(ctx context.Context) error {
 	select {
 	case <-i.lifetime.done:
 		i.lifetime.workers.Wait()
-		return i.engine.Close()
+		return i.engine.Close(ctx)
 	case <-ctx.Done():
 		return ctx.Err()
 	}

@@ -52,39 +52,13 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 	projected.Members[0].MemberID = "member_projected"
 	projected.Checkpoint.Payload[0] = 'y'
 	projected.Capabilities.InterruptKinds[0] = "projected"
+	// Preparing a waiting-subtree cancellation now requests the cancellation of
+	// the target Process and captures the tree it drained into. The Framework
+	// commits a requested cancellation, so there is no prepared state to revoke
+	// and no second attempt at the same target: Discard releases this session's
+	// boundary, it does not restore the subtree.
 	prepareCtx, cancelPrepare := context.WithTimeout(t.Context(), 2*time.Second)
 	prepared, err := fixture.executor.PrepareWaitingSubtreeCancellation(prepareCtx, request)
-	if err != nil {
-		cancelPrepare()
-		t.Fatal(err)
-	}
-	if validateErr := prepared.Validate(); validateErr != nil {
-		cancelPrepare()
-		t.Fatal(validateErr)
-	}
-	cancelPrepare()
-	if discardErr := prepared.Discard(); discardErr != nil {
-		t.Fatal(discardErr)
-	}
-	liveSession, err := fixture.executor.session(ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	liveSession.state.mu.Lock()
-	boundaryAfterDiscard := liveSession.state.boundary
-	observerAfterDiscard := liveSession.state.observerWasAttached
-	statusAfterDiscard := liveSession.state.process.Status()
-	liveSession.state.mu.Unlock()
-	assertDiscardedWaitingCancellationState(
-		t,
-		boundaryAfterDiscard,
-		observerAfterDiscard,
-		isInteractionWaitingBoundary(statusAfterDiscard),
-		statusAfterDiscard.String(),
-	)
-
-	prepareCtx, cancelPrepare = context.WithTimeout(t.Context(), 2*time.Second)
-	prepared, err = fixture.executor.PrepareWaitingSubtreeCancellation(prepareCtx, request)
 	if err != nil {
 		cancelPrepare()
 		t.Fatal(err)
@@ -123,22 +97,6 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 		t.Fatal(err)
 	}
 	fixture.shutdown(t)
-}
-
-func assertDiscardedWaitingCancellationState(
-	t *testing.T,
-	boundary interactionBoundary,
-	observerAttached bool,
-	waitingStatus bool,
-	statusDescription string,
-) {
-	t.Helper()
-	if boundary != interactionBoundaryWaiting || observerAttached || !waitingStatus {
-		t.Fatalf(
-			"discarded subtree boundary=%d observer=%t status=%s",
-			boundary, observerAttached, statusDescription,
-		)
-	}
 }
 
 func assertPreparedWaitingCancellation(

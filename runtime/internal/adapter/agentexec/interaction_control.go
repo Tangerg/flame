@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -28,6 +28,20 @@ func interactionDispatchKey(request agent.EffectRequest) interactionDispatchIden
 	}
 }
 
+// toolCallDispatchKey addresses one Tool call on the product cancellation plane
+// under the member that requested it. A Tool call owns its own Effect in its own
+// child Process, but that child is not a member, so a subtree cancellation can
+// only reach the call through the caller that product lineage knows.
+func toolCallDispatchKey(
+	invocation interaction.ToolInvocation,
+) (interactionDispatchIdentity, bool) {
+	callerID, child := invocation.Relation().ParentID()
+	if !child {
+		return interactionDispatchIdentity{}, false
+	}
+	return interactionDispatchIdentity{processID: callerID, effectID: invocation.EffectID()}, true
+}
+
 // beginDispatch binds one Agent-owned Effect attempt to the product Run's
 // explicit cancellation plane. Agent Framework deliberately lets an in-flight
 // Effect settle before applying a cancellation intent; this adapter-owned
@@ -35,19 +49,18 @@ func interactionDispatchKey(request agent.EffectRequest) interactionDispatchIden
 // that settlement promptly without changing Framework lifecycle semantics.
 func (i *interactionSession) beginDispatch(
 	ctx context.Context,
-	request agent.EffectRequest,
+	key interactionDispatchIdentity,
 ) (context.Context, func()) {
 	bound, cancel := context.WithCancelCause(ctx)
 	stopLifetimeBinding := context.AfterFunc(i.lifetime.execution, func() {
 		cancel(context.Cause(i.lifetime.execution))
 	})
-	key := interactionDispatchKey(request)
 	i.state.mu.Lock()
-	if i.state.rootCancellationRequested || i.inCanceledSubtreeLocked(request.ProcessID()) {
+	if i.state.rootCancellationRequested || i.inCanceledSubtreeLocked(key.processID) {
 		cancel(errInteractionRunCanceled)
 	} else {
 		i.state.activeDispatches[key] = activeInteractionDispatch{
-			processID: request.ProcessID(),
+			processID: key.processID,
 			cancel:    cancel,
 		}
 	}
@@ -143,7 +156,7 @@ func (i *interactionSession) submitSteer(
 		content: transcript.CloneContent(content),
 	}
 	i.state.mu.Unlock()
-	accepted, deliverErr := process.DeliverSignal(
+	accepted, deliverErr := process.DeliverSignals(
 		runExecutionContext(ctx, i.scope, i.start), signal,
 	)
 	if deliverErr != nil {

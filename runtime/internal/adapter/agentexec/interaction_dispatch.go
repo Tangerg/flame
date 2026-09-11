@@ -6,7 +6,7 @@ import (
 	"time"
 
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
 
 const authoritativeProjectionTimeout = 15 * time.Second
@@ -25,7 +25,7 @@ func (i *interactionDispatcher) Dispatch(
 	request agent.EffectRequest,
 	emit agent.DeltaEmitter,
 ) (agent.Settlement, error) {
-	ctx, finishDispatch := i.session.beginDispatch(ctx, request)
+	ctx, finishDispatch := i.session.beginDispatch(ctx, interactionDispatchKey(request))
 	defer finishDispatch()
 	attempt := newDispatchAttempt(ctx, request.ID())
 	defer attempt.close()

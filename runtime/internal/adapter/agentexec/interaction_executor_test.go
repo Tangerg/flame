@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"iter"
 	"slices"
 	"strings"
@@ -20,7 +21,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -58,14 +58,11 @@ func TestInteractionExecutionPolicyPreservesOptionalPresence(t *testing.T) {
 }
 
 func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
-	client, err := chatclient.New(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return interactionTextResponse("unused"), nil
-	}), chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	})
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
-		ChatResolver:           staticInteractionChatResolver(client),
+		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config",
 		BuildID:                interactionTestBuildID,
@@ -219,18 +216,15 @@ func TestInteractionCheckpointRejectsInvalidModelCallIdentity(t *testing.T) {
 }
 
 func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelection(t *testing.T) {
-	client, err := chatclient.New(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return interactionTextResponse("unused"), nil
-	}), chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	})
 	var resolved []modelref.Selection
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime: t.Context(),
 		ChatResolver: interactionChatResolverFunc(func(_ context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error) {
 			resolved = append(resolved, selection)
-			return modeladapter.NewResolvedChat(&client, nil)
+			return modeladapter.NewResolvedChat(model, nil)
 		}),
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config",
@@ -249,8 +243,9 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 		t.Fatal("Interaction executor retained duplicate raw identity configuration")
 	}
 	got, err := executor.resolveChat(t.Context(), testDefaultSelection())
-	if err != nil || got.Client() != &client || len(resolved) != 1 || resolved[0] != testDefaultSelection() {
-		t.Fatalf("resolve exact default = (%p, %v, %#v), want (%p, nil, [%#v])", got.Client(), err, resolved, &client, testDefaultSelection())
+	if err != nil || dependency.Missing(got.Model()) || len(resolved) != 1 ||
+		resolved[0] != testDefaultSelection() {
+		t.Fatalf("resolve exact default = (%v, %v, %#v), want the resolved model and [%#v]", got.Model(), err, resolved, testDefaultSelection())
 	}
 	if _, err := executor.resolveChat(t.Context(), testDefaultSelection()); err != nil || len(resolved) != 2 {
 		t.Fatalf("second exact-default resolution = (%v, %#v), want a fresh resolver call", err, resolved)
@@ -269,16 +264,16 @@ func (i interactionChatResolverFunc) ResolveChat(
 	return i(ctx, selection)
 }
 
-func staticInteractionChatResolver(client chatclient.Client) InteractionChatResolver {
-	return interactionChatResolver(client, nil)
+func staticInteractionChatResolver(model chat.Model) InteractionChatResolver {
+	return interactionChatResolver(model, nil)
 }
 
 func interactionChatResolver(
-	client chatclient.Client,
+	model chat.Model,
 	counter modeladapter.InputTokenCounter,
 ) InteractionChatResolver {
 	return interactionChatResolverFunc(func(context.Context, modelref.Selection) (modeladapter.ResolvedChat, error) {
-		return modeladapter.NewResolvedChat(&client, counter)
+		return modeladapter.NewResolvedChat(model, counter)
 	})
 }
 
@@ -411,13 +406,9 @@ func TestInteractionExecutorMapsStreamingModelFailure(t *testing.T) {
 		Err: errors.New("stream rate limited"),
 	}
 	model := failingInteractionStream{cause: cause}
-	client, err := chatclient.New(model, chatclient.Config{Streamer: model})
-	if err != nil {
-		t.Fatal(err)
-	}
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(client),
+		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config",
 		DefaultMaxModelCalls:   uint32Pointer(4),
@@ -592,13 +583,9 @@ func newTestInteractionExecutorWithLifetime(
 	model chat.Model,
 ) *InteractionExecutor {
 	t.Helper()
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime:               lifetime,
-		ChatResolver:           staticInteractionChatResolver(client),
+		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config", DefaultMaxModelCalls: uint32Pointer(4),
 		BuildID: interactionTestBuildID,
@@ -708,14 +695,10 @@ func TestInteractionExecutorRefusesATypedNilCapability(t *testing.T) {
 	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return interactionTextResponse("unused"), nil
 	})
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	var absent *typedNilToolPresenter
-	_, err = NewInteractionExecutor(InteractionExecutorConfig{
+	_, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(client),
+		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-typed-nil-build",
 		ConfigurationIdentity:  "interaction-typed-nil-config",
 		DefaultMaxModelCalls:   uint32Pointer(4),

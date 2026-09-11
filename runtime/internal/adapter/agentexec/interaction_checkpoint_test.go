@@ -179,12 +179,22 @@ func TestInteractionModelContextsRoundTripCanonicalCalibration(t *testing.T) {
 		first: firstCalibration, second: secondCalibration,
 	}
 
-	wire, err := encodeInteractionModelContexts(contexts)
+	accounted := map[agent.ProcessID]struct{}{first: {}, second: {}}
+	wire, err := encodeInteractionModelContexts(contexts, accounted)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(wire) != 2 || wire[0].MemberID != second.String() || wire[1].MemberID != first.String() {
 		t.Fatalf("model context order = %#v", wire)
+	}
+	// A calibration is only carried for a member this checkpoint accounts calls
+	// for, so dropping that member's accounting drops its calibration with it.
+	unaccounted, err := encodeInteractionModelContexts(contexts, map[agent.ProcessID]struct{}{first: {}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(unaccounted) != 1 || unaccounted[0].MemberID != first.String() {
+		t.Fatalf("unaccounted model contexts = %#v", unaccounted)
 	}
 	processes := map[agent.ProcessID]struct{}{first: {}, second: {}}
 	calls := map[agent.ProcessID]map[string]int{

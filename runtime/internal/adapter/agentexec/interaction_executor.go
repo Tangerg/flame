@@ -26,7 +26,7 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
-	"github.com/Tangerg/scope/agent/interaction"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -62,16 +62,22 @@ type InteractionExecutorConfig struct {
 	// Lifetime is the process-owned root for every Interaction staged by this
 	// executor. Request contexts may bound staging and commands, but accepted
 	// execution must outlive the request that created it.
-	Lifetime                  context.Context
-	BuildID                   string
-	ChatResolver              InteractionChatResolver
-	RestoreScopeValidator     RestoreScopeValidator
-	ImplementationIdentity    string
-	ConfigurationIdentity     string
-	DefaultMaxModelCalls      *uint32
-	StreamModelResponses      bool
-	DeltaBufferCapacity       *int
-	MaxConcurrentToolCalls    *int
+	Lifetime               context.Context
+	BuildID                string
+	ChatResolver           InteractionChatResolver
+	RestoreScopeValidator  RestoreScopeValidator
+	ImplementationIdentity string
+	ConfigurationIdentity  string
+	DefaultMaxModelCalls   *uint32
+	StreamModelResponses   bool
+	DeltaBufferCapacity    *int
+	MaxConcurrentToolCalls *int
+	// ToolSteps, ToolEffects and ToolSignals bound one ordinary Tool child.
+	ToolSteps   *uint64
+	ToolEffects *uint64
+	ToolSignals *uint64
+	// ToolBatchCeiling bounds the Tool calls one model response may request.
+	ToolBatchCeiling          *uint32
 	ToolResolver              InteractionToolResolver
 	ToolInterpreter           InteractionToolInterpreter
 	ToolPresenter             InteractionToolPresenter
@@ -232,12 +238,12 @@ func (i *InteractionExecutor) StageRoot(
 		Messages: cloneChatMessages(start.WorkingContext), Options: executionOptions(start.ModelSelection, start.Options),
 	})
 	if err != nil {
-		_ = session.engine.Close()
+		_ = session.engine.Close(ctx)
 		return runs.ExecutorRef{}, fmt.Errorf("agentexec: encode Interaction input: %w", err)
 	}
 	session.input = input
 	if err := i.sessions.register(session); err != nil {
-		_ = session.engine.Close()
+		_ = session.engine.Close(ctx)
 		return runs.ExecutorRef{}, err
 	}
 	return ref, nil
@@ -252,7 +258,8 @@ func (i *InteractionExecutor) assembleInteraction(
 	if err != nil {
 		return nil, err
 	}
-	client := resolved.Client()
+	model := resolved.Model()
+	streamer, _ := resolved.Streamer()
 	counter, _ := resolved.InputTokenCounter()
 	maxModelCalls, err := i.maxModelCalls(start)
 	if err != nil {
@@ -264,12 +271,12 @@ func (i *InteractionExecutor) assembleInteraction(
 	}
 	session := newInteractionSession(i.lifetime, ref, start, i.config, i.buildID, i.policy)
 	session.allowance = allowance
-	observedClient, err := newObservedInteractionClient(client, session)
+	observed, err := newObservedInteractionModel(model, streamer, session)
 	if err != nil {
-		return nil, fmt.Errorf("agentexec: observe Interaction client: %w", err)
+		return nil, fmt.Errorf("agentexec: observe Interaction model: %w", err)
 	}
 	deployments, err := i.buildInteractionDeployments(
-		runExecutionContext(ctx, rootExecutionScope(start), start), session, start, observedClient, counter, maxModelCalls,
+		runExecutionContext(ctx, rootExecutionScope(start), start), session, start, observed, counter, maxModelCalls,
 	)
 	if err != nil {
 		return nil, err
@@ -599,17 +606,17 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		checkpoint.tree,
 	)
 	if err != nil {
-		_ = session.engine.Close()
+		_ = session.engine.Close(ctx)
 		return fmt.Errorf("%w: restore exact Interaction tree: %w", runs.ErrExecutorStateLost, err)
 	}
 	if initializeRestoredContinuationErr := session.initializeRestoredContinuation(process, continuation, checkpoint, boundary); initializeRestoredContinuationErr != nil {
 		discardRestoredInteraction(session, process)
 		return initializeRestoredContinuationErr
 	}
-	unknown, err := session.unknownEffectIDs(ctx)
-	if err != nil {
+	unknown, readable := session.unknownEffectIDs(ctx)
+	if !readable {
 		discardRestoredInteraction(session, process)
-		return fmt.Errorf("%w: inspect restored Interaction effects: %v", runs.ErrExecutorStateLost, err)
+		return fmt.Errorf("%w: restored Interaction tree cannot be inspected", runs.ErrExecutorStateLost)
 	}
 	if len(unknown) > 0 {
 		discardRestoredInteraction(session, process)
@@ -664,7 +671,7 @@ func discardRestoredInteraction(session *interactionSession, process *agent.Proc
 	defer cancel()
 	_ = process.Kill(cleanupCtx, interactionReleaseReason)
 	_, _ = process.Await(cleanupCtx)
-	_ = session.engine.Close()
+	_ = session.engine.Close(cleanupCtx)
 }
 
 func rootExecutionScope(start runs.RootExecutionStart) runs.ExecutionScope {
@@ -747,7 +754,7 @@ func (i *InteractionExecutor) resolveChat(
 	if err != nil {
 		return modeladapter.ResolvedChat{}, fmt.Errorf("agentexec: resolve Interaction chat: %w", err)
 	}
-	if resolved.Client() == nil {
+	if dependency.Missing(resolved.Model()) {
 		return modeladapter.ResolvedChat{}, errors.New("agentexec: Interaction chat resolver returned an invalid result")
 	}
 	return resolved, nil
