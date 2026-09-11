@@ -154,3 +154,19 @@ test("a dock view keeps an unbreakable run inside its pane", async ({ page }) =>
       .join(""),
   ).toEqual([]);
 });
+
+// The third region was tried and does not need one.
+//
+// Neither audit above reaches the work index: one is rooted at `main`, the other at the dock,
+// and the drawer sits outside both. What lands there is a session TITLE, which the agent writes
+// — so it looked like the same gap, and a third test was written for it.
+//
+// It cannot fail. Measured on the shell fixture with the blob in all fifteen of the drawer's
+// text holders AND `overflow-wrap: normal !important` forced on everything: the drawer reads
+// `clientWidth === scrollWidth === 275` in every combination. Its width is the sidebar's, fixed,
+// and every title inside is clipped by an ancestor rather than by the element holding the text —
+// so the premise this audit rests on, that a text holder must permit the break, does not apply
+// there at all.
+//
+// Recorded rather than committed, because a guard that cannot go red is worse than no guard: it
+// reports coverage of a region it never examined.
