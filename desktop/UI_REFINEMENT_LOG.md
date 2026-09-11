@@ -16590,3 +16590,71 @@ or the chips are shrinking while being measured
 它让下一个读者可以**推理正确地**得出错误结论 ——
 字符串确实按值相等，所以"走 state 无害"这句话唯一的问题是，
 它算的是相等，没算**什么时候相等**。
+
+## Round 253 —— 用已删除的依赖做现行理由；以及我自己制造的四次 commitlint 警告
+
+### 一、把上一轮的形状做成扫描：注释里引用已移除的东西
+
+仓库移除过 Tailwind、`cva`、`tailwind-merge`、`streamdown`、AG-UI。扫一遍：
+
+| 词 | 提及数 | 判断 |
+| --- | --- | --- |
+| Tailwind | 60 | **全是历史说明**，正确 |
+| tailwind-merge | 2 | 历史说明 |
+| cva / AG-UI | 0 | — |
+| streamdown | 4 | 三处历史、**一处现行理由** |
+
+**区别在时态。** "Under Tailwind that worked; under StyleX it does not" 是好注释 ——
+它解释了当前代码为什么长这样。而
+
+> `#`/`##` share a rung because **streamdown renders each block through its own parser**
+
+是拿一个**已经不在 `package.json` 里**的包当**现行机制**。读者 grep `streamdown` 会一无所获，
+无法验证这句话。
+
+理由本身**仍然成立**（`blocks.map` → 每个 `MarkdownBlock` 各渲染一次 `ReactMarkdown`，
+所以组件确实看不到别的块用了哪些级别）—— 只是归因错了。
+改成现在真正做这件事的机制（`splitStreamingBlocks` + 每块自己的 `ReactMarkdown`），
+并保留一句说明它曾经叫什么。
+
+### 二、顺手扫了"现在时的唯一性断言"，干净
+
+`the only one / place / thing` 共 14 处，绝大多数是设计陈述（"唯一会缩的那一列"）。
+可验证的那条 —— `status-dot.tsx` 的 "the only dot that moves" —— 实测属实：
+五个 tone 里只有 `running` 带动画。
+
+### 三、诊断了我自己反复犯的错
+
+本会话 commitlint 报过四次 `footer must have leading blank line`。
+看它回显的插入位置就明白了：我的正文折行后出现了 **`down:` 开头的行**
+（"worth writing\n**down:** the Runtime Protocol…"），
+而 commitlint 把 `词:` 开头的行当成 footer token。
+
+**是我的折行制造了假 footer，不是内容问题。** 往后避免行首出现 `词:`。
+
+### 四、一条记录但不动的观察
+
+全套视觉 13.3 分钟里，`closure.visual.spec.ts` 一个文件占 12.3 分钟。
+`fullyParallel: false` 是有据的（注释写明 golden 在两个 worker 间的顺序会漂），
+而 closure **自己也取 golden**，所以给它单独开并行有重新引入那个问题的风险；
+拆文件则是大改。
+
+**不动。** 这是我自己的反馈回路问题，不是产品问题，
+而那套测试正是整个会话里一次次抓住我错误的东西 —— 不值得为提速去动它。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 扫描的已移除依赖 | 5 类，共 66 处提及 |
+| 需要修的 | **1**（唯一一处"用已删除之物做现行理由"） |
+| 扫完确认干净的 | 2（Tailwind 历史说明 / 唯一性断言） |
+| 诊断的自身流程问题 | 1（折行制造假 footer token） |
+| 记录但不动的 | 1（视觉套件 92% 时间在一个文件里） |
+
+### 一句话
+
+同一个词出现 60 次是**好注释**，出现 1 次是**坏注释** ——
+区别不在词，在**时态**：
+"它以前是 Tailwind" 解释了代码为什么长这样，
+"因为 streamdown 会怎样"则要求读者去信一个 `package.json` 里已经没有的东西。

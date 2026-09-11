@@ -166,9 +166,12 @@ const sharedMarkdownComponents: Components = {
     );
   },
   // A body opens at h3 — one below the turn heading that contains it — so a model writing
-  // `# Title` cannot outrank its own turn, and `#`/`##` share a rung because streamdown
-  // renders each block through its own parser and nothing here can see which levels the rest
-  // of the message used. `data-md-level` carries the authored level for the type scale.
+  // `# Title` cannot outrank its own turn, and `#`/`##` share a rung because a message is cut
+  // by `splitStreamingBlocks` and each block renders through its OWN `ReactMarkdown`: nothing
+  // here can see which levels the rest of the message used. (That reason used to name
+  // `streamdown`, which this product no longer depends on — the block split is ours now, and
+  // the property it gives is the same.) `data-md-level` carries the authored level for the
+  // type scale.
   h1({ children }) {
     return (
       <h3 dir="auto" data-md-level="1">
