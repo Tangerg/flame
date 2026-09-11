@@ -15582,3 +15582,85 @@ diff 该横向滚动而不是换行，正是 Flame `Well wrap="pre"` 注释写�
 而我的守卫第一版量错了参照物（父元素 vs 块级祖先），
 **在错误实现上照样报绿** —— 这是本会话第二次，
 两次都只有破坏验证能发现。
+
+## Round 240 —— 链接里的路径变成了链接里的按钮
+
+### 一、先查 `rehypeFadeIn`，查完是干净的
+
+它用在 **smooth 模式（默认）**，影响面比插入符大，而且有两处看着可疑：
+`SKIP_TAGS` 只比对直接父节点，以及它排在 `rehypeKatex` **之前**
+（数学文本会先被切成词 span，再交给 katex）。
+
+实测六个用例（渲染真实组件，smooth + streaming，推进 400 帧）：
+
+| 用例 | fade span | pre/code 内 | katex | 残留原始 math |
+| --- | --- | --- | --- | --- |
+| 行内数学 | 4 | 0 | 1 | 0 |
+| 展示数学 | 0 | 0 | 1 | 0 |
+| 行内代码 | 2 | 0 | — | — |
+| 代码块 | 0 | 0 | — | — |
+
+**katex 正常渲染**（它替换整个元素，先切词不影响它读到的文本），
+pre/code 内零 fade span。至于两个 `fades=0`：那是因为
+`splitStreamingBlocks` 切块后**只有最后一块是 streaming** ——
+前面的 "Consider:" 已经定稿，本就不该有淡入。**没有缺陷。**
+
+### 二、`rehypeFileRefs` 有
+
+同样的 `SKIP_TAGS` 只比对直接父节点，但这个插件**创建的是控件**。
+
+`[src/foo.ts](url)` 里文本的父节点是 `<a>` → 跳过 ✓
+`[**src/foo.ts**](url)` 里文本的父节点是 **`<strong>`** → 不跳过 ✗
+
+实测出来的 HTML：
+
+```html
+<a href="https://example.test" target="_blank" rel="noopener noreferrer">
+  <strong><button type="button" tabindex="0" …>src/foo.ts</button></strong>
+</a>
+```
+
+**一个 `<button>` 嵌在带 `target="_blank"` 的 `<a>` 里。** 三重问题：
+非法 HTML（`<a>` 不得包含交互内容）；点一下既在浏览器打开 URL、又打开文件；
+键盘上多出一个与外层毫无关联的 tab 停靠点，而读者只看见一个词。
+
+七个用例里两个中招（粗体、斜体）；行内代码那两个侥幸躲过 ——
+因为 `code` 恰好也在 `SKIP_TAGS` 里且是直接父节点。
+
+### 三、根因是同一套机制写了两遍，所以修在一处
+
+两个插件各自有一份近 20 行的 `jobs` 收集 + 逆序 splice，
+以及各自那句"只看直接父节点"的跳过判断。**只修一个会留下另一个按构造就是错的。**
+
+抽出 `rewriteTextNodes(tree, skip, replace)`：在**下降的每一层**判断跳过，
+`replace` 返回 `null` 表示不动。副产品是两个插件都不再自己管索引失效
+（原来的逆序 splice 是为了避免这个），以及**没有改动的节点根本不分配新数组**。
+
+顺带把 `rehypeFadeIn` 的 `data-no-fade` 也变成了区域判断 ——
+它本来就不是"关于某一个文本节点"的声明。
+
+### 四、破坏验证
+
+把 `rehypeFileRefs.ts` 还原成旧实现，守卫精确报出：
+
+```
+a path bold inside a link: 1 control(s) nested inside a link
+a path italic inside a link: 1 control(s) nested inside a link
+```
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 查完确认干净的插件 | 1（`rehypeFadeIn`，四项实测） |
+| 真缺陷 | **1**（链接里的控件），在真实 DOM 里量出 |
+| 收敛掉的重复机制 | 1（两份近 20 行的文本重写，合成一个） |
+| 新守卫 | 1（7 个用例 + floor，破坏验证过） |
+| 单测 | 2457 → **2458** |
+
+### 一句话
+
+`[src/foo.ts](url)` 是安全的，`[**src/foo.ts**](url)` 不是 ——
+**差别只是中间多了一个 `<strong>`**，而跳过判断只看了一层。
+修的时候没有只补那一句，因为同一套遍历在两个插件里各写了一遍：
+**补一处，另一处仍然按构造是错的。**
