@@ -44,6 +44,15 @@ const mi = stylex.create({
   },
 });
 
+/**
+ * Only a data URI is rendered as an image; anything else takes the `missing` box below.
+ *
+ * So every `<img>` in this file carries its bytes inline, and NONE of them may be
+ * `loading="lazy"`: there is no request to defer, and the attribute costs the one thing that
+ * matters here. Measured — a lazy image below the fold stayed `complete: false`, `0x0`, until
+ * the reader scrolled to it and it snapped to 240x96, moving the transcript under the line
+ * they were reading; its preview `<button>` sat in the tab order at zero size the whole time.
+ */
 const INLINE_IMAGE = /^data:image\/(?:avif|gif|jpeg|jpg|png|svg\+xml|webp)(?:;[^,]*)?,/i;
 
 export function isInlineMarkdownImage(src: string): boolean {
@@ -111,7 +120,6 @@ export function MarkdownImage({
         src={src}
         alt={alt}
         title={title}
-        loading="lazy"
         onError={() => setFailedSource(src)}
         className={cn(
           "media-edge",
@@ -137,7 +145,6 @@ export function MarkdownImage({
             src={src}
             alt={alt}
             title={title}
-            loading="lazy"
             onError={() => setFailedSource(src)}
             className={cn("media-edge", stylex.props(mi.image).className)}
           />

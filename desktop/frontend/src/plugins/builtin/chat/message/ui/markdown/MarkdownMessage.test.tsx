@@ -134,7 +134,13 @@ describe("markdownMessage", () => {
 
     const trigger = container.querySelector<HTMLButtonElement>('button[aria-label="Build graph"]');
     expect(trigger).toBeTruthy();
-    expect(trigger?.querySelector("img")?.getAttribute("loading")).toBe("lazy");
+    const img = trigger?.querySelector("img");
+    // Only a data URI renders as an image at all, so the bytes are already here and there is
+    // no request to defer. This used to say `lazy`, and the attribute cost the box: measured in
+    // the transcript, an image below the fold stayed 0x0 until the reader scrolled to it and
+    // then snapped to 240x96, moving the text under the line they were reading.
+    expect(img?.getAttribute("src")).toMatch(/^data:image\//);
+    expect(img?.getAttribute("loading"), "an inline image has nothing to defer").toBeNull();
   });
 
   // `[![badge](img)](url)` is the commonest image in anything an agent quotes from a README, and

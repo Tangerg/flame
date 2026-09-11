@@ -1010,7 +1010,12 @@ for (const theme of ["light", "dark"] as const) {
 
     const preview = page.getByRole("button", { name: "Inline architecture" });
     await expect(page.locator('[data-markdown-image-grid="true"] > button')).toHaveCount(2);
-    await expect(preview.locator("img")).toHaveAttribute("loading", "lazy");
+    // BEFORE anything scrolls to it: an inline image carries its own bytes, so it has to hold
+    // its box while it is still below the fold. This line used to assert `loading="lazy"`,
+    // which deferred no request and cost exactly that — measured 0x0 until the reader arrived
+    // and then 240x96, moving the transcript under the line they were reading.
+    const unseen = await preview.locator("img").boundingBox();
+    expect(unseen?.height ?? 0, "an image below the fold holds no box").toBeGreaterThan(8);
     await layOutTranscript(page);
     await preview.evaluate((button) => button.parentElement?.scrollIntoView({ block: "center" }));
     await expect(preview).toBeVisible();
