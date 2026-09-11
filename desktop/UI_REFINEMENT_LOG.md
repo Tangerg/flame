@@ -16721,3 +16721,79 @@ Round 233 专门查过"有没有守卫能读不到东西还报绿"，答案是�
 它写完是绿的，跑三遍也是绿的，而它绿的原因不是产品对，
 是**它根本够不着那个区域**。
 真正该问的从来不是"它过了吗"，是"**它可能不过吗**"。
+
+## Round 255 —— 一条守卫在它看不见的那一对上，一直报绿
+
+### 一、把上一轮的问题做成机械扫描
+
+Round 254 的问题是"**它可能不过吗**"。把它变成可扫的形状：
+`expect(X).toEqual([])` 这类空集断言，**却没有配套 floor**。
+
+20 个视觉规格里，只有一个：**`reveal.visual.spec.ts`（2 条空集断言、0 条 floor）**。
+
+### 二、它的第二个测试用了一个 Tailwind 的类名
+
+```ts
+const PAIRS = [
+  { rest: '[data-reveal="rest"]', shown: '[data-reveal="hover"]', within: ".group\\/row" },
+  ...
+];
+```
+
+`.group/row` 是 Tailwind 的 group 命名。**Tailwind 移除时它一起没了。** 实测六条路由：
+
+| 选择器 | 命中 |
+| --- | --- |
+| `[data-reveal="hover"]`（测试 1） | 26 个 —— 活着 |
+| **`.group/row`** | **0 / 0 / 0 / 0 / 0 / 0** |
+| `.t-icon-swap` | 1 个，只在一条路由 |
+
+而注释明说缺陷就是在第一对上发现的：
+"the resting glyph watched the TRIGGER's `:focus-visible` while the action watched the row's
+`:focus-within`, so focus landing on the action itself left the row showing both."
+
+**那一对已经很久够不着任何元素了。**
+
+### 三、修法不是再找一个类名
+
+顺着 `[data-reveal="rest"]` 往上找，容器是一个**没有名字的包裹 div**
+（两端是兄弟：静止字形在行按钮内、动作按钮在它旁边）。
+当初用 `.group/row` 正是因为 Tailwind 下它是具名 group ——
+**再起一个名字只会重新埋同一个雷。**
+
+改成**按结构发现**：从每个 `rest` 向上找最近的、同时含 `shown` 的祖先，打标后交给 Playwright。
+改名再也带不走它。
+
+并加**每对各自的 floor** —— 一个机制不再出现时会被**点名**，而不是被另一个的计数吸收。
+
+### 四、三次验证
+
+| 验证 | 结果 |
+| --- | --- |
+| floor 能抓住"够不着" | `no row action pair was found on any route` ✓ |
+| 主断言能抓住真缺陷 | 让 `--rest` 只响应 hover、不响应 focus-within → `row action the revealed end focused: rest=1 shown=1` ✓ |
+| **旧规格 + 同一个真缺陷** | **exit=0 —— 视而不见** |
+
+第三条是决定性的：同样的产品缺陷，旧守卫**通过**，新守卫**报错**，
+而且报出的正是注释里记载的那一幕，就在当初发现它的那条路由上。
+
+（过程中我第一次破坏找错了地方 —— 改的是 `@media (hover: none)` 块里的规则，
+而 Playwright 跑在 `hover: hover` 下，那段是惰性的。真正的机制在 `ui/atoms/reveal.ts`。）
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 机械扫描出的无 floor 规格 | 1 / 20 |
+| 死掉的选择器 | **1**（六条路由全 0 命中） |
+| 改法 | 按结构发现，不再依赖任何类名 |
+| 新增 floor | 2（每对各一条） |
+| 验证 | 3 次，含"旧规格对真缺陷报绿"的直接对照 |
+
+### 一句话
+
+一条守卫写下来是为了**防止某个缺陷回来**，
+而当它赖以定位的那个类名跟着 Tailwind 一起走了之后，
+它每天都在报绿 —— 报的是一个**它已经够不着的地方**。
+最后那次对照最说明问题：**同一个缺陷，旧守卫通过，新守卫报出**，
+而它报出的句子，和当初写下这条守卫的人记在注释里的，是同一句。

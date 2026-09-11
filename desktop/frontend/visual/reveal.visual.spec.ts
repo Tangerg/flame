@@ -56,25 +56,62 @@ test("nothing invisible can be clicked", async ({ page }) => {
 // not: the resting glyph watched the TRIGGER's `:focus-visible` while the action watched the
 // row's `:focus-within`, so focus landing on the action itself left the row showing both.
 //
-// Two mechanisms carry a pair here, `[data-reveal]` and `.t-icon-swap`'s `[data-glyph]`, and
-// both are asked the same question in each state a person can put the row in.
+// THE CONTAINER IS FOUND BY STRUCTURE, and that is the correction. This looked for `.group/row`,
+// which was a Tailwind group name and left with Tailwind: measured across all six routes, it
+// matched ZERO elements, so the pair the defect was actually found in has been reaching nothing
+// for as long as this has been green. The two ends are siblings — the resting glyph lives inside
+// the row's own button and the action beside it — so the holder is an unnamed wrapper, and
+// naming it again would only set the same trap. Walking up from each `rest` to the nearest
+// ancestor that also holds a `shown` cannot be renamed out from under this.
 const PAIRS = [
-  { rest: '[data-reveal="rest"]', shown: '[data-reveal="hover"]', within: ".group\\/row" },
-  { rest: '[data-glyph="rest"]', shown: '[data-glyph="hover"]', within: ".t-icon-swap" },
+  { rest: '[data-reveal="rest"]', shown: '[data-reveal="hover"]', label: "row action" },
+  { rest: '[data-glyph="rest"]', shown: '[data-glyph="hover"]', label: "icon swap" },
 ];
 
+/** Marks every rest/shown pair holder on the page and returns how many there are. */
+async function markPairs(
+  page: import("@playwright/test").Page,
+  pair: { rest: string; shown: string },
+): Promise<number> {
+  return page.evaluate((selectors) => {
+    let found = 0;
+    for (const node of document.querySelectorAll("[data-reveal-pair]")) {
+      node.removeAttribute("data-reveal-pair");
+    }
+    for (const rest of document.querySelectorAll(selectors.rest)) {
+      for (let node = rest.parentElement; node; node = node.parentElement) {
+        if (!node.querySelector(selectors.shown)) continue;
+        if (!node.hasAttribute("data-reveal-pair")) {
+          node.setAttribute("data-reveal-pair", String(found));
+          found += 1;
+        }
+        break;
+      }
+    }
+    return found;
+  }, pair);
+}
+
 test("a reveal and the thing it displaces never show at once", async ({ page }) => {
+  test.setTimeout(ROUTES.length * 40_000 + 30_000);
   const both: string[] = [];
+  let examined = 0;
+  const byPair = new Map<string, number>();
 
   for (const route of ROUTES) {
     await page.goto(`/visual/?${route}&theme=light`);
     await page.waitForSelector("html[data-visual-ready]");
+    await page.waitForTimeout(200);
 
     for (const pair of PAIRS) {
-      const containers = await page.locator(pair.within).elementHandles();
-      for (const container of containers.slice(0, 6)) {
+      const count = await markPairs(page, pair);
+      byPair.set(pair.label, (byPair.get(pair.label) ?? 0) + count);
+
+      for (let index = 0; index < Math.min(count, 6); index += 1) {
+        const container = page.locator(`[data-reveal-pair="${index}"]`);
         const box = await container.boundingBox();
         if (!box || box.width === 0) continue;
+        examined += 1;
 
         const sample = async (state: string) => {
           const reading = await container.evaluate(
@@ -92,7 +129,7 @@ test("a reveal and the thing it displaces never show at once", async ({ page }) 
           // Both substantially visible is the failure; a cross-fade mid-flight is not.
           if (reading && reading.rest > 0.6 && reading.shown > 0.6) {
             both.push(
-              `${route} ${state}: rest=${reading.rest} shown=${reading.shown} in ${pair.within}`,
+              `${route} ${pair.label} ${state}: rest=${reading.rest} shown=${reading.shown}`,
             );
           }
         };
@@ -120,5 +157,15 @@ test("a reveal and the thing it displaces never show at once", async ({ page }) 
     }
   }
 
+  // Floors, and the reason this file now has them: the `.group/row` selector matched nothing on
+  // any route and the test reported green the whole time. Each pair is floored separately, so a
+  // mechanism that stops appearing is named rather than absorbed by the other one's count.
+  for (const pair of PAIRS) {
+    expect(
+      byPair.get(pair.label) ?? 0,
+      `no ${pair.label} pair was found on any route`,
+    ).toBeGreaterThan(0);
+  }
+  expect(examined, "the sweep has to put a real container through its states").toBeGreaterThan(1);
   expect([...new Set(both)], "a reveal showing at the same time as what it displaces").toEqual([]);
 });
