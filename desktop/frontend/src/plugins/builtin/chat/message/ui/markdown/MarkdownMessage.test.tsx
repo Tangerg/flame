@@ -296,6 +296,34 @@ describe("markdownMessage", () => {
     expect(prose.filter((value) => cells(value).length > 0)).toEqual([]);
   });
 
+  // The gap between two paragraphs of unspaced writing is closed by `markdown.css`, and the rule
+  // pairs ADJACENT paragraphs — so a paragraph the predicate misses does not merely miss the
+  // treatment, it reopens the gap above AND below itself in the middle of a reply that is
+  // otherwise closed. The predicate was `\p{Script=Han}`, so a Japanese paragraph written
+  // without kanji was that paragraph.
+  it("marks every paragraph of a reply that has no word spaces, not only the ones with kanji", () => {
+    const japanese = [
+      "実行は完了しました。",
+      "それではつづきをおねがいします。",
+      "コンパイルエラーガアリマス。",
+    ];
+    const { container, unmount } = render(
+      <MarkdownMessage text={japanese.join("\n\n")} reveal="instant" />,
+    );
+    expect(container.querySelectorAll('.md > p[data-markdown-unspaced="true"]')).toHaveLength(
+      japanese.length,
+    );
+    unmount();
+
+    // The other side. Korean writes spaces between words, so it has the ragged rhythm this rule
+    // exists to leave alone — and a Korean reply is uniformly unmarked rather than inconsistent.
+    const spaced = ["실행이 완료되었습니다.", "The run finished."];
+    const other = render(<MarkdownMessage text={spaced.join("\n\n")} reveal="instant" />);
+    expect(other.container.querySelectorAll('.md > p[data-markdown-unspaced="true"]')).toHaveLength(
+      0,
+    );
+  });
+
   it("renders markdown lists", () => {
     const src = "- one\n- two\n- three";
     const { container } = render(<MarkdownMessage text={src} reveal="smooth" />);
@@ -354,7 +382,7 @@ describe("markdownMessage", () => {
     const { container } = render(<MarkdownMessage text={src} reveal="instant" />);
 
     expect(container.querySelector('h3[dir="auto"][data-md-level="1"]')).toBeTruthy();
-    expect(container.querySelectorAll('p[data-markdown-han-text="true"]')).toHaveLength(2);
+    expect(container.querySelectorAll('p[data-markdown-unspaced="true"]')).toHaveLength(2);
     expect(container.querySelector('ul[dir="auto"]')).toBeTruthy();
     expect(container.querySelector('ol[dir="auto"]')).toBeTruthy();
     expect(container.querySelector('blockquote[dir="auto"]')).toBeTruthy();

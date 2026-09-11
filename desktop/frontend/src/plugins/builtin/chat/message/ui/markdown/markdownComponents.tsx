@@ -27,7 +27,24 @@ function visibleText(children: ReactNode): string {
 }
 
 const WHITESPACE_ONLY = /^\s*$/;
-const HAN_TEXT = /\p{Script=Han}/u;
+/**
+ * Writing with no spaces between words, which is why two paragraphs of it sit closer.
+ *
+ * A run of Japanese or Chinese is a solid block of even ink — no word gaps, no ascender rhythm
+ * — so the same paragraph margin that separates two ragged Latin blocks reads as a hole between
+ * two of these. `markdown.css` closes it, and this decides which paragraphs are in the run.
+ *
+ * It was `\p{Script=Han}` — kanji and hanzi only. A Japanese paragraph that happens to be all
+ * kana is still Japanese, and the CSS pairs ADJACENT paragraphs, so one of them in the middle of
+ * a reply reopened the gap above AND below it while the rest stayed closed: measured on
+ * `それではつづきをおねがいします。` and `コンパイルエラーガアリマス。`, both unmarked beside
+ * marked neighbours.
+ *
+ * Hangul is deliberately NOT here. Korean puts spaces between words, so it has the ragged
+ * rhythm this rule exists to leave alone — and a Korean reply is uniformly unmarked rather than
+ * inconsistent with itself.
+ */
+const UNSPACED_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
 
 /**
  * A table cell that is a NUMBER, so a column of them lines up and cannot wrap.
@@ -141,7 +158,7 @@ const sharedMarkdownComponents: Components = {
     }
     return (
       <p
-        data-markdown-han-text={HAN_TEXT.test(visibleText(children)) ? "true" : undefined}
+        data-markdown-unspaced={UNSPACED_SCRIPT.test(visibleText(children)) ? "true" : undefined}
         dir="auto"
       >
         {children}

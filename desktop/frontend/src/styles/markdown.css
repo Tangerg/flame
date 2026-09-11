@@ -33,10 +33,10 @@
   width: 100%;
   max-width: none;
 }
-.md > p[data-markdown-han-text="true"]:has(+ p[data-markdown-han-text="true"]) {
+.md > p[data-markdown-unspaced="true"]:has(+ p[data-markdown-unspaced="true"]) {
   margin-bottom: 4px;
 }
-.md > p[data-markdown-han-text="true"] + p[data-markdown-han-text="true"] {
+.md > p[data-markdown-unspaced="true"] + p[data-markdown-unspaced="true"] {
   margin-top: 4px;
 }
 
