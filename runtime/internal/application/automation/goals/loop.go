@@ -102,15 +102,19 @@ func (d *Driver) launchLocked(
 
 	go func() {
 		defer release()
-		defer drive.lease.Release()
+		defer func() {
+			// Joining this drive must also release its ownership. A successor may
+			// acquire the lease as soon as done closes or the registry forgets it.
+			drive.lease.Release()
+			close(drive.done)
+			if drive.err == nil {
+				d.mutations.forget(sessionID, drive)
+			}
+		}()
 		drive.err = d.drive(ctx, sessionID, incarnationID)
 		if drive.err != nil {
 			slog.ErrorContext(ctx, "goal: drive failed",
 				"session.id", sessionID, "goal.incarnation.id", incarnationID, "error", drive.err)
-		}
-		close(drive.done)
-		if drive.err == nil {
-			d.mutations.forget(sessionID, drive)
 		}
 	}()
 	return nil
@@ -146,10 +150,10 @@ func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID, incarnationID
 	return nil
 }
 
-// drive runs autonomous Runs until the goal leaves active. Cancellation (Stop /
-// shutdown) leaves the goal's stored status untouched — Stop already paused it;
-// a shutdown leaves it active so the boot reconcile degrades it to paused rather
-// than resuming and burning budget.
+// drive runs autonomous Runs until the goal leaves active. Cancellation quiesces
+// execution; Stop owns the final durable pause after joining the drive. Startup
+// reconciliation pauses any Goal left active by shutdown rather than silently
+// resuming it and consuming budget.
 func (d *Driver) drive(ctx context.Context, sessionID, incarnationID string) error {
 	for {
 		if ctx.Err() != nil {
