@@ -2,8 +2,6 @@ import type { ToolMetaTone } from "@/plugins/builtin/agent/public/messagePresent
 import { vocab } from "@/ui";
 
 /**
- * What a tool row's trailing meta is written in.
- *
  * `ToolMetaTone` is a closed pair for a good reason, stated where it is declared — but the two
  * surfaces that render it had each mapped it themselves, and disagreed: a card wrote `muted` as
  * `fgMuted` and a group member wrote the same tone as `fgFaint`. Neither was wrong. The meta

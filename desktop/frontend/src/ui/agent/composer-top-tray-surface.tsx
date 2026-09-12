@@ -30,7 +30,6 @@ const styles = stylex.create({
     // `clip` and not `hidden`: a scroll container here would swallow the transcript's wheel
     // events at the composer's edge.
     overflow: "clip",
-    // The composer's own corner, so the two read as one surface where they meet.
     borderTopLeftRadius: "var(--shape-composer)",
     borderTopRightRadius: "var(--shape-composer)",
   },

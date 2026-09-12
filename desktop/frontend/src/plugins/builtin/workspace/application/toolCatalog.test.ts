@@ -44,10 +44,6 @@ describe("toolCatalogViewModel", () => {
 });
 
 describe("builtinToolCatalogViewModel", () => {
-  // A name the local table places goes to its family with its glyph; one it has
-  // never heard of still lists, under the trailing family and with the generic
-  // glyph. The alternative — enumerating the table — advertises tools the connected
-  // runtime cannot call.
   it("groups runtime tools by family and keeps unplaced ones", () => {
     expect(
       builtinToolCatalogViewModel([
@@ -109,8 +105,6 @@ describe("builtinToolCatalogViewModel", () => {
     });
   });
 
-  // Families the runtime shipped nothing for are absent, not empty: a heading with
-  // no rows under it reads as a catalog that failed to load.
   it("omits families the runtime reported no tools for", () => {
     const view = builtinToolCatalogViewModel([
       { name: "grep", description: "Search", parameters: {}, safetyClass: "safe" },

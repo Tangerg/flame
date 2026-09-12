@@ -113,9 +113,6 @@ function FontSizeField({
   return (
     <div {...stylex.props(fsx.sizeRow)}>
       <span {...stylex.props(fsx.legend, typeStep.uiMd)}>{label}</span>
-      {/* The pane hangs every control off the card's inner edge — `SettingRow` does it for the
-          rows this one nests inside. A content-width control left in its cell stops short of
-          that edge and reads as the one row that missed the line. */}
       <Segmented
         className={stylex.props(fsx.toEdge).className}
         value={value === null ? SIZE_RESET : String(value)}

@@ -33,8 +33,6 @@ const styles = stylex.create({
     backgroundColor: surface.sunken,
     boxShadow: "var(--shadow-well)",
   },
-  // The list adds no box of its own: the root already IS the track, and a second box between
-  // them would put the tabs one nesting step away from the padding that positions them.
   list: { display: "contents" },
   tab: {
     position: "relative",
@@ -57,8 +55,7 @@ const styles = stylex.create({
     // to go. What it does have is the chip — and the chip is a CHILD of whichever tab is
     // active, so the tab is the only element that can know the pointer is on it. StyleX has no
     // descendant selector, so the tab publishes what it knows and the chip reads it, the
-    // channel `reveal.ts` uses for the same reason. The step is the one `Button`'s `raised`
-    // already gives an opaque lifted fill, so this adds no value to the interaction model.
+    // channel `reveal.ts` uses for the same reason.
     "--segment-chip-fill": { default: surface.canvas, ":hover": surface.surface2 },
   },
   // The moving chip is a sibling behind the label rather than the tab's own background, so one

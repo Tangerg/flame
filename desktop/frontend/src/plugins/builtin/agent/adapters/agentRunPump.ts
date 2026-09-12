@@ -47,7 +47,6 @@ interface AgentRunPumpOptions {
   /** null means no longer attachable at all — finished, waiting on a person, or moved to
    *  another segment — after the durable projection reconciled that transition. */
   reattach?: (position: RunStreamPosition, signal: AbortSignal) => Promise<RunStream | null>;
-  /** The newest live stream became idle after its queued tail was folded. */
   onIdle?: () => void;
 }
 

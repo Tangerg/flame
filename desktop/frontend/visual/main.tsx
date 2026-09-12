@@ -29,9 +29,6 @@ import {
 } from "./workspaceFixtureStates";
 import "../src/styles/markdown.css";
 import "../src/styles/overlays.css";
-// LAST of the three, and the same order as `src/main.tsx` for the reason spelled out there:
-// `globals.css` ends with the touch-device reveal override, which has to beat a rest state
-// these two declare.
 import "../src/styles/globals.css";
 import "../src/styles/stylex.css";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
@@ -40,15 +37,8 @@ import { VISUAL_NOW } from "./agentFixtureFacts";
 type FixtureTheme = "light" | "dark";
 
 const VISUAL_CLOCK_STARTED_AT = performance.now();
-// Keep time-based labels deterministic without freezing the browser clock.
-// Disclosure/scroll libraries use Date.now() to advance their frame loops; a
-// constant clock leaves those loops waiting forever and hides the production
-// transcript's real initial-scroll behaviour from visual tests.
 Date.now = () => VISUAL_NOW + (performance.now() - VISUAL_CLOCK_STARTED_AT);
 setLocale("en");
-// The app's location comes from the router; a fixture has no routes and needs
-// only to be somewhere. Each fixture's install() navigates this to the place it
-// is photographing.
 configureNavigator(createMemoryNavigator());
 
 function fixtureTheme(value: string | null): FixtureTheme {
@@ -86,15 +76,8 @@ const workspaceState: VisualWorkspaceState = isVisualWorkspaceState(requestedSta
 const rootElement = document.documentElement;
 const motionScale = query.get("motion") === "full" ? 1 : 0;
 const requestedFontSize = query.get("font-size");
-// Density has no CSS fallback to photograph: `globals.css` states the comfortable values and
-// the pipeline overwrites all thirteen, so a spec can only see the setting by asking for it.
 const requestedDensity = query.get("density");
 const density = UI_DENSITY_MODES.find((mode) => mode === requestedDensity);
-// The contrast slider walks every surface step toward the ink, so it is an axis an audit has
-// to be able to reach — and it had no way to. Seeding the persisted store instead needed two
-// navigations and a version that matches, which is a lot of ways to test nothing.
-// The accent is a free-form colour the user picks, and `--color-text-on-accent` is a fixed
-// white the theme declares — so it is an axis where the two halves can come apart.
 const requestedAccent = query.get("accent");
 const accent =
   requestedAccent !== null && /^#[\da-f]{6}$/i.test(requestedAccent) ? requestedAccent : undefined;
@@ -103,27 +86,15 @@ const contrast =
   Number.isFinite(requestedContrast) && query.get("contrast") !== null
     ? Math.min(100, Math.max(0, requestedContrast))
     : undefined;
-// Which view a full-placement state opens. The default covers the shape nineteen of the
-// twenty-one views share; a spec names one of the other two.
 const requestedFullView = query.get("full-view") ?? undefined;
 const requestedLocale = query.get("locale") ?? "en";
-// A custom palette is two colours the user gives directly, which makes it the freest of the
-// appearance preferences and the last one a fixture could not reach. `theme` stays light/dark
-// because the class bootstrap below needs one of those; the painter resolves the real scheme
-// from the base colour it is handed.
 const hex = (name: string) => {
   const value = query.get(name);
   return value !== null && /^#[\da-f]{6}$/i.test(value) ? value : undefined;
 };
-// The one free input that changes SIZE rather than colour: a family whose metrics differ from
-// the bundled one makes every fixed-height control a question.
 const requestedUiFont = query.get("ui-font") ?? undefined;
-// The one preference that changes RASTERISATION rather than geometry: it moves no box and
-// appears in no computed length, so the only place it exists is the pixels.
 const requestedSmoothing = query.get("smoothing");
 const fontSmoothing = requestedSmoothing === null ? undefined : requestedSmoothing !== "off";
-// The radius preference multiplies through one ladder, which is a promise about every corner
-// in the product rather than about the tokens — so it can only be checked by reading corners.
 const requestedRadius = Number(query.get("radius"));
 const radiusScale =
   Number.isFinite(requestedRadius) && query.get("radius") !== null ? requestedRadius : undefined;
@@ -154,13 +125,6 @@ if (!container) throw new Error("Visual fixture root element is missing");
 
 async function fixtureNode(): Promise<ReactNode> {
   if (fixture === "foundation") {
-    // Even the fixture that renders nothing but shell materials needs the palette
-    // and style registered: an unregistered theme id resolves to the dark scheme,
-    // and unregistered styles leave the shell on globals.css fallbacks — which is
-    // to say, the one fixture named for the foundation would photograph anything
-    // but it. The accents go with them: without their presets the light scheme
-    // cannot map the stored accent to its light-ground shade and falls back to
-    // darkening the dark one, which ships a navy button in every golden.
     const [
       { default: flameLight },
       { default: flameDark },
@@ -201,23 +165,13 @@ async function fixtureNode(): Promise<ReactNode> {
   return <VisualAgentStateFixture state={state} view={view} />;
 }
 
-// English unless a spec asks otherwise, so every existing golden is untouched. The
-// dictionaries are lazy plugins, so the switch has to happen after the fixture has loaded
-// them and be awaited before the first render — set it earlier and the frame is photographed
-// in English while the requested language arrives behind it.
 if (requestedLocale !== "en") {
-  // The production cold-start path, in its own order: a language plugin fetches its
-  // dictionary during setup only when it is ALREADY the selected one, so selecting after
-  // loading leaves every string on the English fallback with `html lang` saying otherwise.
   setLocale(requestedLocale);
   const [{ localePlugins }, { loadPluginsForTest }] = await Promise.all([
     import("@/plugins/builtin/i18n"),
     import("@/plugins/sdk/testKernel"),
   ]);
   for (const plugin of localePlugins) await loadPluginsForTest(plugin);
-  // The fetch is a promise the plugin does not hand back, so wait for its EFFECT. A frame
-  // photographed mid-fetch is the English one, which is the bug this whole parameter exists
-  // to look for in other languages.
   const { en } = await import("@/lib/i18n/locales/en");
   for (let attempt = 0; attempt < 400 && t("common.cancel") === en["common.cancel"]; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 5));
@@ -226,12 +180,6 @@ if (requestedLocale !== "en") {
 
 const node = await fixtureNode();
 
-// Run the real appearance pipeline over the fixture's store. Without this the
-// harness photographs globals.css's fallback values: every colour theme and every
-// visual style would be registered but never applied, so no palette or material
-// regression could reach a screenshot. The store already carries the query
-// parameters this file resolved, so the pipeline reproduces the deterministic
-// motion and type the specs depend on rather than fighting it.
 useAppearanceStore.setState({
   theme,
   motionScale,
@@ -246,9 +194,6 @@ useAppearanceStore.setState({
   ...(radiusScale !== undefined ? { radiusScale } : {}),
   ...(fontSmoothing !== undefined ? { fontSmoothing } : {}),
 });
-// Both halves of what `appearancePainter` installs: the pane and the sidebar footer read
-// the preference through this port, so painting without binding it renders a broken
-// settings surface the specs would photograph as if it were the product.
 installAppearancePreferencePort();
 installDocumentAppearance(useAppearanceStore);
 
@@ -260,27 +205,8 @@ createRoot(container).render(
   </QueryClientProvider>,
 );
 
-// `document.fonts.ready` alone is NOT a gate: it resolves when nothing is
-// *pending*, and a face is only requested once layout first needs it. Checked
-// before that request goes out, it resolves immediately — so on a cold HTTP cache
-// the harness photographed a layout measured with fallback metrics, and one
-// paragraph in the foundation fixture wrapped at a different word than it does
-// with Geist loaded. The golden then disagreed with every warm run, which is the
-// whole of the "run the goldens twice" folklore.
-//
-// Requesting both faces explicitly makes them pending before the gate looks, so
-// `ready` waits for them. The two frames after are for the relayout that follows.
 const FIXTURE_FACES = ['1rem "Geist"', '1rem "JetBrains Mono"'];
 
-/**
- * Wait for the shell to have finished arriving, not merely for two frames to pass.
- *
- * A workspace view body is its own chunk, so the first commit can be a Suspense skeleton.
- * Measured here, the dock had three of its seven chrome bars when a two-frame gate fired
- * and all seven shortly after — read by a spec as a missing surface, ~70% of runs. DOM
- * quiescence does not help: the chunk fetch is a SILENT gap that looks settled. The
- * boundary marks itself while it waits, so that is what to watch.
- */
 function shellArrived(deadlineMs: number): Promise<void> {
   return new Promise((resolve) => {
     const expiry = performance.now() + deadlineMs;
@@ -298,7 +224,6 @@ const ARRIVAL_DEADLINE_MS = 8000;
 void Promise.all(FIXTURE_FACES.map((face) => document.fonts.load(face)))
   .then(() => document.fonts.ready)
   .then(() => shellArrived(ARRIVAL_DEADLINE_MS))
-  // Two more for the relayout that follows the last commit.
   .then(
     () =>
       new Promise<void>((resolve) =>

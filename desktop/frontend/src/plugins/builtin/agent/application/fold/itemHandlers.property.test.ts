@@ -7,11 +7,6 @@ import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { Arbitrary, forEachSeed } from "@/test/arbitrary";
 import { foldTestEvent, runFinished } from "./reducer.fixtures";
 
-// `applyStreamHandlers` CATCHES what a handler throws, so asserting "did not throw" proves
-// nothing here — the failure is a silently dropped frame, observed at the seam that swallows
-// it. Ordering is the adversary: `item.started` may arrive after deltas, after
-// `item.completed`, or after a snapshot already advanced the same Item.
-
 const RUN_ID = "run_1";
 const SEGMENT_ID = "seg_1";
 
@@ -34,10 +29,6 @@ function toolItem(a: Arbitrary, id: string, status: "running" | "completed"): Ag
     status,
     type: "toolCall",
     startedAt: "2026-06-03T00:00:00.000Z",
-    // A settled tool call carries BOTH, and the wire says so conditionally — the generated
-    // TS type marks each optional, so only `validateWire` catches a corpus that stopped
-    // producing one. It did: half the frames here were being filtered out unnoticed, which
-    // is the whole reason the coverage assertion below exists.
     ...(status === "running"
       ? {}
       : { finishedAt: "2026-06-03T00:00:01.000Z", durationMillis: 1000 }),
@@ -80,8 +71,6 @@ function foldAll(events: readonly AgentStreamEvent[]): AgentSessionView {
 
 let swallowed: string[] = [];
 
-// TRAP: stream handlers are a plugin contribution. Without loading it every frame is a no-op
-// and the properties below hold over a view nothing ever wrote to.
 beforeEach(async () => {
   const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
   await loadPluginsForTest(spec);
@@ -176,8 +165,6 @@ describe("the live item fold, over the orderings a replay can produce", () => {
       const settled = foldAll([started, completed]);
       const regressed = foldAll([started, completed, started]);
       expect(swallowed.slice(0, 2)).toEqual([]);
-      // Upserting an advanced projection would erase content and pull a complete card back to
-      // running.
       expect(regressed.toolCalls).toEqual(settled.toolCalls);
       expect(regressed.messages.map((message) => message.blocks.length)).toEqual(
         settled.messages.map((message) => message.blocks.length),

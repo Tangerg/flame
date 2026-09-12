@@ -148,7 +148,6 @@ describe("submitComposer", () => {
     const send = vi.fn(() => true);
     const clear = vi.fn();
     submitComposer(deps({ value: "/echo hi there", clear, sendInput: send }));
-    // The slash handler gets a text→input adapter, not sendInput itself.
     expect(run).toHaveBeenCalledWith({ args: "hi there", send: expect.any(Function) });
     expect(send).not.toHaveBeenCalled();
     expect(clear).toHaveBeenCalledOnce();

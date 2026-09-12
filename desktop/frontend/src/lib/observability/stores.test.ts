@@ -6,8 +6,6 @@ import type {
 import { beforeEach, describe, expect, it } from "vitest";
 import { useTelemetryStore } from "./stores";
 
-// Numeric enum values from @opentelemetry/sdk-metrics, inlined so the test
-// mirrors the production module's SDK-free stance.
 const CUMULATIVE = 1 as AggregationTemporality;
 const HISTOGRAM = 0;
 const SUM = 3;
@@ -194,11 +192,10 @@ describe("telemetry store: spans + logs ring buffers", () => {
       status: "ok" as const,
       attrs: {},
     });
-    // Push more than the cap (500) and assert the oldest were dropped.
     useTelemetryStore.getState().ingestSpans(Array.from({ length: 600 }, (_, i) => mk(i)));
     const { spans } = useTelemetryStore.getState();
     expect(spans).toHaveLength(500);
-    expect(spans[0]!.id).toBe("s100"); // first 100 dropped
+    expect(spans[0]!.id).toBe("s100");
     expect(spans.at(-1)!.id).toBe("s599");
   });
 

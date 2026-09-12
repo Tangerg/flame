@@ -1,9 +1,3 @@
-// Global test setup — runs before every spec.
-//
-// Each test mutates module-level singletons (Zustand stores, the kernel) so we
-// wipe them between tests to keep specs hermetic — one line per store, plus
-// tearing down whatever Host a spec stood up.
-
 import { afterEach, beforeEach } from "vitest";
 import { MotionGlobalConfig } from "motion/react";
 import { useConfigStore } from "@/plugins/sdk/config";
@@ -40,7 +34,6 @@ const testAgentSessions: AgentSessions = {
   subscribeLifecycle: subscribeAgentSessionLifecycle,
 };
 
-// Before the ports: installing them subscribes to the location.
 configureNavigator(createMemoryNavigator());
 installAgentStatePorts();
 installAgentDefaultSessionPort();
@@ -49,14 +42,10 @@ installComposerStatePorts(testAgentSessions);
 installWorkspaceNavigationPort();
 installRuntimeCapabilityPort();
 
-// Unit tests assert state and accessibility, not wall-clock interpolation.
-// Happy DOM does not advance Framer Motion's browser frame loop on teardown,
-// so an exit animation can otherwise retain its completion Promise forever.
 MotionGlobalConfig.skipAnimations = true;
 
 beforeEach(async () => {
   await resetKernelForTest();
-  // A fresh location per spec, with its own history. First, for the same reason.
   configureNavigator(createMemoryNavigator());
   installAgentStatePorts();
   installAgentDefaultSessionPort();
@@ -81,10 +70,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  // Clear localStorage so storage specs don't leak between cases.
   try {
     localStorage.clear();
-  } catch {
-    /* SSR-like envs */
-  }
+  } catch {}
 });

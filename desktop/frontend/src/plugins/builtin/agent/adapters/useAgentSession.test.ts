@@ -1,10 +1,3 @@
-// useAgentSession owns the agent driver lifecycle for one session. The
-// regression locked here: send() is re-entrancy-safe in the window before
-// segment.started arrives. The steady-state guard reads the current root status
-// only flips true a round-trip later, so without the synchronous `starting`
-// latch a second Enter fires a second runs.start — two backend runs + an
-// orphaned optimistic bubble whose localId is never relabeled.
-
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { navigator } from "@/lib/navigation";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,8 +30,6 @@ function parkUntilAborted(signal: AbortSignal): Promise<never> {
   });
 }
 
-// A driver whose start() never resolves — keeps begin() parked in the
-// pre-segment.started window where the latch is the only guard.
 function parkedDriver(): { driver: AgentDriver; start: ReturnType<typeof vi.fn> } {
   const start = vi.fn((_input: unknown, _options: unknown, signal: AbortSignal) =>
     parkUntilAborted(signal),
@@ -52,7 +43,6 @@ function parkedDriver(): { driver: AgentDriver; start: ReturnType<typeof vi.fn> 
 beforeEach(async () => {
   const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
   await loadPluginsForTest(spec);
-  // Mark draft so the effect skips history hydration (items.list → container).
   navigator().go({ session: SID });
   useAgentSessionStore.setState({
     draftSessionIds: new Set([SID]),
@@ -136,7 +126,7 @@ describe("useAgentSession send re-entrancy", () => {
     act(() => {
       const send = useAgentStore.getState().sessions[SID]!.send!;
       send(agentTextInput("first"));
-      send(agentTextInput("second")); // blocked by the starting latch — still pre-segment.started
+      send(agentTextInput("second"));
     });
 
     expect(start).toHaveBeenCalledTimes(1);
@@ -550,8 +540,6 @@ describe("useAgentSession run timing guards", () => {
   });
 });
 
-// Durable recovery (§10.2): opening a NON-draft session must rebuild one coherent
-// material snapshot and reattach to a still-running run via runs.subscribe.
 describe("useAgentSession durable recovery", () => {
   const RID = "ses_recover";
 
@@ -582,8 +570,6 @@ describe("useAgentSession durable recovery", () => {
     const subscribe = vi.fn((_params: unknown, signal: AbortSignal) =>
       Promise.resolve({
         result: { runId: "run_live", segmentId: "seg_live" },
-        // Parked while the run remains live, but owned by the subscribe signal
-        // so hook teardown settles the iterator instead of leaking it.
         events: abortRejectingEvents(signal),
       }),
     );
@@ -601,7 +587,6 @@ describe("useAgentSession durable recovery", () => {
   }
 
   beforeEach(() => {
-    // NOT a draft — recovery only runs for existing sessions.
     navigator().go({ session: RID });
     useAgentSessionStore.setState({
       draftSessionIds: new Set(),
@@ -718,8 +703,6 @@ describe("useAgentSession durable recovery", () => {
             parentRunId: "run_live",
             rootRunId: "run_live",
           },
-          // A running run always names the segment executing it, and recovery
-          // subscribes to THAT segment rather than to whatever is live by then.
           {
             id: "run_live",
             sessionId: RID,

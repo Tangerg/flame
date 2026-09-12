@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { FilePath } from "./file-path";
 
-// The visible outcome — which end clips — is CSS, so what is pinned here is the
-// split that makes it possible: the filename in its own unshrinkable element, the
-// directory in the elastic one.
 describe("FilePath", () => {
   it("pins the filename and lets the directory take the squeeze", () => {
     const { container } = render(<FilePath path="src/plugins/builtin/chat/Composer.tsx" />);
@@ -15,14 +12,7 @@ describe("FilePath", () => {
       "/",
       "Composer.tsx",
     ]);
-    // rtl on the directory alone is what moves the ellipsis to its left edge; the
-    // separator is a sibling so the bidi run cannot take it along.
     expect(parts[0]?.getAttribute("dir")).toBe("rtl");
-    // Both clipping parts carry the same three declarations, and the class names they
-    // compile to are generated — so what is asserted is the STRUCTURE the CSS acts on:
-    // the directory and the filename are separate elements, the separator between them is
-    // a third, and the filename gives way only after the directory has nothing left. Pinned
-    // outright it became the row's min-content and pushed the row past a narrow column.
     expect(parts).toHaveLength(3);
     expect(parts[0]?.tagName).toBe("SPAN");
     expect(parts[2]?.tagName).toBe("SPAN");
@@ -32,9 +22,6 @@ describe("FilePath", () => {
   it("isolates the directory's own text direction inside the rtl clip", () => {
     const { container } = render(<FilePath path="/Users/me/app/tools/preview.ts" />);
     const clip = container.querySelector("[dir=rtl]");
-    // The whole directory sits in ONE ltr isolate. Without it the leading `/` of an
-    // absolute path takes the surrounding rtl direction and is reordered to the far
-    // side of the run, next to the separator — a second slash appears out of nowhere.
     expect(clip?.children).toHaveLength(1);
     expect(clip?.firstElementChild?.getAttribute("dir")).toBe("ltr");
     expect(clip?.firstElementChild?.textContent).toBe("/Users/me/app/tools");

@@ -57,8 +57,6 @@ const cst = stylex.create({
     gap: space.s1_5,
     paddingBlock: space.s1_5,
   },
-  // The empty transcript centres its greeting and keeps a sixth of the pane clear beneath it,
-  // so the composer below does not read as the bottom of a full page.
   empty: {
     display: "flex",
     minHeight: 0,

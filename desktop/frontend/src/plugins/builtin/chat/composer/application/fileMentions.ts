@@ -13,8 +13,8 @@ import { useCallback, useMemo, useState } from "react";
 import { useWorkspaceListFiles } from "@/plugins/builtin/workspace/public/queries";
 import { fuzzyFile } from "./fuzzyFile";
 
-const MENTION_ROWS = 8; // visible suggestions
-const FETCH_LIMIT = 2000; // recursive file-list cap fed to the fuzzy matcher
+const MENTION_ROWS = 8;
+const FETCH_LIMIT = 2000;
 
 interface Mention {
   query: string;

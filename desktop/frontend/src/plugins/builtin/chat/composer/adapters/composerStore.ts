@@ -37,7 +37,6 @@ interface ComposerActions {
   pushHistory: (text: string) => void;
   /** False when there is no history to recall, so the key falls through to cursor movement. */
   historyPrev: () => boolean;
-  /** False when not currently navigating history. */
   historyNext: () => boolean;
 }
 

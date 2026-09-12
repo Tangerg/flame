@@ -12,9 +12,6 @@ beforeEach(() => {
   });
 });
 
-// This store is memory, not location: which session is active lives in the
-// URL (see lib/navigation). What is asserted here is the tab set, the cold-start
-// seed, and draft ownership — plus the pruning that keeps it from growing.
 describe("the open set", () => {
   it("holds a session open once", () => {
     store().holdOpen("s1");
@@ -44,8 +41,6 @@ describe("the cold-start seed", () => {
   });
 });
 
-// The version is the discard switch: bumping it must leave no trace of the old
-// payload — including in storage, or the next boot reads it again.
 describe("storage written by an older version", () => {
   it("boots on defaults and restamps storage at the current version", async () => {
     localStorage.setItem(
@@ -65,19 +60,6 @@ describe("storage written by an older version", () => {
   });
 });
 
-/**
- * What the store writes, it must read back — stated without naming a field.
- *
- * `partialize` decides what is written and a Zod schema decides what is accepted, and they
- * are two hand-maintained lists: the comment above the schema says "Mirrors `partialize`
- * below", which is a fact with two owners. A Zod object STRIPS unknown keys, so a field added
- * to one and not the other is written to storage and silently dropped on the next boot — the
- * state simply does not survive a restart, with no error anywhere.
- *
- * Every other test here writes the payload BY HAND, so all of them would pass through that.
- * This one lets the store write its own, and compares the store's choice against itself, so
- * it cannot be satisfied by a subset and does not have to be edited when the shape changes.
- */
 describe("the round trip", () => {
   it("gets back everything it chose to persist", async () => {
     store().holdOpen("s1");
@@ -90,8 +72,6 @@ describe("the round trip", () => {
     const written = (JSON.parse(payload) as { state: unknown }).state;
     expect(written).toBeTruthy();
 
-    // Emptying the store PERSISTS the empty state, so the payload has to go back before the
-    // rehydrate — otherwise this reads back what the clearing wrote and passes on nothing.
     useAgentSessionStore.setState({
       openSessionIds: [],
       lastSessionId: "",

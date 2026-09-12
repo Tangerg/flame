@@ -33,8 +33,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  // Detach the QueryObserver before removing its cache entry. Removing a live
-  // query transitions the observer back to pending.
   unmountHook?.();
   unmountHook = undefined;
   restoreState?.();

@@ -124,8 +124,6 @@ function visualSession(state: VisualAgentState): AgentSessionSummary {
     provider: VISUAL_MODELS[0]!.provider,
     model: VISUAL_MODELS[0]!.id,
     reasoningEffort: VISUAL_MODELS[0]!.reasoningDefaultLevel,
-    // The cwd banner is gated on this alone, and no state had ever set it — an entire
-    // banner, its relocate action and its editor had never been drawn.
     workspace: {
       path: "/Users/visual/scope",
       availability: state === "cwd-missing" ? "missing" : "available",
@@ -159,14 +157,6 @@ function visualAgentRuntimeGateway(state: VisualAgentState): AgentRuntimeGateway
   };
 }
 
-// The read preview asks the workspace for a file's head, which is a data provider and
-// not part of the tool result — so without one the preview rendered empty here and the
-// component that draws it appeared in no test. One line is deliberately far longer than
-// the column it is read in to verify that its tail remains reachable.
-// The `@` mention picker is gated on `items.length > 0`, so with no file list the panel could
-// not be opened here AT ALL — which is why it was the one surface with no test and no golden,
-// and why it went on rendering nothing for as long as it did. A fixture a surface cannot be
-// reached from is a fixture that cannot catch anything about that surface.
 const fileListProvider = definePlugin({
   name: "flame.visual.file-list",
   setup(ctx) {
@@ -220,10 +210,6 @@ const fileHeadProvider = definePlugin({
   },
 });
 
-/** The fixture installs the production state adapter directly so its snapshots
- * remain deterministic. Publish that same adapter through the production
- * Service contract as well: setup-time consumers must see the dependency in
- * the composition graph, not infer it from a module singleton. */
 const visualAgentSessions = definePlugin({
   name: "flame.visual.agent-session-ports",
   provides: { sessions: AGENT_SESSIONS },
@@ -239,8 +225,6 @@ const visualAgentSessions = definePlugin({
   },
 });
 
-// The contract's identity is an object, not a string: a fixture that hands back a string
-// reports a connection the consumer can never match against a successor.
 const VISUAL_RUNTIME_GENERATION = RuntimeConnectionGeneration.forProcess(
   "visual-runtime-connection",
 );
@@ -277,9 +261,6 @@ export async function installVisualAgentFixture(
   const projectless = state === "empty";
   queryClient.clear();
   installRuntimeCapabilityPort();
-  // The agent fixture advertised NOTHING, so every capability-gated affordance in the chat
-  // panel was switched off by omission rather than by decision — the cwd banner's relocate
-  // action among them.
   useRuntimeConnectionStore.setState({
     capabilities: {
       runEvents: [],
@@ -304,7 +285,6 @@ export async function installVisualAgentFixture(
     lastSessionId: projectless ? "" : VISUAL_SESSION_ID,
     draftSessionIds: new Set(),
   });
-  // Which session is on screen is the location, not a store field.
   navigator().go({ session: projectless ? "" : VISUAL_SESSION_ID });
   queryClient.setQueryDefaults([AGENT_SESSIONS_KEY], { staleTime: Infinity });
   queryClient.setQueryDefaults([WORKSPACE_PROJECTS_KEY], { staleTime: Infinity });
@@ -315,17 +295,9 @@ export async function installVisualAgentFixture(
   queryClient.setQueryData([MODELS_KEY], VISUAL_MODELS);
   queryClient.setQueryData([APPROVAL_MODE_KEY], "ask");
   await loadPluginsForTest(
-    // The palettes and the geometry, or the fixture photographs globals.css's
-    // pre-hydration fallbacks: an unregistered theme id resolves to the dark
-    // scheme, which is why every `agent-light-*` golden was a byte-for-byte copy
-    // of its dark twin.
     flameLight,
     defaultAccents,
     flameDark,
-    // This plugin owns the production custom palette and reacts to the same
-    // accent preference as the swatches. Omitting it let the fixture prove the
-    // picker in a topology where the production duplicate-contribution failure
-    // could never happen.
     customTheme,
     ...builtinVisualStyles,
     agentFold,
@@ -338,37 +310,19 @@ export async function installVisualAgentFixture(
     contextUsage,
     composerSend,
     narrativeRails,
-    // `empty` is the projectless home, so its project destination must come
-    // from the exact production kernel contribution and slot — not from a
-    // visual-only facsimile placed beside the composer.
     kernelChat,
-    // The per-message action bar. Unregistered, the slot rendered nothing, so
-    // every agent golden framed a transcript with no controls on it — which is
-    // how the bar spent its life in the caption line, running off the far edge
-    // of the reading column, without a single screenshot showing it.
     messageCopy,
     messageEdit,
     messageRegenerate,
     messageFeedback,
     goal,
     planProgress,
-    // Loaded for the rule it declares, not for its pane: the Schedules plugin is what tells the
-    // transcript that a schedule tool is answered by that pane and needs no row. Production
-    // loads it, so a fixture that does not shows rows production never draws.
     schedulesPane,
-    // Production's own tool-rendering list, not a hand-picked subset of it: the
-    // subset held four of fifteen, so the previews for edit, read and grep — all of
-    // which the canonical snapshots carry results for — rendered as raw JSON here
-    // while the app rendered the real component.
     ...toolRenderingPlugins,
     fileHeadProvider,
     fileListProvider,
   );
 
-  // composerBootstrap synchronizes the active session draft while it loads;
-  // install the fixture draft after that production bootstrap has completed.
-  // `setState` with a function, not a literal: the composer carries the session
-  // composerBootstrap just activated, and replacing the whole aggregate would drop it.
   useComposerStore.setState((current) => ({
     composer: current.composer.edit((draft) =>
       draft.withValue(state === "steer" ? "Tighten the error copy and continue." : ""),

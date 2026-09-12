@@ -3,13 +3,6 @@ import { validateWire } from "@flame/runtime-contract/validate";
 import { en } from "./i18n/locales/en";
 import { MAPPED_TYPES, describeErrorType, describeProblem, isUnsupportedMethod } from "./rpcErrors";
 
-// The table claims to be one-to-one with the protocol. Both directions matter: a symbol the
-// wire never defines carries copy nothing can reach, and a missing one leaves the banner
-// calling a known outcome an unknown error.
-
-// A bare `{ type }` is an INCOMPLETE variant for the symbols that carry required fields, so
-// emptiness is the wrong test. The validator rejects an unknown symbol at `ProblemData.type`
-// and a real-but-incomplete one only at the field it is missing.
 function isWireProblemType(type: string): boolean {
   return !validateWire("ProblemData", { type }).some(
     (violation) => violation.path === "ProblemData.type",
@@ -41,8 +34,6 @@ describe("the protocol error copy table", () => {
     expect(orphaned).toEqual([]);
   });
 
-  // How a run ends when it does not complete. These are the person's own decision or an
-  // ordinary tool outcome, never a protocol fault, so they must always read as words.
   it.each(["denied_by_user", "tool_failed", "tool_canceled", "child_run_canceled"])(
     "explains %s rather than leaving the banner to say 'unknown'",
     (type) => {

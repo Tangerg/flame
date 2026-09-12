@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 import { forEachSeed } from "@/test/arbitrary";
 import { imageSizeFromBase64 } from "./imageHeader";
 
-// A base64 payload from a model, read for its header alone. A reader that throws here takes
-// the message card with it.
-
 describe("the image header reader, over arbitrary payloads", () => {
   it("answers a size or null, never a partial one", () => {
     forEachSeed(600, (a) => {

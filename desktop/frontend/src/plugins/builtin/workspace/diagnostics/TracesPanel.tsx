@@ -46,7 +46,6 @@ export function TracesPanel() {
   );
 }
 
-// This panel's columns, declared beside the header that names them.
 const spanColumns = stylex.create({
   chevron: { width: space.s4 },
   name: { flexGrow: 1, minWidth: 0 },

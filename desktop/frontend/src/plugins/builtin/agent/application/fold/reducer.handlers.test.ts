@@ -1,13 +1,3 @@
-// Per-handler contract tests — the ISOLATED state delta each built-in
-// StreamEvent handler (handlers.ts: segment.* / item.* / plan.*) produces from a
-// SINGLE event, plus what it deliberately leaves untouched (isolation).
-//
-// reducer.events.test.ts covers multi-event fold scenarios (how a stream
-// builds bubbles/turns); this file pins each handler's minimal per-type effect
-// and the branches those scenarios don't reach: deltas that target nothing, and
-// segment.started's usage reset. Kept deliberately narrow — one event, one
-// contract — so a regression names the exact handler.
-
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import { foldTestEvent as reduce, runFinished } from "./reducer.fixtures";
@@ -15,8 +5,6 @@ import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { selectCurrentRootRun, selectVisibleProblem } from "../view/runTree";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
-// Terse builders (mirror reducer.events.test.ts). Items are partial — only the
-// fields the fold reads matter; the cast keeps the wire shape from bloating.
 function item(partial: Record<string, unknown>): Item {
   return {
     runId: "run_1",
@@ -46,7 +34,6 @@ beforeEach(async () => {
 
 describe("handler contract — run.*", () => {
   it("segment.started resets usage to zero + clears a prior error, without touching the stream", () => {
-    // Seed a dirty state: accumulated usage, a stored error, and one open block.
     let s = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("r0", "s0"));
     s = reduce(
       s,
@@ -77,8 +64,6 @@ describe("handler contract — run.*", () => {
       },
     });
     expect(selectVisibleProblem(out)).toBeNull();
-    // Isolation: a run boundary is not a turn boundary — the open bubble is kept
-    // by reference (onRunStarted never maps the message list).
     expect(out.messages).toBe(s.messages);
     expect(out.timeline.at(-1)).toMatchObject({ kind: "run-start", runId: "r1" });
   });
@@ -94,13 +79,12 @@ describe("handler contract — run.*", () => {
         usage: { inputTokens: 100, outputTokens: 5, cacheReadTokens: 0 },
       }),
     );
-    const out = reduce(s, runProgress({ step: 4 })); // step only
+    const out = reduce(s, runProgress({ step: 4 }));
     expect(selectCurrentRootRun(out)?.progress).toEqual({
       step: 4,
       activity: "reading",
       usage: { inputTokens: 100, outputTokens: 5, cacheReadTokens: 0 },
     });
-    // The footprint is a Run fact beside the bag, and a frame that omits it leaves it alone.
     expect(selectCurrentRootRun(out)?.contextTokens).toBe(4200);
   });
 

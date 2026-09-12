@@ -195,8 +195,6 @@ describe("workspace session projection invalidation", () => {
         return (async function* () {
           yield { type: "goals.changed", sequence: 1, sessionIds: ["ses_a"] } as const;
           yield { type: "runs.changed", sequence: 3, sessionIds: ["ses_a"] } as const;
-          // The missing HITL signal arrives after its gap was already covered
-          // by the authoritative replacement snapshot.
           yield { type: "interrupts.changed", sequence: 2, sessionIds: ["ses_a"] } as const;
           yield { type: "plan.changed", sequence: 4, sessionIds: ["ses_a"] } as const;
           await new Promise<void>((resolve) => {

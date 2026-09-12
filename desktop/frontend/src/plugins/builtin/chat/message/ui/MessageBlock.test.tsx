@@ -217,9 +217,6 @@ describe("MessageBlock action materialization", () => {
       />,
     );
 
-    // The source Item and Run have settled, but useStreamReveal still owns a
-    // backlog from the mounted streaming generation. Mounting the action row at
-    // this boundary makes it visibly chase the growing answer tail.
     expect(screen.queryByTestId("message.actions")).toBeNull();
   });
 
@@ -234,9 +231,6 @@ describe("MessageBlock action materialization", () => {
       />,
     );
 
-    // Reduced motion makes the already-mounted reveal publish its entire
-    // accepted tail on the terminal render; the owner must then retire the
-    // presenting generation instead of suppressing actions forever.
     document.documentElement.setAttribute("data-motion", "off");
     try {
       rerender(

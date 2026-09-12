@@ -38,7 +38,6 @@ export interface AgentDockTabsProps {
 }
 
 const styles = stylex.create({
-  // The strip's own row: it holds the tabs and the resizer side by side.
   row: { display: "flex", minHeight: 0, flex: 1 },
   tab: {
     display: "flex",
@@ -59,14 +58,11 @@ const styles = stylex.create({
       ":is([data-active])": "var(--dock-tab-active-surface)",
       ":is([data-active]):hover": "var(--dock-tab-active-hover-surface)",
     },
-    // A tab being dragged steps back so the gap it will leave is legible.
     opacity: { default: null, ":is([data-dragging])": 0.5 },
     transitionProperty: "background-color, color, opacity",
     transitionDuration: motion.color,
     transitionTimingFunction: "var(--ease-out)",
   },
-  // The label is capped so one long title cannot take the strip; the corner is inherited
-  // because the tab and its label are one shape.
   label: {
     display: "inline-flex",
     height: "100%",
@@ -84,12 +80,9 @@ const styles = stylex.create({
   labelClosable: { paddingLeft: space.s2, paddingRight: space.s1 },
   labelPlain: { paddingInline: space.s2 },
   glyph: { flexShrink: 0, opacity: "var(--glyph-step)" },
-  /** The close control sits inside the tab's own inset rather than against its edge. */
   tabClose: { marginRight: space.s0_5 },
   title: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   badge: { flexShrink: 0, fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },
-  // The list adds no box: the strip already is one, and a second would put the tabs a nesting
-  // step away from the padding that positions them.
   contents: { display: "contents" },
 });
 
@@ -97,9 +90,8 @@ export function AgentContextDock({ children }: { children: ReactNode }) {
   return <aside className="agent-context-dock pane-split">{children}</aside>;
 }
 
-/** Lays the transcript, the resizer and the dock side by side. The collapsed state lives here
- *  rather than on the dock because descendant rules — the dock's own slide and the header's
- *  end padding — both read it. */
+/** The collapsed state lives here rather than on the dock because descendant rules — the dock's
+ *  own slide and the header's end padding — both read it. */
 export function AgentDockRow({
   open,
   ref,

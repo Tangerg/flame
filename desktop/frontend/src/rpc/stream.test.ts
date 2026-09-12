@@ -1,13 +1,3 @@
-// Run-event stream lifecycle (API.md §5 / §10). The headline guarantees:
-//   - the stream ends on the ROOT SEGMENT's `segment.finished` (no separate
-//     "closed" method in v2);
-//   - a single response stream carries the whole run tree, including a child
-//     tail whose lineage frames precede a reattach cursor;
-//   - the root segment id is bound from the call response, AFTER the eager
-//     subscription (so head events under streamable HTTP aren't dropped);
-//   - the client subscription is torn down on BOTH natural completion and
-//     early break (otherwise every finished run leaks a subscriber).
-
 import type { NotificationObserver, RpcClient, StreamEndHandler } from "./client";
 import { describe, expect, it } from "vitest";
 import type { RunEvent, RuntimeEvent } from "@flame/runtime-contract/wire";
@@ -89,7 +79,6 @@ function evt(
   return { runId, segmentId, eventId, timestamp: "2026-06-03T00:00:00Z", event } as RunEvent;
 }
 
-// A root-segment segment.started — it lands first on every real run stream.
 function rootStarted(): RunEvent {
   return evt("run_root", "seg_root", "evt_start", {
     type: "segment.started",
@@ -110,7 +99,6 @@ describe("streamRunEvents — response ownership (bound)", () => {
     })();
 
     await Promise.resolve();
-    // A different HTTP response may carry another run at the same time.
     emit(
       evt("run_other", "seg_other", "evt_x", {
         type: "segment.started",
@@ -153,13 +141,9 @@ describe("streamRunEvents — response ownership (bound)", () => {
       }),
     );
 
-    // A terminal source must release its RpcClient registrations immediately;
-    // cleanup cannot depend on a consumer eventually asking for `done`.
     expect(activeCount()).toBe(0);
     expect(stream.requestSignal.aborted).toBe(true);
 
-    // Teardown must not discard an already-buffered terminal event. A late
-    // consumer still observes the complete stream.
     const collected: string[] = [];
     for await (const event of stream.events) collected.push(event.event.type);
     expect(collected).toEqual(["segment.finished"]);
@@ -176,15 +160,12 @@ describe("streamRunEvents — response ownership (bound)", () => {
     })();
 
     await Promise.resolve();
-    // The cursor already passed the spawning Item and child segment.started.
-    // Request-response ownership must still carry the child's remaining tail.
     emit(
       evt("run_child", "seg_child", "evt_3", {
         type: "item.started",
         item: { id: "item_c", type: "agentMessage" } as never,
       }),
     );
-    // A subagent's segment.finished (different segmentId) must NOT close the stream.
     emit(
       evt("run_child", "seg_child", "evt_4", {
         type: "segment.finished",
@@ -222,7 +203,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
       item: { id: "item_1", type: "agentMessage" } as never,
     });
     emit(started);
-    emit(started); // replay overlap re-delivers the same eventId
+    emit(started);
     emit(
       evt("run_root", "seg_root", "evt_2", {
         type: "segment.finished",
@@ -263,7 +244,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
         }),
       );
     }
-    emit(first); // previews did not evict the retained replayable event
+    emit(first);
     emit(
       evt("run_root", "seg_root", "evt_2", {
         type: "item.started",
@@ -276,7 +257,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
         item: { id: "item_3", type: "agentMessage" } as never,
       }),
     );
-    emit(first); // the Runtime can no longer replay evt_1 once two newer facts exist
+    emit(first);
     emit(
       evt("run_root", "seg_root", "evt_4", {
         type: "segment.finished",
@@ -361,9 +342,6 @@ describe("streamRunEvents — response ownership (bound)", () => {
       );
     }
 
-    // Saturated previews are disposable; the stream remains attached until an
-    // authoritative fact cannot be accepted. That fact must trigger observable
-    // recovery instead of being silently omitted from the projection.
     expect(stream.requestSignal.aborted).toBe(false);
     emit(
       evt("run_root", "seg_root", "evt_fact", {
@@ -426,8 +404,6 @@ describe("streamRunEvents — response ownership (bound)", () => {
         item: { id: "item_1", type: "agentMessage" } as never,
       }),
     );
-    // Transport reports the SSE stream carrying run_root died (no segment.finished
-    // ever arrived) — the consumer's for-await must end, not hang forever.
     emitDown();
     await consume;
 
@@ -442,8 +418,6 @@ describe("streamRunEvents — response ownership (bound)", () => {
     const iterator = stream.events[Symbol.asyncIterator]();
     const next = iterator.next();
 
-    // The HTTP reader can deliver response + immediate EOS before the
-    // Promise continuation binds the returned run and segment IDs.
     emitDown();
     stream.bind("seg_root");
 
@@ -502,8 +476,6 @@ describe("streamRunEvents — deferred bind lifecycle", () => {
   });
 
   it("dispose() before bind tears down the subscription (failed runs.start path)", () => {
-    // runs.start can reject before bind() — without dispose the unbound
-    // subscription would buffer every run event in the app, forever.
     const { client, activeCount } = fakeClient();
     const stream = streamRunEvents(client);
     expect(activeCount()).toBe(2);
@@ -531,7 +503,6 @@ describe("streamRunEvents — deferred bind lifecycle", () => {
     })();
 
     await Promise.resolve();
-    // Arrive before we know our root segment id — must be buffered.
     emit(rootStarted());
     emit(
       evt("run_root", "seg_root", "evt_2", {

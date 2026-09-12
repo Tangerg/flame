@@ -2,21 +2,6 @@ import { expect, test } from "./test";
 import { DOCK_MIN_WIDTH_PX, dockWidthFromRatio, maxDockWidth } from "../src/lib/shellGeometry";
 import { dockWidthRow } from "../src/plugins/builtin/shell/kernel/panel/dockWidth";
 
-// The dock's range is stated TWICE and has to be — the CSS copy is what lets a window
-// resize re-derive the measure with no React render, and the TS copy is what clamps a
-// live drag and converts the settled width back to the stored ratio. Neither can read
-// the other: TS runs before layout, and CSS cannot call a function.
-//
-// So the duplication stays and the AGREEMENT gets the guard. Nothing else checks it:
-// `shellGeometry.test.ts` exercises the TS side against itself, and a divergence would
-// surface only as a flank that stops following the pointer near the ends of its travel
-// — which reads as a rendering quirk, not as two formulas that no longer match.
-//
-// The probe rebuilds the real consumption exactly: a flex row of a known width carrying
-// the row style, and a child taking `flex: 0 0 var(--dock-measure)` the way
-// `.agent-context-dock` does. Percentages inside the measure resolve against the row,
-// which is both the flex container and the containing block.
-
 async function cssMeasure(
   page: import("@playwright/test").Page,
   ratio: number,
@@ -42,14 +27,7 @@ async function cssMeasure(
   );
 }
 
-const ROW_WIDTHS = [
-  1920, // a display wide enough that the preferred measure is never the binding claim
-  1440,
-  1120, // the suite's own viewport
-  800,
-  672, // exactly floor + safe area: the narrowest row that can present both
-  400, // too narrow for the floor — the range collapses and must not invert
-];
+const ROW_WIDTHS = [1920, 1440, 1120, 800, 672, 400];
 
 const RATIOS = [0, 0.25, 0.5, 0.75, 1];
 
@@ -64,8 +42,6 @@ test.describe("the dock measure agrees between TypeScript and CSS", () => {
       for (const ratio of RATIOS) {
         const measured = await cssMeasure(page, ratio, rowWidth);
         const expected = dockWidthFromRatio(ratio, rowWidth);
-        // The TS side rounds to whole pixels and CSS does not, so they may differ by
-        // the rounding and by nothing else.
         expect(
           Math.abs(measured - expected),
           `row ${rowWidth}px at ratio ${ratio}: CSS painted ${measured}, drag assumed ${expected}`,
@@ -81,9 +57,6 @@ test.describe("the dock measure agrees between TypeScript and CSS", () => {
     }
   });
 
-  // The floor has one owner on each side — `Math.max` in the module, `max()` in the
-  // measure — and a row too narrow to grant it is the only place either shows. Lose the
-  // CSS one and this row paints a flank of 48px that no drag can reach.
   test("holds the floor on a row too narrow to grant it", async ({ page }) => {
     const narrow = 400;
     expect(maxDockWidth(narrow)).toBe(DOCK_MIN_WIDTH_PX);
@@ -93,22 +66,6 @@ test.describe("the dock measure agrees between TypeScript and CSS", () => {
   });
 });
 
-// What the dock's floor costs the ROWS inside it.
-//
-// The range above is about the flank; this is about what a view has to fit into once the
-// flank is at the narrow end of it. A row that names something — a skill, a proposal, a
-// recipe — puts that name beside chips that keep their width, and the name is the only
-// part with `text-overflow: ellipsis`, which gives a flex item an automatic minimum of
-// ZERO. So the one thing identifying the row is the only thing in it allowed to vanish:
-// measured in a 207px title column, `review-diff` rendered at 0px wide beside a revision
-// hash and two badges that were all fully drawn. Not ellipsed — absent.
-//
-// No golden could see it. `workspace.visual.spec.ts` photographs the dock at the 1472px
-// canonical viewport, where the same column is 560px and every name fits.
-//
-// `checkVisibility` is load-bearing: a view that is mounted but not shown reports a 0px
-// box for everything in it, and without asking the browser whether the element is
-// actually rendered this reads 200 of those and none of the real one.
 const NAMING_VIEWS = [
   "dock-skill-proposals",
   "dock-skill-library",
@@ -124,7 +81,6 @@ const NAMING_VIEWS = [
   "dock-timeline",
 ] as const;
 
-/** Under this a box shows no glyph and no ellipsis either — the text is simply not there. */
 const LEGIBLE_PX = 12;
 
 test("a dock near its floor never renders a name at zero width", async ({ page }) => {
@@ -162,8 +118,6 @@ test("a dock near its floor never renders a name at zero width", async ({ page }
     for (const hit of seen.gone) gone.push(`${state}: ${hit}`);
   }
 
-  // Floor: these views name things, so a run that found nothing to measure is a run whose
-  // selector stopped matching rather than a dock that got wider.
   expect(examined, "no truncating name was found in any dock view").toBeGreaterThan(20);
   expect(gone, "a name the row exists to identify was squeezed out of the row").toEqual([]);
 });

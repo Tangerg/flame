@@ -6,7 +6,6 @@
 
 import { getContainer } from "@/main/container";
 
-/** Between the last mark and whatever the header puts next to it. */
 const CONTROL_GAP_PX = 6;
 
 const GUTTER_PROPERTY = "--window-controls-gutter";

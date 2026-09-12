@@ -2,8 +2,6 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ApprovalMode } from "../application/approvalConfig";
 
-// The row calls the Agent context's published action directly; the settings pane no longer
-// keeps a second name for it, so this stands in for the real seam rather than a local alias.
 const model = vi.hoisted(() => ({
   setApprovalMode: vi.fn(),
 }));

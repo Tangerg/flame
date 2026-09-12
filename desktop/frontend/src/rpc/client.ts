@@ -76,7 +76,6 @@ export interface RpcClient {
     params: WireParams<M>,
     options?: RpcCallOptions,
   ): Promise<WireResult<M>>;
-  /** Returns an unsubscribe fn. */
   subscribe<M extends WireNotificationName>(
     method: M,
     observer: NotificationObserver<M>,
@@ -341,7 +340,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
           lastEventId: callOptions.lastEventId,
         })
         .catch((err) => {
-          if (!pending.has(id)) return; // already aborted/settled
+          if (!pending.has(id)) return;
           pending.delete(id);
           detach();
           reject(err);

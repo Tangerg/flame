@@ -3,37 +3,10 @@ import { VISUAL_AGENT_STATES } from "./agentSessionSnapshots";
 import { VISUAL_WORK_INDEX_STATES } from "./shellFixtureStates";
 import { VISUAL_WORKSPACE_STATES } from "./workspaceFixtureStates";
 
-// A golden is taken after everything settles, so a jump on the way there leaves no trace in it.
-// `layout-shift` is the browser's own record of that jump — the entries CLS is computed from —
-// and it names the element that moved and where it moved from.
-//
-// The baseline is the fixture's own READY signal, and choosing it is the whole check. Three
-// earlier candidates all measure the wrong thing:
-//
-//   * first paint — the dev server delivers CSS through the module graph, so the first frame is
-//     an unstyled `#root` that then settles. Production links the stylesheet in `<head>`, where
-//     it blocks paint and the shift cannot happen. Every state "jumps", and the fix would be
-//     pointed at production code that is already correct.
-//   * first CONTENTFUL paint — closer, and wrong in a way that only shows up as a flake: it is a
-//     browser milestone racing the app's own staged loading. `dock-tools` fills in waves, and
-//     whether its second wave lands before or after that milestone decides whether the run passes.
-//     Measured: three failures in four runs, then none in the next.
-//   * "no `aria-busy` left" — the dock keeps skeletons a fixture seeds no data for, so it never
-//     arrives.
-//
-// Ready is the app's own claim that it has finished, which is the only line a jump can be judged
-// against: before it the user is watching something load, after it they are reading. What
-// survives is a real one — a measurement published from `useEffect` where layout order demanded
-// `useLayoutEffect`, or an image given no width to reserve.
-
 const OBSERVER = `
   window.__shifts = [];
   window.__readyAt = null;
 
-  // The init script runs before the document has an element to observe, so arming waits for one.
-  // Nothing here filters: every shift is kept with its timestamp and the cut is made once the
-  // ready stamp is known, so an observer armed a beat late cannot silently drop or keep the wrong
-  // side of the line.
   const stamp = () => {
     if (window.__readyAt === null) window.__readyAt = performance.now();
   };
@@ -80,9 +53,6 @@ interface Shift {
   moved: string[];
 }
 
-/** Everything the page recorded, cut at the moment the app said it was ready. Throws rather than
- *  reports nothing when the stamp is missing: an instrument that never armed reads exactly like a
- *  page that never moved, and this one has already failed that way once. */
 async function shiftsAfterReady(page: Page): Promise<Shift[]> {
   const { shifts, readyAt } = await page.evaluate(() => {
     const w = window as unknown as { __shifts: Shift[]; __readyAt: number | null };
@@ -108,8 +78,6 @@ function report(entries: { route: string; shift: Shift }[]): string {
     .join("");
 }
 
-// Each route is a page load plus the settle window, and the state lists only grow — a fixed
-// budget here fails as a timeout, which reads like a shift that was never measured.
 const ROUTE_BUDGET_MS = 4_000;
 
 async function expectSettled(page: Page, routes: string[]) {

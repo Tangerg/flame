@@ -40,7 +40,6 @@ const TOOLS: Record<string, ToolCall> = {
   edit: tool("edit", "edit", "write"),
 };
 
-/** Shape only — what nests inside what, which is the whole of this planner's job. */
 const shape = (units: MessageRenderUnit[]): unknown =>
   units.map((unit) => {
     if (unit.kind === "wave") return { wave: shape(unit.units) };
@@ -49,8 +48,6 @@ const shape = (units: MessageRenderUnit[]): unknown =>
   });
 
 describe("planRenderUnits", () => {
-  // The rule the transcript's readability rests on: work · answer · work · answer,
-  // with each run of work behind an answer folded to one row.
   it("folds each run of work that already has an answer after it", () => {
     const units = planRenderUnits(
       [
@@ -72,8 +69,6 @@ describe("planRenderUnits", () => {
     ]);
   });
 
-  // The run in flight is the one the reader is watching, and it is the only one that
-  // must not be folded away underneath them.
   it("leaves the run still in flight unfolded", () => {
     const units = planRenderUnits(
       [reasoning(), toolBlock("shell"), text("answer"), reasoning("running"), toolBlock("edit")],
@@ -92,7 +87,6 @@ describe("planRenderUnits", () => {
     expect(shape(units)).toEqual([{ wave: ["reasoning", "tool"] }, "text"]);
   });
 
-  // Wrapping something that already folds itself only adds a level to open through.
   it("does not wrap a run that plans to a single row", () => {
     expect(shape(planRenderUnits([reasoning(), text("answer")], TOOLS))).toEqual([
       "reasoning",
@@ -122,8 +116,6 @@ describe("planRenderUnits", () => {
     expect(shape(units)).toEqual([{ wave: ["reasoning", "group(2)", "tool"] }]);
   });
 
-  // A request for a decision may never be folded: a turn whose approval is hidden
-  // behind a summary row waits forever on a click nobody knows to make.
   it("never folds a block that is asking the reader for something", () => {
     const approval: ContentBlock = {
       kind: "approval",
@@ -156,11 +148,6 @@ describe("planRenderUnits", () => {
   });
 });
 
-// What "the answer has begun" means, which decides whether the thinking and the tool
-// work fold away. It is not "a text block exists": `item.started` creates the answer's
-// block empty, so that reading folded a running reasoning block the instant the model
-// opened its reply — leaving a one-line row with no preview in it and nothing yet on
-// screen that could have replaced it.
 describe("planRenderUnits · what counts as the answer", () => {
   const superseded = (blocks: ContentBlock[]) =>
     planRenderUnits(blocks, TOOLS).map((unit) => (unit.kind === "wave" ? "wave" : unit.superseded));
@@ -180,8 +167,6 @@ describe("planRenderUnits · what counts as the answer", () => {
   });
 });
 
-// Cases moved here from `chat/message/ui/renderUnits.test.ts`, which asserted this
-// ring's planner from another one — two homes for one function's contract.
 describe("planRenderUnits · read-only grouping", () => {
   const tb = toolBlock;
 
@@ -248,8 +233,6 @@ describe("planRenderUnits · read-only grouping", () => {
 });
 
 describe("waveStepCount", () => {
-  // The first version of the row counted tool calls only, so a round of two commands
-  // and two conclusions said it held two things.
   it("counts every step inside, thinking included and groups unpacked", () => {
     const wave = (blocks: ContentBlock[]) => {
       const first = planRenderUnits(blocks, TOOLS)[0];
@@ -257,9 +240,7 @@ describe("waveStepCount", () => {
       return waveStepCount(first.units);
     };
 
-    // One thought + a group of two reads.
     expect(wave([reasoning(), toolBlock("read"), toolBlock("grep"), text("answer")])).toBe(3);
-    // Two thoughts around two side-effecting calls, none of them grouped.
     expect(
       wave([reasoning(), toolBlock("shell"), reasoning(), toolBlock("edit"), text("answer")]),
     ).toBe(4);

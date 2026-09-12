@@ -22,9 +22,6 @@ const SESSIONS = [
 ];
 
 describe("which sessions to offer", () => {
-  // The palette answered nothing on an empty query, which was right for a palette:
-  // it had commands to show instead. A surface whose whole job is going somewhere
-  // has to answer with somewhere.
   it("answers an empty query with the most recent, newest first", () => {
     expect(matchSessions(SESSIONS, "").map((s) => s.title)).toEqual([
       "Retry budget review",

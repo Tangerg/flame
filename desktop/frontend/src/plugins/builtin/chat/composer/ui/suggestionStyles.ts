@@ -21,7 +21,6 @@ export const suggestionStyles = stylex.create({
     fontWeight: weight.semibold,
     color: color.accent,
   },
-  /** A path reads directory-then-name: the directory recedes so the name is what is scanned. */
   directory: { color: color.fgFaint },
   name: { fontWeight: weight.medium, color: color.fg },
 });

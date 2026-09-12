@@ -19,14 +19,6 @@ import {
   SESSION_ARTIFACT_VERSION,
 } from "@flame/runtime-contract/wire";
 
-// One case per rule the compiler translates, because each rule takes its own code
-// path out of the schema tree: a type keyword, `required`, a closed `enum`, a value
-// constraint stated beside a type and again alone in an allOf branch, union
-// exclusivity, and a cross-field presence rule. A validator that agreed with the
-// published schema on nine of them and silently dropped the tenth would still pass
-// every canonical sample — the samples are valid frames, so only an invalid one
-// proves a rule is enforced.
-
 const session = {
   id: "ses_01",
   title: "Refactor the runtime protocol",
@@ -82,10 +74,6 @@ describe("model identity wire constraints", () => {
       path: 'Usage.byModel["bad model"]',
       detail: expect.stringContaining("expected to match"),
     });
-    // The same key, the other rule on it. `propertyNames` carries a pattern AND a length, and
-    // they take separate code paths out of the schema — which is what this file covers. It used
-    // to reach the length through `ArtifactUsage`, a shape the contract no longer has; `Usage`
-    // states the identical bound, so the case survives its type.
     const overlongModel = "m".repeat(MAXIMUM_MODEL_IDENTITY_CHARACTERS + 1);
     expect(validateWire("Usage", { byModel: { [overlongModel]: {} } })).toContainEqual({
       path: `Usage.byModel[${JSON.stringify(overlongModel)}]`,
@@ -231,9 +219,6 @@ describe("the generated wire checks", () => {
     expect(violation?.detail).toContain("expected one of");
   });
 
-  // Shared result definitions stay open so an older client tolerates optional
-  // fields added by a newer runtime. Request strictness is stated contextually by
-  // OpenRPC and enforced by the runtime's request decoder.
   it("ignores a property the contract does not mention", () => {
     expect(validateWire("Session", { ...session, inventedByANewerServer: true })).toEqual([]);
   });
@@ -245,8 +230,6 @@ describe("the generated wire checks", () => {
     ]);
   });
 
-  // An omitted filter already means "every status", so the two ways of sending one
-  // that means nothing — empty, or repeating a value — are the ones refused.
   it("rejects a filter array that is empty or repeats a value", () => {
     expect(validateWire("ListRunsRequest", {})).toEqual([]);
     expect(validateWire("ListRunsRequest", { statuses: ["running", "waiting"] })).toEqual([]);
@@ -470,9 +453,6 @@ describe("the generated wire checks", () => {
     });
   });
 
-  // The constraint belongs to this request, not to every carrier of the shared
-  // shape, so the schema states it in an allOf branch — a third code path, and the
-  // one that reads `minLength` with no type keyword beside it.
   it("states a constraint on a field of a shared shape", () => {
     const artifact = {
       version: SESSION_ARTIFACT_VERSION,
@@ -582,9 +562,6 @@ describe("the generated wire checks", () => {
     ]);
   });
 
-  // The scope of a read is a union for the same reason a content block is: a frame
-  // carrying both subjects would need a precedence rule to resolve, and the flag only
-  // means something where there is a subtree to include.
   it("keeps a read's two scopes exclusive", () => {
     expect(validateWire("ItemListScope", { type: "session", sessionId: "ses_01" })).toEqual([]);
     expect(
@@ -615,9 +592,6 @@ describe("the generated wire checks", () => {
     expect(details).toContain("matches no permitted variant");
   });
 
-  // A rule declared for RunSummary has to reach the RunRef that embeds it: the
-  // fields are inlined onto one frame, so a rule that stopped at the summary would
-  // leave the shape a client actually receives unchecked.
   it("applies an embedded shape's rules to the shape embedding it", () => {
     const { parentRunId: _parent, ...rootChild } = {
       ...finishedRun,
@@ -625,13 +599,9 @@ describe("the generated wire checks", () => {
       parentRunId: "run_02",
       rootRunId: "run_02",
     };
-    // Named ONCE, though the rule is stated per edge and both surviving edges
-    // independently demand the missing field. How many edges happen to state a
-    // rule is a fact about how the schema is factored, not about the frame.
     expect(validateWire("RunRef", rootChild)).toEqual([
       { path: "RunRef.parentRunId", detail: "is required" },
     ]);
-    // The counter-example: all three edges together is what a child looks like.
     expect(validateWire("RunRef", { ...rootChild, parentRunId: "run_02" })).toEqual([]);
   });
 

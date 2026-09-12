@@ -1,7 +1,3 @@
-// The static application commands that also own the global shortcuts
-// listed in Settings. Workspace destinations and theme accents stay in their
-// dedicated selection surfaces.
-
 import { toggleThemeScheme } from "@/plugins/builtin/theme/public/scheme";
 import {
   closeActiveAgentSession,

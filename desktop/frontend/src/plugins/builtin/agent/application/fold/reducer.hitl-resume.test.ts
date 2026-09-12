@@ -1,10 +1,3 @@
-// Regression: stdout that streams via item.delta{toolOutput} during a HITL
-// *resume* run must land on the toolCall's `result`. Captured from the real
-// runtime: a commandExecution interrupts for approval (runs.start ends with
-// segment.finished{interrupt}, toolCall still inProgress, no output yet), then the
-// resume run RE-EMITS the same toolCall id and streams its stdout before
-// settling. The fold must preserve the resume-streamed output onto the
-// pre-existing toolCalls entry — not reset it when item.started re-fires.
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
@@ -40,7 +33,6 @@ describe("reducer — HITL resume preserves toolOutput on result", () => {
   it("stdout streamed during the resume run lands on the re-emitted toolCall", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
 
-    // runs.start: command interrupts for approval before executing.
     s = reduce(s, runStarted("run_X"));
     s = reduce(
       s,
@@ -69,7 +61,6 @@ describe("reducer — HITL resume preserves toolOutput on result", () => {
     expect(s.toolCalls[TOOL]?.result).toBeUndefined();
     expect(s.toolCalls[TOOL]?.status).toBe("requires-action");
 
-    // runs.resume: re-emits the same toolCall id, then streams stdout + settles.
     s = reduce(s, runStarted("run_X"), "run_X", "seg_resume");
     s = reduce(
       s,

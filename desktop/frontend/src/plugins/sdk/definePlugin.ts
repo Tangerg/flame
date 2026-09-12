@@ -113,5 +113,4 @@ export function definePlugin<Requires extends Requirements = {}, Provides extend
   });
 }
 
-/** The minimum a registration helper needs. */
 export type Contributor = Pick<PluginContext, "contribute">;

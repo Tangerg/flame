@@ -3,9 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { configureNavigator, navigator } from "./navigation";
 import { createMemoryNavigator } from "./navigation.testkit";
 
-// The contract, exercised through the in-memory implementation. The router-backed
-// one is the same shape over the same helpers; what is worth pinning here is the
-// behaviour every caller relies on: a patch is a patch, and history is real.
 beforeEach(() => {
   configureNavigator(createMemoryNavigator());
 });
@@ -70,8 +67,6 @@ describe("history", () => {
   });
 
   it("replace corrects the current entry without adding one to go back to", () => {
-    // How a cold start seeds the last session: the app was never anywhere else,
-    // so there must be nothing behind it.
     navigator().go({ session: "sess_restored" }, { replace: true });
 
     navigator().back();

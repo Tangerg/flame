@@ -1,4 +1,3 @@
-// Composition root — owns the app's Runtime Protocol client and Wails host.
 // Singleton instead of Context because non-component code (zustand effects,
 // plugin setup) calls these too; tests inject fakes via `setContainer()`.
 

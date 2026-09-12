@@ -3,7 +3,6 @@ import { imageSizeFromBase64 } from "./imageHeader";
 
 const toBase64 = (bytes: number[]) => btoa(String.fromCharCode(...bytes));
 
-/** A PNG signature plus an IHDR chunk carrying the size. */
 function png(width: number, height: number): string {
   const be = (n: number) => [(n >>> 24) & 0xff, (n >>> 16) & 0xff, (n >>> 8) & 0xff, n & 0xff];
   return toBase64([
@@ -30,7 +29,6 @@ function png(width: number, height: number): string {
   ]);
 }
 
-/** SOI, then `padding` bytes of segments the reader has to walk past, then a frame. */
 function jpeg(width: number, height: number, padding = 0): string {
   const segment =
     padding > 0
@@ -83,8 +81,6 @@ describe("imageSizeFromBase64", () => {
   });
 
   it("walks past variable-length segments to reach the JPEG frame", () => {
-    // The whole point of scanning rather than indexing: a camera JPEG puts EXIF, and
-    // often a thumbnail, in front of the size.
     expect(imageSizeFromBase64(jpeg(1920, 1080, 600))).toEqual({ width: 1920, height: 1080 });
   });
 
@@ -103,7 +99,6 @@ describe("imageSizeFromBase64", () => {
   it("returns null rather than guessing", () => {
     expect(imageSizeFromBase64("")).toBeNull();
     expect(imageSizeFromBase64(toBase64([1, 2, 3, 4, 5, 6, 7, 8]))).toBeNull();
-    // A PNG signature with the IHDR cut off — a truncated header is not a size.
     expect(
       imageSizeFromBase64(toBase64([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
     ).toBeNull();

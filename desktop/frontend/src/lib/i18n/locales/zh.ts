@@ -1,5 +1,3 @@
-// 简体中文。
-
 export const zh: Record<string, string> = {
   "common.cancel": "取消",
   "common.close": "关闭",
@@ -635,7 +633,6 @@ export const zh: Record<string, string> = {
   "agent.runTree.action.cancel": "取消此次运行",
   "agent.runTree.material.empty": "暂无叙事内容。",
 
-  // ── 工作区视图：运行摘要 ──
   "runSummary.title": "运行摘要",
   "runSummary.noRuns": "暂无运行",
   "runSummary.empty.title": "暂无总结内容",
@@ -659,7 +656,6 @@ export const zh: Record<string, string> = {
   "runSummary.approval.declined": "已拒绝",
   "runSummary.approval.pending": "待处理",
 
-  // ── 工作区视图：时间线 ──
   "timeline.title": "运行时间线",
   "timeline.rootRun": "根运行",
   "timeline.delegatedRun": "委派运行",
@@ -680,7 +676,6 @@ export const zh: Record<string, string> = {
   "timeline.kind.approvalRequest": "审批请求",
   "timeline.kind.approvalResult": "审批已答复",
 
-  // ── 工作区视图：通知 ──
   "notifications.title": "通知",
   "notifications.clearAll": "全部清除",
   "notifications.dismiss": "忽略",
@@ -688,12 +683,10 @@ export const zh: Record<string, string> = {
   "notifications.empty.title": "暂无通知",
   "notifications.empty.sub": "插件通过 host.notify() 报告的任何内容都会显示在这里。",
 
-  // ── 工作区视图：文件 ──
   "files.title": "工作树",
   "files.empty.title": "工作树干净",
   "files.empty.sub": "当前工作区中没有未提交的更改。",
 
-  // ── 工作区视图：搜索 ──
   "search.title": "搜索",
   "search.placeholder": "搜索模式（正则）…",
   "search.aria": "搜索模式",
@@ -703,19 +696,14 @@ export const zh: Record<string, string> = {
   "search.empty.title": "无匹配",
   "search.empty.sub": "工作区中没有内容匹配此模式。",
 
-  // ── 工作区视图：任务 ──
-
-  // ── 工作区视图：终端 ──
   "terminal.title": "终端",
   "terminal.empty.title": "暂无命令",
   "terminal.empty.sub": "agent 运行的命令及其输出会显示在这里。",
   "terminal.commands_other": "{{count}} 条命令",
-  // ── 工作区视图：计划 ──
   "plan.title": "计划",
   "plan.empty.title": "暂无计划",
   "plan.empty.sub": "agent 起草计划后会显示在这里。",
 
-  // ── 工作区视图：工具 ──
   "tools.title": "工具",
   "tools.diagnostics.sub": "可直接调用的运行时诊断工具；它有意不包含 Agent 的完整工具目录。",
   "tools.diagnostics.arguments": "参数（JSON 对象）",
@@ -757,7 +745,6 @@ export const zh: Record<string, string> = {
   "toolAction.copyCommand": "复制命令",
   "approval.fallbackText": "批准此操作？",
 
-  // ── 工作区视图：技能 ──
   "skills.title": "技能",
   "skills.available": "{{count}} 个可用",
   "skills.off": "关闭",
@@ -799,7 +786,6 @@ export const zh: Record<string, string> = {
   "schedules.preset.weekdays": "工作日 9 点",
   "schedules.preset.weekly": "每周一",
 
-  // ── 工作区视图：记忆 ──
   "knowledge.title": "知识",
   "knowledge.scopes_other": "{{count}} 个作用域",
   "knowledge.scope.cwd": "当前目录",
@@ -817,20 +803,15 @@ export const zh: Record<string, string> = {
   "knowledge.updated": "已更新",
   "knowledge.aria": "{{path}} 的知识内容",
 
-  // ── 工作区视图：Agent 文档 ──
   "agentDocs.title": "Agent 文档",
   "agentDocs.found": "找到 {{count}} 个",
   "agentDocs.empty.title": "无 Agent 文档",
   "agentDocs.empty.sub": "从工作目录向上找到的 AGENTS.md 文件会显示在这里。",
 
-  // ── 工作区视图：文件树 ──
   "filetree.title": "资源管理器",
   "filetree.empty.title": "无可浏览内容",
   "filetree.empty.sub": "此工作区中没有文件。",
 
-  // ── 命令面板 ──
-
-  // ── 键盘快捷键 ──
   "shortcuts.sub":
     "由内置和用户插件注册的每一个按键绑定。在应用中任意位置按下组合键即可触发；绑定冲突始终以最后一次注册为准。",
   "shortcuts.filter": "按操作或组合键筛选…",
@@ -839,7 +820,6 @@ export const zh: Record<string, string> = {
   "shortcuts.shortcut": "快捷键",
   "shortcuts.empty": "无匹配的快捷键。",
 
-  // ── 图标库 ──
   "iconGallery.clear": "清除",
   "workspace.view.title.iconGallery": "图标库",
   "settings.pane.brandIcons": "品牌图标",
@@ -849,10 +829,8 @@ export const zh: Record<string, string> = {
   "role.assistant": "助手",
   "role.system": "系统",
 
-  // ── 输入框 ──
   "composer.removeImage": "移除图片",
 
-  // ── Diff 视图 ──
   "diff.workingTree": "工作树",
   "diff.branchCompare": "分支对比",
   "diff.files.aria": "变更文件",
@@ -883,20 +861,16 @@ export const zh: Record<string, string> = {
   "diff.binary": "二进制文件",
   "diff.truncated": "Diff 已达到行数上限 —— 其余文件未显示。",
 
-  // ── 命令日志 ──
   "commandLog.running": "运行中…",
   "commandLog.failed": "失败",
   "commandLog.exit": "退出码 {{code}}",
 
-  // ── 计划 / 任务列表标题 ──
   "plan.list.heading": "任务计划",
 
-  // ── 文件变更 ──
   "files.changed_other": "{{count}} 个文件变更",
   "files.uncommitted_other": "{{count}} 个文件 · 未提交",
   "files.binary": "bin",
 
-  // ── 压缩块 ──
   "compaction.compacted": "已自动压缩上下文",
   "projects.showMore": "显示另外 {{count}} 条",
   "projects.showLess": "收起",

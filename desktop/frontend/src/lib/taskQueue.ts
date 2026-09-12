@@ -60,7 +60,6 @@ export class RetirableTaskCohort {
   }
 }
 
-/** Serialises per identity; different identities proceed independently. */
 export class SerialTaskChain {
   readonly #tails = new Map<string, Promise<void>>();
 

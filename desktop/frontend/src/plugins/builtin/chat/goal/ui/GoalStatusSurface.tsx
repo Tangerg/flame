@@ -5,13 +5,13 @@ import { Button, IconButton, TextEditorDialog, vocab } from "@/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
 import { color } from "@/styles/tokens.stylex";
 
-// The Goal tray's own material: an edge on three sides and the composer's backdrop, which the
-// shared surface used to declare for everyone. Its bottom edge is absent and it overlaps the
-// composer by a pixel, because the two are one surface where they meet.
+// The Goal tray's own material: an edge on three sides and the composer's backdrop. Its bottom
+// edge is absent and it overlaps the composer by a pixel, because the two are one surface where
+// they meet.
 const goalTray = stylex.create({
   material: {
-    // The Goal tray spans the composer. Stated here because the composer centres its children
-    // and the surface deliberately holds no width — the project tray wants a different one.
+    // Stated here because the composer centres its children and the shared surface deliberately
+    // holds no width.
     width: "100%",
     marginBottom: "-1px",
     borderTopWidth: "1px",
@@ -56,12 +56,8 @@ const gs = stylex.create({
   glyph: { height: "var(--icon-sm)", width: "var(--icon-sm)" },
   bigGlyph: { height: "var(--icon-lg)", width: "var(--icon-lg)" },
   // The objective is CONTENT, so when it cannot be edited it keeps its ink and its cursor:
-  // the row is telling you what the goal is, not offering a control that is switched off.
-  // Three of the four controls on this bar answered the pointer and this one — the widest, and
-  // the one that opens the editor — answered nothing. `bare` is right for it: the row reads as
-  // content, so it takes no plate and a wash would give it one. What it can say is the same
-  // thing `TextButton` says for interactive text, and only while it IS editable, because the
-  // comment below is the rule this row is held to.
+  // the row is telling you what the goal is, not offering a control that is switched off. It
+  // takes no plate, and only while it IS editable does it answer the pointer.
   summary: {
     minHeight: space.s6,
     textDecorationLine: "underline",

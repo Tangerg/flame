@@ -1,14 +1,7 @@
-// Unit tests for the runDigest derivation. These exist because the
-// derivation logic used to live inline in run-summary.tsx where it
-// couldn't be tested without rendering React; extracting it to a pure
-// module lets us pin the bucketing rules directly.
-
 import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n";
 import { buildPlaintext, deriveLatestRun, durationText } from "./runDigest";
 
-// Spread-helpers so tests stay terse — each entry only needs to set
-// the fields it actually cares about.
 let seq = 0;
 const entry = (
   fields: Partial<Parameters<typeof deriveLatestRun>[0]["timeline"][number]>,
@@ -31,7 +24,6 @@ const view = (
 });
 
 describe("deriveLatestRun", () => {
-  // Two branches and an unfinished run, all on the string a reader copies out of the app.
   it("reads an elapsed run in the largest unit it fills", () => {
     expect(durationText(t, 1_000, null)).toBe("—");
     expect(durationText(t, 1_000, 1_000)).toBe("0s");
@@ -58,7 +50,7 @@ describe("deriveLatestRun", () => {
     });
     const d = deriveLatestRun(v);
     expect(d?.runId).toBe("r2");
-    expect(d?.status).toBe("unknown"); // finished attention without a terminal is incomplete material
+    expect(d?.status).toBe("unknown");
   });
 
   it("keeps the whole Run across HITL continuation Segment starts", () => {
@@ -109,9 +101,6 @@ describe("deriveLatestRun", () => {
     const v = view({
       timeline: [
         entry({ kind: "run-start", runId: "r1" }),
-        // sessions.snapshot replays a completed Item through completion
-        // semantics. It owns the durable Tool fact and its terminal timeline
-        // entry, but cannot invent a live item.started observation.
         entry({ kind: "tool-end", runId: "r1", refId: "cold-command", status: "ok" }),
         entry({ kind: "tool-end", runId: "r1", refId: "cold-edit", status: "ok" }),
         entry({ kind: "tool-end", runId: "r1", refId: "cold-read", status: "ok" }),
@@ -320,8 +309,8 @@ describe("deriveLatestRun", () => {
         "t-write": {
           id: "t-write",
           runId: "r1",
-          name: "apply_patch", // fileEdit category (§4.4.2)
-          fn: "src/auth.ts", // toolLabel(apply_patch) = the changed path
+          name: "apply_patch",
+          fn: "src/auth.ts",
           args: "",
           result: '{"changes":[{"path":"src/auth.ts","status":"modified"}]}',
           status: "ok",
@@ -329,7 +318,7 @@ describe("deriveLatestRun", () => {
         "t-read": {
           id: "t-read",
           runId: "r1",
-          name: "read", // read category (§4.4.2)
+          name: "read",
           fn: "read",
           args: "src/types.ts",
           status: "ok",
@@ -337,8 +326,8 @@ describe("deriveLatestRun", () => {
         "t-shell": {
           id: "t-shell",
           runId: "r1",
-          name: "shell", // command category (§4.4.2)
-          fn: "pnpm test", // toolLabel(shell) = arguments.command
+          name: "shell",
+          fn: "pnpm test",
           args: "",
           status: "err",
         },

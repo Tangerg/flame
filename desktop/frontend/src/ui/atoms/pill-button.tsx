@@ -4,7 +4,6 @@ import { cn } from "@/lib/classNames";
 import { color, corner, motion, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
 
-/** A capsule action, for the places a plate would be too much chrome: a card's own footer. */
 type PillVariant = "outlined" | "solid" | "accent" | "danger";
 
 const styles = stylex.create({
@@ -17,8 +16,7 @@ const styles = stylex.create({
     transitionProperty: "background-color, color, scale",
     transitionDuration: motion.fast,
     transitionTimingFunction: "var(--ease-out)",
-    // A disabled control does not answer a press. `Button` had guarded this; this one had not,
-    // so a pill that could not act still shrank under the pointer.
+    // A disabled control does not answer a press.
     scale: {
       default: null,
       ":active": "var(--press-scale)",
@@ -36,7 +34,6 @@ const styles = stylex.create({
     backgroundColor: { default: surface.ctaFill, ":hover": surface.ctaHover },
     color: color.ctaText,
   },
-  // The same fill without the hover: a pill that reports rather than invites.
   accent: { backgroundColor: surface.ctaFill, color: color.ctaText },
   danger: {
     backgroundColor: { default: "transparent", ":hover": surface.negativeWash },
@@ -47,8 +44,7 @@ const styles = stylex.create({
   },
   // The pill's own tracking, against the UI step's: a capsule reads as a label rather than a
   // line of interface, and the negative tracking crowds it. Applied AFTER the type step, which
-  // brings its own — under Tailwind the `--tw-tracking` indirection made order not matter, and
-  // here it is the only thing that decides.
+  // brings its own — here order is the only thing that decides.
   tracking: { letterSpacing: "var(--tracking-none)" },
   sm: { height: "calc(var(--spacing) * 6.5)", paddingInline: space.s3 },
   md: { height: space.s8, paddingInline: space.s3_5 },

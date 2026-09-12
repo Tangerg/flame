@@ -8,7 +8,6 @@ export interface SessionProjectionSynchronization {
   replace(): Promise<boolean>;
   /** Revoke the active and queued generation without admitting a successor. */
   retire(): void;
-  /** Notify the coordinator after the live stream has folded its queued tail. */
   liveStreamSettled(): void;
   dispose(): void;
 }

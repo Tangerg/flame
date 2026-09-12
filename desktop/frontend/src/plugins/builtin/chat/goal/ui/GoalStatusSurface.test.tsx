@@ -83,10 +83,6 @@ describe("Goal status surface", () => {
   it("offers Flame Goal management actions in clear, lifecycle, edit order", () => {
     const { container } = render(<GoalStatusSurface />);
 
-    // The row's inset and the summary's line box are geometry, and the golden suite is what
-    // measures geometry. Asserting the utility that produced them froze a spelling: the leading
-    // moved into the boxless button step, where it belongs, and this failed while the row was
-    // pixel-identical. What this test is named for is the ORDER.
     expect(
       Array.from(container.querySelectorAll('[data-slot="goal-actions"] button')).map((button) =>
         button.getAttribute("aria-label"),
@@ -226,14 +222,7 @@ describe("Goal status surface", () => {
     const { container } = render(<GoalStatusSurface />);
 
     const surface = container.querySelector<HTMLElement>('[data-slot="composer-top-tray-surface"]');
-    // `data-slot` is the contract — that this uses the SHARED tray rather than a hand-built
-    // one. The corner it wears is the tray's own decision and belongs where CSS exists; see
-    // the closure suite, which measures the seam between the tray and the composer.
     expect(surface).not.toBeNull();
-    // What those three frozen class names were saying — sides and top edged, no bottom edge
-    // and no bottom margin, because the tray seams INTO the composer — is a geometric claim,
-    // and the closure suite measures it on the surface itself. See "the composer's top tray
-    // seams into it".
     expect(surface?.querySelector('[data-slot="goal-glyph"]')).not.toBeNull();
   });
 });

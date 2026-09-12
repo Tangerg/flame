@@ -1,10 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Everything the controller reaches for that is not its own decision. The classifier it calls —
-// `composerCompositionKeyIntent` — is deliberately REAL and has its own tests; what is under
-// test here is the lifecycle around it, which is the half that decides what the classifier is
-// ever told.
 const submitted = vi.fn(() => true);
 
 vi.mock("@/lib/i18n", () => ({ useT: () => (key: string) => key }));
@@ -50,7 +46,6 @@ function mount() {
   );
 }
 
-/** A plain Enter: no modifiers, no composition flags. What both the IME and the reader send. */
 const enterKey = () =>
   ({
     nativeEvent: {
@@ -76,8 +71,6 @@ function drive(steps: (controller: Controller) => void): number {
 
 describe("useComposerInputController — Enter after an IME commit", () => {
   beforeEach(() => {
-    // `performance` only: the controller reads the clock, and faking timers wholesale would
-    // also stop the `requestAnimationFrame` a mention apply schedules.
     vi.useFakeTimers({ toFake: ["performance"] });
   });
   afterEach(() => vi.useRealTimers());
@@ -87,8 +80,6 @@ describe("useComposerInputController — Enter after an IME commit", () => {
   });
 
   it("does not send on the Enter that committed the composition", () => {
-    // The shape this guard exists for: some IMEs end the composition and then emit an ordinary
-    // Enter from the same keypress. Sending there would post a half-written message.
     expect(
       drive((c) => {
         c.handleCompositionStart();
@@ -111,9 +102,6 @@ describe("useComposerInputController — Enter after an IME commit", () => {
   });
 
   it("sends when the composition was committed with the mouse", () => {
-    // Picking a candidate from the IME panel ends the composition with no key events at all, so
-    // nothing clears the pending flag and the reader's own Enter is the next key the controller
-    // sees. Unbounded, that Enter was swallowed and the message took two presses.
     expect(
       drive((c) => {
         c.handleCompositionStart();
@@ -125,7 +113,6 @@ describe("useComposerInputController — Enter after an IME commit", () => {
   });
 
   it("still refuses an Enter that arrives within the same input burst", () => {
-    // The other side of the window: close enough to be the IME's own key, so it must not send.
     expect(
       drive((c) => {
         c.handleCompositionStart();

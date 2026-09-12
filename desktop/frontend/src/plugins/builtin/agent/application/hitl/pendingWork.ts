@@ -19,9 +19,8 @@ export interface PendingWorkItem {
    *  reader's words: nothing here is a catalog key, because the subject is the
    *  agent's own text. */
   subject: string;
-  /** How many more asks are in the same set, beyond the one named above. */
   more: number;
-  /** ISO-8601, from the wire. Formatted at render, like every other stamp. */
+  /** Formatted at render, like every other stamp. */
   waitingSince: string;
 }
 

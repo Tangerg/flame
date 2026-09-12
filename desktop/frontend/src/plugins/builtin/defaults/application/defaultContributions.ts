@@ -15,10 +15,8 @@ export interface DefaultCommandRuns {
   nextSession: CommandRun;
 }
 
-// The tool-window accent set. Each `dark` value is the hue as the language states
-// it; `light` is the same hue pulled down until it clears 4.5:1 as text on the
-// light scheme's chrome — a saturated mid-tone that reads as a fill on near-black
-// reads as a highlighter pen on near-white.
+// The tool-window accent set. Each `dark` value is the hue as the language states it; `light`
+// is the same hue pulled down until it clears 4.5:1 as text on the light scheme's chrome.
 export const DEFAULT_ACCENTS: AccentSpec[] = [
   {
     id: "blue",

@@ -21,8 +21,6 @@ const { selectAgentSession, runtimeCapability } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/plugins/builtin/agent/public/session", () => ({ selectAgentSession }));
-// The published facade of a foreign context, which is the only surface a test here may
-// reach for — the capability port behind it is Runtime's own business.
 vi.mock("@/plugins/builtin/runtime/public/capabilities", () => ({ runtimeCapability }));
 
 let installation: ReturnType<typeof installScheduleGateway> | undefined;
@@ -52,8 +50,6 @@ function schedule(workspace?: { path: string }): Schedule {
   };
 }
 
-/** The generated TypeScript is looser than the wire: it cannot express non-blank text or a
- *  field forbidden beside a sibling. */
 function expectSendable(shape: WireTypeName, call: ReturnType<typeof vi.fn>): void {
   expect(validateWire(shape, call.mock.calls[0]?.[0])).toEqual([]);
 }
@@ -193,9 +189,6 @@ describe("runtimeScheduleGateway", () => {
 });
 
 describe("the schedules read", () => {
-  // This translation had two authors — this provider and a second one in the defaults
-  // context — so the wire shape could change under one of them silently. It has one now,
-  // and this is what it promises.
   async function read(): Promise<unknown> {
     await contributeForTest((ctx) => {
       registerScheduleDataProvider(ctx);

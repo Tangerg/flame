@@ -11,7 +11,6 @@ import { color, motion, radius, space, surface, weight } from "@/styles/tokens.s
 export const galleryStyles = stylex.create({
   card: {
     display: "flex",
-    // A gallery entry is a specimen, not a control: the pointer says nothing about pressing it.
     cursor: "default",
     flexDirection: "column",
     alignItems: "center",
@@ -48,7 +47,6 @@ export const galleryStyles = stylex.create({
   },
   missing: { fontFamily: "var(--font-mono)", color: color.fgFaint },
 
-  /** A section's heading: what the group is, and how many are in it. */
   sectionHead: {
     display: "flex",
     alignItems: "baseline",
@@ -62,7 +60,6 @@ export const galleryStyles = stylex.create({
   count: { fontFamily: "var(--font-mono)", color: color.fgFaint },
 });
 
-/** Auto-fill so the grid decides its own column count from the pane's width. */
 export const gallerySpread = stylex.create({
   large: {
     display: "grid",

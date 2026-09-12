@@ -52,7 +52,6 @@ import { messageStyles as ms } from "../messageStyles";
 import { vocab } from "@/ui";
 
 const qc = stylex.create({
-  /** The ask's body sits close under its prompt: this is a question, not a section. */
   askBody: { paddingTop: space.s1, paddingBottom: space.s0_5 },
   settledLine: {
     display: "flex",
@@ -65,7 +64,6 @@ const qc = stylex.create({
   },
   settledList: { display: "flex", flexDirection: "column", gap: space.s3 },
   settledItem: { display: "flex", flexDirection: "column", gap: space.s1 },
-  // A settled pair reads as a record, so both halves take the tight line box a log does.
   settledAsk: { whiteSpace: "pre-wrap", lineHeight: "1rem", color: color.fgMuted },
   settledAnswer: {
     whiteSpace: "pre-wrap",
@@ -82,7 +80,6 @@ const qc = stylex.create({
     gap: space.s1,
     color: color.fgFaint,
   },
-  // A measure the count cannot outgrow, so the arrows beside it do not shift as it counts.
   pageCount: { minWidth: space.s10, textAlign: "center", fontVariantNumeric: "tabular-nums" },
   choices: {
     display: "flex",
@@ -93,7 +90,6 @@ const qc = stylex.create({
     paddingBottom: space.s2,
   },
   optionLine: { display: "flex", minWidth: 0, flex: 1, alignItems: "baseline", gap: space.s2 },
-  // The label may take half the row and no more: the hint beside it has to be readable too.
   optionLabel: {
     minWidth: 0,
     maxWidth: "50%",
@@ -126,7 +122,6 @@ const qc = stylex.create({
     borderWidth: "1px",
     borderStyle: "solid",
   },
-  // Filled once the reader has chosen to type rather than pick: the mark answers like an option.
   freeMarkOn: { borderColor: color.fg, backgroundColor: color.fg, color: surface.canvas },
   freeMarkOff: {
     borderColor: surface.field,

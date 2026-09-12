@@ -37,9 +37,6 @@ describe("dock geometry", () => {
     expect(clampDockWidth(100, 1120)).toBe(DOCK_MIN_WIDTH_PX);
   });
 
-  // The floor has ONE owner — this `Math.max`. Assert it there rather than through a
-  // second clamp on the narrow end: that clamp existed, read as the guarantee, and
-  // could never fire, because a max built from `Math.max(floor, …)` cannot go under it.
   it("never lets the widest measure fall under the floor, at any row width", () => {
     for (let rowWidth = 0; rowWidth <= 4000; rowWidth += 1) {
       expect(maxDockWidth(rowWidth)).toBeGreaterThanOrEqual(DOCK_MIN_WIDTH_PX);

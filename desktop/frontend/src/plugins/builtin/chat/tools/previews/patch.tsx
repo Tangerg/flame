@@ -15,8 +15,6 @@ import { TEXT_PREVIEW } from "./previewChrome";
 import { color, leading, space, type as typeStep } from "@/styles/tokens.stylex";
 
 const pt = stylex.create({
-  // One track for the verbs, shared by every row through `subgrid`, so every path begins on
-  // the same left edge however long its own verb is.
   track: { display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", columnGap: space.s1_5 },
   changeRow: {
     gridColumn: "span 2",
@@ -34,7 +32,6 @@ const pt = stylex.create({
     gap: space.s1,
     color: color.fgMuted,
   },
-  // The source path yields most of the room: what matters is where the file went.
   fromPath: { maxWidth: "42%" },
   proposedRow: {
     display: "flex",

@@ -87,8 +87,6 @@ describe("toolCardViewOpener", () => {
 });
 
 describe("headlineToolMetaItem", () => {
-  // The compact row has one slot. It used to take whatever sat last in the list, so a call
-  // that exited non-zero showed its duration instead — in the faint tone, at that.
   it("gives the one slot to a failure over a measurement", () => {
     const items = [
       { id: "hits", label: "3 matches", tone: "muted" },

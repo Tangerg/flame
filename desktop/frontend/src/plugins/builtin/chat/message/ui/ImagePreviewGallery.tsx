@@ -23,8 +23,6 @@ const ig = stylex.create({
     width: "100%",
     flexDirection: "column",
   },
-  // The controls float over the image on the scrim's own layer, so the image below can be
-  // panned and zoomed without them moving with it.
   topRight: {
     position: "absolute",
     top: space.s3,
@@ -36,7 +34,6 @@ const ig = stylex.create({
   },
   prev: { position: "absolute", top: "50%", left: space.s3, zIndex: 1, translate: "0 -50%" },
   next: { position: "absolute", top: "50%", right: space.s3, zIndex: 1, translate: "0 -50%" },
-  // The pan surface leaves room at top and bottom for the two control clusters.
   pan: {
     minHeight: 0,
     flex: 1,
@@ -71,7 +68,6 @@ const ig = stylex.create({
     padding: space.s1,
     color: color.onMedia,
   },
-  // A measure the percentage cannot outgrow, so the buttons beside it hold still.
   zoom: {
     minWidth: "calc(var(--spacing) * 14)",
     paddingInline: space.s1,

@@ -30,11 +30,6 @@ func TestDesktopWindowGeometry(t *testing.T) {
 	}
 }
 
-// The one assertion that replaced a file. The compact toolbar style is what pins the
-// titlebar at 40pt, and 40pt is what puts the platform's marks on the center line of the
-// app's 42pt header; the automatic style resolves to 66pt and drops them 26pt down, well
-// below any header. It used to be set from Objective-C after the window existed, because
-// v2 had no option for it — so nothing could assert it. Here it is a value.
 func TestDesktopWindowPinsTheCompactToolbarStyle(t *testing.T) {
 	titleBar := desktopWindowOptions().Mac.TitleBar
 
@@ -44,18 +39,12 @@ func TestDesktopWindowPinsTheCompactToolbarStyle(t *testing.T) {
 	if !titleBar.UseToolbar {
 		t.Fatal("a toolbar style with no toolbar is not applied; UseToolbar must stay true")
 	}
-	// Dropping NSWindowStyleMaskTitled takes the frame buttons and the window frame with
-	// them — square corners, no shadow. The app draws its header under the platform's
-	// title bar rather than replacing it.
+
 	if titleBar.Hide {
 		t.Fatal("the title bar is transparent, not hidden")
 	}
 }
 
-// The frame is what a launch shows before the WebView paints anything, so the colour on it
-// has to be a canvas the app actually paints — not a third value that only exists here. The
-// pair is pinned against `--color-bg` across the language boundary by `check-bootstrap`;
-// this holds the branch itself, which no regex over the file can see.
 func TestDesktopWindowOpensOnACanvasTheAppPaints(t *testing.T) {
 	light := application.NewRGB(255, 255, 255)
 	dark := application.NewRGB(29, 31, 35)

@@ -34,9 +34,6 @@ describe("ApplyPatchPreview", () => {
     expect(container.querySelector("[class*='diff-added']")).toBeNull();
   });
 
-  // The patch argument is the only account of the change until the receipt lands. Without
-  // it a running edit says "Running…" for its whole duration while the frontend already
-  // holds every file it touches.
   it("shows what a running call is changing, with the counts the receipt never carries", () => {
     render(
       <ApplyPatchPreview
@@ -56,7 +53,6 @@ describe("ApplyPatchPreview", () => {
     expect(screen.queryByText("Running…")).toBeNull();
   });
 
-  // A proposal is not an outcome: once the call settles, only its receipt may speak.
   it("hands the row back to the receipt the moment the call settles", () => {
     render(
       <ApplyPatchPreview

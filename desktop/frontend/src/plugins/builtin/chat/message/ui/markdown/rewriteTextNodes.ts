@@ -1,8 +1,6 @@
 import type { Element, ElementContent, Root, RootContent, Text } from "hast";
 
 /**
- * Rewrites the text a reader can see, skipping whole subtrees the caller does not own.
- *
  * The skip is checked at EVERY level on the way down, and that is the whole reason this exists
  * rather than a `visit` with a check on `parent`. A plugin that asks "is my parent an `<a>`?"
  * says yes for `[src/foo.ts](url)` and no for `[**src/foo.ts**](url)`, because the second one's

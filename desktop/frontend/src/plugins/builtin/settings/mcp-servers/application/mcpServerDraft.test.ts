@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { MCPServerSettings } from "./mcpServerQueries";
 import { MCPServerEdit, RetainedValue, type MCPServerFields } from "./mcpServerDraft";
 
-/** Folds a partial form state onto an edit through the public transition, so these stay
- *  tests of the model rather than of an object literal shaped like it. */
 function editWith(fields: Partial<MCPServerFields>, server?: MCPServerSettings): MCPServerEdit {
   return Object.entries(fields).reduce<MCPServerEdit>(
     (edit, [key, value]) => edit.with(key as keyof MCPServerFields, value as never),
@@ -44,9 +42,6 @@ describe("mcpServerDraft", () => {
     });
   });
 
-  // Assigning a typed name onto an object literal silently discards `__proto__` —
-  // the setter takes the string and stores nothing — so the variable disappeared
-  // between the form and the wire with no error anywhere.
   it("carries an environment variable whose name is an inherited member", () => {
     const input = editWith({
       name: "srv",
@@ -247,8 +242,6 @@ describe("mcpServerDraft", () => {
     ).toBe(true);
   });
 
-  // A credential the user has not touched must read as "leave it alone", never as "erase
-  // it" — the two are one keystroke apart in a form and unrecoverable apart on the server.
   it("models retained values as one explicit disposition", () => {
     const replacement = RetainedValue.preserved().edited("  secret  ");
     expect(replacement.disposition).toBe("replace");

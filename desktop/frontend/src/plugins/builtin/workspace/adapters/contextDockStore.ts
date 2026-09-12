@@ -77,7 +77,6 @@ interface ContextDockActions {
   adoptDockLocation: (id: string) => void;
   /** Drop `id`; answers which tab should take its place, or null for none. */
   closeDockTab: (id: string) => string | null;
-  /** Keep `id` and drop every sibling. */
   closeOtherDockTabs: (id: string) => void;
   closeAllDockTabs: () => void;
   /** Move `id` to `toIndex`, clamped into the open set. */

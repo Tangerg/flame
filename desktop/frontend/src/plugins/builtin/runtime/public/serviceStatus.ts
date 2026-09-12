@@ -12,7 +12,6 @@ export type {
 export const useRuntimeServiceStatus: RuntimeServiceStatusPort["useSnapshot"] = () =>
   runtimeServiceStatus().useSnapshot();
 
-/** Whether commands may target the last inspected Runtime connection. */
 export function useRuntimeCommandsAvailable(): boolean {
   return runtimeServiceAcceptsCommands(useRuntimeServiceStatus());
 }

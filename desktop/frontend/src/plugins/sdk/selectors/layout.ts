@@ -1,6 +1,3 @@
-// UI-surface selectors — layout slots, Work Index items, workspace views and
-// settings panes.
-
 import { useMemo } from "react";
 import type {
   LayoutSlotSpec,

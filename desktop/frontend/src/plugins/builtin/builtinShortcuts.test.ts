@@ -5,11 +5,6 @@ import { lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import { dispatchBinding } from "@/lib/combo";
 
-/**
- * No socket. Loading every built-in starts the plugins that talk to the Runtime, and they
- * reach for the default endpoint — so without this the suite's result depends on whether
- * something happens to be listening on 17171, which on a developer's machine it often is.
- */
 beforeEach(() => {
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
   vi.stubGlobal(
@@ -25,18 +20,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/**
- * Two registrations on one key is a command nobody can reach.
- *
- * `keymapOf` folds commands and shortcuts into a Map keyed by the dispatch form, so the last
- * registration silently replaces the earlier one — a documented rule, and the right one for
- * letting a plugin override a default. What it cannot do is tell the difference between an
- * override someone meant and two plugins that happen to want the same chord. The keymap that
- * results looks correct either way, and the shortcuts pane lists the winner.
- *
- * So the collision is checked before the fold, over the plugin set the product actually
- * ships, and any deliberate override is named here rather than resolved by load order.
- */
 const DELIBERATE_OVERRIDES = new Map<string, string>();
 
 afterEach(async () => {
@@ -58,7 +41,6 @@ describe("built-in shortcuts", () => {
       bindings.set(key, [...(bindings.get(key) ?? []), `shortcut ${shortcut.key}`]);
     }
 
-    // The product registers keys at all — a kernel that loaded nothing would pass silently.
     expect(bindings.size).toBeGreaterThan(3);
 
     const collisions = [...bindings]

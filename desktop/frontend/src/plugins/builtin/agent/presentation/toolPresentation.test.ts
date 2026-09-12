@@ -29,16 +29,10 @@ describe("toolPresentation", () => {
       ),
     ).toEqual({
       label: { kind: "text", value: "Read" },
-      // A path says so, because only the projection that chose it knows which
-      // case this is — the row truncates a path from the other end.
       detail: { kind: "path", value: "src/App.tsx" },
     });
   });
 
-  // The fold titles a command with its `description` and keeps the command line for
-  // the detail slot. `description` is the tool's contract, not the wire's guarantee:
-  // without one the title falls back to the command, and both slots then printed the
-  // same shell line at two different truncations.
   it("drops a detail that repeats the label", () => {
     expect(toolIntent(t, tool({ name: "shell", fn: "pnpm test", command: "pnpm test" }))).toEqual({
       label: { kind: "text", value: "Ran" },
@@ -53,9 +47,6 @@ describe("toolPresentation", () => {
   });
 
   it("says so when the target is a path", () => {
-    // `fn` carries the path for read/apply_patch (the fold bakes the key argument in), so
-    // the kind has to travel with it or the row clips the filename off the only part a
-    // reader was looking for.
     expect(
       toolIntent(t, tool({ name: "apply_patch", fn: "runtime/store.go", fnKind: "path" })),
     ).toEqual({
@@ -85,19 +76,14 @@ describe("toolPresentation", () => {
     expect(toolIntent(t, tool({ name: "shell", fn: "shell" })).label.value).toBe("Ran");
   });
 
-  // A row must not read the same while a call is deciding, working and done. Codex says
-  // "Reading file" then "Read file"; without the pair only the status dot carries the state.
   it("words a call in flight as ongoing and a settled one as finished", () => {
     const reading = tool({ name: "read", fn: "src/App.tsx", fnKind: "path", status: "running" });
     expect(toolIntent(t, reading).label.value).toBe("Reading");
     expect(toolIntent(t, { ...reading, status: "ok" }).label.value).toBe("Read");
-    // A refusal and a failure are both OVER, however they ended.
     expect(toolIntent(t, { ...reading, status: "denied" }).label.value).toBe("Read");
     expect(toolIntent(t, { ...reading, status: "err" }).label.value).toBe("Read");
   });
 
-  // A tool this build has never heard of still reads as an act on a thing: the generic verb
-  // says an unlisted tool ran, and its wire name IS the thing it names.
   it("gives a tool it has no verb for the generic one", () => {
     expect(toolIntent(t, tool({ name: "acme_docs", fn: "acme_docs" }))).toEqual({
       label: { kind: "text", value: "Used tool" },
@@ -116,16 +102,11 @@ describe("toolPresentation", () => {
     expect(
       toolMetaItems(t, tool({ added: 3, removed: 2, hits: 7, exitCode: 1, status: "running" })),
     ).toEqual([
-      // No added/removed here: a diffstat is one fact, and it is rendered by the
-      // atom the diff views use rather than by two chips of its own.
       { id: "hits", label: "7 matches", tone: "muted" },
       { id: "exit", label: "exit 1", tone: "negative" },
     ]);
   });
 
-  // Same count, different noun. `hits` is one field because a count is one fact, but a web
-  // search returns RESULTS — the Runtime's own word for them — and calling those matches
-  // claims a precision the search never offered.
   it("counts web search results as results and pattern hits as matches", () => {
     expect(toolMetaItems(t, tool({ name: "web_search", fn: "web_search", hits: 2 }))).toEqual([
       { id: "hits", label: "2 results", tone: "muted" },
@@ -148,13 +129,10 @@ describe("toolPresentation", () => {
   it("reports a diffstat only when it has something to say", () => {
     expect(toolDiffStat(tool({ added: 3, removed: 2 }))).toEqual({ added: 3, removed: 2 });
     expect(toolDiffStat(tool({ added: 4 }))).toEqual({ added: 4, removed: 0 });
-    // A dash holds a column in the diff views; on a transcript row it is a mark
-    // the reader has to stop and interpret.
     expect(toolDiffStat(tool({ added: 0, removed: 0 }))).toBeUndefined();
     expect(toolDiffStat(tool({}))).toBeUndefined();
   });
 
-  // The counts are read off the patch the call was handed, so they outlive the call itself.
   it("does not dress a refused or failed call in the size of the change it proposed", () => {
     expect(toolDiffStat(tool({ added: 3, removed: 2, status: "denied" }))).toBeUndefined();
     expect(toolDiffStat(tool({ added: 3, removed: 2, status: "err" }))).toBeUndefined();
@@ -164,8 +142,6 @@ describe("toolPresentation", () => {
     });
   });
 
-  // The runtime measures the call; a sub-second read reporting "0.1s" is noise on
-  // every row, so the number only appears once it can explain a wait.
   it("reports a measured duration, and only once it is worth reading", () => {
     expect(toolMetaItems(t, tool({ durationMillis: 4200 })).map((item) => item.id)).toEqual([
       "duration",
@@ -174,12 +150,9 @@ describe("toolPresentation", () => {
     expect(toolMetaItems(t, tool({}))).toEqual([]);
   });
 
-  // The runtime's own safety class, not a list of tool names kept here: a tool
-  // renamed on the backend used to silently change weight in the transcript.
   it("takes read-only from the runtime's safety class", () => {
     expect(isReadOnlyTool(tool({ name: "read", safetyClass: "safe" }))).toBe(true);
     expect(isReadOnlyTool(tool({ name: "apply_patch", safetyClass: "write" }))).toBe(false);
-    // Unclassified (an MCP tool the runtime has no class for) is not a read.
     expect(isReadOnlyTool(tool({ name: "acme_do_thing" }))).toBe(false);
   });
 
@@ -193,9 +166,6 @@ describe("toolPresentation", () => {
     expect(summarizeActivity(t, tools)).toBe("1 read · 2 search · 1 lookup");
   });
 
-  // A folded round is not all reads: it is where a command or an edit hides, which
-  // is the one thing its closed row has to be able to say. The families past `safe`
-  // read the runtime's own class, so a renamed backend tool still lands right.
   it("tells acts apart by the runtime's safety class", () => {
     const tools = [
       tool({ id: "read", name: "read", safetyClass: "safe" }),
@@ -206,8 +176,6 @@ describe("toolPresentation", () => {
     expect(summarizeActivity(t, tools)).toBe("1 read · 1 write · 1 run · 1 fetch");
   });
 
-  // Order is the table's, so the same round reads the same way whatever order the
-  // calls happened to arrive in.
   it("keeps a fixed family order regardless of call order", () => {
     const reversed = [
       tool({ id: "sh", name: "shell", safetyClass: "exec" }),

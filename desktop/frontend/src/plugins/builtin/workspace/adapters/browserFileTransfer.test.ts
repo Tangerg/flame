@@ -16,7 +16,6 @@ describe("browserFileTransfer", () => {
     await drainMicrotasks();
     const settledAtCancel = observed.settled();
 
-    // Releases the old implementation after preserving the failure fact.
     picker.dispatchEvent(new Event("change"));
     await expect(selection).resolves.toBeNull();
     expect(settledAtCancel).toBe(true);

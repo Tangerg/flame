@@ -1,11 +1,3 @@
-// Cutover slices — the cached app data providers that ride the JSON-RPC
-// stack. Locks the full wiring (provider → container.methods() → client →
-// transport) plus each v2 shape mapping:
-//   - sessions:    Page<Session>.data → AgentSessionSummary (updatedAt → time)
-//   - projects:    Page<WorkspaceSummary>.data → WorkspaceProjectSummary
-//   - grep:        params pass-through, result verbatim (matches + total)
-//   - file-head:   params pass-through, FileHead unwrapped to its lines
-
 import type { AgentSessionSummary } from "@/plugins/builtin/agent/public/session";
 import type {
   WorkspaceFileChange as WorkspaceFileChangeSummary,
@@ -27,9 +19,6 @@ import { SelectableModel } from "@/plugins/builtin/settings/providers/public/que
 
 afterEach(resetContainer);
 
-// Run a provider against a scripted set of method → result responses. The
-// provider may fan out; requests are answered in the order listed, which is
-// also the fire order.
 async function runProvider<T>(
   key: string,
   responses: Array<[method: WireMethodName, result: unknown]>,
@@ -201,7 +190,7 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
           {
             data: [
               { path: "src/a.ts", status: "modified", added: 3, removed: 1 },
-              { path: "logo.png", status: "untracked", binary: true }, // no fabricated ±0
+              { path: "logo.png", status: "untracked", binary: true },
             ],
           },
         ],
@@ -218,7 +207,7 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
   it("diff: pins format=rows on the wire and defaults files to []", async () => {
     const { value, requests } = await runProvider<WorkspaceDiff>(
       "diff",
-      [["workspace.diff.get", { truncated: true }]], // rows response may omit files
+      [["workspace.diff.get", { truncated: true }]],
       { cwd: "/work/auth", path: "src/a.ts", mode: "worktree" },
     );
     expect(requests[0]?.params).toEqual({
@@ -233,7 +222,7 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
   it("grep: forwards params on the wire and returns matches + total verbatim", async () => {
     const result: WorkspaceGrepResult = {
       matches: [{ path: "src/a.ts", lineNumber: 12, text: "const x = 1" }],
-      total: 5, // > matches.length — the server-truncation signal must survive
+      total: 5,
     };
     const { value, requests } = await runProvider<WorkspaceGrepResult>(
       "grep",

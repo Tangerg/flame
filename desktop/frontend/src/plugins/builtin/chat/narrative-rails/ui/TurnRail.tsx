@@ -11,17 +11,13 @@ import { color, corner, motion, space, surface, type as typeStep } from "@/style
 import { chatStyles as ct } from "../../chatStyles";
 
 const tr = stylex.create({
-  /** The mark itself: 2px of rule whose width says how far the turn got. */
   tickBar: {
     height: "2px",
     transitionProperty: "background-color, width",
     transitionDuration: motion.fast,
   },
   tickLead: { backgroundColor: color.fg },
-  // The turns behind the one being read recede rather than disappear: the rail is a map, and a
-  // map with only your own position on it says nothing about the distance.
   tickRest: { backgroundColor: "color-mix(in oklab, var(--color-text-faint) 55%, transparent)" },
-  // The rail hangs beside the transcript and is only as wide as its ticks.
   rail: {
     display: "flex",
     height: "100%",

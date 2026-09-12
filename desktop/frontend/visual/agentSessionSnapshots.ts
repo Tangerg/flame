@@ -43,9 +43,6 @@ const ROOT_RUN_ID = "run_root";
 const CREATED_AT = "2026-07-31T08:00:00.000Z";
 const RUN_PROVIDER = "openai";
 const RUN_MODEL = "gpt-5.6-sol";
-// Cumulative accounting remains a Run fact. It deliberately does NOT drive the
-// composer's context gauge: window occupancy is the latest Runtime contextTokens
-// reading, supplied independently in the live event tail below.
 const METRICS = {
   steps: 4,
   activeDurationMillis: 12_000,
@@ -65,15 +62,6 @@ type RuntimeAgentSessionSnapshot = Omit<
   runs: RunRef[];
 };
 
-/**
- * The Runtime's own class for every tool these fixtures call, transcribed from its descriptor
- * table. It is a presentation fact here — the activity summary counts by class, and the
- * approval card names the family — so a fixture that guesses one photographs a lie.
- *
- * Two helpers used to answer this separately: one hard-coded `safe`, the other fell back to
- * `exec` for any name it had not been told about. That is how three network calls spent every
- * golden counted as searches, and why an unlisted name now throws instead of defaulting.
- */
 const SAFETY_CLASS: Record<string, "safe" | "write" | "exec" | "network"> = {
   read: "safe",
   grep: "safe",
@@ -172,11 +160,6 @@ const RUNNING_RESPONSE: Item = {
   content: [{ type: "text", text: "I’m tracing the ownership boundary and verifying" }],
 };
 
-// The answer's item as `item.started` actually delivers it: opened, with no content
-// yet. Every turn passes through this frame, and no fixture held it — the running
-// state's response arrives with a sentence already in it, which `item.started` never
-// carries. Freezing the frame is what makes "the thinking is still open here"
-// something a screenshot can be wrong about.
 const OPENING_RESPONSE: Item = {
   type: "agentMessage",
   id: "item_running_response",
@@ -192,10 +175,6 @@ const RUNNING_REASONING: Item = {
   runId: ROOT_RUN_ID,
   status: "running",
   createdAt: CREATED_AT,
-  // Long enough to OVERFLOW the streaming window (`max-height: 12rem`), because the window is
-  // the only state in which its clipped edges fade — and with one sentence here, the fade had
-  // no state in which it could be photographed. Which is how two fade overlays came to be
-  // positioned so that neither could ever be seen.
   text: [
     "The framework must expose execution capability without knowing the application’s persistence records.",
     "That boundary is the whole reason a Run can be replayed: the framework owns the step, the application owns what a step MEANT.",
@@ -210,8 +189,6 @@ const RUNNING_REASONING: Item = {
   ].join(" "),
 };
 
-// Writing the plan, which the banner above the transcript already holds. The fixture
-// carries it so the duplication is reproducible: this call must leave no row behind.
 const RUNNING_SET_PLAN: Item = {
   type: "toolCall",
   safetyClass: "safe",
@@ -229,11 +206,6 @@ const RUNNING_SET_PLAN: Item = {
   },
 };
 
-// A settled read ahead of the running one, so the two fold into a tool GROUP:
-// a disclosure nested inside a disclosure, auto-open because a child is still
-// working. That is the shape a real working turn spends most of its time in, and
-// until now no fixture rendered it — which is how a nested row overflowing its
-// parent's rounded corner shipped twice.
 const RUNNING_READ: Item = {
   type: "toolCall",
   safetyClass: "safe",
@@ -267,9 +239,6 @@ const RUNNING_TOOL: Item = {
   },
 };
 
-// A waiting approval keeps the original ToolCall Item as well as the interrupt.
-// Production restores both facts from the Runtime snapshot; the transcript planner
-// owns turning that pair into one actionable request surface.
 const PENDING_APPROVAL_TOOL: Item = {
   type: "toolCall",
   safetyClass: "exec",
@@ -286,14 +255,6 @@ const PENDING_APPROVAL_TOOL: Item = {
   },
 };
 
-// One turn holding a read, a command, a patch, a failure and a refusal — every lifecycle a
-// tool row has to survive on the SAME narrative line. That sameness is the thing under test:
-// the differentiation lives in the verb, the diffstat and the inline lifecycle text, so a
-// golden that only held successful reads would not notice a failure growing card chrome.
-// Four searching tools, none of which any fixture had ever called. Thirty tool names carry a
-// preview and six were exercised, so twenty-four of these panels — their placeholders, their
-// overflow rules, their inks — had never been rendered, let alone photographed or audited.
-// The result strings are the shapes each projection parses, not prose about them.
 function settledTool(
   id: string,
   name: string,
@@ -357,9 +318,6 @@ const TOOL_SEARCH_CALL = settledTool(
   ].join("\n"),
 );
 
-// A second batch of previews no fixture had called: the ones that answer in JSON rather than
-// prose. Each result is the exact shape its projection reads, so a preview that stops parsing
-// fails here instead of degrading to a blank panel in front of someone.
 const WEB_SEARCH_CALL = settledTool(
   "item_remote_web_search",
   "web_search",
@@ -419,7 +377,6 @@ const SCHEDULES_CALL = settledTool(
         next_run_at: "2026-08-01T03:00:00Z",
         last_run_at: "2026-07-31T03:00:00Z",
       },
-      // Disabled, because the row says so in a way only a disabled one can show.
       {
         schedule_id: "sch_weekly",
         title: "Weekly dependency audit",
@@ -433,9 +390,6 @@ const SCHEDULES_CALL = settledTool(
   }),
 );
 
-// A third batch: the agent's own machinery — skills it can load, a plan it enters and leaves,
-// a goal it reports on, a background shell it reads back, and the language server. None of
-// these panels had ever been rendered either.
 const LIST_SKILLS_CALL = settledTool(
   "item_agentic_list_skills",
   "list_skills",
@@ -446,10 +400,6 @@ const LIST_SKILLS_CALL = settledTool(
   ].join("\n"),
 );
 
-// `LoadSkillResult` is the Skill's own instructions, not the catalogue envelope `list_skills`
-// answers in — CONTENT_RENDERING states both, and the preview prints the text because the text
-// is what arrives. The first draft of this fixture reused the envelope and made the panel look
-// broken; the panel was right and the fixture was lying to it.
 const LOAD_SKILL_CALL = settledTool(
   "item_agentic_load_skill",
   "load_skill",
@@ -468,11 +418,6 @@ const ENTER_PLAN_CALL = settledTool(
   "Planning only from here: no edits until the plan is accepted.",
 );
 
-// Three families that deliberately render NO row. Plan, Goal and Schedule each have a
-// dedicated surface — the plan bar, the goal bar, the Schedules pane — and `BlockRenderer`
-// drops the transcript row of any tool registered against one, because a row would be a second
-// telling of what that surface already holds. Kept here so the rule is photographed rather than
-// assumed: this state issues four such calls and the golden shows none of them.
 const GET_GOAL_CALL = settledTool(
   "item_agentic_goal",
   "get_goal",
@@ -505,8 +450,6 @@ const READ_SHELL_CALL = settledTool(
 const LSP_CALL = settledTool(
   "item_agentic_lsp",
   "lsp",
-  // `character` is required for a position operation; without it the row titles itself
-  // `store.go:214:?`, which is the app being honest about an argument the caller left out.
   { operation: "references", path: "runtime/internal/session/store.go", line: 214, character: 6 },
   [
     "runtime/internal/session/store.go:214:6",
@@ -515,8 +458,6 @@ const LSP_CALL = settledTool(
   ].join("\n"),
 );
 
-// The last five previews with no fixture call. Twenty-one tools carry one; these were the
-// panels still never rendered, and a panel nothing has drawn is a panel nothing has audited.
 const PROPOSE_SKILL_CALL = settledTool(
   "item_last_propose_skill",
   "propose_skill",
@@ -547,9 +488,6 @@ const STOP_SHELL_CALL = settledTool(
   "Stopped sh_01 after 2.1s.",
 );
 
-// `ask_user` drops its row while its question block is on screen — the question card is the
-// real thing and the row its shadow. Here the question has been answered, which is the state
-// where the row does render, and the only one where this preview is reachable at all.
 const ASK_USER_CALL = settledTool(
   "item_last_ask_user",
   "ask_user",
@@ -578,15 +516,8 @@ const SHELL_COMMAND: Item = {
   startedAt: CREATED_AT,
   durationMillis: 8400,
   finishedAt: "2026-07-31T08:00:08.400Z",
-  // A real test run: coloured, longer than the panel shows at rest, and non-zero.
-  // Every one of those was invisible here — the fixture's command produced no output
-  // at all, so the panel that holds it appeared in no screenshot.
   tool: {
     name: "shell",
-    // `description` as well as `command`, because the shell tool requires it and a
-    // row titles itself with it: without one the title falls back to the command
-    // line, which is a shape production never sends and which this fixture is here
-    // to keep out of the goldens.
     arguments: {
       description: "Run the session suite",
       command: "go test ./internal/session/...",
@@ -609,9 +540,6 @@ const SHELL_COMMAND: Item = {
   },
 };
 
-// One call-scoped patch receipt for a created file. It deliberately has no line
-// diff: the Runtime publishes path/status/from facts and the UI must not replace
-// them with the current worktree.
 const PATCH_NEW_FILE: Item = {
   type: "toolCall",
   safetyClass: "write",
@@ -641,12 +569,6 @@ const SHELL_FAILED: Item = {
   error: { type: "tool_failed", detail: "store.go changed on disk after it was read." },
 };
 
-// A patch that reports what it changed. Every shape the receipt has is in this one list:
-// a path too long for the row (deep and absolute, which is what the runtime reports), so it
-// MUST clip and which end it clips is visible; a delete; and a rename, the only row that
-// draws two paths and an arrow with the source capped at 42% of the width. One patch that
-// modifies, moves and deletes is what a refactor commit actually looks like, and reading
-// the three verbs down one column is the only way their labels are seen to line up.
 const SHELL_PATCH: Item = {
   type: "toolCall",
   safetyClass: "write",
@@ -689,10 +611,6 @@ const SHELL_DENIED: Item = {
   error: { type: "denied_by_user", detail: "You declined this write." },
 };
 
-// A long turn: two rounds of work, each answered, then a third round still in flight.
-// The two answered rounds fold to one row apiece; the live one stays open. Without a
-// state shaped like this, nothing in the goldens ever showed the fold at all — and the
-// fold is the whole reason a long turn stays readable.
 const WAVE_REASONING_ONE: Item = {
   type: "reasoning",
   id: "item_w_reason_1",
@@ -814,7 +732,6 @@ interface TailFrame {
   event: StreamEvent;
 }
 
-/** The RAW frame, before projection. See `RUNTIME_AGENT_SESSION_SNAPSHOTS` for why both. */
 function tail(index: number, event: StreamEvent): TailFrame {
   return { index, event };
 }
@@ -879,10 +796,6 @@ const LONG_RESPONSE = message(
     "</svg>",
     "```",
     "",
-    // A SECOND heading, so this answer has an outline and the end rail is
-    // finally photographed at rest. One heading is the answer's own title and
-    // the rail declines to draw it, which is why every golden until now framed
-    // an empty end gutter — the one place a width regression there could hide.
     "### Where the boundary is enforced",
     "",
     "A deliberately long final paragraph verifies wrapping, reading measure, CJK fallback（中文混排）, inline code such as `expectedRuntimeProjectionRevisionIdentifierWithoutSoftBreaksAcrossTheCompleteCodexReadingMeasureAndEveryContinuationBoundary`, and uninterrupted vertical rhythm without inventing a fixture-only message shape.",
@@ -911,10 +824,6 @@ const LONG_RESPONSE = message(
   ].join("\n"),
 );
 
-// A multi-turn conversation with the full block vocabulary — the state the
-// narrative rails and the block grammar are actually FOR. Every other fixture is
-// one question and one answer, which is exactly the shape in which a turn map and
-// an answer outline have nothing to say, so neither could be photographed.
 const NARRATIVE_TURN_1 = message(
   "userMessage",
   "item_n_ask1",
@@ -999,12 +908,6 @@ const NARRATIVE_TURN_3 = message(
   "Go with the first one, and add a regression test for the refresh case.",
 );
 
-// A question the reader ANSWERED. Both fixtures that carry one park it at requires-action, so
-// the card's settled shapes — the disclosure holding each prompt beside its answer, and the
-// dismissed row when nobody answered at all — had never been drawn.
-// Settled with NO answer, which the card draws as a single dismissed line rather than a
-// disclosure. Reachable exactly as the model says: the Run was canceled before anybody
-// answered, so it belongs in the state named for that.
 const CANCELED_QUESTION: Item = {
   type: "question",
   id: "item_canceled_question",
@@ -1059,13 +962,6 @@ const BASE: RuntimeAgentSessionSnapshot = {
   pendingInterruptSets: [],
 };
 
-/** The RAW wire form, before `runtimeItem` projects it. Exported so a test can hold it to
- *  the contract: the projected form below is a different shape by design, so validating that
- *  one proves nothing about what the Runtime would actually have sent. */
-// A turn that fans out, because one delegation per item is the only shape ever drawn: the
-// row says "Sub-agent" and never "Sub-agent 2 of 4", and four of the six states a delegated
-// run can end in — finished, error, canceled and limit — had appeared in no frame. A failed
-// sub-agent is the one a reader most needs to find.
 const FANOUT_OUTCOMES: ReadonlyArray<{ id: string; summary: string; outcome: RunRef["outcome"] }> =
   [
     {
@@ -1206,11 +1102,6 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       },
     ],
   },
-  // The other two question shapes. `multiple` turns the options into checkboxes and adds a
-  // submit — a single-choice field commits on click, so the two are different interactions,
-  // not a styling flag — and `allowCustom` adds the field for an answer that is not on the
-  // list. Neither had ever been rendered: the one questioned state carries a single-choice
-  // field and a text field, which is two of the four shapes this card draws.
   "question-multi": {
     runs: [run("waiting")],
     items: [PROMPT, COMMENTARY_RESPONSE],
@@ -1332,9 +1223,6 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         finishedAt: "2026-07-31T08:00:12.000Z",
         outcome: {
           type: "failed",
-          // The Runtime's own wording for this failure, not an instruction invented here:
-          // `provider_rejected` is one of the codes the banner refuses to retry, so prose
-          // telling the reader to retry would contradict the button it is standing next to.
           error: {
             type: "provider_rejected",
             detail: "served model pricing is unavailable for the configured cost limit",
@@ -1345,10 +1233,6 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     items: [PROMPT],
     pendingInterruptSets: [],
   },
-  // The other half of the error banner, which no state had ever reached: a code that is NOT
-  // in the unretryable set, so the Retry action renders at all. Deliberately without
-  // `retryAfterSeconds` — the countdown ticks once a second and a golden taken inside that
-  // band photographs whichever number it lands on. The ticking is a unit test's job.
   "error-retryable": {
     runs: [
       run("finished", {
@@ -1375,8 +1259,6 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     items: [PROMPT],
     pendingInterruptSets: [],
   },
-  // Nothing is wrong with the RUN here: the session's folder is gone, which is a workspace
-  // fact, and the transcript underneath stays exactly as it was.
   "cwd-missing": {
     runs: [
       run("finished", {
@@ -1465,8 +1347,6 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         "commentary",
       ),
       FANOUT_DELEGATE,
-      // The grandchild's call, still running. Every other fixture item is settled, so the
-      // timeline's `tool-start` — one of its seven event kinds — had never been drawn.
       {
         type: "toolCall",
         id: "item_nested_running",
@@ -1519,10 +1399,6 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     items: [
       NARRATIVE_TURN_1,
       NARRATIVE_REASONING,
-      // Four adjacent read-only calls, so the transcript photographs a tool GROUP
-      // — a disclosure nested inside a disclosure. Every defect this shape has
-      // shipped (a row overflowing its parent's rounded corner, an inner rail
-      // with nowhere to go) survived because no fixture rendered one.
       narrativeTool(
         "item_n_read",
         "read",
@@ -1560,9 +1436,6 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
           ],
         },
       ),
-      // `apply_patch` because it is the only file mutation the Runtime exposes. This call
-      // used to name a tool called `edit`, which does not exist and never has — so the one
-      // write in the narrative was drawn with the fallback glyph and the generic verb.
       narrativeTool(
         "item_n_patch",
         "apply_patch",
@@ -1690,9 +1563,6 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       run("finished", {
         finishedAt: "2026-07-31T08:00:12.000Z",
         outcome: { type: "completed" },
-        // Six tool calls below, so the run's own count says six. The default
-        // METRICS is four; leaving it would put two numbers that disagree in the
-        // same frame, which is a bug everywhere except in a fixture nobody read.
         metrics: { steps: 6, activeDurationMillis: 12_000 },
       }),
     ],
@@ -1752,9 +1622,6 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
       progress: { contextTokens: VISUAL_CONTEXT_TOKENS },
     }),
   ],
-  // One frame earlier than `running`: the answer is open and empty. Nothing here is
-  // superseded yet, so the thinking stays readable and the live tool work stays
-  // unfolded; an empty answer is not yet replacement material.
   "answer-opening": [
     tail(1, { type: "item.started", item: RUNNING_REASONING }),
     tail(2, { type: "item.completed", item: RUNNING_SET_PLAN }),
@@ -1793,8 +1660,6 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   "tool-agentic": [],
   "tool-tail": [],
   "question-multi": [],
-  // The live round arrives as started items, not as snapshot history: a snapshot holds
-  // only what has reached a terminal state.
   waves: [
     tail(1, { type: "item.started", item: WAVE_LIVE_REASONING }),
     tail(2, { type: "item.started", item: WAVE_LIVE_TOOL }),
@@ -1809,25 +1674,12 @@ export const AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState, AgentE
     ]),
   ) as Record<VisualAgentState, AgentEventEnvelope[]>;
 
-/**
- * The session's standing order, for the states that have one.
- *
- * Beside the Agent inner-ring snapshot rather than inside it: Goal is companion
- * material from the same Runtime Session transaction, not an Item in the
- * transcript — which is why it gets a pinned banner instead of a card.
- *
- * `running` is deliberately the state that has one, so a golden frames the pinned
- * Goal and the composer-owned active Plan together.
- */
 export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
   running: {
     sessionId: SESSION_ID,
     objective: "Get the desktop suite green on Linux without loosening any gate or skipping a test",
     status: "active",
     stop: null,
-    // Cost is at 90% while runs is at 35%: the collapsed row must report the axis
-    // that will stop the loop first, not the largest number on screen. Steps is
-    // uncapped, so that limit is absent instead of encoded as a sentinel zero.
     budget: { maxRuns: 20, maxCostUsd: 5 },
     used: { runs: 7, costUsd: 4.5, steps: 31 },
     provider: "openai",
@@ -1849,9 +1701,6 @@ export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
     createdAt: "2026-08-12T08:00:00Z",
     updatedAt: "2026-08-12T08:02:00Z",
   },
-  // The two statuses no fixture had: `blocked` where the Runtime WILL resume — the goal is
-  // waiting on a person, not on a spent cap, so the row keeps its resume control — and
-  // `completing`, the one status that takes the objective away from editing entirely.
   canceled: {
     sessionId: SESSION_ID,
     objective: "Get the desktop suite green on Linux",

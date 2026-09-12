@@ -7,8 +7,7 @@ interface Hit {
   score: number;
 }
 
-/** Rank `paths` by fuzzy match against `query`, returning the top `limit`. An
- *  empty query returns the head of the list unranked (the picker just opened). */
+/** An empty query returns the head of the list unranked (the picker just opened). */
 export function fuzzyFile(query: string, paths: string[], limit: number): string[] {
   const q = query.toLowerCase();
   if (q === "") return paths.slice(0, limit);

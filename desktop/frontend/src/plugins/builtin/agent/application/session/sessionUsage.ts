@@ -7,7 +7,6 @@ import type { AgentRuntimeGateway, AgentSessionUsage } from "../ports/runtimeGat
 
 export const AGENT_SESSION_USAGE_KEY = "usage.session";
 
-/** Exact Agent Runtime gateway generation allowed to populate Session usage cache. */
 export class AgentSessionUsageOwner {
   readonly #lifetime = new AbortController();
   #retired = false;

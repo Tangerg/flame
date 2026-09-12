@@ -6,11 +6,6 @@ import { draftMentions, removeMention } from "./application/draftContext";
 import { activeMention } from "./application/fileMentions";
 import { fuzzyFile } from "./application/fuzzyFile";
 
-// Everything here reads text a person pasted or an agent produced, so the input
-// space is "any string" rather than any shape the contract admits. These assert the
-// properties that have to hold across all of it: a parser agrees with the text it
-// parsed, a ranking stays inside its own candidates, and nothing splits a character.
-
 function corpus(a: Arbitrary): string {
   return a.bool(0.25) ? `${a.text()} @${a.text()} ${a.text()}` : a.text();
 }

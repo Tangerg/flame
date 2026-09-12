@@ -19,7 +19,6 @@ describe("pluginBoundary", () => {
   });
 
   it("catches a child render error and shows the default fallback", () => {
-    // Silence React's expected error log so the suite output stays clean.
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     render(
       <PluginBoundary plugin="bad.plugin" label="Bad Plugin">
@@ -28,9 +27,6 @@ describe("pluginBoundary", () => {
     );
     expect(screen.getByText("Bad Plugin")).toBeTruthy();
     expect(screen.getByText(/failed to render/i)).toBeTruthy();
-    // The message, and in the element the stylesheet dresses. Which plugin broke is half the
-    // answer; WHAT broke is the other half, and deleting the `<code>` that carries it left all
-    // three of these tests green — a fallback that names a failure without describing it.
     expect(screen.getByText("kaboom").tagName).toBe("CODE");
     spy.mockRestore();
   });

@@ -1,8 +1,3 @@
-// Regression: command output must survive every path, not just live
-// streaming. The authoritative merged stdout lands on the completed item's
-// `tool.result.output` (durable); the toolOutput ItemDelta is only a live
-// preview. So history replay (completed-only, no deltas), reconnect, and
-// non-streaming runtimes must all still render output. See API.md §4.4.1 + §5.2.
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
@@ -28,9 +23,6 @@ beforeEach(async () => {
   await loadPluginsForTest(spec);
 });
 
-// A `shell` tool (§4.4.2): identity `name`, `arguments.{command,description}`, and
-// the settled `result` ({ output, exitCode }) on completion. The `result` fields land
-// in `result`, not on the tool root (domain-neutral envelope, API.md §4.4).
 const cmd = (result: Record<string, unknown>) => ({
   name: "shell",
   arguments: { command: "pwd", description: "Print the working directory" },
@@ -39,7 +31,6 @@ const cmd = (result: Record<string, unknown>) => ({
 
 describe("reducer — commandExecution output durability", () => {
   it("history replay (completed-only, no deltas) renders output from tool.output", () => {
-    // items.list hydration replays ONLY completed items — no item.delta ever.
     const s = reduce(
       EMPTY_AGENT_SESSION_VIEW,
       completed(
@@ -58,10 +49,8 @@ describe("reducer — commandExecution output durability", () => {
   it("completed `output` is authoritative — overrides an incomplete delta preview", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, started(item({ id: "t1", type: "toolCall", tool: cmd({}) })));
-    // Only a partial preview streamed (frames dropped / slow stream).
     s = reduce(s, delta("t1", { type: "toolOutput", text: "/Users" }));
-    expect(s.toolCalls["t1"]?.result).toBe("/Users"); // live preview
-    // Completed carries the full authoritative output → it wins.
+    expect(s.toolCalls["t1"]?.result).toBe("/Users");
     s = reduce(
       s,
       completed(
@@ -77,8 +66,6 @@ describe("reducer — commandExecution output durability", () => {
   });
 
   it("while running the toolOutput delta is the live preview (no settled fields yet)", () => {
-    // The started shell carries no output (lifecycle); the delta stream stands
-    // in as preview until item.completed reconciles to the authoritative output.
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, started(item({ id: "t1", type: "toolCall", tool: cmd({}) })));
     s = reduce(s, delta("t1", { type: "toolOutput", text: "/Users/tan" }));
@@ -87,9 +74,6 @@ describe("reducer — commandExecution output durability", () => {
     expect(s.toolCalls["t1"]?.result).toBe("/Users/tangerg\n");
   });
 
-  // A delta that arrives after the completed frame is a reconnect re-sending the tail of a
-  // stream the fold already settled. Appending it would grow the authoritative output past
-  // what the Runtime actually produced.
   it("ignores a delta that arrives after the tool has settled", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, started(item({ id: "t1", type: "toolCall", tool: cmd({}) })));
@@ -111,8 +95,6 @@ describe("reducer — commandExecution output durability", () => {
     expect(settled.toolCalls["t1"]?.result).toBe("/Users/tangerg\n");
   });
 
-  // The row titles itself with the human `description`, so the command has to reach
-  // the view by another route or the one line a reader verifies is nowhere.
   it("carries the command itself alongside the description-derived label", () => {
     const s = reduce(
       EMPTY_AGENT_SESSION_VIEW,

@@ -64,8 +64,6 @@ describe("useCommandAction", () => {
     expect(command).toHaveBeenCalledTimes(2);
   });
 
-  // Anything that is not an RPC refusal has no message written for a reader — an internal
-  // Error's text is a stack-trace artefact, not copy.
   it("falls back rather than showing an internal error's own words", async () => {
     render(<Harness command={() => Promise.reject(new Error("undefined is not a function"))} />);
 
@@ -75,7 +73,6 @@ describe("useCommandAction", () => {
     expect(useNotificationStore.getState().log.at(-1)?.message).toBe("could not do it");
   });
 
-  // A retired command settled nowhere the user can see it, so there is nothing to report.
   it("stays quiet when the owner retired the command", async () => {
     render(<Harness command={() => Promise.reject(new Retired("gone"))} />);
 

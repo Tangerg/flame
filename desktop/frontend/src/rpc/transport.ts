@@ -5,7 +5,6 @@
 import type { RpcId, RpcMessage, RpcRequest } from "./types";
 import type { WireMethodName, WireStreamingMethodName } from "@flame/runtime-contract/methods";
 
-/** The one non-run streaming method, shared by transport and stream lifecycle. */
 export const RUNTIME_SUBSCRIBE_METHOD = "runtime.subscribe" satisfies WireMethodName;
 
 export type TransportRequest = Omit<RpcRequest, "method"> & { method: WireMethodName };

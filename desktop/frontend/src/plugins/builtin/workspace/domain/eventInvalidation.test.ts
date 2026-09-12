@@ -69,9 +69,6 @@ describe("workspaceInvalidations", () => {
     expect(workspaceInvalidations({ type: "resync", sequence: 12 })).toEqual(["all"]);
   });
 
-  // The four topics that used to be unmapped. They are read-backed now — the run
-  // stream only reaches the window driving that run, so a session moved by the
-  // autonomous loop or another window arrives through these or not at all.
   it("maps every signal a session can move through", () => {
     expect(workspaceInvalidations({ type: "runs.changed", sequence: 1 })).toEqual([
       "sessionUsage",

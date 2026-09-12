@@ -36,7 +36,6 @@ function spanStyle(span: AnsiSpan) {
   );
 }
 
-/** One line of terminal output, with its escape codes read as tone rather than printed. */
 export function AnsiText({ text }: { text: string }) {
   return (
     <>

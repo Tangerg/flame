@@ -3,7 +3,6 @@ import { intraLineDiff } from "./intraLineDiff";
 
 describe("intraLineDiff", () => {
   it("marks the differing middle, trimming common prefix + suffix", () => {
-    // "foo " + bar/qux + " baz"
     expect(intraLineDiff("foo bar baz", "foo qux baz")).toEqual({ del: [4, 7], add: [4, 7] });
   });
 
@@ -20,7 +19,6 @@ describe("intraLineDiff", () => {
   });
 
   it("returns null/null when the lines share no prefix or suffix", () => {
-    // Wholesale change — the row tint already conveys it, no word mark.
     expect(intraLineDiff("xxx", "yyy")).toEqual({ del: null, add: null });
   });
 
@@ -29,9 +27,6 @@ describe("intraLineDiff", () => {
   });
 });
 
-// A boundary is a Shiki decoration offset, and half a character is not a position
-// it can decorate. Two emoji on the same plane share a leading surrogate, so the
-// code-unit scan lands inside one unless the range is widened off it.
 describe("intraLineDiff on characters outside the BMP", () => {
   const lone = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 

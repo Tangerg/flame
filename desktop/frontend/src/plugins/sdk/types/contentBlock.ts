@@ -1,5 +1,3 @@
-// Message content blocks projected by the Runtime fold.
-
 export type BlockStatus = "running" | "complete" | "incomplete" | "requires-action";
 
 interface QuestionOption {
@@ -24,7 +22,6 @@ export interface ChoiceQuestionItem extends QuestionItemBase {
   allowCustom: boolean;
 }
 
-// One required clarifying field projected from the runtime's closed union.
 export type QuestionItem = TextQuestionItem | ChoiceQuestionItem;
 
 interface ContentBlockMap {

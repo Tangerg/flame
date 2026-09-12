@@ -21,7 +21,6 @@ describe("rpc/types discriminators", () => {
         error: { code: RPC_METHOD_NOT_FOUND, message: "no" },
       }),
     ).toBe(true);
-    // A request has both id AND method — must not be classified as Response.
     expect(isResponse({ jsonrpc: JSONRPC_VERSION, id: "1", method: "x" })).toBe(false);
   });
 
@@ -36,7 +35,6 @@ describe("rpc/types discriminators", () => {
         params: { x: 1 },
       }),
     ).toBe(true);
-    // A Response has id — not a Notification even if method missing.
     expect(isNotification({ jsonrpc: JSONRPC_VERSION, id: "7", result: 1 })).toBe(false);
   });
 
@@ -46,8 +44,6 @@ describe("rpc/types discriminators", () => {
       isErrorResponse({
         jsonrpc: JSONRPC_VERSION,
         id: "1",
-        // A business code, written as the number it is: this client names only the
-        // five standard ones, and the envelope gate cares about the shape.
         error: { code: -32002, message: "no" },
       }),
     ).toBe(true);
@@ -80,9 +76,9 @@ describe("parseRpcMessage envelope gate", () => {
   });
 
   it("rejects non-envelopes (wrong/missing jsonrpc, non-objects)", () => {
-    expect(parseRpcMessage(`{"id":"1","result":1}`)).toBeNull(); // no jsonrpc
-    expect(parseRpcMessage(`{"jsonrpc":"1.0","id":"1","result":1}`)).toBeNull(); // wrong version
-    expect(parseRpcMessage(`{"jsonrpc":"2.0","error":{"message":"no code"}}`)).toBeNull(); // malformed error
+    expect(parseRpcMessage(`{"id":"1","result":1}`)).toBeNull();
+    expect(parseRpcMessage(`{"jsonrpc":"1.0","id":"1","result":1}`)).toBeNull();
+    expect(parseRpcMessage(`{"jsonrpc":"2.0","error":{"message":"no code"}}`)).toBeNull();
     expect(parseRpcMessage(`[1,2,3]`)).toBeNull();
     expect(parseRpcMessage(`"a string"`)).toBeNull();
     expect(parseRpcMessage(`42`)).toBeNull();
@@ -107,10 +103,6 @@ describe("parseRpcMessage envelope gate", () => {
   });
 });
 
-// errorDetail reports whether the runtime said anything about this occurrence.
-// It once fell back to the symbolic type, so it could never answer "nothing" —
-// which handed every caller a bare symbol to show and pre-empted the layers that
-// own the words.
 describe("errorDetail reports only what the runtime said", () => {
   it("returns the per-occurrence detail", () => {
     expect(errorDetail({ type: "tool_failed", detail: "exit status 2" })).toBe("exit status 2");

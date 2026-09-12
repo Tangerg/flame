@@ -92,8 +92,6 @@ describe("skill curation generation", () => {
       archive: vi.fn().mockResolvedValue(undefined),
       restore: vi.fn().mockResolvedValue(undefined),
     } as unknown as SkillCurationGateway);
-    // A sibling proves "exact": the lifecycle write walks the whole list, so a missing name
-    // check archives every managed skill at once.
     const sibling = { name: "release-notes", description: "Draft notes", lifecycle: "active" };
     queryClient.setQueryData(
       [WORKSPACE_MANAGED_SKILLS_KEY],

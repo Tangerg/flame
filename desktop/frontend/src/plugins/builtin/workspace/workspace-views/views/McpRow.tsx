@@ -28,14 +28,9 @@ const STATUS_BADGE: Record<MCPServerSettings["status"], { key: string; tone: Ton
   needsAuth: { key: "tools.status.login", tone: "warning" },
 };
 
-// The tool list hangs under the server's NAME, past the 40px plate and its gap, so a tool
-// reads as belonging to the row above rather than starting a column of its own.
 const TOOL_INSET = "68px";
 
 const mr = stylex.create({
-  // A connecting server breathes and a reconnecting one turns. Two indeterminate states, so
-  // neither can say how far along it is — what they can say is which one is waiting on the
-  // network and which is waiting on itself.
   pulsing: { animation: motion.breathe },
   spinning: { animation: motion.spin },
   // The row publishes what its plate should look like, because the plate brightens when the

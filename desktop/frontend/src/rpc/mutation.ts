@@ -12,7 +12,6 @@ export interface MutationPromise<T> extends Promise<T> {
   /** Stable identity of this invocation. Persist it before awaiting when a retry
    * must survive a client restart. */
   readonly idempotencyKey: string;
-  /** Execute the same invocation again with the same idempotency key. */
   retry(options?: MutationAttemptOptions): MutationPromise<T>;
 }
 

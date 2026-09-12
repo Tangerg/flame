@@ -1,11 +1,3 @@
-// agentStore.resolveInterrupt — the optimistic HITL settle that runs the
-// instant a continuation Run is sent (before its events stream back). Locks:
-//   - the approval/question block flips out of requires-action by itemId
-//   - the matching open interrupt is dropped
-//   - an approval decision stamps an `approval-result` timeline entry (so the
-//     run digest + Timeline view can pair it with its approval-request);
-//     a question answer does NOT (questions have no timeline counterpart)
-
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Item, RunEvent, RunRef, SegmentOutcome, StreamEvent } from "@/rpc";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
@@ -54,7 +46,6 @@ const fold = (event: StreamEvent): RunEvent => {
   };
 };
 
-// Drive the store to a state where `itemId` is an open interrupt of `kind`.
 function seedInterrupt(kind: "approval" | "question", itemId: string): void {
   const store = useAgentStore.getState();
   store.ensureSession(SID);
@@ -141,9 +132,6 @@ beforeEach(async () => {
   await loadPluginsForTest(spec);
 });
 
-// The transcript re-renders off `viewRevision`, and a token stream delivers events that fold
-// to the state already held — a replayed frame, a late duplicate. Advancing the revision for
-// those turns every no-op into a full re-render of every message.
 describe("agentStore projection identity", () => {
   it("does not advance the revision for a batch that folds to the same view", () => {
     const store = useAgentStore.getState();
@@ -152,7 +140,6 @@ describe("agentStore projection identity", () => {
     const settled = materialToken();
     const sessions = useAgentStore.getState().sessions;
 
-    // A re-delivered `segment.started` for the same run is folded away as an exact replay.
     store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
 
     expect(materialToken()).toEqual(settled);
@@ -556,7 +543,6 @@ describe("agentStore.resolveInterrupt", () => {
 
     useAgentStore.getState().resolveInterrupt(SID, "t1", { decision: "approved" }, 123);
 
-    // Envelope survives with only the unresolved sibling — not dropped whole.
     expect(view().pendingInterrupts).toHaveLength(1);
     expect(view().pendingInterrupts[0]!.interrupts.map((i) => i.itemId)).toEqual(["t2"]);
   });
@@ -625,10 +611,6 @@ describe("agentStore never resurrects a dropped session", () => {
     store.dropSession("ses_peer");
   });
 
-  // Closing a session mid-stream: the prune subscriber drops the slice
-  // synchronously, but a late rAF flush / in-flight snapshot / the unmount
-  // cleanup nulling send-stop all run afterwards. None may re-seed a ghost
-  // entry (prune won't fire again for an id no longer in openSessionIds → leak).
   it("applyRunEvents on an absent session is a no-op (no ghost entry)", () => {
     useAgentStore.getState().dropSession("ses_ghost");
     const applied = useAgentStore
@@ -649,7 +631,6 @@ describe("agentStore never resurrects a dropped session", () => {
     store.ensureSession(SID);
     expect(useAgentStore.getState().sessions[SID]).toBeDefined();
     store.dropSession(SID);
-    // Order mirrors prod: prune drops the slice, THEN the effect cleanup runs.
     store.setSend(SID, null);
     store.setStop(SID, null);
     store.setResume(SID, null);
@@ -729,6 +710,6 @@ describe("agentStore.dropMessage", () => {
     applyCompletedItems([userMsg("item_real")]);
     const before = view().messages;
     useAgentStore.getState().dropMessage(SID, "nope");
-    expect(view().messages).toBe(before); // same reference — no churn
+    expect(view().messages).toBe(before);
   });
 });

@@ -105,7 +105,6 @@ export const WORKSPACE_VIEW = defineExtensionPoint<WorkspaceViewSpec>({
   keying: "single",
 });
 
-// ---- multi-handler surfaces (every contribution coexists, runs in order) --
 export const READY_HANDLER = defineExtensionPoint<ReadyHandler>({
   id: "flame.lifecycle.ready",
   keying: "multi",

@@ -26,8 +26,6 @@ const styles = stylex.create({
   },
   iconCompact: { height: space.s7, width: space.s7 },
   iconComfortable: { height: space.s10, width: space.s10 },
-  // The one line the eye lands on first, so it opts out of the UI tracking the step carries:
-  // a heading read alone does not need the crowding that keeps a dense row legible.
   title: { fontWeight: weight.medium, letterSpacing: "normal", color: color.fg },
   // 280px is narrow, and this line is the one place the app explains itself in prose — through
   // every locale it ships. A German compound or an API name in the copy (`host.notify()`) has

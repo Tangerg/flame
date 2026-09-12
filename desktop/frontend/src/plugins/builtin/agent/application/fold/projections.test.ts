@@ -1,10 +1,3 @@
-// Locks the per-tool display projections against the RUNTIME's actual wire
-// shapes (scope/flame tool implementations): the presenter projects shell to
-// {output, exitCode}, grep and glob to {hits}, apply_patch to
-// {changes:[{path,status}]}, and the name-keyed tools (lsp / the Skill family /
-// ask_user / read_shell_output / stop_shell / the searches / the fetches) label by
-// their own key argument.
-
 import type { ToolInvocation } from "@/rpc";
 import { describe, expect, it } from "vitest";
 import { argsText, toolFields, toolLabel } from "./projections";
@@ -29,7 +22,6 @@ describe("toolLabel — name-keyed specialised tools", () => {
     expect(toolLabel(tool("lsp", { operation: "workspace_symbols", query: "ReadTool" }))).toBe(
       "ReadTool",
     );
-    // Diagnostics is one of this tool's operations, not a tool of its own.
     expect(toolLabel(tool("lsp", { operation: "diagnostics", path: "main.go" }))).toBe("main.go");
   });
 
@@ -60,8 +52,6 @@ describe("toolLabel — name-keyed specialised tools", () => {
     );
   });
 
-  // The runtime requires a human action phrase on every shell call, so the row's
-  // title is that phrase and the command line rides beside it as the detail.
   it("shell labels its description, and the shell pollers their shell id", () => {
     expect(
       toolLabel(tool("shell", { command: "npm run dev", description: "Start the dev server" })),
@@ -72,8 +62,6 @@ describe("toolLabel — name-keyed specialised tools", () => {
 });
 
 describe("toolFields — runtime wire shapes", () => {
-  // The command reaches the view as its own field: the row's title is the human
-  // description, so without this the one line a reader verifies is nowhere.
   it("shell: reads the projected {output, exitCode} and carries the command", () => {
     const f = toolFields(
       tool(
@@ -106,22 +94,16 @@ describe("toolFields — runtime wire shapes", () => {
   });
 
   it("apply_patch: does not fabricate line counts nothing stated", () => {
-    // The receipt carries path/status facts and no line counts at all, and text that is not
-    // a patch states none either, so the transcript must not render "+0 −0".
     const f = toolFields(
       tool("apply_patch", { patch: "…" }, { changes: [{ path: "a.go", status: "modified" }] }),
     );
     expect(f.added).toBeUndefined();
     expect(f.removed).toBeUndefined();
-    // An unrecognised result still carries no invented line counts.
     const g = toolFields(tool("apply_patch", { patch: "…" }, { files: [] }));
     expect(g.added).toBeUndefined();
     expect(g.removed).toBeUndefined();
   });
 
-  // Counts and per-file rows come from the ARGUMENT, which arrives with the call: this is
-  // what a still-running edit has to show instead of a placeholder, and the receipt never
-  // carries line counts even once it lands.
   it("apply_patch: reads the change out of the patch it was given", () => {
     const f = toolFields(
       tool(
@@ -173,7 +155,6 @@ describe("toolFields — runtime wire shapes", () => {
     expect(
       toolFields(tool("read", { path: "a.go" }, { content: "package main", total_lines: 412 })),
     ).toMatchObject({ result: "package main", lines: 412 });
-    // A runtime that reports no length gets no chip, rather than a "0 lines" one.
     expect(toolFields(tool("read", { path: "a.go" }, { content: "x" })).lines).toBeUndefined();
   });
 });
@@ -187,7 +168,6 @@ describe("argsText — fn-baked tools suppress the raw JSON echo", () => {
   });
 
   it("generic (MCP) tools keep the JSON args fallback", () => {
-    // MCP model-facing names are sanitize("<server>_<tool>") — underscores, no dots.
     expect(argsText(tool("linear_create_issue", { title: "t" }))).toContain('"title"');
   });
 });

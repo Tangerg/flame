@@ -1,11 +1,6 @@
 import { expect, test } from "./test";
 import { mixOklab } from "@/plugins/builtin/theme/kit/legibility";
 
-// The custom palette chooses each ink rung by asking what a mix WILL look like, so that
-// prediction has to be the browser's. Testing the maths against itself proves nothing: this
-// asks Chromium to resolve the same `color-mix(in oklab, …)` and compares.
-//
-// A pure unit test cannot do this — jsdom has no colour engine — which is why it lives here.
 const PAIRS = [
   ["#000000", "#ffffff"],
   ["#e3e5e9", "#1d1f23"],
@@ -24,10 +19,6 @@ test("the predicted oklab mix is the one the browser paints", async ({ page }) =
     PERCENTAGES.map((pct) => ({ ink, fill, pct, predicted: mixOklab(ink, fill, pct) })),
   );
 
-  // Painted into a canvas and read back as pixels: the browser does the whole conversion, so
-  // nothing here is compared against the same maths that produced it. Reading the computed
-  // `color` instead gives `oklab(...)`, which would have to be converted by this side to be
-  // comparable, and that is the circle.
   const painted = await page.evaluate(
     (cases) =>
       cases.map(({ ink, fill, pct }) => {
@@ -47,7 +38,6 @@ test("the predicted oklab mix is the one the browser paints", async ({ page }) =
   cases.forEach((one, index) => {
     compared += 1;
     const actual = painted[index]!;
-    // One step of rounding on each side of the round trip, so a channel may land one off.
     const apart = [1, 3, 5].map((at) =>
       Math.abs(
         Number.parseInt(actual.slice(at, at + 2), 16) -

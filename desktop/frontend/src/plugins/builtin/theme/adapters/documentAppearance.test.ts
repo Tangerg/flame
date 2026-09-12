@@ -1,14 +1,3 @@
-// The appearance-painter contract: when a preference changes, the document
-// reflects it —
-//   1. `theme-{scheme}` swaps on <html> from the theme spec's scheme,
-//   2. every token in spec.tokens is written to :root.style as an inline var,
-//   3. --color-accent resolves from the accent preset + scheme,
-//   4. fonts, contrast, radius and motion land as their own custom properties.
-//
-// This doubles as the contract for theme plugins: register a spec with tokens,
-// switch to it, and the DOM reflects the palette. It moved here with the painter
-// — the tests belong with the code they pin, and this is no longer a store test.
-
 import { beforeEach, describe, expect, it } from "vitest";
 import { ACCENT, COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
 import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
@@ -35,10 +24,8 @@ const TEST_MOTION = {
 } as const;
 
 beforeEach(() => {
-  // Wipe inline styles + class so each spec starts from a known root.
   document.documentElement.removeAttribute("style");
   document.documentElement.className = "";
-  // Reset UI store to defaults (the setup file already wipes plugin store).
   useAppearanceStore.setState({
     theme: "dark",
     visualStyle: "synara",
@@ -51,17 +38,12 @@ beforeEach(() => {
     radiusScale: 1,
     motionScale: 1,
   });
-  // The painter installs from the theme pack's setup in the app; a test drives
-  // it directly — in the same order, so resolving a scheme has its port.
   uninstall();
   installAppearancePreferencePort();
   installSystemAppearance();
   uninstall = installDocumentAppearance(useAppearanceStore);
 });
 
-/** Both schemes registered under their canonical ids — anything a test does that
- *  depends on the resolved SCHEME (and not just on the token map) needs them,
- *  because an unregistered id deliberately reads as dark. */
 async function registerSchemePair(): Promise<void> {
   await contributeForTest((ctx) => {
     ctx.contribute(COLOR_THEME, { id: "dark", label: "Dark", scheme: "dark" });
@@ -70,7 +52,6 @@ async function registerSchemePair(): Promise<void> {
 }
 
 describe("neutral family following the live accent", () => {
-  /** How far a hex is from grey, in raw channel spread. */
   function channelSpread(hex: string): number {
     const channels = [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16));
     return Math.max(...channels) - Math.min(...channels);
@@ -78,8 +59,6 @@ describe("neutral family following the live accent", () => {
 
   const painted = (name: string) => document.documentElement.style.getPropertyValue(`--${name}`);
 
-  /** A theme that opts in. Dark, so the light-scheme accent remap stays out of it, and
-   *  carrying the accent its literals are relative to. */
   function tinted(ctx: PluginContext) {
     ctx.contribute(COLOR_THEME, {
       id: "tinted",
@@ -106,8 +85,6 @@ describe("neutral family following the live accent", () => {
     });
     useAppearanceStore.setState({ theme: "tinted", accent: "#3574f0" });
 
-    // The derivation has to be a no-op on the accent the family was measured against,
-    // or every golden in the tree moves for nothing.
     expect(painted("color-surface")).toBe("#2a2d32");
     expect(painted("color-sunken")).toBe("#14181f");
   });
@@ -118,8 +95,6 @@ describe("neutral family following the live accent", () => {
     });
     useAppearanceStore.setState({ theme: "tinted", accent: "#000000" });
 
-    // Reported: picking pure black painted every surface pink, because CSS reads a
-    // powerless hue as 0 and 0 is red. A grey accent has no hue to borrow.
     for (const name of ["color-surface", "color-sunken", "color-border"]) {
       expect(channelSpread(painted(name))).toBeLessThanOrEqual(1);
     }
@@ -147,7 +122,6 @@ describe("neutral family following the live accent", () => {
     });
     useAppearanceStore.setState({ theme: "palette", accent: "#7f52ff" });
 
-    // A palette theme's own surface is its own, not a tint of whatever accent is selected.
     expect(painted("color-surface")).toBe("#eee8d5");
   });
 
@@ -178,8 +152,6 @@ describe("applyTheme — theme-as-plugin contract", () => {
       });
     });
 
-    // The registry subscription in `useAppearanceStore` re-fires applyTheme when
-    // the themes map mutates, so registering above is enough to write tokens.
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--color-bg")).toBe("#101010");
     expect(root.style.getPropertyValue("--color-surface")).toBe("#1a1a1a");
@@ -355,8 +327,6 @@ describe("UI preference DOM synchronization", () => {
     expect(style.getPropertyValue("--font-sans")).toContain('"Inter"');
     expect(style.getPropertyValue("--font-mono")).toContain('"JetBrains Mono"');
     expect(style.getPropertyValue("-webkit-font-smoothing")).toBe("auto");
-    // The base size drives the derived ladder, never the root font-size —
-    // scaling <html> would drag every rem-based padding and width with it.
     expect(style.fontSize).toBe("");
     expect(style.getPropertyValue("--fs-ui-md")).toBe("17px");
     expect(style.getPropertyValue("--fs-prose")).toBe("19px");
@@ -388,9 +358,6 @@ describe("UI preference DOM synchronization", () => {
     expect(root.dataset.motion).toBeUndefined();
   });
 
-  // Equal ink percentages do not buy equal separation: the contrast setting that
-  // read right on light collapsed every dark scheme's regions into one value, so
-  // the mapping is doubled there.
   it("doubles the ladder step on dark so both schemes separate equally", async () => {
     await registerSchemePair();
     useAppearanceStore.getState().setContrast(25);

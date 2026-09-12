@@ -14,7 +14,6 @@ interface Props {
 
 const tc = stylex.create({
   panel: { borderRadius: radius.card, backgroundColor: surface.sunken, padding: space.s2_5 },
-  // Header and rows share the template, so the two switch columns line up under their names.
   grid: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) auto auto",

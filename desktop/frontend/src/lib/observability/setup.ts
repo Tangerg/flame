@@ -38,7 +38,6 @@ export async function setupObservability(opts: ObservabilityOptions): Promise<vo
 
   const otlp = opts.otlpEndpoint ? await loadOtlp(opts.otlpEndpoint) : null;
 
-  // ── Traces ──────────────────────────────────────────────────────────────
   const spanProcessors: SpanProcessor[] = [new LocalSpanProcessor()];
   if (otlp) spanProcessors.push(otlp.spanProcessor);
   const tracerProvider = new WebTracerProvider({ resource, spanProcessors });
@@ -48,7 +47,6 @@ export async function setupObservability(opts: ObservabilityOptions): Promise<vo
     }),
   });
 
-  // ── Metrics ─────────────────────────────────────────────────────────────
   const readers: IMetricReader[] = [
     new PeriodicExportingMetricReader({
       exporter: new LocalMetricExporter(),
@@ -62,7 +60,6 @@ export async function setupObservability(opts: ObservabilityOptions): Promise<vo
   // permanent no-op, so lib/metrics builds them here rather than at module load.
   bindMetricInstruments();
 
-  // ── Logs ────────────────────────────────────────────────────────────────
   const logProcessors: LogRecordProcessor[] = [new LocalLogProcessor()];
   if (otlp) logProcessors.push(otlp.logProcessor);
   const loggerProvider = new LoggerProvider({ resource, processors: logProcessors });

@@ -5,8 +5,6 @@ import { COMMAND, SHORTCUT } from "@/plugins/sdk/kernelPoints";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { ShortcutsProvider } from "./ShortcutsProvider";
 
-// Alt rather than Mod: `$mod` resolves to Meta or Control by platform, and the point here is
-// the projection, not the modifier table.
 const press = (init: Partial<KeyboardEventInit> = {}) =>
   window.dispatchEvent(
     new KeyboardEvent("keydown", { key: "k", code: "KeyK", altKey: true, ...init }),

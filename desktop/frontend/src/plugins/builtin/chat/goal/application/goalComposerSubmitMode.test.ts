@@ -52,8 +52,6 @@ beforeEach(() => {
 
 afterEach(() => owner.dispose());
 
-/** The gateway forwards this input to `goals.start` unchanged. `StartGoalRequest` accepts
- *  provider, model and reasoningEffort only as a set; the TypeScript types them apart. */
 function expectSendable(start: GoalComposerSubmitDependencies["start"]): void {
   expect(validateWire("StartGoalRequest", vi.mocked(start).mock.calls[0]?.[0])).toEqual([]);
 }

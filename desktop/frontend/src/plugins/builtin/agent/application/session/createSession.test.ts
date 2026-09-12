@@ -1,6 +1,3 @@
-// Session creation is an exact-workspace command. The hook is used by project
-// selectors; the imperative facade inherits cwd only from the active Session.
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { navigator } from "@/lib/navigation";

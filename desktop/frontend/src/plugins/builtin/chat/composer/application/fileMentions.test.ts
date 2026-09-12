@@ -25,7 +25,6 @@ describe("activeMention", () => {
   });
 
   it("detects a mid-text mention after whitespace", () => {
-    // "see @comp" — caret at end (9)
     expect(activeMention("see @comp", 9)).toEqual({ query: "comp", start: 4, end: 9 });
   });
 
@@ -34,9 +33,7 @@ describe("activeMention", () => {
   });
 
   it("ends the mention at whitespace", () => {
-    // caret sits after a space following the mention → no active mention
     expect(activeMention("@a ", 3)).toBeNull();
-    // caret in a fresh token after the mention
     expect(activeMention("@a b", 4)).toBeNull();
   });
 
@@ -69,9 +66,6 @@ describe("useFileMentions", () => {
     expect(result.current.index).toBe(0);
   });
 
-  // `accept` had no test, which is how it came to write a form the chip row cannot read:
-  // `draftMentions` finds `@path`, and accepting replaced the `@` along with the query, so
-  // completing from the picker — the primary way to attach a file — produced no chip at all.
   it("leaves the @ in place, because that token is what the chip row reads back", () => {
     const apply = vi.fn();
     workspaceFiles.current = [{ path: "src/alpha.ts" }];

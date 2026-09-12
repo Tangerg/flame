@@ -3,38 +3,18 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { getHighlighter } from "@/lib/highlight/shiki";
 import { MarkdownMessage } from "./MarkdownMessage";
 
-// MarkdownMessage now renders through react-markdown + remark-gfm with our
-// rehype-fade-in plugin and a Shiki/Mermaid component map. These tests
-// cover the high-value invariants:
-//
-//   1. Streaming partials never throw or hang.
-//   2. Unmatched markers (`` ` ``, `**`, ` ``` `) get auto-closed by
-//      closeOpenMarkers so the model's mid-flight tokens already look
-//      "right" while the closer streams in.
-//   3. Block-level constructs (fenced code, lists, headings) render via
-//      react-markdown rather than as raw backticks / hashes.
-//   4. Each non-code text node gets per-word `<span class="fade-in">`
-//      wrappers from rehypeFadeIn.
-//   5. With `instant`, no `.fade-in` wrappers are produced.
-
 describe("markdownMessage", () => {
   beforeAll(async () => {
-    // The highlighter is an application-lifetime lazy singleton. Resolve its
-    // module/grammar load before mounting effects so this test file does not
-    // abandon that shared initialization when its synchronous assertions end.
     await getHighlighter();
   });
 
   it("renders an empty string without throwing", () => {
     const { container } = render(<MarkdownMessage text="" reveal="smooth" />);
-    // react-markdown adds a wrapper div; the body is just empty.
     expect(container.querySelector(".md")).toBeTruthy();
   });
 
   it("wraps plain words in .fade-in spans while they are streaming", async () => {
     const { container } = render(<MarkdownMessage text="Hello world" streaming reveal="smooth" />);
-    // A smooth reveal hands the text over a character at a time, so the wrappers only exist
-    // once there are words to wrap.
     await waitFor(() => {
       const spans = container.querySelectorAll("span.fade-in");
       expect(spans.length).toBeGreaterThanOrEqual(2);
@@ -48,8 +28,6 @@ describe("markdownMessage", () => {
 
   it("auto-closes an unmatched inline backtick so it renders as code", () => {
     const { container } = render(<MarkdownMessage text="use `code" reveal="smooth" />);
-    // closeOpenMarkers appends the missing backtick → react-markdown
-    // emits an inline <code> element.
     expect(container.querySelector("code")).toBeTruthy();
     expect(container.textContent ?? "").toContain("code");
   });
@@ -78,8 +56,6 @@ describe("markdownMessage", () => {
   });
 
   it("renders a streaming-partial code block (no closer yet)", () => {
-    // closeOpenMarkers should synthesise the closing fence so this
-    // already shows up as a code block.
     const src = "```js\nconst x";
     const { container } = render(<MarkdownMessage text={src} reveal="smooth" />);
     expect(container.querySelector(".shiki-block")).toBeTruthy();
@@ -135,29 +111,17 @@ describe("markdownMessage", () => {
     const trigger = container.querySelector<HTMLButtonElement>('button[aria-label="Build graph"]');
     expect(trigger).toBeTruthy();
     const img = trigger?.querySelector("img");
-    // Only a data URI renders as an image at all, so the bytes are already here and there is
-    // no request to defer. This used to say `lazy`, and the attribute cost the box: measured in
-    // the transcript, an image below the fold stayed 0x0 until the reader scrolled to it and
-    // then snapped to 240x96, moving the text under the line they were reading.
     expect(img?.getAttribute("src")).toMatch(/^data:image\//);
     expect(img?.getAttribute("loading"), "an inline image has nothing to defer").toBeNull();
   });
 
-  // `[![badge](img)](url)` is the commonest image in anything an agent quotes from a README, and
-  // an image renders its own preview control — so inside a link that produced a `<button>` in an
-  // `<a target="_blank">`: invalid HTML, two tab stops where the reader sees one badge, and one
-  // click that both opened the preview and followed the link. Inside a link the LINK is the
-  // control, which is what every other renderer emits too.
   it("hands an image inside a link over to the link", () => {
     const tinyPng =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
     const linked = [
       `[![build](${tinyPng})](https://example.test)`,
-      // Emphasis between the link and its image is the same shape with a step in the middle.
       `[**![build](${tinyPng})**](https://example.test)`,
-      // An image the surface refuses to load still may not be a control here: `disabled` does
-      // not stop a button from being interactive content.
       `[![build](https://img.example/b.png)](https://example.test)`,
       `[![build](${tinyPng}) docs](https://example.test)`,
     ];
@@ -171,7 +135,6 @@ describe("markdownMessage", () => {
       unmount();
     }
 
-    // And an image that is NOT in a link keeps its preview, which is the whole point of it.
     const { container } = render(
       <MarkdownMessage text={`![build](${tinyPng})`} reveal="instant" />,
     );
@@ -275,9 +238,6 @@ describe("markdownMessage", () => {
     expect(container.querySelector("td.md-table-cell-numeric")?.textContent).toBe("12");
   });
 
-  // The class carries tabular figures, a floor width and `nowrap`, so which cells get it decides
-  // whether a column of numbers lines up. It used to be `/^\d+$/` — a whole unsigned integer —
-  // and the table an agent writes is a benchmark: percentages, decimals, durations, deltas.
   it("counts a quantity as numeric however the model spelled it", () => {
     const quantities = ["12", "91.2%", "4.2s", "1,234", "-3", "+7", "0.5", "128MB"];
     const prose = ["alpha", "n/a", "2024-01-15", "v1.2.3", "3 of 7", "see 12 rows"];
@@ -297,16 +257,9 @@ describe("markdownMessage", () => {
     };
 
     expect(quantities.filter((value) => !cells(value).includes(value))).toEqual([]);
-    // And the other half: a cell that merely contains digits is prose, and `nowrap` on prose is
-    // a column that cannot give way.
     expect(prose.filter((value) => cells(value).length > 0)).toEqual([]);
   });
 
-  // The gap between two paragraphs of unspaced writing is closed by `markdown.css`, and the rule
-  // pairs ADJACENT paragraphs — so a paragraph the predicate misses does not merely miss the
-  // treatment, it reopens the gap above AND below itself in the middle of a reply that is
-  // otherwise closed. The predicate was `\p{Script=Han}`, so a Japanese paragraph written
-  // without kanji was that paragraph.
   it("marks every paragraph of a reply that has no word spaces, not only the ones with kanji", () => {
     const japanese = [
       "実行は完了しました。",
@@ -321,8 +274,6 @@ describe("markdownMessage", () => {
     );
     unmount();
 
-    // The other side. Korean writes spaces between words, so it has the ragged rhythm this rule
-    // exists to leave alone — and a Korean reply is uniformly unmarked rather than inconsistent.
     const spaced = ["실행이 완료되었습니다.", "The run finished."];
     const other = render(<MarkdownMessage text={spaced.join("\n\n")} reveal="instant" />);
     expect(other.container.querySelectorAll('.md > p[data-markdown-unspaced="true"]')).toHaveLength(
@@ -414,9 +365,6 @@ describe("markdownMessage", () => {
     expect.soft(container.querySelector(".shiki-block")?.getAttribute("dir")).toBe("ltr");
   });
 
-  // The wrappers exist to fade words in. Once the text has arrived there is nothing left to
-  // fade, and they were kept anyway — 158 of them in one long transcript, around text that
-  // never streamed in this session.
   it("drops them again once the message has settled", () => {
     const { container } = render(<MarkdownMessage text="Hello world" reveal="smooth" />);
     expect(container.querySelectorAll("span.fade-in")).toHaveLength(0);
@@ -429,22 +377,14 @@ describe("markdownMessage", () => {
     expect(container.textContent ?? "").toContain("Hello world");
   });
 
-  // `streaming` is what selects the pipeline, not `reveal`: without it `MarkdownBlock` takes
-  // the settled branch, so this asserted the absence of a fade in a tree that was never going
-  // to carry one and said nothing at all about the typewriter. The caret is the only thing
-  // that mode renders differently, and it had no test anywhere.
   it("uses the typewriter pipeline, which is the one that carries a caret", async () => {
     const { container } = render(
       <MarkdownMessage text="Hello world" reveal="typewriter" streaming />,
     );
-    // Same reason as the smooth case above: the reveal hands text over a character at a time,
-    // so the caret only exists once there is something for it to trail.
     await waitFor(() => {
       expect(container.querySelectorAll("span.type-caret").length).toBeGreaterThan(0);
     });
     expect(container.querySelectorAll("span.fade-in")).toHaveLength(0);
-    // A typewriter hands over ONE CHARACTER at a time, so what is on screen at any moment is a
-    // prefix — asserting the whole word here is asserting that the mode does not do its job.
     const shown = (container.textContent ?? "").replace(/\u200b/g, "").trim();
     expect("Hello world".startsWith(shown)).toBe(true);
     expect(shown.length).toBeGreaterThan(0);

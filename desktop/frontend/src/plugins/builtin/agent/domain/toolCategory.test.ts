@@ -15,9 +15,6 @@ describe("toolCategory", () => {
     expect(toolCategory("")).toBe("generic");
   });
 
-  // An MCP server names its own tools, so this is indexed by a string nobody in this
-  // app chose. An object-literal table answered these from `Object.prototype` — a
-  // FUNCTION, typed as ToolCategory, which is neither a category nor the fallback.
   it("leaves a tool named after an inherited member generic", () => {
     for (const name of ["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__"]) {
       expect(toolCategory(name)).toBe("generic");

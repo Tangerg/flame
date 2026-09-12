@@ -17,8 +17,7 @@ type ActivityTone = "neutral" | "warning" | "negative";
  *   line  Work-narrative activity; disclosed material owns any terminal/diff surface.
  *   card  A composite product with a narrative of its own, such as a delegated Run.
  *
- * Stated by every caller rather than defaulted: which of the two a row is, is the whole of
- * the difference between a glance and a product, and the atom cannot infer it.
+ * Stated by every caller rather than defaulted: the atom cannot infer which of the two a row is.
  */
 type ActivityShell = "line" | "card";
 
@@ -26,8 +25,6 @@ type ActivityLeading = { icon: IconName; leading?: never } | { icon?: never; lea
 
 const styles = stylex.create({
   frame: { minWidth: 0, overflow: "clip" },
-  // A line is a row in the narrative and takes the small corner; a card is a product of its
-  // own and wears the card plane.
   frameLine: { borderRadius: radius.sm },
   frameCard: { borderRadius: radius.card, backgroundColor: surface.card },
   header: { display: "flex", minWidth: 0, alignItems: "center" },
@@ -54,12 +51,9 @@ const styles = stylex.create({
     transitionProperty: "color, background-color",
     transitionDuration: motion.color,
   },
-  // The gutter the glyph sits in: a line's is the glyph's own box, a card's is one step wider
-  // because the card's rows have to align down a column.
   mark: { display: "grid", flexShrink: 0, placeItems: "center", height: space.s4 },
   markLine: { width: space.s4 },
   markCard: { width: space.s5 },
-  // A framed mark is a plate the glyph sits on, so it is taller and takes a corner and a wash.
   markFramed: { height: space.s5, borderRadius: radius.sm },
   trayNeutral: { backgroundColor: surface.surface2 },
   trayWarning: { backgroundColor: surface.warningBadge },
@@ -153,10 +147,7 @@ const styles = stylex.create({
     paddingLeft: space.s0_5,
     paddingRight: space.s2,
   },
-  // Only the SIDES. How much room the disclosed material needs above and below it depends on
-  // what it is — a reasoning quote sits tighter under its header than a question's choices do —
-  // and two of the six call sites already said so with a `pt`/`pb` that tailwind-merge let
-  // through. A default that a third of its callers disagree with is not a default.
+  // Only the SIDES: block padding varies by call site, so it is not a default here.
   bodyLine: { paddingRight: 0 },
   bodyCard: { paddingInline: space.s3 },
   bodyRows: { paddingBlock: space.s1_5 },
@@ -182,8 +173,7 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     tone?: ActivityTone;
     shell: ActivityShell;
     children: ReactNode;
-    /** The standing inset for a disclosure whose body is a list of rows. Three call sites
-     *  spelled the same `py-1.5`; the other nine want none, so it stays opt-in. */
+    /** The standing inset for a disclosure whose body is a list of rows. */
     contentInset?: "rows";
     contentClassName?: string;
   };

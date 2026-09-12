@@ -19,15 +19,6 @@ beforeEach(() => {
   useContextDockStore.setState({ ...EMPTY, sessionScopes: new Map() });
 });
 
-/**
- * What the store writes, it must read back — stated without naming a field.
- *
- * Same pairing as the session store: `partialize` decides what is written, a Zod schema
- * decides what is accepted, and a Zod object STRIPS unknown keys. A field added to one and
- * not the other reaches storage and vanishes on the next boot, with nothing raised. This one
- * lives here rather than in the shared parse policy because the shape is this store's: it
- * persists a Map as tuples, so the round trip also proves that conversion survives.
- */
 describe("the round trip", () => {
   it("gets back everything it chose to persist", async () => {
     dock().activateSessionScope("s1");
@@ -42,7 +33,6 @@ describe("the round trip", () => {
     const written = (JSON.parse(payload) as { state: unknown }).state;
     expect(written).toBeTruthy();
 
-    // Emptying the store persists the empty state, so the payload goes back first.
     useContextDockStore.setState({ ...EMPTY, sessionScopes: new Map() });
     localStorage.setItem(key, payload);
     await useContextDockStore.persist.rehydrate();
@@ -52,9 +42,6 @@ describe("the round trip", () => {
   });
 });
 
-// The store holds what the dock has OPEN and what each view remembers. Which
-// destination is showing is the app's location, so there is nothing here that
-// can disagree with it.
 describe("the open tab set", () => {
   it("holds a tab open once", () => {
     dock().openDockTab("diff");

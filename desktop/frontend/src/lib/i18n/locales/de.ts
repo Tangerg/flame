@@ -1,5 +1,3 @@
-// Deutsch.
-
 export const de: Record<string, string> = {
   "common.cancel": "Abbrechen",
   "common.close": "Schließen",
@@ -516,7 +514,6 @@ export const de: Record<string, string> = {
   "agent.runTree.action.cancel": "Diesen Lauf abbrechen",
   "agent.runTree.material.empty": "Noch kein Erzählmaterial.",
 
-  // ── Workspace-Ansicht: Run Summary ──
   "runSummary.title": "Lauf-Zusammenfassung",
   "runSummary.noRuns": "Keine Läufe",
   "runSummary.empty.title": "Noch nichts zusammenzufassen",
@@ -541,7 +538,6 @@ export const de: Record<string, string> = {
   "runSummary.approval.declined": "abgelehnt",
   "runSummary.approval.pending": "ausstehend",
 
-  // ── Workspace-Ansicht: Timeline ──
   "timeline.title": "Lauf-Timeline",
   "timeline.rootRun": "Stammlauf",
   "timeline.delegatedRun": "Delegierter Lauf",
@@ -565,7 +561,6 @@ export const de: Record<string, string> = {
   "timeline.kind.approvalRequest": "Freigabe angefordert",
   "timeline.kind.approvalResult": "Freigabe entschieden",
 
-  // ── Workspace-Ansicht: Benachrichtigungen ──
   "notifications.title": "Benachrichtigungen",
   "notifications.clearAll": "Alle löschen",
   "notifications.dismiss": "Ausblenden",
@@ -573,12 +568,10 @@ export const de: Record<string, string> = {
   "notifications.empty.title": "Keine Benachrichtigungen",
   "notifications.empty.sub": "Alles, was ein Plugin über host.notify() meldet, erscheint hier.",
 
-  // ── Workspace-Ansicht: Dateien ──
   "files.title": "Arbeitsbaum",
   "files.empty.title": "Arbeitsbaum sauber",
   "files.empty.sub": "Keine nicht-committeten Änderungen im aktuellen Workspace.",
 
-  // ── Workspace-Ansicht: Suche ──
   "search.title": "Suche",
   "search.placeholder": "Suchmuster (Regex)…",
   "search.aria": "Suchmuster",
@@ -590,20 +583,15 @@ export const de: Record<string, string> = {
   "search.empty.title": "Keine Treffer",
   "search.empty.sub": "Nichts im Workspace entspricht diesem Muster.",
 
-  // ── Workspace-Ansicht: Aufgaben ──
-
-  // ── Workspace-Ansicht: Terminal ──
   "terminal.title": "Terminal",
   "terminal.empty.title": "Noch keine Befehle",
   "terminal.empty.sub": "Befehle, die der Agent ausführt, erscheinen hier mit ihrer Ausgabe.",
   "terminal.commands_one": "{{count}} Befehl",
   "terminal.commands_other": "{{count}} Befehle",
-  // ── Workspace-Ansicht: Plan ──
   "plan.title": "Plan",
   "plan.empty.title": "Noch kein Plan",
   "plan.empty.sub": "Wenn der Agent einen Plan entwirft, erscheint er hier.",
 
-  // ── Workspace-Ansicht: Tools ──
   "tools.title": "Werkzeuge",
   "tools.diagnostics.sub":
     "Direkte Runtime-Diagnosen. Diese Liste ist bewusst kleiner als der vollständige Werkzeugkatalog des Agents.",
@@ -647,7 +635,6 @@ export const de: Record<string, string> = {
   "toolAction.copyCommand": "Befehl kopieren",
   "approval.fallbackText": "Diese Aktion genehmigen?",
 
-  // ── Workspace-Ansicht: Skills ──
   "skills.title": "Skills",
   "skills.available": "{{count}} verfügbar",
   "skills.off": "aus",
@@ -656,7 +643,6 @@ export const de: Record<string, string> = {
   "skills.disabled.title": "Skills sind deaktiviert",
   "skills.disabled.sub": "Diese Runtime bietet die Skills-Funktion nicht an.",
 
-  // ── Workspace-Ansicht: Memory ──
   "knowledge.title": "Wissen",
   "knowledge.scopes_one": "{{count}} Bereich",
   "knowledge.scopes_other": "{{count}} Bereiche",
@@ -676,21 +662,16 @@ export const de: Record<string, string> = {
   "knowledge.updated": "aktualisiert",
   "knowledge.aria": "Wissensinhalt für {{path}}",
 
-  // ── Workspace-Ansicht: Agent-Doku ──
   "agentDocs.title": "Agent-Doku",
   "agentDocs.found": "{{count}} gefunden",
   "agentDocs.empty.title": "Keine Agent-Doku",
   "agentDocs.empty.sub":
     "Vom Arbeitsverzeichnis aus aufwärts gefundene AGENTS.md-Dateien erscheinen hier.",
 
-  // ── Workspace-Ansicht: Dateibaum ──
   "filetree.title": "Explorer",
   "filetree.empty.title": "Nichts zum Durchsuchen",
   "filetree.empty.sub": "Keine Dateien in diesem Workspace.",
 
-  // ── Befehlspalette ──
-
-  // ── Tastaturkürzel ──
   "shortcuts.sub":
     "Jede von integrierten und Benutzer-Plugins registrierte Tastenkombination. Drücke eine Kombination irgendwo in der App, um sie auszulösen; Bindungskonflikte werden immer zugunsten der letzten Registrierung gelöst.",
   "shortcuts.filter": "Nach Aktion oder Kombi filtern…",
@@ -699,7 +680,6 @@ export const de: Record<string, string> = {
   "shortcuts.shortcut": "Kürzel",
   "shortcuts.empty": "Keine Kürzel gefunden.",
 
-  // ── Icon-Galerie ──
   "iconGallery.clear": "Löschen",
   "workspace.view.title.iconGallery": "Icon-Galerie",
   "settings.pane.brandIcons": "Marken-Icons",
@@ -709,10 +689,8 @@ export const de: Record<string, string> = {
   "role.assistant": "Assistent",
   "role.system": "System",
 
-  // ── Composer ──
   "composer.removeImage": "Bild entfernen",
 
-  // ── Diff-Ansicht ──
   "diff.workingTree": "Arbeitsbaum",
   "diff.branchCompare": "Branch-Vergleich",
   "diff.files.aria": "Geänderte Dateien",
@@ -737,15 +715,12 @@ export const de: Record<string, string> = {
   "diff.truncated":
     "Diff am Zeilenlimit abgeschnitten — die übrigen Dateien werden nicht angezeigt.",
 
-  // ── Befehlsprotokoll ──
   "commandLog.running": "läuft…",
   "commandLog.failed": "fehlgeschlagen",
   "commandLog.exit": "Exit-Code {{code}}",
 
-  // ── Plan- / Aufgabenlisten-Überschrift ──
   "plan.list.heading": "Aufgabenplan",
 
-  // ── Dateiänderungen ──
   "files.changed_one": "{{count}} Datei geändert",
   "files.changed_other": "{{count}} Dateien geändert",
   "files.uncommitted_one": "{{count}} Datei · nicht committet",

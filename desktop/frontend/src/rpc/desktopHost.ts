@@ -13,7 +13,6 @@ export interface DesktopBootstrap {
 /** CSS pixels from the window's top-left. `null` means there was nothing to ask, so the
  *  stylesheet's own header height stands; a measured 0 is a real answer (fullscreen). */
 interface WindowChrome {
-  /** What a control beside the marks centres on. */
   controlsCentreY: number;
   /** Where the cluster ends, and so where the header's first control may begin. */
   controlsInlineEnd: number;

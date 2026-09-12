@@ -15,8 +15,6 @@ describe("stepAgentSession", () => {
     expect(stepAgentSession(sessions, "a", -1)).toBe("c");
   });
 
-  // A deletion leaves the location pointing at an id the list no longer carries, and so does
-  // a cold start with nothing selected. Both enter from the end the step came from.
   it("enters the list from the end the step came from", () => {
     expect(stepAgentSession(sessions, "", 1)).toBe("a");
     expect(stepAgentSession(sessions, "", -1)).toBe("c");

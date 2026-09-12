@@ -56,13 +56,11 @@ export function stageAgentSessionSharedMaterial<T>(
   };
 }
 
-/** Read one companion value together with the exact active Session generation
- * that admitted it. */
 export function useAgentSessionSharedMaterial<T>(path: string): AgentProjectionMaterial<T> {
   return agentSessionView().useSharedMaterial<T>(path);
 }
 
-/** Read one already-mounted companion value at an action boundary. This is the
+/** This is the
  * imperative sibling of `useAgentSessionSharedMaterial`; it never starts a
  * query or writes a second projection. */
 export function getAgentSessionSharedMaterial<T>(sessionId: string, path: string): T | undefined {

@@ -11,17 +11,7 @@ const SCALE: Readonly<Record<UiDensity, number>> = {
 
 /** Comfortable-mode base values, in px. Every mode is these times its scale. */
 const BASE_PX = {
-  /* Codex's own nav-row measure: one line of base type at its 1.5 leading plus a
-     5px inset either side. Our chrome type is a step smaller, so the row carries
-     slightly more air than the arithmetic alone would give it — which is the
-     point, since the label is not what sets a row's touch target. */
   rowHeight: 34,
-  /* The gap between a row's glyph and its label. Same 8px the reference gives it,
-     and the same 8px the row's own inset already uses — one number for "the
-     distance between two things inside a row" rather than a second, slightly
-     larger one that exists only here. At 10 the glyph sat visibly further from
-     its label than the label sat from the row's edge, which reads as the icon
-     drifting out of its own row. */
   rowGap: 8,
   navigationGutter: 12,
   navigationSectionGap: 18,

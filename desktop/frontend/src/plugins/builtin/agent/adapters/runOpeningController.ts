@@ -23,7 +23,6 @@ export interface RunOpeningController {
     onResult?: (result: Result) => void,
     onStartError?: () => boolean | void,
   ) => void;
-  /** Supersede the current opening/stream generation synchronously. */
   retire: () => void;
 }
 

@@ -11,20 +11,6 @@ import { uiTypeLadderCssVariables } from "./kit/typeLadder";
 import { depthStep } from "./kit/tokens";
 import { visualStyleMotionTokens } from "./visualStyles/tokens";
 
-// `globals.css` states this context's palette and visual style as literals, and the painter
-// overwrites the same properties from the registered specs the moment it installs. Both
-// copies are needed — the stylesheet is what the first paint reads, and it cannot call a
-// function — so what needs guarding is that they still say the same thing.
-//
-// They had stopped. Three light palette values were a palette revision behind, and twelve
-// style values were a generation behind: every control height, four corner rungs, and the
-// default easing curve, which the stylesheet still gave as a curve the style had replaced.
-// A drift here never fails loudly; it is a frame of the old design on a cold start, which
-// reads as the app settling.
-//
-// This lives in the theme context, not beside the stylesheet, because these specs are its
-// private business — `check-layers` is what said so.
-
 describe("the palette blocks and the theme specs they mirror", () => {
   beforeEach(async () => {
     await loadPluginsForTest(
@@ -62,31 +48,17 @@ describe("the stylesheet defaults and the visual style that replaces them", () =
     const written = { ...spec!.tokens, ...visualStyleMotionTokens(spec!.motion) };
     expect(Object.keys(written).length).toBeGreaterThan(50);
 
-    // A floor just under what the sheet mirrors today, not a token gesture: the previous
-    // one was low enough that a lookup reading only the FIRST `:root` block still cleared
-    // it, so the whole motion ladder was skipped and the test passed anyway. It moved down
-    // three when `--field-height-*` collapsed into the control ladder — a floor that only
-    // ever rises would make deleting a token indistinguishable from failing to read one.
     const { compared, disagreed } = driftAgainstBlock(":root", written);
     expect(compared, ":root mirrors far less of the style than it did").toBeGreaterThan(67);
     expect(disagreed).toEqual([]);
   });
 
-  // The THIRD copy: what `lib/appearance` hands every consumer until a style publishes.
-  // Its own comment says every value must match the shipped style, and the reason it says
-  // so is that `drawerMs` had drifted to 300 against a style shipping 240 — a drawer that
-  // travelled on one clock cold and another warm.
   it("agree with the fallback every consumer stands on until a style publishes", () => {
     const spec = lookupExtensionByKey(VISUAL_STYLE, "flame") as { motion: VisualStyleMotion };
     expect(visualStyleMotion()).toEqual(spec.motion);
   });
 });
 
-// The last three mirrors, and the only ones the painter writes without a spec behind them.
-// `--depth-step` is the ink rung every region, chip and row state is derived from, so a
-// stylesheet that disagreed about it would open on a different separation everywhere at
-// once. Compared as NUMBERS: the painter spells the step to one decimal and the sheet does
-// not, and `4%` is not a different value from `4.0%`.
 describe("the stylesheet defaults and the scalars the painter writes alone", () => {
   const percent = (value: string | undefined) => Number.parseFloat(value ?? "NaN");
 
@@ -107,19 +79,6 @@ describe("the stylesheet defaults and the scalars the painter writes alone", () 
   });
 });
 
-/**
- * The density ladder is the third mirror, and it was not in this file.
- *
- * Same shape as the two above: `globals.css` states the comfortable values as literals
- * because they are what the first paint reads, and `documentAppearance` overwrites all
- * thirteen from `densityCssVariables` the moment it installs. Two copies of one list, and a
- * drift is a cold start that lays out at the old row height and then jumps.
- *
- * Unlike the palette, EVERY variable is required rather than only the ones the block happens
- * to declare. A palette token the dark block omits inherits the light one on purpose; a
- * density variable the sheet omits has no fallback at all, which is an unstyled first frame
- * rather than a stale one.
- */
 describe.each([
   ["the density ladder", () => densityCssVariables(DEFAULT_UI_DENSITY)],
   ["the type ladder", () => uiTypeLadderCssVariables(null)],

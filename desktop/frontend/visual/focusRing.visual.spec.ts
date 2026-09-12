@@ -2,23 +2,6 @@ import { expect, test } from "./test";
 import { FOCUSABLE } from "./controls";
 import { eachTabStop } from "./tabWalk";
 
-// One rule draws every focus ring: 1.5px at `outline-offset: 1px`, so it reaches 2.5px past the
-// border box. `[data-focus-inset]` is the compensation for a control flush against something
-// that clips — it draws the ring inward instead. The compensation existed, was commented, and
-// had **no users**, while the tool-summary disclosure that fills a rounded `overflow-clip`
-// container showed a keyboard user no ring at all.
-//
-// Geometry, not painting: the ring is suppressed unless the last input device was a key
-// (`html:not([data-pointer])`), so what THIS test checks is whether it would have anywhere to
-// go. The test below it walks the same tree and asks whether it goes there — the question this
-// file did not ask, and the answer was no for 109 of 121 controls (see that test's note).
-//
-// Two refinements this needed before it said anything true, both about scrolling. An element
-// scrolled out of its own container reports a 1000px "cut" and is not a defect, so only a ring
-// poking out of a box the ELEMENT fits inside counts. And a scrollable ancestor cannot pin
-// anything at all: focus scrolls the control clear of the edge, which is why the walk stops at
-// the first scroller instead of blaming the clip beyond it.
-
 const ROUTES = [
   "fixture=agent&state=waiting",
   "fixture=agent&state=running",
@@ -59,9 +42,6 @@ test("no focus ring is cut off by something that clips", async ({ page }) => {
 
         for (let parent = element.parentElement; parent; parent = parent.parentElement) {
           const parentStyle = getComputedStyle(parent);
-          // A scrollable ancestor cannot pin anything: focusing scrolls the control clear of
-          // the edge, honouring `scroll-padding`. Only a box that CANNOT scroll traps a ring,
-          // so the walk stops at the first scroller rather than blaming the clip beyond it.
           const scrolls =
             parentStyle.overflowY === "auto" ||
             parentStyle.overflowY === "scroll" ||
@@ -104,26 +84,6 @@ test("no focus ring is cut off by something that clips", async ({ page }) => {
   ).toEqual([]);
 });
 
-// Whether a control shows a ring is decided in globals.css, by two attributes it reads. The
-// question this file never asked is whether the decision reaches the screen — and it did not.
-// `#\#` is an ID selector, so every `:not(#\#)` StyleX stamps on a declaration counts as an ID
-// and the global rule carries none of them — it is (0,4,3). So `outline: "none"` in a style
-// object beats it on the strength of a SINGLE one; the count varies (measured 1 to 8, most at 3
-// or 4) because it is how StyleX encodes its own precedence, not a fixed number. Twenty call sites had written it, most by way of
-// `Button`, and 109 of 121 keyboard-reachable controls that had NOT opted out showed nothing at
-// all. Under Tailwind the same line was a `@layer utilities` rule the global one beat, so it
-// was genuinely harmless there and the chrome guard blessed it in writing; the migration
-// inverted it silently, because a focus ring is invisible until someone reaches for the keyboard.
-//
-// Two assertions, because "a ring appeared" is the weaker claim. Every ring in the product also
-// has to be the SAME ring: one fingerprint of style, width and colour across every control, or
-// the one-rule-draws-it-all design is already gone whatever the pixels say.
-//
-// Real Tab, not `element.focus()` — programmatic focus does not run the roving-tabindex
-// activation a dock tab uses, for the reasons `chromeFocus.visual.spec.ts` sets out.
-// The walk runs a route's whole tab order, not a prefix of it: at forty-five presses this
-// missed the second pane resizer by three stops, and that one carried the same dead
-// `outline: none` its twin did.
 const ROUTE_BUDGET_MS = 120_000;
 
 test("the ring the design promises is the ring that paints", async ({ page }) => {
@@ -141,21 +101,11 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
       const meta = await page.evaluate(() => {
         const active = document.activeElement as HTMLElement;
         const tag = active.tagName.toLowerCase();
-        // The three exclusions the global rule itself carries: an opt-out promising a row
-        // state instead (`chromeFocus.visual.spec.ts` holds that promise), and text inputs,
-        // which say where the keyboard is with a caret.
         if (active.hasAttribute("data-chrome-focus")) return null;
         if (tag === "input" || tag === "textarea" || active.isContentEditable) return null;
         if (!active.matches(":focus-visible")) return null;
         const style = getComputedStyle(active);
 
-        // Which RULE is painting, not what the pixels came out as. This was a fingerprint of
-        // the computed `outline-style outline-width outline-color` and it was flaky: Chromium
-        // reports the design's `1.5px` as `1px` at one device ratio, and some transient state
-        // reported `solid 3px currentcolor` on roughly one run in three — so an assertion that
-        // there is exactly one fingerprint was passing on luck. Asking which author rules
-        // match says the same thing literally, and says it about the design rather than about
-        // pixel rounding.
         const painters: string[] = [];
         for (const sheet of document.styleSheets) {
           let rules: CSSRuleList;
@@ -196,8 +146,6 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
         silent.push(`${route}  <${meta.tag}> "${meta.label}"`);
         return;
       }
-      // The global pair is the only thing allowed to paint one: both halves gate on the
-      // modality attribute and on `:focus-visible`, which nothing else in the sheet does.
       const foreign = meta.painters.filter(
         (selector) => !(selector.includes("data-pointer") && selector.includes(":focus-visible")),
       );
@@ -209,7 +157,6 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
     });
   }
 
-  // A walk that reached nothing keeps no promise and reports no failure.
   expect(reached, "the walk has to arrive at real controls").toBeGreaterThan(60);
   expect(
     [...new Set(silent)],

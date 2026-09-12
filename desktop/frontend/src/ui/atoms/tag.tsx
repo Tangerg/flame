@@ -9,8 +9,7 @@ import { color, radius, space, surface, type } from "@/styles/tokens.stylex";
 // `Badge` is the sibling, not the same thing — a Badge names a STATE in the reader's
 // language and takes the pill and a tone; a Tag carries a VALUE the reader must be able to
 // copy back, so it is rectangular (DESIGN §6 gives `xs` to "anything that is really a tag")
-// and never coloured. Nine hand-rolled spellings of this had drifted across the plugin
-// layer, three of them rendering the same field two different ways in two views.
+// and never coloured.
 const styles = stylex.create({
   base: {
     flexShrink: 0,
@@ -21,7 +20,6 @@ const styles = stylex.create({
   },
   xs: { paddingBlock: "1px" },
   sm: { paddingBlock: space.s0_5 },
-  // Inline in a sentence, where the tag has to sit on the prose it interrupts.
   md: { paddingBlock: "1px" },
   // No `faint`. A Tag carries a value the reader has to be able to copy back, and
   // `--color-fg-faint` on this surface measures 3.99:1 in dark — below AA, for the one

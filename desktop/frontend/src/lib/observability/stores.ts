@@ -14,7 +14,6 @@ type Attrs = Record<string, string | number | boolean>;
 
 type InstrumentKind = "histogram" | "counter";
 
-/** One metric row per (instrument name, attribute combo). */
 export interface MetricRow {
   id: string;
   name: string;
@@ -29,7 +28,6 @@ export interface MetricRow {
   avg?: number;
 }
 
-/** One ended span. Flattened from a ReadableSpan by the sink. */
 export interface SpanRow {
   id: string; // spanId
   traceId: string;
@@ -44,7 +42,6 @@ export interface SpanRow {
   attrs: Attrs;
 }
 
-/** One emitted log record. Flattened from an SdkLogRecord by the sink. */
 export interface LogRow {
   id: string; // monotonic local id (records have no stable id)
   timeMs: number; // epoch ms

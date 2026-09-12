@@ -93,10 +93,6 @@ describe("ApprovalCard actions", () => {
     expect(actions.approve).toHaveBeenCalledWith("session");
   });
 
-  // The eyebrow answers "which capability is being authorised", and for a built-in tool the
-  // families already own that word. It used to switch on the tool's RESULT SHAPE and name two
-  // of seven cases, so everything else — every network, skill, recall and schedule tool —
-  // asked permission under its snake_case wire name.
   it.each(TOOL_FAMILIES.flatMap((family) => family.tools.map((tool) => tool.name)))(
     "names a family rather than the wire name when approving %s",
     (name) => {

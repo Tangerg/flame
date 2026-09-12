@@ -6,8 +6,6 @@ import { MessageContext } from "@/plugins/sdk/messageContext";
 import type { BlockCtx } from "./BlockRenderer";
 import { renderBlock } from "./BlockRenderer";
 
-// The transcript's shared context holds no session data by design, so every test
-// needs the same inert one — the interesting half is `facts`.
 const CTX: BlockCtx = {
   onSelectTool: vi.fn(),
   expandedIds: new Set(),
@@ -84,9 +82,6 @@ describe("delegated Run rendering", () => {
   it("mounts child and nested narratives under their exact parent task Items", () => {
     const parentTool = tool("task-root");
     const nestedTool = { ...tool("task-child"), runId: "child-run" };
-    // One turn's facts reach through delegation: the nested task's call and the run IT
-    // spawned are in here because the projection walks the whole delegation chain when
-    // it slices a row.
     const facts: TurnFacts = {
       toolCalls: {
         [parentTool.id]: parentTool,

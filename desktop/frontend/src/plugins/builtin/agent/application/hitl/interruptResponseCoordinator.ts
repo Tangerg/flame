@@ -73,8 +73,7 @@ class InterruptResponseBatch {
     return this.#submission?.superseded ?? false;
   }
 
-  /** Reconcile an in-flight command against one material generation.
-   *
+  /**
    * Retirement alone is not a settlement fact: keep cards latched across the
    * disconnected gap. Once a durable projection commits in that successor
    * generation, either the barrier disappeared (the command committed) or the
@@ -240,8 +239,6 @@ export function interruptResponseIsStaged(ref: InterruptRef): boolean {
   return coordinator().isStaged(ref);
 }
 
-/** Own staged choices, continuation settlement and projection reconciliation
- * for one Agent Plugin Host generation. */
 export function installInterruptResponseCoordinator(): () => void {
   const next = new InterruptResponseCoordinator(agentSessionView());
   interruptResponsePublication.publish(next, (predecessor) => predecessor.retire());

@@ -11,9 +11,6 @@ import {
 } from "@/plugins/builtin/workspace/public/navigation";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 
-// The plugin's job: keep the dock's per-session memory pointed at the session the
-// user is in. It observes the session through the agent facade and answers by
-// navigating the dock, so both sides are asserted through the location.
 const agentSession = vi.hoisted(() => {
   let listener: ((sessionId: string) => void) | undefined;
   let openSessionIds = ["s1", "s2"];
@@ -39,8 +36,6 @@ const agentSession = vi.hoisted(() => {
   };
 });
 
-// The plugin declares its ports, so the fake is installed as their provider
-// rather than mocked into a module path it no longer imports.
 const ports = definePlugin({
   name: "test.session-ports",
   provides: { sessions: AGENT_SESSIONS, scopes: WORKSPACE_SCOPE },

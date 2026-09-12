@@ -69,8 +69,6 @@ describe("KnowledgeDraft", () => {
     });
   });
 
-  // The save's answer and the `latest` read race. When `latest` is still the pre-save document,
-  // reconciling against it would open the OLD content over the save that just landed.
   it("does not roll a settled save back onto a stale read of the document", () => {
     const saving = KnowledgeDraft.open({ content: "old", revision: "rev-1" }).edit("saved edit");
 

@@ -22,9 +22,7 @@ const styles = stylex.create({
 /**
  * A run's state, said in a word beside the mark that means it.
  *
- * The mark is `StatusDot`: this used to draw its own, with its own four-tone ladder, of which
- * one tone was ever passed. A pill saying "running" and a dot saying "running" have to look the
- * same, so there is one vocabulary — `DotTone` — and one thing that draws it.
+ * The mark is `StatusDot`, so there is one vocabulary — `DotTone` — and one thing that draws it.
  */
 export function AgentStatusPill({
   children,

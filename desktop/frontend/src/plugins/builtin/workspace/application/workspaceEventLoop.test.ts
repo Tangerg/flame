@@ -42,7 +42,7 @@ describe("workspace event loop", () => {
     await run;
 
     expect(handled).toEqual([1, 3]);
-    expect(invalidateAll).toHaveBeenCalledTimes(2); // subscribe + detected gap
+    expect(invalidateAll).toHaveBeenCalledTimes(2);
   });
 
   it("invalidates all caches when the first frame is not sequence one", async () => {
@@ -71,7 +71,7 @@ describe("workspace event loop", () => {
     controller.abort();
     await run;
 
-    expect(invalidateAll).toHaveBeenCalledTimes(2); // subscribe + missing sequence 1
+    expect(invalidateAll).toHaveBeenCalledTimes(2);
   });
 
   it("drops a duplicated frame without replacing every read model again", async () => {
@@ -147,7 +147,7 @@ describe("workspace event loop", () => {
     await run;
 
     expect(handled).toEqual([1, 3, 4]);
-    expect(invalidateAll).toHaveBeenCalledTimes(2); // subscribe + the forward gap
+    expect(invalidateAll).toHaveBeenCalledTimes(2);
   });
 
   it("keeps unresolved identity distinct from the default workspace", async () => {
@@ -570,7 +570,6 @@ describe("workspace event loop", () => {
         if (subscribed.length === 1) return oldOpening;
         reachedNew();
         return (async function* () {
-          // Sequence is connection-local and restarts at one after retarget.
           yield { type: "resync", sequence: 1 } as const;
           await new Promise<void>((resolve) => {
             if (signal.aborted) resolve();

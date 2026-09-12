@@ -2,14 +2,6 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { CheckboxPrimitive, PopoverPrimitive, TabsPrimitive } from "./index";
 
-// Every `data-[x]:` variant in the design system is a bet on which attribute Base UI writes,
-// and losing that bet is silent: the rule compiles, ships, and never matches. A tab strip
-// styled its active indicator with `data-[selected]` — which Base UI does not set on a Tab —
-// so the accent was live and invisible until someone read the DOM.
-//
-// These are the three steady states that can be established by rendering. The other three —
-// `data-highlighted`, `data-starting-style`, `data-ending-style` — need a real pointer or a
-// running transition, so they are asserted in the visual suite, where both exist.
 describe("the state attributes the design system styles against", () => {
   it("marks a checked checkbox with data-checked", () => {
     render(<CheckboxPrimitive.Root checked aria-label="ready" />);

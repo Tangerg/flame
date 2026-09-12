@@ -1,25 +1,6 @@
 import { expect, test } from "./test";
 import { CONTROL } from "./controls";
 
-// What "the pointer is over this" looks like, read off the screen rather than out of the source.
-//
-// A static guard already keeps the hover VALUE in one place, and it reads source: it can see
-// `":hover": surface.hover` and cannot see what that composites to. The focus ring had just
-// shown those two things coming apart completely, so this hovers every control in the fixtures
-// and diffs the computed fill.
-//
-// It found the mechanism contradicting its own model. The design calls these states an ink
-// WASH — ink laid over what is there — but they were written into `background-color`, which
-// holds one value, so the wash REPLACED the resting fill. Hovering a selected row took it from
-// 4% ink to 3%: the pointer made the selection fainter. Hovering a sunken row dropped its
-// recess for a translucent neutral, so a well read as if it had popped out of the surface.
-// Neither is visible in a screenshot of a resting page, and no golden hovers anything.
-//
-// Two assertions. The first is the defect's exact shape: a control that HAS a resting fill may
-// not land on the plain neutral wash, because that is the wash having replaced it. The second
-// is the shape of the answer as a whole — one gesture should have a handful of answers, not one
-// per call site, which is the inconsistency the value guard exists for and cannot see.
-
 const ROUTES = [
   "fixture=agent&state=narrative",
   "fixture=agent&state=tool-shells",
@@ -28,36 +9,12 @@ const ROUTES = [
   "fixture=workspace&state=settings",
 ];
 
-// Hovering is a walk with a settle after every step, so the budget comes from its own work
-// rather than Playwright's default — the same reason the chrome-focus walk sets its own.
-//
-// And the work is not what an idle machine measures. The visual config starts a fresh dev
-// server per run, so the first pass over a route pays for its transforms: measured 43s warm and
-// 141s cold, which the previous 140s ceiling failed by a second. Round 198 took that same cold
-// cache out of the COVERAGE and left it in the clock. A ceiling is for when something is
-// wrong, so it is set from the cold figure with room over it, not from the warm one.
 const ROUTE_BUDGET_MS = 90_000;
 
-// One gesture, a small closed set of answers: ink over nothing, ink over a resting fill, a
-// filled control stepping its own fill. A ceiling rather than an exact list, because a new tone
-// is a legitimate addition and a per-call-site alpha is not — this catches the drift, not the
-// growth.
 const MAX_DISTINCT_ANSWERS = 8;
 
-// Silence is allowed. The desktop-feel rules reserve hover for dense lists, sidebar rows, icon
-// buttons and scanability, and name "hover backgrounds on every button" as the anti-pattern, so
-// the rule here is not "everything must answer". It is: a control that answers NOTHING has to
-// be one whose feedback is something else — a text field, where the caret says where the
-// keyboard is, or a toggle, whose thumb slides on click and is its own answer.
-//
-// Every other control that went quiet turned out to be a defect: the selected row, the selected
-// segmented tab, the active dock tab, and the goal bar's widest control standing beside three
-// siblings that all answered.
 const MAY_ANSWER_NOTHING = 'input, textarea, [role="switch"], [role="checkbox"]';
 
-// Answering is not confined to the control. A segmented tab answers through a CHILD chip and a
-// dock tab through a PARENT wrapper, so reading the control alone called both of them silent.
-// Serialised as a string because it has to run inside the page.
 const VISIBLE_STATE = `(el) => {
   const s = getComputedStyle(el);
   return [s.backgroundColor, s.color, s.opacity, s.borderColor, s.boxShadow,
@@ -90,18 +47,12 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
     await page.waitForSelector("html[data-visual-ready]");
     await page.waitForTimeout(250);
 
-    // Coverage must not depend on how warm the dev server's transform cache is. The visual
-    // config starts a fresh server per run, so on a cold one the first route has mounted less
-    // by the time `data-visual-ready` fires — measured: 131 controls audited instead of 156,
-    // clearing the floor and saying nothing. Wait for the count to stop moving instead.
     for (let attempt = 0; attempt < 20; attempt += 1) {
       const count = await page.locator(CONTROL).count();
       await page.waitForTimeout(150);
       if (count > 0 && count === (await page.locator(CONTROL).count())) break;
     }
 
-    // The neutral wash as the browser resolves it, so the comparison is against the token
-    // rather than against a colour written down here that the theme could move.
     const neutralWash = await page.evaluate(() => {
       const probe = document.createElement("div");
       probe.style.backgroundColor = "var(--wash-hover)";
@@ -111,11 +62,6 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
       return value;
     });
 
-    // Identity first, and it has to be an attribute rather than an index. Hovering MOUNTS and
-    // UNMOUNTS controls — a message reveals its action row — so `locator(CONTROL).nth(i)` after
-    // the move can resolve to a different element than the one measured at rest, and the pair
-    // being compared is then two different controls. Measured while auditing this: for most of
-    // a silent list, `elementFromPoint` at the sampled centre returned an unrelated node.
     const total = await page.locator(CONTROL).evaluateAll((nodes) => {
       nodes.forEach((node, index) => node.setAttribute("data-hover-probe", String(index)));
       return nodes.length;
@@ -123,19 +69,12 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
 
     for (let index = 0; index < total; index += 1) {
       const control = page.locator(`[data-hover-probe="${index}"]`);
-      // Park before every reading: sampling a resting state with the pointer still on the
-      // previous control reads that one's hover as this one's rest.
       await page.mouse.move(1119, 719);
       await page.waitForTimeout(50);
       const before = await control.evaluate((node, args) => {
         const read = new Function("return " + args.visible)();
         const readBox = new Function("return " + args.box)();
         const style = getComputedStyle(node);
-        // The centre of a control's own rect is not where it is painted. Inside a scroller a
-        // control can be scrolled out of view and still report a rect that lands inside the
-        // window, so the pointer goes to a point showing something else entirely — thirteen
-        // controls read as ignoring the pointer for exactly this reason. Aim at the point that
-        // is visible: the control's rect intersected with every ancestor that clips.
         let box = node.getBoundingClientRect();
         let visible = { top: box.top, bottom: box.bottom, left: box.left, right: box.right };
         for (let parent = node.parentElement; parent; parent = parent.parentElement) {
@@ -149,11 +88,6 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
             right: Math.min(visible.right, clip.right),
           };
         }
-        // The fill that answers the pointer is often not on the control. A dock tab's own
-        // element is a label inside a wrapper, and the wrapper carries the raise that says the
-        // tab is open — so the wrapper is where that raise was being replaced by the neutral
-        // wash, on an element no audit reading a control list ever looks at. The walk stops at
-        // the first scroller: past that is page furniture, not the control's own box.
         const chain: { fill: string; what: string }[] = [];
         for (
           let parent = node.parentElement;
@@ -176,16 +110,8 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
           y: (visible.top + visible.bottom) / 2,
           width: visible.right - visible.left,
           height: visible.bottom - visible.top,
-          // A disabled control is meant not to answer, and says so with the cursor. A control
-          // that is not SHOWN is a third thing again: `Jump to bottom` sits at `opacity: 0`
-          // with `pointer-events: none` until the transcript is scrolled, and a walk that
-          // counts it as ignoring the pointer is counting a control that is not there.
           skip:
             node.matches(':disabled, [aria-disabled="true"]') ||
-            // A range input is the accessibility surface of a slider, not its pointer target
-            // — Base UI paints `Track` and `Thumb` for that and leaves the input covered. Held
-            // here rather than in the shared `CONTROL` list, which two other audits read and
-            // for which a slider's input is a real control.
             node.matches('input[type="range"]') ||
             style.pointerEvents === "none" ||
             style.opacity === "0",
@@ -199,14 +125,7 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
       if (before.width < 2 || before.height < 2 || before.skip) continue;
       if (before.x < 0 || before.y < 0 || before.x > 1120 || before.y > 720) continue;
 
-      // Not `locator.hover()`: it waits for the element to be able to receive pointer events,
-      // and a control something else covers never becomes actionable, so the walk hangs on it
-      // rather than reporting it.
       await page.mouse.move(before.x, before.y);
-      // Then a nudge, because arriving is not the same as being hovered. A control revealed by
-      // an ancestor's hover is `visibility: hidden` at rest and so not hit-testable; the move
-      // reveals it, but `:hover` on it is only recomputed on the next pointer event. Without
-      // this the message actions read as ignoring the pointer that had just revealed them.
       await page.mouse.move(before.x + 1, before.y);
       await page.waitForTimeout(70);
       const after = await control.evaluate((node, args) => {
@@ -227,14 +146,7 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
           fill: style.backgroundColor,
           state: readBox(node, read) as string,
           chain,
-          // Proof the pointer arrived. Without it a control the layout moved out from under
-          // the cursor reports "no change" and reads as a control that ignores the pointer.
           reached: node.matches(":hover"),
-          // Read AFTER the move, because being shown is what the move decides for a revealed
-          // control. `visibility` inherits, so a control inside a hidden subtree computes
-          // `hidden` however its own styles read — which is what the message actions in the
-          // dock fixture turned out to be, while a dock tab's × is hidden only until its tab
-          // is hovered. Asking before the move cannot tell those two apart.
           shown: style.visibility !== "hidden" && style.opacity !== "0",
         };
       }, ARGS);
@@ -244,8 +156,6 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
       }
       hovered += 1;
 
-      // Before the control's own early exit: a dock tab's label does not change at all, and
-      // returning on that is what kept the wrapper's replaced fill out of sight.
       before.chain.forEach((link, depth) => {
         const now = after.chain[depth];
         if (now === undefined || now === link.fill) return;
@@ -260,8 +170,6 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
       if (after.fill === before.rest) continue;
 
       answers.set(`${before.rest} -> ${after.fill}`, `${route} <${before.tag}> "${before.label}"`);
-      // `rgba(0, 0, 0, 0)` is the computed spelling of no fill at all: ink over nothing is the
-      // wash doing exactly its job. Anything else had a fill for the ink to sit on.
       if (before.rest !== "rgba(0, 0, 0, 0)" && after.fill === neutralWash) {
         replaced.push(
           `${route} <${before.tag}> "${before.label}"  ${before.rest} -> ${after.fill}`,
@@ -272,17 +180,11 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
     await page.mouse.move(1119, 719);
   }
 
-  // A sweep that hovered nothing agrees with everything. Counted on ARRIVAL — `:hover` on the
-  // element itself — so a walk that aimed at stale coordinates cannot clear this floor.
   console.log(
     `hovered ${hovered}, pointer never arrived on ${unreachable.length}` +
       (unreachable.length > 0 ? `\n  ${unreachable.join("\n  ")}` : ""),
   );
   expect(hovered, "the sweep has to reach real controls").toBeGreaterThan(100);
-  // Every control the sweep decided to test, the pointer reached. This started as a diagnostic
-  // and became the assertion, because the interesting number is not how many were hovered but
-  // whether any were missed: a control the pointer cannot land on is a control nobody can
-  // click, and three rounds of this audit were spent on readings that were really misses.
   expect(
     [...new Set(unreachable)],
     "the pointer never landed on these — the aim is wrong, or something covers them",

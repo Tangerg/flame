@@ -17,7 +17,6 @@ interface NodeProps {
 }
 
 const ft = stylex.create({
-  // One indent step per level, drawn as an empty cell so the glyph column stays aligned.
   indent: { width: space.s3, flexShrink: 0 },
   note: { paddingBlock: space.s1 },
   pad: { paddingInline: space.s2, paddingBlock: space.s1_5 },

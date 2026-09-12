@@ -4,10 +4,6 @@ import { segmentWords } from "./i18n/segmentWords";
 import { basename, splitFilePath } from "./path";
 import { fmtTokens } from "./format";
 
-// These read bytes nobody validated: streamed tokens, paths from a diff, counts from a
-// runtime. A parser that throws here takes a transcript row with it, and one that loops
-// takes the frame.
-
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 
 describe("word segmentation, which every streamed token goes through", () => {
@@ -28,8 +24,6 @@ describe("word segmentation, which every streamed token goes through", () => {
 });
 
 describe("path presentation, over the shapes a diff can carry", () => {
-  // A directory path's own name is not a suffix of it — "a/b/" is named "b" — so
-  // the comparison is against the path with its trailing separators removed.
   it("keeps the basename inside the path", () => {
     forEachSeed(400, (a) => {
       const path = a.path();

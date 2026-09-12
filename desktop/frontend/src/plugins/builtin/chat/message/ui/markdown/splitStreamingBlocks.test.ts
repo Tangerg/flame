@@ -1,17 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { splitStreamingBlocks } from "./splitStreamingBlocks";
 
-/**
- * Pinned against the function this replaces, not written from a reading of it.
- *
- * Every expectation below is the output `streamdown`'s `parseMarkdownIntoBlocks` gave for the
- * same input, captured before the swap. A differential fuzz over 4000 generated documents
- * found no other disagreement — three of these cases are ones it DID find, and each named a
- * rule a reading would have missed: a void element opens nothing, a self-closing element opens
- * nothing, and a tag with no `>` yet is not a tag at all.
- *
- * Written as literals rather than as a comparison, because the package they came from is gone.
- */
 const CASES: readonly [name: string, markdown: string, blocks: readonly string[]][] = [
   ["two paragraphs", "alpha\n\nbeta", ["alpha", "\n\n", "beta"]],
   ["an unclosed fence keeps what follows", "text\n\n```js\ncode", ["text", "\n\n", "```js\ncode"]],
@@ -55,9 +44,6 @@ describe("splitStreamingBlocks", () => {
   for (const [name, markdown, blocks] of CASES)
     it(`${name}`, () => expect(splitStreamingBlocks(markdown)).toEqual([...blocks]));
 
-  // The reason the function exists at all: only the last block may still be growing, so every
-  // block before it has to be the same string it was on the previous keystroke. Split a
-  // document one character at a time and the settled prefix must never be rewritten.
   it("leaves settled blocks byte-identical as the tail grows", () => {
     const document = "# Title\n\nfirst para\n\n```js\nconst a = 1;\n```\n\nlast para";
     const rewritten: string[] = [];

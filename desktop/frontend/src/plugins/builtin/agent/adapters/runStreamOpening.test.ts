@@ -28,8 +28,6 @@ describe("settleRunStreamOpening", () => {
     expect(close).not.toHaveBeenCalled();
   });
 
-  // The transport is not required to honour the signal, so the opening can still succeed after
-  // the generation released ownership. Dropping that stream leaks a live subscription.
   it("retires a stream that arrives after the abort", async () => {
     const close = vi.fn();
     const controller = new AbortController();

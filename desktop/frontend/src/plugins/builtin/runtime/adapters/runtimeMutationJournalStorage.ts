@@ -12,8 +12,7 @@ function storedValuesEqual(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-/** Bind the RPC mutation journal to this Runtime context's namespaced Host
- * storage. The adapter never interprets protocol methods, params, or keys. */
+/** The adapter never interprets protocol methods, params, or keys. */
 export function installRuntimeMutationJournalStorage(ctx: { storage: KeyValueStore }): () => void {
   return configureRuntimeMutationJournalStorage({
     get: (key) => ctx.storage.get(storageKey(key)),

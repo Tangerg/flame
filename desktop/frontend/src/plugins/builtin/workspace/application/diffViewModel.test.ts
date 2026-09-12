@@ -58,8 +58,6 @@ describe("workspaceDiffFileHeader", () => {
       removed: 1,
     });
 
-    // The rename keeps BOTH paths — the header decides how to spend the width
-    // between them, which it cannot do from a pre-joined string.
     expect(
       workspaceDiffFileHeader(
         file({ path: "src/new.ts", previousPath: "src/old.ts", added: undefined, removed: 3 }),

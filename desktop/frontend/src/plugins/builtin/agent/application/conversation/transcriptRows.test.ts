@@ -63,12 +63,6 @@ function view(options: {
   };
 }
 
-/**
- * These are performance-contract tests, and identity is the contract: a row React can
- * skip is exactly a row whose object came back unchanged. Asserting on content instead
- * would pass just as happily against the projection that rebuilt every row on every
- * delta, which is the regression this file exists to catch.
- */
 describe("transcript rows", () => {
   it("keeps every untouched row identical when the tail streams", () => {
     const first = message("m1", [text("hello")]);
@@ -78,8 +72,6 @@ describe("transcript rows", () => {
       EMPTY_TRANSCRIPT_ROW_CACHE,
     );
 
-    // What a text delta does: the fold replaces the tail message and leaves the rest at
-    // the same reference.
     const grown = message("m2", [text("answer, continued")]);
     const after = buildTranscriptRows(view({ messages: [first, grown] }), before.cache);
 
@@ -152,8 +144,6 @@ describe("transcript rows", () => {
       EMPTY_TRANSCRIPT_ROW_CACHE,
     );
 
-    // Only the tool object changes — every message stays at its own reference, which is
-    // exactly what a TOOL_CALL_ARGS delta looks like.
     const after = buildTranscriptRows(
       view({ messages, toolCalls: [tool("t1", '{"path":"a.ts"}')] }),
       before.cache,
@@ -202,10 +192,7 @@ describe("transcript rows", () => {
       EMPTY_TRANSCRIPT_ROW_CACHE,
     );
 
-    // One row: the delegated turn is material UNDER the root turn, not a row beside it.
     expect(before.rows).toHaveLength(1);
-    // The grandchild is reachable only via the child's own tool call, so a row that
-    // stopped walking at depth one would render the nested subagent as nothing.
     expect(Object.keys(before.rows[0]?.facts.delegatedRuns ?? {}).sort()).toEqual(["t1", "t2"]);
 
     const grownChildTurn = message("child-1", [toolBlock("t2"), text("done")], "child-run");
@@ -222,8 +209,6 @@ describe("transcript rows", () => {
       EMPTY_TRANSCRIPT_ROW_CACHE,
     );
 
-    // Not merely equal — the SAME object. A fresh `{}` per turn would make every
-    // text-only row a new row on every delta even with the cache in place.
     expect(build.rows[0]?.facts).toBe(build.rows[1]?.facts);
   });
 

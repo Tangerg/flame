@@ -1,5 +1,3 @@
-// 한국어.
-
 export const ko: Record<string, string> = {
   "common.cancel": "취소",
   "common.close": "닫기",
@@ -497,7 +495,6 @@ export const ko: Record<string, string> = {
   "agent.runTree.action.cancel": "이 실행 취소",
   "agent.runTree.material.empty": "아직 내러티브 내용이 없습니다.",
 
-  // ── 워크스페이스 뷰: 실행 요약 ──
   "runSummary.title": "실행 요약",
   "runSummary.noRuns": "실행 없음",
   "runSummary.empty.title": "요약할 내용 없음",
@@ -521,7 +518,6 @@ export const ko: Record<string, string> = {
   "runSummary.approval.declined": "거부됨",
   "runSummary.approval.pending": "대기 중",
 
-  // ── 워크스페이스 뷰: 타임라인 ──
   "timeline.title": "실행 타임라인",
   "timeline.rootRun": "루트 실행",
   "timeline.delegatedRun": "위임 실행",
@@ -542,7 +538,6 @@ export const ko: Record<string, string> = {
   "timeline.kind.approvalRequest": "승인 요청",
   "timeline.kind.approvalResult": "승인 처리됨",
 
-  // ── 워크스페이스 뷰: 알림 ──
   "notifications.title": "알림",
   "notifications.clearAll": "모두 지우기",
   "notifications.dismiss": "닫기",
@@ -550,12 +545,10 @@ export const ko: Record<string, string> = {
   "notifications.empty.title": "알림 없음",
   "notifications.empty.sub": "플러그인이 host.notify()로 보고한 모든 내용이 여기에 표시됩니다.",
 
-  // ── 워크스페이스 뷰: 파일 ──
   "files.title": "워킹 트리",
   "files.empty.title": "워킹 트리 깨끗함",
   "files.empty.sub": "현재 워크스페이스에 커밋되지 않은 변경 사항이 없습니다.",
 
-  // ── 워크스페이스 뷰: 검색 ──
   "search.title": "검색",
   "search.placeholder": "검색 패턴 (정규식)…",
   "search.aria": "검색 패턴",
@@ -565,19 +558,14 @@ export const ko: Record<string, string> = {
   "search.empty.title": "일치 없음",
   "search.empty.sub": "워크스페이스에 이 패턴과 일치하는 내용이 없습니다.",
 
-  // ── 워크스페이스 뷰: 작업 ──
-
-  // ── 워크스페이스 뷰: 터미널 ──
   "terminal.title": "터미널",
   "terminal.empty.title": "아직 명령 없음",
   "terminal.empty.sub": "agent가 실행한 명령과 그 출력이 여기에 표시됩니다.",
   "terminal.commands_other": "명령 {{count}}개",
-  // ── 워크스페이스 뷰: 플랜 ──
   "plan.title": "플랜",
   "plan.empty.title": "아직 플랜 없음",
   "plan.empty.sub": "agent가 플랜을 작성하면 여기에 표시됩니다.",
 
-  // ── 워크스페이스 뷰: 도구 ──
   "tools.title": "도구",
   "tools.diagnostics.sub":
     "직접 실행할 수 있는 런타임 진단 도구입니다. Agent의 전체 도구 목록은 아닙니다.",
@@ -620,7 +608,6 @@ export const ko: Record<string, string> = {
   "toolAction.copyCommand": "명령 복사",
   "approval.fallbackText": "이 작업을 승인하시겠습니까?",
 
-  // ── 워크스페이스 뷰: 스킬 ──
   "skills.title": "스킬",
   "skills.available": "{{count}}개 사용 가능",
   "skills.off": "꺼짐",
@@ -629,7 +616,6 @@ export const ko: Record<string, string> = {
   "skills.disabled.title": "스킬이 꺼져 있음",
   "skills.disabled.sub": "이 런타임은 스킬 기능을 제공하지 않습니다.",
 
-  // ── 워크스페이스 뷰: 메모리 ──
   "knowledge.title": "지식",
   "knowledge.scopes_other": "{{count}}개 스코프",
   "knowledge.scope.cwd": "작업 디렉터리",
@@ -647,20 +633,15 @@ export const ko: Record<string, string> = {
   "knowledge.updated": "업데이트됨",
   "knowledge.aria": "{{path}}의 지식 내용",
 
-  // ── 워크스페이스 뷰: Agent 문서 ──
   "agentDocs.title": "Agent 문서",
   "agentDocs.found": "{{count}}개 찾음",
   "agentDocs.empty.title": "Agent 문서 없음",
   "agentDocs.empty.sub": "작업 디렉터리에서 위쪽으로 찾은 AGENTS.md 파일이 여기에 표시됩니다.",
 
-  // ── 워크스페이스 뷰: 파일 트리 ──
   "filetree.title": "탐색기",
   "filetree.empty.title": "탐색할 내용 없음",
   "filetree.empty.sub": "이 워크스페이스에 파일이 없습니다.",
 
-  // ── 명령 팔레트 ──
-
-  // ── 키보드 단축키 ──
   "shortcuts.sub":
     "내장 및 사용자 플러그인이 등록한 모든 키 바인딩. 앱 내 어디서든 조합 키를 눌러 실행할 수 있습니다. 바인딩 충돌은 항상 마지막 등록으로 해결됩니다.",
   "shortcuts.filter": "동작 또는 조합 키로 필터…",
@@ -669,7 +650,6 @@ export const ko: Record<string, string> = {
   "shortcuts.shortcut": "단축키",
   "shortcuts.empty": "일치하는 단축키가 없습니다.",
 
-  // ── 아이콘 갤러리 ──
   "iconGallery.clear": "지우기",
   "workspace.view.title.iconGallery": "아이콘 갤러리",
   "settings.pane.brandIcons": "브랜드 아이콘",
@@ -679,10 +659,8 @@ export const ko: Record<string, string> = {
   "role.assistant": "어시스턴트",
   "role.system": "시스템",
 
-  // ── 컴포저 ──
   "composer.removeImage": "이미지 제거",
 
-  // ── Diff 뷰 ──
   "diff.workingTree": "워킹 트리",
   "diff.branchCompare": "브랜치 비교",
   "diff.files.aria": "변경된 파일",
@@ -704,15 +682,12 @@ export const ko: Record<string, string> = {
   "diff.binary": "바이너리 파일",
   "diff.truncated": "Diff가 행 제한에 도달했습니다 — 나머지 파일은 표시되지 않습니다.",
 
-  // ── 명령 로그 ──
   "commandLog.running": "실행 중…",
   "commandLog.failed": "실패",
   "commandLog.exit": "종료 코드 {{code}}",
 
-  // ── 플랜 / 작업 목록 제목 ──
   "plan.list.heading": "작업 플랜",
 
-  // ── 파일 변경 ──
   "files.changed_other": "{{count}}개 파일 변경",
   "files.uncommitted_other": "파일 {{count}}개 · 커밋되지 않음",
   "files.binary": "bin",

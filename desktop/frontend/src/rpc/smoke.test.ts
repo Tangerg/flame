@@ -1,15 +1,3 @@
-// In-memory protocol scenario covering response/notification interleavings. The
-// separate runtime-http.e2e test owns real Go Runtime ↔ HTTP ↔ TypeScript coverage.
-//
-// Coverage:
-//   1. runtime.discover            (optional capability discovery)
-//   2. sessions.create             (Session shape, default cwd)
-//   3. runs.start                  (immediate {runId, segmentId}, then RunEvent stream)
-//   4. item.* + run.* StreamEvents (the v2 Item model)
-//   5. segment.finished{interrupt}     (R-model HITL — the segment ends, run parked)
-//   6. runs.resume                 (SAME run, a NEW segment answering the interrupt)
-//   7. segment.finished{completed}     (terminates the stream)
-
 import { afterEach, describe, expect, it } from "vitest";
 import { createMemoryTransport, type MemoryTransport } from "./transports/memory";
 import {
@@ -22,11 +10,6 @@ import { createRpcClient, type RpcClient } from "./client";
 import { asItemId, asRunId, asSessionId } from "./ids";
 import { createMethods, type Methods } from "./methods";
 import { PROTOCOL_VERSION, type Item, type RunEvent } from "@flame/runtime-contract/wire";
-// The discover response is NOT hand-written here. It is the canonical sample —
-// the one the schema gate validates — because a second copy of that payload is a
-// copy that goes stale silently: this test asserts nothing about the capability
-// shape, so a retired field would sit here looking authoritative for as long as
-// nobody read it.
 import discoverResponse from "@flame/runtime-contract/samples/method.discover.resp.json";
 
 function agentMessageItem(
@@ -42,8 +25,6 @@ function agentMessageItem(
     createdAt: "2026-06-03T00:00:00Z",
     type: "agentMessage",
     ...(status === "running" ? {} : { phase: "finalAnswer" as const }),
-    // `content` is optional on the streaming Item, and the Runtime rejects a blank text
-    // block. A message that has not said anything yet has no content — not one empty one.
     ...(text ? { content: [{ type: "text" as const, text }] } : {}),
   };
 }
@@ -71,7 +52,6 @@ describe("smoke: v2 end-to-end happy path", () => {
     });
     methods = createMethods(client);
 
-    // ---- Step 1: runtime.discover -----------------------------------------
     const discoverPromise = methods.runtime.discover();
     const discoverReq = await waitForRequest(transport, "runtime.discover");
     expect(discoverReq.params).toMatchObject({
@@ -88,7 +68,6 @@ describe("smoke: v2 end-to-end happy path", () => {
     );
     expect(discovery.capabilities.features.reasoning?.enabled).toBe(true);
 
-    // ---- Step 2: sessions.create ------------------------------------------
     const createPromise = methods.sessions.create({ title: "smoke" });
     const createReq = await waitForRequest(transport, "sessions.create");
     expect(createReq.params).toMatchObject({
@@ -114,7 +93,6 @@ describe("smoke: v2 end-to-end happy path", () => {
     expect(session.id).toBe("ses_1");
     expect(session.workspace.ref.path).toBe("/work");
 
-    // ---- Step 3: runs.start -----------------------------------------------
     const startPromise = methods.runs.start({
       sessionId: asSessionId("ses_1"),
       input: [{ type: "text", text: "list files" }],
@@ -130,7 +108,6 @@ describe("smoke: v2 end-to-end happy path", () => {
     expect(started.runId).toBe("run_1");
     expect(started.segmentId).toBe("seg_1");
 
-    // ---- Step 4 + 5: drive items until the interrupt ----------------------
     setTimeout(() => {
       injectRunEvent(
         transport,
@@ -194,7 +171,6 @@ describe("smoke: v2 end-to-end happy path", () => {
         },
         startReq.id,
       );
-      // R-model HITL: the segment ENDS with an interrupt for the tool approval.
       injectRunFinished(transport, "run_1", "seg_1", "evt_5", startReq.id, {
         type: "interrupt",
         interrupts: [
@@ -219,7 +195,6 @@ describe("smoke: v2 end-to-end happy path", () => {
         : null;
     expect(interrupt?.itemId).toBe("item_tool");
 
-    // ---- Step 6: runs.resume (approve) — SAME run, a NEW segment ----------
     const resumePromise = methods.runs.resume({
       runId: asRunId("run_1"),
       responses: [
@@ -230,10 +205,9 @@ describe("smoke: v2 end-to-end happy path", () => {
     expect(resumeReq.params).toMatchObject({ runId: "run_1" });
     respondSuccess(transport, resumeReq.id, { runId: "run_1", segmentId: "seg_2" });
     const { result: resumed, events: resumeEvents } = await resumePromise;
-    expect(resumed.runId).toBe("run_1"); // the SAME run
-    expect(resumed.segmentId).toBe("seg_2"); // a NEW segment
+    expect(resumed.runId).toBe("run_1");
+    expect(resumed.segmentId).toBe("seg_2");
 
-    // ---- Step 7: continuation segment completes ---------------------------
     setTimeout(() => {
       injectRunEvent(
         transport,
@@ -353,7 +327,6 @@ describe("smoke: v2 end-to-end happy path", () => {
     const { events } = await startPromise;
 
     setTimeout(() => {
-      // Malformed: missing segmentId/eventId/timestamp (required by envelope schema).
       transport.inject(
         {
           jsonrpc: "2.0",
@@ -367,7 +340,6 @@ describe("smoke: v2 end-to-end happy path", () => {
 
     await expect(async () => {
       for await (const _event of events) {
-        // The malformed first frame yields nothing.
       }
     }).rejects.toMatchObject({ name: "RpcProtocolError" });
   });

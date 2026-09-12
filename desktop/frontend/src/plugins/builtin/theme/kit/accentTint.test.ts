@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { accentTintedNeutral, hexToOklch, neutralChromaFactor, oklchToHex } from "./accentTint";
 
-/** The light scheme's steps, as `themes/flame-light.ts` declares them. */
 const LIGHT = {
   surface: { l: 97.3, c: 0.006 },
   elevated: { l: 98.4, c: 0.008 },
@@ -15,10 +14,8 @@ const ORANGE = "#e8590c";
 
 const chromaOf = (hex: string) => hexToOklch(hex).c;
 
-/** The accent `flame-light` declares, and so the reference its literals are relative to. */
 const REFERENCE = BLUE;
 
-/** The whole family at one accent, the way the shell builds it. */
 const family = (accent: string, tint?: "off" | "soft" | "standard") =>
   Object.fromEntries(
     Object.entries(LIGHT).map(([key, step]) => [
@@ -35,14 +32,9 @@ describe("hexToOklch / oklchToHex", () => {
   });
 
   it("gives up chroma rather than hue when a request leaves sRGB", () => {
-    // A near-white at a chroma no display can show. Clamping the channels instead would
-    // land on whichever saturated first and take the hue with it.
     const asked = { l: 98, c: 0.4, h: 255 };
     const got = hexToOklch(oklchToHex(asked));
     expect(got.c).toBeLessThan(asked.c);
-    // Not exact: the answer still has to land on an 8-bit triple, and one byte swings
-    // the hue a couple of degrees at this lightness. The point is that it stays in the
-    // same blue rather than sliding to whichever channel clipped.
     expect(Math.abs(got.h - asked.h)).toBeLessThan(4);
     expect(Math.abs(got.l - asked.l)).toBeLessThan(1.5);
   });
@@ -64,16 +56,12 @@ describe("neutralChromaFactor", () => {
   });
 
   it("caps a neon accent", () => {
-    // sRGB's most saturated blue. Without the cap this would be 1.7× the reference.
     expect(
       neutralChromaFactor(hexToOklch("#0000ff").c, chromaOf(REFERENCE), "standard"),
     ).toBeLessThanOrEqual(1.5);
   });
 
   it("reaches zero for an accent with no hue to borrow", () => {
-    // Negligible rather than exactly zero: an sRGB grey does not survive the trip
-    // through OKLab perfectly achromatic, and the rule being proportional is what makes
-    // that harmless — 2e-7 of a chroma budget is 2e-7 of a tint.
     for (const achromatic of ["#000000", "#ffffff", "#7a7a7a"]) {
       expect(
         neutralChromaFactor(hexToOklch(achromatic).c, chromaOf(REFERENCE), "standard"),
@@ -90,8 +78,6 @@ describe("neutralChromaFactor", () => {
 
 describe("accentTintedNeutral", () => {
   it("leaves the default accent's family exactly where it was", () => {
-    // The literals the themes shipped before this derivation existed. The refactor has
-    // to be a no-op on the accent every surface was measured against.
     expect(family(BLUE)).toEqual({
       surface: "#f4f6fa",
       elevated: "#f7faff",
@@ -108,8 +94,6 @@ describe("accentTintedNeutral", () => {
   });
 
   it("goes grey for a grey accent instead of red", () => {
-    // The reported bug: pure black has a powerless hue, CSS reads the missing channel
-    // as 0, and 0° is red — so choosing black painted every surface pink.
     for (const achromatic of ["#000000", "#ffffff", "#7a7a7a"]) {
       for (const hex of Object.values(family(achromatic))) {
         expect(chromaOf(hex)).toBeLessThan(0.002);

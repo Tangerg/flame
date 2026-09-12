@@ -5,7 +5,7 @@ describe("largePaste", () => {
   it("counts lines, 1 for a newline-free string", () => {
     expect(countLines("one line")).toBe(1);
     expect(countLines("a\nb\nc")).toBe(3);
-    expect(countLines("trailing\n")).toBe(2); // the empty final segment counts
+    expect(countLines("trailing\n")).toBe(2);
   });
 
   it("leaves a small snippet inline", () => {

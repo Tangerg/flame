@@ -70,8 +70,6 @@ describe("submitPendingApproval", () => {
       expect.any(Function),
       expect.any(Function),
     );
-    // While the barrier is opening, the shortcut is consumed and cannot fall
-    // through to sending composer text as a new Run.
     expect(submitPendingApproval("approved")).toBe(true);
 
     accept?.();

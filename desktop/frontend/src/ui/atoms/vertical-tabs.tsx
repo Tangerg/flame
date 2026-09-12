@@ -29,8 +29,6 @@ interface VerticalTabGroup {
 }
 
 const styles = stylex.create({
-  // A fixed rail and a measured page: the rail holds every label at full length, and the page
-  // is capped so a line of prose stays readable however wide the window gets.
   frame: {
     display: "grid",
     height: "100%",
@@ -56,10 +54,8 @@ const styles = stylex.create({
     paddingBottom: space.s6,
   },
   group: { display: "flex", flexDirection: "column", gap: "1px" },
-  // A settings pane is chosen from a NAVIGATION rail, so it is measured in the same three
-  // tokens every other rail in the product uses. It was the one rail on `--control-height-md`
-  // with its own gap and inset, which made it the one rail the Appearance density setting
-  // could not reach — a setting whose own copy promises "row heights, gutters".
+  // Measured in the same three tokens every other rail in the product uses, so the Appearance
+  // density setting reaches it.
   tab: {
     display: "flex",
     height: "var(--density-row-height)",

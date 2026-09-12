@@ -1,18 +1,3 @@
-// MessageContextMenu tests — locks in two things that have proved
-// easy to break:
-//
-//   1. **Role-conditional items.** Edit is user-only, Regenerate is
-//      assistant-only; mis-targeted refactors keep wanting to either
-//      expose them on both sides or drop one accidentally.
-//   2. **Edit in composer** populates `composerStore` rather than
-//      mutating the message in place. This is the user's expected
-//      affordance — message immutability + composer rehydrate.
-//
-// We don't test Regenerate behaviour here because it would require
-// stubbing an entire agentStore session + send() pipeline; the
-// helper's `send` lookup is covered indirectly by the agentStore
-// suite.
-
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -34,10 +19,6 @@ function buildMessage({ runId = null, ...overrides }: Partial<Message> = {}): Me
   };
 }
 
-// Base UI ContextMenu.Trigger opens on the native `contextmenu` event
-// (right-click). fireEvent.contextMenu mimics that. The menu mounts
-// into a Portal — getByText still finds it because Testing Library
-// queries against `document.body`.
 function openMenu(triggerLabel: string): void {
   fireEvent.contextMenu(screen.getByText(triggerLabel));
 }
@@ -84,9 +65,6 @@ describe("messageContextMenu", () => {
       </MessageContextMenu>,
     );
     openMenu("empty");
-    // No copy / edit items — only assistant-side Regenerate would
-    // remain, but this is a user message, so the menu has no
-    // actionable items.
     expect(screen.queryByText("Copy markdown")).toBeNull();
     expect(screen.queryByText("Copy plain text")).toBeNull();
     expect(screen.queryByText("Edit in composer")).toBeNull();

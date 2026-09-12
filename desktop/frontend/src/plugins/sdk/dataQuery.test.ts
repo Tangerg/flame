@@ -221,9 +221,6 @@ describe("createParameterizedDataQuery", () => {
       queryClient.getQueryCache().find({ queryKey: ["resource", params], exact: true }),
     ).toBeDefined();
 
-    // Vitest's async-resource collector cannot join TanStack's ref'ed
-    // setTimeout(0) notifier. The documented scheduler seam keeps this spec's
-    // observer settlement owned and is restored before leaving the test.
     notifyManager.setScheduler(queueMicrotask);
     try {
       await act(async () => stopKernel(ownedHosts.pop()!));
@@ -245,9 +242,6 @@ describe("createParameterizedDataQuery", () => {
     }
   });
 
-  // The generation retires whenever ANY provider changes, but TanStack only cancels the
-  // queries whose key was affected. Without the lifetime signal an untouched key's fetch keeps
-  // its request open for a result `#assertCurrent` will throw away.
   it("aborts an untouched key's in-flight fetch when its generation retires", async () => {
     const stable = Promise.withResolvers<string>();
     let stableSignal: AbortSignal | undefined;

@@ -52,8 +52,7 @@ export function AgentDockToggle({
   unavailableLabel?: string;
 }) {
   return (
-    // The toggle floats over the dock's top-right corner, so it carries its own placement:
-    // the box is what centres it on the header strip and keeps it out of the drag region.
+    // The box centres the toggle on the header strip and keeps it out of the drag region.
     <div className="agent-dock-control">
       <IconButton
         icon="panel-r"

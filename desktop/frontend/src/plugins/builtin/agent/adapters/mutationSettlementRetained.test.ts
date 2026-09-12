@@ -197,9 +197,6 @@ describe("mutation settlement whose accepted attempt is retained", () => {
     expect(retry).toHaveBeenCalledOnce();
   });
 
-  // A transport that answers a cancel with a plain AbortError says nothing about whether the
-  // Runtime already holds the run. Releasing the identity there would let the next attempt
-  // open a SECOND run for the same intent.
   it("retains a cancel the transport reports as an ordinary abort", async () => {
     const owner = new AbortController();
     const retry = vi.fn(() =>

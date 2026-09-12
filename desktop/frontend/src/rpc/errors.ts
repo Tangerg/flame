@@ -75,7 +75,6 @@ export class RpcConnectionError extends RpcTransportError {
   }
 }
 
-/** An inbound JSON-RPC frame contradicted the generated Runtime contract. */
 export class RpcProtocolError extends Error {
   readonly violations: readonly WireViolation[];
   readonly requestId?: string;

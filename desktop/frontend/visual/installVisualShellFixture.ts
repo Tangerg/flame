@@ -106,8 +106,6 @@ const SESSIONS: AgentSessionSummary[] = [
     "/Users/visual/runtime",
     "2026-07-27T14:30:00Z",
   ),
-  // No project claims these two, so they are what the Recent section renders:
-  // one started in a scratch directory, one started before a folder was picked.
   session(
     "visual-shell-scratch",
     "Inspect an unregistered checkout",
@@ -140,9 +138,7 @@ function session(
 }
 
 function pending<T>(): Promise<T> {
-  return new Promise<T>(() => {
-    // A loading fixture intentionally never settles.
-  });
+  return new Promise<T>(() => {});
 }
 
 function dataProviderPlugin(state: VisualWorkIndexState): AnyPlugin {
@@ -192,10 +188,6 @@ export async function installVisualShellFixture(
     sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
   });
 
-  // The visual styles ship the shell's whole material vocabulary — region fills,
-  // seam, casts, radii, control heights. Without them registered the suite runs on
-  // the globals.css fallbacks, so every screenshot here would be of a skin the
-  // product never renders and no style regression could ever fail a test.
   await loadPluginsForTest(
     dataProviderPlugin(state),
     flameLight,
@@ -203,8 +195,6 @@ export async function installVisualShellFixture(
     flameDark,
     ...builtinVisualStyles,
     sessionSearch,
-    // Commands and two views so the menu has both kinds of row to photograph — one that
-    // carries a key and one that opens a panel.
     defaultCommands,
     commandMenu,
     searchView,

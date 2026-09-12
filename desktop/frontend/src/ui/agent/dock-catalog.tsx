@@ -21,8 +21,6 @@ const styles = stylex.create({
     color: color.fgFaint,
   },
   group: { paddingTop: space.s2 },
-  // A group's own heading sits a step below the catalogue's, and drops the UI tracking that
-  // crowds a word set in small caps.
   groupLabel: {
     paddingInline: space.s2,
     paddingBottom: space.s1,

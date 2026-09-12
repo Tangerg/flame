@@ -3,7 +3,6 @@ import type { AgentRunStartOptions } from "@/plugins/sdk/types";
 import type { AgentInput } from "../../domain/input";
 
 export interface AgentSession {
-  /** True when the mounted Session accepted ownership of the input. */
   send: (input: AgentInput, options?: AgentRunStartOptions) => boolean;
   stop: () => void;
 }

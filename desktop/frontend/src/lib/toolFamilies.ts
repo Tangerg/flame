@@ -20,7 +20,6 @@
  * this file iterate THIS list, so all of them stay green while it happens.
  */
 export interface ToolFamily {
-  /** i18n key suffix: `tools.family.<id>`. */
   id: string;
   tools: readonly { name: string; icon: string }[];
 }

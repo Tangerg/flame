@@ -12,7 +12,6 @@ const FADE = "24px";
 
 const rb = stylex.create({
   note: { marginTop: space.s1 },
-  /** The reasoning reads as an aside: indented past the glyph, with a rule marking its extent. */
   aside: {
     marginLeft: space.s5,
     borderLeftWidth: "1px",
@@ -32,11 +31,8 @@ const rb = stylex.create({
     overflowY: "hidden",
     paddingRight: space.s2,
   },
-  /** While it streams, the reasoning is a window onto a growing text rather than the whole of it. */
   windowed: { maxHeight: "calc(var(--spacing) * 48)", overflowY: "auto" },
   /**
-   * The clipped edges fade out, as a MASK on the scroller.
-   *
    * Two absolutely-positioned gradient overlays used to do this, and neither could ever be
    * seen: `position: absolute; top: 0` inside `overflow-y: auto` anchors to the SCROLLED
    * content origin, so the top fade scrolled out of view exactly when `edges.scrolled` turned

@@ -15,11 +15,9 @@ import {
 /**
  * How much chrome a field carries.
  *
- * `boxed` is the standing form. `bare` is a field inside something that already has an edge —
- * a search box, a composer, a card that IS the input. `inline` edits a value in place inside a
- * row: it takes no chrome either, but must still read as editable, which is why it has a fill
- * the row does not. The sidebar's title editor was spelling that out as `bg-surface-3
- * rounded-xs px-1` on top of `bare`, whose `background: transparent` StyleX would have won.
+ * `boxed` is the standing form. `bare` is a field inside something that already has an edge.
+ * `inline` edits a value in place inside a row: it takes no chrome either, but must still read
+ * as editable, which is why it has a fill the row does not.
  */
 type FieldEdge = "boxed" | "bare" | "inline";
 
@@ -61,7 +59,6 @@ const styles = stylex.create({
   // recolour, so it borrows an outline — the one place a field draws a ring of its own.
   invalidBoxed: { borderColor: { default: color.negative, ":focus": color.negative } },
   invalidBare: { outline: `1px solid ${color.negative}` },
-  // Figures in a column have to line up, and a numeric field is always a column of one.
   numeric: { fontVariantNumeric: "tabular-nums" },
   faceMono: { fontFamily: "var(--font-mono)" },
   faceSans: { fontFamily: "var(--font-sans)" },
@@ -70,8 +67,7 @@ const styles = stylex.create({
   inputLg: { height: "var(--control-height-lg)", paddingInline: space.s3 },
   area: { resize: "vertical", lineHeight: leading.body },
   // The prose step brings prose tracking, which is right for what is typed and wrong for the
-  // placeholder: a placeholder is UI text, not prose. The composer had reset this at the call
-  // site, where the next prose textarea would have had to rediscover it.
+  // placeholder: a placeholder is UI text, not prose.
   areaProse: { lineHeight: leading.prose, "::placeholder": { letterSpacing: "normal" } },
   areaSm: { paddingInline: space.s2_5, paddingBlock: space.s1_5 },
   areaMd: { paddingInline: space.s3, paddingBlock: space.s2 },
@@ -143,7 +139,6 @@ export function TextField({
     FACE[font],
     INK[ink],
     ...edge(variant, invalid),
-    // Only `boxed` states a height: the other two are sized by the thing that contains them.
     variant === "boxed" && INPUT_SIZE[size],
     props.type === "number" && styles.numeric,
   );
@@ -160,7 +155,6 @@ export function TextField({
   );
 }
 
-/** A textarea's own steps. `prose` is the composer's: a reading measure, not a control step. */
 type AreaSize = "sm" | "md" | "prose";
 
 export type TextAreaProps = Omit<TextAreaPrimitiveProps, "className"> &

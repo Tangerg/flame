@@ -25,8 +25,7 @@ interface PendingQuestionRequest {
   answers?: string[][];
 }
 
-/** The single pending root question that temporarily owns the composer rung.
- * The transcript remains the durable source; this selector only chooses its
+/** The transcript remains the durable source; this selector only chooses its
  * presentation location and never creates a second interrupt read model. */
 export function pendingQuestionRequest(
   rows: readonly TranscriptRow[],

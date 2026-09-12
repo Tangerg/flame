@@ -277,8 +277,6 @@ describe("refreshAgentSessionProjection", () => {
     } finally {
       disposeRetiredState();
       disposeSuccessorState?.();
-      // This test replaces the process-local application ports. Leave the isolated
-      // test worker with one live generation for any later test in the same module.
       installAgentStatePorts();
     }
   });

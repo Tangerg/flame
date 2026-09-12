@@ -4,8 +4,6 @@ import { cn } from "@/lib/classNames";
 
 const styles = stylex.create({
   port: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
-  // A scrollport with no bar of its own: the content is short enough that a bar would read as
-  // chrome, and the axis is locked so a wide child cannot introduce a second one.
   bare: {
     overflowX: "hidden",
     scrollbarWidth: "none",

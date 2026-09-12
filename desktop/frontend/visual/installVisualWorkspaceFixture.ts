@@ -217,10 +217,6 @@ function feature(enabled: boolean): FeatureCapability {
   return { enabled, clientOptIn: false, requiredByRunProtocol: false };
 }
 
-// A Runtime that has its features, because that is the one a user connects to. Advertising
-// two of them left `skills`, `knowledge` and `agentMemory` rendering their off-ramp in every
-// state, and their actual surfaces in none — three views the suite could not photograph
-// because the fixture said the runtime could not serve them.
 const VISUAL_CAPABILITIES: ServerCapabilities = {
   runEvents: [],
   runtimeTopics: [],
@@ -234,8 +230,6 @@ const VISUAL_CAPABILITIES: ServerCapabilities = {
   },
 };
 
-// Two saved schedules: one running, one switched off, because the row draws the pair
-// differently and a list of only-enabled rows never shows the other.
 const VISUAL_SCHEDULES: ScheduleConfig[] = [
   {
     id: "sch_nightly",
@@ -262,17 +256,13 @@ const VISUAL_SCHEDULES: ScheduleConfig[] = [
 ];
 
 function pending<T>(): Promise<T> {
-  return new Promise<T>(() => {
-    // This state intentionally remains in the production query's loading path.
-  });
+  return new Promise<T>(() => {});
 }
 
 function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
   return definePlugin({
     name: "flame.visual.workspace-data",
     setup(ctx) {
-      // Seeded because the pane it feeds only started rendering when `schedules` was
-      // advertised; before that the fixture's whole answer was "unavailable".
       ctx.contribute(DATA_PROVIDER, {
         key: SCHEDULES_KEY,
         fetcher: async () => VISUAL_SCHEDULES,
@@ -288,10 +278,6 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
           return REVIEW_DIFF;
         },
       });
-      // The churn summary the header stat and the Diff tab's badge both read.
-      // It is a separate query from the diff itself — the diff is what you are
-      // looking at, this is what changed — so the fixture has to answer both or
-      // two production readouts stay invisible to every screenshot.
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_FILES_CHANGED_KEY,
         fetcher: async () => {
@@ -311,10 +297,6 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
           ] satisfies WorkspaceFileChange[];
         },
       });
-      // Five catalogues that had no provider at all, so five views rendered "Couldn't load"
-      // — which is what a missing provider looks like from the inside, and what every one of
-      // them showed the first time a fixture opened it. Each sample spans what its view sorts
-      // on rather than repeating one row: both scopes, both lifecycles, both origins.
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_SKILLS_KEY,
         fetcher: async (): Promise<WorkspaceSkill[]> => [
@@ -356,8 +338,6 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
             description: "Read a change the way a reviewer does, worst risk first.",
             instructions: "Start from the riskiest hunk. Name the invariant it could break.",
             origin: "requested",
-            // A proposal that would overwrite a Skill already loading is the one shape the
-            // reviewer has to be able to see before deciding.
             revises: true,
             sourceSession: VISUAL_SESSION_ID,
           },
@@ -412,8 +392,6 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
       });
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_AGENT_MEMORY_KEY,
-        // Both statuses and both origins, because the view sorts on them: a pinned project
-        // memory the agent wrote, and a user one still awaiting a decision.
         fetcher: async (): Promise<AgentMemoryEntry[]> => [
           {
             id: "mem_01",
@@ -449,10 +427,6 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
           { path: "~/.flame/FLAME.md", title: "Personal instructions", scope: "home" },
         ],
       });
-      // The catalog the Tools view groups. A subset, but a subset that spans the
-      // shapes: every safety class, a family with one member and a family with
-      // several, and a name the local family table has never heard of — which is
-      // what proves an unplaced tool still lists instead of vanishing.
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_BUILTIN_TOOLS_KEY,
         fetcher: async () =>
@@ -531,9 +505,6 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
             { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
           ] satisfies WorkspaceFileEntry[],
       });
-      // Two sessions blocked on two different kinds of ask, one of them on a
-      // batch — the shapes the row has to tell apart. An empty queue is the
-      // other states' job, so this one is never empty.
       ctx.contribute(DATA_PROVIDER, {
         key: PENDING_WORK_KEY,
         fetcher: async () =>
@@ -580,9 +551,6 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
   });
 }
 
-/** A plugin notification has no UI to raise it from inside a fixture, and the toast it
- *  produces is what the photograph is of — so a fixture plugin parks its own `host.notify`
- *  where the spec can reach it. The handle is the real one every plugin is handed. */
 const visualNotifier = definePlugin({
   name: "flame.visual.notifier",
   setup(ctx) {
@@ -616,10 +584,6 @@ async function loadVisualPlugins(plugins: readonly AnyPlugin[]): Promise<void> {
   await loadPluginsForTest(...plugins);
 }
 
-// Which dock view each state is ABOUT. A state not named here is a diff state —
-// there are four of them and they differ in their data, not in their destination.
-// Views that are not part of every workspace's default strip. Kept as a set rather than a
-// branch per view: the rule is one, and it was being restated once per addition.
 const OPENED_BY_ITS_OWN_STATE = new Set([
   "inbox",
   "tool-stats",
@@ -637,10 +601,6 @@ const OPENED_BY_ITS_OWN_STATE = new Set([
   "notifications",
 ]);
 
-/** Which view the full-placement state opens by default. `search` has a prose title and a
- *  sub, which is the path nineteen of the twenty-one `WorkspaceViewLayout` call sites take —
- *  and therefore the two that do NOT take it, the ones whose title is a path, were the two no
- *  golden and no assertion ever reached. A spec asks for those by id. */
 const FULL_VIEW_ID = "search";
 
 const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
@@ -674,16 +634,10 @@ export async function installVisualWorkspaceFixture(
   pane: VisualSettingsPane = "appearance",
   fullViewId: string = FULL_VIEW_ID,
 ): Promise<void> {
-  // Tool stats needs a session that actually ran tools; every other state wants
-  // the quiet one. `tool-shells` is the state with a read, a command, a patch, a
-  // failure and a refusal in it — five outcomes, which is what the view sorts.
   await installVisualAgentFixture(
     state === "dock-light"
       ? "running"
-      : // The same view, asked the other half of its question. `tool-shells` gives the
-        // timeline five tool OUTCOMES to sort; its run tree is one finished root, which is
-        // one of the six states a run can be in. `delegated` is seven runs across all six.
-        state === "dock-runs"
+      : state === "dock-runs"
         ? "delegated"
         : state === "dock-stats" || state === "dock-timeline" || state === "dock-terminal"
           ? "tool-shells"
@@ -691,8 +645,6 @@ export async function installVisualWorkspaceFixture(
   );
 
   installWorkspaceErrorClassifier();
-  // …and one state for the Runtime that does not, so the off-ramp every feature draws stays
-  // photographed rather than being whatever the fixture happened to leave switched off.
   useRuntimeConnectionStore.setState({
     capabilities:
       state === "dock-feature-off"
@@ -709,10 +661,6 @@ export async function installVisualWorkspaceFixture(
   useContextDockStore.setState({
     activeSessionScopeId: VISUAL_SESSION_ID,
     sessionScopes: new Map(),
-    // A tab you opened, not one every workspace carries: present only in the state that is
-    // about it. Adding one everywhere moves the tab strip in every other golden, which is a
-    // change to states that have nothing to do with the feature.
-    // A dock nobody has put anything in yet: it opens onto its catalogue.
     dockViewIds:
       state === "dock-catalog"
         ? []
@@ -731,8 +679,6 @@ export async function installVisualWorkspaceFixture(
     selectedToolId: "",
     expandedToolIds: new Set(),
   });
-  // The dock is open because the location names a destination — there is no
-  // separate flag to set, which is the point.
   navigator().go({
     session: VISUAL_SESSION_ID,
     dock: dockViewId,
@@ -743,14 +689,10 @@ export async function installVisualWorkspaceFixture(
   useShellLayoutStore.setState({
     sidebarCollapsed: false,
     sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
-    // Only the review view splits, and only above a width the others never need.
     dockWidthRatio:
       state === "dock-review" ? VISUAL_REVIEW_DOCK_WIDTH_RATIO : VISUAL_DOCK_WIDTH_RATIO,
   });
 
-  // The palettes and the visual style come from the agent installer above — this
-  // fixture builds ON it, and loading a plugin twice reports `skipped`, which the
-  // loader here treats as a failure.
   await loadVisualPlugins([
     workspaceDataPlugin(state),
     diffView,
@@ -762,9 +704,6 @@ export async function installVisualWorkspaceFixture(
     toolsView,
     planView,
     timelineView,
-    // Every remaining view, for the reason the settings panes below are all here: the dock
-    // catalogue a fixture shows should be the one production shows, not the nine somebody
-    // needed on the day. Registering them is also the only way any of them is ever rendered.
     searchView,
     filesView,
     skillsView,
@@ -781,8 +720,6 @@ export async function installVisualWorkspaceFixture(
     appearanceSettings,
     providersSettings,
     shortcutsSettings,
-    // Every remaining pane, so the settings state can open any of them and the pane list
-    // itself is the one production renders rather than a three-row stub.
     approvalsSettings,
     brandIconsSettings,
     connectionSettings,
@@ -790,8 +727,6 @@ export async function installVisualWorkspaceFixture(
     mcpServersSettings,
     personalizationSettings,
     pluginsSettings,
-    // Not here: the agent installer this fixture builds on already loads it, for the
-    // transcript rule it declares, and loading a plugin twice reports `skipped`.
     usageSettings,
     visualNotifier,
     visualShortcuts,
@@ -799,9 +734,6 @@ export async function installVisualWorkspaceFixture(
 
   const root = document.documentElement;
   root.dataset.visualDockWidthCommits = "0";
-  // AFTER the plugins: the usage pane installs the Runtime gateway in its own setup, so a
-  // fixture that seeds first is overwritten and the pane renders a connection failure — the
-  // one pane whose audit could never have been about the pane.
   configureUsageGateway({
     loadSummary: async () => ({
       total: { inputTokens: 128_400, outputTokens: 41_900, costUsd: 4.12 },

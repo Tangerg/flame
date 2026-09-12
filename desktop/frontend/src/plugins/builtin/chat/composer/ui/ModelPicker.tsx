@@ -41,8 +41,7 @@ function modelItem(model: SelectableModel, selected: SelectableModel) {
   };
 }
 
-/** One tab per provider, plus the shelf of what this reader actually moves between. The
- *  shelf republishes entries that also live under their provider; the picker deduplicates by
+/** The shelf republishes entries that also live under their provider; the picker deduplicates by
  *  id when a query searches across every tab, so a recent model answers once. */
 function modelGroups(
   models: readonly SelectableModel[],
@@ -120,9 +119,6 @@ function ModelCapabilities({ model }: { model: SelectableModel }) {
   ].filter((value): value is string => value !== null);
   if (primary.length === 0 && secondary.length === 0) return null;
 
-  // One line in the row, both in the title. The rail takes 132px of the 400, so a second line
-  // here does not truncate once — it truncates twice, and the half-sentence that survives is
-  // the less useful half.
   const title = [...primary, ...secondary].join(" · ");
   if (primary.length === 0) return null;
   return (

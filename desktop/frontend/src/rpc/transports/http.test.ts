@@ -6,7 +6,6 @@ import { createHttpTransport } from "./http";
 
 afterEach(() => vi.restoreAllMocks());
 
-// A 200 text/event-stream POST response whose body emits the given chunks.
 function sseResponse(chunks: string[], requestId?: string): Response {
   const enc = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
@@ -24,8 +23,6 @@ function sseResponse(chunks: string[], requestId?: string): Response {
   });
 }
 
-// A stream that emits one chunk, then errors with an AbortError on next read —
-// models the fetch being aborted (stop / switch session / unmount).
 function abortingSseResponse(firstChunk: string): Response {
   const enc = new TextEncoder();
   let sent = false;
@@ -52,8 +49,6 @@ function jsonResponse(obj: unknown, requestId?: string): Response {
   });
 }
 
-// One SSE frame. `id` omitted ⇒ a response/ack frame (no SSE id); set ⇒ an
-// event frame carrying its eventId.
 const frame = (obj: unknown, id?: string): string =>
   `${id ? `id: ${id}\n` : ""}data: ${JSON.stringify(obj)}\n\n`;
 
@@ -151,9 +146,6 @@ describe("HTTPTransport — streamable HTTP", () => {
     await vi.waitFor(() => expect(parsedFrameCount()).toBeGreaterThan(0));
     await Promise.resolve();
 
-    // The body is already one giant chunk, but parsing must stop at the first
-    // frame until RpcClient's sole receive loop accepts it. Otherwise this layer
-    // recreates an unbounded queue before the Run-specific lossy policy can act.
     expect(parsedFrameCount()).toBe(1);
 
     const iterator = transport.recv()[Symbol.asyncIterator]();
@@ -217,7 +209,7 @@ describe("HTTPTransport — streamable HTTP", () => {
   });
 
   it("streaming method: POST response stream yields the call response then its events", async () => {
-    const responseFrame = frame({ jsonrpc: "2.0", id: "1", result: { runId: "run_01" } }); // no SSE id
+    const responseFrame = frame({ jsonrpc: "2.0", id: "1", result: { runId: "run_01" } });
     const started = frame(
       {
         jsonrpc: "2.0",
@@ -235,7 +227,7 @@ describe("HTTPTransport — streamable HTTP", () => {
       "evt_0002",
     );
     const wire = responseFrame + started + finished;
-    const cut = Math.floor(wire.length / 2); // split mid-stream → parser must buffer across chunks
+    const cut = Math.floor(wire.length / 2);
 
     const fetchStub = (async () =>
       sseResponse(
@@ -463,17 +455,14 @@ describe("HTTPTransport — streamable HTTP", () => {
     const it = transport.recv()[Symbol.asyncIterator]();
 
     await transport.send(req("1", "runs.start"));
-    await it.next(); // the response frame arrives; the next read aborts in the background
-    await new Promise((resolve) => setTimeout(resolve, 0)); // let the aborted read settle
+    await it.next();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await transport.close();
 
     expect(warn).not.toHaveBeenCalled();
   });
 
   it("a stream dying mid-run reports a typed stream termination", async () => {
-    // Response frame arrives (runId run_01), then the connection dies with a
-    // non-abort error — no segment.finished was ever delivered. Without the
-    // transport event, every consumer of run_01's events would await forever.
     const responseFrame = frame({ jsonrpc: "2.0", id: "1", result: { runId: "run_01" } });
     const enc = new TextEncoder();
     let sent = false;
@@ -483,7 +472,7 @@ describe("HTTPTransport — streamable HTTP", () => {
           sent = true;
           controller.enqueue(enc.encode(responseFrame));
         } else {
-          controller.error(new Error("connection reset")); // NOT an AbortError
+          controller.error(new Error("connection reset"));
         }
       },
     });
@@ -496,8 +485,8 @@ describe("HTTPTransport — streamable HTTP", () => {
     const it = transport.recv()[Symbol.asyncIterator]();
 
     await transport.send(req("1", "runs.start"));
-    const r0 = await it.next(); // the call's response
-    const r1 = await it.next(); // the typed stream termination
+    const r0 = await it.next();
+    const r1 = await it.next();
     await transport.close();
 
     expect(r0.value).toMatchObject({
@@ -513,8 +502,6 @@ describe("HTTPTransport — streamable HTTP", () => {
   });
 
   it("a stream ending before the call's response reports a request failure", async () => {
-    // The POST opened but the stream EOS'd before the first (response) frame
-    // — the pending call must reject, not hang forever.
     const fetchStub = (async () => sseResponse([])) as unknown as typeof fetch;
     const transport = createHttpTransport({ baseUrl: "http://x", fetch: fetchStub });
     const it = transport.recv()[Symbol.asyncIterator]();

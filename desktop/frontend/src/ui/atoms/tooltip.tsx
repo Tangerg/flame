@@ -5,11 +5,8 @@ import { leading, space, type } from "@/styles/tokens.stylex";
 import { TooltipPrimitive } from "@/ui/primitives";
 import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
 
-// The tip's own measure. Three call sites used to pass this, in three paddings, alongside an
-// inverted fill — so a tooltip's material was decided wherever one happened to be raised.
-// `FLOATING_TIP` already paints the elevated floating surface, which is what Codex gives a
-// tooltip (`--bg-tooltip: var(--color-surface-elevated)`); an inverted one was a fourth
-// material with no owner.
+// The tip's own measure. `FLOATING_TIP` already paints the elevated floating surface; an
+// inverted fill was a fourth material with no owner.
 const tip = stylex.create({
   measure: {
     paddingInline: space.s2,
@@ -17,7 +14,6 @@ const tip = stylex.create({
     fontFamily: "var(--font-sans)",
     lineHeight: leading.snug,
   },
-  /** The plain tooltip's own width cap: a label, not a paragraph. */
   label: { maxWidth: "280px" },
 });
 

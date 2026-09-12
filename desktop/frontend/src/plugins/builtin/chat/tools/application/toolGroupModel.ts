@@ -41,9 +41,8 @@ export function toolGroupModel(
 }
 
 /**
- * A tie goes to whichever came FIRST, the tool the group opened with, which is also what the
- * summary counts. An empty group is not something the renderer produces but the type allows
- * it, so it answers with nothing and the glyph falls back.
+ * An empty group is not something the renderer produces but the type allows it, so it answers
+ * with nothing and the glyph falls back.
  */
 function dominantTool(tools: readonly ToolCall[]): string {
   const counts = new Map<string, number>();

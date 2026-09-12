@@ -3,14 +3,6 @@ import { describe, expect, it } from "vitest";
 import { unnegotiated } from "./preflight";
 import type { ServerCapabilities } from "@flame/runtime-contract/wire";
 
-// These are the runtime's own capability-gate cases, asked of the client's matcher:
-// dispatch/contract_test.go pins the same seven requests against the same rules.
-// Contract §11.1 requires the dispatcher, discovery and the SDK to consume ONE rule
-// set — the table is shared by generation, so what is left to prove is that both
-// sides read a rule's condition the same way. A client that judged `watches: []` a
-// watch would refuse a call the runtime allows, and no artifact comparison would
-// notice.
-
 function advertising(
   features: Record<string, boolean>,
   clientOptIn: string[] = [],
@@ -46,13 +38,10 @@ describe("the capability preflight", () => {
     expect(unnegotiated("knowledge.list", {}, advertising({ knowledge: true }))).toEqual([]);
   });
 
-  // §9: a client reads a key the server never advertised as off, which is the same
-  // reading the dispatcher applies to its own advertised map.
   it("reads an unadvertised key as off", () => {
     expect(unnegotiated("knowledge.list", {}, advertising({}))).toEqual(["knowledge"]);
   });
 
-  // Refusing on a guess would take away a feature the server offers.
   it("allows everything until something has been negotiated", () => {
     expect(unnegotiated("knowledge.list", {}, null)).toEqual([]);
     expect(unnegotiated("knowledge.list", {}, undefined)).toEqual([]);

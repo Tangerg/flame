@@ -17,8 +17,6 @@ export function playCompletionChime(): void {
   void ac.resume();
 
   const now = ac.currentTime;
-  // A rising fifth, each note a sine with fast attack and exponential decay so it reads as
-  // a chime rather than a beep.
   [659.25, 987.77].forEach((freq, i) => {
     const osc = ac.createOscillator();
     const gain = ac.createGain();

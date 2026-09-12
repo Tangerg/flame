@@ -106,8 +106,6 @@ describe("ResizeHandle", () => {
     expect(onCommit).toHaveBeenLastCalledWith(800, expect.any(Number));
   });
 
-  // Key repeat holds the mark, so the pane must not animate between steps; releasing the
-  // key — or losing focus while it is still down — has to hand the animation back.
   it("holds the resizing mark across key repeats and releases it on blur", () => {
     render(<Harness onCommit={() => {}} />);
     const handle = screen.getByRole("separator", { name: "Resize panel" });

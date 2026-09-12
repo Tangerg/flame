@@ -82,9 +82,8 @@ function wireServerName(name: string): string | null {
 }
 
 /**
- * Parse an MCP-client JSON string into configure requests, one per
- * named server. Throws on malformed JSON or a server entry that matches
- * neither transport (no command and no url) — the caller surfaces the message.
+ * Throws on malformed JSON or a server entry that matches neither transport (no command and
+ * no url) — the caller surfaces the message.
  */
 export function parseMcpImport(text: string): McpImportResult {
   let raw: unknown;

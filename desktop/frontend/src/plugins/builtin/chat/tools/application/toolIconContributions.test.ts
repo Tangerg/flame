@@ -8,12 +8,6 @@ const entries = (items: { key: string; icon: string }[]) =>
   Object.fromEntries(items.map((item) => [item.key, item.icon]));
 
 describe("tool icon contributions", () => {
-  // The glyph is the only part of a folded row a reader takes in without reading
-  // it, so a shared one spends that on nothing: `list` used to stand for reading
-  // shell output, three plan-mode calls and a deferred result, and `search` for
-  // grep, two recall families and the tool catalog. Assert the WHOLE table is
-  // injective rather than spot-checking pairs — the pairs were what let the reuse
-  // build up unnoticed.
   it("gives every built-in tool a glyph of its own", () => {
     const byGlyph = new Map<string, string[]>();
     for (const [tool, glyph] of Object.entries(TOOL_ICON_BY_NAME)) {
@@ -23,21 +17,11 @@ describe("tool icon contributions", () => {
 
     expect(shared).toEqual([]);
     expect(byGlyph.size).toBe(Object.keys(TOOL_ICON_BY_NAME).length);
-    // A floor, not the count: the Runtime publishing a new tool is growth, and a test that
-    // fails on growth is one somebody edits without reading. What it still catches is the
-    // table losing entries — which the injective check above cannot see, because a shorter
-    // table is just as injective.
     expect(Object.keys(TOOL_ICON_BY_NAME).length).toBeGreaterThan(20);
     expect(TOOL_ICON_BY_NAME).not.toHaveProperty("edit");
     expect(TOOL_ICON_BY_NAME).not.toHaveProperty("write");
   });
 
-  // The verb and the glyph are two halves of one row, and they were held by two lists.
-  // The second had drifted to `edit` and `write` — the exact pair the assertion above
-  // guards this one against — so a transcript could never have rendered either, while
-  // eight catalogs carried both tenses of both. `check-locales` cannot see this: it
-  // credits every `tool.*` key to the template these are built from, and its own
-  // completeness rules then carry `en` to the other seven.
   it("gives every built-in tool a verb in both tenses", () => {
     const ids = Object.keys(TOOL_ICON_BY_NAME).map((name) => toolVerbId(name));
     expect(ids.filter((id) => id === undefined)).toEqual([]);
@@ -56,9 +40,6 @@ describe("tool icon contributions", () => {
     expect(toolVerbId("apply_patch")).toBe("applyPatch");
   });
 
-  // A glyph the vocabulary does not have renders as nothing at all, and the table
-  // is a plain Record of strings — so this is the only thing standing between a
-  // typo here and an invisible icon in the transcript.
   it("names glyphs the icon vocabulary actually has", () => {
     const unknown = Object.values(TOOL_ICON_BY_NAME).filter(
       (glyph) => !ICON_NAMES.has(glyph as IconName),

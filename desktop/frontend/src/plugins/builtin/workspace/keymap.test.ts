@@ -12,8 +12,6 @@ describe("workspaceEscapeShortcut", () => {
       allowInInputs: false,
     });
 
-    // The palette used to own Escape while it was open, so this went through a
-    // guard that asked first. One meaning now, so the handler just closes.
     shortcut.handler(new KeyboardEvent("keydown"));
     expect(closeActiveView).toHaveBeenCalledOnce();
   });

@@ -10,15 +10,12 @@ import { Pressable } from "./pressable";
 import { vocab } from "./vocabulary";
 
 const styles = stylex.create({
-  // `data-empty:` was Tailwind's variant syntax over a data attribute; StyleX says the same
-  // thing natively, and says it at a specificity no utility can undo.
   emptyFlush: { padding: { default: null, ":is([data-empty])": 0 } },
   // A row with nothing in it takes no space. `:empty` and `[data-empty]` are two different
   // questions — one asks whether the element has children, the other whether the LIST it heads
   // is empty — so both live here rather than one standing in for the other.
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },
   hideWhenListEmpty: { display: { default: null, ":is([data-empty])": "none" } },
-  // The search box sits INSIDE the popup, so it wears the field's edge rather than the popup's.
   searchBox: {
     marginBottom: space.s1,
     display: "flex",
@@ -31,12 +28,9 @@ const styles = stylex.create({
     borderStyle: "solid",
     backgroundColor: surface.canvas,
     paddingInline: space.s2_5,
-    // The whole box answers the keyboard, not just the input inside it.
     borderColor: { default: surface.field, ":focus-within": surface.fieldStrong },
     color: { default: color.fgMuted, ":focus-within": color.fg },
   },
-  // A search box with a rule under it instead of a border around it: the two-column popup has
-  // its own frame, and a second box inside it would read as a nested panel.
   searchRule: {
     display: "flex",
     flexShrink: 0,
@@ -74,8 +68,6 @@ const styles = stylex.create({
     userSelect: "none",
     backgroundColor: { default: null, ":is([data-highlighted])": surface.hover },
   },
-  // A row that carries a description is two lines tall and needs its own inset; one that does
-  // not is a single line and takes the shorter step.
   rowTall: { minHeight: "calc(var(--spacing) * 11)", paddingBlock: space.s1_5 },
   rowShort: { minHeight: space.s9 },
   rowGlyph: { color: color.fgMuted },
@@ -84,8 +76,6 @@ const styles = stylex.create({
   caption: { flexShrink: 0, color: color.fgFaint },
   mark: { color: color.accent },
 
-  // One scroller for a catalogue short enough to read at once, and a measured popup so a long
-  // label does not decide the width.
   stackedPopup: {
     display: "flex",
     maxHeight: "min(420px, var(--available-height))",
@@ -138,8 +128,6 @@ const styles = stylex.create({
   },
   groupCount: { marginLeft: "auto", fontVariantNumeric: "tabular-nums" },
 
-  // The split popup's rail: a fixed measure, because the groups are a stable set and a rail
-  // that resizes with the longest label makes the list jump between filters.
   rail: {
     display: "flex",
     width: "132px",
@@ -275,7 +263,6 @@ function CatalogRow(item: CatalogPickerItem, groupLabel?: string) {
   );
 }
 
-/** Every group stacked in one scroller, for a catalogue short enough to read at once. */
 export function CatalogPicker({
   groups,
   label,
@@ -362,8 +349,6 @@ export function CatalogPicker({
 }
 
 /**
- * A group rail down one side, a fixed viewport beside it, and a query that replaces both.
- *
  * A query searches EVERY group and deduplicates by id, so a shelf that republishes another
  * group's entries does not answer twice.
  */

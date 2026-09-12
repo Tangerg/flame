@@ -55,9 +55,7 @@ const styles = stylex.create({
     boxShadow: "none",
     padding: 0,
   },
-  // The backdrop IS the way out of a zoomed image, so the cursor says so across the whole field.
   dismiss: { cursor: "zoom-out" },
-  // The title names the image for a reader without taking room from it.
   srOnly: {
     position: "absolute",
     width: "1px",

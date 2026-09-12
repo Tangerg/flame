@@ -2,8 +2,6 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ProviderIcon, providerDisplayName } from "./provider-icon";
 
-// The Runtime's provider ids, which are the only strings that reach this atom. The wire types
-// `provider` as an open string, so nothing else can hold this table to them.
 const RUNTIME_PROVIDER_IDS = [
   "alibaba",
   "anthropic",

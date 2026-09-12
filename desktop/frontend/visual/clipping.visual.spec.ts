@@ -1,10 +1,6 @@
 import { expect, test, type Page } from "./test";
 import { CONTROL } from "./controls";
 
-// Narrower than "no overflow": wide blocks and the message action bar overhang the reading
-// column on purpose, and nothing clips them. What is never fine is a control cut in half — the
-// part outside cannot be clicked. The viewport is the configured minimum.
-
 const FIXTURES = [
   "fixture=agent&theme=light&state=long-content",
   "fixture=agent&theme=light&state=tool-shells",
@@ -38,9 +34,6 @@ async function clippedControls(page: Page, selector: string): Promise<Clipped[]>
         const clips = parentStyle.overflowX !== "visible" || parentStyle.overflowY !== "visible";
         if (!clips) continue;
         const edge = parent.getBoundingClientRect();
-        // Reachability is the overflow VALUE, not the scroll dimensions: a `hidden` box reports
-        // scrollWidth > clientWidth exactly when it is cutting something off, so measuring that
-        // would excuse every defect this looks for.
         const reachable = (value: string) => value === "auto" || value === "scroll";
         const scrollable = reachable(parentStyle.overflowX) || reachable(parentStyle.overflowY);
         const cutLeft = edge.left - box.left;
@@ -67,7 +60,6 @@ for (const query of FIXTURES) {
     await page.locator("html[data-visual-ready]").waitFor();
     await page.waitForTimeout(400);
 
-    // Not vacuous: the sweep has to be looking at real controls.
     const considered = await page.locator(CONTROL).count();
     expect(considered).toBeGreaterThan(3);
 

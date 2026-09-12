@@ -12,13 +12,6 @@ import {
   projectWebSearchPreview,
 } from "./specialisedPreviewProjections";
 
-// These read a tool's own answer, which for half of them is prose a model wrote and
-// for the rest is JSON a tool emitted. Each is anchored on the one piece of
-// structure the runtime actually produces and is meant to degrade to "no structure
-// found" otherwise — so the property is that every one of them is total: a wording
-// change on the backend costs a plain preview, never a thrown projection, which the
-// reducer would swallow into a card that never appears.
-
 const PROJECTIONS = [
   ["skill", projectSkillPreview],
   ["askUser", projectAskUserAnswer],

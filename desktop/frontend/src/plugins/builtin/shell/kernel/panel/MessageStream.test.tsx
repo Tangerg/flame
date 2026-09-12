@@ -209,8 +209,6 @@ describe("MessageStream initial bottom reconciliation", () => {
     act(() => controllerRef.current?.settleInitialBottom());
     expect(viewport?.scrollTop).toBe(599);
 
-    // A wheel/pointer interaction makes the reading position user-owned. The
-    // mount reconciliation may not keep writing the old tail on later frames.
     if (viewport) viewport.scrollTop = 240;
     act(() => vi.advanceTimersToNextFrame());
 
@@ -248,11 +246,6 @@ describe("MessageStream initial bottom reconciliation", () => {
       scrollTop: { configurable: true, value: 540, writable: true },
     });
 
-    // The library deliberately reports `isAtBottom=true` inside its 70px
-    // presentation threshold so the jump button stays quiet. A wheel-up escape,
-    // however, has already released the underlying follow lock. Streaming DOM
-    // growth must respect that raw lock immediately instead of snapping the
-    // reader through the remaining near-bottom band.
     stick.presentationAtBottom = true;
     stick.lockedToBottom = false;
     mutationCallbacks[0]?.([], {} as MutationObserver);

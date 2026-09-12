@@ -8,9 +8,6 @@ const step = (id: number, text: string, status: PlanStep["status"]): PlanStep =>
   status,
 });
 
-// Which step is current and how far the plan has got belong to the plan's own
-// projection (see agent/application/view/sessionPlan). What is asserted here is
-// only the banner's question: be on screen, or not.
 describe("activePlanState", () => {
   const plan = [step(1, "done", "done"), step(2, "current", "active"), step(3, "next", "pending")];
   const material = SessionPlan.fromSnapshot("ses-1", 1n, { revision: 3, steps: plan });

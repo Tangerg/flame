@@ -4,7 +4,6 @@ import { UI_FONT_SIZE_MAX_PX, UI_FONT_SIZE_MIN_PX } from "./typography";
 
 const CAP_PX = 1.5;
 
-/** What the eye judges: the attribute is read inside Lucide's 24-unit viewBox. */
 function renderedStroke(vars: Readonly<Record<string, string>>, size: string): number {
   const box = Number.parseFloat(vars[`--icon-${size}`]!);
   return Number(vars[`--icon-stroke-${size}`]!) * (box / 24);
@@ -19,8 +18,6 @@ describe("icon scale", () => {
     }
   });
 
-  // The defect this exists for: at 28px the proportional rule asks for 2.33, and at the
-  // largest UI text for 3 — a heavier icon family sitting beside the 12px ones.
   it("stops the stroke growing once a line stops reading as drawn", () => {
     const vars = iconScaleCssVariables(14);
 

@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { Interrupt, PendingInterruptSet } from "@/rpc";
 import { pendingWorkItems } from "./pendingWork";
 
-// The wire's own shapes, so a fixture cannot describe an interrupt the runtime
-// could never send — which is what a hand-written mirror of the payload allowed.
 function approval(tool: string): Interrupt {
   return {
     type: "approval",

@@ -122,7 +122,6 @@ test("destructive session dialog traps, dismisses, and returns focus", async ({ 
   await session.click({ button: "right" });
   await page.getByRole("menuitem", { name: "Delete" }).click();
 
-  // `alertdialog`, not `dialog`: this one interrupts to ask before something goes for good.
   const dialog = page.getByRole("alertdialog", { name: "Delete this session?" });
   const cancel = dialog.getByRole("button", { name: "Cancel" });
   const remove = dialog.getByRole("button", { name: "Delete" });
@@ -159,11 +158,6 @@ test("resize separator commits once after pointer movement and supports the keyb
   await expect(rail).toHaveAttribute("aria-valuenow", "283");
   await expect(persistedWidth).toHaveText("283");
 
-  // `hover()` rather than a measured coordinate: the rail sits exactly at the
-  // drawer's trailing edge, so any layout settling between measuring it and
-  // pressing puts the press next to a 10px target instead of on it. Playwright
-  // re-resolves the element for us; only the vertical position, which the
-  // full-height rail does not care about, is read from the box.
   await rail.hover();
   await page.mouse.down();
   const box = await rail.boundingBox();
@@ -188,9 +182,6 @@ test("window resize preserves the Codex ceiling and persisted preference", async
   await expect(persistedWidth).toHaveText("520");
   await expect.poll(() => sidebarCssWidth(page)).toBe("520px");
 
-  // The packaged Desktop has the same 1120px minimum as this visual shell, so
-  // a smaller browser viewport cannot create a product state the window owner
-  // forbids. The pure geometry test covers embedded rows below that boundary.
   await page.setViewportSize({ width: 1120, height: 720 });
   await expect.poll(() => sidebarCssWidth(page)).toBe("520px");
   await expect(rail).toHaveAttribute("aria-valuemax", "520");
@@ -240,8 +231,6 @@ const DPR_ONE_GOLDENS: readonly ShellGolden[] = [
     viewport: { width: 1120, height: 720 },
     route: { theme: "dark", state: "populated", sidebar: "collapsed" },
   },
-  // Both search overlays are the same atom, and nothing photographed either: the finder
-  // shipped unphotographed, and the command menu was built in rounds 18-19 without a frame.
   {
     name: "shell-light-finder-1440x900.png",
     viewport: { width: 1440, height: 900 },

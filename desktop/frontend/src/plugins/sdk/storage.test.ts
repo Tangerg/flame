@@ -9,7 +9,6 @@ describe("createStorage", () => {
     s.set("config", { x: 1, y: "hi" });
     expect(s.get("config")).toEqual({ x: 1, y: "hi" });
 
-    // Verify the underlying key actually carries the namespace.
     expect(localStorage.getItem("flame.plugin.alpha.config")).toBe(
       JSON.stringify({ x: 1, y: "hi" }),
     );
@@ -63,7 +62,6 @@ describe("createStorage", () => {
 
   it("gracefully returns non-JSON strings as-is", () => {
     const s = createStorage("alpha");
-    // Bypass the typed setter to plant a raw value.
     localStorage.setItem("flame.plugin.alpha.raw", "not-json");
     expect(s.get("raw")).toBe("not-json");
   });

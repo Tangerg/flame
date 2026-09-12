@@ -54,7 +54,6 @@ export const PaginationViolation = {
 
 export type PaginationViolation = (typeof PaginationViolation)[keyof typeof PaginationViolation];
 
-/** Raised when a Runtime page cannot belong to one finite exact traversal. */
 export class PaginationError extends Error {
   readonly violation: PaginationViolation;
   readonly cursor?: string;
@@ -89,7 +88,6 @@ export interface AutoPagingPromise<P extends CursorPage>
   ): Promise<void>;
 }
 
-/** Build the SDK behavior for one Registry-classified cursor method. */
 export function createAutoPagingPromise<P extends CursorPage>(
   fetchPage: (cursor?: string) => Promise<P>,
   policy: Readonly<PaginationPolicy>,

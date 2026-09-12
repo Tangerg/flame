@@ -8,10 +8,9 @@ import {
 } from "@/plugins/builtin/agent/public/messagePresentation";
 
 /**
- * Drops blocks whose outcome is held by a surface that stays on screen — BEFORE planning
- * rather than skipped while rendering, because units carry counts and grouping: a folded
- * wave saying "4 steps" while showing 3 is worse than the duplication. The call stays in
- * `toolCalls`, so stats and the timeline still account for it.
+ * BEFORE planning rather than skipped while rendering, because units carry counts and grouping:
+ * a folded wave saying "4 steps" while showing 3 is worse than the duplication. The call stays
+ * in `toolCalls`, so stats and the timeline still account for it.
  */
 export function narratedBlocks(
   blocks: ContentBlock[],
@@ -31,9 +30,8 @@ export function narratedBlocks(
 }
 
 /**
- * The planner's units, with one presentation rule the planner has no business knowing:
- * a text block that is no longer the last one has stopped streaming whether or not the
- * fold has caught up, and a caret blinking in the middle of a finished turn is a lie.
+ * A text block that is no longer the last one has stopped streaming whether or not the fold
+ * has caught up, and a caret blinking in the middle of a finished turn is a lie.
  */
 export function messageBlockRenderUnits(
   blocks: ContentBlock[],
@@ -68,10 +66,9 @@ export function messageBlocksRenderInstant(role: MessageRole): boolean {
 }
 
 /**
- * Whether the turn still owns material that can change beneath its action row. Current/root
- * attention is deliberately NOT part of it: the exact Run named by the message owns the
- * whole turn, so one completed agentMessage Item does not settle controls while that Run
- * can still append another, and a successor Run cannot settle its predecessor.
+ * Current/root attention is deliberately NOT part of it: the exact Run named by the message
+ * owns the whole turn, so one completed agentMessage Item does not settle controls while that
+ * Run can still append another, and a successor Run cannot settle its predecessor.
  */
 export function messageActionMaterialization(row: TranscriptRow): MessageActionMaterialization {
   if (

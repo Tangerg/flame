@@ -5,34 +5,6 @@ const ELAPSED_TICK_MS = 1000;
 const WORKING_LINE = '[data-slot="agent-working"]';
 const FIRST_TURN = "[data-turn-id]";
 
-/**
- * Stop the clock at the instant the fixtures are written for, NOT at whatever the harness
- * clock has drifted to: the fixture keeps `Date.now` advancing through production bootstrap
- * so use-stick-to-bottom can complete its frame waits, and it then advances by the page's
- * real age — the one thing about a frame that load changes.
- *
- * The wait afterwards has to outlast the interval the elapsed label re-reads on. A shorter
- * one returns while the label still holds its pre-freeze value, which is how `390m 1s` and
- * `390m 2s` both reached goldens; only states that show the label pay for it.
- *
- * Then every turn's `content-visibility` is resolved, and the frame's origin has to stop moving
- * to the FRACTION. Both come from the same place: a turn carries `content-visibility: auto`
- * with an `auto 220px` intrinsic size, so one the browser has never measured contributes
- * 220px and its real height afterwards — measured at 98px for a short user turn. Two layouts
- * of one transcript, which is how the delegated golden came to differ by 9-11k pixels
- * whenever it differed at all, with identical content one pixel apart — and the content is
- * bottom-aligned in its scroller, so cropping to the transcript does not escape it either.
- *
- * Resolving them is NOT layout-neutral: it moved twenty-six goldens the first time it was
- * tried, which is why it was reverted then. That was the wrong conclusion. The settled
- * layout is the one a reader who has scrolled through the session sees, and it is the only
- * one of the two that a screenshot can be made to land on every time. The goldens are
- * regenerated against it once and then hold.
- *
- * Production is unaffected and was measured before this was written: Chromium's scroll
- * anchoring holds the visible content while the sizes correct, so only the scrollbar's own
- * range moves.
- */
 export async function freezeVisualClock(page: Page): Promise<void> {
   await page.evaluate((frozen) => {
     Date.now = () => frozen;

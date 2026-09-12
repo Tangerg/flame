@@ -19,9 +19,6 @@ describe("OptionRow", () => {
     expect(other.getAttribute("aria-selected")).toBe("false");
   });
 
-  // Without `selected`, the row must stay out of the way of whatever library owns
-  // selection: emitting `aria-selected={undefined}` after the prop spread would erase
-  // the value Base UI had just set.
   it("claims neither role nor selection state when it is not told", () => {
     render(<OptionRow>plain</OptionRow>);
 

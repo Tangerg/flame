@@ -1,21 +1,6 @@
 import { expect, test } from "./test";
 import { CONTROL } from "./controls";
 
-// The UI font is the one free input that changes SIZE rather than colour: the picker lists the
-// families the machine has, and every control in the product states a fixed height from the
-// `--control-height-*` ladder. Whether those heights survive a family with different metrics
-// was not something anything asked.
-//
-// They do. Nine faces a person might actually choose — grotesque, humanist, geometric, serif,
-// monospace — leave the count exactly where the bundled face leaves it. What this pins is that
-// they go on doing so, because the failure mode is a label painting outside its own control and
-// the only thing standing between the design and it is that every control sets a line-height
-// from the ladder rather than leaving it to the font.
-//
-// Zapfino is deliberately not here. It is a script display face whose glyphs exceed any line
-// box it is given — measured, it puts 31 controls over their bounds by up to 11px — and no
-// arrangement of fixed heights survives it. Excluding it is a judgement about what the picker
-// is for, and it is written down rather than left as a gap in the list.
 const FONTS = [
   "",
   "Helvetica",
@@ -50,13 +35,6 @@ test("a control holds its own content whatever font it is given", async ({ page 
       await page.locator("html[data-visual-ready]").waitFor();
       await page.waitForTimeout(400);
 
-      // A family the machine does not have resolves to the fallback, and then this measures the
-      // bundled face nine times over while reporting nine fonts.
-      //
-      // Not `document.fonts.check()`: it answers true for a family that does not exist, so the
-      // first version of this line let `NoSuchFamilyInstalled` through without a word. Measuring
-      // a string against a sentinel stack is the only answer that cannot be faked — if the
-      // family is missing, both render in the sentinel and come out the same width.
       if (font) {
         const applied = await page.evaluate((family) => {
           const measure = (stack: string) => {
@@ -79,8 +57,6 @@ test("a control holds its own content whatever font it is given", async ({ page 
         for (const node of nodes) {
           const box = node.getBoundingClientRect();
           if (box.width < 2 || box.height < 2) continue;
-          // A range input is a slider's accessibility surface, not a box anything is drawn in:
-          // its native shadow parts exceed it by design and it clips them itself.
           if (node.matches('input[type="range"]')) continue;
           seen += 1;
           const down = node.scrollHeight - node.clientHeight;
@@ -99,7 +75,6 @@ test("a control holds its own content whatever font it is given", async ({ page 
     }
   }
 
-  // A sweep that found no controls agrees with every font.
   expect(examined, "the sweep has to reach real controls").toBeGreaterThan(600);
   expect([...new Set(spilling)], "content overflowing the control that states its height").toEqual(
     [],

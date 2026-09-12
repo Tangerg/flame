@@ -6,8 +6,6 @@ import { DialogPrimitive } from "@/ui/primitives";
 import { MODAL_SCRIM, modalPanel } from "./floating-surface";
 
 const styles = stylex.create({
-  // `bg-canvas` where the lightbox and the text editor use `bg-card`: a 2:2 split with no owner,
-  // reported rather than picked, since which material a modal is made of is a design decision.
   panel: {
     width: "min(400px, calc(100vw - 32px))",
     borderRadius: radius.floatingPanel,

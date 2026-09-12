@@ -1,8 +1,3 @@
-// The kernel's contribution read is the whole read side's foundation, so these
-// drive a real Host rather than a stub: the questions worth asking (when does a
-// contribution become visible, what happens to a shadowed one when its shadow
-// unloads) are answered by Core's transaction, not by our code.
-
 import { createHost, type AnyPlugin, type Host } from "dougong";
 import { afterEach, describe, expect, it } from "vitest";
 import { defineExtensionPoint } from "./contracts";
@@ -27,8 +22,6 @@ afterEach(async () => {
   host = undefined;
 });
 
-// A point is read straight off the Host, so nothing has to be declared up front;
-// the array survives only as what the assertions read back through.
 function stand(plugins: AnyPlugin[]): Host {
   const next = createHost({ name: "test", onError: () => {} });
   for (const plugin of plugins) next.install(plugin);
@@ -150,7 +143,6 @@ describe("kernel contribution reads", () => {
     const index = await start([base]);
     let notified = 0;
     const stop = subscribeContributions(() => notified++);
-    // Reading is what binds the point's view, and the subscription with it.
     index.entries(THEME);
 
     const change = host!.change();

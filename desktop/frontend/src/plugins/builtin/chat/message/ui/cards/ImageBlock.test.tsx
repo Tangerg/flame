@@ -18,9 +18,6 @@ const SECOND_GIF = "R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 
 async function openPreview(button: HTMLElement): Promise<void> {
   fireEvent.click(button);
-  // Base UI assigns initial dialog focus in a microtask after its layout effects.
-  // Keep the test alive through that documented open lifecycle instead of leaving
-  // the focus job pending for Testing Library's automatic unmount.
   await act(async () => Promise.resolve());
 }
 

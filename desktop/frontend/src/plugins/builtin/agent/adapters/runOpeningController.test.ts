@@ -32,7 +32,7 @@ describe("run opening controller", () => {
     controller.retire();
 
     expect(controller.isStarting()).toBe(false);
-    expect(abortCurrent).toHaveBeenCalledTimes(2); // begin's predecessor + retire
+    expect(abortCurrent).toHaveBeenCalledTimes(2);
 
     opening.resolve({
       result: { runId: asRunId("run_late"), segmentId: asSegmentId("seg_late") },

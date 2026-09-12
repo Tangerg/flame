@@ -9,27 +9,13 @@ export interface LoaderProps {
 }
 
 /**
- * Waiting, said one way. This carried seven variants — dots, typing, pulse-dot, wave, bars,
- * terminal, shimmer — and both call sites in the tree asked for the shimmer, so six of them
- * and five sets of keyframes animated nothing. No guard could see it: a `variant` the product
- * never passes is still reachable through the union, so `knip` reads the component as used and
- * `check-authored-classes` reads every class as resolving.
+ * Waiting, said one way.
  *
- * A variant this needs again is one rung to add back, which is cheaper than six kept warm.
+ * No live region of its own: `RunAnnouncer` is the one owner of "what is the run doing", and a
+ * region a reader first meets already carrying a message announces nothing.
  *
- * No live region of its own. It carried an `<output>` saying "Loading", which said less than
- * the visible text beside it and less than `RunAnnouncer` — the one owner of "what is the run
- * doing" — already says. It also never spoke: this mounts WITH its content, and a region a
- * reader first meets already carrying a message announces nothing, which is the rule the
- * announcer's own test is built on. The visible label cannot take its place either, since it
- * counts elapsed time and would announce a new one every second.
- *
- * It was the first component on StyleX, and it kept a `className` prop so that callers still
- * writing utilities could reach it. Both callers are StyleX now and neither passed one, so the
- * prop, the merge behind it and the escape hatch itself were scaffolding holding up a migration
- * that had finished — and the comment here still said the callers were Tailwind. A caller that
- * needs to reach in takes `styles?: StyleXArray<…>` like every other atom, which composes inside
- * one `stylex.props()` call instead of racing it on bundle order.
+ * A caller that needs to reach in takes `styles?: StyleXArray<…>` like every other atom, which
+ * composes inside one `stylex.props()` call instead of racing it on bundle order.
  */
 const styles = stylex.create({
   root: {

@@ -16,7 +16,6 @@ export interface MutationJournalStorage {
 }
 
 export interface MutationJournalScope {
-  /** Opaque identity published by the Runtime's durable idempotency store. */
   namespace: string;
   retentionSeconds: number;
 }

@@ -65,7 +65,6 @@ interface AgentStore {
     response: CancelRunResponse,
   ) => boolean;
   appendLocalMessage: (sessionId: string, message: Message) => void;
-  /** Retains existing projection state while a new authoritative read is in flight. */
   ensureSession: (sessionId: string) => void;
   beginViewRefresh: (
     sessionId: string,
@@ -80,7 +79,6 @@ interface AgentStore {
   replaceServerScope: (sessionIds: readonly string[]) => void;
   /** Collapses the placeholder into the target id when the streamed item won the race. */
   reconcileMessageIdentity: (sessionId: string, fromId: string, toId: string) => void;
-  /** Rolls back an optimistic steer bubble when the run ended mid-type (run_not_found). */
   dropMessage: (sessionId: string, id: string) => void;
   dropSession: (sessionId: string) => void;
   setStop: (sessionId: string, action: StopCurrentRootRunAction | null) => void;

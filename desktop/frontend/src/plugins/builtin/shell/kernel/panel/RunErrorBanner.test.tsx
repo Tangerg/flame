@@ -57,10 +57,6 @@ describe("run error banner", () => {
     expect(retryButton()!.hasAttribute("disabled")).toBe(false);
   });
 
-  // The one banner state no golden can hold: the label changes once a second, so a
-  // screenshot photographs whichever number it landed on. What must hold is that the
-  // action stays SHUT until the provider's own retry-after has elapsed — an enabled
-  // button during a rate limit sends the request straight back into the same refusal.
   describe("while the provider's retry-after is still running", () => {
     beforeEach(() => vi.useFakeTimers());
     afterEach(() => vi.useRealTimers());

@@ -72,8 +72,6 @@ function options() {
   return within(screen.getByRole("listbox"));
 }
 
-/** The rail, by accessible name — `textContent` would read the count beside each label and
- *  the brand mark's own SVG <title>, neither of which a reader hears. */
 function expectRail(names: string[]) {
   const rail = screen
     .getAllByRole("button")
@@ -103,11 +101,6 @@ describe("ModelPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
 
     await screen.findByPlaceholderText("Search models…");
-    // A tab per provider, and only the one holding the current model is listed. The stacked
-    // form put every provider in one scroller, so the catalogue grew past the surface as
-    // soon as a second provider was configured.
-    // By accessible name: the brand mark is `aria-hidden` but carries an SVG <title>, so
-    // `textContent` would read the provider twice.
     expectRail(["Ollama", "DeepSeek"]);
     expect(screen.getByRole("button", { name: "DeepSeek", pressed: true })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ollama", pressed: false })).toBeTruthy();
@@ -134,7 +127,6 @@ describe("ModelPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     const search = await screen.findByPlaceholderText("Search models…");
 
-    // "Mistral Local" is not in the open tab; the query has to leave the tab behind to find it.
     fireEvent.change(search, { target: { value: "mistral" } });
     await waitFor(() => {
       expect(options().getByText("Mistral Local")).toBeTruthy();

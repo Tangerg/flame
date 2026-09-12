@@ -10,9 +10,8 @@ const styles = stylex.create({
   trigger: {
     display: "inline-flex",
     width: "fit-content",
-    // Every one of the three call sites was spelling this out, using the variable that is
-    // already named for it: a select is wide enough for the values it has to hold, whichever
-    // one is showing. That is the control's measure, not each pane's.
+    // A select is wide enough for the values it has to hold, whichever one is showing: the
+    // control's measure, not each pane's.
     minWidth: "var(--select-min-width)",
     minHeight: "var(--control-height-md)",
     alignItems: "center",
@@ -43,8 +42,6 @@ const styles = stylex.create({
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
-  // A select's chevron never opens downward — it points at the menu it opens, always. The
-  // turn and the width come from `chevron`; this is only the ink.
   chevronInk: { color: color.fgFaint },
 });
 

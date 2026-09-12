@@ -4,15 +4,6 @@ import type { AgentItem } from "@/plugins/sdk";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { reduceDurableItem } from "./reducer";
 
-// The fold is where the runtime's shapes meet our read model, and the reducer
-// swallows what a projection throws — a bad read there does not surface as an
-// error, it surfaces as a block that never appears or a HITL card nobody can
-// answer. These drive the runtime's OWN published samples through the real entry
-// point, so the fold is checked against what the runtime says it emits rather
-// than against fixtures that can only agree with whatever the fold already does.
-//
-// The set is derived, not listed: every sample the contract calls an Item is
-// covered the day it is added, and an envelope sample cannot be mistaken for one.
 const SAMPLE_PREFIX = "../../../../../../../../runtime/contract/typescript/samples/";
 const files = import.meta.glob<{ default: unknown }>(
   "../../../../../../../../runtime/contract/typescript/samples/*.json",
@@ -49,8 +40,6 @@ describe("the fold against the runtime's own samples", () => {
     expect(view.messages.length).toBeGreaterThan(0);
   });
 
-  // History hydration replays items the projection may already hold, so folding
-  // one twice has to land where folding it once did.
   it.each(items.map(({ name }) => name))("is idempotent when %s replays", (name) => {
     const { item } = items.find((candidate) => candidate.name === name)!;
 

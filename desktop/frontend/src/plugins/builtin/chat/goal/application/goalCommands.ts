@@ -98,8 +98,6 @@ class GoalCommandGeneration {
   }
 }
 
-/** Owns Goal intent ordering, command settlement and Session material repair for
- * one exact Plugin Host and Runtime generation. */
 export class GoalCommandOwner {
   #generation: GoalCommandGeneration | null;
   readonly #repairProjection: GoalProjectionRepair;

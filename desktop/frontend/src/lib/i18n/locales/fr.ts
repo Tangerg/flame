@@ -1,5 +1,3 @@
-// Français.
-
 export const fr: Record<string, string> = {
   "common.cancel": "Annuler",
   "common.close": "Fermer",
@@ -526,7 +524,6 @@ export const fr: Record<string, string> = {
   "agent.runTree.action.cancel": "Annuler cette exécution",
   "agent.runTree.material.empty": "Aucun contenu narratif pour le moment.",
 
-  // ── Vue espace de travail : Résumé d'exécution ──
   "runSummary.title": "Résumé d'exécution",
   "runSummary.noRuns": "Aucune exécution",
   "runSummary.empty.title": "Rien à résumer",
@@ -551,7 +548,6 @@ export const fr: Record<string, string> = {
   "runSummary.approval.declined": "refusée",
   "runSummary.approval.pending": "en attente",
 
-  // ── Vue espace de travail : Chronologie ──
   "timeline.title": "Chronologie d'exécution",
   "timeline.rootRun": "Exécution racine",
   "timeline.delegatedRun": "Exécution déléguée",
@@ -577,7 +573,6 @@ export const fr: Record<string, string> = {
   "timeline.kind.approvalRequest": "Approbation demandée",
   "timeline.kind.approvalResult": "Approbation traitée",
 
-  // ── Vue espace de travail : Notifications ──
   "notifications.title": "Notifications",
   "notifications.clearAll": "Tout effacer",
   "notifications.dismiss": "Ignorer",
@@ -585,12 +580,10 @@ export const fr: Record<string, string> = {
   "notifications.empty.title": "Aucune notification",
   "notifications.empty.sub": "Tout ce qu'un plugin signale via host.notify() apparaît ici.",
 
-  // ── Vue espace de travail : Fichiers ──
   "files.title": "Arbre de travail",
   "files.empty.title": "Arbre de travail propre",
   "files.empty.sub": "Aucune modification non validée dans l'espace de travail actuel.",
 
-  // ── Vue espace de travail : Recherche ──
   "search.title": "Recherche",
   "search.placeholder": "Motif de recherche (regex)…",
   "search.aria": "Motif de recherche",
@@ -607,21 +600,16 @@ export const fr: Record<string, string> = {
   "search.empty.title": "Aucune correspondance",
   "search.empty.sub": "Rien dans l'espace de travail ne correspond à ce motif.",
 
-  // ── Vue espace de travail : Tâches ──
-
-  // ── Vue espace de travail : Terminal ──
   "terminal.title": "Terminal",
   "terminal.empty.title": "Aucune commande pour l'instant",
   "terminal.empty.sub": "Les commandes exécutées par l'agent apparaissent ici avec leur sortie.",
   "terminal.commands_one": "{{count}} commande",
   "terminal.commands_many": "{{count}} de commandes",
   "terminal.commands_other": "{{count}} commandes",
-  // ── Vue espace de travail : Plan ──
   "plan.title": "Plan",
   "plan.empty.title": "Aucun plan pour l'instant",
   "plan.empty.sub": "Lorsque l'agent ébauche un plan, il apparaît ici.",
 
-  // ── Vue espace de travail : Outils ──
   "tools.title": "Outils",
   "tools.diagnostics.sub":
     "Diagnostics directs du runtime. Cette liste est volontairement plus courte que le catalogue complet de l’agent.",
@@ -664,7 +652,6 @@ export const fr: Record<string, string> = {
   "toolAction.copyCommand": "Copier la commande",
   "approval.fallbackText": "Approuver cette action ?",
 
-  // ── Vue espace de travail : Compétences ──
   "skills.title": "Compétences",
   "skills.available_one": "{{count}} disponible",
   "skills.available_many": "{{count}} de disponibles",
@@ -676,7 +663,6 @@ export const fr: Record<string, string> = {
   "skills.disabled.title": "Compétences désactivées",
   "skills.disabled.sub": "Ce runtime ne propose pas la fonctionnalité de compétences.",
 
-  // ── Vue espace de travail : Mémoire ──
   "knowledge.title": "Connaissances",
   "knowledge.scopes_one": "{{count}} portée",
   "knowledge.scopes_many": "{{count}} de portées",
@@ -696,7 +682,6 @@ export const fr: Record<string, string> = {
   "knowledge.updated": "mis à jour",
   "knowledge.aria": "Contenu des connaissances pour {{path}}",
 
-  // ── Vue espace de travail : Docs de l'agent ──
   "agentDocs.title": "Docs de l'agent",
   "agentDocs.found_one": "{{count}} trouvé",
   "agentDocs.found_many": "{{count}} de trouvés",
@@ -705,14 +690,10 @@ export const fr: Record<string, string> = {
   "agentDocs.empty.sub":
     "Les fichiers AGENTS.md trouvés à partir du répertoire de travail apparaissent ici.",
 
-  // ── Vue espace de travail : Explorateur de fichiers ──
   "filetree.title": "Explorateur",
   "filetree.empty.title": "Rien à parcourir",
   "filetree.empty.sub": "Aucun fichier dans cet espace de travail.",
 
-  // ── Palette de commandes ──
-
-  // ── Raccourcis clavier ──
   "shortcuts.sub":
     "Chaque raccourci enregistré par les plugins intégrés et utilisateur. Appuyez sur une combinaison n'importe où dans l'application pour l'activer ; les conflits de liaison sont toujours résolus en faveur du dernier enregistrement.",
   "shortcuts.filter": "Filtrer par action ou combinaison…",
@@ -721,7 +702,6 @@ export const fr: Record<string, string> = {
   "shortcuts.shortcut": "Raccourci",
   "shortcuts.empty": "Aucun raccourci trouvé.",
 
-  // ── Galerie d'icônes ──
   "iconGallery.clear": "Effacer",
   "workspace.view.title.iconGallery": "Galerie d'icônes",
   "settings.pane.brandIcons": "Icônes de marques",
@@ -731,10 +711,8 @@ export const fr: Record<string, string> = {
   "role.assistant": "Assistant",
   "role.system": "Système",
 
-  // ── Compositeur ──
   "composer.removeImage": "Supprimer l'image",
 
-  // ── Vue Diff ──
   "diff.workingTree": "Arbre de travail",
   "diff.branchCompare": "Comparaison de branches",
   "diff.files.aria": "Fichiers modifiés",
@@ -760,15 +738,12 @@ export const fr: Record<string, string> = {
   "diff.truncated":
     "Diff tronqué à la limite de lignes — les fichiers restants ne sont pas affichés.",
 
-  // ── Journal des commandes ──
   "commandLog.running": "en cours…",
   "commandLog.failed": "échoué",
   "commandLog.exit": "code de sortie {{code}}",
 
-  // ── Titres Plan / Liste de tâches ──
   "plan.list.heading": "Plan de tâches",
 
-  // ── Fichiers modifiés ──
   "files.changed_one": "{{count}} fichier modifié",
   "files.changed_many": "{{count}} de fichiers modifiés",
   "files.changed_other": "{{count}} fichiers modifiés",

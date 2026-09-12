@@ -25,8 +25,6 @@ const rowStyles = stylex.create({
     transitionProperty: "background-color, color",
     transitionDuration: "var(--dur-color)",
   },
-  // A row that carries a second line grows instead of clipping, and its content starts at the
-  // top rather than centring against a height it no longer has.
   stacked: {
     height: "auto",
     minHeight: "var(--density-row-height)",
@@ -34,7 +32,6 @@ const rowStyles = stylex.create({
     paddingBlock: space.s2,
   },
   nested: { paddingLeft: "calc(0.5rem + var(--icon-sm) + var(--density-row-gap))" },
-  // Room for the action that appears on the right when the row is pointed at.
   actioned: { paddingRight: space.s8 },
   // The fade is the element's own, not the reveal channel's: a transition-property declaration
   // is the whole list, so whatever also moves has to be named beside it.
@@ -43,7 +40,6 @@ const rowStyles = stylex.create({
   glyphStacked: { marginTop: "1px" },
   stack: { display: "flex", minWidth: 0, flex: 1, flexDirection: "column", gap: "1px" },
   line: { display: "flex", minWidth: 0, alignItems: "center", gap: space.s2 },
-  // A row carrying a detail reads as a paragraph of two lines; one on its own reads as a label.
   lineStacked: { lineHeight: leading.body },
   lineAlone: { lineHeight: leading.snug },
   label: { minWidth: 0, flex: 1 },
@@ -57,25 +53,19 @@ const rowStyles = stylex.create({
     display: "grid",
     placeItems: "center",
   },
-  // A row whose label is a placeholder rather than a value: it reads back a step, and lifts to
-  // the full ink only when pointed at or current.
   quiet: {
     color: { default: color.fgMuted, ":hover": color.fg, ":is([data-active])": color.fg },
   },
-  // The same, on the recessed plane a search field sits on.
   search: { backgroundColor: { default: surface.sunken, ":hover": surface.sunkenHover } },
 });
 
 // Styles rather than class strings, so each one composes INTO the props call at its element
-// instead of being concatenated beside it. Hoisted for the same reason they were before: the
-// pair below has to stay one decision, and a name is how it stays one.
+// instead of being concatenated beside it: the pair below has to stay one decision.
 const ROW_GROUP = [reveal.host] as const;
 
 // The SAME conditions as `HOVER_ACTION` below, and it has to be the same: one is what the
 // other displaces, so a state that reveals the action without retiring this leaves the row
-// showing both — which happened whenever focus landed on the action itself, because this end
-// used to watch the TRIGGER's `:focus-visible` while the other watched the row's
-// `:focus-within`. Nobody chose that asymmetry; the two ends were simply written apart.
+// showing both.
 const RESTING_GLYPH = [reveal.displaced, rowStyles.fade] as const;
 
 // The action is the caller's node in a sibling span, so only the SPAN can react to it
@@ -92,7 +82,6 @@ interface AgentRowProps extends Omit<ButtonProps, "children" | "variant" | "size
   trailing?: ReactNode;
   action?: ReactNode;
   indent?: "none" | "nested";
-  /** `quiet` reads a placeholder back a step; `search` puts it on the recessed plane too. */
   look?: "row" | "quiet" | "search";
   revealOverflow?: boolean;
   children?: ReactNode;
@@ -109,9 +98,7 @@ export function AgentRow({
   revealOverflow = false,
   className,
   // Destructured rather than spread: the array below is passed AFTER `{...props}`, so a
-  // caller's `styles` used to be dropped on the floor — which is how a file row asking for
-  // the mono face ended up asking through `className` instead, where its `font-family` and
-  // the button's became two rules for one property with only sheet order between them.
+  // caller's `styles` would be dropped on the floor.
   styles: callerStyles,
   children,
   type = "button",
@@ -146,8 +133,6 @@ export function AgentRow({
         <Icon
           name={icon}
           size="sm"
-          // A stacked row's glyph drops a hair, so it rides the first line rather than the
-          // middle of the pair.
           {...stylex.props(rowStyles.glyph, detail ? rowStyles.glyphStacked : null)}
         />
       )}

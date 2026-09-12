@@ -11,7 +11,6 @@ const styles = stylex.create({
     flexShrink: 0,
   },
   idle: { backgroundColor: color.fgFaint },
-  // The only dot that says something is happening right now, so the only one that moves.
   running: {
     backgroundColor: color.accent,
     boxShadow: "var(--shadow-live-glow)",

@@ -33,8 +33,6 @@ describe("where a session's tool time went", () => {
     expect(summary.rows[0]).toMatchObject({ calls: 1, totalMs: 4000, slowestMs: 4000 });
   });
 
-  // A call in flight has no outcome and no duration. Counting it would make the
-  // totals move backwards the moment it settles.
   it("counts only calls that have finished", () => {
     const summary = toolStats(
       calls(
@@ -47,8 +45,6 @@ describe("where a session's tool time went", () => {
     expect(summary.calls).toBe(1);
   });
 
-  // A denial is a person saying no. Folding it into failures would make an
-  // approval policy read as a broken tool.
   it("keeps a refusal apart from a failure", () => {
     const summary = toolStats(
       calls(

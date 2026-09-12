@@ -296,8 +296,6 @@ describe("runtime connection projection", () => {
     await Promise.resolve();
     expect(owner.connectionGeneration()).toBeNull();
 
-    // The Runtime process survived, but the recovered transport/event tail is a
-    // distinct connection generation.
     settleRecovery(inspection());
     await recovery;
     const successorGeneration = owner.connectionGeneration();

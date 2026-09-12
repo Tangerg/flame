@@ -1,6 +1,3 @@
-// Plugin-contributed tool surface: inline previews + header actions +
-// icon glyphs for tool function names.
-
 import type { ComponentType } from "react";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 
@@ -18,7 +15,6 @@ export type ToolPreviewComponent = ComponentType<ToolPreviewProps>;
  */
 export interface ToolActionSpec {
   id: string;
-  /** Icon name. */
   icon: string;
   /** Tooltip / aria label — a catalog key, resolved where the action renders
    *  (see `CommandSpec.label`: a contribution is registered once, and nothing

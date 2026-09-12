@@ -20,7 +20,6 @@ describe("fmtDuration", () => {
     expect(fmtDuration(738_000)).toBe("12m 18s");
   });
 
-  // Agent work runs for hours; a clock drops its finest unit as its coarsest grows.
   it("rolls up to hours instead of counting minutes past sixty", () => {
     expect(fmtDuration(3_599_000)).toBe("59m 59s");
     expect(fmtDuration(3_600_000)).toBe("1h 00m");
@@ -50,9 +49,6 @@ describe("fmtCost", () => {
   });
 });
 
-// The reason these route through Intl at all. Five of the eight shipped locales write a
-// comma there, and "1,2k" against "1.2k" is the difference between one and a fifth and a
-// thousand-odd.
 describe("in a locale that writes decimals with a comma", () => {
   it("follows the locale for the number and leaves the unit alone", () => {
     locale.current = "de";
@@ -61,7 +57,6 @@ describe("in a locale that writes decimals with a comma", () => {
       expect(fmtTokens(1_200_000)).toBe("1,2M");
       expect(fmtCost(1.5)).toBe("$1,50");
       expect(fmtDuration(412)).toBe("0,4s");
-      // No grouping, so a column's width does not depend on the language.
       expect(fmtTokens(999)).toBe("999");
     } finally {
       locale.current = "en";

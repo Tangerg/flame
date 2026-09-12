@@ -66,8 +66,6 @@ export class SessionPlan {
 }
 
 /**
- * What one `set_plan` call SAID, as opposed to what the session's plan IS.
- *
  * Reads the structured arguments, NOT the rendered `[x] …` result text the runtime also
  * produces for the model: parsing that back would be a second answer to "what are the
  * steps" that goes stale the moment the marks change. Arguments carry no ids, so the index

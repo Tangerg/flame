@@ -11,11 +11,6 @@ import {
   toolLabelKind,
 } from "./projections";
 
-// `arguments` and `result` are `unknown` by contract: the Runtime forwards whatever a tool
-// or a model produced, and an MCP server's tool is not ours at all. These projections run on
-// EVERY tool call, inside the fold — one throw does not spoil a card, it aborts the reducer
-// and the transcript stops advancing. So the property is totality, not any particular label.
-
 const TOOL_NAMES = [
   ...TOOL_FAMILIES.flatMap((family) => family.tools.map((tool) => tool.name)),
   "mcp__linear__create_issue",
@@ -49,8 +44,6 @@ function hostileValue(a: Arbitrary, depth = 0): unknown {
   }
 }
 
-// The keys these projections actually reach for, so the fuzz lands on the branches that
-// matter rather than only on the default arm.
 const READ_KEYS = [
   "command",
   "description",
@@ -116,8 +109,6 @@ describe("the tool projections, over the arguments a tool can actually carry", (
       const tool = hostileTool(a);
       const label = toolLabel(tool);
       expect(typeof label).toBe("string");
-      // A row truncates from the left when it is a path. Calling a sentence a path puts the
-      // ellipsis on the wrong end, so the kind must stay one of exactly two answers.
       expect(["path", "text"]).toContain(toolLabelKind(tool));
       expect(label).not.toContain("\n");
     });

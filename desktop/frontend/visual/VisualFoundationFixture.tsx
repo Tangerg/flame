@@ -26,11 +26,6 @@ const SESSION_ROWS = [
 function WorkIndexFixture() {
   return (
     <div {...stylex.props(fx.pane)}>
-      {/* No inset of its own. `pl-[78px]` sat here and never applied: `.agent-surface-header`
-          owns `padding-inline` from the density vocabulary and is UNLAYERED, so it outranked a
-          utility in `@layer utilities`. Migrating it to StyleX — also unlayered, and at a
-          specificity nothing outranks — would have made a dead override live and moved the
-          wordmark 78px. What the goldens have always shown is the header's own inset. */}
       <AgentSurfaceHeader divider={false}>
         <span {...stylex.props(fx.semibold, fx.ink, typeStep.uiMd)}>Flame</span>
         <span {...stylex.props(fx.minRail)} />
@@ -111,12 +106,6 @@ function FoundationSurface({ sidebarOpen }: { sidebarOpen: boolean }) {
           <h1 {...stylex.props(fx.heading, typeStep.displayLg)}>
             One visual language, one source of truth.
           </h1>
-          {/* Two lines with room to spare on the second, on purpose. `text-wrap: pretty` — which
-              `globals.css` gives every paragraph — optimises the last lines, and Chromium falls
-              back to greedy wrapping under load. A caption sitting on the break boundary
-              therefore wrapped one way when the suite ran alone and another when it ran with
-              everything else, and the golden could not be photographed twice the same. One line
-              is the only width at which no algorithm gets a vote. */}
           <p {...stylex.props(fx.lede, typeStep.uiMd)}>
             Production primitives, with viewport, locale and appearance held still.
           </p>

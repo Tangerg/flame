@@ -1,8 +1,3 @@
-// Reducer — accumulator-shape tests. These cover the *view-level* data
-// structures the reducer maintains alongside the message stream: the audit
-// `timeline`, the Runtime-owned Plan, and durable
-// history hydration via item.completed.
-
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
@@ -122,8 +117,6 @@ describe("reducer — plan", () => {
     expect(s.plan).toMatchObject({ revision: 1, steps: [{ text: "first" }] });
   });
 
-  // The list is replaced whole, so contents cannot say which snapshot is later — an
-  // older one arriving late would look exactly like progress being undone.
   it("an older revision does not overwrite a newer one", () => {
     let s = reduce(EMPTY_AGENT_SESSION_VIEW, plan(4, "current"));
     s = reduce(s, plan(2, "stale"));

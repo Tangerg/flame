@@ -28,7 +28,6 @@ interface Props {
 const tc = stylex.create({
   full: { width: "100%" },
   sans: { fontFamily: "var(--font-sans)" },
-  // The status only appears once the card is wide enough for it beside the label.
   meta: { fontWeight: weight.medium },
   status: {
     display: { default: "none", "@container (min-width: 24rem)": "flex" },

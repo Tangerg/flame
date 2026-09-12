@@ -71,10 +71,6 @@ describe("scheduleDraft", () => {
     });
   });
 
-  // Validity only. It used to fold in the in-flight flag as a second argument, which made one
-  // predicate answer two questions and left the form's save button spelling "cannot act" and
-  // "is acting" as the same `disabled` — so activating it blurred the button. In-flight is the
-  // call site's `pending` now.
   it("requires instructions and cron", () => {
     const draft = initialScheduleDraft();
 

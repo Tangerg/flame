@@ -234,8 +234,6 @@ describe("interrupt response coordinator", () => {
       { onSettled: questionSettled, onError: questionError },
     );
 
-    // Runtime consumed the atomic set while its resume acknowledgement remained
-    // in flight. The durable projection is now the only answer.
     seedPending([]);
 
     expect(approvalError).toHaveBeenCalledOnce();
@@ -249,8 +247,6 @@ describe("interrupt response coordinator", () => {
     ).toBe(false);
     expect(reject?.()).toBe(true);
 
-    // A late local ack must not paint this client's choices over the already
-    // materialized authoritative result.
     accept?.();
     expect(approvalSettled).not.toHaveBeenCalled();
     expect(questionSettled).not.toHaveBeenCalled();
@@ -284,9 +280,6 @@ describe("interrupt response coordinator", () => {
     );
     expect(retiredResume).toHaveBeenCalledOnce();
 
-    // Runtime replacement revokes the old command generation before durable
-    // truth is available. The cards must stay latched through that gap so the
-    // same atomic barrier cannot be submitted twice.
     useAgentStore.getState().retireProjectionGeneration([SESSION_ID]);
     expect(
       interruptResponseIsStaged({
@@ -298,9 +291,6 @@ describe("interrupt response coordinator", () => {
     expect(approvalError).not.toHaveBeenCalled();
     expect(questionError).not.toHaveBeenCalled();
 
-    // A material write is not durable settlement proof. In particular, a
-    // connection problem or successor live event may advance the visible view
-    // before the recovery snapshot has committed.
     useAgentStore.getState().setCommandError(SESSION_ID, { code: "transport_error" });
     expect(
       interruptResponseIsStaged({
@@ -311,9 +301,6 @@ describe("interrupt response coordinator", () => {
     ).toBe(true);
     expect(approvalError).not.toHaveBeenCalled();
 
-    // The successor's authoritative snapshot proves the resume did not
-    // commit: the exact pending set is still open. It must release the retired
-    // submission so the user can retry instead of remaining permanently busy.
     seedPending(groups());
     expect(approvalError).toHaveBeenCalledOnce();
     expect(questionError).toHaveBeenCalledOnce();

@@ -1,5 +1,3 @@
-// Cross-cutting primitives shared by every other types file.
-
 /**
  * A reversible application-level handle. Dougong owns plugin setup resources;
  * this narrower shape remains for UI registrations outside its core contracts.

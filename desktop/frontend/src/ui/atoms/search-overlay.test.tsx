@@ -29,8 +29,6 @@ afterEach(async () => {
 });
 
 describe("search overlay", () => {
-  // A controlled dialog has no trigger node for Base UI to restore focus to, so without this
-  // the caller lands on <body> and the next key press goes nowhere.
   it("hands focus back to whatever opened it", async () => {
     render(<Harness />);
     const trigger = screen.getByRole("button", { name: "Find" });

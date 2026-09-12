@@ -8,8 +8,6 @@ import { TextArea } from "./text-field";
 import { DialogPrimitive } from "@/ui/primitives";
 
 const styles = stylex.create({
-  // The only modal on `--radius-composer` rather than the floating-panel corner. It holds a
-  // composer, so it may be deliberate — or drift. Reported, not changed.
   panel: {
     width: "min(420px, calc(100vw - 32px))",
     overflow: "hidden",

@@ -4,8 +4,6 @@ import { ColorInputPrimitive } from "@/ui/primitives";
 
 export type ColorPickerInputProps = Omit<ColorInputPrimitiveProps, "className">;
 
-// Invisible but present: the native picker covers its swatch so the whole swatch is the
-// control, and the swatch beneath is what the reader actually sees.
 const styles = stylex.create({
   overlay: {
     position: "absolute",

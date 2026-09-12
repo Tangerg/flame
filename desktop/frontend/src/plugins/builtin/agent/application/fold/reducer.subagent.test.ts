@@ -305,7 +305,6 @@ describe("reducer — source-owned Run tree", () => {
       finishedAt: "2026-06-03T00:01:00.000Z",
     });
 
-    // A cold read carries no live progress; the footprint is a Run fact and survives it.
     expect(cold.runsById.root?.progress).toBeNull();
     expect(cold.runsById.root?.contextTokens).toBe(87_900);
   });

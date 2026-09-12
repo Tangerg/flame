@@ -1,9 +1,3 @@
-// Unit tests for the buildTokenMap workhorse. Was untested when it lived
-// inline in defineColorThemePlugin.ts — extracted to ./tokens.ts in Batch D
-// made it possible. These pin the resolution rules so future theme
-// tweaks (e.g. adding a new optional override) can't silently shift
-// existing themes' tokens.
-
 import { describe, expect, it } from "vitest";
 import type { ColorThemePluginSpec } from "./types";
 import { SCHEME_ICON, buildTokenMap } from "./tokens";
@@ -52,8 +46,8 @@ describe("buildTokenMap", () => {
 
   it("auto-derives accentBorder + accentPress via colord when not given", () => {
     const tokens = buildTokenMap(makeSpec());
-    expect(tokens["color-accent-border"]).not.toBe("#1ed760"); // darkened
-    expect(tokens["color-accent-press"]).not.toBe(tokens["color-accent-border"]); // darker still
+    expect(tokens["color-accent-border"]).not.toBe("#1ed760");
+    expect(tokens["color-accent-press"]).not.toBe(tokens["color-accent-border"]);
     expect(tokens["color-accent-border"]).toMatch(/^#[0-9a-f]{6}$/i);
     expect(tokens["color-accent-press"]).toMatch(/^#[0-9a-f]{6}$/i);
   });
@@ -83,13 +77,9 @@ describe("buildTokenMap", () => {
     const tokens = buildTokenMap(makeSpec({ cta: { cta: "#000000", ctaText: "#ffffff" } }));
     expect(tokens["color-cta"]).toBe("#000000");
     expect(tokens["color-cta-text"]).toBe("#ffffff");
-    // Unset field (ctaHover) still falls back to accent-derived value.
     expect(tokens["color-cta-hover"]).toMatch(/^#[0-9a-f]{6}$/i);
   });
 
-  // The -2/-3/-4 steps are the color-mix() ladder in globals.css so they track
-  // --depth-step (the contrast preference). A theme must not be able to pin
-  // them, or the contrast slider goes partially dead on that theme.
   it("never emits the derived surface ladder steps", () => {
     const tokens = buildTokenMap(makeSpec({ surfaces: { bg: "#0a0a0a", surface: "#1a1a1a" } }));
     expect(tokens["color-surface"]).toBe("#1a1a1a");
@@ -130,10 +120,6 @@ describe("buildTokenMap", () => {
     expect(tokens["color-accent"]).toBe("#999999");
   });
 
-  // The theme's ink is what the app opens on, and it stays exactly that until the contrast
-  // slider moves off its default: the mix resolves to 0% there, so the value IS the literal.
-  // Above the default the ink keeps pace with the surfaces the slider is walking toward it —
-  // without that, a control named Contrast lowered text contrast to 3.75:1.
   it("carries the theme's ink, anchored so the default resolves to it", () => {
     const tokens = buildTokenMap(makeSpec());
     for (const [rung, ink] of [

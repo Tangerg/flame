@@ -4,9 +4,6 @@ import { foldExchanges, type AnchoredTurn } from "./transcriptAnchors";
 const turn = (id: string, role: string | null, top: number): AnchoredTurn => ({ id, role, top });
 
 describe("foldExchanges", () => {
-  // The bug this exists for: the rail's unit is the exchange and the DOM's is the
-  // message, so scrolling from a question into its own answer put an id under the
-  // reading line that no mark carried, and the highlight went out.
   it("keeps a question and its answer as one exchange, named by the question", () => {
     expect(
       foldExchanges([
@@ -18,8 +15,6 @@ describe("foldExchanges", () => {
     ).toEqual(["u1", "u2"]);
   });
 
-  // A compaction note is a system message between two exchanges. It belongs to the
-  // one it interrupts, not to a mark of its own.
   it("attributes anything that is not a question to the exchange it follows", () => {
     expect(
       foldExchanges([
@@ -32,8 +27,6 @@ describe("foldExchanges", () => {
     ).toEqual(["u1", "u2"]);
   });
 
-  // A restored session can open on an assistant turn. Its height has to belong to
-  // something, or the tallest-exchange scale is computed from a gap.
   it("opens an exchange for a transcript that does not start with a question", () => {
     expect(
       foldExchanges([

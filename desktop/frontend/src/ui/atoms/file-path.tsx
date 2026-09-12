@@ -18,7 +18,6 @@ const styles = stylex.create({
     color: color.fgFaint,
   },
   separator: { flexShrink: 0, color: color.fgFaint },
-  // Shrinks but never truncates first: a path without its filename identifies nothing.
   filename: {
     minWidth: 0,
     flexShrink: 1,

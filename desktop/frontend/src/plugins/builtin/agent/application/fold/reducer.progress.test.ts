@@ -1,6 +1,3 @@
-// segment.progress is the ephemeral mid-run readout (step / usage / cost / activity);
-// segment.finished.result is the authoritative landing (API.md §5.2). The reducer
-// must surface progress live AND let the finished totals win.
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
@@ -108,15 +105,10 @@ describe("reducer — segment.progress (mid-run live readout)", () => {
       ),
     );
 
-    // The footprint is a Run fact, so it outlives the progress bag that expires with the
-    // segment; the finishing frame states no footprint of its own here.
     expect(selectCurrentRootRun(s)?.progress).toBeNull();
     expect(selectCurrentRootRun(s)?.contextTokens).toBe(45_000);
   });
 
-  // `segment.progress` is ephemeral and suppressible; `segment.finished` is authoritative and
-  // now carries the footprint too. A Run whose progress stream was dropped entirely — a
-  // reconnect, a cold read — must still land its context-window reading.
   it("takes the footprint from the finishing frame when no progress frame arrived", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, runStarted("run_1"));

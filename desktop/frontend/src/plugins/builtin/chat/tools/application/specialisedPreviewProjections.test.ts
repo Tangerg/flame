@@ -39,9 +39,6 @@ describe("specialised preview projections", () => {
     );
   });
 
-  // The runtime's search presentation folds every grep/glob output mode into one
-  // `hits` envelope before it reaches the wire, so there is one key to read and no
-  // priority left to get wrong.
   it("reads paths from the runtime's single hits envelope", () => {
     expect(projectGlobPreview('{"hits":[{"path":"src/a.ts"},{"path":"src/b.ts"}]}')).toEqual({
       paths: ["src/a.ts", "src/b.ts"],
@@ -65,10 +62,6 @@ describe("specialised preview projections", () => {
   });
 });
 
-// The prose-answering tools. Each fixture is the runtime's ACTUAL output format —
-// memorysearch/sessionsearch `results.String()`, discovery's catalog listing, and
-// planpresentation.Render — because a parser tested against invented text is a
-// parser tested against nothing.
 describe("prose tool results", () => {
   it("keeps a wrapped memory whole and preserves the runtime's ranking", () => {
     expect(
@@ -79,7 +72,6 @@ describe("prose tool results", () => {
       "Deploys go through the release branch.\n   Never from main.",
       "Staging resets nightly.",
     ]);
-    // The "nothing found" sentence is prose, not an entry — it must not render as one.
     expect(projectRecalledMemories("No relevant memories found for this project.")).toEqual([]);
   });
 
@@ -136,7 +128,6 @@ describe("structured tool results", () => {
       ],
       body: "{}",
     });
-    // A plain-string answer is not a response envelope.
     expect(projectHttpPreview("blocked by allowlist")).toBeUndefined();
   });
 

@@ -9,8 +9,6 @@ const styles = stylex.create({
     borderRadius: radius.xs,
     backgroundColor: surface.surface2,
   },
-  // The sweep is a light passing over the placeholder, so it is drawn on its own layer rather
-  // than as a background of the line: the line keeps its fill visible under the moving highlight.
   sweep: {
     position: "absolute",
     inset: 0,
@@ -39,8 +37,6 @@ const styles = stylex.create({
     gap: space.s0_5,
     paddingBlock: space.s1,
   },
-  // A placeholder standing in for one control rather than a list of rows: it holds that
-  // control's measure so the bar it sits in does not resize when the real thing arrives.
   inline: {
     display: "inline-flex",
     height: "var(--control-height-md)",
@@ -62,10 +58,6 @@ function SkeletonLine({ width = "100%", height = 10 }: { width?: string; height?
 
 /**
  * One control's worth of placeholder, for a bar that must not resize as it loads.
- *
- * The composer's model picker had built this itself, out of the same fill and an `opacity-60`
- * the skeleton deliberately does not have: the fill and the sweep are how this design says
- * "not yet", and a multiplier on top said it a second time, quieter.
  */
 export function SkeletonControl({
   glyph = true,

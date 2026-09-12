@@ -8,7 +8,6 @@ export function useShikiTheme(): string {
   return useScheme() === "light" ? "github-light-high-contrast" : "github-dark";
 }
 
-/** Highlighter loaded into state (null until ready) plus the active theme. */
 export function useCodeHighlighter(): { highlighter: Highlighter | null; theme: string } {
   const theme = useShikiTheme();
   const [highlighter, setHighlighter] = useState<Highlighter | null>(null);

@@ -1,20 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { color, corner, leading, radius, space, surface, weight } from "@/styles/tokens.stylex";
 
-/**
- * The fixtures' own scaffolding.
- *
- * These files are not the product — they are the frame the product is photographed in — but
- * they compile through the same pipeline, which is why Tailwind could not leave while they
- * still spoke it. Sixty-eight class strings lived here, invisible to the migration's own
- * scanner because it only ever read `src`, and invisible to `check-dead-styles` for the same
- * reason: a rule kept alive by a fixture was reported as dead.
- *
- * One module for four files, deliberately. A fixture's job is to hold still, not to grow a
- * vocabulary.
- */
 export const fx = stylex.create({
-  // The shape a fixture is built from: a column that scrolls without stretching its parent.
   pane: { display: "flex", minHeight: 0, flex: 1, flexDirection: "column" },
   paneRow: { display: "flex", minHeight: 0, flex: 1 },
   scroller: {
@@ -35,40 +22,31 @@ export const fx = stylex.create({
   relative: { position: "relative" },
   fill: { flex: 1 },
 
-  /** The caption over a fixture's state list. */
   listHead: {
     paddingInline: space.s2,
     paddingBottom: space.s1,
     fontWeight: weight.semibold,
     color: color.fg,
   },
-  /** The note at the bottom that says what the fixture is. */
   listFoot: {
     paddingInline: space.s4,
     paddingBottom: space.s3,
     lineHeight: leading.body,
     color: color.fgFaint,
   },
-  /** The gap above that note, which is a gap and not a spring. */
   footGap: { minHeight: space.s4 },
 
-  // Ink and weight, as the fixtures use them.
   ink: { color: color.fg },
   soft: { color: color.fgSoft },
   muted: { color: color.fgMuted },
   faint: { color: color.fgFaint },
   medium: { fontWeight: weight.medium },
   semibold: { fontWeight: weight.semibold },
-  // Both of these carry `letter-spacing`, so they must come AFTER the type step in
-  // `stylex.props` — a type step declares tracking too, and composed last it replaces theirs
-  // silently. Monospace at a proportional face's tracking drifts; an uppercase label without
-  // wide tracking sets solid.
   mono: { fontFamily: "var(--font-mono)", letterSpacing: 0 },
   figures: { fontVariantNumeric: "tabular-nums" },
   truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   relaxed: { lineHeight: leading.relaxed },
 
-  /** A section label in the foundation fixture's specimen list. */
   specimenLabel: {
     paddingInline: space.s2,
     paddingBottom: space.s1,
@@ -83,7 +61,6 @@ export const fx = stylex.create({
     textTransform: "uppercase",
     color: color.fgFaint,
   },
-  /** A specimen card: the one place a fixture draws a box, to show a surface against an edge. */
   card: {
     borderRadius: radius.lg,
     borderWidth: "1px",
@@ -99,7 +76,6 @@ export const fx = stylex.create({
     gap: space.s4,
   },
 
-  /** The foundation fixture's reading column, at the product's own measure and gutter. */
   measure: {
     marginInline: "auto",
     display: "flex",
@@ -143,7 +119,6 @@ export const fx = stylex.create({
     paddingBottom: space.s2,
   },
 
-  /** The foundation fixture's stand-in composer, at the product's density insets. */
   editorBox: {
     minHeight: "calc(var(--spacing) * 20)",
     paddingInline: "var(--density-composer-editor-start)",
@@ -163,7 +138,6 @@ export const fx = stylex.create({
   minField: { minHeight: space.s8, flex: 1 },
   hairline: { height: space.s4, flexShrink: 0 },
 
-  /** The shell fixture's empty state, centred in the pane. */
   emptyBox: {
     margin: "auto",
     display: "flex",
@@ -173,9 +147,6 @@ export const fx = stylex.create({
     paddingInline: space.s8,
     textAlign: "center",
   },
-  // 40px, and the ONE element whose corner shape a golden can see: the product sets
-  // `corner-shape: superellipse(1.5)` on everything, so a circle needs `corner.pill` to opt
-  // back out. Removing the Tailwind class this used to carry turned it into a squircle.
   emptyGlyph: {
     display: "grid",
     height: space.s10,

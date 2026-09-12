@@ -12,11 +12,9 @@ const styles = stylex.create({
     gap: space.s2,
     color: color.fgMuted,
     userSelect: "none",
-    // Not a pointer: a checkbox is a control in a form, and this is a desktop app rather than
-    // a page, so the hand cursor would be the odd one out.
     cursor: "default",
   },
-  // The same step every other control fades to when it cannot be used; this one had 0.6.
+  // The same step every other control fades to when it cannot be used.
   off: { cursor: "not-allowed", opacity: "var(--control-disabled-opacity)" },
   box: {
     display: "grid",

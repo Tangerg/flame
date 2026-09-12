@@ -36,8 +36,6 @@ const styles = stylex.create({
       backdropFilter: "var(--floating-backdrop)",
     },
   },
-  // Arriving and leaving are the same gesture at two speeds: a panel rises into place, and
-  // dismisses faster than it appeared because a dismissal is already decided.
   motion: {
     transitionProperty: "opacity, scale, translate",
     transitionTimingFunction: "var(--ease-out)",
@@ -82,8 +80,6 @@ const styles = stylex.create({
     },
   },
   rise: { animation: motion.riseIn },
-  // What the scrim sits in front of. Four dialogs had each written this out, so the four agreed
-  // on nothing but these: a modal is fixed, on the modal layer, and cast by `--shadow-modal`.
   modal: {
     position: "fixed",
     zIndex: "var(--layer-modal)",
@@ -98,13 +94,9 @@ const styles = stylex.create({
 /** Where a floating thing sits in the stack. Its own layer, not the modal one. */
 export const FLOATING_LAYER = [styles.layer];
 
-/** The panel: a menu, a popover, a suggestion list. */
 export const FLOATING_PANEL = [styles.face, styles.motion, styles.panel];
-
-/** The tip: the same material at the smaller corner a label deserves. */
 export const FLOATING_TIP = [styles.face, styles.motion, styles.tip];
 
-/** What a modal puts between itself and everything behind it. */
 export const MODAL_SCRIM = [styles.scrim];
 
 /** The panel the scrim sits in front of. Width, fill and corner stay with each dialog. */

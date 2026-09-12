@@ -57,9 +57,6 @@ afterEach(async () => {
   await drainBrowserTasks();
 });
 
-// A surface that renders and does NOTHING is the failure this file exists for, and
-// it shipped once: the palette's rows lost the props that made them rows, so the
-// list looked right and nothing in it could be run by mouse or keyboard.
 describe("going to a session", () => {
   it("opens the session a row is clicked on, and closes", () => {
     wrap(open());
@@ -73,7 +70,6 @@ describe("going to a session", () => {
   it("opens the highlighted session on Enter, after the arrows move it", () => {
     wrap(open());
 
-    // Newest first, so the highlight starts on "Rename the dock".
     fireEvent.keyDown(field(), { key: "ArrowDown" });
     fireEvent.keyDown(field(), { key: "Enter" });
 
@@ -115,9 +111,6 @@ describe("going to a session", () => {
   });
 });
 
-// Focus stays in the field, so the field is the only thing that can say which row
-// the keyboard is on, and the rows must not be tab stops. Both were unmet and both
-// are invisible to anyone driving this with a mouse.
 describe("reaching the list without a pointer", () => {
   it("announces the highlighted row from the field", () => {
     wrap(open());

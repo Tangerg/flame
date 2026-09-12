@@ -38,15 +38,9 @@ const styles = stylex.create({
       ':is(:disabled, [aria-disabled="true"])': "var(--control-disabled-opacity)",
     },
   },
-  // A chosen row keeps the wash whether or not the pointer is on it; an open one only borrows it.
   rowChosen: { backgroundColor: surface.hover },
   rowOpen: { backgroundColor: { default: null, ":hover": surface.hover } },
 
-  // Round for one-of, square for many-of — the distinction every platform makes, and the one
-  // this list needs most before anything is selected: a multi-select's unchecked mark carries
-  // no number and no check, so a circle there is three blank radios telling the reader to pick
-  // one. `2xs` is the corner `Checkbox` already uses, so the two places the app asks for
-  // several answers now ask the same way.
   mark: {
     display: "grid",
     height: space.s5,

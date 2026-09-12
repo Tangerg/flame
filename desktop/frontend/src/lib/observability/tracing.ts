@@ -25,7 +25,6 @@ export function withSpan<T>(span: Span, fn: () => T): T {
   return context.with(trace.setSpan(context.active(), span), fn);
 }
 
-/** Pass the error to mark the span failed. */
 export function endSpan(span: Span, err?: unknown): void {
   if (err !== undefined && err !== null) {
     span.setStatus({

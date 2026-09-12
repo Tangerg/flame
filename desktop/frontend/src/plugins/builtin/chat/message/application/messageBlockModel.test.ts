@@ -74,24 +74,18 @@ describe("messageBlockRenderUnits", () => {
     ]);
   });
 
-  // The rule the whole feature rests on: work is superseded by an answer that comes
-  // AFTER it, which is why it is per unit rather than per message.
   it("marks work the answer already speaks for, and only that work", () => {
     const superseded = (blocks: ContentBlock[], tools = {}) =>
       messageBlockRenderUnits(blocks, tools).map((unit) =>
         unit.kind === "wave" ? "wave" : unit.superseded,
       );
 
-    // Reasoning, then the answer: the reasoning is behind it.
     expect(superseded([reasoning(), text("answer")])).toEqual([true, false]);
 
-    // A turn still working has nothing behind it yet.
     expect(superseded([reasoning("running")])).toEqual([false]);
 
-    // Text still streaming counts as the answer having begun.
     expect(superseded([reasoning("running"), text("part", "running")])).toEqual([true, false]);
 
-    // Interleaved: only the wave between the two answers folds.
     const tools = { a: tool("a", "shell", "exec") };
     expect(superseded([text("first"), toolBlock("a"), text("second")], tools)).toEqual([
       true,
@@ -99,8 +93,6 @@ describe("messageBlockRenderUnits", () => {
       false,
     ]);
 
-    // Trailing work after the last answer is the live wave — and the answer itself is
-    // never superseded, because nothing that is text follows it.
     expect(superseded([text("first"), toolBlock("a")], tools)).toEqual([false, false]);
   });
 });
@@ -205,10 +197,6 @@ describe("messageActionMaterialization", () => {
   });
 });
 
-// The plan was on screen twice: in the active surface above the composer, and
-// again as the tool row that wrote it. A tool with a surface of its own has nothing
-// left to say in the narrative — and it has to leave before the units are planned, or
-// the counts and the grouping describe rows that are not there.
 describe("narratedBlocks", () => {
   const standing = (name: string) => name === "set_plan";
 

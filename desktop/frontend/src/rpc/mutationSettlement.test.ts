@@ -35,9 +35,6 @@ describe("unary mutation settlement", () => {
     expect(retry.mock.calls[0]?.[0]?.signal).toBeInstanceOf(AbortSignal);
   });
 
-  // The journal refuses a replay it no longer owns by throwing from `retry` itself, before any
-  // promise exists. The replacement attempt is already open at that point — its deadline timer
-  // is armed and it is listening to the settler's lifetime.
   it("closes the replacement attempt when the replay is refused outright", async () => {
     vi.useFakeTimers();
     const refused = new Error("journal no longer owns this key");
@@ -54,8 +51,6 @@ describe("unary mutation settlement", () => {
     );
 
     const settler = createMutationSettler();
-    // Held before the clock moves: the rejection lands during the advance, and a promise that
-    // rejects with no handler attached is an unhandled rejection in this runner.
     const settled = rejected(settler.settle("test:refused-replay", open, { timeoutMs: 10 }));
     await vi.advanceTimersByTimeAsync(10);
 

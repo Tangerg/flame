@@ -25,8 +25,6 @@ const DOCK_MEASURE_PROPERTY = "--dock-measure";
 const DOCK_USABLE_MAX = `max(${DOCK_MIN_WIDTH_PX}px, calc(100% - ${DOCK_SAFE_AREA_PX}px))`;
 const DOCK_MEASURE = `calc(${DOCK_MIN_WIDTH_PX}px + var(${DOCK_RATIO_PROPERTY}) * (${DOCK_USABLE_MAX} - ${DOCK_MIN_WIDTH_PX}px))`;
 
-/** Row style carrying the dock's geometry: where in its range the person put the flank,
- *  and the measure it keeps whether it is showing or gone. */
 export function dockWidthRow(ratio: number): CSSProperties {
   return {
     [DOCK_RATIO_PROPERTY]: `${ratio}`,

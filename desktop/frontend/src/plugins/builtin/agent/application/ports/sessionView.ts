@@ -87,8 +87,7 @@ export interface AgentViewRefreshToken {
   readonly viewRevision: bigint;
 }
 
-/** One projected value together with the mounted projection generation that
- * admitted it. Local presentation state must not cross this boundary even when
+/** Local presentation state must not cross this boundary even when
  * a successor server reuses the same Session and domain revision. */
 export interface AgentProjectionMaterial<T> {
   readonly generation: bigint;
@@ -96,7 +95,7 @@ export interface AgentProjectionMaterial<T> {
 }
 
 export interface AgentSessionViewPort {
-  /** One exact root Run snapshot. Consumers derive attention, metrics and
+  /** Consumers derive attention, metrics and
    * outcome from this identity instead of independently sampled fragments. */
   useCurrentRootRun(): AgentRunView | null;
   /** Whether that Run is streaming, as a BOOLEAN rather than a fact read off the

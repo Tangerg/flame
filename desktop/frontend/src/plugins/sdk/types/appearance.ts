@@ -2,7 +2,6 @@ import type { Scheme, VisualStyleMotion } from "@/lib/appearance";
 
 /** A swappable colour palette. Geometry and component treatment belong to a visual style. */
 export interface ColorThemeSpec {
-  /** Stable id persisted by the UI preference store. */
   id: string;
   label: string;
   scheme: Scheme;

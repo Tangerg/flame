@@ -27,7 +27,6 @@ export default definePlugin({
       runtimeGateway.replaceRuntimeGeneration(),
     );
     const disposeInterruptResponses = installInterruptResponseCoordinator();
-    // After the ports it reads through.
     const disposeDraftCleanup = installAbandonedDraftCleanup();
     ctx.cleanup(() => {
       disposeDraftCleanup();

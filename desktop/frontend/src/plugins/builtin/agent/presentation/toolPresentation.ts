@@ -107,7 +107,6 @@ export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
       tone: "negative",
     });
   }
-  // Sub-second calls omitted.
   if (tool.durationMillis != null && tool.durationMillis >= 1000) {
     items.push({ id: "duration", label: fmtDuration(tool.durationMillis), tone: "muted" });
   }

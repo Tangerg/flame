@@ -17,8 +17,6 @@ function keyFor(row: WorkspaceDiffRow, i: number): string {
   return `=:${row.leftLine}-${row.rightLine}`;
 }
 
-/** What a diff row type looks like, and what it reads as. Context has no tint: an unchanged
- *  line is the ground the other two are read against. */
 const ROW_STYLE = {
   added: { tone: cs.rowAdded, meta: cs.metaAdded, sign: "+" },
   deleted: { tone: cs.rowDeleted, meta: cs.metaDeleted, sign: "−" },

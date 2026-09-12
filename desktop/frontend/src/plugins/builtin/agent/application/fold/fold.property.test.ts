@@ -6,13 +6,6 @@ import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { Arbitrary, forEachSeed } from "@/test/arbitrary";
 import { reduceDurableItem } from "./reducer";
 
-// The reducer swallows what a projection throws, so a bad read is invisible in
-// production: no error, just a block that never appears or a card nobody can
-// answer. The canonical samples pin the shapes the runtime publishes today; these
-// explore the space around them — empty and astral text, absent optionals, ids
-// reused across variants, statuses arriving out of order — and assert the
-// properties the fold has to hold whatever it is handed.
-
 const TYPES = ["userMessage", "agentMessage", "reasoning", "toolCall", "question"] as const;
 const STATUSES = ["running", "completed", "incomplete"] as const;
 const TOOL_NAMES = ["read", "shell", "apply_patch", "grep", "web_search", "ask_user", ""] as const;
@@ -23,7 +16,6 @@ function item(a: Arbitrary, id: string): AgentItem {
   const base = { id, runId: a.bool(0.9) ? "run_01" : null, status };
   switch (type) {
     case "userMessage":
-      // A user message is atomic: the contract admits it only as completed.
       return {
         ...base,
         status: "completed",
@@ -32,8 +24,6 @@ function item(a: Arbitrary, id: string): AgentItem {
         content: a.bool(0.15) ? [] : [{ type: "text", text: a.text() }],
       } as AgentItem;
     case "agentMessage":
-      // `phase` is what the provisional running shell has not decided yet, so it is
-      // required on a terminal message and refused on a running one.
       return {
         ...base,
         type,
@@ -69,9 +59,6 @@ function item(a: Arbitrary, id: string): AgentItem {
   }
 }
 
-// The transport refuses a frame the contract does not permit, so the fold never
-// sees one. Generating outside that space would only manufacture phantom bugs, so
-// anything invalid is dropped here and the suites assert they still had material.
 function permitted(items: readonly AgentItem[]): AgentItem[] {
   return items.filter((next) => validateWire("Item", next).length === 0);
 }
@@ -83,8 +70,6 @@ function fold(items: readonly AgentItem[]): AgentSessionView {
 }
 
 describe("the fold, over the space around the published shapes", () => {
-  // Filtering to what the contract permits could quietly filter to nothing, and
-  // every property below would then hold over an empty corpus.
   it("explores a corpus the contract actually permits", () => {
     let kept = 0;
     let generated = 0;

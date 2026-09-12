@@ -37,8 +37,6 @@ describe("ConnectionPane runtime status", () => {
     });
   });
 
-  // The URL field is `flex-1` beside these two, so a button that appears on the first
-  // keystroke takes width from it and moves the caret mid-typing.
   it("keeps its controls mounted and disabled rather than appearing as you type", () => {
     runtime.snapshot = {
       phase: "ready",

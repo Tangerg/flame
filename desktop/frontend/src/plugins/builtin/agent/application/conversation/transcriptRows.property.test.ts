@@ -5,11 +5,6 @@ import { Arbitrary, forEachSeed } from "@/test/arbitrary";
 import { reduceDurableItem } from "../fold/reducer";
 import { buildTranscriptRows, EMPTY_TRANSCRIPT_ROW_CACHE } from "./transcriptRows";
 
-// A cache bug here does not throw, it shows stale content. The property is the module's own
-// claim: feeding the previous cache back answers what never having one would.
-//
-// TRAP: `runId` must name no Run the view holds, or the selector excludes every message and
-// the properties below hold over an empty transcript.
 function messageItem(a: Arbitrary, id: string): AgentItem {
   return {
     id,
@@ -65,7 +60,6 @@ describe("the transcript row cache", () => {
     });
   });
 
-  // The cache holds ROWS; the array's identity is stabilised a layer up.
   it("hands back the very same row when nothing under it moved", () => {
     forEachSeed(300, (a) => {
       const items = Array.from({ length: 2 + a.int(4) }, (_, i) => messageItem(a, `item_${i}`));
@@ -87,13 +81,8 @@ describe("the transcript row cache", () => {
     });
   });
 
-  // Staleness is the failure this can actually have, so the row carrying a changed tool must
-  // not come back as the object built before the change.
   it("rebuilds the row whose tool moved, and only that row", () => {
     forEachSeed(300, (a) => {
-      // Evolved, not rebuilt: folding the same items into a fresh view makes every
-      // message a new object, and the cache would then be right to rebuild all of
-      // them. Production advances one item at a time, which is what this measures.
       const baseView = viewOf([messageItem(a, "item_0"), toolItem(a, "item_1", "first")]);
       const nextView = reduceDurableItem(baseView, toolItem(a, "item_1", "second"));
       const before = buildTranscriptRows(baseView, EMPTY_TRANSCRIPT_ROW_CACHE);

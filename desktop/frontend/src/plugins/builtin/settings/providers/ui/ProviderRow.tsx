@@ -22,7 +22,6 @@ const pr = stylex.create({
     gap: space.s3,
   },
   id: { textTransform: "capitalize" },
-  // The key gets the wider share: a base URL is longer than a provider's name.
   fields: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 2fr) minmax(0, 3fr)",

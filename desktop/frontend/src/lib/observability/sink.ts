@@ -65,7 +65,6 @@ class Batcher<T> {
   }
 }
 
-// ── Metrics ───────────────────────────────────────────────────────────────
 export class LocalMetricExporter implements PushMetricExporter {
   export(batch: ResourceMetrics, callback: (result: { code: number }) => void): void {
     useTelemetryStore.getState().ingestMetrics(batch);
@@ -82,7 +81,6 @@ export class LocalMetricExporter implements PushMetricExporter {
   }
 }
 
-// ── Traces ────────────────────────────────────────────────────────────────
 export class LocalSpanProcessor implements SpanProcessor {
   private readonly batcher = new Batcher<SpanRow>((rows) =>
     useTelemetryStore.getState().ingestSpans(rows),
@@ -118,7 +116,6 @@ export class LocalSpanProcessor implements SpanProcessor {
   }
 }
 
-// SpanKind enum → label (inlined; SERVER/CLIENT/INTERNAL/PRODUCER/CONSUMER).
 const SPAN_KIND: Record<number, string> = {
   0: "internal",
   1: "server",
@@ -127,7 +124,6 @@ const SPAN_KIND: Record<number, string> = {
   4: "consumer",
 };
 
-// ── Logs ──────────────────────────────────────────────────────────────────
 const logIds = new ExactSequence();
 
 export class LocalLogProcessor implements LogRecordProcessor {

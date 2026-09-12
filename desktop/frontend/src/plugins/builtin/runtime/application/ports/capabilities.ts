@@ -6,7 +6,6 @@ export interface RuntimeCapabilityPort {
   hasCapability(capability: WireFeature): boolean;
   supportsStreamingMethod(method: string): boolean;
   supportsRuntimeTopic(topic: string): boolean;
-  /** What the server advertised, or null before discovery. */
   negotiated(): ServerCapabilities | null;
 }
 

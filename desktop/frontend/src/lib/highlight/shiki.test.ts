@@ -5,8 +5,6 @@ import { langFromPath, resolveLang } from "./shiki";
 const { createHighlighter } = vi.hoisted(() => ({ createHighlighter: vi.fn() }));
 vi.mock("shiki", () => ({ createHighlighter }));
 
-// The names JavaScript hands out from `Object.prototype` to anyone who indexes an
-// object with a string they did not choose.
 const INHERITED_KEYS = ["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__"];
 
 describe("langFromPath", () => {
@@ -33,10 +31,6 @@ describe("langFromPath", () => {
     expect(langFromPath("README.MD")).toBe("markdown");
   });
 
-  // A file named `constructor` used to return the Object constructor itself, and
-  // `resolveLang` then threw on `lang.toLowerCase()` — taking the diff view down
-  // with it. The guard is the TYPE, because a lookup table that answers with an
-  // inherited member is wrong however the caller happens to survive it.
   it("answers with a language tag for filenames that name an inherited member", () => {
     for (const key of INHERITED_KEYS) {
       expect(typeof langFromPath(key)).toBe("string");
@@ -84,9 +78,6 @@ describe("getHighlighter", () => {
     expect(createHighlighter).toHaveBeenCalledTimes(1);
   });
 
-  // The grammars come off disk or the dev server, and either can fail once. Caching the
-  // rejection turned that single failure into a session where no code block anywhere would
-  // ever highlight again, with no way back short of a reload.
   it("does not keep a failure, so the next code block tries again", async () => {
     const highlighter = {} as Highlighter;
     createHighlighter

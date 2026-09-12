@@ -7,8 +7,6 @@ const CHOOSE_WORKING_DIRECTORY = "main.DesktopHost.ChooseWorkingDirectory";
 const SAVE_IMAGE = "main.DesktopHost.SaveImage";
 const WINDOW_CHROME = "main.DesktopHost.WindowChrome";
 
-/** A host that answers every method, dispatching on the name the client asks for — which
- *  is the thing worth exercising: one call channel, four names. */
 function hostBinding(
   answers: Partial<Record<string, () => Promise<unknown>>> = {},
 ): DesktopHostBinding & { call: ReturnType<typeof vi.fn> } {
@@ -115,10 +113,6 @@ describe("DesktopHostClient", () => {
     expect(binding.call).toHaveBeenCalledWith(WINDOW_CHROME);
   });
 
-  // Every way of having no geometry has to arrive as the same `null`, because the
-  // caller's only correct response is to leave the stylesheet's own numbers standing.
-  // A zero or a partial object reaching the layout would collapse the gutter that
-  // holds the window's controls clear of the header.
   it("answers null for every way of having nothing to measure", async () => {
     await expect(createDesktopHostClient(undefined).windowChrome()).resolves.toBeNull();
 
@@ -140,8 +134,6 @@ describe("DesktopHostClient", () => {
     await expect(createDesktopHostClient(broken).windowChrome()).resolves.toBeNull();
   });
 
-  // The name the runtime resolves against Go's reflection. Getting it wrong is a runtime
-  // "unknown bound method" and nothing earlier, so it is worth stating once.
   it("addresses the host by its fully qualified Go method names", async () => {
     const binding = hostBinding();
     const client = createDesktopHostClient(binding);

@@ -82,10 +82,9 @@ const FILE_EXT = new Set([
   "conf",
 ]);
 
-// The lookbehind is what keeps a match from starting mid-token, inside an email or path.
 const TOKEN = /(?<![\w/.@-])([A-Za-z0-9._\-/]+)(?::(\d+))?(?::(\d+))?/g;
 
-/** A path names something; a run of digits and slashes is arithmetic or a date. */
+/** A run of digits and slashes is arithmetic or a date. */
 const HAS_LETTER = /[A-Za-z]/;
 
 function isFileRef(path: string): boolean {
@@ -102,7 +101,7 @@ function isFileRef(path: string): boolean {
   return FILE_EXT.has(path.slice(dot + 1).toLowerCase());
 }
 
-/** Split `text` into plain strings and FileRef objects, in order. A text with
+/** A text with
  *  no references returns a single-element [text] array. */
 export function parseFileRefs(text: string): RefSegment[] {
   const out: RefSegment[] = [];

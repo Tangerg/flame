@@ -1,5 +1,3 @@
-// 繁體中文（港澳台）。
-
 export const zhTW: Record<string, string> = {
   "common.cancel": "取消",
   "common.close": "關閉",
@@ -498,7 +496,6 @@ export const zhTW: Record<string, string> = {
   "agent.runTree.action.cancel": "取消此次執行",
   "agent.runTree.material.empty": "尚無敘事內容。",
 
-  // ── 工作區檢視：執行摘要 ──
   "runSummary.title": "執行摘要",
   "runSummary.noRuns": "尚無執行",
   "runSummary.empty.title": "尚無摘要內容",
@@ -522,7 +519,6 @@ export const zhTW: Record<string, string> = {
   "runSummary.approval.declined": "已拒絕",
   "runSummary.approval.pending": "待處理",
 
-  // ── 工作區檢視：時間軸 ──
   "timeline.title": "執行時間軸",
   "timeline.rootRun": "根執行",
   "timeline.delegatedRun": "委派執行",
@@ -543,7 +539,6 @@ export const zhTW: Record<string, string> = {
   "timeline.kind.approvalRequest": "核准請求",
   "timeline.kind.approvalResult": "審批已回覆",
 
-  // ── 工作區檢視：通知 ──
   "notifications.title": "通知",
   "notifications.clearAll": "全部清除",
   "notifications.dismiss": "忽略",
@@ -551,12 +546,10 @@ export const zhTW: Record<string, string> = {
   "notifications.empty.title": "尚無通知",
   "notifications.empty.sub": "外掛透過 host.notify() 報告的任何內容都會顯示在這裡。",
 
-  // ── 工作區檢視：檔案 ──
   "files.title": "工作樹",
   "files.empty.title": "工作樹乾淨",
   "files.empty.sub": "目前工作區中沒有未提交的變更。",
 
-  // ── 工作區檢視：搜尋 ──
   "search.title": "搜尋",
   "search.placeholder": "搜尋模式（正則）…",
   "search.aria": "搜尋模式",
@@ -566,19 +559,14 @@ export const zhTW: Record<string, string> = {
   "search.empty.title": "無符合",
   "search.empty.sub": "工作區中沒有內容符合此模式。",
 
-  // ── 工作區檢視：任務 ──
-
-  // ── 工作區檢視：終端機 ──
   "terminal.title": "終端機",
   "terminal.empty.title": "尚無命令",
   "terminal.empty.sub": "agent 執行的命令及其輸出會顯示在這裡。",
   "terminal.commands_other": "{{count}} 條指令",
-  // ── 工作區檢視：計畫 ──
   "plan.title": "計畫",
   "plan.empty.title": "尚無計畫",
   "plan.empty.sub": "agent 起草計畫後會顯示在這裡。",
 
-  // ── 工作區檢視：工具 ──
   "tools.title": "工具",
   "tools.diagnostics.sub": "可直接呼叫的執行環境診斷工具；它刻意不包含 Agent 的完整工具目錄。",
   "tools.diagnostics.arguments": "參數（JSON 物件）",
@@ -620,7 +608,6 @@ export const zhTW: Record<string, string> = {
   "toolAction.copyCommand": "複製命令",
   "approval.fallbackText": "核准此操作？",
 
-  // ── 工作區檢視：技能 ──
   "skills.title": "技能",
   "skills.available": "{{count}} 個可用",
   "skills.off": "關閉",
@@ -629,7 +616,6 @@ export const zhTW: Record<string, string> = {
   "skills.disabled.title": "技能已關閉",
   "skills.disabled.sub": "此執行時未宣告技能功能。",
 
-  // ── 工作區檢視：記憶 ──
   "knowledge.title": "知識",
   "knowledge.scopes_other": "{{count}} 個作用域",
   "knowledge.scope.cwd": "目前目錄",
@@ -647,20 +633,15 @@ export const zhTW: Record<string, string> = {
   "knowledge.updated": "已更新",
   "knowledge.aria": "{{path}} 的知識內容",
 
-  // ── 工作區檢視：Agent 文件 ──
   "agentDocs.title": "Agent 文件",
   "agentDocs.found": "找到 {{count}} 個",
   "agentDocs.empty.title": "無 Agent 文件",
   "agentDocs.empty.sub": "從工作目錄向上找到的 AGENTS.md 檔案會顯示在這裡。",
 
-  // ── 工作區檢視：檔案樹 ──
   "filetree.title": "檔案總管",
   "filetree.empty.title": "無可瀏覽內容",
   "filetree.empty.sub": "此工作區中沒有檔案。",
 
-  // ── 命令面板 ──
-
-  // ── 鍵盤快速鍵 ──
   "shortcuts.sub":
     "由內建和使用者外掛註冊的每一個按鍵繫結。在應用中任意位置按下組合鍵即可觸發；繫結衝突始終以最後一次註冊為準。",
   "shortcuts.filter": "按操作或組合鍵篩選…",
@@ -669,7 +650,6 @@ export const zhTW: Record<string, string> = {
   "shortcuts.shortcut": "快速鍵",
   "shortcuts.empty": "無符合的快速鍵。",
 
-  // ── 圖示庫 ──
   "iconGallery.clear": "清除",
   "workspace.view.title.iconGallery": "圖示庫",
   "settings.pane.brandIcons": "品牌圖示",
@@ -679,10 +659,8 @@ export const zhTW: Record<string, string> = {
   "role.assistant": "助手",
   "role.system": "系統",
 
-  // ── 輸入框 ──
   "composer.removeImage": "移除圖片",
 
-  // ── Diff 檢視 ──
   "diff.workingTree": "工作樹",
   "diff.branchCompare": "分支比對",
   "diff.files.aria": "變更檔案",
@@ -713,15 +691,12 @@ export const zhTW: Record<string, string> = {
   "diff.binary": "二進位檔案",
   "diff.truncated": "Diff 已達行數上限 —— 其餘檔案未顯示。",
 
-  // ── 命令記錄 ──
   "commandLog.running": "執行中…",
   "commandLog.failed": "失敗",
   "commandLog.exit": "退出碼 {{code}}",
 
-  // ── 計畫 / 任務清單標題 ──
   "plan.list.heading": "任務計畫",
 
-  // ── 檔案變更 ──
   "files.changed_other": "{{count}} 個檔案變更",
   "files.uncommitted_other": "{{count}} 個檔案 · 未提交",
   "files.binary": "bin",

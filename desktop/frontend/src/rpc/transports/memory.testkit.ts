@@ -7,8 +7,6 @@ import type { WireMethodName } from "@flame/runtime-contract/methods";
 import { RUN_EVENT_METHOD } from "../stream";
 import { JSONRPC_VERSION, type RpcId, type RpcMessage } from "../types";
 
-// Outbound (client → server) — synchronisation helpers
-
 /** Polls the outbox microtask-by-microtask for ~50 ticks. Use it to grab the id the client
  *  allocated, then answer with {@link respondSuccess} / {@link respondError}. */
 export async function waitForRequest<M extends WireMethodName>(
@@ -24,8 +22,6 @@ export async function waitForRequest<M extends WireMethodName>(
   }
   throw new Error(`timeout waiting for outbound Request "${method}"`);
 }
-
-// Inbound (server → client) — message synthesis
 
 export function respondSuccess(t: MemoryTransport, id: RpcId, result: unknown): void {
   t.inject({ jsonrpc: JSONRPC_VERSION, id, result } as RpcMessage);

@@ -24,11 +24,6 @@ afterEach(() => {
 });
 
 describe("runtimeMcpServerGateway", () => {
-  // The payload this builds is the one place the frontend decides which fields a transport
-  // may carry, and the wire's answer is CONDITIONAL — a stdio connection must not carry a
-  // url, an http one must not carry a command. The generated TS type cannot say that, so it
-  // marks both optional and agrees with either. Only the validator disagrees, which is how a
-  // request carrying a forbidden field reached a live Runtime once already.
   it.each([
     [
       "stdio",

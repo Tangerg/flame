@@ -17,8 +17,6 @@ afterEach(cleanup);
 const region = () => screen.getByRole("status") as HTMLElement;
 
 describe("run announcer", () => {
-  // The region has to be in the document BEFORE its text changes; a reader that first sees
-  // it already carrying a message announces nothing.
   it("is present and silent while nothing is running", () => {
     material.current = { status: "idle", outcome: null };
     render(<RunAnnouncer />);
@@ -27,8 +25,6 @@ describe("run announcer", () => {
     expect(region().getAttribute("aria-live")).toBe("polite");
   });
 
-  // Landing on a chat that finished yesterday is not an event: the region opens empty and
-  // speaks only about what changes while the reader is there.
   it("says nothing about the state it was mounted in", () => {
     material.current = { status: "finished", outcome: null };
     render(<RunAnnouncer />);

@@ -10,8 +10,7 @@ import { agentRuntime } from "../ports/runtimeGateway";
 import { reportSessionError } from "./reportSessionError";
 import { agentCommandOwner, type AgentCommandEffect } from "../agentCommandOwner";
 
-/** Rename a session (sessions.update title) and refresh session summaries.
- *  Empty titles are rejected server-side (invalid_params) — callers trim
+/** Empty titles are rejected server-side (invalid_params) — callers trim
  *  and skip no-op submissions before getting here. */
 export function useRenameSession(): (
   id: string,

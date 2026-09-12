@@ -18,17 +18,14 @@ const menuStyles = stylex.create({
     backgroundColor: surface.divider,
   },
   // Both of these are what a menu IS, not what a call site decides. The width had been spelled
-  // out at fourteen of them through a variable whose only job was to let them share a number —
-  // and a number a call site has to name can still be named differently by the fifteenth. The
-  // cap had never been offered at all, so four call sites each guessed one, and only one of the
-  // four respected the viewport: `--available-height` is measured by the positioner from the
-  // anchor to the screen edge, which is the thing `60vh` was estimating and `280px` ignored.
+  // out at every call site through a shared variable, and the cap had never been offered at
+  // all — `--available-height` is measured by the positioner from the anchor to the screen
+  // edge, which is the thing `60vh` was estimating and `280px` ignored.
   content: {
     minWidth: "12rem",
     maxHeight: "min(380px, var(--available-height))",
     overflowY: "auto",
     overscrollBehavior: "contain",
-    // So the keyboard's highlighted row does not arrive flush against the scroller's edge.
     scrollPaddingBlock: space.s1,
     padding: space.s1,
   },

@@ -43,7 +43,6 @@ const m = stylex.create({
     textAlign: "left",
     transitionProperty: "background-color",
   },
-  // The chosen mode keeps its wash whether or not the pointer is on it; the others borrow one.
   optionOn: { backgroundColor: surface.accentWash },
   optionOff: { backgroundColor: { default: null, ":hover": surface.hover } },
   nameOn: { color: color.accent, fontWeight: weight.medium },

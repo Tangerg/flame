@@ -25,7 +25,6 @@ const mb = stylex.create({
     borderColor: surface.fieldStrong,
     backgroundColor: surface.surface,
   },
-  /** The controls tuck into the frame's own corner, over the drawing. */
   tools: {
     position: "absolute",
     top: space.s1,

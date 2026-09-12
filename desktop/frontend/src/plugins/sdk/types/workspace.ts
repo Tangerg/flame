@@ -4,7 +4,6 @@ export interface SettingsPaneSpec {
   id: string;
   /** A catalog key resolved at RENDER time, not a literal. */
   label: string;
-  /** A catalog key, like `label`. */
   description?: string;
   icon?: string;
   /** Lower comes first. Built-ins use 0..99; plugins ≥ 100. */

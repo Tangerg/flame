@@ -610,9 +610,7 @@ async function waitUntilReady(baseUrl: string, processError: () => string): Prom
       const response = await fetch(`${baseUrl}/v2/health/ready`);
       await response.arrayBuffer();
       if (response.ok) return;
-    } catch {
-      // The process has not bound its socket yet.
-    }
+    } catch {}
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error(`runtime did not become ready: ${processError()}`);
@@ -674,11 +672,6 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   let root = "";
   let runtimeHome = "";
   let runtimeData = "";
-  // `FLAME_HOME` is not the data directory: the executable roots it at `$FLAME_HOME/runtime`
-  // (`runtime_bootstrap.go`), and every user-scoped store hangs off THAT — skills, global
-  // recipes, the user `FLAME.md`. Fixtures written a level up land where nothing reads them,
-  // which is what made this suite report an empty skill list, a missing global recipe and an
-  // `internal_error` moving a managed skill.
   let runtimeStore = "";
   let baseUrl = "";
   let mcpFixturePath = "";
@@ -1923,9 +1916,6 @@ for await (const line of lines) {
       model: "e2e-embedding",
     });
 
-    // A role is durable configuration intent. Removing a credential makes the
-    // role temporarily unavailable, but must not silently erase the user's
-    // model choice; product clients join this read with providers.list.
     await client.providers.update({
       provider: "openai",
       apiKey: { type: "clear" },
@@ -2889,8 +2879,6 @@ for await (const line of lines) {
       throw new Error("goal-owned run did not persist its question interrupt");
     }
 
-    // Resume the Goal drive while its owned Run still occupies the Session. The
-    // drive waits for that exact Run and must not admit a replacement.
     await expect(client.goals.resume(sessionId)).resolves.toMatchObject({
       sessionId: session.id,
       status: "active",
@@ -3628,7 +3616,6 @@ for await (const line of lines) {
     expect(changed.type === "resync" && changed.watchIds).toContain(watchId);
 
     const workspace = client.workspace({ path: workspaceRoot });
-    // `FileContent` no longer echoes the path the caller supplied.
     await expect(workspace.files.read({ path: "tracked.txt" })).resolves.toMatchObject({
       content: "after\n",
     });
@@ -3777,9 +3764,6 @@ for await (const line of lines) {
       ],
     });
 
-    // External editors and sync processes bypass knowledge.update. The same
-    // runtime stream must still invalidate every cascade scope, after which
-    // the SDK's cold read observes the exact new file content.
     for (const change of [
       {
         scope: "home" as const,
@@ -3890,10 +3874,6 @@ for await (const line of lines) {
     const duplicate = await workspace.agentMemory.add("project memory marker");
     expect(duplicate.id).toBe(project.id);
 
-    // The duplicate is a successful cold read of the existing item, not a
-    // mutation. A following Session mutation must therefore be the next queued
-    // event; this also proves the stream does not rely on a timing-based absence
-    // assertion.
     const orderingMarker = await client.sessions.create({
       workspace: { path: workspaceRoot },
       title: "Agent memory duplicate ordering marker",
@@ -4080,7 +4060,6 @@ for await (const line of lines) {
     if (!resolved.projectRoot) throw new Error("nested Git workspace omitted its project root");
 
     const workspace = client.workspace({ path: workspaceRoot });
-    // `FileHead` is the lines alone; the request already names the file.
     await expect(workspace.files.head({ path: "alpha.txt", lines: 2 })).resolves.toEqual({
       lines: [
         { lineNumber: 1, text: "first" },
@@ -4110,9 +4089,6 @@ for await (const line of lines) {
       expect.arrayContaining([expect.objectContaining({ path: "ignored.log", type: "file" })]),
     );
 
-    // A plain filesystem workspace must answer a lazy, one-level browser read
-    // without walking all descendants first. Empty directories are real first-
-    // level entries even though no flat candidate file can imply their presence.
     const plainRoot = join(root, "workspace-side-api-plain");
     await mkdir(join(plainRoot, "empty"), { recursive: true });
     await writeFile(join(plainRoot, ".git"), "gitdir: ../not-a-repository\n");
@@ -4214,8 +4190,6 @@ for await (const line of lines) {
     });
     await expect(workspace.hooks.list()).resolves.toMatchObject({ projectTrusted: false });
 
-    // hooks.json has no mutation API; direct global/project/cwd edits are its
-    // authoritative input and must converge through hooks.changed.
     const externalHookChanges = [
       {
         path: join(runtimeHome, ".flame", "hooks.json"),

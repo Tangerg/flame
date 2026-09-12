@@ -5,10 +5,6 @@ import {
   type RuntimeStream,
 } from "./services";
 
-// The comparison is the whole point: `subscribeConnection` fires on connection activity, not
-// only on replacement, so a follower acting on every notification retires in-flight mutations
-// against a generation that never moved — work the person just started, dropped for nothing.
-
 function fakePorts(): RuntimeStream & { emit(): void; set(next: string | null): void } {
   let generation: RuntimeConnectionGeneration | null = null;
   const listeners = new Set<() => void>();
@@ -67,8 +63,6 @@ describe("following the runtime connection generation", () => {
     expect(seen).toEqual([null]);
   });
 
-  // Identity is deliberately object identity, so a reconnection to the SAME process is still
-  // a successor: its in-flight work belongs to a stream that no longer exists.
   it("reports a successor built for the same process id", () => {
     const ports = fakePorts();
     ports.set("process-1");

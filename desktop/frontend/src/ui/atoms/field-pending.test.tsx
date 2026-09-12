@@ -3,13 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { ChoiceList, ChoiceOption } from "./choice-list";
 import { TextArea, TextField } from "./text-field";
 
-// The other half of the `disabled`-means-unfocusable defect. `Button`'s `pending` fixed the
-// controls that START async work; these are the controls the work happens FROM, and they lost
-// focus the same way — measured on the relocate banner: type a path, press Enter, and focus is
-// on `<body>` 120ms later.
-//
-// A field needs more than `aria-disabled`, because that alone leaves it typable. `readOnly` is
-// what actually stops the edit while keeping the element focusable and its caret in place.
 describe("field pending", () => {
   it("keeps a text field focusable and unwritable while its action is in flight", () => {
     render(<TextField aria-label="Path" defaultValue="/repo" pending />);
@@ -39,8 +32,6 @@ describe("field pending", () => {
     expect(field.getAttribute("aria-disabled")).toBeNull();
   });
 
-  // An answer is submitted BY choosing, so the list that submitted it is the list the keyboard
-  // was on. `disabled` would take the whole group out of the tab order mid-answer.
   it("keeps a choice list focusable and refuses a second answer while pending", () => {
     const onValueChange = vi.fn();
     render(

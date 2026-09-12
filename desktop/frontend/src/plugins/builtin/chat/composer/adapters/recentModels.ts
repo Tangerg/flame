@@ -4,8 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
 import type { Paired } from "@/lib/persistedStore";
 
-/** A model the reader has actually chosen, most recent first. Identity is the pair, because
- *  two providers may serve the same id. */
+/** Identity is the pair, because two providers may serve the same id. */
 export interface RecentModel {
   provider: string;
   id: string;

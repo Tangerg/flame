@@ -601,9 +601,6 @@ describe("methods factory", () => {
     vi.useRealTimers();
   });
 
-  // The wire FORBIDS a workspace on home knowledge and REQUIRES one on the other scopes.
-  // A workspace-bound client attaching it to everything made every home read and write
-  // `invalid_params`, which no unit test could see because the shape still type-checked.
   it("knowledge carries a workspace only for the scopes that live in one", async () => {
     async function paramsOf(
       send: (resources: WorkspaceMethods) => void,

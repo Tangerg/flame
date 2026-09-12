@@ -14,7 +14,6 @@ import { color, leading, motion, radius, space, surface, weight } from "@/styles
 export const settingStyles = stylex.create({
   stack: { display: "flex", flexDirection: "column", gap: space.s3 },
 
-  /** A label and whatever answers it, held apart. */
   split: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: space.s3 },
   lineWide: { display: "flex", alignItems: "center", gap: space.s3 },
   lineWrap: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: space.s1_5 },
@@ -27,7 +26,6 @@ export const settingStyles = stylex.create({
   hintSpaced: { marginTop: space.s1, color: color.fgMuted, lineHeight: leading.body },
   intro: { color: color.fgMuted, lineHeight: leading.body },
 
-  /** A row the pointer can act on inside a pane: the shape eight panes had each written out. */
   hoverRow: {
     borderRadius: radius.card,
     backgroundColor: { default: null, ":hover": surface.hover },
@@ -44,7 +42,6 @@ export const settingStyles = stylex.create({
     alignItems: "center",
     gap: space.s3,
   },
-  /** A machine name: a server, a tool, a model id. */
   monoName: {
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -62,7 +59,6 @@ export const settingStyles = stylex.create({
   spin: { animation: motion.spin },
   afterRow: { marginTop: space.s2_5 },
 
-  /** A row the pointer can act on, inside a group that is already a card. */
   sunkenRow: {
     display: "flex",
     alignItems: "center",

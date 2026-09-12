@@ -7,15 +7,6 @@ import { normalizeUiFontSize } from "@/lib/typography";
 import { uiTypeLadderCssVariables } from "./kit/typeLadder";
 import { declaredInBlock, declaredInCss } from "@/test/stylesheet";
 
-// `globals.css` declares every `--density-*`, `--icon-*`, `--fs-*` and accent shade as a
-// literal, and the appearance painter writes the same properties from TypeScript once a
-// preference resolves. Two sources for one number: the CSS is what a reader sees before
-// hydration, so a TS change alone leaves the first paint at the old measure with nothing to
-// say so.
-//
-// The palette and the visual style mirror the same way, but their specs are the theme
-// context's private business, so `theme/stylesheetMirror.test.ts` owns those.
-
 function expectDefaults(written: Readonly<Record<string, string>>) {
   const disagreed: string[] = [];
   for (const [property, value] of Object.entries(written)) {
@@ -44,10 +35,6 @@ describe("the stylesheet's defaults and the values TypeScript writes", () => {
     expect(expectDefaults(written)).toEqual([]);
   });
 
-  // These two are DERIVED, not declared: the painter darkens whatever accent is live, so
-  // the stylesheet's literals have to be that derivation applied to the accent each block
-  // declares. They were not — the hand-picked dark shade sat two thirds of the way across
-  // the blue it claimed to be a shade of, and nothing anywhere compared them.
   it.each([
     [":root", "the light default"],
     ["html.theme-dark", "the dark scheme"],
@@ -68,17 +55,11 @@ describe("the stylesheet's defaults and the values TypeScript writes", () => {
     ]);
   });
 
-  // An image edge exists to separate the picture from what it sits on, so it must be the
-  // one thing the surface is not. Deriving it from the theme's ink made it carry the
-  // accent's chroma — 21% saturation on Tokyo Night — which reads as grime on the border
-  // rather than as a boundary, and dissolves entirely on a surface of the same hue.
   it("draws image edges in pure ink, never the theme's tinted neutral", () => {
     expect(declaredInBlock(":root", "--color-media-edge")).toBe("rgb(0 0 0 / 0.1)");
     expect(declaredInBlock("html.theme-dark", "--color-media-edge")).toBe("rgb(255 255 255 / 0.1)");
   });
 
-  // The lightbox scrim is near-black in BOTH schemes, so the scheme's own edge would be
-  // black on black for every light-theme reader.
   it("keeps the scrim's own edge independent of the scheme", () => {
     expect(declaredInBlock(":root", "--color-media-preview")).toBe("rgb(0 0 0 / 0.9)");
     expect(declaredInBlock(":root", "--color-on-media")).toBe("#ffffff");

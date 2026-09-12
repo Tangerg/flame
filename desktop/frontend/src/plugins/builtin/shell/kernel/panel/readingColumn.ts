@@ -1,7 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 
 export const readingColumn = stylex.create({
-  /** The measure the transcript is read at, centred in whatever pane holds it. */
   box: { marginInline: "auto", width: "100%", maxWidth: "var(--reading-column-max)" },
   // GUTTER is applied by whatever draws INSIDE the box — a message, the composer, a banner —
   // never by the scroller's content wrapper. On the wrapper it is wrong twice: the composer

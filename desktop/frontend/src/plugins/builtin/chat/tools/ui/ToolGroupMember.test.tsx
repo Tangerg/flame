@@ -17,8 +17,6 @@ function member(tool: Partial<ToolCall>) {
 }
 
 describe("ToolGroupMember", () => {
-  // The row used to print the target ALONE, so a column of them read as a list of paths and
-  // the only thing saying what happened to each was a glyph.
   it("says the act and the thing acted on, not one or the other", () => {
     member({ name: "read", fn: "src/App.tsx", fnKind: "path" });
 
@@ -26,14 +24,9 @@ describe("ToolGroupMember", () => {
     expect(screen.getByTitle("src/App.tsx")).toBeTruthy();
   });
 
-  // The tone the presentation assigns has to survive to the row. It did not: the renderer
-  // handled a "success" nothing ever produced and swept "negative" into the muted default,
-  // so a non-zero exit read as an ordinary measurement.
   it("shows a non-zero exit as a failure rather than as one more grey figure", () => {
     const { container } = member({ name: "shell", fn: "go test ./...", exitCode: 1 });
 
-    // The tone, not the ink: `.text-negative` was the ink's old spelling, and what this test
-    // is named for is that the exit is not swept into the quiet default.
     const chip = container.querySelector('[data-tone="negative"]');
     expect(chip?.textContent).toContain("1");
   });

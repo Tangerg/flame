@@ -370,7 +370,6 @@ export interface Methods {
     // Rules visible from the session: its session rules + its project's rules
     // + all global rules (the runtime resolves the session cwd).
     listRules: (sessionId: SessionId) => Promise<ListApprovalRulesResult>;
-    // Remove one rule by id; clear-all = loop the visible ids.
     forgetRule: (id: string) => MutationPromise<void>;
   };
   // Scheduled runs (§7.9): cron-triggered headless runs of a saved prompt,

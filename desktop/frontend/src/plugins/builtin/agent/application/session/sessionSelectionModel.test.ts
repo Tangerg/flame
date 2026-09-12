@@ -9,7 +9,6 @@ import {
 describe("sessionSelectionModel", () => {
   it("holds a session open, and only once", () => {
     expect(openSession(["s1"], "s2")).toEqual(["s1", "s2"]);
-    // The same array back, so nothing downstream sees a change that isn't one.
     const open = ["s1"];
     expect(openSession(open, "s1")).toBe(open);
   });

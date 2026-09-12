@@ -51,8 +51,7 @@ function PopoverContent({
 }
 
 const styles = stylex.create({
-  // The panel is as wide as what it is anchored to, less the inset its own edges want. Two call
-  // sites had spelled this `left-2 right-2` against a hand-picked positioned ancestor.
+  // The panel is as wide as what it is anchored to, less the inset its own edges want.
   matchAnchor: {
     width: "calc(var(--anchor-width) - calc(var(--spacing) * 4))",
     maxHeight: "min(320px, var(--available-height))",

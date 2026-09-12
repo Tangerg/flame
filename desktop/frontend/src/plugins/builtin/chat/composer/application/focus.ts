@@ -11,9 +11,8 @@ export function setComposerFocusTarget(element: HTMLTextAreaElement | null): voi
 }
 
 /**
- * Focus the composer's input. `selectionEnd` collapses the caret there — used
- * when text is loaded back in for editing, so the user continues at the end of
- * what they wrote rather than the start.
+ * `selectionEnd` collapses the caret there — used when text is loaded back in for editing,
+ * so the user continues at the end of what they wrote rather than the start.
  */
 export function focusComposer(selectionEnd?: number): void {
   const element = target;

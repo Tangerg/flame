@@ -62,7 +62,6 @@ export const surface = stylex.defineVars({
   ctaFill: "var(--color-cta)",
   ctaHover: "var(--color-cta-hover)",
   mediaScrim: "var(--color-media-scrim)",
-  /** A row's wash: 10% of the hue, enough to tint without becoming a plate. */
   accentWash: "var(--color-accent-wash)",
   negativeWash: "var(--color-negative-wash)",
   infoWash: "var(--color-info-wash)",
@@ -77,8 +76,7 @@ export const surface = stylex.defineVars({
   card: "var(--app-card-surface)",
   field: "var(--color-border)",
   fieldStrong: "var(--color-border-soft)",
-  /** A badge's wash: 18% of the hue over whatever is behind it. Stronger than the row wash
-   *  above, because a badge has to hold its own shape rather than tint a row. */
+  /** A badge's wash: 18% of the hue over whatever is behind it. */
   accentBadge: "var(--color-accent-badge)",
   successBadge: "var(--color-success-badge)",
   warningBadge: "var(--color-warning-badge)",
@@ -92,9 +90,7 @@ export const radius = stylex.defineVars({
   xs: "var(--shape-xs)",
   /** Corners named for the plane they belong to: a card and a transcript bubble differ. */
   card: "var(--surface-card-radius)",
-  /** The transcript column's corner. Shared by everything that sits in it — the reader's own
-   *  message and the cards the agent puts beside it — because they are the same width apart
-   *  from the same edge. What is NOT shared is the shape: see `corner.bubble`. */
+  /** The transcript column's corner. What is NOT shared is the shape: see `corner.bubble`. */
   bubble: "var(--shape-bubble)",
   sm: "var(--shape-sm)",
   lg: "var(--shape-lg)",
@@ -110,16 +106,6 @@ export const radius = stylex.defineVars({
   xl: "var(--shape-xl)",
 });
 
-/**
- * The 4px step, mirrored rather than renamed.
- *
- * These are numbers and a number is not a decision — the whole argument for moving to StyleX
- * says so. They stay numbers HERE on purpose: a styling-engine migration and a token-vocabulary
- * redesign done in one pass make every golden diff ambiguous, because nothing says whether a
- * frame moved because StyleX renders differently or because a spacing step changed value.
- * Mechanical first, with rendering held still; the roles come in their own pass, where each
- * frame that moves has exactly one cause.
- */
 export const space = stylex.defineVars({
   s0_5: "calc(var(--spacing) * 0.5)",
   s1: "calc(var(--spacing) * 1)",
@@ -146,10 +132,10 @@ export const space = stylex.defineVars({
 /**
  * A type STEP, not a font size.
  *
- * `text-ui-xs` was never one decision: Tailwind's type utilities carry a size and the
- * tracking that was chosen with it, and reading only the size out of the ladder is how the
- * first migrated component came out 2.1px wider than the one it replaced — the tracking was
- * gone and nothing said so, because `fontSize` alone is a legal, complete-looking style.
+ * `text-ui-xs` was never one decision: a type utility carries a size and the tracking chosen
+ * with it, and reading only the size out of the ladder is how the first migrated component
+ * came out 2.1px wider than the one it replaced — the tracking was gone and nothing said so,
+ * because `fontSize` alone is a legal, complete-looking style.
  *
  * So a step is a bundle here too, and a call site names the step rather than assembling one.
  */
@@ -179,11 +165,8 @@ export const leading = stylex.defineVars({
  * Every corner in the product is a superellipse: `globals.css` sets `corner-shape:
  * superellipse(1.5)` on everything and compensates the radius by `--corner-scale`. The pill
  * step opts back out, because a superellipse at pill radius is a rounded square rather than a
- * circle — and that opt-out was keyed on Tailwind's own class names (`.rounded-full`,
- * `.rounded-pill`). A StyleX component never carries those, so setting the radius alone turned
- * every circle in the design system into a squircle: silently, because at a 6px dot or a 12px
- * ring the difference is sub-pixel, and only the 40px empty-state icon was large enough for a
- * golden to see it.
+ * circle. Setting the radius alone turns every circle in the design system into a squircle:
+ * silently, because at a 6px dot or a 12px ring the difference is sub-pixel.
  *
  * So the pill is a bundle and `radius` no longer exposes it: the two halves cannot be separated
  * because they were never two decisions.
@@ -191,14 +174,11 @@ export const leading = stylex.defineVars({
 export const corner = stylex.create({
   pill: { borderRadius: "var(--shape-pill)", "corner-shape": "round" },
   /**
-   * SPEECH, and a bundle for the same reason the pill is one: a squircle is the shape of
-   * chrome, so a block someone typed drawn with one reads as another panel.
+   * SPEECH, and a bundle for the same reason the pill is one.
    *
    * Only the reader's own message. An approval or a question card sits in the same column and
    * takes the same RADIUS (`radius.bubble`), but it carries controls and is answered rather
-   * than read — it is chrome that arrived in the transcript, and it keeps the squircle. The
-   * reference client splits it the same way: its two message-bubble components each override
-   * the squircle back to round, while the cards in its thread keep it.
+   * than read — it keeps the squircle.
    */
   bubble: { borderRadius: "var(--shape-bubble)", "corner-shape": "round" },
 });
@@ -234,9 +214,8 @@ export const type = stylex.create({
  *
  * A face is never only a family. The UI steps carry `--tracking-ui`, a negative tracking chosen
  * for a proportional face; mono glyphs are already spaced by the grid and take that tracking as
- * a crowding defect. Every call site that reached for `font-mono` got the family and kept the
- * tracking, because tracking is not in that utility — which is exactly why this is a token and
- * not two properties a component sets side by side.
+ * a crowding defect. That is why this is a token and not two properties a component sets side
+ * by side.
  */
 export const face = stylex.create({
   text: { fontFamily: "var(--font-sans)" },

@@ -13,9 +13,7 @@ export interface SessionRollbackLease {
 }
 
 export interface AgentCommandEffect {
-  /** The authoritative command settled; keep the local effect. */
   settle(): void;
-  /** The command failed or its generation retired; compensate the local effect. */
   rollback(): void;
 }
 

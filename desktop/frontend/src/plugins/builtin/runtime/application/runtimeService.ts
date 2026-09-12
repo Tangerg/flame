@@ -11,7 +11,6 @@ export interface RuntimeServiceObservation {
 type RuntimeProcessGeneration = string;
 
 export interface RuntimeConnectionInspection<Capabilities> {
-  /** The exact process generation observed by every member of this inspection. */
   processGeneration: RuntimeProcessGeneration;
   service: RuntimeServiceObservation;
   capabilities: Capabilities;

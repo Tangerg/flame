@@ -19,8 +19,6 @@ const gm = stylex.create({
   body: { paddingBlock: space.s1_5 },
   // The member takes the row's ink, which the row itself decides from its state.
   inherit: { color: "inherit" },
-  // Baseline and not centre: the glyph, the verb and the trailing meta are all text, and a
-  // row of text aligns on the line it is read along.
   row: {
     display: "flex",
     width: "100%",
@@ -29,8 +27,6 @@ const gm = stylex.create({
     gap: space.s1_5,
     paddingBlock: space.s0_5,
     textAlign: "left",
-    // The row's own ink, which everything in it inherits. Expanded holds what hover offers,
-    // because a row you have opened is the one you are reading.
     color: { default: color.fgMuted, ":hover": color.fg },
   },
   rowExpanded: { color: color.fg },

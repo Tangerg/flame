@@ -15,39 +15,21 @@ import {
 } from "./workspaceFixtureStates";
 import { en } from "@/lib/i18n/locales/en";
 
-// Named from the catalogue, not copied out of it. This string had seven literal copies
-// across three spec files, so changing one character of the copy broke five tests that
-// have nothing to do with the copy.
 const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
 
 const VISUAL_URL = "http://127.0.0.1:4174/visual/";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] as const;
 
-/**
- * One criterion, on one surface, that the design answers through an exception the criterion
- * itself grants. Written as a rule plus a container so it cannot silently cover anything else,
- * and each one carries the reason it is allowed.
- */
 interface WcagException {
   readonly rule: string;
   readonly within: string;
   readonly because: string;
 }
 
-/** Platform window controls are outside the document, and every application-owned target stays
- *  inside the audit. The only exceptions are named, scoped and reasoned above. */
 async function expectNoWcagViolations(
   page: Page,
   exceptions: readonly WcagException[] = [],
 ): Promise<void> {
-  // What an audit means depends on how much of the page it saw, and `data-visual-ready` is
-  // not that: a pane's Suspense chunk resolving is what clears `aria-busy`, and its own data
-  // arrives after. Measured pane by pane, this was auditing 14 of the plugins pane's 47
-  // controls, 17 of the usage pane's 50 and 48 of the appearance pane's 81, and reporting the
-  // same green as an audit over all of them. Twelve dock routes were short too, by less.
-  //
-  // It lives here rather than in `openFixture` because completeness is what an AUDIT's result
-  // rests on; a golden that raced its own content would be flaky, and they are not.
   await settleByCount(page, 'button, input, textarea, [role="tab"]');
   const raw = await new AxeBuilder({ page }).withTags([...WCAG_TAGS]).analyze();
   const excused = await Promise.all(
@@ -130,11 +112,6 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
     await expect(page.locator(".shiki-block .shiki")).toHaveCount(3);
     await expect(page.getByRole("img", { name: "Diagram" })).toBeVisible();
     const transcript = page.locator(".msg-scroll-viewport");
-    // Shiki grows after the initial instant scroll. Production's smooth resize
-    // reaches the tail, but Chromium may settle one physical pixel short after
-    // a warmed full-suite run. Prove it followed correctly, then canonicalize
-    // the screenshot boundary to the exact tail so a rounding residue cannot
-    // shift the entire transcript raster by one pixel.
     await expect
       .poll(() =>
         transcript.evaluate(
@@ -154,9 +131,6 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
       .toBe(0);
   }
   if (route.fixture === "shell" && route.state === "populated") {
-    // The project row's own count, which is a numeral in every language — the name that
-    // used to gate this is translated, so the settle check only worked in English and the
-    // locale sweep could not use the one surface most likely to overflow in German.
     await expect(
       page.getByRole("complementary").getByRole("button", { name: /\b6\b/ }).first(),
     ).toBeVisible();
@@ -166,24 +140,11 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
     await page.locator('[data-diff-file] span[style*="color"]').first().waitFor();
   }
   if (route.fixture === "workspace" && route.state === "settings") {
-    // The heading belongs to the host and precedes the lazy pane body, so it says nothing
-    // about whether the chunk resolved. The Suspense fallback is a skeleton that marks
-    // itself `aria-busy`, and its absence is the one readiness signal every pane shares —
-    // waiting for a control Appearance owns worked only for the pane that was hard-coded.
     await expect(page.getByRole("heading").first()).toBeVisible();
-    // Scoped to the pane's own section: the dock keeps its own skeletons, which never
-    // settle in a fixture that seeds no data for them and say nothing about this pane.
     await expect(page.locator('main section [aria-busy="true"]')).toHaveCount(0);
   }
 }
 
-/**
- * Unchanged for a RUN of readings, not for two.
- *
- * A pane arrives in bursts with gaps longer than one interval — the settings route was measured
- * going 13, 68, 68, 73 — so two equal readings land on a plateau and call it finished. Four in
- * a row spans the gap, and the cap is the way out rather than the target.
- */
 async function settleByCount(page: Page, selector: string): Promise<void> {
   const STABLE_READINGS = 4;
   let previous = -1;
@@ -201,19 +162,10 @@ function pageHorizontalOverflow(page: Page): Promise<number> {
   return page.locator("html").evaluate((element) => element.scrollWidth - element.clientWidth);
 }
 
-// Every declared state, in both schemes, derived from the lists the fixtures
-// themselves export — not a hand-picked sample. The sample this replaced named nine
-// routes and left eighteen states unvisited, and the states it skipped were the ones
-// holding the newest surfaces: every progress bar in the app was an unnamed
-// `progressbar` (a serious WCAG failure) and the only state that renders one was not
-// on the list. A sample cannot be kept honest by hand, because the thing it has to
-// track is which component appears where, and nothing tells you when that changes.
 const ACCESSIBILITY_ROUTES: readonly FixtureRoute[] = [
   ...VISUAL_AGENT_STATES.map((state) => ({ fixture: "agent" as const, state })),
   ...VISUAL_WORK_INDEX_STATES.map((state) => ({ fixture: "shell" as const, state })),
   ...VISUAL_WORKSPACE_STATES.map((state) => ({ fixture: "workspace" as const, state })),
-  // The two search overlays: a modal dialog is where a name, a role or a reachable control
-  // goes missing, and neither was in this audit until they had a fixture to open them from.
   ...VISUAL_SHELL_OVERLAYS.map((overlay) => ({
     fixture: "shell" as const,
     state: "populated",
@@ -234,10 +186,6 @@ for (const route of ACCESSIBILITY_ROUTES) {
   });
 }
 
-// Every settings pane, which only this family runs over: the settings state hard-coded
-// `appearance`, so eleven panes had never been audited at all. A separate list rather than
-// more ACCESSIBILITY_ROUTES because the clipping families multiply by theme and font size,
-// and a pane's chrome is the same chrome the settings route already covers there.
 for (const pane of VISUAL_SETTINGS_PANES) {
   for (const theme of ["light", "dark"] as const) {
     test(`WCAG audit settings pane ${pane} ${theme}`, async ({ page }) => {
@@ -248,16 +196,6 @@ for (const pane of VISUAL_SETTINGS_PANES) {
   }
 }
 
-// A custom palette is the freest preference of all — two colours, given directly — and its whole
-// ink ladder is DERIVED from them. It was derived as fixed percentages of the way from the
-// background to the ink, and a percentage buys a look rather than a ratio: handed this product's
-// own dark colours, its muted rung measured 4.19:1 and its faint rung 2.43:1, where the
-// hand-written themes clear 5.75 on the same rung. The derivation, not the colours.
-//
-// Read through elements rather than off the custom properties, because these resolve to
-// `color-mix(...)` expressions — asking for the property gives the text, and a first attempt at
-// this measured the authored string, got black for every rung, and reported three identical
-// ratios that happened to look plausible.
 const CUSTOM_PALETTES = [
   { bg: "#ffffff", fg: "#000000" },
   { bg: "#1d1f23", fg: "#e3e5e9" },
@@ -274,8 +212,6 @@ for (const custom of CUSTOM_PALETTES) {
         const canvas = document.createElement("canvas");
         canvas.width = canvas.height = 1;
         const context = canvas.getContext("2d")!;
-        // The canvas resolves `color-mix(in oklab, ...)` and hands back sRGB pixels, which is
-        // the only place in the page that will.
         context.fillStyle = css;
         context.fillRect(0, 0, 1, 1);
         const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
@@ -306,15 +242,6 @@ for (const custom of CUSTOM_PALETTES) {
   });
 }
 
-// The accent is a colour the user picks with no constraint on it, and the ink that sits on the
-// accent is one the THEME declares — so the two can come apart, and did: white on a soft yellow
-// measured 1.39:1. Asserted on the tokens rather than through axe, because the ink only reaches
-// the screen where a primary button happens to be enabled, and its absence from a fixture is
-// not evidence.
-//
-// Two pairs, not one: a mark sits on `--color-accent` and a label on `--color-cta`, which this
-// theme defines as a different shade, and the criterion asks 3 of the first and 4.5 of the
-// second. One token used to serve both.
 const ACCENTS = ["#ffe066", "#a8e6a3", "#00b3ff", "#111111", "#f5c2e7"] as const;
 
 for (const accent of ACCENTS) {
@@ -357,14 +284,6 @@ for (const accent of ACCENTS) {
   }
 }
 
-// The contrast preference is the third thing that hides a surface's real colours, and the one
-// that hides them from the criterion that cares. It walks every step of the region ladder
-// TOWARD the ink — `--color-surface-2` IS the text colour at `--depth-step` over the surface —
-// so at the top of the range a control named Contrast was lowering text contrast: the status
-// pill measured 3.75:1 in dark, and it had been failing from about three-quarters up.
-//
-// Audited at both ends rather than at samples in between, because the ends are where the ladder
-// and the ink are furthest apart, and the ink is anchored so the middle cannot fail first.
 for (const contrast of [0, 100]) {
   for (const theme of ["light", "dark"] as const) {
     test(`WCAG audit the workspace at contrast ${contrast} ${theme}`, async ({ page }) => {
@@ -381,13 +300,6 @@ for (const contrast of [0, 100]) {
   }
 }
 
-// A surface a WIDTH hides is the same blind spot as one an interaction hides. The audit runs at
-// the default viewport, and the narrative's turn rail only mounts at 1440px — so a whole
-// navigation region had never been audited. It is a minimap: one 9px row per turn, deliberately
-// ("the height is the rail's rhythm, not the mark's"), and at that pitch no arrangement can
-// satisfy WCAG 2.5.8 by size or by spacing. The criterion grants an exception for a function
-// reachable another way, and the test below this one proves that is true here rather than
-// asserting it — every turn the rail points at carries its own focusable content.
 const RAIL_TARGET_SIZE: WcagException = {
   rule: "target-size",
   within: "nav[aria-label]",
@@ -406,9 +318,6 @@ for (const state of VISUAL_AGENT_STATES) {
   });
 }
 
-// What the exception above rests on. If a turn ever stopped carrying content of its own, the
-// rail would become the only way to reach it and the exception would no longer hold — so this
-// is the assertion, not the sentence.
 test("every turn the rail points at is reachable without the rail", async ({ page }) => {
   await page.setViewportSize({ ...WIDE_VIEWPORT });
   await openFixture(page, { fixture: "agent", state: "narrative" });
@@ -416,7 +325,6 @@ test("every turn the rail points at is reachable without the rail", async ({ pag
   const counted = await page.evaluate(() => {
     const rail = document.querySelector("nav[aria-label]");
     const ticks = rail?.querySelectorAll("button").length ?? 0;
-    // `data-turn-id` is the product's own marker for a turn, which is what the rail indexes.
     const turnsWithOwnControls = [...document.querySelectorAll("[data-turn-id]")].filter((turn) =>
       turn.querySelector('button, [tabindex]:not([tabindex="-1"])'),
     ).length;
@@ -438,13 +346,6 @@ test("every turn the rail points at is reachable without the rail", async ({ pag
   ).toBeGreaterThanOrEqual(counted.ticks);
 });
 
-// Everything else a person can OPEN from the workspace. A surface that exists only after an
-// interaction is audited only if someone writes the interaction down, and this file has learned
-// that twice already — the two search overlays, then the schedules form — each time with a real
-// violation waiting inside. The third time found one too: the goal bar's three actions are the
-// 22px control step at 8px spacing beside a full-width summary target, and WCAG 2.5.8 lets a
-// small target pass on SPACING, which those two did not have. Nothing here opens a NEW
-// component so much as it opens the ones the route audits can never reach.
 const INTERACTION_SURFACES: readonly {
   readonly name: string;
   readonly route: FixtureRoute;
@@ -463,8 +364,6 @@ const INTERACTION_SURFACES: readonly {
     route: { fixture: "workspace" as const, state: "dock-light" },
     open: async (page: Page) => {
       await page.getByRole("button", { name: control }).first().click();
-      // `.first()` because a popup is a dialog CONTAINING a listbox, so the union matches both
-      // and a strict locator refuses two.
       await expect(
         page.locator('[role="menu"], [role="listbox"], [role="dialog"]').first(),
       ).toBeVisible();
@@ -478,8 +377,6 @@ const INTERACTION_SURFACES: readonly {
         .getByRole("button", { name: /Browse panels/ })
         .first()
         .click();
-      // `.first()` because a popup is a dialog CONTAINING a listbox, so the union matches both
-      // and a strict locator refuses two.
       await expect(
         page.locator('[role="menu"], [role="listbox"], [role="dialog"]').first(),
       ).toBeVisible();
@@ -507,9 +404,6 @@ for (const surface of INTERACTION_SURFACES) {
   });
 }
 
-// A pane audits the shape it OPENS in, and this one opens showing a list. Its form is a
-// second surface — five fields, a preset group and two actions — that no audit had ever
-// seen, because reaching it takes a click.
 test("WCAG audit the schedules form, which a pane audit never opens", async ({ page }) => {
   for (const theme of ["light", "dark"] as const) {
     await openFixture(page, { fixture: "workspace", state: "settings", theme, pane: "schedules" });
@@ -520,22 +414,12 @@ test("WCAG audit the schedules form, which a pane audit never opens", async ({ p
   }
 });
 
-// Eight languages ship and one had ever been rendered. The chrome is full of fixed columns,
-// pills and `truncate`, and German and French labels run about a third longer than the
-// English the goldens were measured against — so every one of those widths was chosen, and
-// checked, against the shortest language the product has.
-//
-// Not goldens: eight times the frames to review, and a translation edit would move them all.
-// The two clipping detectors already say the thing that matters — whether a reader can see
-// the whole word — and they say it in any language.
 const SHIPPED_LOCALES = ["zh", "zh-TW", "ja", "ko", "es", "fr", "de"] as const;
 
 const LOCALE_ROUTES: FixtureRoute[] = [
   { fixture: "agent", state: "waiting" },
   { fixture: "agent", state: "tool-shells" },
   { fixture: "agent", state: "question" },
-  // The preview-heavy states, because that is where the literal widths are: the recall grid
-  // reserves 9.5rem for a speaker and a date, and 9.5 was measured against "assistant".
   { fixture: "agent", state: "tool-search" },
   { fixture: "agent", state: "tool-remote" },
   { fixture: "agent", state: "tool-tail" },
@@ -549,9 +433,6 @@ for (const locale of SHIPPED_LOCALES) {
   test(`text survives its own language — ${locale}`, async ({ page }) => {
     const clipped: string[] = [];
     for (const route of LOCALE_ROUTES) {
-      // The worst case the product actually ships, not a comfortable one: the smallest
-      // window at the largest type, in the language whose labels run longest. Each of those
-      // three was already checked alone, and a column only fails when they arrive together.
       for (const fontSize of [undefined, 18]) {
         await page.setViewportSize({ width: 1120, height: 720 });
         await openFixture(page, { ...route, locale, ...(fontSize ? { fontSize } : {}) });
@@ -567,25 +448,10 @@ for (const locale of SHIPPED_LOCALES) {
   });
 }
 
-/**
- * Two atoms for the same property on one element, and only sheet order decides.
- *
- * `stylex.props(...)` resolves precedence WITHIN one call: the last style wins and the losers
- * are not emitted. Across two calls it cannot — a component joins its own class list to the
- * one its caller generated, and if both name a property the winner is whichever rule the
- * bundler happened to write second. There is no right answer to that race, only a stable one.
- *
- * The escape hatch that allows it is on 33 components and used by 206 call sites, and the
- * measured collision count was ONE: a floating button restating `transition-property` as a
- * SUBSET of the button's own list, which silently dropped the press scale and every colour.
- * That number is the reason the hatch was not ripped out — and the reason this exists, so the
- * number stays where it was measured.
- */
 for (const fixture of ["agent", "workspace"] as const) {
   const states: readonly string[] =
     fixture === "agent" ? VISUAL_AGENT_STATES : VISUAL_WORKSPACE_STATES;
   test(`no ${fixture} element carries two StyleX rules for one property`, async ({ page }) => {
-    // One page load per state, and the budget is per TEST rather than per load.
     test.setTimeout(states.length * 4_000 + 20_000);
     const collisions = new Map<string, string>();
     for (const state of states) {
@@ -599,15 +465,6 @@ for (const fixture of ["agent", "workspace"] as const) {
   });
 }
 
-/**
- * Every StyleX rule is one class at one specificity, so the sheet is a class -> declaration
- * table and a duplicated property on an element is readable from it.
- *
- * Read as LONGHANDS. This asked for rules declaring exactly one property, which silently
- * excused every shorthand: Chromium expands `border-radius` into four, so a rule declaring it
- * has `style.length === 4` and was skipped — and a button carrying both its own corner and a
- * caller's was invisible to the very check written to find that.
- */
 async function stylexCollisions(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const decls = new Map<string, { prop: string; value: string }[]>();
@@ -617,12 +474,6 @@ async function stylexCollisions(page: Page): Promise<string[]> {
         if (!(rule instanceof CSSStyleRule)) continue;
         const named = /^\.([A-Za-z0-9_-]+)(?::not\(#\\#\))+$/.exec(rule.selectorText);
         if (!named) continue;
-        // Two readings, because neither alone sees every clash. The EXPANDED longhands catch
-        // a shorthand against one of its own parts (`padding` against `padding-top`). They go
-        // empty for a shorthand whose value is a `var()`, which the engine cannot expand — and
-        // that is the common case here, since every value in this design is a token. So the
-        // AUTHORED declaration is read from `cssText` too, which catches two rules writing the
-        // same property with different tokens.
         const authored = [
           ...(/\{([^}]*)\}/.exec(rule.cssText)?.[1] ?? "").matchAll(/([-a-z]+)\s*:\s*([^;]+)/g),
         ].map((decl) => ({ prop: decl[1]!, value: decl[2]!.trim() }));
@@ -636,9 +487,7 @@ async function stylexCollisions(page: Page): Promise<string[]> {
     for (const sheet of document.styleSheets) {
       try {
         visit(sheet.cssRules);
-      } catch {
-        // A cross-origin sheet cannot be read and holds none of our atoms.
-      }
+      } catch {}
     }
     const out: string[] = [];
     for (const node of document.querySelectorAll<HTMLElement>("*")) {
@@ -659,15 +508,6 @@ async function stylexCollisions(page: Page): Promise<string[]> {
   });
 }
 
-/**
- * The density setting reaches every navigation rail, or it reaches none of them honestly.
- *
- * Its own copy promises "row heights, gutters", and twelve surfaces read the tokens that
- * deliver them. The Settings rail did not: it was measured in `--control-height-md` with its
- * own gap and inset, so the one pane where the setting LIVES was the one pane it could not
- * move. Nothing failed, because nothing asked — the whole setting had no coverage at all, in
- * a suite of six hundred goldens.
- */
 test("every navigation rail answers the density setting", async ({ page }) => {
   const measure = async (density: "compact" | "spacious") => {
     await openFixture(page, { fixture: "workspace", state: "settings", density });
@@ -675,8 +515,6 @@ test("every navigation rail answers the density setting", async ({ page }) => {
       const token = getComputedStyle(document.documentElement).getPropertyValue(
         "--density-row-height",
       );
-      // A vertical tablist is a navigation RAIL. A horizontal one is a chrome bar, whose
-      // heights `density.ts` says on its first line do not scale — one number across the seam.
       const rows = [
         ...document.querySelectorAll<HTMLElement>(
           '[role="tablist"][aria-orientation="vertical"] [role="tab"], [data-slot="button"].agent-row',
@@ -695,8 +533,6 @@ test("every navigation rail answers the density setting", async ({ page }) => {
 
   expect(compact.rows).toBeGreaterThan(0);
   expect(compact.token).not.toBe(spacious.token);
-  // One height, and it is the token's — not "close to it", which is how a rail on its own
-  // measure passes for as long as the two numbers happen to be near each other.
   expect(compact.heights).toEqual([compact.token]);
   expect(spacious.heights).toEqual([spacious.token]);
 });
@@ -712,13 +548,7 @@ test("structural panels share one spring, containment, and reduced-motion author
     motion: "full",
   });
 
-  // The drawer PANEL — `left` and `width` travel together, `visibility` is the
-  // discrete third entry that waits for them.
   const drawer = page.locator(".agent-drawer");
-  // Read from the style rather than copied out of it: what this asserts is that the
-  // shipped duration is the one that reaches CSS, and a literal here would only assert
-  // that someone updated two places at once. It did not survive the first time the
-  // design value moved.
   const declared = `${DEFAULT_MOTION.drawerMs / 1000}s`;
   await expect(drawer).toHaveCSS("transition-duration", `${declared}, ${declared}, 0s`);
   await expect(drawer.locator(".agent-drawer-surface")).toHaveCSS("contain", "layout paint");
@@ -734,9 +564,6 @@ test("structural panels share one spring, containment, and reduced-motion author
   await expect(page.locator("html")).toHaveAttribute("data-motion", "off");
   await expect(page.locator(".agent-drawer")).toHaveCSS("transition-duration", "0.001s");
 
-  // The trailing flank consumes the same token and isolates the same fixed-width
-  // descendant tree. A different curve here would put the two sides of one workspace
-  // back on visibly different clocks.
   await openFixture(page, {
     fixture: "workspace",
     state: "dock-light",
@@ -784,11 +611,6 @@ test("coarse pointers receive real 44px controls without overlapping hit targets
   }
 });
 
-// A control that only appears when the pointer arrives has no way to appear where there is
-// no pointer. Every one of these was hidden at rest and revealed on `:hover` alone, so on a
-// touch screen the dock tab's close, a code block's copy and a message's actions were
-// reachable by nothing at all — the markdown table had been given the exception on its own,
-// which is how the rule was known and applied once.
 test("a pointer-only affordance is permanently shown where there is no pointer", async ({
   browser,
 }) => {
@@ -838,9 +660,6 @@ test("keyboard-only traversal reaches recovery, HITL, and settings actions", asy
   await expect(page.getByRole("heading", { name: "Providers" })).toBeVisible();
 });
 
-// Codex keeps an activity summary inline and returns its disclosed material to the
-// reading edge. A body may declare its own margin — reasoning uses one for its aside
-// rule — but it must not inherit an invisible legacy gutter from the summary mark.
 for (const state of ["waves", "tool-shells", "delegated", "narrative"] as const) {
   test(`a disclosed body honors its own reading-edge inset — ${state}`, async ({ page }) => {
     await openFixture(page, { fixture: "agent", state });
@@ -860,7 +679,6 @@ for (const state of ["waves", "tool-shells", "delegated", "narrative"] as const)
       for (const d of document.querySelectorAll<HTMLElement>(
         "[data-slot='agent-activity-disclosure']",
       )) {
-        // A card groups with its fill, so its body answers to the card's padding.
         if (d.dataset.shell !== "line") continue;
         const trigger = d.querySelector("button[aria-expanded]");
         if (trigger?.getAttribute("aria-expanded") !== "true") continue;
@@ -879,9 +697,6 @@ for (const state of ["waves", "tool-shells", "delegated", "narrative"] as const)
     expect(drift).toEqual([]);
   });
 
-  // …and nothing in the gutter reaches into it. The slot is one width for every row,
-  // so a mark too wide for it no longer moves the label — it runs underneath it, which
-  // is what a four-glyph strip did to the word beside it.
   test(`a mark stays inside its gutter — ${state}`, async ({ page }) => {
     await openFixture(page, { fixture: "agent", state });
 
@@ -899,9 +714,6 @@ for (const state of ["waves", "tool-shells", "delegated", "narrative"] as const)
           (c) => c.getAttribute("aria-hidden") === null && c.tagName === "SPAN",
         );
         if (!mark || !label) continue;
-        // The slot's own box does not grow, so an oversized mark spills out of it
-        // rather than pushing anything: measure the CONTENT against the slot, and the
-        // furthest thing it draws against the label.
         const spill = mark.scrollWidth - mark.clientWidth;
         const reach = Math.max(
           ...[...mark.querySelectorAll("*"), mark].map((n) => n.getBoundingClientRect().right),
@@ -918,10 +730,6 @@ for (const state of ["waves", "tool-shells", "delegated", "narrative"] as const)
   });
 }
 
-// The vertical half of the same question. `truncate` clips both axes, so text set at a
-// line box the height of its own font size has the glyph box's descender outside it —
-// the sidebar's section labels were shaving the tail off the "j" in "Projects". A
-// `line-clamp` is exempt: it cuts on purpose and says so with an ellipsis.
 for (const route of ACCESSIBILITY_ROUTES.filter((r) => r.theme === "light")) {
   test(`no text is cut off vertically — ${route.fixture} ${route.overlay ?? route.state}`, async ({
     page,
@@ -955,23 +763,8 @@ async function verticallyClippedText(page: Page): Promise<string[]> {
 async function horizontallyClippedText(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const out: string[] = [];
-    // Something the user can SEE reaches past the edge that clips it. `scrollWidth`
-    // alone cannot say that: it counts every box beyond the edge, including ones
-    // deliberately parked there. The context dock rests one full measure past the
-    // reading plane while hidden, so that returning is a slide rather than an
-    // appearance — and that made the plane report 336px of overflow that cuts no text.
-    //
-    // Asking whether a visible CHILD BOX sticks out is not enough, and getting that
-    // wrong would have quietly retired this whole check: the defect it was written for
-    // is a `pre` whose box fits its column exactly while its text runs past the end of
-    // it, so the boxes all agree and only the glyphs are gone. Measure the text.
     const visibleContentPast = (el: HTMLElement, edge: number) => {
       const boundary = el.getBoundingClientRect();
-      // A nested surface can make its own long line readable, but only when it
-      // owns a real horizontal scroll range and its viewport itself fits inside
-      // this clipping edge. Merely spelling `overflow-x:auto` is not enough —
-      // the historical review-diff bug had that declaration on a box whose
-      // scrollWidth never grew, so there was still nowhere to scroll.
       const readableByNestedScroller = (subject: Element) => {
         for (
           let owner: Element | null = subject;
@@ -990,11 +783,6 @@ async function horizontallyClippedText(page: Page): Promise<string[]> {
         return false;
       };
       const crossesEdge = (box: DOMRect) => box.left < edge - 1 && box.right > edge + 1;
-      // The same admission the outer loop accepts, applied where the text actually lives. A
-      // range measures the LAID-OUT text, which runs past a `truncate` box the reader never
-      // sees past — the box sat wholly inside this edge and the glyphs beyond it were already
-      // replaced by an ellipsis. Without this, any long-enough string in a truncating cell
-      // reports the whole card as cutting text, which is the opposite of what it is doing.
       const saysItStopped = (subject: Element) => {
         for (
           let owner: Element | null = subject;
@@ -1018,12 +806,6 @@ async function horizontallyClippedText(page: Page): Promise<string[]> {
           return true;
         }
       }
-      // The outer loop's own rule for "this box holds no readable text by construction",
-      // applied to the OWNER chain. A screen-reader-only label is a 1px clipped box whose
-      // text still lays out at full width, so a range over it reports wherever those glyphs
-      // would have fallen. Three narrow Latin characters landed inside the edge and the same
-      // word in Japanese did not, which is a fact about font metrics and not about anything
-      // a reader can see.
       const screenReaderOnly = (subject: Element) => {
         for (
           let owner: Element | null = subject;
@@ -1053,29 +835,17 @@ async function horizontallyClippedText(page: Page): Promise<string[]> {
       return false;
     };
     for (const el of document.querySelectorAll<HTMLElement>("*")) {
-      // A 1-2px box holds no readable text by construction — that is how a
-      // screen-reader-only node is built, not a layout that ran out of room.
       if (el.clientWidth <= 2 || el.clientHeight <= 2) continue;
       if (el.scrollWidth <= el.clientWidth + 1) continue;
       const style = getComputedStyle(el);
       if (!(style.overflowX === "hidden" || style.overflowX === "clip")) continue;
       if (style.textOverflow === "ellipsis") continue;
-      // The other way an edge admits it is an edge. An ellipsis does not let
-      // anyone READ the missing characters either — what it does is say the
-      // string did not end there — and a gradient that dissolves the text into
-      // the clip says the same thing without spending three of the characters
-      // it had left to say it. Matched on direction, not merely on "has a
-      // mask": a mask fading some other edge, or shaping the box, is not a
-      // statement about THIS overflow and must not buy an exemption from it.
       const fade = style.maskImage === "none" ? style.webkitMaskImage : style.maskImage;
       if (fade?.startsWith("linear-gradient(to right")) continue;
       if (!el.textContent?.trim()) continue;
       const box = el.getBoundingClientRect();
       const clipEdge = box.left + Number.parseFloat(style.borderLeftWidth) + el.clientWidth;
       if (!visibleContentPast(el, clipEdge)) continue;
-      // No ancestor can rescue this: an ancestor scroller only ever sees this
-      // element's box, and the box is where the content was cut. A descendant
-      // scroller was handled above only when its own range genuinely grew.
       out.push(
         `${el.tagName}.${String(el.className).slice(0, 40)} ${el.clientWidth}<${el.scrollWidth}`,
       );
@@ -1084,16 +854,6 @@ async function horizontallyClippedText(page: Page): Promise<string[]> {
   });
 }
 
-// Text that is simply gone: clipped by its own box, with no ellipsis to say so and
-// nothing in the ancestry that scrolls. Every code surface but one was like this —
-// the review diff, the file view and the transcript's inline diff all set `pre`
-// inside a clipped box, so any line longer than the column lost its tail silently.
-// The goldens could not see it: a cut line and a short line look identical.
-//
-// Run at the smallest window the shell allows and the largest UI type a user can
-// pick. Dock routes move to the canonical two-column viewport in `openFixture`:
-// below that width the product intentionally folds the material, and the narrow
-// presentation boundary has its own workspace test.
 for (const route of ACCESSIBILITY_ROUTES.filter((r) => r.theme === "light")) {
   test(`no text is cut off with no way to read it — ${route.fixture} ${route.overlay ?? route.state}`, async ({
     page,
@@ -1101,9 +861,6 @@ for (const route of ACCESSIBILITY_ROUTES.filter((r) => r.theme === "light")) {
     await page.setViewportSize({ width: 1120, height: 720 });
     await openFixture(page, { ...route, fontSize: 18 });
 
-    // Unfold what the page hides. Collapsed content is where the cutting was: the
-    // transcript's inline diff only exists inside an expanded tool row, so a check
-    // that measures the resting page measures none of it.
     for (let i = 0; i < 6; i++) {
       const shut = page.locator(
         "[data-slot='agent-activity-disclosure'] button[aria-expanded='false']",
@@ -1141,18 +898,10 @@ test("maximum UI text keeps long code readable through its own horizontal scroll
   expect(await horizontallyClippedText(page)).toEqual([]);
 });
 
-// The mirror of the test above, and the half that was missing: every assertion here
-// had been "the keyboard can reach X", never "the keyboard cannot reach what is not on
-// screen". Two ways of hiding a control stop the pointer and neither stops Tab —
-// transparency, and a box clipped to nothing — so a folded tool card kept its buttons
-// in the tab order and a streaming run put two per message there. Nothing painted
-// differently in either case, so no golden could see it.
 for (const state of ["tool-shells", "running"] as const) {
   test(`keyboard traversal skips what is hidden (${state})`, async ({ page }) => {
     await openFixture(page, { fixture: "agent", state, theme: "light" });
 
-    // Fold a disclosure that has been open, which is the only way its body mounts and
-    // then goes away: content that was never revealed was never in the tab order.
     const trigger = page
       .locator("[data-slot='agent-activity-disclosure'] button[aria-expanded]")
       .first();
@@ -1165,8 +914,6 @@ for (const state of ["tool-shells", "running"] as const) {
     }
 
     const dead = await page.evaluate(() => {
-      // Settled styles, not in-flight ones: a reveal is a transition, and computed
-      // opacity one tick after focus is still the value it is animating away from.
       const freeze = document.createElement("style");
       freeze.textContent = "* { transition: none !important; }";
       document.head.append(freeze);
@@ -1182,30 +929,20 @@ for (const state of ["tool-shells", "running"] as const) {
         return false;
       };
 
-      // Clipped away rather than transparent: a collapsed disclosure keeps its body at
-      // full opacity in a box with no height, so nothing about the element's own style
-      // says it cannot be seen. What says so is that the pixel at its centre belongs to
-      // something else.
       const clippedAway = (element: Element) => {
         const box = element.getBoundingClientRect();
         const x = box.left + box.width / 2;
         const y = box.top + box.height / 2;
-        if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return false; // scrolled off
+        if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return false;
         const hit = document.elementFromPoint(x, y);
         return hit === null || !(element.contains(hit) || hit.contains(element));
       };
 
       const out: string[] = [];
       for (const element of document.querySelectorAll<HTMLElement>(focusable)) {
-        // A negative tabIndex is programmatically focusable but not a tab stop, which
-        // is how a control that hides itself is supposed to withdraw.
         if (element.tabIndex < 0) continue;
         const box = element.getBoundingClientRect();
         if (box.width === 0 && box.height === 0) continue;
-        // Ask the browser about the rest: focus is refused inside `inert`,
-        // `visibility: hidden` and `display: none`, which is exactly the difference
-        // between withdrawing a control and merely making it invisible. A
-        // hover-revealed control passes, because tabbing to it is what reveals it.
         element.focus();
         if (document.activeElement === element && (transparent(element) || clippedAway(element))) {
           out.push(element.getAttribute("aria-label") ?? element.textContent?.trim() ?? "?");
@@ -1220,10 +957,6 @@ for (const state of ["tool-shells", "running"] as const) {
   });
 }
 
-// A sticky header positions against the nearest ancestor that is a scroll container,
-// and `overflow: hidden` makes a box one even when it can never scroll. A tool group
-// folded inside a wave had landed in exactly that box, so its header stuck to a port
-// with nowhere to travel — visible, correct, and doing nothing.
 test("a sticky header has a scrollport that can scroll", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "waves", theme: "light" });
 
@@ -1251,10 +984,6 @@ test("a sticky header has a scrollport that can scroll", async ({ page }) => {
   expect(stranded).toEqual([]);
 });
 
-// A hidden-until-hover affordance revealed by `:focus-within` never goes away again:
-// clicking a row focuses it, and DOM focus outlives the pointer. One row in a column of
-// identical rows then stays lit with nothing on screen saying why. Codex reveals these on
-// `:focus-visible`, so a mouse click leaves no residue while Tab still reaches them.
 test("a hover affordance does not stay lit after the pointer leaves", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "waves", theme: "light" });
 
@@ -1264,17 +993,11 @@ test("a hover affordance does not stay lit after the pointer leaves", async ({ p
   await header.click();
   await header.click();
   await expect(header).toHaveAttribute("aria-expanded", "false");
-  // Park the pointer somewhere with no row under it, then let the transition finish.
   await page.mouse.move(4, 4);
 
   const chevron = header.locator("[data-slot='agent-activity-chevron']");
   await expect.poll(() => chevron.evaluate((node) => getComputedStyle(node).opacity)).toBe("0");
 
-  // …and Tab must still bring it back, or the fix has traded a stuck affordance for a
-  // keyboard-invisible one. Walked with real key presses: `focus()` inherits whatever
-  // modality came last, so it cannot tell the two apart.
-  // Drop the focus the click left behind first: without this the row is ALREADY the active
-  // element, the loop presses nothing, and the assertion passes on mouse focus.
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const focused = () => header.evaluate((node) => node === document.activeElement);
   for (let step = 0; step < 60 && !(await focused()); step += 1) {
@@ -1482,16 +1205,10 @@ async function assertVisibleKeyboardFocus(target: ReturnType<Page["locator"]>): 
   ).toBe(true);
 }
 
-// The audit above visits every declared state, but only as first rendered. A menu, a picker
-// or a dialog is not in the document until someone opens it, so its subtree was never
-// audited — and both defects this found were in one: 12px metadata at 3.7:1 because an
-// opacity was stacked on a token that already carries the faint step, and a 16px-tall target
-// that passed the size rule only while nothing was near enough to fail the spacing exception.
 const OVERLAYS: ReadonlyArray<{
   readonly label: string;
   readonly route: FixtureRoute;
   readonly open: string | RegExp;
-  /** A tooltip opens under the pointer, not under a click, and answers to a different role. */
   readonly by?: "hover";
 }> = [
   {
@@ -1505,10 +1222,6 @@ const OVERLAYS: ReadonlyArray<{
     route: { fixture: "agent", state: "idle" },
     open: "Switch reasoning effort",
   },
-  // The plan's step list, which lives in a HOVER tooltip and so had never been audited. Its
-  // steps were drawn in `text-on-fg` — the inverted ink, for a plate filled with the
-  // foreground colour — which on this surface measured 1.00:1 in both themes: the same colour
-  // as the popup behind them. Nothing could have caught that: no golden opens a tooltip.
   {
     label: "plan step list",
     route: { fixture: "agent", state: "running" },
@@ -1524,14 +1237,10 @@ for (const overlay of OVERLAYS) {
       const trigger = page.getByRole("button", { name: overlay.open }).first();
       if (overlay.by === "hover") await trigger.hover();
       else await trigger.click();
-      // The popup is portalled, so wait for it rather than for the trigger's own state.
       const popup = page
         .locator('[role="menu"], [role="dialog"], [role="listbox"], [role="tooltip"]')
         .first();
       await expect(popup).toBeVisible();
-      // …and then for it to finish arriving. A floating surface fades in from opacity 0, and
-      // `toBeVisible` is satisfied the moment it has layout — Axe would sample a translucent
-      // element against whatever is behind it and report a contrast the design never had.
       await expect.poll(() => popup.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
 
       await expectNoWcagViolations(page);
@@ -1539,15 +1248,6 @@ for (const overlay of OVERLAYS) {
   }
 }
 
-// WCAG 2.2 target size, asserted on the geometry rather than through a popup that happens to
-// land nearby: the spacing exception made a 16px-tall control pass until something moved next
-// to it. A control carrying text is the one that must meet the floor on its own — an
-// icon-only button sits in a row that spaces it.
-// Settings → Font is a shipped preference that sets `--font-sans` / `--font-mono` on the
-// root. It only ever reached text that INHERITED them: declaring the two tokens in
-// `@theme inline` compiled their value into every `font-sans` / `font-mono` utility, so
-// every button, chip, code block, path and timestamp kept the bundled face while the body
-// changed around them.
 test("a chosen typeface reaches the controls, not only the text that inherits", async ({
   page,
 }) => {
@@ -1578,10 +1278,6 @@ test("a chosen typeface reaches the controls, not only the text that inherits", 
   });
 });
 
-// A menu popup takes focus so the keyboard can drive it, which makes it match
-// `:focus-visible` even when a mouse opened it. The gate meant to suppress that —
-// `html:not([data-pointer])` — was written by nobody, so every right-click drew an accent
-// ring around the whole menu. The highlighted item is the indicator; the container is not.
 test("a mouse-opened menu shows its highlighted item, not a ring around itself", async ({
   page,
 }) => {
@@ -1598,17 +1294,6 @@ test("a mouse-opened menu shows its highlighted item, not a ring around itself",
   await expect(highlighted).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 });
 
-// Neither of a menu's own bounds had an owner. The floor was spelled out at fourteen call
-// sites through a variable that existed only so they could share a number, and the ceiling
-// was never offered at all, so four call sites wrote one and three named a pixel count. A
-// literal cannot know where its trigger sits: `max-h-[280px]` clips a list needlessly in a
-// tall window and runs off the screen in a short one. The positioner MEASURES that space,
-// so the ceiling reads `--available-height` — and the assertion is that the cap EQUALS the
-// measurement, which is the one thing no literal can do in both directions at once.
-//
-// The window is short so the measurement binds under the 380px ceiling. The fixture cannot
-// seed a menu long enough to scroll — a plugin's theme list or a provider's models is where
-// that comes from — but the geometry under test is the same either way.
 test("a menu owns both its own bounds, not its call sites", async ({ page }) => {
   await page.setViewportSize({ width: 1120, height: 300 });
   await openFixture(page, { fixture: "agent", state: "idle" });
@@ -1616,7 +1301,6 @@ test("a menu owns both its own bounds, not its call sites", async ({ page }) => 
   await page.locator("[data-user-message-bubble]").first().click({ button: "right" });
   const popup = page.locator('[role="menu"]');
   await expect(popup).toBeVisible();
-  // A floating panel arrives at scale 0.97, so its box is not its box until it has landed.
   await expect.poll(() => popup.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
 
   const box = await popup.evaluate((node) => {
@@ -1639,13 +1323,6 @@ test("a menu owns both its own bounds, not its call sites", async ({ page }) => 
   expect(box.bottom).toBeLessThanOrEqual(300);
 });
 
-// The catalogue's body holds a fixed measure because the popover is anchored to a composer
-// control at the bottom of the window: a body that grows with its group pushes the whole
-// surface up the screen, and switching groups would walk it. A jsdom test had been asserting
-// `h-[240px]` on a parent element, which stopped meaning anything the moment the atom moved
-// to StyleX — and could never have meant much, since jsdom loads no CSS and the claim is
-// entirely about height. Here the fixture's single one-row group is the proof: without the
-// measure this body would be one row tall.
 test("the catalogue holds its measure whatever its group contains", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "idle" });
 
@@ -1655,16 +1332,9 @@ test("the catalogue holds its measure whatever its group contains", async ({ pag
 
   const rows = await body.locator('[role="option"]').count();
   expect(rows).toBeLessThan(4);
-  // The layout height, not the rect: a floating panel arrives at scale 0.97, and a measured
-  // rect would report 233 for a body that is 240 tall.
   expect(await body.evaluate((node) => getComputedStyle(node).height)).toBe("240px");
 });
 
-// The project tray tucks UNDER the composer, inset from its edges so the composer's rounded
-// corners stay the outermost thing on that seam. A full-width tray sticks out past them, and
-// the only jsdom check for it was reading `w-[calc(100%_-_24px)]` back off a class attribute —
-// which stopped meaning anything the moment the file moved to StyleX. Here the measure is the
-// measure: narrower than the composer, and centred inside it.
 test("the project tray stays inside the composer's edges", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "empty" });
 
@@ -1682,14 +1352,10 @@ test("the project tray stays inside the composer's edges", async ({ page }) => {
   });
   expect(box.tray).toBeLessThan(box.composer);
   expect(box.trayLeft).toBeGreaterThan(box.composerLeft);
-  // Centred: the inset it gives up on the left it gives up on the right too.
   const right = box.composerLeft + box.composer - (box.trayLeft + box.tray);
   expect(Math.abs(right - (box.trayLeft - box.composerLeft))).toBeLessThanOrEqual(1);
 });
 
-// The plan is a compact strip over the composer, not a card that grows with it: the surface
-// holds one height however many steps the plan has, so the transcript above does not reflow
-// every time the agent adds one. The jsdom check for this read `h-8` off a class attribute.
 test("the plan strip holds one height whatever the plan says", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "running" });
 
@@ -1697,7 +1363,6 @@ test("the plan strip holds one height whatever the plan says", async ({ page }) 
   await expect(strip).toBeVisible();
   expect(await strip.evaluate((node) => getComputedStyle(node).height)).toBe("32px");
 
-  // Not vacuous: the plan behind it has more steps than would fit in 32px.
   await page.locator('[data-slot="active-plan-pill"]').hover();
   await expect(page.locator('[role="tooltip"] li')).not.toHaveCount(0);
   expect(await strip.evaluate((node) => getComputedStyle(node).height)).toBe("32px");
@@ -1712,8 +1377,6 @@ test("a text-bearing control meets the minimum target size", async ({ page }) =>
   ).toBeGreaterThanOrEqual(24);
 });
 
-// The SMALLEST UI size is where a control whose box is only its text line falls under the
-// minimum — it keeps shrinking with the type, and half a pixel short still fails.
 for (const route of ACCESSIBILITY_ROUTES.filter((candidate) => candidate.theme === "light")) {
   test(`WCAG audit ${route.fixture} ${route.overlay ?? route.state} at the smallest UI size`, async ({
     page,
@@ -1723,10 +1386,6 @@ for (const route of ACCESSIBILITY_ROUTES.filter((candidate) => candidate.theme =
   });
 }
 
-// The transcript scrolls BEHIND a translucent composer, so whatever the composer covers has
-// to be masked out — otherwise a card's buttons read straight through the input surface. The
-// mask is anchored to `--composer-overlay`, so the invariant is that the measured overlay
-// covers the whole overlap; a mask anchored to the viewport's own edge does not.
 for (const state of ["narrative", "long-content", "tool-shells"] as const) {
   test(`nothing shows through the composer in ${state}`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -1737,8 +1396,6 @@ for (const state of ["narrative", "long-content", "tool-shells"] as const) {
       const composer = document.querySelector(".agent-composer-glass");
       if (!viewport || !composer) return null;
       const style = getComputedStyle(viewport);
-      // The LAST stop is where the transcript has finished fading. Read it rather than the
-      // custom property: the property being right proves nothing if the mask ignores it.
       const stops = [...style.maskImage.matchAll(/calc\(100% - ([\d.]+)px\)|\b(100)%\)/g)];
       const last = stops.at(-1);
       return {
@@ -1749,18 +1406,12 @@ for (const state of ["narrative", "long-content", "tool-shells"] as const) {
     });
 
     expect(geometry).not.toBeNull();
-    // Non-vacuous: the composer really does cover part of the transcript here.
     expect(geometry!.overlap).toBeGreaterThan(24);
     expect(geometry!.overlay).toBeGreaterThanOrEqual(geometry!.overlap);
     expect(geometry!.fadesOutAt).toBeCloseTo(geometry!.overlay, 0);
   });
 }
 
-// The composer's suggestion panels had no test and no golden of any kind, which is how the
-// file-mention popup came to render nothing at all: it sat inside the composer surface, whose
-// `overflow: hidden` clips to the corner, and asked to be drawn ABOVE that surface. The assertion
-// that catches it is not "does the element exist" — it did — but "is the element what gets painted
-// where the element is".
 test("a suggestion panel above the composer is not clipped away by it", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "idle" });
 
@@ -1780,9 +1431,7 @@ test("a suggestion panel above the composer is not clipped away by it", async ({
     const composer = document.querySelector("[data-slot=composer-root]")!.getBoundingClientRect();
     return {
       found: true,
-      // The panel's own top strip is painted by the panel, not by whatever it was clipped over.
       paintsItself: el.contains(hit) || el === hit,
-      // It sits above the composer, and it is no wider.
       abovecomposer: Math.round(b.bottom) <= Math.round(composer.top),
       withinComposerWidth: b.width <= composer.width,
     };
@@ -1794,9 +1443,6 @@ test("a suggestion panel above the composer is not clipped away by it", async ({
   expect(painted.withinComposerWidth).toBe(true);
 });
 
-// The mention picker is the surface that was rendering nothing, and until the agent fixture
-// served a file list it could not be opened here at all. `items.length > 0` gates it, so a
-// fixture with no files is a fixture in which this panel does not exist to be photographed.
 test("the file mention picker paints over the transcript, not under the composer", async ({
   page,
 }) => {
@@ -1817,12 +1463,9 @@ test("the file mention picker paints over the transcript, not under the composer
     const hit = document.elementFromPoint(box.left + box.width / 2, box.top + 8);
     return {
       rows: el.querySelectorAll('[id^="composer-mention-option-"]').length,
-      // The assertion that catches a clip: the panel is what is drawn where the panel is.
       paintsItself: el.contains(hit) || el === hit,
       aboveComposer: Math.round(box.bottom) <= Math.round(cb.top),
-      // It escaped the surface that clips to its own corner.
       escapedTheClippingSurface: !composer.contains(el),
-      // The textarea still owns focus, because that is what drives the selection.
       focusStillInInput: document.activeElement?.tagName.toLowerCase() === "textarea",
       selects: el.querySelectorAll('[aria-selected="true"]').length,
     };
@@ -1836,21 +1479,15 @@ test("the file mention picker paints over the transcript, not under the composer
   expect(geometry.selects).toBe(1);
 });
 
-// The composer's two chips had no test and no golden between them, which is how a hand-built
-// copy of `Chip` came to sit forty lines below the real one and drift: a quieter fill, and no
-// edge at all where every fixed control in this design wears one. Both are reachable through
-// real interaction, so neither needs the store seeded from outside.
 test("the composer's attachment chips are one component, not two", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "idle" });
   const input = page.getByRole("textbox", { name: en["composer.input.label"]! });
 
-  // A reference the reader reached for: accept a mention and it becomes a chip.
   await input.click();
   await input.pressSequentially("@store", { delay: 30 });
   await expect(page.locator("#composer-mention-listbox")).toBeVisible();
   await page.keyboard.press("Tab");
 
-  // Content that came along with the message: a paste long enough to be staged rather than typed.
   await page.evaluate(() => {
     const ta = document.querySelector("textarea")!;
     const data = new DataTransfer();
@@ -1874,8 +1511,6 @@ test("the composer's attachment chips are one component, not two", async ({ page
   });
 
   expect(chips.length).toBeGreaterThanOrEqual(2);
-  // One component: every chip agrees on the edge, the corner, the height and the face. Only
-  // the fill says which kind it is, and that is the one thing the atom takes a prop for.
   const distinct = (key: keyof (typeof chips)[number]) => new Set(chips.map((c) => c[key])).size;
   expect(distinct("borderWidth")).toBe(1);
   expect(distinct("radius")).toBe(1);
@@ -1885,12 +1520,6 @@ test("the composer's attachment chips are one component, not two", async ({ page
   expect(distinct("fill")).toBe(2);
 });
 
-// Three unit assertions used to say this by freezing `border-x`, `border-t` and the absence of
-// `mb-2` on the tray's class list. Two things were wrong with that. A class name is not a
-// contract — and those particular names were not even the shared surface's to keep: the project
-// tray has no edge at all, and had been cancelling them at the call site. What both trays DO
-// agree on is the shape, so that is what is measured: the composer's own corner, and a box that
-// runs past the composer's top edge rather than stopping short and leaving a rule between them.
 test("the composer's top tray takes the composer's corner and tucks behind it", async ({
   page,
 }) => {
@@ -1908,7 +1537,6 @@ test("the composer's top tray takes the composer's corner and tucks behind it", 
       topLeftRadius: cs.borderTopLeftRadius,
       topRightRadius: cs.borderTopRightRadius,
       composerRadius: getComputedStyle(composer).borderTopLeftRadius,
-      // Whatever edge it wears, the bottom one is absent: that side is the seam.
       bottomBorder: cs.borderBottomWidth,
       overflow: cs.overflow,
     };
@@ -1921,12 +1549,6 @@ test("the composer's top tray takes the composer's corner and tucks behind it", 
   expect(seam.overflow).toBe("clip");
 });
 
-// The reasoning block's clipped edges fade. They used to fade with two absolutely positioned
-// gradient overlays inside the scroller, and NEITHER could ever be seen: `top: 0` in an
-// `overflow-y: auto` box anchors to the scrolled content origin, so the top overlay left the
-// viewport at exactly the moment `edges.scrolled` turned it on — measured at -200px after a
-// 200px scroll, against a mask, which does not move. This is the state that had no fixture:
-// a streaming reasoning window with more text than fits.
 test("the reasoning window fades the edge it actually clips", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "answer-opening" });
 
@@ -1940,7 +1562,6 @@ test("the reasoning window fades the edge it actually clips", async ({ page }) =
       return {
         overflowing: el.scrollHeight > el.clientHeight,
         masked: cs.maskImage !== "none",
-        // The old mechanism is gone: nothing inside is positioned to be scrolled away.
         overlays: [...el.children].filter((c) => getComputedStyle(c).position === "absolute")
           .length,
         top: cs.getPropertyValue("--fade-top").trim(),
@@ -1949,9 +1570,6 @@ test("the reasoning window fades the edge it actually clips", async ({ page }) =
     });
 
   const atTop = await readFade();
-  // The reasoning is an aside, not a card: indented past the glyph, with a rule down its left
-  // marking how far it runs. Two unit assertions used to say this by naming `border-l` and
-  // `pl-6`; what they meant is measurable.
   const aside = await page.evaluate(() => {
     const body = document.querySelector<HTMLElement>('[role="region"]');
     if (!body) return null;
@@ -1964,19 +1582,14 @@ test("the reasoning window fades the edge it actually clips", async ({ page }) =
   });
   expect(aside?.leftBorder).toBeGreaterThan(0);
   expect(aside?.leftInset).toBeGreaterThan(20);
-  // A card would fill; an aside does not.
   expect(aside?.hasFill).toBe(false);
 
   expect(atTop.overflowing).toBe(true);
   expect(atTop.masked).toBe(true);
   expect(atTop.overlays).toBe(0);
-  // Nothing is clipped above the first line, so that edge does not fade.
   expect(atTop.top).toBe("0px");
   expect(atTop.bottom).toBe("24px");
 
-  // What a reader does. The state is React's, so the read has to come after the re-render
-  // rather than in the same turn as the scroll — a synchronous read here returns the old value
-  // and would have made the assertion look like a bug in the fade.
   await scroller.evaluate((el) => {
     el.scrollTop = 20;
   });

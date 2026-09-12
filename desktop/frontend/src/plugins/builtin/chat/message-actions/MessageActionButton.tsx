@@ -26,7 +26,6 @@ interface MessageActionButtonProps {
   "aria-pressed"?: boolean;
 }
 
-/** The reader's own message gets a pill; the agent's gets a corner. One decision, said once. */
 export function MessageActionButton({ role, className, ...props }: MessageActionButtonProps) {
   const isUser = role === "user";
   return (

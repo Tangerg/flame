@@ -53,8 +53,7 @@ export function selectCurrentRootAttention(view: AgentSessionView): AgentRootAtt
 }
 
 /**
- * The main Session narrative: optimistic local messages plus material owned by
- * every root Run, in projection order. Descendant material is selected
+ * Descendant material is selected
  * separately under its durable parent Item anchor.
  */
 export function selectRootNarrativeMessages(view: AgentSessionView): Message[] {

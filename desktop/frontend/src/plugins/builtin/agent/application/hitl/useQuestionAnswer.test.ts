@@ -1,8 +1,3 @@
-// useQuestionAnswer answers a HITL question interrupt by starting a
-// continuation Run via the owning session's `resume` action (API.md §6).
-// Worth locking: the ordered InterruptResponse payload, the single-submit guard,
-// the pending latch, and the deferred/rolled-back store settle.
-
 import { act, renderHook } from "@testing-library/react";
 import { navigator } from "@/lib/navigation";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,9 +8,6 @@ import { installInterruptResponseCoordinator } from "./interruptResponseCoordina
 const SID = "ses_1";
 let disposeCoordinator: () => void = () => undefined;
 
-// ensureSession seeds the slice before setResume — the store no longer
-// resurrects an absent session, so the binding must follow a mount (as
-// useAgentSession does at mount).
 function bindResume(impl?: (...args: unknown[]) => void) {
   const resume = vi.fn((...args: unknown[]) => {
     impl?.(...args);
@@ -84,7 +76,7 @@ describe("useQuestionAnswer", () => {
     seedPending("item_q2");
     const { result: r2 } = renderHook(() => useQuestionAnswer("run_1", "item_q2"));
     act(() => r2.current.submit([["first"]]));
-    act(() => r2.current.submit([["second"]])); // ignored — already pending
+    act(() => r2.current.submit([["second"]]));
     expect(resume).toHaveBeenCalledTimes(1);
     expect(resume).toHaveBeenCalledWith(
       "run_1",
@@ -100,7 +92,6 @@ describe("useQuestionAnswer", () => {
     const spy = vi.spyOn(useAgentStore.getState(), "resolveInterrupt");
     const { result } = renderHook(() => useQuestionAnswer("run_1", "q_ok"));
     act(() => result.current.submit([["x"]]));
-    // The settle patch also stamps the answers so the collapsed card can echo them.
     expect(spy).toHaveBeenCalledWith(
       SID,
       "q_ok",
@@ -115,7 +106,7 @@ describe("useQuestionAnswer", () => {
     const { result: r2 } = renderHook(() => useQuestionAnswer("run_1", "q_fail"));
     act(() => r2.current.submit([["x"]]));
     expect(spy).not.toHaveBeenCalled();
-    expect(r2.current.pending).toBe(false); // retryable
+    expect(r2.current.pending).toBe(false);
     spy.mockRestore();
   });
 });

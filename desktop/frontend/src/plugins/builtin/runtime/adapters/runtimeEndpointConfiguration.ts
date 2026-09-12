@@ -4,10 +4,6 @@ import { configureRuntimeEndpoint } from "../application/ports/runtimeEndpoint";
 const CONFIG_KEY = "runtime.endpoint";
 const STORAGE_KEY = "endpoint";
 
-/**
- * Bind the Runtime endpoint application port to Host configuration and mirror
- * accepted changes into this plugin's persistent storage.
- */
 interface EndpointBindings {
   config: ConfigService;
   storage: KeyValueStore;

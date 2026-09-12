@@ -1,9 +1,3 @@
-// Reducer — built-in v2 StreamEvent behaviour. Covers segment.started /
-// segment.finished (completed / error / interrupt) + item.started / item.delta
-// / item.completed folding into message bubbles + tool calls. `custom`
-// dispatch lives in reducer.custom.test.ts; shared-state tests in
-// reducer.aggregates.test.ts.
-
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
@@ -13,8 +7,6 @@ import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { selectCurrentRootRun, selectVisibleProblem } from "../view/runTree";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
-// Builders. Items are partial — only the fields the fold reads matter; the
-// cast keeps the test terse without re-stating the full wire shape.
 function item(partial: Record<string, unknown>): Item {
   return {
     runId: "run_1",
@@ -52,10 +44,6 @@ describe("reducer — run lifecycle", () => {
     });
   });
 
-  // A reconnect replays the same finish. The fold fails closed on a protocol violation by
-  // logging and returning the state unchanged, so a missing duplicate guard looks identical
-  // from the outside — except that every ordinary reconnect would report a `runStatusMismatch`
-  // it invented, and the log that is supposed to mean something stops meaning it.
   for (const outcome of [
     { type: "completed" },
     { type: "canceled", detail: "" },
@@ -73,9 +61,6 @@ describe("reducer — run lifecycle", () => {
     });
   }
 
-  // Two different outcomes for one segment is the Runtime contradicting itself. Treating the
-  // second as a duplicate would drop it with no log at all, leaving the transcript showing an
-  // outcome the Runtime has already replaced.
   it("does not mistake a different outcome at the same instant for a replay", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const started = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
@@ -111,9 +96,6 @@ describe("reducer — run lifecycle", () => {
     expect(selectVisibleProblem(s)).toBeNull();
   });
 
-  // A run that failed without a per-occurrence detail must leave `message`
-  // unset. Defaulting it to the symbol here would show "internal_error" as the
-  // explanation and leave the banner nothing to translate.
   it("segment.finished{failed} without a detail leaves the words to the banner", () => {
     let s = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
     s = reduce(s, runFinished({ type: "failed", error: { code: "internal_error" } }));
@@ -150,11 +132,8 @@ describe("reducer — item fold", () => {
   });
 
   it("agentMessage start with no content shell still streams (content arrives via deltas)", () => {
-    // The real runtime's item.started shell carries NO `content` field — it
-    // streams in via item.delta and only lands whole on item.completed. The
-    // fold must fold that to an empty running text block, not crash.
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
-    s = reduce(s, started(item({ id: "item_1", type: "agentMessage" }))); // no `content`
+    s = reduce(s, started(item({ id: "item_1", type: "agentMessage" })));
     expect(s.messages[0]!.blocks).toEqual([
       { kind: "text", itemId: "item_1", text: "", status: "running" },
     ]);
@@ -163,11 +142,8 @@ describe("reducer — item fold", () => {
   });
 
   it("reasoning start + reasoning deltas + completed build one streaming reasoning block", () => {
-    // Reasoning streams exactly like agentMessage content, but its block keys on
-    // `reasoningId` (not `itemId`) — the delta must find it by that key or the
-    // thinking text accumulates onto nothing.
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
-    s = reduce(s, started(item({ id: "r1", type: "reasoning" }))); // no `text` — streams via delta
+    s = reduce(s, started(item({ id: "r1", type: "reasoning" })));
     expect(s.messages[0]!.blocks).toEqual([
       { kind: "reasoning", reasoningId: "r1", text: "", status: "running" },
     ]);
@@ -195,7 +171,6 @@ describe("reducer — item fold", () => {
     );
     s = reduce(s, delta("t1", { type: "toolArguments", argumentsTextDelta: '{"x":' }));
     s = reduce(s, delta("t1", { type: "toolArguments", argumentsTextDelta: "1}" }));
-    // commandExecution stdout streams via toolOutput (no item.output field).
     s = reduce(s, delta("t1", { type: "toolOutput", text: "ok" }));
     expect(s.messages[0]!.blocks).toEqual([{ kind: "tool", toolCallId: "t1" }]);
     expect(s.toolCalls.t1).toMatchObject({ fn: "pnpm test", args: '{"x":1}', status: "running" });
@@ -210,7 +185,6 @@ describe("reducer — item fold", () => {
         }),
       ),
     );
-    // The streamed stdout survives completion (writeToolCall keeps prev.result).
     expect(s.toolCalls.t1).toMatchObject({ status: "ok", result: "ok" });
   });
 
@@ -264,7 +238,7 @@ describe("reducer — item fold", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, started(item({ id: "r1", type: "reasoning", text: "think" })));
     s = reduce(s, started(item({ id: "a1", type: "agentMessage", content: [] })));
-    expect(s.messages).toHaveLength(1); // reasoning + text share the turn
+    expect(s.messages).toHaveLength(1);
     expect(s.messages[0]!.blocks.map((b) => b.kind)).toEqual(["reasoning", "text"]);
     s = reduce(
       s,
@@ -283,8 +257,6 @@ describe("reducer — item fold", () => {
 
   it("a durable userMessage reconciles an optimistic steer placeholder", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
-    // runs.steer has no Item id in its ack, so its optimistic bubble uses the
-    // distinct steer prefix and reconciles by content.
     s = reduce(
       s,
       completed(
@@ -297,7 +269,6 @@ describe("reducer — item fold", () => {
       ),
     );
     expect(s.messages).toHaveLength(1);
-    // The runtime then publishes the complete userMessage Item with its durable id.
     s = reduce(
       s,
       completed(
@@ -379,8 +350,6 @@ describe("reducer — item fold", () => {
   });
 
   it("item.completed{status:incomplete} settles the block as incomplete, not complete", () => {
-    // A canceled/interrupted run settles its agentMessage as `incomplete`
-    // (API.md §4.3); the fold must preserve that, not stamp "complete".
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, started(item({ id: "a1", type: "agentMessage", content: [] })));
     s = reduce(s, delta("a1", { type: "content", text: "partial" }));
@@ -426,9 +395,6 @@ describe("reducer — item fold", () => {
   });
 
   it("a HITL-denied toolCall projects `denied`, not `err`", () => {
-    // The Adapter translates a declined tool to the product-owned error code
-    // "denied_by_user" (API.md §8.1). That's a user decision — the fold maps
-    // it to a neutral `denied` state, distinct from a real failure.
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(
       s,
@@ -453,7 +419,6 @@ describe("reducer — item fold", () => {
       ),
     );
     expect(s.toolCalls.t1).toMatchObject({ status: "denied" });
-    // And the tool-end timeline entry records the decision, not "ok"/"err".
     expect(s.timeline.findLast((e) => e.kind === "tool-end")).toMatchObject({ status: "declined" });
   });
 });
@@ -557,7 +522,7 @@ describe("reducer — HITL interrupt", () => {
       status: "requires-action",
       itemId: "tool_1",
       runId: "run_1",
-      command: "rm -rf x", // derived from payload.tool (commandExecution)
+      command: "rm -rf x",
       rememberable: true,
     });
     expect(s.pendingInterrupts).toHaveLength(1);
@@ -595,7 +560,6 @@ describe("reducer — HITL interrupt", () => {
       }),
     );
     const block = s.messages.flatMap((m) => m.blocks).find((b) => b.kind === "approval");
-    // Generic tool: arguments object becomes the editable `args`; no cmd line.
     expect(block).toMatchObject({
       kind: "approval",
       command: "",
@@ -605,9 +569,6 @@ describe("reducer — HITL interrupt", () => {
   });
 
   it("segment.finished{interrupt,question} materializes a question card bound to the run", () => {
-    // The question interrupt path is distinct from approval: the card can
-    // materialize straight from the interrupt payload (item.started may have
-    // been missed while the process was down), projecting answerable fields.
     let s = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
     s = reduce(
       s,
@@ -647,8 +608,6 @@ describe("reducer — HITL interrupt", () => {
   });
 
   it("a second segment.started (resume) never splits the open turn — live grouping matches replay", () => {
-    // run_1: tool call → interrupt (approval). Tool block + approval land in
-    // one assistant turn.
     let s = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
     s = reduce(
       s,
@@ -680,10 +639,6 @@ describe("reducer — HITL interrupt", () => {
     expect(s.messages).toHaveLength(1);
     const turnId = s.messages[0]!.id;
 
-    // Approve → resume opens a new SEGMENT of the run (this synthetic
-    // segment.started carries no segmentId), yet its agentMessage must STILL fold
-    // into the same bubble — turn grouping is item-driven, not run-driven. This
-    // is exactly what history replay produces (it never sees segment.started at all).
     s = reduce(s, runStarted("run_2", "ses_1"));
     s = reduce(s, started(item({ id: "msg_1", type: "agentMessage", content: [] })));
     s = reduce(s, delta("msg_1", { type: "content", text: "Deleted." }));
@@ -731,8 +686,6 @@ describe("reducer — interrupt idempotency + terminal cleanup", () => {
     expect(approvalBlocks(s)).toHaveLength(1);
     expect(s.pendingInterrupts).toHaveLength(1);
 
-    // Reconnect / replay re-presents the same finished event — must be a no-op,
-    // not a duplicate approval block (React key clash) or a second envelope.
     s = reduce(s, approvalInterrupt("tool_1", "rm x"));
     expect(approvalBlocks(s)).toHaveLength(1);
     expect(s.pendingInterrupts).toHaveLength(1);
@@ -743,8 +696,6 @@ describe("reducer — interrupt idempotency + terminal cleanup", () => {
     let s = toInterrupt();
     expect(s.pendingInterrupts).toHaveLength(1);
 
-    // A resumed segment opens before it reaches a terminal cancellation while
-    // the approval is still open (the user never answered).
     s = reduce(s, runStarted("run_1", "ses_1"), "run_1", "seg_resume");
     s = reduce(s, runFinished({ type: "canceled" }));
     expect(s.pendingInterrupts).toHaveLength(0);
@@ -756,7 +707,6 @@ describe("reducer — interrupt idempotency + terminal cleanup", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, started(item({ id: "m1", type: "agentMessage", content: [] })));
     s = reduce(s, delta("m1", { type: "content", text: "hello world" }));
-    // Malformed / empty terminal frame must not blank the bubble.
     s = reduce(
       s,
       completed(item({ id: "m1", type: "agentMessage", status: "completed", content: [] })),

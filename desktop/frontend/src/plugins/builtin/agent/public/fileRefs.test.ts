@@ -24,10 +24,6 @@ describe("parseFileRefs", () => {
     expect(parseFileRefs("e.g. version 1.2.3 here")).toEqual(["e.g. version 1.2.3 here"]);
   });
 
-  // The header's promise is precision, and it held on the extension branch — `1.2.3` never lit
-  // up. The SEPARATOR branch accepted any alphanumeric, so ordinary tool output did: measured on
-  // the real lines below, every URL became a file to open, and so did a rate limit, a ratio and
-  // a date.
   const paths = (text: string) =>
     parseFileRefs(text)
       .filter((segment) => typeof segment !== "string")
@@ -48,7 +44,6 @@ describe("parseFileRefs", () => {
     expect(prose.filter((line) => paths(line).length > 0)).toEqual([]);
   });
 
-  // The other side, because a precision fix that also loses references is a different defect.
   it("still finds every path a tool actually wrote", () => {
     expect(paths("Edited src/app/main.ts:12")).toEqual(["src/app/main.ts"]);
     expect(paths("moved a/b.ts -> c/d.ts")).toEqual(["a/b.ts", "c/d.ts"]);
@@ -62,8 +57,6 @@ describe("parseFileRefs", () => {
     expect(parseFileRefs("mail a@b.com please")).toEqual(["mail a@b.com please"]);
   });
 
-  // The viewer opens a file at a LINE, so the column is not part of navigation —
-  // but it is part of what the tool wrote, and the link replaces that text.
   it("navigates by the line while keeping the column it was shown", () => {
     expect(parseFileRefs("a/b.py:10:5")).toEqual([{ path: "a/b.py", line: 10, column: 5 }]);
   });
@@ -73,9 +66,6 @@ describe("parseFileRefs", () => {
   });
 });
 
-// `tsc`, `grep` and `eslint` all emit `path:line:col`. The viewer navigates by line,
-// but the reference still has to read as the tool wrote it — the column used to be
-// consumed by the match and rendered by nothing, so it vanished from the output.
 describe("a reference carrying a column", () => {
   it("keeps the column it was given", () => {
     expect(parseFileRefs("see src/main.ts:12:3 for it")).toEqual([

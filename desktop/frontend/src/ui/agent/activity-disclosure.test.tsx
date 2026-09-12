@@ -68,9 +68,6 @@ describe("AgentActivityDisclosure", () => {
     expect(onToggle).not.toHaveBeenCalled();
   });
 
-  // The two shells are the whole of the differentiation between a glance and a product.
-  // Asserted on the material rather than on a class name: what matters is that a line has
-  // no card under it, because that was true of nothing before and every row looked the same.
   it("gives each shell its own material", () => {
     const shells = (["line", "card"] as const).map((shell) => {
       const { unmount } = render(
@@ -85,9 +82,6 @@ describe("AgentActivityDisclosure", () => {
         </AgentActivityDisclosure>,
       );
       const row = screen.getByRole("button", { name: shell }).closest("[data-shell]");
-      // `data-shell` is the decision; the plane it produces is geometry the goldens measure.
-      // Reading the class that carried it froze a spelling, which is what this comment above
-      // was already trying to avoid.
       const result = { shell: row?.getAttribute("data-shell") };
       unmount();
       return result;
@@ -96,8 +90,6 @@ describe("AgentActivityDisclosure", () => {
     expect(shells).toEqual([{ shell: "line" }, { shell: "card" }]);
   });
 
-  // A caller that hands over its own leading mark owns that whole box: a plan's step
-  // mark inside the glyph tray would be a mark inside a mark.
   it("frames its own glyph on a card, and never a caller's mark", () => {
     const { unmount } = render(
       <AgentActivityDisclosure
@@ -147,8 +139,6 @@ describe("AgentActivityDisclosure", () => {
     const mark = screen
       .getByRole("button", { name: "quiet search" })
       .querySelector("span[aria-hidden]");
-    // A line's glyph carries no tray and still shows its identity: the tone stays `neutral`
-    // rather than being spent, and the glyph itself is in the DOM.
     expect(mark?.getAttribute("data-framed")).toBeNull();
     expect(mark?.getAttribute("data-tone")).toBe("neutral");
     expect(mark?.querySelector("svg")).toBeTruthy();

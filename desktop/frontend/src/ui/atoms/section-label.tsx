@@ -6,10 +6,8 @@ import { color, space, type } from "@/styles/tokens.stylex";
 /**
  * A section's heading: its type, its ink, its truncation and where its trailing slot sits.
  *
- * NOT its inset. The atom used to carry `px-2 py-2`, and of nine call sites exactly one kept
- * it — the rest each cancelled or replaced it, because how deep a heading sits belongs to the
- * container it sits in, not to the heading. Under Tailwind those overrides worked and the
- * disagreement stayed invisible; under StyleX they were discarded, which is how it surfaced.
+ * NOT its inset: how deep a heading sits belongs to the container it sits in, not to the
+ * heading.
  */
 const styles = stylex.create({
   row: {
@@ -23,8 +21,6 @@ const styles = stylex.create({
     color: color.fgFaint,
   },
   label: { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  // Pushed to the far end and exempt from the label's own casing and tracking: what rides
-  // here is a count or a control, not more heading.
   trailing: {
     marginInlineStart: "auto",
     display: "flex",

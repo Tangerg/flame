@@ -89,8 +89,6 @@ describe("workspace navigation port", () => {
     });
   });
 
-  // A dock with nothing in it opens onto its catalogue, which is a destination and not a
-  // tab: picking one for the person leaves them closing a panel they never asked for.
   it("showing an empty dock offers the catalogue rather than choosing a panel", () => {
     showWorkspaceDock();
 
@@ -198,9 +196,6 @@ describe("workspace navigation port", () => {
     expect(document.activeElement).toBe(button);
   });
 
-  // The retry beside this call exists because a tool's anchor and its control do not have to
-  // commit in the same frame. Reporting success on the anchor alone cancelled it, so a locate
-  // that arrived one frame early scrolled to the tool and left the keyboard behind.
   it("keeps looking when the anchor is mounted before its control", async () => {
     const anchor = document.createElement("div");
     anchor.id = "late-item";

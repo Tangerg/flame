@@ -1,15 +1,3 @@
-// Convergence: streaming, history replay, and any interleaving of the two render the SAME
-// turn. There are not three rendering paths — there is one fold, fed different SUBSETS of one
-// event stream. Replay is the item.completed-only subset, since items.list emits no run or
-// delta frames.
-//
-// It holds only for payload carried identically on the completed snapshot and the delta
-// stream. Text and reasoning qualify: the snapshot equals the concatenated deltas. A tool's
-// arguments arrive twice — parsed on the Item and again as a whole toolArguments delta for
-// live preview — and the structured object at the terminal state is authoritative, so the
-// redundant delta cannot make streaming diverge. Command output is the same shape: the delta
-// is preview only, `{output, exitCode}` on the completed result is what replay recovers.
-
 import { beforeEach, describe, expect, it } from "vitest";
 import type {
   AgentItem as Item,
@@ -78,19 +66,14 @@ const delta = (itemId: string, value: AgentItemDelta): StreamEvent => ({
 const foldAll = (events: StreamEvent[]): AgentSessionView =>
   events.reduce((state, ev) => reduce(state, ev), EMPTY_AGENT_SESSION_VIEW);
 
-// An assistant turn's `createdAt` is wall-clock-stamped when the turn opens (not
-// event data), so compare renders without it.
 const strip = (msgs: Message[]) => msgs.map(({ id, role, blocks }) => ({ id, role, blocks }));
 
-// id of the Item an item.* event concerns (for the "snapshot this item" filter).
 function itemIdOf(e: StreamEvent): string | null {
   if (e.type === "item.started" || e.type === "item.completed") return e.item.id;
   if (e.type === "item.delta") return e.itemId;
   return null;
 }
 
-// Drop the started/delta events for the given item ids — i.e. deliver those
-// items as completed-only snapshots while the rest stay fully streamed.
 function snapshotOnly(events: StreamEvent[], ids: Set<string>): StreamEvent[] {
   return events.filter((e) => {
     const id = itemIdOf(e);
@@ -101,11 +84,6 @@ function snapshotOnly(events: StreamEvent[], ids: Set<string>): StreamEvent[] {
   });
 }
 
-// One believable turn: user prompt → reasoning → message → tool → message,
-// expressed as a FULL streaming sequence. text/reasoning stream via deltas that
-// concatenate to the completed snapshot; the tool is call-and-result — its args
-// arrive as the parsed object AND a redundant whole toolArguments delta (as the
-// real backend sends), and its result whole on completion.
 const u1: Extract<Item, { type: "userMessage" }> = {
   id: "u1",
   runId: "run_1",
@@ -198,27 +176,18 @@ describe("reducer — render convergence across delivery modes", () => {
   it("streaming, replay, and mixed delivery all fold to the same turn", () => {
     const streaming = foldAll(FULL_STREAM);
 
-    // History replay: the item.completed-only subset (no run.* / started / delta).
     const replay = foldAll(FULL_STREAM.filter((e) => e.type === "item.completed"));
 
-    // Mixed: m1 + both tools arrive as completed snapshots, the rest stream live.
     const mixed = foldAll(snapshotOnly(FULL_STREAM, new Set(["m1", "t1", "t2"])));
 
-    // Same bubbles, same blocks, same order, same content.
     expect(strip(replay.messages)).toEqual(strip(streaming.messages));
     expect(strip(mixed.messages)).toEqual(strip(streaming.messages));
 
-    // Same tool-call projections (the blocks reference these by id).
     expect(replay.toolCalls).toEqual(streaming.toolCalls);
     expect(mixed.toolCalls).toEqual(streaming.toolCalls);
 
-    // The synthesized turn is dated by the Item that opened it — the runtime's
-    // clock, the same one every message beside it carries. The fold reads no
-    // clock of its own.
     expect(streaming.messages[1]!.createdAt).toBe(itemStartedAt(r1));
 
-    // Work stays one narrated assistant turn; the Runtime-authored final answer
-    // becomes its own stable message so it alone owns terminal message actions.
     expect(streaming.messages).toHaveLength(3);
     expect(streaming.messages[0]!.role).toBe("user");
     expect(streaming.messages[1]!.blocks.map((b) => b.kind)).toEqual([
@@ -241,10 +210,6 @@ describe("reducer — render convergence across delivery modes", () => {
 
 describe("fold — one message per id", () => {
   it("re-adopts an item's turn instead of minting its id twice", () => {
-    // A user message (a send, or a mid-run steer) closes the open turn. If a
-    // later block for the SAME item comes back, the fold must land in the turn it
-    // already minted for that item — two messages under one React key is the
-    // duplicate-key loop CLAUDE.md §5 names.
     const first = appendToTurn(EMPTY_AGENT_SESSION_VIEW, "run_1", "m9", {
       kind: "text",
       text: "a",

@@ -1,12 +1,3 @@
-// Regression: useAgentProblem / useAgentSharedMaterial must react to an
-// activeSessionId switch, not just to agent-store mutations. They read the
-// active session's view, and activeSessionId lives in a SEPARATE store
-// (useAgentSessionStore); if the switch isn't a reactive dependency, a
-// consumer keeps rendering the previous session's error / Plan until
-// the agent store happens to mutate. Locking the reactive contract here keeps
-// these two selectors from drifting off the useActiveAgentView pattern the
-// other view selectors share.
-
 import { act, renderHook } from "@testing-library/react";
 import { navigator } from "@/lib/navigation";
 import { afterEach, describe, expect, it } from "vitest";
@@ -278,9 +269,6 @@ describe("agent view selectors react to session switch", () => {
     expect(result.current[0]?.message).toBe(message);
   });
 
-  // The projection instance holds a per-session row cache and is rebuilt through `useMemo`
-  // keyed on the session. If that key were ever dropped, the cache would answer the new
-  // session with the previous one's rows — the transcript of a conversation you are not in.
   it("shows the switched-to session's transcript, not the cached one it came from", () => {
     const inA: Message = {
       id: "message-a",

@@ -25,8 +25,6 @@ const styles = stylex.create({
   },
   ringActive: { borderColor: color.accent },
   ringPending: { borderColor: surface.fieldStrong },
-  // The dot inside the active ring is the only thing on the row that moves: it is what says
-  // this step is the one happening, as opposed to the one that is merely next.
   pulse: {
     position: "absolute",
     inset: space.s0_5,
@@ -36,8 +34,7 @@ const styles = stylex.create({
   done: { color: color.success },
   // `flex-start`, because a step that needs two lines is still one step: centring put the mark
   // half a line below the sentence it marks — measured at 10.1px on a two-line step, which is
-  // exactly half the leading. The plan's other surface had already reached this answer on its
-  // own, so the same step read differently depending on which pane showed it.
+  // exactly half the leading.
   row: { display: "flex", alignItems: "flex-start", gap: space.s2, paddingBlock: space.s0_5 },
   inkDone: { color: color.fgFaint },
   inkActive: { fontWeight: weight.medium, color: color.fg },

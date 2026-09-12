@@ -23,7 +23,6 @@ function runOpeningIdentity(method: "start" | "resume", params: unknown): string
  * and coerces app session ids into the wire's branded ones — neither belongs to assembly.
  */
 export interface RuntimeRunsGateway extends RpcRunsGateway {
-  /** Retire every opening and stream admitted by the previous Runtime process. */
   replaceRuntimeGeneration(): void;
   dispose(): void;
 }

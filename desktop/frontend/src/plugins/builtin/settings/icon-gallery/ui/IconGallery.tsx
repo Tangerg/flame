@@ -14,7 +14,6 @@ import {
 } from "@/styles/tokens.stylex";
 import { gallerySpread, galleryStyles as g } from "./galleryStyles";
 
-// The three groups `@lobehub/icons` sorts its catalogue into.
 type GroupKey = "model" | "provider" | "application";
 
 const GROUP_TITLE_KEYS: Record<GroupKey, string> = {

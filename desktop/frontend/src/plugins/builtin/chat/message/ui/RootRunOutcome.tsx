@@ -8,7 +8,6 @@ import type { CurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
 import { color, space, type as typeStep } from "@/styles/tokens.stylex";
 
 const ro = stylex.create({
-  // A one-line receipt between turns: it owns the gap on both sides, like a banner.
   line: {
     marginBlock: space.s2,
     display: "flex",

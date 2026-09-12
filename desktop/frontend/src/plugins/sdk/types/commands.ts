@@ -27,7 +27,6 @@ export type ShortcutHandler = (event: KeyboardEvent) => void;
 export interface ShortcutSpec {
   key: string;
   handler: ShortcutHandler;
-  /** A catalog key, displayed in the shortcuts settings pane. */
   description?: string;
   /** Defaults to false: most shortcuts must not steal typing input. */
   allowInInputs?: boolean;

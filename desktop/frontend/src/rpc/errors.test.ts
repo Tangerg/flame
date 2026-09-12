@@ -17,8 +17,6 @@ describe("typed RPC problems", () => {
     if (!isErrorType(error, "capability_not_negotiated")) {
       throw new Error("expected a capability problem");
     }
-    // This access is the compile-time half of the test: the type guard narrows
-    // ProblemData to the variant that requires this field.
     expect(error.data.requiredCapabilities).toEqual([{ type: "feature", name: "subagents" }]);
   });
 

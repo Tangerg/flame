@@ -8,9 +8,8 @@ import { Button, type ButtonProps } from "./button";
 type SystemMessageVariant = "info" | "warning" | "error" | "success";
 
 /**
- * What holds the message. A `sentence` centres against its one line; `form` holds a field and
- * the buttons that answer it, so its content starts at the top and it takes a deeper inset —
- * the banner's alignment follows what it is carrying, which is why it is not a caller's class.
+ * What holds the message. `sentence` centres against its one line; `form` holds a field and the
+ * buttons that answer it, so its content starts at the top and it takes a deeper inset.
  */
 type SystemMessageShape = "sentence" | "form";
 
@@ -37,8 +36,6 @@ const styles = stylex.create({
     gap: space.s2_5,
     lineHeight: leading.body,
   },
-  // One line-box tall and centred in it, so the glyph rides the first line of the copy rather
-  // than the middle of a paragraph.
   glyph: {
     display: "flex",
     height: "1lh",

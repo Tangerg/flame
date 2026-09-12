@@ -10,8 +10,6 @@ describe("Composer", () => {
     expect(typed(composer, "one").activate(SCRATCH_SESSION_ID).draft.value).toBe("scratch");
   });
 
-  // The draft used to be mirrored beside the archive it was a copy of, and every mutation
-  // had to write both. Deriving it is what makes that impossible to get wrong.
   it("derives the active draft rather than storing a second copy", () => {
     const composer = typed(Composer.empty().activate("s1"), "hello");
     expect(composer.activate("s2").activate("s1").draft.value).toBe("hello");
@@ -39,8 +37,6 @@ describe("Composer", () => {
     const once = typed(Composer.empty().record("hello").record("   ").record("hello"), "draft");
     const oldest = once.recallOlder()!.recallOlder()!;
     expect(oldest.draft.value).toBe("hello");
-    // One entry, not two. Stepping forward from the oldest reaches the draft that was set
-    // aside; a second copy of "hello" would be in the way.
     expect(oldest.recallNewer()!.draft.value).toBe("draft");
   });
 
@@ -56,8 +52,6 @@ describe("Composer", () => {
     expect(Composer.empty().record("hello").recallNewer()).toBeNull();
   });
 
-  // Four call sites used to reset a `-1` index by hand. Any edit leaves recall now because
-  // the aggregate owns both halves.
   it("leaves recall on any edit that is not recall's own", () => {
     const recalling = typed(Composer.empty().record("hello"), "draft").recallOlder()!;
     expect(recalling.isRecalling).toBe(true);
@@ -67,16 +61,11 @@ describe("Composer", () => {
     expect(recalling.record("sent").isRecalling).toBe(false);
   });
 
-  // Selectors read `draft.images` through `Object.is`. A fresh empty draft per read would
-  // hand them a new array on every store notification — a re-render per keystroke in any
-  // other session.
   it("answers one stable instance for a session never typed into", () => {
     const composer = Composer.empty();
     expect(composer.draft).toBe(composer.activate("s1").draft);
     expect(composer.draft.images).toBe(composer.activate("s2").draft.images);
 
-    // The whole Composer too: it is what the store holds, so re-activating the session
-    // already in force would notify every subscriber for nothing.
     const active = composer.activate("s1");
     expect(active.activate("s1")).toBe(active);
   });

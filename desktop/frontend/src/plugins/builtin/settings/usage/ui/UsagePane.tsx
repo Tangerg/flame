@@ -16,7 +16,6 @@ import { color, face, space, type as typeStep, weight } from "@/styles/tokens.st
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const u = stylex.create({
-  // A money column reads down, so it holds one measure and aligns on the right.
   cost: { width: space.s16, textAlign: "right", color: color.fg },
   totalLine: {
     display: "flex",

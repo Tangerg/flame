@@ -47,8 +47,6 @@ const styles = stylex.create({
     borderRadius: radius.lg,
     fontFamily: "var(--font-mono)",
   },
-  // A preview is framed because it holds something that is not text; a code block is recessed
-  // because it holds text the system produced.
   framed: {
     borderWidth: "0.5px",
     borderStyle: "solid",
@@ -71,10 +69,7 @@ const styles = stylex.create({
     textTransform: "none",
     fontWeight: weight.regular,
   },
-  // A flexible gap rather than `justify-between`: the caption's trailing controls appear and
-  // disappear, and a spacer keeps the language where it is either way.
   spacer: { minWidth: space.s1, flex: 1 },
-  // Fifteen lines and the padding, past which the preview scrolls rather than growing.
   previewBody: {
     display: "grid",
     maxHeight: "calc(15lh + 16px)",

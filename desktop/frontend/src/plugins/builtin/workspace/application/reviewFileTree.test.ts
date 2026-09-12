@@ -9,8 +9,6 @@ const file = (path: string, stat: Partial<WorkspaceFileDiff> = {}): WorkspaceFil
   ...stat,
 });
 
-/** Structure only. Every node also carries its line counts, which have their own
- *  tests below — asserting them here would bury what these cases are about. */
 const shape = (nodes: readonly ReviewTreeNode[]): unknown =>
   nodes.map((node) =>
     node.kind === "directory"
@@ -87,8 +85,6 @@ describe("buildReviewFileTree", () => {
   });
 
   it("keeps a file and a same-named directory as separate rows", () => {
-    // A change that replaces a file with a directory (delete `notes`, add
-    // `notes/index.md`) yields both, and neither may swallow the other.
     const tree = buildReviewFileTree([file("notes"), file("notes/index.md")]);
 
     expect(shape(tree)).toEqual([
@@ -114,7 +110,6 @@ describe("buildReviewFileTree · line counts", () => {
     expect(node).toMatchObject({ added: 0, removed: 0 });
   });
 
-  // The figure a collapsed directory shows is the only one it can honestly show.
   it("rolls a directory's total up from everything beneath it", () => {
     const tree = buildReviewFileTree([
       file("src/ui/a.ts", { added: 10, removed: 1 }),
@@ -128,8 +123,6 @@ describe("buildReviewFileTree · line counts", () => {
     const [node] = buildReviewFileTree([file("logo.png", { binary: true })]);
     expect(node).toMatchObject({ binary: true, added: 0, removed: 0 });
 
-    // A directory holding one binary file and one edited file HAS counts, so it is
-    // not binary — the flag only survives where there is nothing else to report.
     const tree = buildReviewFileTree([
       file("assets/logo.png", { binary: true }),
       file("assets/index.ts", { added: 4, removed: 0 }),
@@ -154,8 +147,6 @@ describe("filterReviewFiles", () => {
   });
 });
 
-// Two entries naming one path put two nodes under one key, and React answers a
-// duplicate key with a warning loop that costs frames (CLAUDE.md §5).
 describe("a diff that names one path twice", () => {
   it("shows the file once, carrying the later entry's counts", () => {
     const tree = buildReviewFileTree([

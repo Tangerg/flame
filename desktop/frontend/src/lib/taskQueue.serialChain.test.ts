@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SerialTaskChain } from "./taskQueue";
 
-// Three things make the chain correct, and each is a live defect if dropped: a rejecting tail
-// fails work that has not run, an unconditional delete breaks the ordering, and never deleting
-// grows a map for the life of the process.
-
 describe("serialising work per identity", () => {
   it("holds a second call until the first for the same identity settles", async () => {
     const chain = new SerialTaskChain();
@@ -35,8 +31,6 @@ describe("serialising work per identity", () => {
     await held;
   });
 
-  // The tail is what the NEXT call waits on. If a rejection propagated into it, one failed
-  // save would fail the next, unrelated one for the same identity before it even ran.
   it("does not fail the next call because the previous one did", async () => {
     const chain = new SerialTaskChain();
     const failing = chain.chain("same", (tail) =>
@@ -64,10 +58,6 @@ describe("serialising work per identity", () => {
     expect(order).toEqual(["after"]);
   });
 
-  // The identity check. A and B are both in flight; when A settles it must NOT forget the
-  // tail, because B replaced it. Forgetting it lets C start while B is still running, which
-  // is the ordering this class exists to provide. C has to be queued AFTER A's cleanup
-  // microtask has run, or the wrong implementation looks right.
   it("does not let a later call start because an earlier one finished", async () => {
     const chain = new SerialTaskChain();
     const first = Promise.withResolvers<void>();
@@ -101,8 +91,6 @@ describe("serialising work per identity", () => {
     for (let index = 0; index < 50; index += 1) {
       await chain.chain(`identity_${index}`, (tail) => tail.then(() => index));
     }
-    // The map is private, so the observable proof is that a fresh call for a long-finished
-    // identity starts immediately rather than chaining onto a retained tail.
     const order: string[] = [];
     await chain.chain("identity_0", (tail) => tail.then(() => void order.push("reused")));
     expect(order).toEqual(["reused"]);

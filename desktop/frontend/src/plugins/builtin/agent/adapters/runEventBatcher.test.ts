@@ -27,8 +27,6 @@ const runStarted = (): RunEvent =>
     },
   });
 
-// A segment.finished frame carries both halves the wire requires: why it stopped
-// and what the run consumed.
 const runFinished = (): RunEvent =>
   envelope({
     type: "segment.finished",
@@ -169,8 +167,6 @@ describe("createRunEventBatcher", () => {
       "segment.finished",
     ]);
 
-    // A frame already queued by the browser is harmless if its callback races
-    // the cancellation and still fires.
     frames.flushNext();
     expect(applied).toHaveLength(1);
   });

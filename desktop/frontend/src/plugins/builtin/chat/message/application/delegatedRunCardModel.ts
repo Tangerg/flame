@@ -13,10 +13,9 @@ export interface DelegatedRunCardModel {
   status: AgentRunPresentationState;
   statusLabel: string;
   dotTone: DotTone;
-  /** The status WORD's ink. */
   ink: Tone;
-  /** Whether the card frames itself, and in what. A narrower vocabulary than `ink` on purpose:
-   *  a card draws an edge around itself only for something somebody has to act on. */
+  /** A narrower vocabulary than `ink` on purpose: a card draws an edge around itself only for
+   *  something somebody has to act on. */
   shell: Extract<Tone, "neutral" | "warning" | "negative">;
   detail: string | null;
   stepsLabel: string;
@@ -25,8 +24,6 @@ export interface DelegatedRunCardModel {
 }
 
 /**
- * What a status LOOKS like, in one table.
- *
  * The dot's tone lived here while the status word's ink and the card's own framing were two
  * more ternaries over the same `status` in the JSX — three derivations of one fact, and the
  * kind that drift apart one branch at a time. `ink` and `shell` disagree in exactly one place,

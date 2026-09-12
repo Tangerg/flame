@@ -4,9 +4,9 @@ import { segmentWords } from "@/lib/i18n/segmentWords";
 import type { StreamReveal } from "../../streamReveal";
 
 /**
- * How text arrives on screen: the reader's stored preference, plus the one case the reader
- * never chose. `instant` is a RENDER decision — replayed history and anything already
- * complete has nothing to reveal — so it extends the preference rather than joining it.
+ * The reader's stored preference, plus the one case the reader never chose. `instant` is a
+ * RENDER decision — replayed history and anything already complete has nothing to reveal — so
+ * it extends the preference rather than joining it.
  */
 export type MarkdownReveal = StreamReveal | "instant";
 

@@ -1,6 +1,6 @@
 import type { AgentInput, AgentInputPart } from "@/plugins/builtin/agent/public/input";
 
-/** One image attachment ready to inline. `data` is raw base64 (no data: prefix). */
+/** `data` is raw base64 (no data: prefix). */
 export interface InputImage {
   mime: string;
   data: string;
@@ -13,8 +13,7 @@ export function buildInput(text: string, images: readonly InputImage[]): AgentIn
   return { parts };
 }
 
-/** Into the inline wire form: mime plus raw base64, no `data:` prefix. The caller
- *  pre-filters to image/* files. */
+/** The caller pre-filters to image/* files. */
 export async function fileToInputImage(file: File): Promise<InputImage & { name: string }> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();

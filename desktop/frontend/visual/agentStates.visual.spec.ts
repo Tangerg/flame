@@ -33,16 +33,9 @@ const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
 
 const GPT_5_6_SOL_CAPABILITY_NAME =
   "GPT-5.6 Sol 1.1M context · text + image + pdf input · Reasoning none / low / medium / high / xhigh / max · 922k max input · 128k max output · text output · Tools · Structured output · Knowledge 2026-02-16T00:00:00Z";
-// Reached through the search, where the list is no longer scoped to one provider, so each
-// row says which one it came from — that caption sits in the accessible name too.
 const QWEN_MT_PLUS_CAPABILITY_NAME =
   "Qwen MT Plus Alibaba 32.8k context · text input · text output";
 
-// The Record's own exhaustiveness is not enforced by its type — a partial Record
-// still typechecks against an index signature — and an absent expectation reads to
-// Playwright as "assert the attribute exists", which passes for every value.
-// `narrative` had been missing since it was added. A state without an expectation
-// is a state nobody is asserting anything about.
 test("every declared state carries an expected attention", () => {
   expect(Object.keys(EXPECTED_ATTENTION).sort()).toEqual([...VISUAL_AGENT_STATES].sort());
 });
@@ -75,14 +68,7 @@ test("a pending approval uses the Codex neutral request surface", async ({ page 
 
   const surface = page.locator('[data-slot="approval-surface"]');
   await expect(surface).toHaveCSS("border-top-width", "0px");
-  // The `bubble` step, same corner the user's own turn takes — 16px base carrying the
-  // superellipse compensation. It read 24px until the ladder claimed it: that was Tailwind's
-  // own `rounded-3xl`, the one radius in the tree that was neither a ladder step nor scaled
-  // with the rest when the corner curve changed.
   await expect(surface).toHaveCSS("border-radius", "20px");
-  // The tool's FAMILY, the word the catalogue and the transcript already use for it. The
-  // eyebrow used to have a two-name vocabulary of its own, so every tool outside it asked
-  // permission under its wire name.
   await expect(surface.getByText("Shell", { exact: true })).toBeVisible();
   await expect(
     page.getByText("Run the race detector across the workspace before committing.", {
@@ -117,10 +103,6 @@ test("question settlement uses the exact interrupt identity", async ({ page }) =
 
   const request = page.locator('[data-slot="question-request-surface"]');
   await expect(request).toBeVisible();
-  // The `bubble` step, same corner the user's own turn takes — 16px base carrying the
-  // superellipse compensation. It read 24px until the ladder claimed it: that was Tailwind's
-  // own `rounded-3xl`, the one radius in the tree that was neither a ladder step nor scaled
-  // with the rest when the corner curve changed.
   await expect(request).toHaveCSS("border-radius", "20px");
   await expect(request).toHaveCSS("border-top-width", "0px");
   await expect(page.locator('[data-slot="composer-root"]')).toHaveCount(0);
@@ -147,8 +129,6 @@ test("question settlement uses the exact interrupt identity", async ({ page }) =
   await settled.click();
   await expect(page.getByText("What should this gate protect?", { exact: true })).toBeVisible();
   await expect(page.getByText("Runtime boundaries and cancellation paths.")).toBeVisible();
-  // A settled answer is shown verbatim — an answer typed over three lines reads as three.
-  // The jsdom test for this read `whitespace-pre-wrap` back off a class attribute.
   await expect(page.locator("[data-settled-answer]").first()).toHaveCSS("white-space", "pre-wrap");
   await expect(settled.locator("xpath=../..")).toHaveScreenshot(
     "question-settled-expanded-light.png",
@@ -220,11 +200,8 @@ test("a delegated sub-agent reads as a nested line, not a card", async ({ page }
   await page.locator("html[data-visual-ready]").waitFor();
 
   const rows = page.getByRole("button", { name: /Sub-agent/ });
-  // Two nested under the first delegation, four siblings under the second.
   await expect(rows).toHaveCount(6);
 
-  // Each carries its own child Run's state, and the nested one renders inside the subtree of
-  // the item that spawned the first — the tree this state is named for.
   await expect(rows.nth(0)).toContainText("Needs input");
   await expect(rows.nth(1)).toContainText("Running");
   const nesting = await rows.nth(1).evaluate((deep, shallowId) => {
@@ -233,7 +210,6 @@ test("a delegated sub-agent reads as a nested line, not a card", async ({ page }
   }, "item_delegate");
   expect(nesting).toBe(true);
 
-  // A line, not a surface: no fill and no radius of its own.
   const shell = await rows.nth(0).evaluate((row) => {
     const style = getComputedStyle(row);
     return { background: style.backgroundColor, radius: style.borderTopLeftRadius };
@@ -241,11 +217,6 @@ test("a delegated sub-agent reads as a nested line, not a card", async ({ page }
   expect(shell.background).toBe("rgba(0, 0, 0, 0)");
 });
 
-// A sub-agent that delegates again is the deepest thing the transcript draws, and until this
-// nothing had ever seen it OPEN: a running child auto-collapses, so the grandchild's own
-// content — and the indent that says whose it is — was in no golden and no assertion. Each
-// level steps in by the same amount from both sides; a step that stops arriving is a reply
-// attributed to the wrong agent.
 test("a sub-agent's own delegation indents one step further, from both sides", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=delegated");
   await page.locator("html[data-visual-ready]").waitFor();
@@ -271,7 +242,6 @@ test("a sub-agent's own delegation indents one step further, from both sides", a
   const step = child.x - root.x;
   expect(step).toBeGreaterThan(0);
   expect(grandchild.x - child.x).toBe(step);
-  // Both sides, or the deeper reply is wider than the one it belongs to.
   expect(root.width - child.width).toBe(step * 2);
   expect(child.width - grandchild.width).toBe(step * 2);
 });
@@ -358,16 +328,10 @@ test("the compact Plan pill reveals the production checklist on hover", async ({
   await page.goto("/visual/?fixture=agent&theme=light&state=running");
   await page.locator("html[data-visual-ready]").waitFor();
 
-  // The pill rides the composer stack, which the settling transcript is still moving when
-  // `data-visual-ready` fires. `hover()` reads the box and then moves the pointer, so aiming
-  // before it stops lands on where the pill was — the tooltip never opens and the failure
-  // reads as a missing surface rather than as a race.
   const plan = page.getByRole("button", { name: "Step 2 / 3" });
   await expectStableBox(plan);
   await plan.hover();
 
-  // The tooltip's steps come from the session's plan snapshot, not from a
-  // per-run plan Item — same three steps, read from where the protocol keeps them.
   await expect(page.getByText("Run quality gates", { exact: true })).toBeVisible();
   const tooltip = page.getByRole("tooltip");
   await expect(tooltip).toBeVisible();
@@ -439,10 +403,6 @@ for (const theme of ["light", "dark"] as const) {
     await page.goto(`/visual/?fixture=agent&theme=${theme}&state=idle`);
     await page.locator("html[data-visual-ready]").waitFor();
 
-    // Codex gives the human turn a stable semantic hook and a neutral ink wash:
-    // the bubble distinguishes ownership without turning every prompt into an
-    // accent/status callout. Pin both schemes because a light-only assertion can
-    // accidentally accept a translucent accent whose dark result is much louder.
     const bubble = page.locator("[data-user-message-bubble]");
     await expect(bubble).toHaveCount(1);
     await expect(bubble).toContainText("Review the Runtime boundary");
@@ -468,13 +428,8 @@ for (const theme of ["light", "dark"] as const) {
     expect(material).toEqual({
       background: material.expectedBackground,
       expectedBackground: material.expectedBackground,
-      // 70% is the reference's own `--user-chat-width` for a standard bubble; its 456px cap
-      // belongs to a compact variant this app has no counterpart for.
       maxWidth: "70%",
       padding: ["8px", "12px", "8px", "12px"],
-      // The bubble sits on the `bubble` step — 16px, same base Codex gives it. Where the
-      // superellipse corner is drawn, that step carries the 1.25 compensation from
-      // globals.css, which is also what Codex renders on a browser that supports it.
       radius: material.superellipse ? "20px" : "16px",
       superellipse: material.superellipse,
     });
@@ -492,9 +447,6 @@ test("composer keeps one production edge and 6/8 footer inset", async ({ page })
   await expect(page.getByRole("button", { name: "Attach image" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Switch model" })).toBeVisible();
 
-  // Read from the token rather than restated: the reading column's width is a
-  // design decision that moves, and a literal here asserts one revision of it
-  // against every later one. What must hold is that the composer spans the column.
   const box = await composer.boundingBox();
   expect(box?.width).toBe(
     await page.evaluate(() =>
@@ -504,10 +456,6 @@ test("composer keeps one production edge and 6/8 footer inset", async ({ page })
     ),
   );
 
-  // ONE edge mechanism, and for a panel resting ON the transcript that is a ring,
-  // not a border: a drawn line was the only outlined object left on a screen whose
-  // regions all separate by cast. So no border AND no second stroke — the ring and
-  // the depth under it are the single `box-shadow` this asserts.
   await expect(composer).toHaveCSS("border-top-width", "0px");
   const material = await composer.evaluate((element) => {
     const probe = document.createElement("div");
@@ -531,8 +479,6 @@ test("composer keeps one production edge and 6/8 footer inset", async ({ page })
     };
   });
   expect(material.shadow).toBe(material.expected.shadow);
-  // Translucent and blurred, or the ring reads as a stroke around a box rather than
-  // as the edge of glass — the material is half of why the border could go.
   expect(material.fill).toBe(material.expected.fill);
   expect(material.fill).toMatch(/rgba|color\(|\/\s*0?\.\d/);
   expect(material.backdrop).toBe(material.expected.backdrop);
@@ -557,12 +503,7 @@ test("model capabilities drive the picker and image admission together", async (
   await page.getByRole("menuitem", { name: "high", exact: true }).click();
   await expect(effort).toHaveText("high");
   await page.getByRole("button", { name: "Switch model" }).click();
-  // The model picker is a combobox, not a menu: it filters, so its rows are
-  // options. Only the effort control above is a menu.
   await expect(page.getByRole("option", { name: GPT_5_6_SOL_CAPABILITY_NAME })).toBeVisible();
-  // The picker opens on the provider in force and lists only its models, so reaching another
-  // provider's model is a tab away or a query away. Typing is the path a reader takes when
-  // they already know the name, and it is the one that has to cross every tab.
   await page.getByPlaceholder("Search models…").fill("Qwen MT Plus");
   await page.getByRole("option", { name: QWEN_MT_PLUS_CAPABILITY_NAME }).click();
 
@@ -585,29 +526,18 @@ for (const theme of ["light", "dark"] as const) {
     const rail = surface.locator("button[aria-pressed]");
     await expect(rail.first()).toHaveAttribute("aria-pressed", "true");
 
-    // The measure is the point: the body does not resize with its group, so the surface
-    // cannot walk up the screen. Settle first — the popover enters at `scale(0.97)`, so a box
-    // read mid-transition is 97% of the answer.
     const body = surface.locator("button[aria-pressed]").first().locator("..").locator("..");
     await expectStableBox(body);
     const before = await body.boundingBox();
 
     await rail.last().click();
-    // Focus stays where it was used. The caret goes to the search on OPEN; re-running that on
-    // every group change took it away from the rail, so a keyboard reader could never stay
-    // there to try a second group.
     await expect(rail.last()).toBeFocused();
     await expectStableBox(body);
     expect((await body.boundingBox())!.height).toBe(before!.height);
 
-    // A query leaves the rail behind: the results are not scoped to one provider any more, so
-    // the rail would be lying about what is listed.
     await page.getByPlaceholder("Search models…").fill("gpt");
     await expect(surface.locator("button[aria-pressed]")).toHaveCount(0);
 
-    // Escape gives the query back before it gives up the surface. Proved here and not only in
-    // the unit suite: keeping the popover open depends on stopping the key before Base UI's
-    // dismiss layer sees it, and that layer is a real one only in a real browser.
     await page.keyboard.press("Escape");
     await expect(surface).toBeVisible();
     await expect(page.getByPlaceholder("Search models…")).toHaveValue("");
@@ -615,10 +545,6 @@ for (const theme of ["light", "dark"] as const) {
 
     await rail.first().click();
 
-    // `data-[highlighted]:bg-hover` is the only feedback a row has, and the attribute behind
-    // it is Base UI's to write — a variant keyed on a name the library does not set compiles,
-    // ships and never matches. It needs a real pointer, so it is proved here rather than in a
-    // unit test that can only synthesise one.
     const row = page.getByRole("option").first();
     await expect(row).not.toHaveAttribute("data-highlighted", "");
     await row.hover();
@@ -656,8 +582,6 @@ test("recovery action dismisses the problem and resends the last user input", as
   await page.goto("/visual/?fixture=agent&theme=light&state=recovery");
   await page.locator("html[data-visual-ready]").waitFor();
 
-  // Scoped to the transcript: the fixture sidebar lists every state by name, and a state
-  // whose name merely CONTAINS the word would otherwise answer for the action.
   await page.getByTestId("agent-state").getByRole("button", { name: "Retry" }).click();
 
   await expect(page.getByRole("alert")).toHaveCount(0);
@@ -679,13 +603,6 @@ test("long content remains inside the reading column without horizontal overflow
   await expect(page.locator('[data-slot="composer-root"]')).toBeVisible();
 });
 
-// The whole apparatus below — `layOutTranscript`, the frozen clock's fractional-origin wait —
-// exists to absorb `content-visibility`. None of it fails when the property stops arriving:
-// with nothing skipped there is nothing to settle, so the races those helpers guard against
-// simply stop happening and every golden goes on passing. That is how two Tailwind
-// arbitrary-property classes outlived Tailwind unnoticed. The property is a real product
-// decision — an unbounded transcript renders its history or does not — so it gets asserted on
-// the rendered document, where a style that compiles to nothing has nowhere to hide.
 test("historical turns skip off-screen rendering and the tail turn never does", async ({
   page,
 }) => {
@@ -703,19 +620,6 @@ test("historical turns skip off-screen rendering and the tail turn never does", 
   expect(visibility.at(-1)).toBe("visible");
 });
 
-/**
- * Render every turn once, top to bottom.
- *
- * `content-visibility` holds an off-screen turn at its estimated height until it has
- * rendered, and `contain-intrinsic-size: auto` then remembers the real one — so the
- * transcript's total height depends on which turns happened to get rendering time. A golden
- * settles STABLY at a different offset run to run, which is why asserting the resting scroll
- * position cannot catch it.
- *
- * It is not only the goldens. Anything reaching INTO a turn needs the same pass: a lazy image
- * inside an unrendered subtree has no box, so `scrollIntoView` aims at nothing, the image
- * never loads, and the control around it reports itself hidden.
- */
 async function layOutTranscript(page: Page): Promise<void> {
   await page.evaluate(async () => {
     const scroller = document.querySelector(".msg-scroll-viewport");
@@ -729,14 +633,6 @@ async function layOutTranscript(page: Page): Promise<void> {
   });
 }
 
-/**
- * Wait until a locator's box stops moving.
- *
- * Playwright's `hover()` reads the box and then moves the pointer, so anything still easing
- * — the transcript's own scroll, an image resolving its size — is a pointer aimed where the
- * target used to be. The failure that follows is a control that never reveals, which reads
- * as a broken affordance rather than as a race.
- */
 async function expectStableBox(locator: Locator): Promise<void> {
   let previous = "";
   await expect
@@ -750,15 +646,6 @@ async function expectStableBox(locator: Locator): Promise<void> {
     .toBe(true);
 }
 
-/**
- * Hover, and keep hovering until the reveal arrives.
- *
- * Settling the box first is not enough and this failed twice under full parallel load with
- * the settle already in place: `hover()` reads a box and then moves the pointer, so anything
- * that moves in between leaves the pointer on nothing — and a poll that only re-reads opacity
- * never re-aims. Retrying the assertion alone would wait forever on a pointer that is already
- * in the wrong place. The hover belongs INSIDE the retry.
- */
 async function expectRevealOnHover(target: Locator, revealed: Locator): Promise<void> {
   await expectStableBox(target);
   await expect(async () => {
@@ -812,13 +699,9 @@ test("code blocks stay readable and expose the wrap control", async ({ context, 
   await expect(svgPreview).toBeVisible();
   const svgArtifact = page.locator(".shiki-block").filter({ has: svgPreview });
   const svgCopy = svgArtifact.getByRole("button", { name: "Copy code" });
-  // Settle the artwork BEFORE hovering: the image loading resizes the artifact, and a hover
-  // aimed at where it used to be leaves the pointer outside it, so the control never reveals.
   await expect
     .poll(() => svgPreview.evaluate((image: HTMLImageElement) => image.naturalWidth))
     .toBe(240);
-  // `toBeVisible` may scroll the artifact underneath the pointer left by the
-  // earlier wrap click. Move it away so this measures the true resting state.
   await page.mouse.move(0, 0);
   await expect.poll(() => svgCopy.evaluate((button) => getComputedStyle(button).opacity)).toBe("0");
   await expectRevealOnHover(svgArtifact, svgCopy);
@@ -833,8 +716,6 @@ test("code blocks use the Codex caption and source geometry", async ({ page }) =
   await page.locator("html[data-visual-ready]").waitFor();
 
   const block = page.locator(".shiki-block").filter({ hasText: "Execute(context.Context" });
-  // Highlighting is async, so `.shiki` and the caption arrive after the ready flag. Reading
-  // before they do returns null and fails on a frame rather than on the geometry.
   await block.locator(".shiki").waitFor();
   await block.locator('[data-markdown-copy="exclude"]').waitFor();
   const geometry = await block.evaluate((root) => {
@@ -894,9 +775,6 @@ for (const theme of ["light", "dark"] as const) {
     const artifact = diagram.locator("..");
     await expectStableBox(artifact);
     await artifact.hover();
-    // Mermaid lays its own labels out in SVG and does not place their glyphs at the same
-    // subpixel offset twice, which costs about two hundred pixels of text edge per run. The
-    // rest of the suite holds a far tighter budget; this is the one golden that cannot.
     await expect(artifact).toHaveScreenshot(`markdown-mermaid-${theme}.png`, {
       maxDiffPixels: 400,
     });
@@ -921,18 +799,6 @@ for (const theme of ["light", "dark"] as const) {
     await artifact.getByRole("button", { name: "Enlarge diagram" }).click();
     const enlarged = page.getByRole("dialog", { name: "Diagram" });
     await expect(enlarged).toBeVisible();
-    // Photographed, not merely asserted present. `globals.css` owns what the enlarged diagram
-    // is — `[data-slot="mermaid-full"] svg` centres it and lifts the `max-width` the inline
-    // stage imposes — and a descendant rule is exactly the kind nothing else here can check.
-    // Being visible says nothing about being the right size.
-    // The budget covers a measured failure mode, not a guess. This golden is bimodal: four runs
-    // in five come out at 0 pixels and the fifth at exactly 476, which is a one-pixel row along
-    // the panel's bottom edge — Mermaid sizes its own SVG from glyph layout it does not repeat
-    // exactly, so the panel's height lands on a different fraction and its edge antialiases
-    // differently. At 400 the suite went red on roughly one run in five, and the mode is
-    // discrete rather than gradual, so the number has to clear it rather than sit under it.
-    // Verified not to be caused by the lightbox now focusing its panel: removing that still
-    // reproduced 476 once in five.
     await expect(enlarged).toHaveScreenshot(`markdown-mermaid-full-${theme}.png`, {
       maxDiffPixels: 700,
     });
@@ -1010,10 +876,6 @@ for (const theme of ["light", "dark"] as const) {
 
     const preview = page.getByRole("button", { name: "Inline architecture" });
     await expect(page.locator('[data-markdown-image-grid="true"] > button')).toHaveCount(2);
-    // BEFORE anything scrolls to it: an inline image carries its own bytes, so it has to hold
-    // its box while it is still below the fold. This line used to assert `loading="lazy"`,
-    // which deferred no request and cost exactly that — measured 0x0 until the reader arrived
-    // and then 240x96, moving the transcript under the line they were reading.
     const unseen = await preview.locator("img").boundingBox();
     expect(unseen?.height ?? 0, "an image below the fold holds no box").toBeGreaterThan(8);
     await layOutTranscript(page);
@@ -1024,10 +886,6 @@ for (const theme of ["light", "dark"] as const) {
     await preview.click();
     const dialog = page.getByRole("dialog", { name: "Inline architecture" });
     await expect(dialog).toBeVisible();
-    // The dialog is fixed but its 90% backdrop deliberately preserves the
-    // transcript behind it. Pin that background before the golden: the
-    // transcript's follow animation and `scrollIntoView` otherwise race over
-    // which equally valid 49px slice shows through the backdrop.
     const transcript = page.locator(".msg-scroll-viewport");
     await transcript.evaluate((viewport) => {
       viewport.scrollTop = 0;
@@ -1069,14 +927,6 @@ test("context compaction uses the Codex activity row without divider chrome", as
   const compaction = page.getByRole("button", { name: "Context automatically compacted" });
   await compaction.scrollIntoViewIfNeeded();
   await expect(compaction.locator('[data-icon-name="minimize"]')).toBeVisible();
-  // "Without divider chrome" is a claim about GEOMETRY, so it is asked that way. This looked
-  // for `.h-px` — the Tailwind utility a hairline used to be spelled with — and Tailwind left:
-  // measured, that selector matches nothing anywhere, so the assertion has been trivially true
-  // for as long as it has been here. A divider today is a `Divider`, which renders a plain
-  // `div` at `height: 1px` with a StyleX class, so there is no name to look for and asking for
-  // one again would set the same trap.
-  //
-  // Verified live: injecting a 200x1 painted div into this subtree makes the reading `["200x1"]`.
   const row = compaction.locator("xpath=..");
   const chrome = await row.evaluate((node) => {
     const kids = [...node.querySelectorAll("*")];
@@ -1091,7 +941,6 @@ test("context compaction uses the Codex activity row without divider chrome", as
     });
     return { examined: kids.length, hairlines: hairlines.map((element) => element.tagName) };
   });
-  // Floor, not a target: an empty subtree has no divider in it either.
   expect(chrome.examined, "the compaction row has to have something in it").toBeGreaterThan(3);
   expect(chrome.hairlines, "divider chrome beside the compaction row").toEqual([]);
   await expect(compaction).toHaveAttribute("aria-expanded", "false");
@@ -1260,22 +1109,11 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
-// The three seams around the reading plane are one primitive, and the top one is the
-// easy one to lose: half a device pixel, so the raster comparison can pass on its
-// absence, and the bars sit in their region's own colour with the body scrolling
-// under them — with no seam the session title and the first line of a message share
-// one field of white.
-// Assert the shared mechanism so every chrome bar in the same visual row receives the
-// same seam contract.
 test("every chrome bar that takes a bottom edge wears the style edge", async ({ page }) => {
   await page.goto("/visual/?fixture=workspace&theme=light&state=dock-light");
   await page.locator("html[data-visual-ready]").waitFor();
 
   const measured = await page.evaluate(() => {
-    // Resolve the expected value THROUGH the engine rather than composing the two
-    // token strings: computed `box-shadow` is normalised (`rgba(0, 0, 0, 0.2)`,
-    // `0px`) and the tokens are not, so a string built here would only ever assert
-    // that this test can reproduce Chromium's serialiser.
     const probe = document.createElement("div");
     probe.style.boxShadow = "var(--app-header-edge) var(--color-border)";
     document.body.append(probe);
@@ -1295,15 +1133,9 @@ test("every chrome bar that takes a bottom edge wears the style edge", async ({ 
 
   expect(measured.withEdge.length).toBeGreaterThanOrEqual(2);
   for (const shadow of measured.withEdge) expect(shadow).toBe(measured.edge);
-  // A bar that already butts against another region takes nothing.
   for (const shadow of measured.withoutEdge) expect(shadow).toBe("none");
 });
 
-// The input rung floats over the transcript, so the transcript has to end above it.
-// Nothing else can catch this: the tail is only reachable at full scroll, the
-// overlap looks plausible on a fixture that fits its viewport, and the reservation
-// is published by a ResizeObserver rather than written in a class — so it can be
-// silently zero and every other assertion still passes.
 for (const { state, inputSurface } of [
   { state: "long-content", inputSurface: '[data-slot="composer-root"]' },
   { state: "question", inputSurface: '[data-slot="question-request-surface"]' },
@@ -1327,16 +1159,10 @@ for (const { state, inputSurface } of [
         clearance: Math.round(
           input.getBoundingClientRect().top - tail.getBoundingClientRect().bottom,
         ),
-        // The margin the contract adds on top of the panel's own height, read
-        // rather than restated: `COMPOSER_CLEARANCE` guarantees this `1rem`
-        // after its scroll-rounding guard, and a literal here would have to be
-        // kept in step with a class in another file.
         margin: Math.round(Number.parseFloat(getComputedStyle(document.documentElement).fontSize)),
       };
     }, inputSurface);
 
-    // Not merely positive: a tail resting against the surface edge is visually
-    // crowded and can remain behind the composer's translucent material.
     expect(measured?.margin).toBeGreaterThan(0);
     expect(measured!.clearance).toBeGreaterThanOrEqual(measured!.margin);
   });
@@ -1447,26 +1273,16 @@ test("async transcript materialization follows only while the reader stays at th
   expect(measured!.afterGrowth.distance - measured!.escapedDistance).toBe(180);
 });
 
-// Every state collapses its tool calls into an "N steps" summary, so until this
-// test the rows themselves — the app's most-read surface — appeared in no
-// screenshot and in no browser assertion. What it pins is what a row REPORTS: the
-// subject it acted on, and for an edit the lines it changed.
-// The plan was on screen twice: the active surface above the composer, and the
-// tool row that wrote it. Nothing about that is visible to a golden — both readings look
-// deliberate — so the assertion is that the transcript does not narrate a call whose
-// surface already holds it.
 test("a tool with a standing surface is not narrated as well", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=running");
   await page.locator("html[data-visual-ready]").waitFor();
 
-  // The composer-owned pill holds the plan in its Codex-style hover surface.
   const plan = page.getByRole("button", { name: "Step 2 / 3" });
   await expectStableBox(plan);
   await plan.hover();
   await expect(page.getByText("Review visual evidence", { exact: true })).toBeVisible();
 
   const stream = page.locator(".msg-scroll-viewport");
-  // The transcript does not repeat it, closed or open.
   for (let i = 0; i < 6; i++) {
     const shut = stream.locator(
       "[data-slot='agent-activity-disclosure'] button[aria-expanded='false']",
@@ -1477,17 +1293,11 @@ test("a tool with a standing surface is not narrated as well", async ({ page }) 
       .click({ timeout: 2000 })
       .catch(() => {});
   }
-  // Its rendered label, not the tool name — the row shows "Update the plan".
   await expect(stream.getByText("Update the plan")).toHaveCount(0);
 
-  // The calls it does narrate are still there — the filter removed one row, not the run.
   await expect(stream.getByText("atomicity_and_idempotency.go").first()).toBeVisible();
 });
 
-// The frame every turn passes through: the answer's item is open and still empty.
-// Nothing may be folded here — an empty block is not an answer, and treating it as one
-// collapsed the thinking to a one-line row with nothing in it, while the reply it
-// deferred to had not written a character.
 test("an opened but empty answer folds nothing behind it", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=answer-opening");
   await page.locator("html[data-visual-ready]").waitFor();
@@ -1499,10 +1309,8 @@ test("an opened but empty answer folds nothing behind it", async ({ page }) => {
     "aria-expanded",
     "true",
   );
-  // Its body, not just its summary row.
   await expect(thinking).toContainText("The framework must expose execution capability");
 
-  // And the live work is still a list of steps rather than one folded wave.
   await expect(page.getByRole("button", { name: /steps/ })).toHaveCount(0);
 });
 
@@ -1533,14 +1341,7 @@ test("an expanded patch reports only its call-scoped file receipt", async ({ pag
     .first();
   await expect(row).toBeVisible();
 
-  // The point of the split, in a real layout: the path is too long for the row, so
-  // the DIRECTORY is the part that gets clipped and the filename is whole. Measured
-  // rather than screenshotted because it is the overflow that matters, and a golden
-  // cannot tell "clipped on the left" from "clipped on the right" without a human.
   const clipping = await row.evaluate((element) => {
-    // The visual fixture has a deliberate 1120px minimum canvas. Constrain this
-    // production row itself to exercise the dock/composer-narrowing case without
-    // replacing the app layout with a test-only viewport implementation.
     const activity = element.closest<HTMLElement>("[data-slot='agent-activity-disclosure']");
     if (activity) activity.style.width = "480px";
     const directory = element.querySelector("[dir=rtl]");
@@ -1553,11 +1354,6 @@ test("an expanded patch reports only its call-scoped file receipt", async ({ pag
     };
   });
   expect(clipping.directoryClipped).toBe(true);
-  // The directory gives way FIRST and gives way further — that is the ordering this
-  // pins, and it is the whole point of the atom. "The filename is never touched" is a
-  // stronger claim than the layout can keep: a name wider than its column must
-  // ellipsize rather than push the row past its container. It remains whole in the DOM
-  // and in the title.
   expect(clipping.directoryLost).toBeGreaterThan(clipping.filenameLost);
   expect(clipping.filenameText).toBe("specialisedPreviewProjections.ts");
   await expect(row).not.toContainText("+");
@@ -1617,10 +1413,6 @@ test("completed work folds before the separate final answer owns message actions
   await expect(answer.getByRole("button", { name: "Regenerate response" })).toBeVisible();
 });
 
-// A receipt lists what one patch did, one verb per row. The verbs have different widths, so
-// while they only ever sized themselves each path began at its own verb's end — which nothing
-// could see until a fixture edited, moved and deleted in one call. The rows share a column
-// track now, and this is the assertion that says so: paths on one left edge, verbs on another.
 test("a multi-file patch receipt puts every path on one left edge", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=tool-shells");
   await page.locator("html[data-visual-ready]").waitFor();
@@ -1630,7 +1422,6 @@ test("a multi-file patch receipt puts every path on one left edge", async ({ pag
 
   const rows = page.locator("[data-patch-change]");
   await expect(rows).toHaveCount(3);
-  // Three DIFFERENT verbs, or the alignment is trivially satisfied by three identical labels.
   expect(new Set(await rows.evaluateAll((r) => r.map((e) => e.dataset.patchChange))).size).toBe(3);
 
   const edges = await rows.evaluateAll((r) =>
@@ -1645,10 +1436,6 @@ test("a multi-file patch receipt puts every path on one left edge", async ({ pag
   }
 });
 
-// A question outlives the moment it is asked, and both fixtures that carry one park it at
-// requires-action — so neither settled shape had ever been drawn: the disclosure that keeps
-// each prompt beside what was answered, and the single line for a question the Run was
-// canceled out from under.
 test("an answered question keeps both halves of the exchange", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=narrative");
   await page.locator("html[data-visual-ready]").waitFor();
@@ -1658,7 +1445,6 @@ test("an answered question keeps both halves of the exchange", async ({ page }) 
     .filter({ hasText: "Asked" })
     .first();
   await expect(settled).toContainText("2 questions");
-  // Closed: a settled exchange is history, not something to read past on the way down.
   await expect(settled).not.toContainText("idempotency key");
 
   await settled.getByRole("button").first().click();
@@ -1672,16 +1458,10 @@ test("a question the run was canceled out from under says so in one line", async
   await page.locator("html[data-visual-ready]").waitFor();
 
   await expect(page.getByText("Closed without an answer")).toBeVisible();
-  // One line, and no request surface: the prompt itself is gone with the Run that owned it,
-  // so nothing invites an answer that can no longer be given.
   await expect(page.getByText("Should the review cover the CLI too?")).toHaveCount(0);
   await expect(page.getByRole("textbox", { name: "Scope" })).toHaveCount(0);
 });
 
-// A turn that delegates TWICE. Both calls are read-only by safety class, so the planner
-// folded them together as glances — and a delegation is not a glance: it owns a sub-agent
-// below it. Grouped, all six sub-agents left the transcript, the pending approval among
-// them, and no fixture had ever delegated more than once so nothing said so.
 test("a second delegation keeps every sub-agent, and its own status column", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=delegated");
   await page.locator("html[data-visual-ready]").waitFor();
@@ -1690,9 +1470,6 @@ test("a second delegation keeps every sub-agent, and its own status column", asy
   await expect(page.getByRole("button", { name: /Sub-agent/ })).toHaveCount(6);
   await expect(page.locator('[data-slot="approval-surface"]')).toBeVisible();
 
-  // Every state a delegated run can end in, which is where a reader looks for the one that
-  // failed — so they share a right edge. The row without a detail used to drop out of that
-  // column entirely, 440px to the left of the three beside it.
   const ends = await page
     .locator("#item_fanout [data-slot='agent-activity-disclosure']")
     .evaluateAll((rows) =>
@@ -1707,15 +1484,9 @@ test("a second delegation keeps every sub-agent, and its own status column", asy
   expect(new Set(ends).size).toBe(1);
 });
 
-// Four Goal statuses, and two of them had never been drawn. What each one OFFERS is the part
-// that cannot drift quietly: a blocked goal the Runtime would resume must keep its resume
-// control, and a completing goal — the settlement window after the model declared success —
-// must not offer to pause or edit an objective that is already being charged and cleared.
 const GOAL_CONTROLS: ReadonlyArray<{ state: string; label: string; actions: string[] }> = [
   { state: "running", label: "Pursuing goal", actions: ["Clear goal", "Pause goal", "Edit goal"] },
   { state: "canceled", label: "Goal stalled", actions: ["Clear goal", "Resume goal", "Edit goal"] },
-  // Paused by a cap that is spent: the Runtime refuses to resume, so the row says why and
-  // drops the control rather than offering an action that would be rejected.
   { state: "terminal", label: "Cost budget reached", actions: ["Clear goal", "Edit goal"] },
   { state: "steer", label: "Finishing goal", actions: ["Clear goal"] },
 ];
@@ -1747,12 +1518,10 @@ test("the transcript publishes one heading outline, from the session down", asyn
     })),
   );
 
-  // One h1, and it names the session rather than sitting inside it.
   const roots = outline.filter((heading) => heading.level === 1);
   expect(roots).toHaveLength(1);
   expect(roots[0]?.text).toBe("Agent · narrative");
 
-  // Every turn is its child, and nothing a model wrote outranks the turn holding it.
   expect(
     outline.filter((heading) => heading.level === 2 && !heading.authored).length,
   ).toBeGreaterThan(0);
@@ -1760,7 +1529,6 @@ test("the transcript publishes one heading outline, from the session down", asyn
     if (heading.authored) expect.soft(heading.level).toBeGreaterThanOrEqual(3);
   }
 
-  // No rung is skipped, which is the whole reason the body opens at h3 and not h4.
   let previous = 0;
   for (const heading of outline) {
     expect.soft(heading.level).toBeLessThanOrEqual(previous + 1);
@@ -1778,10 +1546,6 @@ test("an expanded wave keeps its summary while its rows scroll past", async ({ p
     .first();
   await expect(header).toBeVisible();
 
-  // Measured, not screenshotted: a golden of a scrolled transcript cannot tell
-  // "the header stuck" from "the header happened to be in frame". The card's own
-  // `overflow` decides this — `hidden` would make the card the scrollport and the
-  // header would leave with its rows.
   const stuck = await header.evaluate((element) => {
     const viewport = element.closest(".msg-scroll-viewport");
     const card = element.parentElement;
@@ -1795,8 +1559,6 @@ test("an expanded wave keeps its summary while its rows scroll past", async ({ p
     };
   });
   expect(stuck?.position).toBe("sticky");
-  // `hidden` here is the bug this guards: it silently turns the card into the
-  // scrollport, and sticky then has nothing to stick to.
   expect(stuck?.overflow).toBe("clip");
 });
 
@@ -1819,15 +1581,6 @@ test("the Goal surface stays quiet and omits Runtime constraints", async ({ page
 
 for (const theme of ["light", "dark"] as const) {
   for (const state of VISUAL_AGENT_STATES) {
-    // `delegated` has no frame golden. Its transcript renders two ways — the block lands a
-    // pixel apart and every glyph in the frame differs by 9-11k pixels, deterministic in
-    // magnitude and not in which one appears. Eight causes were measured and ruled out:
-    // scroll position, the transcript's mask, element geometry, font readiness, resolving
-    // `content-visibility` (which moved twenty-six other goldens and fixed nothing), the Vite
-    // transform cache, the runner's within-file parallelism, and cropping to the scroller.
-    // A budget wide enough to pass would be wider than a whole button, so the PAGE frame is
-    // given up rather than the suite's sensitivity — the element frame below covers what the
-    // state is named for, and its behaviour already was.
     if (state === "delegated") continue;
     test(`agent golden ${theme} ${state}`, async ({ page }) => {
       await page.goto(`/visual/?fixture=agent&theme=${theme}&state=${state}`);
@@ -1836,10 +1589,6 @@ for (const theme of ["light", "dark"] as const) {
         await expect(page.locator(".shiki-block .shiki")).toHaveCount(3);
         await expect(page.getByRole("img", { name: "Diagram" })).toBeVisible();
       }
-      // The canonical tool-shell frame exists to photograph the tool grammar,
-      // so open its completed wave before capturing it. A collapsed "6 steps"
-      // row cannot catch icon, status, grouping or preview regressions in the
-      // components the state is named for.
       if (state === "tool-shells") {
         await page.getByRole("button", { name: /steps/ }).first().click();
         await page
@@ -1849,14 +1598,6 @@ for (const theme of ["light", "dark"] as const) {
       }
       await layOutTranscript(page);
 
-      // Put the transcript where it belongs BEFORE the clock stops, rather than
-      // waiting to see where it lands. Ready only means the tree is mounted;
-      // use-stick-to-bottom then eases the scroll with Date.now(), and the
-      // resting position it eases toward moves under it — `content-visibility`
-      // gives off-screen blocks an estimated height until they are laid out, so
-      // the same transcript settles a pixel apart between two runs and every
-      // row in the frame shifts with it. Every fixture sticks to the bottom, and
-      // the bottom is a hard stop the browser clamps to: assert it.
       await page.waitForFunction(() => {
         const scroller = document.querySelector(".msg-scroll-viewport");
         if (!scroller) return true;
@@ -1873,12 +1614,6 @@ for (const theme of ["light", "dark"] as const) {
 
       await freezeVisualClock(page);
 
-      // `empty` is the one state whose composer is CENTRED, so it lands on a half pixel
-      // whenever the content column is odd — 1120 less the 275 rail is — and Chromium
-      // rasterises those three label runs two ways across page loads. Measured: identical
-      // geometry, identical colour, 1084 differing pixels confined to rows 427-437, and 15
-      // of 16 loads agreeing. The same chips are photographed unmasked in every docked
-      // state, where the composer starts on a whole pixel, so nothing here is uncovered.
       await expect(page).toHaveScreenshot(`agent-${theme}-${state}.png`, {
         mask: state === "empty" ? [page.locator('[data-slot="composer-chip-label"]')] : undefined,
       });
@@ -1886,11 +1621,6 @@ for (const theme of ["light", "dark"] as const) {
   }
 }
 
-// The ninth cause, which the page frame could not escape and an element frame does not have
-// to: the shift is a WHOLE pixel, so a clip taken relative to the card's own box carries
-// identical content at an identical raster phase. Bucketed 12 loads to one hash before it was
-// written down. This is the delegated card — a sub-agent's own run, with its status, its step
-// count and its nested delegation — which is the whole of what the state is named for.
 for (const theme of ["light", "dark"] as const) {
   test(`agent delegated card ${theme}`, async ({ page }) => {
     await page.goto(`/visual/?fixture=agent&theme=${theme}&state=delegated`);

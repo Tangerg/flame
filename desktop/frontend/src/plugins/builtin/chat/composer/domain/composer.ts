@@ -6,7 +6,7 @@ export const SCRATCH_SESSION_ID = "";
 const HISTORY_CAP = 50;
 
 /**
- * What one conversation has half-written. Immutable: the store swaps whole drafts, so a
+ * Immutable: the store swaps whole drafts, so a
  * selector that returned `images` last render returns the same array this render unless
  * the images actually changed.
  */
@@ -56,9 +56,6 @@ type Recall = { readonly active: false } | { readonly active: true; at: number; 
 const NOT_RECALLING: Recall = { active: false };
 
 /**
- * The composer aggregate: every session's draft, every session's input ring, and which
- * session is being edited.
- *
  * One root because the invariants span all three. `value` used to be mirrored beside the
  * archive it was a copy of, and leaving recall on an edit was four separate assignments —
  * both are structural here: the active draft is DERIVED, and every mutation but recall's

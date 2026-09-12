@@ -15,7 +15,6 @@ import { face, radius, space, surface, type as typeStep } from "@/styles/tokens.
 const cs = stylex.create({
   field: { height: space.s7, width: "calc(var(--spacing) * 56)", paddingInline: space.s2 },
   count: { paddingInline: space.s1_5 },
-  /** A count that floats in the window's own corner while a search is running. */
   pill: {
     position: "fixed",
     top: space.s3,

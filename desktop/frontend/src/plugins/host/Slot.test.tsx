@@ -30,7 +30,6 @@ describe("slot", () => {
       }),
     );
     const { container } = render(<Slot name="test.slot" />);
-    // Order=1 (B) comes before order=2 (A) regardless of registration sequence.
     expect(container.textContent).toBe("BA");
   });
 
@@ -56,9 +55,7 @@ describe("slot", () => {
       }),
     );
     render(<Slot name="test.boundary.slot" />);
-    // The healthy contribution renders even though the other threw.
     expect(screen.getByText("still-here")).toBeTruthy();
-    // The failure surfaces as the default boundary fallback.
     expect(screen.getByText(/failed to render/i)).toBeTruthy();
     spy.mockRestore();
   });

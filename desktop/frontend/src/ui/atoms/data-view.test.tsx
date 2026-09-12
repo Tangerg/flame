@@ -17,8 +17,6 @@ describe("DataView", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  // Every view that draws a failure with its own glyph draws the same picture as its own
-  // empty result, which is how two states came to differ only in wording.
   it("keeps the failure glyph even when the caller renames the failure", () => {
     const { container } = render(
       <DataView items={[]} isLoading={false} isError error={{ title: "Couldn't load the diff" }}>

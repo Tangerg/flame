@@ -17,10 +17,6 @@ function card(tool: Partial<ToolCall>) {
 }
 
 describe("ToolCard", () => {
-  // Codex keeps the invocation itself in the work narrative: read, write, running, failed
-  // and refused calls all use the same transparent row. The material result (terminal output
-  // or diff) earns a surface only after the row is opened, and the tone stays neutral —
-  // colouring the identity glyph turns lifecycle back into a status card.
   it("keeps every invocation on the narrative line, whatever it is doing", () => {
     const cases: Array<Partial<ToolCall>> = [
       { name: "read", safetyClass: "safe", status: "ok" },

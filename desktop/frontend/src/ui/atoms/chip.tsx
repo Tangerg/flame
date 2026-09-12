@@ -22,10 +22,6 @@ const chipStyles = stylex.create({
     paddingRight: space.s1,
     fontWeight: weight.regular,
   },
-  // What the chip is FOR, in the only two answers the composer needs. A reference the reader
-  // reached for reads as theirs; content that merely came along with the message recedes a
-  // step. This had been said by rebuilding the chip beside the real one, which is how the
-  // second copy also lost the edge every fixed control in this design wears.
   reference: { backgroundColor: surface.accentBadge, color: color.fgSoft },
   attached: { backgroundColor: surface.surface2, color: color.fgMuted },
   // The value is machine text and it is capped: a chip that grows with its content pushes the

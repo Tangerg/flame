@@ -1,6 +1,3 @@
-// Walks ONE root Run identity across every continuation Segment, from its first available
-// start, bucketing changed/read files, commands, approvals and errors.
-
 import type { Translate } from "@/lib/i18n";
 import type { ApprovalDecision } from "../domain/hitl";
 import type {
@@ -200,8 +197,7 @@ export function durationText(t: Translate, start: number, end: number | null): s
   return t("duration.hours", { hr, min: min % 60 });
 }
 
-/** Section captions are translated — this is what the user copies out of the app. The
- *  runtime's own vocabulary (run status, command status, approval decision) stays verbatim
+/** The runtime's own vocabulary (run status, command status, approval decision) stays verbatim
  *  because those are the wire's words; a missing decision reads "—" rather than a
  *  translated "pending" for the same reason. */
 export function buildPlaintext(t: Translate, d: RunDigest): string {

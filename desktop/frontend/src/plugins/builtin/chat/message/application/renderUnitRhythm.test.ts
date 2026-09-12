@@ -31,10 +31,6 @@ describe("unitSeam", () => {
     expect(unitSeam(undefined, block("text"))).toBeUndefined();
   });
 
-  // The ratio is the whole feature: work that belongs together stays close, and a change of
-  // voice opens up. Both distances are also both references' measured answer — 6px between
-  // activity rows, 20px where the voice changes — and those pixels are `seamStep`'s now. What
-  // this module decides, and what this asserts, is WHICH seam the pair makes.
   it("keeps consecutive process rows tight and opens up at a change of voice", () => {
     expect(unitSeam(block("tool"), block("reasoning"))).toBe("tight");
     expect(unitSeam(block("tool"), block("text"))).toBe("wide");

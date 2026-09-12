@@ -23,13 +23,11 @@ export { createFlameClient } from "./sdk";
 export type { FlameClient } from "./sdk";
 export { HTTP_ENDPOINTS, PROTOCOL_VERSION } from "@flame/runtime-contract/wire";
 export type {
-  // Lifecycle / capabilities
   ClientCapabilities,
   ServerCapabilities,
   FeatureCapability,
   RequestMeta,
   DiscoverResponse,
-  // Sessions / workspaces
   Session,
   WorkspaceSummary,
   SessionArtifact,
@@ -60,15 +58,11 @@ export type {
   Goal,
   // Files
   WorkspaceFileChange,
-  // Plan
   PlanStep,
-  // Usage / error
   Usage,
   ProblemData,
-  // Providers
   Provider,
   ProviderConfigChange,
-  // Workspace optional domains
   Schedule,
   CreateScheduleRequest,
   AgentMemoryItem,

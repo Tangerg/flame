@@ -37,7 +37,6 @@ const sr = stylex.create({
     fontFamily: "var(--font-mono)",
     color: color.fgMuted,
   },
-  // The favicon's stand-in: one letter on a plate, at the size the domain line reads at.
   mark: {
     display: "grid",
     height: "calc(var(--spacing) * 3.5)",

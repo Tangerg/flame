@@ -2,12 +2,6 @@ import { describe, expect, it } from "vitest";
 import { forEachSeed } from "@/test/arbitrary";
 import { parseMcpImport } from "./mcpImport";
 
-// This reads a blob a person pasted out of another MCP client, so its input is
-// literally anything. The contract is narrow and worth pinning: it either answers
-// with servers the configure request can carry, or it throws a message the pane
-// shows. What it must never do is answer with a server the wire would refuse —
-// that failure lands later, at the request, where the pane cannot explain it.
-
 const WIRE_NAME = /^[a-z0-9][a-z0-9._-]{0,31}$/;
 
 function attempt(text: string): { servers: number; threw: boolean; names: string[] } {

@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 import { forEachSeed } from "@/test/arbitrary";
 import { normalizeMathDelimiters } from "./preprocess";
 
-// This rewrites agent prose before remark-math parses it, so its input is any text
-// a model can emit. Text that already carries a lone surrogate keeps it; what must
-// not happen is the rewrite CREATING one out of a well-formed input.
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 
 describe("math normalization, over arbitrary agent prose", () => {

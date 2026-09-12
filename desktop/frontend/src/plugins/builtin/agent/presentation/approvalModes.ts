@@ -2,9 +2,7 @@ import type { ApprovalMode } from "../domain/hitl";
 
 export interface ApprovalModeOption {
   value: ApprovalMode;
-  /** i18n key for the short label (e.g. "Plan"). */
   labelKey: string;
-  /** i18n key for the one-line description shown in the quick-switch menu. */
   descKey: string;
 }
 

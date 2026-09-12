@@ -59,8 +59,7 @@ export interface GoalState {
   goal: GoalReadModel | null;
 }
 
-/** The active Session's Goal and the exact Agent projection generation that
- * admitted it. There is deliberately no independent Goal query or store. */
+/** There is deliberately no independent Goal query or store. */
 export function useGoalMaterial(): AgentProjectionMaterial<GoalState> {
   return useAgentSessionSharedMaterial<GoalState>("goal");
 }

@@ -23,7 +23,6 @@ const pp = stylex.create({
     backgroundColor: { default: null, ":hover": surface.hover },
     transitionProperty: "background-color",
   },
-  // A plugin that failed to load keeps its wash whether or not the pointer is on it.
   faulted: { backgroundColor: surface.negativeWash },
   head: {
     display: "grid",

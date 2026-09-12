@@ -12,7 +12,6 @@ const cw = stylex.create({
   title: { marginBottom: space.s0_5, color: color.warning, fontWeight: weight.semibold },
   body: { color: color.fgSoft, overflowWrap: "break-word" },
   form: { marginTop: space.s2 },
-  // Wide enough for a path and no wider: the banner sits inside the reading column.
   field: { width: "calc(var(--spacing) * 72)", maxWidth: "100%" },
 });
 

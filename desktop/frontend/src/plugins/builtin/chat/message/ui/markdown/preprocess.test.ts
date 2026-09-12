@@ -68,7 +68,6 @@ describe("escapeCurrencyDollars", () => {
   });
 
   it("escapes across an even backslash run (the `$` is unescaped there)", () => {
-    // `\\` is a literal backslash, so the `$` after it is NOT escaped yet.
     expect(escapeCurrencyDollars("\\\\$5")).toBe("\\\\\\$5");
   });
 

@@ -7,8 +7,8 @@ import { Pressable, type PressableProps } from "./pressable";
  * A row inside something floating: a menu item, a suggestion, a search result.
  *
  * `glyph` exists because `grid` only ever gave `display: grid`, and a grid with no template is
- * one column — so all three call sites that wanted a glyph beside a label had to supply the
- * template themselves, in two spellings. That is not customisation; the step was half a step.
+ * one column — so a call site that wanted a glyph beside a label had to supply the template
+ * itself. That is not customisation; the step was half a step.
  *
  * `minmax(0, 1fr)` rather than `1fr`: both behave the same here, because every second child
  * truncates and an `overflow: hidden` item already has an automatic minimum of zero. The
@@ -41,26 +41,21 @@ export const floatingRowStyles = stylex.create({
   grid: { display: "grid" },
   flex: { display: "flex" },
   glyph: { display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" },
-  // A row in a one-of list: what it is, its name, and whether it is the one. Six call sites had
-  // each written the template — the mark column in two widths and the glyph in three — so the
-  // labels did not start on one line between two menus and the checks did not either. The glyph
-  // column is a channel because a swatch is wider than an icon; everything else is fixed.
+  // The glyph column is a channel because a swatch is wider than an icon; everything else is
+  // fixed.
   pick: {
     display: "grid",
     gridTemplateColumns:
       "var(--menu-glyph, calc(var(--spacing) * 4)) minmax(0, 1fr) calc(var(--spacing) * 3.5)",
   },
-  /** The same row where the option needs no glyph: a language, a font. */
   pickPlain: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) calc(var(--spacing) * 3.5)",
   },
-  /** The same row where the glyph is a swatch rather than an icon, and so is wider. */
   pickWide: { "--menu-glyph": "calc(var(--spacing) * 6)" },
   sm: { minHeight: "var(--menu-row-height)", paddingBlock: "1px" },
   md: { height: "calc(var(--spacing) * 8)" },
   lg: { minHeight: "calc(var(--spacing) * 9)", paddingBlock: space.s1_5 },
-  // A row that destroys something says so before it is chosen, and keeps saying it once it is.
   destructive: {
     color: { default: color.negative, ":is([data-highlighted])": color.negative },
     backgroundColor: { default: null, ":is([data-highlighted])": surface.negativeWash },
@@ -70,8 +65,8 @@ export const floatingRowStyles = stylex.create({
 export const floatingRow = (layout: RowLayout = "grid", size: RowSize = "md") => [
   floatingRowStyles.base,
   type.uiMd,
-  // `pickWide` is `pick` with a wider glyph column, so it composes both rather than repeating
-  // the template — a second copy is how the six spellings started.
+  // `pickWide` composes both rather than repeating the template — a second copy is how the six
+  // spellings started.
   layout === "pickWide" ? floatingRowStyles.pick : floatingRowStyles[layout],
   layout === "pickWide" && floatingRowStyles.pickWide,
   floatingRowStyles[size],

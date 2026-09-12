@@ -1,39 +1,5 @@
 import { expect, test } from "./test";
 
-// `radiusScale` was the last appearance preference nothing measured. DESIGN.md states it as a
-// promise about the product rather than about the tokens — "the visual style owns the ladder;
-// the user's radius preference multiplies through", and, under NEVER, "no mixed scales on one
-// screen, no step invented at a call site". A token test cannot see either one: it reads the
-// same `calc()` the ladder is written in and agrees with itself. Only corners can answer.
-//
-// So this reads every corner the product actually paints, at each of the three settings the
-// picker offers. A corner is allowed to be one of exactly two things, and both are the ladder
-// reaching it:
-//
-//   PROPORTIONAL — it is a rung, so it moves by the factor.
-//   CONCENTRIC   — it sits inside another corner, so it keeps a constant setback from it and
-//                  the PAIR moves by the factor. `--segment-radius` and
-//                  `--composer-attachment-radius` are both this: a chip inside a track, an
-//                  attachment inside the composer.
-//
-// Anything else is a corner that never joined the ladder — a literal at a call site, a
-// hard-coded step, or a rung someone unhooked from the scale.
-//
-// The second branch is stated as an invariant rather than a list of tokens on purpose. The
-// first version of this audit knew only about proportionality and carried the one concentric
-// radius as a named exception; the next concentric radius added to the product failed it, which
-// is a guard that has to be edited every time the design does the right thing.
-//
-// Measured: 1252 corners across five routes, all three scales, none off either branch.
-// Unhooking one rung (`--shape-lg` from `--radius-scale`) strands 680 of them; freezing a
-// concentric one (`segment-radius` at a literal) strands 200. It read 1660 before the harness's
-// own state switcher was excluded — a quarter of what it called coverage was the test
-// scaffold's corners, which follow no ladder this product owns.
-//
-// What it deliberately does NOT catch: a concentric pair spelled as two independent rungs. Both
-// are proportional, so both pass — which is right, because this audit asks whether the ladder
-// reaches a corner, not whether the corner sits correctly inside its neighbour. The test below
-// asks that.
 const SCALES = [0.6, 1, 1.4] as const;
 
 const ROUTES = [
@@ -44,15 +10,6 @@ const ROUTES = [
   "fixture=foundation",
 ] as const;
 
-/**
- * Per element: its own four corners, and those of every rounded corner it sits inside, nearest
- * first.
- *
- * Every ancestor rather than the nearest one, because setbacks compose. A segmented control is
- * three deep — track, tab, chip — and the tab is already a setback from the track, so measuring
- * the chip against its nearest rounded ancestor measures it against another setback and finds
- * nothing proportional to stand on.
- */
 type Corners = { own: number[]; outers: number[][] };
 
 async function read(
@@ -63,9 +20,6 @@ async function read(
   await page.locator("html[data-visual-ready]").waitFor();
   await page.waitForTimeout(300);
   return page.evaluate(() => {
-    // Identity across three page loads. The routes render deterministically, so the position
-    // chain is stable; a key built from tag and class would collapse the dozens of rows that
-    // share both, which is exactly the group a wrong radius shows up in.
     const path = (element: Element): string => {
       const parts: string[] = [];
       let node: Element | null = element;
@@ -79,9 +33,6 @@ async function read(
       return parts.reverse().join(">");
     };
 
-    // A percentage is relative to the box and travels with it, not with the ladder; `pill` is a
-    // cap rather than a rung, and 9999px times anything is still a lozenge. Both read as "not a
-    // number this audit can reason about".
     const radii = (element: Element): number[] | null => {
       const style = getComputedStyle(element);
       const corners = [
@@ -99,9 +50,6 @@ async function read(
 
     const out: Record<string, Corners> = {};
     for (const element of document.querySelectorAll("*")) {
-      // The harness's own state switcher is not the product. Measured before it was excluded:
-      // it contributed about a quarter of the elements on these routes, so its corners were
-      // being counted as coverage of a ladder it does not use.
       if (element.closest("[data-fixture-chrome]")) continue;
       const box = element.getBoundingClientRect();
       if (box.width < 2 || box.height < 2) continue;
@@ -146,19 +94,11 @@ test("every corner rides the one ladder the radius preference multiplies", async
           compared += 1;
 
           if (Math.abs(to - from * scale) <= 0.2) continue;
-          // Concentric: some corner it sits inside IS a rung, and the setback from that corner
-          // is the same at both settings — so the pair moved together.
           const concentric = at1.outers.some((outerAt1, depth) => {
             const outerAtK = atK.outers[depth];
             if (outerAtK === undefined) return false;
             const outerFrom = outerAt1[corner]!;
             const outerTo = outerAtK[corner]!;
-            // A square corner is not a rung, and a "setback" from one is not concentric — it is
-            // the arithmetic saying nothing. Verified: without these two, freezing
-            // `--segment-radius` at a literal still passed, because a 0px ancestor corner
-            // scales to 0px and leaves a setback that is constant at minus the child's own
-            // radius. A real setback also means the child sits INSIDE what it is measured
-            // against, so it can never be the rounder of the two.
             if (outerFrom <= 0 || outerFrom < from - 0.2) return false;
             return (
               Math.abs(outerTo - outerFrom * scale) <= 0.2 &&
@@ -175,7 +115,6 @@ test("every corner rides the one ladder the radius preference multiplies", async
     }
   }
 
-  // Floor, not a target: an audit that reached no corners agrees with every scale.
   expect(compared, "the sweep has to reach real corners").toBeGreaterThan(1000);
   expect(
     [...new Set(stranded)].slice(0, 40),
@@ -183,20 +122,6 @@ test("every corner rides the one ladder the radius preference multiplies", async
   ).toEqual([]);
 });
 
-// The one nesting in the product where a corner sits directly inside another with only a border
-// and a padding between them: the segmented control's moving chip inside its track. DESIGN.md's
-// polish rules ask nested corners to stay visually concentric, which for a scaling ladder means
-// the SETBACK is what has to hold still — not the radius.
-//
-// It did not. The track is on `md` and the chip was on `sm`, and `--corner-scale` applies at
-// `md` and above but not below, so the pair's gap grew with the preference: measured 2.4px /
-// 4.0px / 5.6px at sharp / default / soft where the geometry asks for a constant 3px, and the
-// chip read progressively squarer inside its own track. Deriving the chip from the track makes
-// the error 0.00 at all three.
-//
-// Verified to fail: spelling the chip back as its own rung (`var(--shape-sm)`) reports
-// +0.60 / -1.00 / -2.60 — too round at sharp, too square at soft, and only close at the one
-// setting the pair was eyeballed at.
 test("the segmented chip stays concentric inside its track at every radius", async ({ page }) => {
   test.setTimeout(SCALES.length * 20_000 + 20_000);
   await page.setViewportSize({ width: 1472, height: 900 });
@@ -213,7 +138,6 @@ test("the segmented chip stays concentric inside its track at every radius", asy
       .evaluate((track) => {
         const trackBox = track.getBoundingClientRect();
         const trackRadius = Number.parseFloat(getComputedStyle(track).borderTopLeftRadius);
-        // The chip is the one painted descendant; the tabs themselves are transparent at rest.
         const chip = [...track.querySelectorAll("*")].find((node) => {
           const style = getComputedStyle(node);
           return (

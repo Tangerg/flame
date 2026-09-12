@@ -1,5 +1,3 @@
-// Makes the webview behave like a window rather than a page.
-//
 // The default right-click menu is suppressed everywhere EXCEPT real text fields, where on
 // WKWebView it is the native macOS edit menu. Base UI menus are unaffected: their React
 // trigger runs before this document-level bubble listener, so `preventDefault` here only

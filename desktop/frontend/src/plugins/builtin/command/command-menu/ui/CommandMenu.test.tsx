@@ -35,7 +35,6 @@ async function withCommands() {
           dock: "workspace",
           component: () => null,
         });
-        // No dock scope: a full-card view, which is the shape that had no way in at all.
         ctx.contribute(WORKSPACE_VIEW, {
           id: "icon-gallery",
           title: "Icon Gallery",
@@ -69,10 +68,7 @@ describe("command menu", () => {
       "View: Icon Gallery",
       "View: Terminal",
     ]);
-    // Modifier glyphs are platform-dependent; that a combo IS shown is the contract.
     expect(rows[0]?.querySelectorAll("kbd")).toHaveLength(2);
-    // A view brings its own glyph; a command has none, and a ⌘ on every row would repeat
-    // the key beside it. Both keep the slot so the labels start on one edge.
     expect(rows[0]?.querySelector("svg")).toBeNull();
     expect(rows[2]?.querySelector("svg")).not.toBeNull();
     expect(rows[1]?.querySelectorAll("kbd")).toHaveLength(0);

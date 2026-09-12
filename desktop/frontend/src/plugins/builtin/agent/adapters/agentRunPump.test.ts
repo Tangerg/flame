@@ -1,7 +1,3 @@
-// The pump keeps a run attached, not a stream open. These lock the difference: a
-// stream that ends without the segment's own terminal is a dropped connection, and
-// the run behind it is still executing.
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RunEvent, RunRef } from "@/rpc";
 import { asRunId, asSegmentId, asSessionId, RpcConnectionError, RpcProtocolError } from "@/rpc";
@@ -285,8 +281,6 @@ describe("agent run pump reattach", () => {
   });
 
   it("keeps its own cursor across a replaying reattach", async () => {
-    // The ack of a reattach reports the head as of that attach, which is AHEAD of the
-    // cursor being replayed from. Adopting it would skip the replay.
     let attempt = 0;
     const { pump, positions } = pumpWith(() => {
       attempt += 1;

@@ -37,8 +37,6 @@ const th = stylex.create({
     overflow: "hidden",
     borderRadius: radius.step2xs,
   },
-  // The inner pane's corner is the outer one less its own inset, floored at zero, so the two
-  // stay concentric at every radius scale.
   swatchPane: {
     position: "absolute",
     insetInline: "3px",

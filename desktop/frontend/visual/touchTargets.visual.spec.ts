@@ -1,21 +1,6 @@
 import { expect, test } from "./test";
 import { CONTROL } from "./controls";
 
-// `@media (pointer: coarse)` puts a 44px floor under every control, and two spans in
-// `globals.css` reserve room for exactly one chrome control each. The spans were written as
-// `36px` — the 26px control plus its inset and clearance — so on a touch screen the control
-// grew and the reservation did not, and the dock's browse button and its collapse control
-// overlapped by exactly the difference. Both spans derive from the control now.
-//
-// Nothing else in the suite runs with a coarse pointer: `@media (hover: none)` also forces
-// every hover-reveal permanently visible there, so touch is a layout the desktop tests never
-// see. Emulated with a touch CONTEXT — `Emulation.setEmulatedMedia` does not carry `hover` or
-// `pointer`, and a probe using it measured nothing while appearing to work.
-//
-// Containment is the discriminator, not a list of known pairs: a row action sits ON its row by
-// design and wins inside its own box, so one box inside the other is composition. Two boxes
-// that merely intersect are neighbours competing for the same tap.
-
 test.use({ hasTouch: true, isMobile: true });
 
 const ROUTES = [

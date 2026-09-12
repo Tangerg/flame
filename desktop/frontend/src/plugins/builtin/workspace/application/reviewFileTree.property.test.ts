@@ -3,12 +3,6 @@ import { Arbitrary, forEachSeed } from "@/test/arbitrary";
 import { buildReviewFileTree, filterReviewFiles, type ReviewTreeNode } from "./reviewFileTree";
 import type { WorkspaceFileDiff } from "./workspaceQueries";
 
-// The navigator is built from the diff's own paths, and a diff can name anything the
-// repository does: nested, duplicated, dotted, non-Latin, or a directory and a file
-// sharing one name. Nothing here validates those first, so the tree build has to be
-// total over them and its keys have to stay unique — a collision is a React
-// duplicate-key loop, and a lost file is a file nobody can review.
-
 function files(a: Arbitrary): WorkspaceFileDiff[] {
   return Array.from({ length: a.int(10) }, () => ({
     path: a.path(),

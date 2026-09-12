@@ -6,10 +6,7 @@ import { cn } from "@/lib/classNames";
 import { color, leading, motion, space, type as typeStep } from "@/styles/tokens.stylex";
 
 const cb = stylex.create({
-  /** The whole summary is the trigger, and it starts at the column's edge rather than
-   *  stretching: a compaction receipt is a note, not a banner. */
   trigger: { maxWidth: "100%", alignSelf: "flex-start", paddingBlock: space.s1_5 },
-  /** The glyph turns and fades together as the note opens. */
   glyph: {
     flexShrink: 0,
     color: color.fgFaint,
@@ -17,7 +14,6 @@ const cb = stylex.create({
     transitionDuration: motion.fast,
   },
   host: { display: "flex", minWidth: 0, flexDirection: "column" },
-  // The summary indents past the mark and holds a reading measure of its own.
   summary: {
     marginTop: space.s1_5,
     marginLeft: space.s5,

@@ -36,9 +36,6 @@ describe("planViewModel", () => {
     });
   });
 
-  // A runtime that never negotiated features.plan has no plan to be empty OF, and
-  // saying "no plan yet" there reads as "the agent hasn't planned", not "this build
-  // cannot".
   it("reports an ungated runtime as unavailable rather than empty", () => {
     expect(planViewModel(false, plan([])).state).toBe("unavailable");
   });

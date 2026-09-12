@@ -10,8 +10,6 @@ import {
 
 describe("main/container", () => {
   afterEach(resetContainer);
-  // `globalThis.fetch` is spied per test and re-spying returns the SAME mock, so without this
-  // a later test reads the calls an earlier one captured.
   afterEach(() => vi.restoreAllMocks());
 
   it("exposes the Runtime Protocol entry points out of the box", () => {
@@ -149,8 +147,6 @@ describe("main/container", () => {
     expect(headers.get("Authorization")).toBe("Bearer successor-token");
   });
 
-  // The same container, not a fresh one: `setContainer({ desktop })` swaps the host in place,
-  // so the retired bootstrap resolves against the lease that replaced it.
   it("does not adopt a bootstrap the host swap already retired", async () => {
     const retired = Promise.withResolvers<Awaited<ReturnType<DesktopHostClient["bootstrap"]>>>();
     const desktop = (bootstrap: DesktopHostClient["bootstrap"]): DesktopHostClient => ({

@@ -1,5 +1,3 @@
-// 日本語。
-
 export const ja: Record<string, string> = {
   "common.cancel": "キャンセル",
   "common.close": "閉じる",
@@ -498,7 +496,6 @@ export const ja: Record<string, string> = {
   "agent.runTree.action.cancel": "この実行をキャンセル",
   "agent.runTree.material.empty": "ナラティブはまだありません。",
 
-  // ── ワークスペースビュー：実行サマリー ──
   "runSummary.title": "実行サマリー",
   "runSummary.noRuns": "実行はまだありません",
   "runSummary.empty.title": "サマリーはまだありません",
@@ -522,7 +519,6 @@ export const ja: Record<string, string> = {
   "runSummary.approval.declined": "拒否",
   "runSummary.approval.pending": "保留中",
 
-  // ── ワークスペースビュー：タイムライン ──
   "timeline.title": "実行タイムライン",
   "timeline.rootRun": "ルート実行",
   "timeline.delegatedRun": "委任実行",
@@ -544,7 +540,6 @@ export const ja: Record<string, string> = {
   "timeline.kind.approvalRequest": "承認リクエスト",
   "timeline.kind.approvalResult": "承認判断",
 
-  // ── ワークスペースビュー：通知 ──
   "notifications.title": "通知",
   "notifications.clearAll": "すべてクリア",
   "notifications.dismiss": "閉じる",
@@ -552,12 +547,10 @@ export const ja: Record<string, string> = {
   "notifications.empty.title": "通知はありません",
   "notifications.empty.sub": "プラグインが host.notify() で報告した内容がここに表示されます。",
 
-  // ── ワークスペースビュー：ファイル ──
   "files.title": "ワーキングツリー",
   "files.empty.title": "ワーキングツリーはクリーンです",
   "files.empty.sub": "現在のワークスペースに未コミットの変更はありません。",
 
-  // ── ワークスペースビュー：検索 ──
   "search.title": "検索",
   "search.placeholder": "検索パターン（正規表現）…",
   "search.aria": "検索パターン",
@@ -567,19 +560,14 @@ export const ja: Record<string, string> = {
   "search.empty.title": "一致なし",
   "search.empty.sub": "ワークスペース内にこのパターンに一致するものはありません。",
 
-  // ── ワークスペースビュー：タスク ──
-
-  // ── ワークスペースビュー：ターミナル ──
   "terminal.title": "ターミナル",
   "terminal.empty.title": "まだコマンドはありません",
   "terminal.empty.sub": "agent が実行したコマンドとその出力がここに表示されます。",
   "terminal.commands_other": "{{count}} 件のコマンド",
-  // ── ワークスペースビュー：プラン ──
   "plan.title": "プラン",
   "plan.empty.title": "まだプランはありません",
   "plan.empty.sub": "agent がプランを作成するとここに表示されます。",
 
-  // ── ワークスペースビュー：ツール ──
   "tools.title": "ツール",
   "tools.diagnostics.sub":
     "直接実行できるランタイム診断です。Agent の完全なツール一覧ではありません。",
@@ -622,7 +610,6 @@ export const ja: Record<string, string> = {
   "toolAction.copyCommand": "コマンドをコピー",
   "approval.fallbackText": "この操作を承認しますか？",
 
-  // ── ワークスペースビュー：スキル ──
   "skills.title": "スキル",
   "skills.available": "{{count}} 件利用可能",
   "skills.off": "オフ",
@@ -631,7 +618,6 @@ export const ja: Record<string, string> = {
   "skills.disabled.title": "スキルはオフです",
   "skills.disabled.sub": "このランタイムはスキル機能を提供していません。",
 
-  // ── ワークスペースビュー：メモリ ──
   "knowledge.title": "知識",
   "knowledge.scopes_other": "{{count}} スコープ",
   "knowledge.scope.cwd": "作業ディレクトリ",
@@ -650,21 +636,16 @@ export const ja: Record<string, string> = {
   "knowledge.updated": "更新済み",
   "knowledge.aria": "{{path}} の知識内容",
 
-  // ── ワークスペースビュー：Agent ドキュメント ──
   "agentDocs.title": "Agent ドキュメント",
   "agentDocs.found": "{{count}} 件見つかりました",
   "agentDocs.empty.title": "Agent ドキュメントはありません",
   "agentDocs.empty.sub":
     "作業ディレクトリから上方向に見つかった AGENTS.md ファイルがここに表示されます。",
 
-  // ── ワークスペースビュー：ファイルツリー ──
   "filetree.title": "エクスプローラー",
   "filetree.empty.title": "閲覧できるものがありません",
   "filetree.empty.sub": "このワークスペースにはファイルがありません。",
 
-  // ── コマンドパレット ──
-
-  // ── キーボードショートカット ──
   "shortcuts.sub":
     "組み込みおよびユーザープラグインによって登録されたすべてのキーバインド。アプリ内のどこでもコンボを押して発動できます。バインドの競合は常に最後の登録に解決されます。",
   "shortcuts.filter": "アクションまたはコンボで絞り込み…",
@@ -673,7 +654,6 @@ export const ja: Record<string, string> = {
   "shortcuts.shortcut": "ショートカット",
   "shortcuts.empty": "一致するショートカットはありません。",
 
-  // ── アイコンギャラリー ──
   "iconGallery.clear": "クリア",
   "workspace.view.title.iconGallery": "アイコンギャラリー",
   "settings.pane.brandIcons": "ブランドアイコン",
@@ -683,10 +663,8 @@ export const ja: Record<string, string> = {
   "role.assistant": "アシスタント",
   "role.system": "システム",
 
-  // ── コンポーザー ──
   "composer.removeImage": "画像を削除",
 
-  // ── Diff ビュー ──
   "diff.workingTree": "ワーキングツリー",
   "diff.branchCompare": "ブランチ比較",
   "diff.files.aria": "変更されたファイル",
@@ -709,15 +687,12 @@ export const ja: Record<string, string> = {
   "diff.binary": "バイナリファイル",
   "diff.truncated": "Diff が行数制限に達しました — 残りのファイルは表示されていません。",
 
-  // ── コマンドログ ──
   "commandLog.running": "実行中…",
   "commandLog.failed": "失敗",
   "commandLog.exit": "終了コード {{code}}",
 
-  // ── プラン / タスクリスト見出し ──
   "plan.list.heading": "タスクプラン",
 
-  // ── ファイル変更 ──
   "files.changed_other": "{{count}} ファイル変更",
   "files.uncommitted_other": "{{count}} 個のファイル · 未コミット",
   "files.binary": "bin",

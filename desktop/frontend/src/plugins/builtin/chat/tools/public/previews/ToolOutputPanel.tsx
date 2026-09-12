@@ -12,7 +12,6 @@ import { color, leading, radius, space, surface, type as typeStep } from "@/styl
 
 const op = stylex.create({
   panel: { overflow: "hidden", borderRadius: radius.sm, backgroundColor: surface.sunken },
-  // Output scrolls sideways rather than wrapping: a column of a table is a column.
   sheet: {
     overflowX: "auto",
     paddingInline: space.s3,
@@ -24,7 +23,6 @@ const op = stylex.create({
   },
   line: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
   anchor: { position: "relative" },
-  // A gradient over the last collapsed line, so a cut looks cut rather than ended.
   fade: {
     pointerEvents: "none",
     position: "absolute",

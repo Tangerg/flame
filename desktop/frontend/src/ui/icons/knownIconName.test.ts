@@ -4,10 +4,6 @@ import { join } from "node:path";
 import { ICON_NAMES, knownIconName } from "./icon";
 import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
 
-// Icon names arrive as plain strings — plugin contributions, view and pane specs, MCP server
-// data. Asserting one into `IconName` type-checks and then draws nothing for a name we do not
-// have: no error, no fallback, a gap where a glyph belongs.
-
 describe("narrowing a contributed icon name", () => {
   it("keeps a name the set actually draws", () => {
     for (const name of ["tool", "alert", "chevron-down", "x"]) {
@@ -32,8 +28,6 @@ describe("narrowing a contributed icon name", () => {
     }
   });
 
-  // `constructor` and `toString` are the ones a plain object lookup would have answered with a
-  // function. The set is a Set, so it never does — this pins that it stays one.
   it("answers nothing for a prototype member masquerading as a name", () => {
     expect(knownIconName("hasOwnProperty")).toBeUndefined();
     expect(ICON_NAMES.has("valueOf" as never)).toBe(false);
@@ -44,8 +38,6 @@ describe("narrowing a contributed icon name", () => {
     for (const name of ICON_NAMES) expect(knownIconName(name)).toBe(name);
   });
 
-  // The built-in tool table feeds both the registry contributions and the no-plugin fallback,
-  // so a glyph renamed out of the icon set would silently blank every card for that tool.
   it("draws every glyph the built-in tool table names", () => {
     const missing = Object.entries(TOOL_ICON_BY_NAME)
       .filter(([, glyph]) => knownIconName(glyph) === undefined)
@@ -55,11 +47,6 @@ describe("narrowing a contributed icon name", () => {
   });
 });
 
-// Lucide keeps a renamed icon reachable as a file that re-exports the new one, so a
-// deprecated name draws correctly today and disappears at the next major. It is invisible at
-// runtime — the alias and its target are the same component and emit the same
-// `lucide-<name>` class — so the map is the only place it can be caught. Two of the first
-// ninety were aliases: `history` now lives at `rotate-ccw-clock`, `wrap-text` at `text-wrap`.
 describe("the glyph set", () => {
   const ALIAS = /export \{ default \} from '\.\/([a-z0-9-]+)\.mjs'/;
 

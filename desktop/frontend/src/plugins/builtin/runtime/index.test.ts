@@ -17,11 +17,6 @@ import runtimePlugin from "./index";
 import { startKernel, stopKernel } from "@/plugins/sdk/bootstrap";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 
-// Typed, not cast. What this test asserts is that discovery reaches the store at
-// all, so the payload could be anything — which is exactly why it was written as
-// `as unknown as ServerCapabilities` and then kept advertising `providers` and
-// `events` years after the wire dropped them. A fixture the compiler holds cannot
-// describe a runtime that does not exist.
 const discovery: DiscoverResponse = {
   protocolVersion: PROTOCOL_VERSION,
   serverInfo: {

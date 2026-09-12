@@ -3,8 +3,6 @@ import { matchKeybindingPress, parseKeybinding } from "tinykeys";
 
 import { ariaKeyShortcuts, comboGlyph, dispatchBinding, normalizeCombo } from "./combo";
 
-// A keydown as the browser reports it. `key` is what the active layout prints
-// at that position; `code` is the position itself.
 function keydown(key: string, code: string, modifiers: string[] = []): KeyboardEvent {
   return {
     key,
@@ -36,9 +34,6 @@ describe("normalizeCombo", () => {
     expect(normalizeCombo("ctrl+k")).not.toBe(normalizeCombo("mod+k"));
   });
 
-  // These strings are the dedup key of a single-keyed extension point, so a dropped
-  // modifier is not a cosmetic loss: "shft+k" became "k" and shadowed the bare-key
-  // shortcut already registered there.
   it("keeps a segment it does not recognise rather than resolving to the bare key", () => {
     expect(normalizeCombo("hyper+k")).toBe("hyper+k");
     expect(normalizeCombo("shft+k")).not.toBe(normalizeCombo("k"));
@@ -47,9 +42,6 @@ describe("normalizeCombo", () => {
 });
 
 describe("the modifier vocabulary", () => {
-  // One table, so the label and the handler cannot disagree about what a spelling means.
-  // Both of these used to: `control` printed as the word, and `meta` said "Win" on a
-  // platform where the dispatcher fired it on Control.
   it("gives every spelling of one modifier the same dispatch and the same glyph", () => {
     for (const [a, b] of [
       ["cmd+k", "mod+k"],
@@ -62,8 +54,6 @@ describe("the modifier vocabulary", () => {
     }
   });
 
-  // Without their own table these read as title case — "Escape", "Arrowup" — which is what a
-  // menu hint would print beside the command.
   it("prints a named key the way a keyboard does", () => {
     expect(comboGlyph("Escape")).toBe("Esc");
     expect(comboGlyph("ArrowUp")).toBe("↑");
@@ -98,9 +88,6 @@ describe("dispatchBinding", () => {
 });
 
 describe("a letter shortcut under a non-US keyboard layout", () => {
-  // The bug this replaced: ⌃K on a Cyrillic layout reports key "к", so a
-  // dispatcher comparing against `KeyboardEvent.key` looked up "ctrl+к" and
-  // found nothing. Every letter shortcut in the app was dead on that layout.
   const cyrillicK = keydown("к", "KeyK", ["Control"]);
 
   it("matches the binding we now emit", () => {
@@ -116,8 +103,6 @@ describe("a letter shortcut under a non-US keyboard layout", () => {
     expect(matches("Ctrl+K", keydown("k", "KeyK", ["Control"]))).toBe(true);
   });
 
-  // `KeyboardEvent.key` for ⌘⇧] is `}`, on every layout there is, so a binding spelled with
-  // the character it prints matches nothing. Letters do not need this — Shift+b reports `B`.
   it("dispatches punctuation by its physical code, not the glyph a modifier rewrites", () => {
     expect(dispatchBinding("Mod+Shift+]")).toBe("$mod+Shift+BracketRight");
     expect(dispatchBinding("Mod+Shift+[")).toBe("$mod+Shift+BracketLeft");

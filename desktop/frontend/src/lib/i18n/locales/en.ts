@@ -668,7 +668,6 @@ export const en: Record<string, string> = {
   "agent.runTree.action.cancel": "Cancel this run",
   "agent.runTree.material.empty": "No narrative material yet.",
 
-  // ── Workspace view: Run Summary ──
   "runSummary.title": "Run summary",
   "runSummary.noRuns": "No runs yet",
   "runSummary.empty.title": "Nothing to summarise yet",
@@ -693,7 +692,6 @@ export const en: Record<string, string> = {
   "runSummary.approval.declined": "declined",
   "runSummary.approval.pending": "pending",
 
-  // ── Workspace view: Timeline ──
   "timeline.title": "Run timeline",
   "timeline.rootRun": "Root run",
   "timeline.delegatedRun": "Delegated run",
@@ -717,7 +715,6 @@ export const en: Record<string, string> = {
   "timeline.kind.approvalRequest": "Approval requested",
   "timeline.kind.approvalResult": "Approval settled",
 
-  // ── Workspace view: Notifications ──
   "notifications.title": "Notifications",
   "notifications.clearAll": "Clear all",
   "notifications.dismiss": "Dismiss",
@@ -725,12 +722,10 @@ export const en: Record<string, string> = {
   "notifications.empty.title": "No notifications",
   "notifications.empty.sub": "Anything a plugin reports via host.notify() will appear here.",
 
-  // ── Workspace view: Files ──
   "files.title": "Working tree",
   "files.empty.title": "Working tree clean",
   "files.empty.sub": "No uncommitted changes in the current workspace.",
 
-  // ── Workspace view: Search ──
   "search.title": "Search",
   "search.placeholder": "Search pattern (regex)…",
   "search.aria": "Search pattern",
@@ -742,20 +737,15 @@ export const en: Record<string, string> = {
   "search.empty.title": "No matches",
   "search.empty.sub": "Nothing in the workspace matches this pattern.",
 
-  // ── Workspace view: Tasks ──
-
-  // ── Workspace view: Terminal ──
   "terminal.title": "Terminal",
   "terminal.empty.title": "No commands yet",
   "terminal.empty.sub": "Commands the agent runs show up here with their output.",
   "terminal.commands_one": "{{count}} command",
   "terminal.commands_other": "{{count}} commands",
-  // ── Workspace view: Plan ──
   "plan.title": "Plan",
   "plan.empty.title": "No plan yet",
   "plan.empty.sub": "When the agent drafts a plan it shows up here.",
 
-  // ── Workspace view: Tools ──
   "tools.title": "Tools",
   "tools.diagnostics.sub":
     "Direct runtime diagnostics. This is intentionally smaller than the agent's full tool catalog.",
@@ -796,13 +786,10 @@ export const en: Record<string, string> = {
   "tools.noTools": "No tools exposed.",
   "tools.auth.configure": "Configure authorization for {{server}} in MCP settings",
 
-  // ── Tool action: Copy command ──
   "toolAction.copyCommand": "Copy command",
 
-  // ── Approval fallback ──
   "approval.fallbackText": "Approve this action?",
 
-  // ── Workspace view: Skills ──
   "skills.title": "Skills",
   "skills.available": "{{count}} available",
   "skills.off": "off",
@@ -904,7 +891,6 @@ export const en: Record<string, string> = {
   "schedules.preset.weekdays": "Weekdays 9am",
   "schedules.preset.weekly": "Weekly Mon",
 
-  // ── Workspace view: Knowledge ──
   "knowledge.title": "Knowledge",
   "knowledge.scopes_one": "{{count}} scope",
   "knowledge.scopes_other": "{{count}} scopes",
@@ -923,20 +909,15 @@ export const en: Record<string, string> = {
   "knowledge.updated": "updated",
   "knowledge.aria": "Knowledge content for {{path}}",
 
-  // ── Workspace view: Agent docs ──
   "agentDocs.title": "Agent docs",
   "agentDocs.found": "{{count}} found",
   "agentDocs.empty.title": "No agent docs",
   "agentDocs.empty.sub": "AGENTS.md files found from the working directory upward show up here.",
 
-  // ── Workspace view: File tree ──
   "filetree.title": "Explorer",
   "filetree.empty.title": "Nothing to browse",
   "filetree.empty.sub": "No files in this workspace.",
 
-  // ── Command palette ──
-
-  // ── Keyboard shortcuts ──
   "shortcuts.sub":
     "Every keybinding registered by built-in and user plugins. Press a combo anywhere in the app to fire it; binding conflicts always resolve to the last registration.",
   "shortcuts.filter": "Filter by action or combo…",
@@ -945,28 +926,21 @@ export const en: Record<string, string> = {
   "shortcuts.shortcut": "Shortcut",
   "shortcuts.empty": "No shortcuts match.",
 
-  // ── Icon gallery ──
   "iconGallery.clear": "Clear",
 
-  // ── Workspace view: Icon gallery ──
   "workspace.view.title.iconGallery": "Icon gallery",
 
-  // ── Settings pane: Brand icons ──
   "settings.pane.brandIcons": "Brand icons",
 
-  // ── RPC Agent ──
   "agentSource.rpc": "Runtime Protocol (JSON-RPC)",
 
-  // ── Message roles ──
   "narrative.rail.turns": "Your questions",
   "role.user": "You",
   "role.assistant": "Assistant",
   "role.system": "System",
 
-  // ── Composer ──
   "composer.removeImage": "Remove image",
 
-  // ── Diff view ──
   "diff.workingTree": "Working tree",
   "diff.branchCompare": "Branch comparison",
   "diff.files.aria": "Changed files",
@@ -1000,27 +974,20 @@ export const en: Record<string, string> = {
   "diff.binary": "Binary file",
   "diff.truncated": "Diff truncated at the row limit — the remaining files are not shown.",
 
-  // ── Command log ──
   "commandLog.running": "running…",
   "commandLog.failed": "failed",
   "commandLog.exit": "exit {{code}}",
 
-  // ── Plan / Task list headings ──
   "plan.list.heading": "Task plan",
 
-  // ── Files changed ──
   "files.changed_one": "{{count}} file changed",
   "files.changed_other": "{{count}} files changed",
   "files.uncommitted_one": "{{count}} file · uncommitted",
   "files.uncommitted_other": "{{count}} files · uncommitted",
   "files.binary": "bin",
 
-  // ── Compaction block ──
   "compaction.compacted": "Context automatically compacted",
 
-  // ── Tool card ──
-
-  // ── Projects sidebar ──
   "projects.showMore": "Show {{count}} more",
   "projects.showLess": "Show less",
   "projects.empty.title": "No projects",
@@ -1028,9 +995,6 @@ export const en: Record<string, string> = {
   "projects.error.title": "Couldn’t load projects",
   "projects.error.sub": "Check the Runtime connection, then reopen the work index.",
 
-  // ── Status bar ──
-
-  // ── Conversation export ──
   "convExport.markdown": "Export conversation as Markdown",
   "convExport.json": "Export conversation as JSON",
   "convExport.import": "Import conversation from JSON",
@@ -1043,15 +1007,10 @@ export const en: Record<string, string> = {
   "convExport.importFailed": "Couldn't import the conversation.",
   "convExport.importSuccess": 'Imported "{{title}}".',
 
-  // ── Connection settings validation ──
   "connection.error.urlScheme": "Must start with http:// or https://",
 
-  // ── Chat search shortcut ──
   "command.chatSearch": "Find in chat",
 
-  // ── Composer mode descriptions ──
-
-  // ── Composer keybinding descriptions ──
   "composer.key.sendDesc": "Send message",
   "composer.key.approveDesc": "Approve a pending request, otherwise send",
   "composer.key.declineDesc": "Decline a pending request",
@@ -1059,7 +1018,6 @@ export const en: Record<string, string> = {
   "composer.key.historyPrevDesc": "Recall the previous message",
   "composer.key.historyNextDesc": "Recall the next message",
 
-  // ── Slash command hints ──
   "slash.explain": "Explain a file, function, or selection",
   "slash.test": "Generate or run tests for the current change",
   "slash.fix": "Diagnose and fix the failing typecheck",
@@ -1069,7 +1027,6 @@ export const en: Record<string, string> = {
   "slash.search": "Search the codebase for a symbol or pattern",
   "slash.plan": "Restate or edit the current plan",
 
-  // ── Default command palette labels ──
   "command.toggleSidebar": "Toggle sidebar rail",
   "command.toggleDock": "Toggle right workspace",
   "command.toggleTheme": "Toggle dark/light theme",
@@ -1094,7 +1051,6 @@ export const en: Record<string, string> = {
   "commandMenu.empty.sub": "Try part of its name.",
   "command.showShortcuts": "Keyboard shortcuts",
 
-  // ── Diagnostics view ──
   "diagnostics.clear": "Clear",
   "diagnostics.title": "Diagnostics",
   "diagnostics.description":
@@ -1104,22 +1060,15 @@ export const en: Record<string, string> = {
   "diagnostics.signal.metrics": "Metrics",
   "diagnostics.signal.logs": "Logs",
 
-  // ── Icon showcase section titles ──
-
-  // ── Tasks sidebar ──
-
-  // ── Reasoning block ──
   "reasoning.thinking": "Thinking",
   "reasoning.thought": "Thought",
   "reasoning.interrupted": "interrupted",
 
-  // ── VCS gate ──
   "vcs.gitNotAvailable": "Git not available",
   "vcs.gitNotAvailableSub": "This runtime has no git binary on its PATH.",
   "vcs.notARepo": "Not a git repository",
   "vcs.notARepoSub": "The session's working directory is not under version control.",
 
-  // ── Protocol error copy (API.md §8.2 error types) + session mutations ──
   "rpcError.session_has_active_run":
     "This session already has a run in flight — steer it, answer it, or cancel it first.",
   "rpcError.run_not_root": "That run belongs to a larger run — ask for the root run instead.",
@@ -1167,7 +1116,6 @@ export const en: Record<string, string> = {
   "composer.error.readImage": "Couldn't read the image",
   "composer.error.readImages_one": "Couldn't read {{count}} image",
   "composer.error.readImages_other": "Couldn't read {{count}} images",
-  // ── Tool rows + client-side danger heuristics ──
   "tool.doing.generic": "Using tool",
   "tool.done.generic": "Used tool",
   "tool.doing.shell": "Running",

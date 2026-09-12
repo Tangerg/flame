@@ -1,8 +1,6 @@
 import { Lexer } from "marked";
 
 /**
- * Cut markdown into the blocks a streaming transcript re-renders independently.
- *
  * Only the LAST block changes while a message streams, so splitting is what lets React leave
  * the settled ones alone — and what makes the split correct is not the cutting but the three
  * places a block legitimately spans what looks like a boundary.
@@ -41,8 +39,6 @@ const VOID_ELEMENTS = new Set([
 ]);
 
 /**
- * How many times this raw text OPENS the tag — matched as a whole tag rather than a prefix.
- *
  * Three things are not an opening and each was a measured difference against the function this
  * replaces: a void element (`<img src=x>` closes nothing and waits for nothing), a self-closing
  * one (`<div />`), and a tag still being typed (`<div` with no `>` yet, which is every

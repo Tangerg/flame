@@ -1,7 +1,3 @@
-// An unused draft must not outlive the visit that created it: it is filtered out
-// of the session list and there is no tab strip, so a draft the user navigated
-// away from is unreachable and would sit on the runtime forever.
-
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { configureAgentRuntimeGateway } from "../ports/runtimeGateway";
 import { configureAgentSessionStatePort } from "../ports/sessionState";
@@ -68,9 +64,6 @@ describe("discardAbandonedDraft", () => {
   });
 
   it("never touches another client's session, however empty it looks", () => {
-    // Draft ownership is local. After a cold start, an empty session may still
-    // be a live draft in another window, so absence from this client's draft set
-    // is a hard no-delete boundary rather than evidence that it was abandoned.
     const deleteSession = wire({ drafts: [] });
 
     discardAbandonedDraft("session-1");

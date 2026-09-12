@@ -136,9 +136,6 @@ describe("schedule commands", () => {
     });
   });
 
-  // The command is accepted before its cache repair runs, so the generation can be replaced
-  // while the repair is still in flight. Reporting success then would hand the UI a result
-  // owned by a generation that no longer exists.
   it("rejects an accepted mutation whose generation is replaced during cache repair", async () => {
     const current = {
       id: "sch_1",

@@ -124,8 +124,6 @@ class MessageFeedbackGeneration {
   }
 }
 
-/** Owns feedback command ordering and optimistic material for one exact Plugin
- * Host and Runtime generation. */
 export class MessageFeedbackOwner {
   static readonly #listeners = new Map<string, Set<RatingListener>>();
 

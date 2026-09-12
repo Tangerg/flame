@@ -13,24 +13,16 @@ vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
   runtimeCommandsAvailable: () => true,
 }));
 
-// Composer now reads the workspace file list (useFileMentions → useListFiles)
-// via React Query, so renders need a provider. Retries off so a missing
-// provider/fetcher fails fast rather than hanging the test.
 function wrap(ui: ReactElement) {
   const client = new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: Infinity },
     },
   });
-  // These Composer cases do not open a mention. Seed the disabled query's
-  // identity without inventing a Runtime provider or coupling this component
-  // spec to a transport adapter.
   client.setQueryData([WORKSPACE_LIST_FILES_KEY, undefined], []);
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
 
-// Composer relies on a built-in composer-keymap registration to bind
-// Enter → submit. Set up a tiny in-test plugin that mirrors it.
 async function withEnterKeymap() {
   await loadPluginsForTest(
     definePlugin({
@@ -119,10 +111,6 @@ describe("composer", () => {
     wrap(<Composer {...baseProps} value="english" onChange={() => {}} onSend={onSend} />);
     const textarea = screen.getByRole("textbox");
 
-    // WKWebView can end a Chinese-IME composition before dispatching the
-    // keydown from the same physical Enter. Both composing flags are false by
-    // the time the key binding sees that keydown; keyCode 229 is the remaining
-    // browser signal that this is still the IME's commit key.
     fireEvent.compositionStart(textarea, { data: "englis" });
     fireEvent.compositionEnd(textarea, { data: "english" });
     fireEvent.keyDown(textarea, { key: "Enter", keyCode: 229, isComposing: false });
@@ -136,17 +124,12 @@ describe("composer", () => {
     wrap(<Composer {...baseProps} value="中文 english" onChange={() => {}} onSend={onSend} />);
     const textarea = screen.getByRole("textbox");
 
-    // Some Chinese IMEs commit raw Latin text by ending composition first and
-    // then emitting an ordinary keyCode=13 Enter from the same physical key.
-    // There is no native composing bit or WebKit 229 marker left to inspect.
     fireEvent.compositionStart(textarea, { data: "english" });
     fireEvent.compositionEnd(textarea, { data: "english" });
     fireEvent.keyDown(textarea, { key: "Enter", keyCode: 13, isComposing: false });
 
     expect(onSend).not.toHaveBeenCalled();
 
-    // The ownership must expire with that browser event turn; the user's next
-    // deliberate Enter still goes through the configured composer keymap.
     await act(async () => Promise.resolve());
     fireEvent.keyDown(textarea, { key: "Enter", keyCode: 13, isComposing: false });
     expect(onSend).toHaveBeenCalledOnce();

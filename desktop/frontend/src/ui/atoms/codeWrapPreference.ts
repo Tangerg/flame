@@ -14,8 +14,7 @@ function snapshot(): boolean {
   return wrapCode;
 }
 
-/** One application-lifetime reading preference, matching Codex's
- *  markdownCodeBlockWordWrap signal. It is deliberately not durable settings:
+/** One application-lifetime reading preference. It is deliberately not durable settings:
  *  a new Desktop process starts from unwrapped code again. */
 export function useCodeWrapPreference(): boolean {
   return useSyncExternalStore(subscribe, snapshot, snapshot);

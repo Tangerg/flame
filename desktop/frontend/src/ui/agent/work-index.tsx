@@ -4,8 +4,6 @@ import { cn } from "@/lib/classNames";
 import { ScrollArea } from "@/ui/atoms/scroll-area";
 
 const styles = stylex.create({
-  // The gutter and the two section gaps are density tokens: the whole index breathes with the
-  // UI size rather than each list picking a spacing.
   scroll: {
     paddingInline: "var(--density-navigation-gutter)",
     paddingBottom: "calc(var(--spacing) * 5)",

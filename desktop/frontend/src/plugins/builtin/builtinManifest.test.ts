@@ -4,11 +4,6 @@ import * as kernelPoints from "@/plugins/sdk/kernelPoints";
 import { publishedKernel } from "@/plugins/sdk/kernel";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 
-/**
- * No socket. Loading every built-in starts the plugins that talk to the Runtime, and they
- * reach for the default endpoint — so without this the suite's result depends on whether
- * something happens to be listening on 17171, which on a developer's machine it often is.
- */
 beforeEach(() => {
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
   vi.stubGlobal(
@@ -36,19 +31,6 @@ describe("built-in plugin manifest", () => {
   });
 });
 
-/**
- * On a `single` point, two contributions under one key means the second shadows the first.
- *
- * That is the mechanism, and it is deliberate: `keying` is a READ policy, so an override
- * comes back when the overriding plugin unloads. It is the right shape for a third-party
- * plugin replacing a default — and always a mistake between two BUILT-INS, which ship as one
- * product and cannot be meaning to override each other. The kernel resolves the pair before
- * anything outside it can look, so the loser leaves no trace: `contributionsTo` already
- * returns one entry per key.
- *
- * The raw view is what the resolution is done over, so this reads that instead. Twenty-five
- * points, and the plugin that lost is named rather than merely counted.
- */
 describe("built-in contributions", () => {
   afterEach(async () => {
     await resetKernelForTest();
@@ -81,7 +63,6 @@ describe("built-in contributions", () => {
         if (plugins.length > 1) shadowed.push(`${name}[${key}] <- ${plugins.join(", ")}`);
     }
 
-    // A kernel that installed nothing shadows nothing, and would pass this silently.
     expect(contributions).toBeGreaterThan(100);
     expect(shadowed).toEqual([]);
   });

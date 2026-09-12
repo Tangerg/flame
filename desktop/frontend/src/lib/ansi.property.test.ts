@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 import { forEachSeed } from "@/test/arbitrary";
 import { hasAnsi, parseAnsi } from "./ansi";
 
-// Terminal output nobody validated. A parser that throws here takes a transcript row with
-// it, and one that loops takes the frame.
-
 describe("the ANSI parser, over arbitrary terminal output", () => {
   it("preserves every visible character in order", () => {
     forEachSeed(600, (a) => {
