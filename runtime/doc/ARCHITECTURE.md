@@ -41,6 +41,8 @@ Scope's Agent Framework is the only process, strategy, child-tree, tool-loop, an
 
 Framework observations are wake-ups, not durable commits. Runtime reconciles authoritative framework state into an Application write set before publishing durable product facts. A completed durable Item or snapshot wins over a missing or duplicated preview event.
 
+Model-call allowances apply to cumulative usage across the execution tree. A limit denial belongs to the member whose next call was refused; it does not replace a sibling's completed, canceled, or failed outcome.
+
 A Delegate retains its admitted child across a human-input barrier. Each continuation opens fresh Segments, so the executor observation reopens the parent Tool attempt before forwarding child results. Application reuses the durable Tool Item identity; continuation does not admit another child or repeat its completed work.
 
 Tool continuation uses the executor's stable call identity. Edited approval arguments change the execution input while preserving that identity; a new call with the same name or arguments receives its own Item. One remaining-call index owns whether a suspended Item still needs to resume or settle.

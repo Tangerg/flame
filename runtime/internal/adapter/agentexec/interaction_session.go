@@ -649,7 +649,7 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 	var end segmentEndDraft
 	if termination.Cause() == agent.TerminationCauseExternalFailure && ownerCause != nil {
 		end = segmentEndFromOwnerCause(ownerCause, duration)
-	} else if stop := i.allowance.terminal(); stop != interactionAllowanceOpen {
+	} else if stop := i.allowance.denial(result.ProcessID()); stop != interactionAllowanceOpen {
 		end = segmentEndFromAllowance(stop, duration)
 	} else {
 		end = segmentEndFromTermination(termination, duration)

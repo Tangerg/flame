@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -185,7 +186,7 @@ func (o *observedInteractionModel) begin(
 	// The turn is held in a local: a failure below returns a nil allowanceTurn
 	// result, and a cleanup that read the named result would release nothing and
 	// wedge the next model call on a finite Run.
-	turn, err := o.acquireAllowance(ctx)
+	turn, err := o.acquireAllowance(ctx, invocation.Relation().ProcessID())
 	if err != nil {
 		return interaction.ModelInvocation{}, nil, "", nil, err
 	}
@@ -208,7 +209,7 @@ func (o *observedInteractionModel) begin(
 	return invocation, attempt, callID, turn, nil
 }
 
-func (o *observedInteractionModel) acquireAllowance(ctx context.Context) (*interactionAllowanceTurn, error) {
+func (o *observedInteractionModel) acquireAllowance(ctx context.Context, processID agent.ProcessID) (*interactionAllowanceTurn, error) {
 	turn, err := o.session.allowance.acquire(ctx)
 	if err != nil {
 		return nil, err
@@ -218,7 +219,7 @@ func (o *observedInteractionModel) acquireAllowance(ctx context.Context) (*inter
 		turn.release()
 		return nil, interaction.HostFailure(err)
 	}
-	if err := o.session.allowance.admit(usage); err != nil {
+	if err := o.session.allowance.admit(processID, usage); err != nil {
 		turn.release()
 		return nil, err
 	}

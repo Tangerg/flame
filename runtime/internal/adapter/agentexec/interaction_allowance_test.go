@@ -113,6 +113,7 @@ func TestInteractionAllowanceRejectsUnpricedCostLimitBeforeCallingProvider(t *te
 }
 
 func TestInteractionAllowanceFailsClosedWhenServedModelPricingDisappears(t *testing.T) {
+	processID := mustInteractionProcessID(t, "process:requesting-child")
 	limits := testsupport.MustRunLimits(run.LimitValues{
 		MaxBudgetUSD: testsupport.Pointer(1.0),
 	})
@@ -124,17 +125,18 @@ func TestInteractionAllowanceFailsClosedWhenServedModelPricingDisappears(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := allowance.admit(accounting.Snapshot{Models: []accounting.ModelUsage{{
+	if err := allowance.admit(processID, accounting.Snapshot{Models: []accounting.ModelUsage{{
 		Model: "served-alias", Calls: 1,
 	}}}); !errors.Is(err, errInteractionAllowanceDenied) {
 		t.Fatalf("admit error = %v, want allowance denial", err)
 	}
-	if allowance.terminal() != interactionAllowancePricingUnavailable {
-		t.Fatalf("terminal = %d, want pricing unavailable", allowance.terminal())
+	if allowance.denial(processID) != interactionAllowancePricingUnavailable {
+		t.Fatalf("denial = %d, want pricing unavailable", allowance.denial(processID))
 	}
 }
 
-func TestInteractionAllowanceOwnsTreeWideSteps(t *testing.T) {
+func TestInteractionAllowanceAttributesTreeWideDenialToTheRequestingProcess(t *testing.T) {
+	processID := mustInteractionProcessID(t, "process:requesting-child")
 	limits := testsupport.MustRunLimits(run.LimitValues{
 		MaxSteps: testsupport.Pointer(1),
 	})
@@ -142,23 +144,31 @@ func TestInteractionAllowanceOwnsTreeWideSteps(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := allowance.admit(accounting.Snapshot{Models: []accounting.ModelUsage{{
+	completedSibling := mustInteractionProcessID(t, "process:completed-sibling")
+	if err := allowance.admit(completedSibling, accounting.Snapshot{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := allowance.admit(processID, accounting.Snapshot{Models: []accounting.ModelUsage{{
 		Model: "child-served-model", Calls: 1,
 	}}}); !errors.Is(err, errInteractionAllowanceDenied) {
 		t.Fatalf("admit error = %v, want allowance denial", err)
 	}
-	if allowance.terminal() != interactionAllowanceStepsExhausted {
-		t.Fatalf("terminal = %d, want steps exhausted", allowance.terminal())
+	if allowance.denial(processID) != interactionAllowanceStepsExhausted {
+		t.Fatalf("denial = %d, want steps exhausted", allowance.denial(processID))
 	}
-	if err := allowance.admit(accounting.Snapshot{}); !errors.Is(err, errInteractionAllowanceDenied) {
+	if stop := allowance.denial(completedSibling); stop != interactionAllowanceOpen {
+		t.Fatalf("completed sibling inherited another Process denial: %d", stop)
+	}
+	if err := allowance.admit(processID, accounting.Snapshot{}); !errors.Is(err, errInteractionAllowanceDenied) {
 		t.Fatalf("admit after terminal stop = %v, want sticky allowance denial", err)
 	}
-	if allowance.terminal() != interactionAllowanceStepsExhausted {
-		t.Fatalf("terminal reopened as %d", allowance.terminal())
+	if allowance.denial(processID) != interactionAllowanceStepsExhausted {
+		t.Fatalf("denial reopened as %d", allowance.denial(processID))
 	}
 }
 
 func TestInteractionAllowanceSerializesFiniteRunSnapshots(t *testing.T) {
+	processID := mustInteractionProcessID(t, "process:requesting-child")
 	limits := testsupport.MustRunLimits(run.LimitValues{
 		MaxSteps: testsupport.Pointer(1),
 	})
@@ -170,7 +180,7 @@ func TestInteractionAllowanceSerializesFiniteRunSnapshots(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := allowance.admit(accounting.Snapshot{}); err != nil {
+	if err := allowance.admit(processID, accounting.Snapshot{}); err != nil {
 		first.release()
 		t.Fatalf("initial admission: %v", err)
 	}
@@ -188,7 +198,7 @@ func TestInteractionAllowanceSerializesFiniteRunSnapshots(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := allowance.admit(accounting.Snapshot{}); err != nil {
+	if err := allowance.admit(processID, accounting.Snapshot{}); err != nil {
 		retry.release()
 		t.Fatalf("admission after an unaccounted call = %v, want retry allowed", err)
 	}
@@ -199,7 +209,7 @@ func TestInteractionAllowanceSerializesFiniteRunSnapshots(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer second.release()
-	if err := allowance.admit(accounting.Snapshot{Models: []accounting.ModelUsage{{
+	if err := allowance.admit(processID, accounting.Snapshot{Models: []accounting.ModelUsage{{
 		Model: "served-model", Calls: 1,
 	}}}); !errors.Is(err, errInteractionAllowanceDenied) {
 		t.Fatalf("refreshed admission = %v, want step-limit denial", err)

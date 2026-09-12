@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	agent "github.com/Tangerg/scope/agent"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -33,8 +34,9 @@ type interactionAllowance struct {
 	limits run.Limits
 	turn   chan struct{}
 
-	mu   sync.Mutex
-	stop interactionAllowanceStop
+	mu     sync.Mutex
+	stop   interactionAllowanceStop
+	denied map[agent.ProcessID]struct{}
 }
 
 func newInteractionAllowance(
@@ -62,7 +64,7 @@ func newInteractionAllowance(
 			)
 		}
 	}
-	allowance := &interactionAllowance{limits: limits}
+	allowance := &interactionAllowance{limits: limits, denied: make(map[agent.ProcessID]struct{})}
 	if !limits.Unlimited() {
 		allowance.turn = make(chan struct{}, 1)
 		allowance.turn <- struct{}{}
@@ -108,20 +110,20 @@ func (t *interactionAllowanceTurn) release() {
 	t.once.Do(func() { t.allowance.turn <- struct{}{} })
 }
 
-func (a *interactionAllowance) admit(snapshot accounting.Snapshot) error {
+func (a *interactionAllowance) admit(processID agent.ProcessID, snapshot accounting.Snapshot) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.stop != interactionAllowanceOpen {
-		return errInteractionAllowanceDenied
+	if a.stop == interactionAllowanceOpen {
+		stop, err := allowanceStop(a.limits, snapshot)
+		if err != nil {
+			return err
+		}
+		a.stop = stop
 	}
-	stop, err := allowanceStop(a.limits, snapshot)
-	if err != nil {
-		return err
-	}
-	if stop == interactionAllowanceOpen {
+	if a.stop == interactionAllowanceOpen {
 		return nil
 	}
-	a.stop = stop
+	a.denied[processID] = struct{}{}
 	return errInteractionAllowanceDenied
 }
 
@@ -169,8 +171,13 @@ func costAllowanceStop(limits run.Limits, total accounting.ModelUsage) interacti
 	return interactionAllowanceOpen
 }
 
-func (a *interactionAllowance) terminal() interactionAllowanceStop {
+// The budget belongs to the tree; a denied call belongs to its Process. Other
+// members keep their own outcomes even when they finish after this denial.
+func (a *interactionAllowance) denial(processID agent.ProcessID) interactionAllowanceStop {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if _, denied := a.denied[processID]; !denied {
+		return interactionAllowanceOpen
+	}
 	return a.stop
 }
