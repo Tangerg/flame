@@ -886,6 +886,15 @@ for (const theme of ["light", "dark"] as const) {
     await preview.click();
     const dialog = page.getByRole("dialog", { name: "Inline architecture" });
     await expect(dialog).toBeVisible();
+    await expect(dialog).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("dialog", { name: "Inline detail" })).toBeVisible();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("dialog", { name: "Inline detail" })).toBeVisible();
+    await page.keyboard.press("ArrowLeft");
+    await expect(dialog).toBeVisible();
     const transcript = page.locator(".msg-scroll-viewport");
     await transcript.evaluate((viewport) => {
       viewport.scrollTop = 0;

@@ -1,10 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
 import {
-  useCallback,
-  useEffect,
   useRef,
   useState,
+  type KeyboardEventHandler,
   type MouseEventHandler,
   type ReactElement,
 } from "react";
@@ -161,7 +160,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
 
-  const setGalleryIndex = useCallback((index: number) => {
+  const setGalleryIndex = (index: number) => {
     setZoomIndex(0);
     setFittedSize(null);
     setGallery((current) =>
@@ -169,22 +168,18 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
         ? { ...current, index: Math.max(0, Math.min(index, current.items.length - 1)) }
         : null,
     );
-  }, []);
+  };
 
-  useEffect(() => {
-    if (!zoomed || !gallery) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft" && gallery.index > 0) {
-        event.preventDefault();
-        setGalleryIndex(gallery.index - 1);
-      } else if (event.key === "ArrowRight" && gallery.index < gallery.items.length - 1) {
-        event.preventDefault();
-        setGalleryIndex(gallery.index + 1);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [gallery, setGalleryIndex, zoomed]);
+  const onKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
+    if (!gallery) return;
+    if (event.key === "ArrowLeft" && gallery.index > 0) {
+      event.preventDefault();
+      setGalleryIndex(gallery.index - 1);
+    } else if (event.key === "ArrowRight" && gallery.index < gallery.items.length - 1) {
+      event.preventDefault();
+      setGalleryIndex(gallery.index + 1);
+    }
+  };
 
   const active = gallery?.items[gallery.index] ?? item;
   const hasGallery = (gallery?.items.length ?? 0) > 1;
@@ -222,6 +217,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
   return (
     <LightboxDialog
       open={zoomed}
+      onKeyDown={onKeyDown}
       onOpenChange={(open) => {
         setZoomed(open);
         if (!open) {

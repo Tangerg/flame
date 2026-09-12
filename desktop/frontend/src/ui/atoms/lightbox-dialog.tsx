@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useRef, type ReactElement, type ReactNode } from "react";
+import { useRef, type KeyboardEventHandler, type ReactElement, type ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { radius, space, surface } from "@/styles/tokens.stylex";
 import { DialogPrimitive } from "@/ui/primitives";
@@ -72,6 +72,7 @@ const styles = stylex.create({
 interface LightboxDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
   trigger: ReactElement;
   title: ReactNode;
   children: ReactNode;
@@ -82,6 +83,7 @@ interface LightboxDialogProps {
 export function LightboxDialog({
   open,
   onOpenChange,
+  onKeyDown,
   trigger,
   title,
   children,
@@ -98,9 +100,9 @@ export function LightboxDialog({
   // that tip while the dialog stayed; Escape #2 closed the dialog. Pressing Escape once, which
   // is the whole contract, appeared to do nothing.
   //
-  // Focusing the panel is also the conventional answer — the dialog announces its own title,
-  // and the first Tab reaches the controls. Safe for the gallery's arrow keys, which are bound
-  // on `window` rather than on any control.
+  // Focusing the panel lets the dialog announce its own title; the first Tab reaches its
+  // controls. Content-specific keys belong to this popup, including before the first Tab:
+  // the modal boundary stops composite keys from reaching listeners outside the dialog.
   const popupRef = useRef<HTMLDivElement>(null);
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -112,6 +114,7 @@ export function LightboxDialog({
           initialFocus={popupRef}
           tabIndex={-1}
           aria-describedby={undefined}
+          onKeyDown={onKeyDown}
           {...panel}
           className={cn(panel.className, className)}
         >

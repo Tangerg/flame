@@ -171,6 +171,16 @@ describe("markdownMessage", () => {
     render(<MarkdownMessage text={`![Before](${first}) ![After](${second})`} reveal="instant" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Before" }));
+    const dialog = screen.getByRole("dialog", { name: "Before" });
+    fireEvent.keyDown(dialog, { key: "ArrowLeft" });
+    expect(screen.getByRole("dialog", { name: "Before" })).toBeTruthy();
+    fireEvent.keyDown(dialog, { key: "ArrowRight" });
+    expect(screen.getByRole("dialog", { name: "After" })).toBeTruthy();
+    fireEvent.keyDown(dialog, { key: "ArrowRight" });
+    expect(screen.getByRole("dialog", { name: "After" })).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole("button", { name: "Close image preview" }), {
+      key: "ArrowLeft",
+    });
     expect(screen.getByRole("dialog", { name: "Before" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Next image" }));
     expect(screen.getByRole("dialog", { name: "After" })).toBeTruthy();
