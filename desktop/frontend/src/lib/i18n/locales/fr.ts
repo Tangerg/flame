@@ -338,7 +338,6 @@ export const fr: Record<string, string> = {
   "contextDock.group.workspace": "Espace",
   "contextDock.group.run": "Exécution",
   "contextDock.group.session": "Session",
-  "workspace.view.title.filetree": "Explorateur",
   "workspace.view.title.plan": "Plan",
   "workspace.view.title.agentDocs": "Docs de l'agent",
   "workspace.view.title.notifications": "Notifications",
@@ -640,10 +639,6 @@ export const fr: Record<string, string> = {
   "agentDocs.empty.sub":
     "Les fichiers AGENTS.md trouvés à partir du répertoire de travail apparaissent ici.",
 
-  "filetree.title": "Explorateur",
-  "filetree.empty.title": "Rien à parcourir",
-  "filetree.empty.sub": "Aucun fichier dans cet espace de travail.",
-
   "shortcuts.sub":
     "Chaque raccourci enregistré par les plugins intégrés et utilisateur. Appuyez sur une combinaison n'importe où dans l'application pour l'activer ; les conflits de liaison sont toujours résolus en faveur du dernier enregistrement.",
   "shortcuts.filter": "Filtrer par action ou combinaison…",
@@ -924,7 +919,7 @@ export const fr: Record<string, string> = {
   "mcp.error.toggle": "Impossible de modifier le serveur.",
   "mcp.error.signIn": "Échec de la connexion.",
   "mcp.error.test": "Échec du test",
-  "workspace.view.title.file": "Aperçu du fichier",
+  "workspace.view.title.file": "Fichiers",
   "workspace.view.title.recipes": "Recettes",
   "settings.theme.system": "Système",
   "runError.action.retryIn": "Réessayer dans {{seconds}} s",
@@ -1029,8 +1024,9 @@ export const fr: Record<string, string> = {
   "file.lines_many": "{{count}} de lignes",
   "file.lines_other": "{{count}} lignes",
   "file.truncated": "tronqué",
-  "file.empty.title": "Aucun fichier ouvert",
-  "file.empty.sub": "Cliquez sur une référence de fichier dans la conversation pour l'ouvrir ici.",
+  "file.backToFiles": "Retour aux fichiers",
+  "file.empty.title": "Aucun fichier",
+  "file.empty.sub": "Ce dossier ne contient aucun fichier visible.",
   "file.error.title": "Impossible d'ouvrir le fichier",
   "file.error.sub":
     "Il a peut-être été déplacé, il est binaire, ou il se trouve hors de l'espace de travail.",

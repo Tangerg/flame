@@ -1,21 +1,73 @@
-import { DataView, FilePath } from "@/ui";
+import { Activity } from "react";
+import { DataView, FilePath, IconButton } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { FileView } from "./views/FileView";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
-import { useWorkspaceReadFile } from "@/plugins/builtin/workspace/application/workspaceQueries";
-import { useWorkspaceFileViewer } from "@/plugins/builtin/workspace/public/navigation";
+import {
+  useWorkspaceListFiles,
+  useWorkspaceReadFile,
+} from "@/plugins/builtin/workspace/application/workspaceQueries";
+import {
+  closeWorkspaceFile,
+  openWorkspaceFile,
+  useWorkspaceFileViewer,
+} from "@/plugins/builtin/workspace/public/navigation";
+import type { WorkspaceFileViewer } from "../application/ports/navigationState";
+import { isUnsupportedMethod } from "@/lib/rpcErrors";
+import { FileTree } from "./views/FileTree";
 
 const targetWindowRadius = 200;
 
 export function FileViewTab() {
+  const viewer = useWorkspaceFileViewer();
+  return (
+    <>
+      <Activity mode={viewer ? "hidden" : "visible"}>
+        <FileBrowser />
+      </Activity>
+      {viewer && <FilePreview viewer={viewer} />}
+    </>
+  );
+}
+
+function FileBrowser() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
-  const viewer = useWorkspaceFileViewer();
-  const targetLine = viewer?.line ?? 0;
+  const query = useWorkspaceListFiles(workspace.status === "ready" ? { cwd } : undefined);
+  return (
+    <WorkspaceViewLayout scrollInset="flush" icon="folder" title="workspace.view.title.file">
+      <DataView
+        items={query.data}
+        isLoading={query.isLoading || workspace.status === "resolving"}
+        isError={query.isError}
+        onRetry={query.refetch}
+        unsupported={
+          isUnsupportedMethod(query.error)
+            ? {
+                icon: "folder",
+                title: t("runtime.unsupported.title"),
+                sub: t("runtime.unsupported.sub"),
+              }
+            : undefined
+        }
+        skeletonCount={8}
+        empty={{ icon: "folder", title: t("file.empty.title"), sub: t("file.empty.sub") }}
+      >
+        {(entries) => <FileTree entries={entries} cwd={cwd} onSelectFile={openWorkspaceFile} />}
+      </DataView>
+    </WorkspaceViewLayout>
+  );
+}
+
+function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
+  const t = useT();
+  const workspace = useActiveSessionWorkspace();
+  const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
+  const targetLine = viewer.line;
   const { data, isLoading, isError, refetch } = useWorkspaceReadFile(
-    viewer && workspace.status === "ready" && cwd !== undefined
+    workspace.status === "ready"
       ? {
           cwd,
           path: viewer.path,
@@ -39,27 +91,26 @@ export function FileViewTab() {
   return (
     <WorkspaceViewLayout
       scrollInset="flush"
-      // Mono says "this is a path", so it follows the title rather than the view: with no
-      // file open the title is a translated sentence, and a sentence set in mono reads as a
-      // literal the reader is meant to type.
-      titleFace={viewer ? "mono" : undefined}
+      titleFace="mono"
       icon="filetext"
-      title={viewer?.path || t("file.empty.title")}
-      dockIdentity={viewer ? <FilePath path={viewer.path} /> : undefined}
+      title={viewer.path}
+      dockIdentity={<FilePath path={viewer.path} />}
+      actions={
+        <IconButton icon="arrow-left" title={t("file.backToFiles")} onClick={closeWorkspaceFile} />
+      }
       sub={sub}
     >
       <DataView
         items={data ? [data] : []}
-        isLoading={isLoading || (Boolean(viewer) && workspace.status === "resolving")}
+        isLoading={isLoading || workspace.status === "resolving"}
         isError={isError}
         onRetry={refetch}
         skeletonCount={12}
-        empty={{ icon: "filetext", title: t("file.empty.title"), sub: t("file.empty.sub") }}
         error={{ title: t("file.error.title"), sub: t("file.error.sub") }}
       >
         {(items) => (
           <FileView
-            path={viewer?.path ?? ""}
+            path={viewer.path}
             content={items[0]!.content}
             startLine={items[0]!.startLine}
             targetLine={targetLine}

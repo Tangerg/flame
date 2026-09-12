@@ -121,7 +121,6 @@ const LAZY_FEATURES = [
       "agentMemory-",
       "diff-",
       "file-",
-      "filetree-",
       "inbox-",
       "knowledge-",
       "notifications-",

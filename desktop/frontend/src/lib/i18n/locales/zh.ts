@@ -452,11 +452,10 @@ export const zh: Record<string, string> = {
   "font.useCustom": "使用自定义",
 
   "workspace.view.title.diff": "差异",
-  "workspace.view.title.file": "文件预览",
+  "workspace.view.title.file": "文件",
   "contextDock.group.workspace": "工作区",
   "contextDock.group.run": "运行",
   "contextDock.group.session": "会话",
-  "workspace.view.title.filetree": "资源管理器",
   "workspace.view.title.plan": "计划",
   "workspace.view.title.agentDocs": "Agent 文档",
   "workspace.view.title.notifications": "通知",
@@ -763,10 +762,6 @@ export const zh: Record<string, string> = {
   "agentDocs.empty.title": "无 Agent 文档",
   "agentDocs.empty.sub": "从工作目录向上找到的 AGENTS.md 文件会显示在这里。",
 
-  "filetree.title": "资源管理器",
-  "filetree.empty.title": "无可浏览内容",
-  "filetree.empty.sub": "此工作区中没有文件。",
-
   "shortcuts.sub":
     "由内置和用户插件注册的每一个按键绑定。在应用中任意位置按下组合键即可触发；绑定冲突始终以最后一次注册为准。",
   "shortcuts.filter": "按操作或组合键筛选…",
@@ -807,8 +802,9 @@ export const zh: Record<string, string> = {
   "diff.error.loadFailedSub": "运行时拒绝了这次请求。",
   "file.lines_other": "{{count}} 行",
   "file.truncated": "已截断",
-  "file.empty.title": "未打开文件",
-  "file.empty.sub": "点击对话里的文件引用即可在此打开。",
+  "file.backToFiles": "返回文件列表",
+  "file.empty.title": "没有文件",
+  "file.empty.sub": "此目录中没有可显示的文件。",
   "file.error.title": "无法打开文件",
   "file.error.sub": "它可能已移动、是二进制文件,或位于工作区之外。",
   "diff.empty.title": "无内容可比较",

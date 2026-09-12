@@ -27,20 +27,11 @@ export const inboxView = defineWorkspaceView({
   component: lazy(() => import("./inbox").then((m) => ({ default: m.InboxTab }))),
 });
 
-export const fileTreeView = defineWorkspaceView({
-  id: "explorer",
-  title: "workspace.view.title.filetree",
-  icon: "folder",
-  order: 20,
-  dock: "workspace",
-  component: lazy(() => import("./filetree").then((m) => ({ default: m.ExplorerView }))),
-});
-
 export const fileView = defineWorkspaceView({
   id: "file",
   title: "workspace.view.title.file",
-  icon: "filetext",
-  order: 25,
+  icon: "folder",
+  order: 20,
   dock: "workspace",
   component: lazy(() => import("./file").then((m) => ({ default: m.FileViewTab }))),
 });

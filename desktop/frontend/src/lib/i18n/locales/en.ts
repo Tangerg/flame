@@ -479,11 +479,10 @@ export const en: Record<string, string> = {
   "font.useCustom": "Use custom",
 
   "workspace.view.title.diff": "Diff",
-  "workspace.view.title.file": "File preview",
+  "workspace.view.title.file": "Files",
   "contextDock.group.workspace": "Workspace",
   "contextDock.group.run": "Run",
   "contextDock.group.session": "Session",
-  "workspace.view.title.filetree": "Explorer",
   "workspace.view.title.plan": "Plan",
   "workspace.view.title.agentDocs": "Agent docs",
   "workspace.view.title.notifications": "Notifications",
@@ -862,10 +861,6 @@ export const en: Record<string, string> = {
   "agentDocs.empty.title": "No agent docs",
   "agentDocs.empty.sub": "AGENTS.md files found from the working directory upward show up here.",
 
-  "filetree.title": "Explorer",
-  "filetree.empty.title": "Nothing to browse",
-  "filetree.empty.sub": "No files in this workspace.",
-
   "shortcuts.sub":
     "Every keybinding registered by built-in and user plugins. Press a combo anywhere in the app to fire it; binding conflicts always resolve to the last registration.",
   "shortcuts.filter": "Filter by action or combo…",
@@ -913,8 +908,9 @@ export const en: Record<string, string> = {
   "file.lines_one": "{{count}} line",
   "file.lines_other": "{{count}} lines",
   "file.truncated": "truncated",
-  "file.empty.title": "No file open",
-  "file.empty.sub": "Click a file reference in the conversation to open it here.",
+  "file.backToFiles": "Back to files",
+  "file.empty.title": "No files",
+  "file.empty.sub": "This directory has no visible files.",
   "file.error.title": "Couldn't open file",
   "file.error.sub": "It may have moved, be binary, or live outside the workspace.",
   "diff.empty.title": "Nothing to compare",

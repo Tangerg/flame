@@ -38,42 +38,42 @@ describe("workspace navigation port", () => {
   beforeEach(reset);
 
   it("opens dock views as stable singleton tabs beside chat", () => {
-    openWorkspaceViewInDock("explorer");
+    openWorkspaceViewInDock("skills");
     openWorkspaceViewInDock("diff");
-    openWorkspaceViewInDock("explorer");
+    openWorkspaceViewInDock("skills");
 
     expect(navigator().get().view).toBeNull();
     expect(useContextDockStore.getState()).toMatchObject({
-      dockViewIds: ["explorer", "diff"],
-      lastViewId: "explorer",
+      dockViewIds: ["skills", "diff"],
+      lastViewId: "skills",
     });
   });
 
   it("only selects views that already belong to the dock", () => {
-    openWorkspaceViewInDock("explorer");
+    openWorkspaceViewInDock("skills");
     selectWorkspaceDockView("diff");
-    expect(navigator().get().dock).toBe("explorer");
+    expect(navigator().get().dock).toBe("skills");
   });
 
   it("a full view leaves the dock workspace alone", () => {
-    openWorkspaceViewInDock("explorer");
+    openWorkspaceViewInDock("skills");
     collapseWorkspaceDock();
     openWorkspaceView("v3");
 
     expect(navigator().get().view).toBe("v3");
     expect(useContextDockStore.getState()).toMatchObject({
-      dockViewIds: ["explorer"],
-      lastViewId: "explorer",
+      dockViewIds: ["skills"],
+      lastViewId: "skills",
     });
   });
 
   it("closing a full view returns to chat without changing dock tabs", () => {
-    openWorkspaceViewInDock("explorer");
+    openWorkspaceViewInDock("skills");
     openWorkspaceView("v3");
 
     expect(closeActiveWorkspaceView()).toBe(true);
     expect(navigator().get().view).toBeNull();
-    expect(useContextDockStore.getState().dockViewIds).toEqual(["explorer"]);
+    expect(useContextDockStore.getState().dockViewIds).toEqual(["skills"]);
   });
 
   it("collapse and show are a lossless round trip", () => {
@@ -200,13 +200,13 @@ describe("workspace navigation port", () => {
   });
 
   it("closes the active dock tab before the session-level command can run", () => {
-    openWorkspaceViewInDock("explorer");
+    openWorkspaceViewInDock("skills");
     openWorkspaceViewInDock("diff");
 
     expect(closeActiveWorkspaceDockView()).toBe(true);
     expect(useContextDockStore.getState()).toMatchObject({
-      dockViewIds: ["explorer"],
-      lastViewId: "explorer",
+      dockViewIds: ["skills"],
+      lastViewId: "skills",
     });
   });
 

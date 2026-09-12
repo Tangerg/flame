@@ -156,6 +156,10 @@ export function openWorkspaceFile(path: string, line?: number): void {
   workspaceNavigation().openFile(path, line);
 }
 
+export function closeWorkspaceFile(): void {
+  workspaceNavigation().closeFile();
+}
+
 export function locateWorkspaceTool(id: string): void {
   workspaceNavigation().locateTool(id);
 }

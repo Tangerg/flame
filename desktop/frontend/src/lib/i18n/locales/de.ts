@@ -330,7 +330,6 @@ export const de: Record<string, string> = {
   "contextDock.group.workspace": "Workspace",
   "contextDock.group.run": "Lauf",
   "contextDock.group.session": "Session",
-  "workspace.view.title.filetree": "Explorer",
   "workspace.view.title.plan": "Plan",
   "workspace.view.title.agentDocs": "Agent-Doku",
   "workspace.view.title.notifications": "Benachrichtigungen",
@@ -620,10 +619,6 @@ export const de: Record<string, string> = {
   "agentDocs.empty.sub":
     "Vom Arbeitsverzeichnis aus aufwärts gefundene AGENTS.md-Dateien erscheinen hier.",
 
-  "filetree.title": "Explorer",
-  "filetree.empty.title": "Nichts zum Durchsuchen",
-  "filetree.empty.sub": "Keine Dateien in diesem Workspace.",
-
   "shortcuts.sub":
     "Jede von integrierten und Benutzer-Plugins registrierte Tastenkombination. Drücke eine Kombination irgendwo in der App, um sie auszulösen; Bindungskonflikte werden immer zugunsten der letzten Registrierung gelöst.",
   "shortcuts.filter": "Nach Aktion oder Kombi filtern…",
@@ -897,7 +892,7 @@ export const de: Record<string, string> = {
   "mcp.error.toggle": "Server konnte nicht geändert werden.",
   "mcp.error.signIn": "Anmeldung fehlgeschlagen.",
   "mcp.error.test": "Test fehlgeschlagen",
-  "workspace.view.title.file": "Dateivorschau",
+  "workspace.view.title.file": "Dateien",
   "workspace.view.title.recipes": "Rezepte",
   "settings.theme.system": "System",
   "runError.action.retryIn": "Erneut versuchen in {{seconds}} s",
@@ -1000,8 +995,9 @@ export const de: Record<string, string> = {
   "file.lines_one": "{{count}} Zeile",
   "file.lines_other": "{{count}} Zeilen",
   "file.truncated": "gekürzt",
-  "file.empty.title": "Keine Datei geöffnet",
-  "file.empty.sub": "Klicke auf eine Dateireferenz in der Unterhaltung, um sie hier zu öffnen.",
+  "file.backToFiles": "Zurück zu den Dateien",
+  "file.empty.title": "Keine Dateien",
+  "file.empty.sub": "Dieses Verzeichnis enthält keine sichtbaren Dateien.",
   "file.error.title": "Datei konnte nicht geöffnet werden",
   "file.error.sub":
     "Sie wurde vielleicht verschoben, ist binär oder liegt außerhalb des Workspace.",

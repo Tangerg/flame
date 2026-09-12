@@ -41,17 +41,21 @@ async function openWorkspace(page: Page, route: WorkspaceRoute): Promise<void> {
 
 test("a full view sets its title in mono only when the title is a path", async ({ page }) => {
   const readTitle = () =>
-    page.evaluate(() => {
-      const head = (stack: string) =>
-        stack
-          .split(",")[0]!
-          .trim()
-          .replace(/^["']|["']$/g, "");
-      const title = document.querySelector("main .agent-surface-header span");
-      const mono = head(getComputedStyle(document.documentElement).getPropertyValue("--font-mono"));
-      const family = title ? getComputedStyle(title).fontFamily : "";
-      return { text: title?.textContent?.trim() ?? "", isMono: head(family) === mono, family };
-    });
+    page
+      .locator("main .agent-surface-header:visible span")
+      .first()
+      .evaluate((title) => {
+        const head = (stack: string) =>
+          stack
+            .split(",")[0]!
+            .trim()
+            .replace(/^["']|["']$/g, "");
+        const mono = head(
+          getComputedStyle(document.documentElement).getPropertyValue("--font-mono"),
+        );
+        const family = title ? getComputedStyle(title).fontFamily : "";
+        return { text: title?.textContent?.trim() ?? "", isMono: head(family) === mono, family };
+      });
 
   await openWorkspace(page, { state: "full-view" });
   const prose = await readTitle();
@@ -152,7 +156,7 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     );
     return;
   }
-  if (state === "dock-explorer") {
+  if (state === "dock-files") {
     const view = page.locator(".agent-workspace-view:visible");
     await expect(view).toContainText("go.mod");
     await expect(view).toContainText("README.md");
@@ -171,7 +175,7 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
   if (state === "dock-catalog") {
     await expect(page.getByText(en["dock.catalog.title"]!, { exact: true })).toBeVisible();
     await expect(
-      page.locator(".agent-context-dock").getByRole("button", { name: "Explorer" }),
+      page.locator(".agent-context-dock").getByRole("button", { name: "Files" }),
     ).toBeVisible();
     return;
   }
@@ -204,9 +208,7 @@ test("collapse and reopen preserve the dock workspace", async ({ page }) => {
   await page.getByRole("button", { name: "Collapse right workspace" }).click();
   await expect(page.getByTestId("dock-open")).toHaveText("false");
   await expect(page.getByTestId("active-dock-view")).toHaveText("");
-  await expect(page.getByTestId("dock-view-ids")).toHaveText(
-    "explorer,file,diff,search,plan,timeline",
-  );
+  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,search,plan,timeline");
   await page.getByRole("button", { name: "Open right workspace" }).click();
 
   await expect(page.getByTestId("dock-open")).toHaveText("true");
@@ -243,9 +245,7 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
   await expect(
     page.getByRole("button", { name: "Widen the window to open the right workspace" }),
   ).toBeDisabled();
-  await expect(page.getByTestId("dock-view-ids")).toHaveText(
-    "explorer,file,diff,search,plan,timeline",
-  );
+  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,search,plan,timeline");
 });
 
 test("the composer's chips drop their labels whole rather than ellipse them", async ({ page }) => {
@@ -281,7 +281,7 @@ test("closing tabs selects a neighbor without collapsing the workspace", async (
   await page.getByRole("tab", { name: "Timeline" }).hover();
   await page.getByRole("button", { name: "Close Timeline" }).click();
   await expect(page.getByTestId("active-dock-view")).toHaveText("search");
-  await expect(page.getByTestId("dock-view-ids")).toHaveText("explorer,file,diff,search");
+  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,search");
 });
 
 test("add-panel menu restores a closed singleton and focuses it", async ({ page }) => {
@@ -306,9 +306,23 @@ test("add-panel menu restores a closed singleton and focuses it", async ({ page 
   await page.keyboard.press("Enter");
 
   await expect(page.getByTestId("active-dock-view")).toHaveText("search");
-  await expect(page.getByTestId("dock-view-ids")).toHaveText(
-    "explorer,file,diff,plan,timeline,search",
+  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,plan,timeline,search");
+});
+
+test("files browse and preview share one dock tab", async ({ page }) => {
+  await openWorkspace(page, { state: "dock-files" });
+  const dock = page.locator(".agent-context-dock");
+  await dock.getByRole("button", { name: "app", exact: true }).click();
+  await dock.getByRole("button", { name: "resizer.ts", exact: true }).click();
+  await expect(dock).toContainText("clampDockWidth(currentWidth + delta, row.clientWidth)");
+  await expect(dock.getByRole("tab", { name: "Files", exact: true })).toHaveCount(1);
+  await dock.getByRole("button", { name: "Back to files" }).click();
+  await expect(dock.getByRole("button", { name: "app", exact: true })).toHaveAttribute(
+    "aria-expanded",
+    "true",
   );
+  await expect(dock.getByRole("button", { name: "resizer.ts", exact: true })).toBeVisible();
+  await expect(page.getByTestId("active-dock-view")).toHaveText("file");
 });
 
 test("skills keeps discovery, review, and personal curation in one dock tab", async ({ page }) => {
@@ -365,6 +379,10 @@ test("the active overflow tab stays visible and both hidden edges remain signpos
   page,
 }) => {
   await openWorkspace(page, { state: "dock-light" });
+
+  const separator = page.getByRole("separator", { name: "Resize right workspace" });
+  await separator.focus();
+  await separator.press("Home");
 
   const strip = page.locator(".agent-dock-tabs");
   await expect(strip).toHaveAttribute("data-overflow-start", "");

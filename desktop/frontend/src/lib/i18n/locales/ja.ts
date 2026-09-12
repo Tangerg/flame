@@ -320,7 +320,6 @@ export const ja: Record<string, string> = {
   "contextDock.group.workspace": "ワークスペース",
   "contextDock.group.run": "実行",
   "contextDock.group.session": "セッション",
-  "workspace.view.title.filetree": "エクスプローラー",
   "workspace.view.title.plan": "プラン",
   "workspace.view.title.agentDocs": "Agent ドキュメント",
   "workspace.view.title.notifications": "通知",
@@ -597,10 +596,6 @@ export const ja: Record<string, string> = {
   "agentDocs.empty.sub":
     "作業ディレクトリから上方向に見つかった AGENTS.md ファイルがここに表示されます。",
 
-  "filetree.title": "エクスプローラー",
-  "filetree.empty.title": "閲覧できるものがありません",
-  "filetree.empty.sub": "このワークスペースにはファイルがありません。",
-
   "shortcuts.sub":
     "組み込みおよびユーザープラグインによって登録されたすべてのキーバインド。アプリ内のどこでもコンボを押して発動できます。バインドの競合は常に最後の登録に解決されます。",
   "shortcuts.filter": "アクションまたはコンボで絞り込み…",
@@ -863,7 +858,7 @@ export const ja: Record<string, string> = {
   "mcp.error.toggle": "サーバーを変更できませんでした。",
   "mcp.error.signIn": "サインインに失敗しました。",
   "mcp.error.test": "テストに失敗しました",
-  "workspace.view.title.file": "ファイルプレビュー",
+  "workspace.view.title.file": "ファイル",
   "workspace.view.title.recipes": "レシピ",
   "settings.theme.system": "システム",
   "runError.action.retryIn": "{{seconds}} 秒後に再試行",
@@ -962,8 +957,9 @@ export const ja: Record<string, string> = {
   "diff.layout.split": "分割",
   "file.lines_other": "{{count}} 行",
   "file.truncated": "切り詰め",
-  "file.empty.title": "開いているファイルはありません",
-  "file.empty.sub": "会話内のファイル参照をクリックすると、ここに開きます。",
+  "file.backToFiles": "ファイル一覧に戻る",
+  "file.empty.title": "ファイルはありません",
+  "file.empty.sub": "このフォルダーには表示できるファイルがありません。",
   "file.error.title": "ファイルを開けませんでした",
   "file.error.sub": "移動された、バイナリである、またはワークスペース外にある可能性があります。",
   "composer.key.historyPrevDesc": "前のメッセージを呼び出す",

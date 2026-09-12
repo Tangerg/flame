@@ -9,6 +9,7 @@ export {
   closeWorkspaceDockView,
   collapseWorkspaceDock,
   closeWorkspaceView,
+  closeWorkspaceFile,
   forgetWorkspaceSessionScopes,
   locateWorkspaceTool,
   openWorkspaceFile,

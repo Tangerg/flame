@@ -62,6 +62,7 @@ interface WorkspaceNavigationPort {
   setSettingsPane(pane: string): void;
   focusFile(path: string): void;
   openFile(path: string, line?: number): void;
+  closeFile(): void;
   locateTool(id: string): void;
   activateSessionScope(sessionId: string): void;
   forgetSessionScopes(openSessionIds: string[]): void;

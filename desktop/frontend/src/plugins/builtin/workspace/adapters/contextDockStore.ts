@@ -82,7 +82,7 @@ interface ContextDockActions {
   /** The destination a re-open should return to, given a fallback. */
   dockTabToShow: (defaultViewId: string) => string;
   focusFile: (path: string) => void;
-  setFileViewer: (path: string, line?: number) => void;
+  setFileViewer: (viewer: WorkspaceFileViewer | null) => void;
   revealTool: (id: string) => void;
   toggleExpandedTool: (id: string) => void;
   /** Swap to `sessionId`'s scope; answers the destination it remembers. */
@@ -190,7 +190,7 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
           : (dockViewIds[0] ?? defaultViewId);
       },
       focusFile: (path) => set((state) => ({ fileFocus: state.fileFocus.moveTo(path) })),
-      setFileViewer: (path, line) => set({ fileViewer: { path, line: line ?? 0 } }),
+      setFileViewer: (fileViewer) => set({ fileViewer }),
       revealTool: (id) => {
         const expandedToolIds = new Set(get().expandedToolIds);
         expandedToolIds.add(id);

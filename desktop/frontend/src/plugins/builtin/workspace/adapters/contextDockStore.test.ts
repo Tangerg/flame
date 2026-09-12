@@ -21,9 +21,9 @@ beforeEach(() => {
 describe("the round trip", () => {
   it("gets back everything it chose to persist", async () => {
     dock().activateSessionScope("s1");
-    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("skills");
     dock().adoptDockLocation("diff");
-    dock().setFileViewer("a/b.ts", 12);
+    dock().setFileViewer({ path: "a/b.ts", line: 12 });
     dock().revealTool("tool_1");
 
     const key = useContextDockStore.persist.getOptions().name!;
@@ -48,19 +48,19 @@ describe("the open tab set", () => {
   });
 
   it("answers which tab takes the place of a closed one", () => {
-    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("skills");
     dock().adoptDockLocation("diff");
     dock().adoptDockLocation("search");
 
     expect(dock().closeDockTab("diff")).toBe("search");
-    expect(dock().dockViewIds).toEqual(["explorer", "search"]);
+    expect(dock().dockViewIds).toEqual(["skills", "search"]);
   });
 
   it("falls back to the tab before it when the last one closes", () => {
-    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("skills");
     dock().adoptDockLocation("diff");
 
-    expect(dock().closeDockTab("diff")).toBe("explorer");
+    expect(dock().closeDockTab("diff")).toBe("skills");
   });
 
   it("answers null when the last tab closes, and for a tab it never had", () => {
@@ -70,7 +70,7 @@ describe("the open tab set", () => {
   });
 
   it("keeps only the named tab when the others close", () => {
-    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("skills");
     dock().adoptDockLocation("diff");
     dock().adoptDockLocation("search");
 
@@ -79,13 +79,13 @@ describe("the open tab set", () => {
   });
 
   it("leaves the set alone when closing the others around a tab it never had", () => {
-    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("skills");
     dock().closeOtherDockTabs("nope");
-    expect(dock().dockViewIds).toEqual(["explorer"]);
+    expect(dock().dockViewIds).toEqual(["skills"]);
   });
 
   it("forgets the remembered destination when every tab closes", () => {
-    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("skills");
 
     dock().closeAllDockTabs();
     expect(dock().dockViewIds).toEqual([]);
@@ -93,26 +93,26 @@ describe("the open tab set", () => {
   });
 
   it("moves a tab to the requested position", () => {
-    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("skills");
     dock().adoptDockLocation("diff");
     dock().adoptDockLocation("search");
 
-    dock().reorderDockTab("explorer", 2);
-    expect(dock().dockViewIds).toEqual(["diff", "search", "explorer"]);
+    dock().reorderDockTab("skills", 2);
+    expect(dock().dockViewIds).toEqual(["diff", "search", "skills"]);
   });
 
   it("clamps a reorder into the open set and ignores an unknown tab", () => {
-    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("skills");
     dock().adoptDockLocation("diff");
 
     dock().reorderDockTab("diff", 99);
-    expect(dock().dockViewIds).toEqual(["explorer", "diff"]);
+    expect(dock().dockViewIds).toEqual(["skills", "diff"]);
 
-    dock().reorderDockTab("explorer", 99);
-    expect(dock().dockViewIds).toEqual(["diff", "explorer"]);
+    dock().reorderDockTab("skills", 99);
+    expect(dock().dockViewIds).toEqual(["diff", "skills"]);
 
     dock().reorderDockTab("nope", 0);
-    expect(dock().dockViewIds).toEqual(["diff", "explorer"]);
+    expect(dock().dockViewIds).toEqual(["diff", "skills"]);
   });
 });
 
@@ -131,18 +131,18 @@ describe("what a re-open returns to", () => {
   });
 
   it("is the destination last shown, when it is still open", () => {
-    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("skills");
     dock().adoptDockLocation("diff");
 
     expect(dock().dockTabToShow("search")).toBe("diff");
   });
 
   it("remembers the remaining tab when the last shown one closes", () => {
-    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("skills");
     dock().adoptDockLocation("diff");
     dock().closeDockTab("diff");
 
-    expect(dock().dockTabToShow("search")).toBe("explorer");
+    expect(dock().dockTabToShow("search")).toBe("skills");
   });
 
   it("is the caller's default when nothing is open", () => {
@@ -206,7 +206,7 @@ describe("per-session scopes", () => {
     dock().activateSessionScope("s1");
     dock().adoptDockLocation("diff");
     dock().activateSessionScope("s2");
-    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("skills");
 
     dock().forgetSessionScopes(["s1"]);
 
@@ -225,12 +225,12 @@ describe("per-session scopes", () => {
 
   it("restores inactive tabs and file targets after renderer replacement", async () => {
     dock().activateSessionScope("s1");
-    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("skills");
     dock().adoptDockLocation("diff");
     dock().adoptDockLocation("file");
     dock().adoptDockLocation("diff");
     dock().focusFile("src/runtime.ts");
-    dock().setFileViewer("src/runtime.ts", 42);
+    dock().setFileViewer({ path: "src/runtime.ts", line: 42 });
     dock().revealTool("call-from-retired-renderer");
 
     await vi.waitFor(() => expect(localStorage.getItem("flame.context-dock")).not.toBeNull());
@@ -251,7 +251,7 @@ describe("per-session scopes", () => {
     replacement.getState().activateSessionScope("s1");
 
     expect(replacement.getState()).toMatchObject({
-      dockViewIds: ["explorer", "diff", "file"],
+      dockViewIds: ["skills", "diff", "file"],
       lastViewId: "diff",
       fileFocus: { path: "src/runtime.ts", revision: 1n },
       fileViewer: { path: "src/runtime.ts", line: 42 },
@@ -275,9 +275,11 @@ describe("tool disclosure inside a scope", () => {
     expect(dock().expandedToolIds).toEqual(new Set());
   });
 
-  it("records a file viewer target with a default line", () => {
-    dock().setFileViewer("a.ts");
+  it("records and clears a file viewer target", () => {
+    dock().setFileViewer({ path: "a.ts", line: 0 });
     expect(dock().fileViewer).toEqual({ path: "a.ts", line: 0 });
+    dock().setFileViewer(null);
+    expect(dock().fileViewer).toBeNull();
   });
 });
 

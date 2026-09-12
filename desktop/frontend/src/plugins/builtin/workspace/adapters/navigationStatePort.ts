@@ -105,9 +105,10 @@ export function installWorkspaceNavigationPort(): () => void {
     setSettingsPane: (pane) => navigator().go({ settings: pane }),
     focusFile: (path) => useContextDockStore.getState().focusFile(path),
     openFile: (path, line) => {
-      useContextDockStore.getState().setFileViewer(path, line);
+      useContextDockStore.getState().setFileViewer({ path, line: line ?? 0 });
       showDockView("file", "alone");
     },
+    closeFile: () => useContextDockStore.getState().setFileViewer(null),
     locateTool: (id) => {
       selectChat();
       useContextDockStore.getState().revealTool(id);

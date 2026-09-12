@@ -1911,6 +1911,8 @@ interface GrepResult {
 >
 > `FileLine.text` / `DiffRow.code` / `GrepMatch.text` 是**纯文本，不含服务端 HTML** —— **高亮全部由客户端做。**
 
+The Files dock owns both directory browsing and file content. Opening a directory entry, conversation reference, or search result selects a file in that same panel. Returning to the directory preserves its expanded folders. Directory and content queries distinguish unresolved Session workspace selection from the Runtime default workspace, and expose read failures with retry actions.
+
 ### 9.5 Skills（G 区 Skill 视图）
 
 ```ts

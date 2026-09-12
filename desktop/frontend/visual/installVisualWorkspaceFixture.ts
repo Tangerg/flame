@@ -60,7 +60,6 @@ import {
   diffView,
   fileView,
   inboxView,
-  fileTreeView,
   planView,
   timelineView,
   toolsView,
@@ -492,12 +491,14 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
       });
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_LIST_FILES_KEY,
-        fetcher: async () =>
-          [
-            { path: "app", name: "app", type: "dir" },
-            { path: "go.mod", name: "go.mod", type: "file", sizeBytes: 4_096 },
-            { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
-          ] satisfies WorkspaceFileEntry[],
+        fetcher: async (params) =>
+          (params as { path?: string } | undefined)?.path === "app"
+            ? [{ path: ACTIVE_DIFF_FILE, name: "resizer.ts", type: "file", sizeBytes: 2048 }]
+            : ([
+                { path: "app", name: "app", type: "dir" },
+                { path: "go.mod", name: "go.mod", type: "file", sizeBytes: 4_096 },
+                { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
+              ] satisfies WorkspaceFileEntry[]),
       });
       ctx.contribute(DATA_PROVIDER, {
         key: PENDING_WORK_KEY,
@@ -596,7 +597,7 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-inbox": "inbox",
   "dock-timeline": "timeline",
   "dock-runs": "timeline",
-  "dock-explorer": "explorer",
+  "dock-files": "file",
   "dock-search": "search",
   "dock-recipes": "recipes",
   "dock-agent-docs": "agent-docs",
@@ -648,7 +649,6 @@ export async function installVisualWorkspaceFixture(
         ? []
         : [
             ...(OPENED_BY_ITS_OWN_STATE.has(dockViewId) ? [dockViewId] : []),
-            "explorer",
             "file",
             "diff",
             "search",
@@ -657,7 +657,10 @@ export async function installVisualWorkspaceFixture(
           ],
     lastViewId: state === "dock-catalog" ? null : dockViewId,
     fileFocus: WorkspaceFileFocus.empty().moveTo(ACTIVE_DIFF_FILE),
-    fileViewer: { path: ACTIVE_DIFF_FILE, line: 6 },
+    fileViewer:
+      state === "dock-files" || state === "dock-catalog"
+        ? null
+        : { path: ACTIVE_DIFF_FILE, line: 6 },
     expandedToolIds: new Set(),
   });
   navigator().go({
@@ -678,7 +681,6 @@ export async function installVisualWorkspaceFixture(
     workspaceDataPlugin(state),
     diffView,
     fileView,
-    fileTreeView,
     inboxView,
     toolsView,
     planView,

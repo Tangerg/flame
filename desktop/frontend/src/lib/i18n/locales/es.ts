@@ -335,7 +335,6 @@ export const es: Record<string, string> = {
   "contextDock.group.workspace": "Espacio",
   "contextDock.group.run": "Ejecución",
   "contextDock.group.session": "Sesión",
-  "workspace.view.title.filetree": "Explorador",
   "workspace.view.title.plan": "Plan",
   "workspace.view.title.agentDocs": "Docs del agent",
   "workspace.view.title.notifications": "Notificaciones",
@@ -636,10 +635,6 @@ export const es: Record<string, string> = {
   "agentDocs.empty.sub":
     "Los archivos AGENTS.md encontrados desde el directorio de trabajo hacia arriba aparecen aquí.",
 
-  "filetree.title": "Explorador",
-  "filetree.empty.title": "Nada que explorar",
-  "filetree.empty.sub": "No hay archivos en este espacio de trabajo.",
-
   "shortcuts.sub":
     "Cada combinación de teclas registrada por los plugins integrados y de usuario. Pulsa una combinación en cualquier parte de la app para activarla; los conflictos se resuelven siempre a favor del último registro.",
   "shortcuts.filter": "Filtrar por acción o combinación…",
@@ -918,7 +913,7 @@ export const es: Record<string, string> = {
   "mcp.error.toggle": "No se pudo modificar el servidor.",
   "mcp.error.signIn": "Error al iniciar sesión.",
   "mcp.error.test": "La prueba falló",
-  "workspace.view.title.file": "Vista previa del archivo",
+  "workspace.view.title.file": "Archivos",
   "workspace.view.title.recipes": "Recetas",
   "settings.theme.system": "Sistema",
   "runError.action.retryIn": "Reintentar en {{seconds}} s",
@@ -1021,8 +1016,9 @@ export const es: Record<string, string> = {
   "file.lines_many": "{{count}} líneas",
   "file.lines_other": "{{count}} líneas",
   "file.truncated": "truncado",
-  "file.empty.title": "No hay ningún archivo abierto",
-  "file.empty.sub": "Haz clic en una referencia de archivo de la conversación para abrirlo aquí.",
+  "file.backToFiles": "Volver a los archivos",
+  "file.empty.title": "No hay archivos",
+  "file.empty.sub": "Este directorio no contiene archivos visibles.",
   "file.error.title": "No se pudo abrir el archivo",
   "file.error.sub": "Puede haberse movido, ser binario o estar fuera del espacio de trabajo.",
   "composer.key.historyPrevDesc": "Recuperar el mensaje anterior",

@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 function tabs(activeId: string): AgentDockTab[] {
-  return ["explorer", "file", "diff", "terminal", "plan", "timeline"].map((id) => ({
+  return ["skills", "file", "diff", "tools", "plan", "timeline"].map((id) => ({
     id,
     title: id,
     active: id === activeId,
@@ -25,7 +25,7 @@ describe("AgentDockTabs", () => {
   it("brings a newly active overflow tab into the visible strip", () => {
     const scrollIntoView = vi.fn();
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
-    const view = render(<AgentDockTabs tabs={tabs("explorer")} ariaLabel="Workspace tabs" />);
+    const view = render(<AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" />);
     scrollIntoView.mockClear();
 
     view.rerender(<AgentDockTabs tabs={tabs("timeline")} ariaLabel="Workspace tabs" />);
@@ -56,7 +56,7 @@ describe("AgentDockTabs", () => {
   it("reports the drop position when a tab is dragged onto a sibling", () => {
     const onReorder = vi.fn();
     const view = render(
-      <AgentDockTabs tabs={tabs("explorer")} ariaLabel="Workspace tabs" onReorder={onReorder} />,
+      <AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" onReorder={onReorder} />,
     );
     const rows = view.container.querySelectorAll<HTMLElement>("[draggable=true]");
     const data = new Map<string, string>();
@@ -70,7 +70,7 @@ describe("AgentDockTabs", () => {
     fireEvent.dragStart(rows[0]!, { dataTransfer });
     fireEvent.drop(rows[3]!, { dataTransfer });
 
-    expect(onReorder).toHaveBeenCalledWith("explorer", 3);
+    expect(onReorder).toHaveBeenCalledWith("skills", 3);
   });
 
   it("leaves a single-tab strip undraggable", () => {
@@ -86,7 +86,7 @@ describe("AgentDockTabs", () => {
   });
 
   it("exposes which overflow edges still contain hidden tabs", () => {
-    const view = render(<AgentDockTabs tabs={tabs("explorer")} ariaLabel="Workspace tabs" />);
+    const view = render(<AgentDockTabs tabs={tabs("skills")} ariaLabel="Workspace tabs" />);
     const strip = view.container.querySelector<HTMLElement>(".agent-dock-tabs")!;
     Object.defineProperties(strip, {
       clientWidth: { configurable: true, value: 300 },

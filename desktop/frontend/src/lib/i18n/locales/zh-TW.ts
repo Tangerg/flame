@@ -316,11 +316,10 @@ export const zhTW: Record<string, string> = {
   "font.useCustom": "使用自訂",
 
   "workspace.view.title.diff": "差異",
-  "workspace.view.title.file": "檔案預覽",
+  "workspace.view.title.file": "檔案",
   "contextDock.group.workspace": "工作區",
   "contextDock.group.run": "執行",
   "contextDock.group.session": "會話",
-  "workspace.view.title.filetree": "檔案總管",
   "workspace.view.title.plan": "計畫",
   "workspace.view.title.agentDocs": "Agent 文件",
   "workspace.view.title.notifications": "通知",
@@ -593,10 +592,6 @@ export const zhTW: Record<string, string> = {
   "agentDocs.empty.title": "無 Agent 文件",
   "agentDocs.empty.sub": "從工作目錄向上找到的 AGENTS.md 檔案會顯示在這裡。",
 
-  "filetree.title": "檔案總管",
-  "filetree.empty.title": "無可瀏覽內容",
-  "filetree.empty.sub": "此工作區中沒有檔案。",
-
   "shortcuts.sub":
     "由內建和使用者外掛註冊的每一個按鍵繫結。在應用中任意位置按下組合鍵即可觸發；繫結衝突始終以最後一次註冊為準。",
   "shortcuts.filter": "按操作或組合鍵篩選…",
@@ -637,8 +632,9 @@ export const zhTW: Record<string, string> = {
   "diff.error.loadFailedSub": "執行時拒絕了這次請求。",
   "file.lines_other": "{{count}} 行",
   "file.truncated": "已截斷",
-  "file.empty.title": "未開啟檔案",
-  "file.empty.sub": "點擊對話裡的檔案引用即可在此開啟。",
+  "file.backToFiles": "返回檔案列表",
+  "file.empty.title": "沒有檔案",
+  "file.empty.sub": "此目錄中沒有可顯示的檔案。",
   "file.error.title": "無法開啟檔案",
   "file.error.sub": "它可能已移動、是二進位檔,或位於工作區之外。",
   "diff.empty.title": "無內容可比較",
