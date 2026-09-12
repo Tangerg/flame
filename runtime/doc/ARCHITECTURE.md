@@ -39,6 +39,8 @@ Scope's Agent Framework is the only process, strategy, child-tree, tool-loop, an
 
 `adapter/agentexec` is the anti-corruption boundary. It maps Runtime commands and values to public Scope contracts, observes framework outcomes, and maps them back to Runtime facts. Application owns product admission, transaction ordering, cancellation intent, durable waiting state, and terminal outcome selection.
 
+A model error remains an unknown external outcome in Scope. After committing the failed-call fact, Runtime explicitly cancels that member and projects its provider failure; allowance denial stops the same member before another call begins. Interrupted Effects retained in terminal snapshots are evidence, not resumable work. A failed authoritative projection after external execution still follows the unknown-effect recovery path.
+
 Framework observations are wake-ups, not durable commits. Runtime reconciles authoritative framework state into an Application write set before publishing durable product facts. A completed durable Item or snapshot wins over a missing or duplicated preview event.
 
 Model-call allowances apply to cumulative usage across the execution tree. A limit denial belongs to the member whose next call was refused; it does not replace a sibling's completed, canceled, or failed outcome.

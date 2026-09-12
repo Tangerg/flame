@@ -74,6 +74,22 @@ func (i *interactionSession) beginDispatch(
 	}
 }
 
+// stopModelProcess ends only the member whose model call cannot continue.
+// Scope preserves model errors as unknown external outcomes; Runtime owns the
+// decision to stop and retains its allowance or provider failure separately.
+func (i *interactionSession) stopModelProcess(ctx context.Context, processID agent.ProcessID) error {
+	process, found := i.engine.Process(processID)
+	if !found {
+		return fmt.Errorf("agentexec: model process %s is unavailable", processID)
+	}
+	controlCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
+	defer cancel()
+	if err := process.RequestCancellation(controlCtx, "model call cannot continue"); err != nil && !errors.Is(err, agent.ErrProcessFinished) {
+		return fmt.Errorf("agentexec: stop model process: %w", err)
+	}
+	return nil
+}
+
 func (i *interactionSession) cancelAllDispatches() {
 	i.state.mu.Lock()
 	i.state.rootCancellationRequested = true

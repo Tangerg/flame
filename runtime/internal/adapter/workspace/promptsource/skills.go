@@ -24,7 +24,7 @@ func ProjectSkillDir(workspaceRoot string) string {
 	return filepath.Join(workspaceRoot, projectSkillsSubdir)
 }
 
-// MergeSkillSource builds the merged skill source: the selected workspace's
+// OverlaySkillSource builds the overlaid skill source: the selected workspace's
 // project directory layered over userDir, the project copy winning on name
 // collisions. Returns nil when
 // neither directory exists, so a session that ships no skills gets no skill tool
@@ -32,22 +32,22 @@ func ProjectSkillDir(workspaceRoot string) string {
 //
 // decorateUser, when non-nil, wraps the USER source only (e.g. to record
 // loads for the idle-lifecycle curator). It must not wrap the project source:
-// only the user library is auto-curated, and merge resolves a shadowed
+// only the user library is auto-curated, and the overlay resolves a shadowed
 // name to the project copy, so decorating the user source records exactly the
 // user-resolved loads and nothing else.
 //
 // Building a source resolves its physical confinement root and wraps it with
 // Scope's directory repository, so it remains cheap enough to call per tool
 // resolution.
-func MergeSkillSource(workspaceRoot, userDir string, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, error) {
+func OverlaySkillSource(workspaceRoot, userDir string, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, error) {
 	layers, err := openRuntimeSkillLayers(workspaceRoot, userDir)
 	if err != nil {
 		return nil, err
 	}
-	return layers.merge(decorateUser), nil
+	return layers.overlay(decorateUser), nil
 }
 
-func (l runtimeSkillLayers) merge(decorateUser func(sdk.ResourceSource) sdk.ResourceSource) sdk.ResourceSource {
+func (l runtimeSkillLayers) overlay(decorateUser func(sdk.ResourceSource) sdk.ResourceSource) sdk.ResourceSource {
 	sources := make([]sdk.ResourceSource, 0, 2)
 	if l.project != nil {
 		sources = append(sources, l.project)
@@ -62,12 +62,12 @@ func (l runtimeSkillLayers) merge(decorateUser func(sdk.ResourceSource) sdk.Reso
 	if len(sources) == 0 {
 		return nil
 	}
-	return sdk.Merge(sources...)
+	return sdk.Overlay(sources...)
 }
 
 // ListSkills enumerates the skills visible from the selected workspace layered
 // over userDir, project winning on a name collision (the same precedence
-// MergeSkillSource gives the model). A missing directory contributes nothing
+// OverlaySkillSource gives the model). A missing directory contributes nothing
 // rather than erroring. The source projection resolves precedence and preserves
 // encounter order; Application owns public catalog order.
 func ListSkills(ctx context.Context, workspaceRoot, userDir string) ([]workspaceapp.SkillSummary, error) {

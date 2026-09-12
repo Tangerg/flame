@@ -639,26 +639,22 @@ func (i *interactionSession) release(ctx context.Context) error {
 func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded, error) {
 	termination := result.Termination()
 	duration := i.segmentClock.duration(result.StartedAt(), result.FinishedAt())
-	// The model Effect and Scope's host-context watcher observe the same owner
-	// cancellation concurrently. If the model returns context.Canceled first,
-	// Scope can freeze that Effect as an external failure before its watcher
-	// records host cancellation. The Runtime lifetime is the authoritative fact
-	// at this boundary, so do not project that scheduling race as provider
-	// failure. Other framework terminal causes remain untouched.
+	i.state.mu.Lock()
+	canceled := i.state.rootCancellationRequested || i.inCanceledSubtreeLocked(result.ProcessID())
+	i.state.mu.Unlock()
 	ownerCause := i.lifetime.ownerCause()
 	var end segmentEndDraft
-	if termination.Cause() == agent.TerminationCauseExternalFailure && ownerCause != nil {
+	if (termination.Cause() == agent.TerminationCauseHostCancellation || termination.Cause() == agent.TerminationCauseExternalFailure) &&
+		(ownerCause != nil || canceled) {
 		end = segmentEndFromOwnerCause(ownerCause, duration)
 	} else if stop := i.allowance.denial(result.ProcessID()); stop != interactionAllowanceOpen {
 		end = segmentEndFromAllowance(stop, duration)
 	} else {
 		end = segmentEndFromTermination(termination, duration)
-		if termination.Cause() == agent.TerminationCauseExternalFailure {
-			failure, _ := termination.Failure()
-			if failure.Code() == "interaction.model.failed" {
-				if classified, found := i.modelFailures.take(result.ProcessID()); found {
-					end.failure = &classified
-				}
+		if termination.Cause() == agent.TerminationCauseHostCancellation {
+			if classified, found := i.modelFailures.take(result.ProcessID()); found {
+				end.reason = run.OutcomeFailed
+				end.failure = &classified
 			}
 		}
 	}

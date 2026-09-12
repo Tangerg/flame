@@ -35,3 +35,10 @@ func TestPricingPreservesCatalogPricedZero(t *testing.T) {
 		t.Fatalf("Pricing for zero usage = %v, %t; want 0, true", usd, ok)
 	}
 }
+
+func TestPricingReportsMissingUsageAsUnavailable(t *testing.T) {
+	got := Pricing()("anthropic", "claude-opus-5", nil)
+	if usd, ok := got.USD(); ok || usd != 0 {
+		t.Fatalf("Pricing without reported usage = %v, %t; want 0, false", usd, ok)
+	}
+}

@@ -8,9 +8,9 @@ func appendToolOutputText(output chat.ToolOutput, suffix string) chat.ToolOutput
 	}
 	augmented := output.Clone()
 	if len(augmented.Content) == 0 && len(augmented.Details) > 0 {
-		augmented.Content = append(augmented.Content, chat.NewTextPart(string(augmented.Details)+suffix))
+		augmented.Content = append(augmented.Content, chat.ToolContent{Kind: chat.PartText, Text: string(augmented.Details) + suffix})
 		return augmented
 	}
-	augmented.Content = append(augmented.Content, chat.NewTextPart(suffix))
+	augmented.Content = append(augmented.Content, chat.ToolContent{Kind: chat.PartText, Text: suffix})
 	return augmented
 }

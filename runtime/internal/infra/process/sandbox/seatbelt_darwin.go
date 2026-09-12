@@ -142,10 +142,10 @@ func (s seatbeltRunner) Run(ctx context.Context, dir string, input toolshell.Inp
 	err = cmd.Run()
 	cleanupErr := killProcessGroup(cmd)
 	out := toolshell.Output{
-		Stdout:   stdout.BytesWithMarker(),
-		Stderr:   stderr.BytesWithMarker(),
-		Duration: time.Since(started),
-		Killed:   runCtx.Err() != nil,
+		Stdout:               stdout.BytesWithMarker(),
+		Stderr:               stderr.BytesWithMarker(),
+		Duration:             time.Since(started),
+		CancellationObserved: runCtx.Err() != nil,
 	}
 	if cleanupErr != nil {
 		return out, cleanupErr

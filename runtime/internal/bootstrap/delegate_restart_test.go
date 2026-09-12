@@ -84,7 +84,7 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 			finish = chat.FinishReasonToolCalls
 		}
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, &chat.ResponseMetadata{
-			Model: "claude-test", Usage: chat.Usage{InputTokens: 2, OutputTokens: 1},
+			Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
 		})
 	})}
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
@@ -287,7 +287,7 @@ func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
 			finish = chat.FinishReasonToolCalls
 		}
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, &chat.ResponseMetadata{
-			Model: "claude-test", Usage: chat.Usage{InputTokens: 2, OutputTokens: 1},
+			Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
 		})
 	})}
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{

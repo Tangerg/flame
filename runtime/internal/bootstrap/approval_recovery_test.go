@@ -39,7 +39,7 @@ func TestProtocolSettlesApprovalWhenEditedArgumentsCannotExecute(t *testing.T) {
 			finish = chat.FinishReasonToolCalls
 		}
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, &chat.ResponseMetadata{
-			Model: "claude-test", Usage: chat.Usage{InputTokens: 2, OutputTokens: 1},
+			Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
 		})
 	})}
 	stores, err := persistence.Open(t.Context(), persistence.Config{

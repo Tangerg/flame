@@ -29,7 +29,7 @@ func TestProtocolKeepsCompletedChildOutcomeWhenSiblingExhaustsAllowance(t *testi
 			chat.NewToolCallPart(chat.ToolCall{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"finish child B"}`}),
 		)
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{
-			Model: "claude-test", Usage: chat.Usage{InputTokens: 2, OutputTokens: 1},
+			Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
 		})
 	})}
 	ctx := t.Context()

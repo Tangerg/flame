@@ -233,6 +233,18 @@ func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.Effe
 	}
 	ids := make([]agent.EffectID, 0)
 	for _, member := range inspection.Processes {
+		// Terminal snapshots retain interrupted Effects as evidence, not work
+		// that can be reconciled or resumed.
+		if member.Snapshot.Status().Terminal() {
+			continue
+		}
+		processID := member.Snapshot.ProcessID()
+		i.state.mu.Lock()
+		canceled := i.state.rootCancellationRequested || i.inCanceledSubtreeLocked(processID)
+		i.state.mu.Unlock()
+		if canceled || i.allowance.denial(processID) != interactionAllowanceOpen || i.modelFailures.has(processID) {
+			continue
+		}
 		ids = append(ids, member.Snapshot.UnknownEffectIDs()...)
 	}
 	slices.SortFunc(ids, func(left, right agent.EffectID) int {

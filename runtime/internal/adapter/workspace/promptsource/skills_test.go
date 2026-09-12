@@ -31,7 +31,7 @@ func TestRuntimeSkillSourceRejectsOversizedDocument(t *testing.T) {
 	root := t.TempDir()
 	writeRuntimeSkill(t, root, "oversized", strings.Repeat("x", domainskills.MaxAuthoredSkillDocumentBytes))
 
-	source, err := MergeSkillSource("", root, nil)
+	source, err := OverlaySkillSource("", root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestMergedRuntimeSkillSourcePreservesBundleOwnership(t *testing.T) {
 	projectRoot := ProjectSkillDir(workspace)
 	writeRuntimeSkill(t, projectRoot, "project", "project instructions")
 	writeRuntimeSkill(t, userRoot, "shared", "user instructions")
-	source, err := MergeSkillSource(workspace, userRoot, nil)
+	source, err := OverlaySkillSource(workspace, userRoot, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,8 +164,8 @@ func TestRuntimeSkillSourcesRejectEscapingProjectRoot(t *testing.T) {
 	if _, err := ListSkills(t.Context(), workspace, ""); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
 		t.Fatalf("ListSkills error = %v, want ErrPathOutsideRoot", err)
 	}
-	if _, err := MergeSkillSource(workspace, "", nil); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
-		t.Fatalf("MergeSkillSource error = %v, want ErrPathOutsideRoot", err)
+	if _, err := OverlaySkillSource(workspace, "", nil); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
+		t.Fatalf("OverlaySkillSource error = %v, want ErrPathOutsideRoot", err)
 	}
 }
 
@@ -224,8 +224,8 @@ func TestRuntimeSkillSourcesRejectBrokenExistingRoots(t *testing.T) {
 			if _, err := ListSkills(t.Context(), workspace, user); err == nil {
 				t.Fatal("ListSkills silently treated a broken source as absent")
 			}
-			if _, err := MergeSkillSource(workspace, user, nil); err == nil {
-				t.Fatal("MergeSkillSource silently treated a broken source as absent")
+			if _, err := OverlaySkillSource(workspace, user, nil); err == nil {
+				t.Fatal("OverlaySkillSource silently treated a broken source as absent")
 			}
 		})
 	}
@@ -246,7 +246,7 @@ func TestRuntimeSkillSourceRejectsOversizedResource(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source, err := MergeSkillSource("", root, nil)
+	source, err := OverlaySkillSource("", root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +267,7 @@ func TestRuntimeSkillSourceRejectsResourceGrowthAfterOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source, err := MergeSkillSource("", root, nil)
+	source, err := OverlaySkillSource("", root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

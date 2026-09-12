@@ -11,6 +11,9 @@ import (
 // reports CostUSD against the model that actually answered.
 func Pricing() accounting.Pricing {
 	return func(provider, servedModel string, usage *chat.Usage) accounting.Cost {
+		if usage == nil {
+			return accounting.Cost{}
+		}
 		if info, ok := catalog.Default.Lookup(provider, servedModel); ok {
 			catalogUsage := catalog.Usage{
 				InputTokens:  usage.InputTokens,

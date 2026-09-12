@@ -298,12 +298,8 @@ func newModelCallAccountingInput(
 	if err := delta.Validate(); err != nil {
 		return modelCallAccountingInput{}, fmt.Errorf("agentexec: account model call: %w", err)
 	}
-	var contextTokens int64
-	if response.Metadata != nil {
-		contextTokens = response.Metadata.Usage.InputTokens
-	}
 	return modelCallAccountingInput{
-		message: response.Output.Message.Clone(), delta: delta, contextTokens: contextTokens,
+		message: response.Output.Message.Clone(), delta: delta, contextTokens: delta.PromptTokens,
 	}, nil
 }
 

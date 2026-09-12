@@ -145,6 +145,7 @@ func TestInteractionExecutorDoesNotInventCalibrationWhenProviderUsageIsMissing(t
 		}, 0, 0),
 		interactionUsageTextResponse("done", 11, 3),
 	}}
+	model.responses[0].Metadata.Usage = nil
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
 		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
@@ -1463,7 +1464,7 @@ func (s streamingObservationModel) Stream(context.Context, *chat.Request) iter.S
 			delta := &chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("x")}}
 			if index == s.chunks-1 {
 				delta.Metadata = &chat.ResponseMetadata{
-					Model: "test-model", Usage: chat.Usage{InputTokens: 5, OutputTokens: 2},
+					Model: "test-model", Usage: &chat.Usage{InputTokens: 5, OutputTokens: 2},
 				}
 				delta.FinishReason = chat.FinishReasonStop
 			}
@@ -1600,7 +1601,7 @@ func interactionToolResponse(call chat.ToolCall, inputTokens, outputTokens int64
 	return &chat.Response{
 		Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls},
 		Metadata: &chat.ResponseMetadata{
-			Model: "test-model", Usage: chat.Usage{InputTokens: inputTokens, OutputTokens: outputTokens},
+			Model: "test-model", Usage: &chat.Usage{InputTokens: inputTokens, OutputTokens: outputTokens},
 		},
 	}
 }
@@ -1614,7 +1615,7 @@ func interactionToolBatchResponse(calls []chat.ToolCall, inputTokens, outputToke
 	return &chat.Response{
 		Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls},
 		Metadata: &chat.ResponseMetadata{
-			Model: "test-model", Usage: chat.Usage{InputTokens: inputTokens, OutputTokens: outputTokens},
+			Model: "test-model", Usage: &chat.Usage{InputTokens: inputTokens, OutputTokens: outputTokens},
 		},
 	}
 }
@@ -1622,7 +1623,7 @@ func interactionToolBatchResponse(calls []chat.ToolCall, inputTokens, outputToke
 func interactionUsageTextResponse(text string, inputTokens, outputTokens int64) *chat.Response {
 	response := interactionTextResponse(text)
 	response.Metadata = &chat.ResponseMetadata{
-		Model: "test-model", Usage: chat.Usage{InputTokens: inputTokens, OutputTokens: outputTokens},
+		Model: "test-model", Usage: &chat.Usage{InputTokens: inputTokens, OutputTokens: outputTokens},
 	}
 	return response
 }

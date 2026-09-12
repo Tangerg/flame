@@ -116,13 +116,15 @@ func (i *interactionWaitingSubtreeChange) Continue(ctx context.Context) error {
 	// execution fact the installed cut owns, and only those need resuming: a
 	// surviving member may have been waiting rather than paused.
 	paused, err := i.session.pausedProcessIDs()
-	if err == nil {
-		resumeCtx, cancelResume := context.WithTimeout(ctx, authoritativeProjectionTimeout)
-		err = i.session.resumePausedProcesses(resumeCtx, paused)
-		cancelResume()
-	}
-	i.session.finishSubtreeContinuation(i, err)
 	if err != nil {
+		return fmt.Errorf("agentexec: inspect applied waiting Interaction subtree: %w", err)
+	}
+	if err := i.session.acceptSubtreeContinuation(i); err != nil {
+		return err
+	}
+	resumeCtx, cancelResume := context.WithTimeout(ctx, authoritativeProjectionTimeout)
+	defer cancelResume()
+	if err := i.session.resumePausedProcesses(resumeCtx, paused); err != nil {
 		return fmt.Errorf("agentexec: continue applied waiting Interaction subtree: %w", err)
 	}
 	return nil
@@ -258,22 +260,19 @@ func (i *interactionSession) finishSubtreeApplication(
 	i.state.boundary = interactionBoundarySubtreeApplied
 }
 
-func (i *interactionSession) finishSubtreeContinuation(
-	change *interactionWaitingSubtreeChange,
-	continuationErr error,
-) {
+// acceptSubtreeContinuation opens projection before resuming Scope. The next
+// model request can already contain child results and must commit them against
+// the replacement Segment even if Resume has not returned yet.
+func (i *interactionSession) acceptSubtreeContinuation(change *interactionWaitingSubtreeChange) error {
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
 	if i.state.subtreeChange != change || i.state.boundary != interactionBoundarySubtreeApplied {
-		return
+		return runs.ErrExecutionClaimed
 	}
 	i.state.subtreeChange = nil
-	if continuationErr != nil {
-		i.state.boundary = interactionBoundarySubtreeRecovery
-		return
-	}
 	i.state.boundary = interactionBoundaryInactive
 	i.state.waitingCheckpoint = runs.ExecutorCheckpoint{}
+	return nil
 }
 
 func (i *interactionSession) finishSubtreeDiscard(change *interactionWaitingSubtreeChange) {

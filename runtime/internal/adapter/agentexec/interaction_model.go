@@ -39,29 +39,13 @@ func (o *observedInteractionModel) Call(
 	}
 	response, err := o.model.Call(ctx, request)
 	if err != nil {
-		if projectionErr := o.fail(ctx, invocation, callID); projectionErr != nil {
-			attempt.recordProjectionFailure(projectionErr)
-			return nil, errors.Join(err, projectionErr)
-		}
-		o.session.modelFailures.record(invocation.Relation().ProcessID(), err)
-		return response, err
+		return response, o.finishFailedCall(ctx, invocation, attempt, callID, err)
 	}
 	if response == nil {
-		responseErr := errors.New("agentexec: model returned no response")
-		if projectionErr := o.fail(ctx, invocation, callID); projectionErr != nil {
-			attempt.recordProjectionFailure(projectionErr)
-			return nil, errors.Join(responseErr, projectionErr)
-		}
-		o.session.modelFailures.record(invocation.Relation().ProcessID(), responseErr)
-		return nil, responseErr
+		return nil, o.finishFailedCall(ctx, invocation, attempt, callID, errors.New("agentexec: model returned no response"))
 	}
 	if err := response.Validate(); err != nil {
-		if projectionErr := o.fail(ctx, invocation, callID); projectionErr != nil {
-			attempt.recordProjectionFailure(projectionErr)
-			return nil, errors.Join(err, projectionErr)
-		}
-		o.session.modelFailures.record(invocation.Relation().ProcessID(), err)
-		return response, err
+		return response, o.finishFailedCall(ctx, invocation, attempt, callID, err)
 	}
 	if err := o.complete(ctx, invocation, callID, response); err != nil {
 		attempt.recordProjectionFailure(err)
@@ -89,21 +73,21 @@ func (o *observedInteractionModel) Stream(
 		var accumulated corechat.ResponseAccumulator
 		for chunk, streamErr := range o.streamer.Stream(ctx, request) {
 			if streamErr != nil {
-				yield(nil, o.finishFailedStream(ctx, invocation, attempt, callID, streamErr))
+				yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, streamErr))
 				return
 			}
 			if err := accumulated.Add(chunk); err != nil {
-				yield(nil, o.finishFailedStream(ctx, invocation, attempt, callID, err))
+				yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, err))
 				return
 			}
 			if !yield(chunk, nil) {
-				_ = o.finishFailedStream(ctx, invocation, attempt, callID, nil)
+				_ = o.finishFailedCall(ctx, invocation, attempt, callID, nil)
 				return
 			}
 		}
 		response, responseErr := accumulated.Response()
 		if responseErr != nil {
-			yield(nil, o.finishFailedStream(
+			yield(nil, o.finishFailedCall(
 				ctx,
 				invocation,
 				attempt,
@@ -113,7 +97,7 @@ func (o *observedInteractionModel) Stream(
 			return
 		}
 		if err := response.Validate(); err != nil {
-			yield(nil, o.finishFailedStream(ctx, invocation, attempt, callID, err))
+			yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, err))
 			return
 		}
 		if err := o.complete(ctx, invocation, callID, response); err != nil {
@@ -123,7 +107,7 @@ func (o *observedInteractionModel) Stream(
 	}
 }
 
-func (o *observedInteractionModel) finishFailedStream(
+func (o *observedInteractionModel) finishFailedCall(
 	ctx context.Context,
 	invocation interaction.ModelInvocation,
 	attempt *dispatchAttempt,
@@ -135,7 +119,7 @@ func (o *observedInteractionModel) finishFailedStream(
 		if cause != nil {
 			o.session.modelFailures.record(invocation.Relation().ProcessID(), cause)
 		}
-		return cause
+		return errors.Join(cause, o.session.stopModelProcess(ctx, invocation.Relation().ProcessID()))
 	}
 	attempt.recordProjectionFailure(projectionErr)
 	return errors.Join(cause, projectionErr)
@@ -172,6 +156,10 @@ func (o *observedInteractionModel) begin(
 	defer func() {
 		if err != nil {
 			o.session.accounting.discardPreparedModelContext(preparedInvocation)
+			if !errors.Is(err, errInteractionAllowanceDenied) {
+				o.session.modelFailures.record(preparedInvocation.Relation().ProcessID(), interaction.HostFailure(err))
+			}
+			err = errors.Join(err, o.session.stopModelProcess(ctx, preparedInvocation.Relation().ProcessID()))
 		}
 	}()
 	attempt, err = dispatchAttemptFrom(ctx, invocation.EffectID())
@@ -292,14 +280,17 @@ func modelUsage(
 	}
 	var cost accounting.Cost
 	if pricing != nil {
-		cost = pricing(selection.Provider(), servedModel, &metadata.Usage)
+		cost = pricing(selection.Provider(), servedModel, metadata.Usage)
 	}
 	return accounting.ModelUsage{
 		Model: servedModel, TokenUsage: accountingTokenUsage(metadata.Usage), Cost: cost, Calls: 1,
 	}
 }
 
-func accountingTokenUsage(usage corechat.Usage) accounting.TokenUsage {
+func accountingTokenUsage(usage *corechat.Usage) accounting.TokenUsage {
+	if usage == nil {
+		return accounting.TokenUsage{}
+	}
 	result := accounting.TokenUsage{
 		PromptTokens:     usage.InputTokens,
 		CompletionTokens: usage.OutputTokens,

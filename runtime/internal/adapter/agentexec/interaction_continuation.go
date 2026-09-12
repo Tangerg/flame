@@ -51,13 +51,13 @@ func (i *InteractionExecutor) BeginContinuation(
 	// The previous Agent Process lifetime includes the human wait. Reset the
 	// Segment clock before any answer can make that Process runnable.
 	session.segmentClock.start()
+	session.continuationAccepted()
 	if err := session.deliverContinuationAnswers(ctx, prepared, committedInput); err != nil {
 		return err
 	}
 	if err := session.resumePausedProcesses(ctx, paused); err != nil {
 		return err
 	}
-	session.continuationAccepted()
 	return nil
 }
 
