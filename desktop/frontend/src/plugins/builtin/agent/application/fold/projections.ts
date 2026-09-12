@@ -11,7 +11,6 @@ import type {
   AgentQuestion,
   AgentToolInvocation,
 } from "@/plugins/sdk";
-import { activePlanStep, planProgress, planStepsFromArguments } from "../view/sessionPlan";
 import type { BlockStatus, ContentBlock, QuestionItem } from "@/plugins/sdk/types/contentBlock";
 import type { ToolCall, ToolCallStatus } from "@/plugins/sdk/types/agentSessionView";
 import { toolCategory } from "../../domain/toolCategory";
@@ -206,17 +205,8 @@ export function toolFields(tool: AgentToolInvocation): Partial<ToolCall> {
   const operation = asString(tool.arguments.operation);
   return {
     ...(operation !== undefined ? { operation } : {}),
-    ...planFields(tool),
     ...categoryFields(tool, result),
   };
-}
-
-// Derived in the fold, not at render: rendering re-parses the same argument on every tick.
-function planFields(tool: AgentToolInvocation): Partial<ToolCall> {
-  if (tool.name !== "set_plan") return {};
-  const steps = planStepsFromArguments(tool.arguments);
-  if (steps.length === 0) return {};
-  return { step: activePlanStep(steps)?.text, progress: planProgress(steps) };
 }
 
 /** The call's OWN result, carried verbatim beside whatever the category summarises, so a

@@ -556,10 +556,6 @@ interface ToolCall {
   // ── 检索族 ──
   hits?: number;
 
-  // ── Plan 族 ──
-  step?: string;                            // 当前进行中的步骤文字
-  progress?: { done: number; total: number };
-
   // ── 操作分派型工具（lsp）──
   operation?: string;
 
@@ -780,7 +776,6 @@ interface BlockCtx {
 | --- | --- | --- |
 | `error` | 失败原因 | `err` 时**取代**次槽内容 |
 | `command` | 实际执行的命令行 | 这是读者真正要核对的一行，**不截断** |
-| `step` | Plan 当前进行的步骤 | — |
 | 参数里首个命中的 `path` / `query` / `pattern` / `url` | 兜底的作用对象 | 路径仍要保住文件名 |
 
 **③ 结果如何 —— 数字组**（全部可缺席，**缺席 = 不画**）
@@ -788,7 +783,6 @@ interface BlockCtx {
 | 字段 | 表达 | 硬约束 |
 | --- | --- | --- |
 | `added` / `removed` | 改了多少行 | **一个事实两个数**，不要拆成两个独立标签。**双缺席时不画**（不是 `+0 −0`，也不是短横 —— 短横是一个要读者停下来解读的记号） |
-| `progress` | Plan 走到哪 | 用**裸记号**（`3/7`），各语言同形，不进翻译目录 |
 | `files` | 碰了几个文件 | — |
 | `hits` | 命中多少 | — |
 | `range` | 实际返回的行窗口 | **仅当不是整个文件时才有意义**，否则它只是把 `lines` 又写一遍 |
@@ -805,11 +799,11 @@ interface BlockCtx {
 - 最新的工具会被**自动选中**（喂给 G 区 inspector）但**不自动展开** —— 展开是用户的点击。
 - 展开状态由 `BlockCtx.expandedIds` 持有，跨会话切换不保留。
 
-#### 两个工具的行会被丢弃
+#### Tool rows represented by another surface
 
-`ask_user` 与 `exit_plan_mode` 在自己的执行里发起 HITL，于是同时产生一个 toolCall Item（被抽干成 `incomplete`、读作红 ✗）**和**一个 question Item。**提问卡才是真身，工具行是它的冗余影子** —— 渲染器在问题块存在时丢掉这一行。
+`ask_user` and `exit_plan_mode` keep their logical ToolCall running while a separate question Item owns the interaction. The message planner sees that question even when its active form moves to the composer, so it can remove the redundant tool row. Failed or declined calls remain visible even when another question exists in the message.
 
-`set_plan` / `create_goal` / `get_goal` / `report_goal_outcome` 的行也被丢弃：它们的结论由 C3 / C4 常驻条回答（见 §5.3 / §5.4）。
+Plan, Goal, and schedule tools omit their transcript rows only after Runtime reports success: their accepted outcomes belong to the standing surfaces. Running, failed, and declined calls use the ordinary tool row and inspector. A successful retry does not erase the earlier failed call.
 
 ---
 
@@ -1417,7 +1411,7 @@ interface ProposeSkillResult { status: string; name: string; revision: string; s
 
 ### 7.5 Plan 模式（3）
 
-三个都 `safe`、三个都**无展开体**（Plan 是常驻状态，见 §5.3）。
+All three are `safe`. Successful calls are represented by the standing Plan surface (§5.3); unfinished or failed calls retain the standard tool row and inspector.
 
 #### `enter_plan_mode` — 进入只读计划模式
 
@@ -1427,8 +1421,8 @@ interface ProposeSkillResult { status: string; name: string; revision: string; s
 #### `set_plan` — 写计划
 
 图标 `list-checks` · 「Updating the Plan」
-**标题** = 本地化的「更新计划」｜**副行** = 当前进行中的那一步｜**chips** = `3/7`
-**这一行会被丢弃**（结论由 C3 常驻条回答）。
+The row names the requested action and carries any failure reason. Only a running call uses an ongoing verb; only a successful call uses a completion verb.
+The row is omitted after success. C3 alone projects accepted Plan steps and progress from Runtime; tool arguments remain inspectable input, never another Plan projection.
 
 ```ts
 interface SetPlanArguments {
@@ -1447,13 +1441,13 @@ type SetPlanResult = string;
 图标 `flag` · 「Requesting Plan approval」· **无参数**
 它读已存的 session Plan，**不接受 plan 文本或备选方案** —— 所以被批准的值不可能和存的不一致。
 
-**这是一个提问工具**：同时产生 toolCall Item（被抽干）和 question Item（选项 `Approve` / `Reject`，**闭合、不给 allowCustom**）。**工具行被丢弃，提问卡才是真身。**
+This tool raises a question Item with the closed choices `Approve` / `Reject` and no custom answer. The question owns the interaction while the logical ToolCall waits. A failed call, such as requesting approval with an empty Plan, retains its own error row.
 
 ---
 
 ### 7.6 Goal（3）
 
-三个都 `safe`、都**无展开体**、行都被丢弃（结论由 C4 常驻条回答）。
+All three are `safe`. C4 represents successful Goal calls. Pending, failed, or declined calls remain in the transcript with the standard inspector.
 
 #### `create_goal` — 启动自治目标
 

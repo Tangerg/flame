@@ -114,7 +114,7 @@ export function toolFamilyId(name: string): string | undefined {
 }
 
 /**
- * The catalog suffix for a built-in tool's verb: `tool.doing.<id>` / `tool.done.<id>`.
+ * The catalog suffix for a built-in tool's verb: `tool.action.<id>`, `tool.doing.<id>`, or `tool.done.<id>`.
  * `undefined` for a tool this table has never heard of, which then takes the generic verb.
  *
  * DERIVED from the Runtime's own name rather than listed a second time. The hand-written

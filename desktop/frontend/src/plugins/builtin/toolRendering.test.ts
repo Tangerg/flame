@@ -14,7 +14,7 @@ const STANDING = new Set<string>([
 ]);
 
 describe("built-in tool rendering composition", () => {
-  it("previews every tool the transcript draws, and none it does not", async () => {
+  it("uses dedicated previews for tools without a standing result surface", async () => {
     await loadPluginsForTest(...toolPreviewPlugins);
 
     const names = Object.keys(TOOL_ICON_BY_NAME);
@@ -22,7 +22,7 @@ describe("built-in tool rendering composition", () => {
 
     expect(
       names.filter((name) => STANDING.has(name) && preview(name) !== undefined),
-      "tools answered by a standing surface must not preview",
+      "standing tools use the standard inspector for unsuccessful calls",
     ).toEqual([]);
     expect(
       names.filter((name) => !STANDING.has(name) && preview(name) === undefined),

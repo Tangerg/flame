@@ -223,6 +223,34 @@ describe("planRenderUnits · read-only grouping", () => {
     ]);
   });
 
+  it("lets the composer own a pending question without leaving its tool row behind", () => {
+    const question: ContentBlock = {
+      kind: "question",
+      status: "requires-action",
+      questions: [],
+    };
+    const tools = { ask: { ...tool("ask", "ask_user"), status: "running" as const } };
+
+    expect(planRenderUnits([tb("ask"), question], tools)).toEqual([]);
+  });
+
+  it("retains a failed Plan approval call beside an earlier answered question", () => {
+    const question: ContentBlock = { kind: "question", status: "complete", questions: [] };
+    const failed = tb("exit");
+    const tools = {
+      exit: {
+        ...tool("exit", "exit_plan_mode"),
+        status: "err" as const,
+        error: "current Plan is empty",
+      },
+    };
+
+    expect(planRenderUnits([question, failed], tools)).toEqual([
+      { kind: "block", block: question, index: 0, superseded: false },
+      { kind: "block", block: failed, index: 1, superseded: false },
+    ]);
+  });
+
   it("treats an unresolved tool block as a plain block", () => {
     const blocks = [tb("read"), tb("missing")];
     expect(planRenderUnits(blocks, TOOLS)).toEqual([

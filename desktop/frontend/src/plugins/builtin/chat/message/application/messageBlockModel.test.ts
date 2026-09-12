@@ -207,6 +207,18 @@ describe("narratedBlocks", () => {
     expect(narratedBlocks(blocks, tools, standing)).toEqual([blocks[0], blocks[2]]);
   });
 
+  it.each([
+    ["set_plan", "running"],
+    ["exit_plan_mode", "requires-action"],
+    ["create_goal", "err"],
+    ["delete_schedule", "denied"],
+  ] as const)("keeps %s visible while its outcome is %s", (name, status) => {
+    const blocks = [toolBlock("command")];
+    const tools = { command: { ...tool("command", name), status } };
+
+    expect(narratedBlocks(blocks, tools, (candidate) => candidate === name)).toEqual(blocks);
+  });
+
   it("keeps every other tool, including the rest of the same family", () => {
     const blocks = [toolBlock("t_enter"), toolBlock("t_exit"), toolBlock("t_read")];
     const tools = {
@@ -232,8 +244,12 @@ describe("narratedBlocks", () => {
     };
     const answered: ContentBlock = { ...pending, status: "complete", answered: true };
 
-    expect(narratedBlocks([pending], {}, standing)).toEqual([]);
-    expect(narratedBlocks([answered], {}, standing)).toEqual([answered]);
+    const planned = (block: ContentBlock) =>
+      messageBlockRenderUnits(narratedBlocks([block], {}, standing), {});
+    expect(planned(pending)).toEqual([]);
+    expect(planned(answered)).toEqual([
+      { kind: "block", block: answered, index: 0, superseded: false },
+    ]);
   });
 
   it("closes the gap it leaves, so neighbours still group", () => {

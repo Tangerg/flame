@@ -149,11 +149,9 @@ export const TOOL_ICON = defineExtensionPoint<string>({
   id: "flame.tool.icon",
   keying: "single",
 });
-// A tool whose whole outcome already sits on a surface that STAYS on screen, so the
-// narrative need not repeat it. The value names that surface rather than being a bare flag,
-// so the claim stays answerable. Claim only what the surface shows in FULL: a tool that
-// asks the person something is not presented by it however much it echoes — hiding
-// `exit_plan_mode` would hide the question.
+// The surface that represents a tool's successful outcome. Pending, failed, and declined
+// calls keep their transcript rows; this registration cannot stand in for those facts.
+// Question and approval Items retain their own presentation independently of this key.
 export const TOOL_STANDING_SURFACE = defineExtensionPoint<string>({
   id: "flame.tool.standingSurface",
   keying: "single",

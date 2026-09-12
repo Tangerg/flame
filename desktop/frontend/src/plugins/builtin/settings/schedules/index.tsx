@@ -37,9 +37,8 @@ export default definePlugin({
       order: 58,
       component: SchedulesPane,
     });
-    // The Schedules pane is where a schedule is read, created and deleted, so the transcript
-    // row of a schedule tool is a second telling of what that pane already holds. Declared by
-    // the plugin that owns the surface, the way Plan and Goal declare theirs.
+    // The Schedules pane represents successful calls. An unfinished or rejected command
+    // still needs its transcript row because the pane cannot represent that outcome.
     for (const key of SCHEDULE_STANDING_TOOLS) {
       ctx.contribute(TOOL_STANDING_SURFACE, SCHEDULES_PANE, { key });
     }

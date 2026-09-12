@@ -68,9 +68,6 @@ export interface ToolCall {
   /** From the RESULT, not the request: the runtime clamps. Absent for a whole file, where
    *  the span would only restate `lines`. */
   range?: { start: number; end: number };
-  step?: string;
-  /** Not a formatted ratio: the reader's language decides how "3 of 7" is worded. */
-  progress?: { done: number; total: number };
   /** Runtime-measured, excluding approval waits. Absent when unknown: a client stopwatch
    *  would be timing its own render loop. */
   durationMillis?: number;

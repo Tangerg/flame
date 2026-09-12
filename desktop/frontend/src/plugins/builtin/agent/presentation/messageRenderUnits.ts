@@ -73,6 +73,9 @@ export function planRenderUnits(
       return;
     }
     flushWave();
+    // Keep the question available to the tool-row planner even while the composer owns its
+    // active form. Once answered, the same durable block returns to the transcript.
+    if (block.kind === "question" && block.status === "requires-action" && !block.answered) return;
     units.push({ kind: "block", block, index, superseded: answered[index]! });
   });
 
@@ -140,7 +143,13 @@ function planWithinWave(
     // Checked AHEAD of grouping: a question's own tool is side-effect-free (it IS the
     // interrupt), so it reads as a glance and would be folded into a group instead of
     // dropped in favour of the question card.
-    if (tool && hasQuestion && isQuestionTool(tool.name)) {
+    if (
+      tool &&
+      hasQuestion &&
+      isQuestionTool(tool.name) &&
+      tool.status !== "err" &&
+      tool.status !== "denied"
+    ) {
       flushReads();
       continue;
     }

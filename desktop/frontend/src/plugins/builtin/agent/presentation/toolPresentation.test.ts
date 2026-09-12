@@ -62,15 +62,6 @@ describe("toolPresentation", () => {
     ).toEqual({ kind: "text", value: "a/b" });
   });
 
-  it("prefers the step a plan is on over anything in its arguments", () => {
-    expect(
-      toolIntent(t, tool({ name: "set_plan", fn: "set_plan", step: "Write the fix" })),
-    ).toEqual({
-      label: { kind: "text", value: "Updated the plan" },
-      detail: { kind: "text", value: "Write the fix" },
-    });
-  });
-
   it("keeps a command verbatim even when it reads like a tool name", () => {
     expect(toolIntent(t, tool({ name: "shell", fn: "grep" })).detail?.value).toBe("grep");
     expect(toolIntent(t, tool({ name: "shell", fn: "shell" })).label.value).toBe("Ran");
@@ -80,9 +71,20 @@ describe("toolPresentation", () => {
     const reading = tool({ name: "read", fn: "src/App.tsx", fnKind: "path", status: "running" });
     expect(toolIntent(t, reading).label.value).toBe("Reading");
     expect(toolIntent(t, { ...reading, status: "ok" }).label.value).toBe("Read");
-    expect(toolIntent(t, { ...reading, status: "denied" }).label.value).toBe("Read");
-    expect(toolIntent(t, { ...reading, status: "err" }).label.value).toBe("Read");
+    expect(toolIntent(t, { ...reading, status: "denied" }).label.value).toBe("Read file");
+    expect(toolIntent(t, { ...reading, status: "err" }).label.value).toBe("Read file");
   });
+
+  it.each(["err", "denied", "requires-action"] as const)(
+    "does not claim that an unaccepted Plan update succeeded (%s)",
+    (status) => {
+      const call = tool({ name: "set_plan", fn: "set_plan", status });
+      expect(toolIntent(t, call)).toEqual({
+        label: { kind: "text", value: "Update plan" },
+        detail: undefined,
+      });
+    },
+  );
 
   it("gives a tool it has no verb for the generic one", () => {
     expect(toolIntent(t, tool({ name: "acme_docs", fn: "acme_docs" }))).toEqual({
@@ -116,10 +118,7 @@ describe("toolPresentation", () => {
     ]);
   });
 
-  it("reports a plan's progress and a partial read's span as notation", () => {
-    expect(toolMetaItems(t, tool({ progress: { done: 3, total: 7 } }))).toEqual([
-      { id: "progress", label: "3/7", tone: "muted" },
-    ]);
+  it("reports a partial read's span as notation", () => {
     expect(toolMetaItems(t, tool({ range: { start: 40, end: 80 }, lines: 900 }))).toEqual([
       { id: "range", label: "L40-80", tone: "muted" },
       { id: "lines", label: "900 lines", tone: "muted" },

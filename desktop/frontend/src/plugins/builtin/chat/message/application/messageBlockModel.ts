@@ -10,7 +10,8 @@ import {
 /**
  * BEFORE planning rather than skipped while rendering, because units carry counts and grouping:
  * a folded wave saying "4 steps" while showing 3 is worse than the duplication. The call stays
- * in `toolCalls`, so stats and the timeline still account for it.
+ * in `toolCalls`, so the timeline still accounts for it. Standing surfaces represent only
+ * successful outcomes; an unfinished, failed, or declined call still needs its own row.
  */
 export function narratedBlocks(
   blocks: ContentBlock[],
@@ -18,14 +19,9 @@ export function narratedBlocks(
   standing: (toolName: string) => boolean,
 ): ContentBlock[] {
   return blocks.filter((block) => {
-    // A pending question temporarily owns the composer rung; the same durable block returns
-    // here once it settles, so only its active presentation moves.
-    if (block.kind === "question" && block.status === "requires-action" && !block.answered) {
-      return false;
-    }
     if (block.kind !== "tool") return true;
-    const name = toolCalls[block.toolCallId]?.name;
-    return name === undefined || !standing(name);
+    const tool = toolCalls[block.toolCallId];
+    return tool?.status !== "ok" || !standing(tool.name);
   });
 }
 

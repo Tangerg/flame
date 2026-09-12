@@ -45,9 +45,9 @@ const TOOL_DETAIL_KEYS: ReadonlyArray<{ key: string; kind: ToolDetail["kind"] }>
 
 export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
   const labelKey = toolVerbId(tool.name);
-  // Only a call still in flight is being done; a refusal and a failure are both over, and
-  // wording either as ongoing would keep the row claiming work that has stopped.
-  const tense = tool.status === "running" ? "doing" : "done";
+  // Only success earns a completion verb. Unsuccessful or unaccepted calls name the
+  // requested action without claiming that it happened or is still running.
+  const tense = tool.status === "running" ? "doing" : tool.status === "ok" ? "done" : "action";
   const verb: ToolDetail = {
     kind: "text",
     value: t(`tool.${tense}.${labelKey ?? GENERIC_VERB_ID}`),
@@ -65,24 +65,14 @@ export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
   const label = described ? { kind: "text" as const, value: tool.fn } : verb;
   const parsed = parseToolArgs(tool.args);
   const detail =
-    command ??
-    (described ? undefined : argument) ??
-    text(tool.step) ??
-    (parsed ? toolDetail(parsed) : undefined);
+    command ?? (described ? undefined : argument) ?? (parsed ? toolDetail(parsed) : undefined);
   return detail && detail.value === label.value ? { label } : { label, detail };
 }
 
 export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
   const items: ToolMetaItem[] = [];
-  // Added/removed are NOT chips: a diffstat is one fact with two numbers. Ratios and line
+  // Added/removed are NOT chips: a diffstat is one fact with two numbers. Line
   // spans stay notation — they read the same in every language.
-  if (tool.progress != null) {
-    items.push({
-      id: "progress",
-      label: `${tool.progress.done}/${tool.progress.total}`,
-      tone: "muted",
-    });
-  }
   if (tool.files != null) {
     items.push({ id: "files", label: t("tool.meta.files", { count: tool.files }), tone: "muted" });
   }

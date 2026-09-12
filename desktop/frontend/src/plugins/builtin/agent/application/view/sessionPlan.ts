@@ -8,12 +8,6 @@ export type { PlanStep } from "@/plugins/sdk/types/agentSessionView";
 
 // The Plan is a SESSION projection written only by the root Run, not a transcript Item —
 // it has no run of its own and nothing about it is per-turn.
-const TOOL_STEP_STATUS = new Map<string, PlanStep["status"]>([
-  ["completed", "done"],
-  ["in_progress", "active"],
-  ["pending", "pending"],
-]);
-
 const NO_STEPS: readonly PlanStep[] = Object.freeze([]);
 
 export function planSteps(plan: AgentPlan | undefined): readonly PlanStep[] {
@@ -57,50 +51,19 @@ export class SessionPlan {
   }
 
   activeStep(): PlanStep | undefined {
-    return activePlanStep(this.steps);
+    // An active step outranks an earlier untouched step.
+    return (
+      this.steps.find((step) => step.status === "active") ??
+      this.steps.find((step) => step.status === "pending")
+    );
   }
 
   progress(): { done: number; total: number } {
-    return planProgress(this.steps);
+    return {
+      done: this.steps.filter((step) => step.status === "done").length,
+      total: this.steps.length,
+    };
   }
-}
-
-/**
- * Reads the structured arguments, NOT the rendered `[x] …` result text the runtime also
- * produces for the model: parsing that back would be a second answer to "what are the
- * steps" that goes stale the moment the marks change. Arguments carry no ids, so the index
- * stands in — which is all a list key needs.
- */
-export function planStepsFromArguments(args: unknown): readonly PlanStep[] {
-  if (typeof args !== "object" || args === null) return NO_STEPS;
-  const steps = (args as { steps?: unknown }).steps;
-  if (!Array.isArray(steps) || steps.length === 0) return NO_STEPS;
-  const projected: PlanStep[] = [];
-  for (const [index, step] of steps.entries()) {
-    if (typeof step !== "object" || step === null) continue;
-    const { description, status } = step as { description?: unknown; status?: unknown };
-    if (typeof description !== "string" || description.length === 0) continue;
-    projected.push({
-      id: String(index),
-      text: description,
-      status: TOOL_STEP_STATUS.get(String(status)) ?? "pending",
-    });
-  }
-  return projected;
-}
-
-// The MARK outranks position: "first one not done" agrees on the common plan but names the
-// wrong step when an active step sits after an untouched one — exactly the plan where a
-// reader most needs to be told.
-export function activePlanStep(steps: readonly PlanStep[]): PlanStep | undefined {
-  return (
-    steps.find((step) => step.status === "active") ??
-    steps.find((step) => step.status === "pending")
-  );
-}
-
-export function planProgress(steps: readonly PlanStep[]): { done: number; total: number } {
-  return { done: steps.filter((step) => step.status === "done").length, total: steps.length };
 }
 
 // Memoised on session identity and the snapshot object the fold swaps in, so a reader keeps

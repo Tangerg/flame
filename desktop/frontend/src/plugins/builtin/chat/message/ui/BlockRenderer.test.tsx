@@ -4,7 +4,10 @@ import type { AgentRunView, Message, ToolCall } from "@/plugins/sdk/types/agentS
 import type { TurnFacts } from "@/plugins/builtin/agent/public/conversation";
 import { MessageContext } from "@/plugins/sdk/messageContext";
 import type { BlockCtx } from "./BlockRenderer";
-import { renderBlock } from "./BlockRenderer";
+import { renderBlock, renderMessageBlocks } from "./BlockRenderer";
+import { definePlugin } from "@/plugins/sdk";
+import { TOOL_STANDING_SURFACE } from "@/plugins/sdk/kernelPoints";
+import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 const CTX: BlockCtx = {
   expandedIds: new Set(),
@@ -136,5 +139,48 @@ describe("delegated Run rendering", () => {
       sessionId: "session-1",
       runId: "child-run",
     });
+  });
+});
+
+describe("standing tool outcomes", () => {
+  it("keeps a failed Plan call visible after a successful retry", async () => {
+    await loadPluginsForTest(
+      definePlugin({
+        name: "test.plan-surface",
+        setup(ctx) {
+          ctx.contribute(TOOL_STANDING_SURFACE, "plan", { key: "set_plan" });
+        },
+      }),
+    );
+    const call: ToolCall = {
+      ...tool("plan-call"),
+      name: "set_plan",
+      fn: "Update plan",
+      status: "running",
+    };
+    const row = {
+      message: message("plan-message", "root-run", call.id),
+      facts: { toolCalls: { [call.id]: call }, delegatedRuns: {} },
+    };
+    const renderRow = () => (
+      <MessageContext.Provider value={{ sessionId: "session-1", message: row.message }}>
+        {renderMessageBlocks(row, CTX)}
+      </MessageContext.Provider>
+    );
+    const { rerender } = render(renderRow());
+    expect(document.querySelector('[data-tool="set_plan"]')).not.toBeNull();
+
+    const error = "at most one step may be in_progress";
+    row.facts.toolCalls[call.id] = { ...call, status: "err", error };
+    rerender(renderRow());
+    expect(screen.getByText(error)).toBeTruthy();
+
+    const retry = { ...call, id: "plan-retry", status: "ok" as const };
+    row.facts.toolCalls[retry.id] = retry;
+    row.message.blocks.push({ kind: "tool", toolCallId: retry.id });
+    rerender(renderRow());
+
+    expect(screen.getByText(error)).toBeTruthy();
+    expect(document.querySelectorAll('[data-tool="set_plan"]')).toHaveLength(1);
   });
 });

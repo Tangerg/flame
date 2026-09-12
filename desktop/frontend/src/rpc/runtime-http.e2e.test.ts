@@ -340,6 +340,23 @@ function scriptedReply(body: FakeChatRequest): {
       },
     };
   }
+  if (
+    transcript.includes("E2E_PLAN_REJECTED") &&
+    availableTools.has("set_plan") &&
+    toolResultCount === 1
+  ) {
+    return {
+      tool: {
+        name: "set_plan",
+        arguments: JSON.stringify({
+          steps: [
+            { description: "Start the first task", status: "in_progress" },
+            { description: "Start the second task", status: "in_progress" },
+          ],
+        }),
+      },
+    };
+  }
   if (transcript.includes("E2E_PLAN") && availableTools.has("set_plan") && !hasToolResult) {
     return {
       tool: {
@@ -2437,6 +2454,48 @@ for await (const line of lines) {
     streamController.abort();
     await runtimeEvents.return?.();
   }, 30_000);
+
+  it("preserves a rejected Plan call as a durable failure without advancing the Plan", async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    const session = await client.sessions.create({ workspace: { path: root } });
+    const sessionId = asSessionId(session.id);
+    const started = await client.runs.start({
+      sessionId,
+      input: [{ type: "text", text: "E2E_PLAN_REJECTED keep the last accepted plan." }],
+    });
+    const events = await collectRunEvents(started.events);
+    const failed = events.find(
+      ({ event }) =>
+        event.type === "item.completed" && event.item.type === "toolCall" && event.item.error,
+    )?.event;
+    if (failed?.type !== "item.completed") throw new Error("expected a failed Plan tool Item");
+    expect(failed.item).toMatchObject({
+      type: "toolCall",
+      tool: { name: "set_plan" },
+      error: {
+        type: "tool_failed",
+        detail: expect.stringContaining("at most one step may be in_progress"),
+      },
+    });
+    expect(
+      await client.items
+        .list({ scope: { type: "run", runId: started.result.runId } })
+        .autoPagingToArray(),
+    ).toContainEqual(failed.item);
+    await expect(client.plan.get(sessionId)).resolves.toMatchObject({
+      state: {
+        revision: 1,
+        steps: [
+          { description: "Inspect the runtime contract", status: "completed" },
+          { description: "Verify frontend reconciliation", status: "in_progress" },
+        ],
+      },
+    });
+    expect(events.at(-1)?.event).toMatchObject({
+      type: "segment.finished",
+      outcome: { type: "completed" },
+    });
+  });
 
   it("parks and resumes the same run through durable HITL identity", async () => {
     if (!client) throw new Error("runtime client was not initialized");

@@ -52,9 +52,7 @@ export default definePlugin({
       order: 4,
       component: GoalModeIndicator,
     });
-    // All three Goal tools, not two: CONTENT_RENDERING §7.6 says the row of every one of them
-    // is dropped because the Goal bar states the conclusion. `report_goal_outcome` had been
-    // left out, so it rendered a row — and a preview under it — that the design does not have.
+    // The Goal bar represents successful calls; command failures remain in the transcript.
     for (const key of GOAL_STANDING_TOOLS) {
       ctx.contribute(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
     }

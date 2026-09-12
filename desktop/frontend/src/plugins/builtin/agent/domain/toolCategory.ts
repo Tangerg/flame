@@ -31,10 +31,9 @@ export function toolCategory(name: string): ToolCategory {
   return TOOL_CATEGORY.get(name) ?? "generic";
 }
 
-// These interrupt from inside their own call, so the runtime emits BOTH a toolCall Item
-// (drained to `incomplete` when the turn parks) AND a question Item. The QuestionCard is
-// the real representation; the tool row is a shadow that reads as a red ✗ through the
-// incomplete→err mapping, so the renderer drops it whenever the question block is present.
+// These tools ask through a separate question Item while their logical ToolCall remains
+// running across the interrupt. The question represents that interaction; an actual failed
+// ToolCall still owns a distinct error, which a question cannot stand in for.
 const QUESTION_TOOLS = new Set(["ask_user", "exit_plan_mode"]);
 export function isQuestionTool(name: string): boolean {
   return QUESTION_TOOLS.has(name);
