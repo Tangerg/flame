@@ -13,8 +13,8 @@ func callTextTool(ctx context.Context, executable toolcontract.Tool, arguments s
 	if err != nil {
 		return "", err
 	}
-	invocation, err := binding.Prepare(chat.ToolCall{
-		ID: "test_call", Name: binding.Definition().Name, Arguments: arguments,
+	invocation, err := binding.Contract().Prepare(chat.ToolCall{
+		ID: "test_call", Name: binding.Contract().Definition().Name, Arguments: arguments,
 	})
 	if err != nil {
 		return "", err

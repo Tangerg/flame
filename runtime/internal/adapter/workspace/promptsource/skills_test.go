@@ -38,8 +38,31 @@ func TestRuntimeSkillSourceRejectsOversizedDocument(t *testing.T) {
 	if source == nil {
 		t.Fatal("configured source is nil")
 	}
+	if summary, err := source.Lookup(t.Context(), "oversized"); err != nil || summary.Name != "oversized" {
+		t.Fatalf("Lookup must read metadata without loading the oversized instructions: %+v, %v", summary, err)
+	}
 	if _, err := source.Load(t.Context(), "oversized"); !errors.Is(err, domainskills.ErrDocumentTooLarge) {
 		t.Fatalf("Load error = %v, want ErrDocumentTooLarge before the document is materialized", err)
+	}
+}
+
+func TestMergedRuntimeSkillSourcePreservesBundleOwnership(t *testing.T) {
+	workspace, userRoot := t.TempDir(), t.TempDir()
+	projectRoot := ProjectSkillDir(workspace)
+	writeRuntimeSkill(t, projectRoot, "project", "project instructions")
+	writeRuntimeSkill(t, userRoot, "shared", "user instructions")
+	source, err := MergeSkillSource(workspace, userRoot, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if skill, err := source.Load(t.Context(), "shared"); err != nil || skill.Instructions != "user instructions" {
+		t.Fatalf("absent project bundle must resolve to user source: %+v, %v", skill, err)
+	}
+	if err := os.Mkdir(filepath.Join(projectRoot, "shared"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := source.Load(t.Context(), "shared"); !errors.Is(err, sdk.ErrInvalidSkill) || errors.Is(err, sdk.ErrSkillNotFound) {
+		t.Fatalf("broken project bundle must not expose the lower-precedence user copy: %v", err)
 	}
 }
 

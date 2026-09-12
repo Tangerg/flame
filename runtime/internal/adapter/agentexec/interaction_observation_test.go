@@ -1315,8 +1315,8 @@ func (s *scopeRecordingInteractionTools) Manifest(ctx context.Context, _ domaint
 
 type concurrentInteractionTool struct{ toolcontract.Tool }
 
-func (concurrentInteractionTool) ConcurrencyKey(toolcontract.Invocation) (string, bool) {
-	return "", true
+func (concurrentInteractionTool) ConcurrencyPolicy() func(toolcontract.Invocation) (string, bool) {
+	return func(toolcontract.Invocation) (string, bool) { return "", true }
 }
 
 type allowInteractionTools struct{}

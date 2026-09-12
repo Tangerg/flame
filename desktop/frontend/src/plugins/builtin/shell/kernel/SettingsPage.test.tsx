@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { definePlugin } from "@/plugins/sdk";
 import { SETTINGS_PANE } from "@/plugins/sdk/kernelPoints";
@@ -49,7 +49,8 @@ describe("settingsPage", () => {
     render(<SettingsPage />);
     fireEvent.click(screen.getByText("Plugins"));
     expect(screen.getByTestId("plugins-body")).toBeTruthy();
-    expect(screen.queryByTestId("appearance-body")).toBeNull();
+    await waitFor(() => expect(screen.getAllByRole("tabpanel")).toHaveLength(1));
+    expect(screen.getByRole("tabpanel").textContent).toContain("plugins body");
   });
 
   it("falls back to the first pane when no panes match the saved selection", async () => {

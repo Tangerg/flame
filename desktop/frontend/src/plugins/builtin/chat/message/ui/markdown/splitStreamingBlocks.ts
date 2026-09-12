@@ -1,20 +1,9 @@
 import { Lexer } from "marked";
 
 /**
- * Only the LAST block changes while a message streams, so splitting is what lets React leave
- * the settled ones alone — and what makes the split correct is not the cutting but the three
- * places a block legitimately spans what looks like a boundary.
- *
- * This replaces `streamdown`'s `parseMarkdownIntoBlocks`, which was the only thing this
- * product imported from that package. It ships no `sideEffects` flag, so the bundler has to
- * assume its module graph is live: a second markdown pipeline — `unified`, `remark-rehype`,
- * `rehype-sanitize`, `rehype-harden` — plus `tailwind-merge`, whose entire subject is
- * resolving Tailwind class conflicts, in a product with no Tailwind classes. Measured against
- * a stubbed import, that one function cost **139.3 KB of the entry chunk**, the one parsed
- * before first paint, at 91.4% of its budget. `marked` is what streamdown lexes with too, and
- * it is MIT with zero dependencies.
- *
- * `splitStreamingBlocks.test.ts` pins every case against the output the old function gave.
+ * Settled blocks keep their identity while the message tail streams. HTML,
+ * display math, and footnotes can span lexer tokens and must stay together
+ * because each block is rendered by an independent Markdown parse.
  */
 const FOOTNOTE_REFERENCE = /\[\^[\w-]{1,200}\](?!:)/;
 const FOOTNOTE_DEFINITION = /\[\^[\w-]{1,200}\]:/;
@@ -39,8 +28,7 @@ const VOID_ELEMENTS = new Set([
 ]);
 
 /**
- * Three things are not an opening and each was a measured difference against the function this
- * replaces: a void element (`<img src=x>` closes nothing and waits for nothing), a self-closing
+ * These tokens cannot open a block: a void element (`<img src=x>` closes nothing and waits for nothing), a self-closing
  * one (`<div />`), and a tag still being typed (`<div` with no `>` yet, which is every
  * half-arrived tag in a stream — it counts once the `>` lands).
  */

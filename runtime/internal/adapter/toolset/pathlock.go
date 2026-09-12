@@ -9,8 +9,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-const fileResourceKeyPrefix = "file:"
-
 // pathLocker serializes file tool calls that target the same resolved path.
 // Separate runs can execute concurrently, so two mutations must not
 // interleave, and a tracked read must stamp the exact state it read.
@@ -80,34 +78,23 @@ func (p *pathLocker) releaseRef(path string, l *pathLock) {
 // withPathLock wraps a file tool so concurrent calls targeting the same resolved
 // path run one-at-a-time (see [pathLocker]). For mutations it is applied inside
 // the path guard but outside the staleness / diagnostics / mutation chain. For
-// reads it encloses both the filesystem read and tracker stamp. The wrapper also
-// replaces a concurrency-safe tool's caller-spelled path key with the same
-// canonical physical identity used by the lock. This makes model-order
-// scheduling agree with execution for relative, absolute, and symlink aliases.
+// reads it encloses both the filesystem read and tracker stamp. Scheduling
+// remains the inner Tool's policy; this lock coordinates physical paths across
+// Runs, including relative, absolute, and symlink aliases.
 func withPathLock(inner toolcontract.Tool, locker *pathLocker, cwd string) toolcontract.Tool {
 	return &pathLocked{inner: inner, locker: locker, cwd: cwd}
 }
 
-// pathLocked owns the full same-file execution contract: its scheduling
-// key and runtime lock are derived from the same canonical path function.
+// pathLocked keeps the filesystem operation and its tracking under one lock.
 type pathLocked struct {
 	inner  toolcontract.Tool
 	locker *pathLocker
 	cwd    string
 }
 
-// concurrentTool is the framework-neutral structural capability understood by
-// any execution strategy that supports keyed Tool overlap.
-type concurrentTool interface {
-	ConcurrencyKey(invocation toolcontract.Invocation) (key string, concurrent bool)
-}
-
 func (p *pathLocked) Definition() chat.ToolDefinition { return p.inner.Definition() }
 
-// Unwrap exposes the locked tool so everything it declares — where its mutations
-// land, whether it ends the round — stays reachable through the lock. Only the
-// scheduling key below is this wrapper's own, and declaring it here is what
-// makes it win over the inner tool's.
+// Unwrap preserves the inner Tool's scheduling and mutation declarations.
 func (p *pathLocked) Unwrap() toolcontract.Tool { return p.inner }
 
 func (p *pathLocked) Call(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
@@ -123,33 +110,4 @@ func (p *pathLocked) Call(ctx context.Context, invocation toolcontract.Invocatio
 		defer release()
 	}
 	return p.inner.Call(ctx, invocation)
-}
-
-func (p *pathLocked) ConcurrencyKey(invocation toolcontract.Invocation) (key string, concurrent bool) {
-	// Read the declaration through the wrapping chain: the tool underneath is
-	// itself decorated, and a one-level look would silently make every guarded
-	// file tool exclusive.
-	capability, ok, err := toolcontract.Capability[concurrentTool](p.inner)
-	if err != nil || !ok {
-		return "", false
-	}
-	key, concurrent = capability.ConcurrencyKey(invocation)
-	if !concurrent {
-		return "", false
-	}
-	paths, err := resolvedMutationPaths(p.inner, invocation, p.cwd)
-	if err != nil {
-		return "", false
-	}
-	switch len(paths) {
-	case 0:
-		return key, true
-	case 1:
-		return fileResourceKeyPrefix + paths[0], true
-	default:
-		// One key cannot express partial overlap between multi-file calls.
-		// Keep such a tool exclusive until the scheduler has a resource-set
-		// contract.
-		return "", false
-	}
 }

@@ -122,17 +122,17 @@ func (i *interactionSession) failDelegateAdmission(
 	return cause
 }
 
-func (i *interactionSession) acknowledgeProcessStartOutcome(
+func (i *interactionSession) acknowledgeProcessInitializationOutcome(
 	ctx context.Context,
-	outcome agent.ProcessStartOutcome,
+	outcome agent.ProcessInitializationOutcome,
 ) error {
 	if !outcome.Valid() {
-		return errors.New("agentexec: Interaction received an invalid Process start outcome")
+		return errors.New("agentexec: Interaction received an invalid Process initialization outcome")
 	}
 	admission := outcome.Admission()
 	relation := admission.Relation()
 	if relation.IsRoot() {
-		if outcome.Status() != agent.ProcessStartOutcomeStatusStarted {
+		if outcome.Status() != agent.ProcessInitializationOutcomeStatusInitialized {
 			return errors.New("agentexec: accepted Interaction root aborted during initialization")
 		}
 		return nil
@@ -140,7 +140,7 @@ func (i *interactionSession) acknowledgeProcessStartOutcome(
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
-	// A Tool call's child Process carries no Delegate binding, so its start
+	// A Tool call's child Process carries no Delegate binding, so its initialization
 	// outcome has nothing to acknowledge against one.
 	if deployments != nil && deployments.toolChild(admission.DeploymentRef()) {
 		return nil
@@ -151,16 +151,16 @@ func (i *interactionSession) acknowledgeProcessStartOutcome(
 	managed := i.state.delegateCalls[delegateCallIdentity{parentID: parentID, childKey: childKey}]
 	i.state.mu.Unlock()
 	if managed == nil {
-		return errors.New("agentexec: child start outcome has no Delegate admission")
+		return errors.New("agentexec: child initialization outcome has no Delegate admission")
 	}
 	managed.mu.Lock()
 	defer managed.mu.Unlock()
 	if !sameManagedAdmission(managed.admission, admission) || managed.binding.MemberID == "" {
-		return errors.New("agentexec: child start outcome differs from its reservation")
+		return errors.New("agentexec: child initialization outcome differs from its reservation")
 	}
 	applicationOutcome := runs.ChildRunStartAborted
 	startedAt, hasStartedAt := outcome.StartedAt()
-	if outcome.Status() == agent.ProcessStartOutcomeStatusStarted {
+	if outcome.Status() == agent.ProcessInitializationOutcomeStatusInitialized {
 		if !hasStartedAt {
 			return errors.New("agentexec: started child outcome has no lifecycle start time")
 		}
@@ -179,7 +179,7 @@ func (i *interactionSession) acknowledgeProcessStartOutcome(
 		return err
 	}
 	if err := receipt.Await(ctx); err != nil {
-		if outcome.Status() == agent.ProcessStartOutcomeStatusStarted {
+		if outcome.Status() == agent.ProcessInitializationOutcomeStatusInitialized {
 			if finishErr := i.finishDelegateTool(
 				ctx,
 				managed,
@@ -195,7 +195,7 @@ func (i *interactionSession) acknowledgeProcessStartOutcome(
 		}
 		return err
 	}
-	if outcome.Status() == agent.ProcessStartOutcomeStatusAborted {
+	if outcome.Status() == agent.ProcessInitializationOutcomeStatusFailed {
 		failure, _ := outcome.Failure()
 		return i.finishDelegateTool(
 			ctx,

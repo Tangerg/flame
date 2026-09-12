@@ -15,8 +15,8 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-type concurrencyKeyer interface {
-	ConcurrencyKey(invocation toolcontract.Invocation) (key string, concurrent bool)
+type concurrencyPolicy interface {
+	ConcurrencyPolicy() func(toolcontract.Invocation) (key string, concurrent bool)
 }
 
 func TestInputSchemaRejectsMissingAndInvalidValues(t *testing.T) {
@@ -72,7 +72,7 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 
 	got := make(map[string]bool, len(wrapped))
 	for _, tool := range wrapped {
-		keyer, ok := tool.(concurrencyKeyer)
+		keyer, ok := tool.(concurrencyPolicy)
 		if !ok {
 			t.Fatalf("tool %q does not expose concurrency policy", tool.Definition().Name)
 		}
@@ -80,13 +80,13 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 		if err != nil {
 			t.Fatal(err)
 		}
-		invocation, err := binding.Prepare(chat.ToolCall{
-			ID: "test_call", Name: binding.Definition().Name, Arguments: `{"id":"one"}`,
+		invocation, err := binding.Contract().Prepare(chat.ToolCall{
+			ID: "test_call", Name: binding.Contract().Definition().Name, Arguments: `{"id":"one"}`,
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		key, concurrent := keyer.ConcurrencyKey(invocation)
+		key, concurrent := keyer.ConcurrencyPolicy()(invocation)
 		if key != "" {
 			t.Fatalf("tool %q concurrency key = %q, want empty", tool.Definition().Name, key)
 		}

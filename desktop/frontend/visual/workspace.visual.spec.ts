@@ -487,6 +487,25 @@ test("settings filtering and menu dismissal stay inside production semantics", a
   await expect(theme).toBeFocused();
 });
 
+test("font smoothing updates the browser rendering preference and survives reload", async ({
+  page,
+}) => {
+  await openWorkspace(page, { state: "settings" });
+  await waitForWorkspaceState(page, "settings");
+
+  const smoothing = page.getByRole("checkbox", { name: en["settings.font.smoothing"]! });
+  await smoothing.uncheck();
+  await expect(page.locator("html")).toHaveCSS("-webkit-font-smoothing", "auto");
+
+  await page.reload();
+  await page.locator("html[data-visual-ready]").waitFor();
+  await expect(smoothing).not.toBeChecked();
+  await expect(page.locator("html")).toHaveCSS("-webkit-font-smoothing", "auto");
+
+  await smoothing.check();
+  await expect(page.locator("html")).toHaveCSS("-webkit-font-smoothing", "antialiased");
+});
+
 test("accent selection gives an immediate, durable visual acknowledgement", async ({ page }) => {
   await openWorkspace(page, { state: "settings" });
   await waitForWorkspaceState(page, "settings");

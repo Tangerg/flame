@@ -114,6 +114,10 @@ func (r *runtimeSkillSource) loadSummary(ctx context.Context, name string) (sdk.
 	return skill.Summary(), true, nil
 }
 
+func (r *runtimeSkillSource) Lookup(ctx context.Context, name string) (sdk.Summary, error) {
+	return r.resources.Lookup(ctx, name)
+}
+
 func (r *runtimeSkillSource) Load(ctx context.Context, name string) (*sdk.Skill, error) {
 	if !validRuntimeSkillName(name) {
 		return nil, fmt.Errorf("%w %q: invalid name", sdk.ErrInvalidSkill, name)
@@ -123,6 +127,10 @@ func (r *runtimeSkillSource) Load(ctx context.Context, name string) (*sdk.Skill,
 	}
 	source, err := r.openSkillDocument(name)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			_, lookupErr := r.Lookup(ctx, name)
+			return nil, errors.Join(err, lookupErr)
+		}
 		return nil, err
 	}
 	content, err := readSkillDocument(ctx, name, source)

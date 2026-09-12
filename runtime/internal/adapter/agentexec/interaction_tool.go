@@ -67,7 +67,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	if prepareErr != nil {
 		// Only definite model-visible failures enter durable Tool settlement.
 		// Interaction retains ownership of input waits and uncertain effects.
-		if _, present := invocation.ModelResult(corechat.ToolOutput{}, prepareErr); !present {
+		if toolControlOutcome(prepareErr) {
 			return corechat.ToolOutput{}, prepareErr
 		}
 	} else {
@@ -111,7 +111,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		// classify the whole Effect as unknown.
 		callErr = errInteractionRunCanceled
 	}
-	if _, ok := errors.AsType[*interaction.ToolInputRequiredError](callErr); ok {
+	if errors.Is(callErr, interaction.ErrToolInputRequired) {
 		// Tool input is an Interaction control boundary, not a failed external
 		// call. The started fact remains open so the Run barrier can carry it as
 		// a drained Tool; the restored invocation will commit the sole final fact
@@ -119,16 +119,15 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		return corechat.ToolOutput{}, callErr
 	}
 	modelOutput, offload := o.offload(ctx, call.Name, output, callErr)
-	modelResult, modelResultPresent := invocation.ModelResult(modelOutput, callErr)
-	var exactModelResult *corechat.ToolResult
-	if modelResultPresent {
-		exactModelResult = &modelResult
+	modelResult, feedbackErr := toolFeedback(call, modelOutput, callErr)
+	if callErr == nil {
+		callErr = feedbackErr
 	}
 	end := o.finishedFact(
 		callID,
 		arguments,
 		modelOutput,
-		exactModelResult,
+		modelResult,
 		offload,
 		normalizeMutationPaths(mutatedPaths),
 		callErr,
@@ -150,7 +149,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	if prepareErr == nil {
 		o.runAfterToolUseHook(ctx, callID, call.Name, arguments, modelOutput, callErr)
 	}
-	return modelOutput, callErr
+	return modelOutput, feedbackErr
 }
 
 // invoke validates the effective arguments before entering the external Tool.
@@ -160,7 +159,7 @@ func (o *observedInteractionTool) invoke(
 	ctx context.Context,
 	call corechat.ToolCall,
 ) (corechat.ToolOutput, error) {
-	bound, err := o.binding.Prepare(call)
+	bound, err := o.binding.Contract().Prepare(call)
 	if err != nil {
 		return corechat.ToolOutput{}, fmt.Errorf("agentexec: prepare Tool %q invocation: %w", call.Name, err)
 	}
@@ -215,7 +214,8 @@ func (o *observedInteractionTool) settleDeniedToolCall(
 		reason = "tool call denied by policy"
 	}
 	denialOutput := corechat.NewTextToolOutput(reason)
-	modelResult, _ := invocation.ModelResult(denialOutput, nil)
+	call := invocation.ToolCall()
+	modelResult := corechat.ToolResult{ID: call.ID, Name: call.Name, Output: denialOutput}
 	end := o.finishedFact(callID, arguments, denialOutput, &modelResult, nil, nil, errors.New(reason))
 	end.Failure = &tool.Failure{Kind: tool.FailureDenied}
 	if err := o.session.commitFact(ctx, member, end); err != nil {

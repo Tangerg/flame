@@ -285,14 +285,14 @@ func (i *InteractionExecutor) assembleInteraction(
 		return nil, installDeploymentsErr
 	}
 	engine, err := agent.NewEngine(agent.EngineConfig{
-		DeploymentResolver:              deployments,
-		ProcessAdmitter:                 agent.ProcessAdmitterFunc(session.admitProcess),
-		ProcessStartOutcomeAcknowledger: agent.ProcessStartOutcomeAcknowledgerFunc(session.acknowledgeProcessStartOutcome),
-		EventListeners:                  []agent.EventListener{agent.EventListenerFunc(session.observeFrameworkEvent)},
-		DeltaListeners:                  []agent.DeltaListener{agent.DeltaListenerFunc(session.projectDelta)},
-		DeltaBufferCapacity:             i.policy.deltaBufferCapacity,
-		Limits:                          agent.DefaultLimits(),
-		TreeLimits:                      deployments.treeLimits,
+		DeploymentResolver:                       deployments,
+		ProcessAdmitter:                          agent.ProcessAdmitterFunc(session.admitProcess),
+		ProcessInitializationOutcomeAcknowledger: agent.ProcessInitializationOutcomeAcknowledgerFunc(session.acknowledgeProcessInitializationOutcome),
+		EventListeners:                           []agent.EventListener{agent.EventListenerFunc(session.observeFrameworkEvent)},
+		DeltaListeners:                           []agent.DeltaListener{agent.DeltaListenerFunc(session.projectDelta)},
+		DeltaBufferCapacity:                      i.policy.deltaBufferCapacity,
+		Limits:                                   agent.DefaultLimits(),
+		TreeLimits:                               deployments.treeLimits,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: build Interaction engine: %w", err)

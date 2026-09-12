@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/localruntime"
 )
 
 func mustDesktopHost(t *testing.T, home string) *DesktopHost {
@@ -35,11 +37,15 @@ func (i imageSaverFunc) SaveImage(suggestedFilename string, contents []byte) (bo
 func TestDesktopHostBootstrap(t *testing.T) {
 	home := t.TempDir()
 	host := mustDesktopHost(t, home)
-	if err := os.MkdirAll(filepath.Join(home, ".flame"), 0o700); err != nil {
+	directory, err := localruntime.DefaultDataDirectory(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(directory.Path(), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	value := base64.RawURLEncoding.EncodeToString(make([]byte, 32))
-	if err := os.WriteFile(filepath.Join(home, ".flame", "local-token"), []byte(value), 0o600); err != nil {
+	if err := os.WriteFile(directory.LocalTokenPath(), []byte(value), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	bootstrap, err := host.Bootstrap()
@@ -68,11 +74,15 @@ func TestDesktopHostBootstrapRejectsInvalidDurableCredentials(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			home := t.TempDir()
-			root := filepath.Join(home, ".flame")
+			directory, err := localruntime.DefaultDataDirectory(home)
+			if err != nil {
+				t.Fatal(err)
+			}
+			root := directory.Path()
 			if err := os.MkdirAll(root, 0o700); err != nil {
 				t.Fatal(err)
 			}
-			tokenPath := filepath.Join(root, "local-token")
+			tokenPath := directory.LocalTokenPath()
 			writePath := tokenPath
 			if test.link {
 				writePath = filepath.Join(root, "actual-token")

@@ -70,20 +70,6 @@ func TestPathLockUsesPhysicalIdentityForSymlinkAlias(t *testing.T) {
 	}
 }
 
-func TestPathLockKeepsMultiFilePatchExclusive(t *testing.T) {
-	cwd := t.TempDir()
-	tool := withPathLock(mustApplyPatchTool(t, mustLocalExecutor(t, cwd)), newPathLocker(), cwd)
-	policy, ok, err := toolcontract.Capability[concurrentTool](tool)
-	if err != nil || !ok {
-		t.Fatal("path-locked apply_patch does not expose concurrency policy")
-	}
-	invocation := mustTestInvocation(t, tool, `{"patch":"--- a/one.txt\n+++ b/one.txt\n--- a/two.txt\n+++ b/two.txt\n"}`)
-	key, concurrent := policy.ConcurrencyKey(invocation)
-	if key != "" || concurrent {
-		t.Fatalf("apply_patch concurrency = %q, %v; want exclusive", key, concurrent)
-	}
-}
-
 // TestAssembledFileToolStillReportsWhatItMutates pins the wrapping chain
 // through the real stack. A guarded mutation tool is six wrappers deep, and
 // everything above it asks the OUTERMOST tool what the call will touch — the

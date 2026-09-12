@@ -12,7 +12,7 @@ const CASES: readonly [name: string, markdown: string, blocks: readonly string[]
   [
     "a block element spans every token until it closes",
     "<div>\n\npara\n\n</div>\n\nafter",
-    ["<div>\n\npara\n\n</div>\n\n", "after"],
+    ["<div>\n\npara\n\n</div>", "\n\n", "after"],
   ],
   [
     "an odd display fence keeps what follows",
@@ -26,12 +26,12 @@ const CASES: readonly [name: string, markdown: string, blocks: readonly string[]
   ],
   ["a footnote reference keeps the document whole", "see[^a]\n\nbeta", ["see[^a]\n\nbeta"]],
   ["a footnote definition keeps the document whole", "[^a]: note\n\nbeta", ["[^a]: note\n\nbeta"]],
-  ["a void element opens nothing", "<img src=x>\n\npara", ["<img src=x>\n\n", "para"]],
-  ["a self-closing element opens nothing", "<div />\n\npara", ["<div />\n\n", "para"]],
+  ["a void element opens nothing", "<img src=x>\n\npara", ["<img src=x>", "\n\n", "para"]],
+  ["a self-closing element opens nothing", "<div />\n\npara", ["<div />", "\n\n", "para"]],
   [
     "nesting pops one level at a time",
     "<div>\n<div>\nnested\n</div>\n</div>\n\nend",
-    ["<div>\n<div>\nnested\n</div>\n</div>\n\n", "end"],
+    ["<div>\n<div>\nnested\n</div>\n</div>", "\n\n", "end"],
   ],
   [
     "a fence is literal text, not a math fence",
@@ -42,7 +42,11 @@ const CASES: readonly [name: string, markdown: string, blocks: readonly string[]
 
 describe("splitStreamingBlocks", () => {
   for (const [name, markdown, blocks] of CASES)
-    it(`${name}`, () => expect(splitStreamingBlocks(markdown)).toEqual([...blocks]));
+    it(`${name}`, () => {
+      const result = splitStreamingBlocks(markdown);
+      expect(result).toEqual([...blocks]);
+      expect(result.join("")).toBe(markdown);
+    });
 
   it("leaves settled blocks byte-identical as the tail grows", () => {
     const document = "# Title\n\nfirst para\n\n```js\nconst a = 1;\n```\n\nlast para";

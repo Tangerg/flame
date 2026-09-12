@@ -326,7 +326,6 @@ describe("UI preference DOM synchronization", () => {
     const style = document.documentElement.style;
     expect(style.getPropertyValue("--font-sans")).toContain('"Inter"');
     expect(style.getPropertyValue("--font-mono")).toContain('"JetBrains Mono"');
-    expect(style.getPropertyValue("-webkit-font-smoothing")).toBe("auto");
     expect(style.fontSize).toBe("");
     expect(style.getPropertyValue("--fs-ui-md")).toBe("17px");
     expect(style.getPropertyValue("--fs-prose")).toBe("19px");

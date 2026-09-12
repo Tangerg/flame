@@ -31,6 +31,10 @@ type stubResourceSource struct{ loadErr error }
 
 func (stubResourceSource) List(context.Context) ([]skillspec.Summary, error) { return nil, nil }
 
+func (stubResourceSource) Lookup(_ context.Context, name string) (skillspec.Summary, error) {
+	return skillspec.Summary{Name: name, Description: "d"}, nil
+}
+
 func (s stubResourceSource) Load(_ context.Context, name string) (*skillspec.Skill, error) {
 	if s.loadErr != nil {
 		return nil, s.loadErr

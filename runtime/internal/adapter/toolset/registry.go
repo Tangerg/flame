@@ -82,7 +82,7 @@ func (DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argumen
 		if bindErr != nil {
 			return tool.Result{}, fmt.Errorf("toolset: bind direct tool %q: %w", name, bindErr)
 		}
-		invocation, prepareErr := binding.Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: normalized})
+		invocation, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: normalized})
 		if prepareErr != nil {
 			return tool.Result{}, fmt.Errorf("toolset: prepare direct tool %q: %w", name, prepareErr)
 		}
