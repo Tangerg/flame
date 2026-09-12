@@ -4,9 +4,8 @@ import { useCallback, useRef, useState } from "react";
 import { Badge, Collapsible, DataView, PillButton, Tag, TextButton, vocab, Well } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { type as typeStep } from "@/styles/tokens.stylex";
-import { viewStyles as vs } from "./views/viewStyles";
+import { viewStyles as vs } from "./viewStyles";
 import { notifyError } from "@/plugins/sdk";
-import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import {
   useSkillProposals,
   type SkillProposal,
@@ -17,7 +16,7 @@ import {
 } from "@/plugins/builtin/workspace/application/skillCuration";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 
-export function SkillProposalsTab() {
+export function SkillProposals() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const { data, isLoading, isError, refetch } = useSkillProposals(
@@ -26,11 +25,10 @@ export function SkillProposalsTab() {
   const proposals = data ?? [];
 
   return (
-    <WorkspaceViewLayout
-      icon="sparkle"
-      title="skillProposals.title"
-      sub={t("skillProposals.sub", { count: proposals.length })}
-    >
+    <>
+      <div {...stylex.props(vs.gutter, vs.rowPad, typeStep.uiSm, vocab.muted)}>
+        {t("skillProposals.sub", { count: proposals.length })}
+      </div>
       <DataView
         items={proposals}
         isLoading={isLoading || workspace.status === "resolving"}
@@ -51,7 +49,7 @@ export function SkillProposalsTab() {
           </div>
         )}
       </DataView>
-    </WorkspaceViewLayout>
+    </>
   );
 }
 

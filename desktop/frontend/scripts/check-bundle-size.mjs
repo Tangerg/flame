@@ -128,8 +128,6 @@ const LAZY_FEATURES = [
       "plan-",
       "recipes-",
       "search-",
-      "skillLibrary-",
-      "skillProposals-",
       "skills-",
       "timeline-",
       "tools-",

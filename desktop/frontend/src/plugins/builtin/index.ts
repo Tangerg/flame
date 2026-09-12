@@ -99,8 +99,6 @@ import {
   recipesView,
   searchView,
   skillsView,
-  skillLibraryView,
-  skillProposalsView,
   timelineView,
   toolsView,
 } from "./workspace/workspace-views";
@@ -197,8 +195,6 @@ const panes: AnyPlugin[] = [
   timelineView,
   toolsView,
   skillsView,
-  skillLibraryView,
-  skillProposalsView,
   recipesView,
   searchView,
   agentDocsView,

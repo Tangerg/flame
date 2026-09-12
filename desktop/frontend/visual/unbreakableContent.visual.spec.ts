@@ -88,8 +88,6 @@ const DOCK_STATES = [
   "dock-review",
   "dock-inbox",
   "dock-agent-memory",
-  "dock-skill-library",
-  "dock-skill-proposals",
   "dock-recipes",
   "dock-knowledge",
   "dock-timeline",

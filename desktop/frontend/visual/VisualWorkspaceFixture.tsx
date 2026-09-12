@@ -21,8 +21,6 @@ const STATE_LABELS: Record<VisualWorkspaceState, string> = {
   "dock-runs": "Run tree",
   "dock-explorer": "Explorer",
   "dock-search": "Search",
-  "dock-skill-proposals": "Skill proposals",
-  "dock-skill-library": "Skill library",
   "dock-recipes": "Recipes",
   "dock-agent-docs": "Agent docs",
   "dock-skills": "Skills",

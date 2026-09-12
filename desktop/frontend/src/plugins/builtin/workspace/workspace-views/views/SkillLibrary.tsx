@@ -4,27 +4,25 @@ import { useCallback, useRef, useState } from "react";
 import { DataView, gap, PillButton, SectionLabel, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { type as typeStep } from "@/styles/tokens.stylex";
-import { viewStyles as vs } from "./views/viewStyles";
+import { viewStyles as vs } from "./viewStyles";
 import { notifyError } from "@/plugins/sdk";
-import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import {
   useManagedSkills,
   type ManagedSkill,
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { archiveSkill, restoreSkill } from "@/plugins/builtin/workspace/application/skillCuration";
 
-export function SkillLibraryTab() {
+export function SkillLibrary() {
   const t = useT();
   const { data, isLoading, isError, refetch } = useManagedSkills();
   const skills = data ?? [];
   const activeCount = skills.filter((s) => s.lifecycle === "active").length;
 
   return (
-    <WorkspaceViewLayout
-      icon="sparkle"
-      title="skillLibrary.title"
-      sub={t("skillLibrary.sub", { active: activeCount, archived: skills.length - activeCount })}
-    >
+    <>
+      <div {...stylex.props(vs.gutter, vs.rowPad, typeStep.uiSm, vocab.muted)}>
+        {t("skillLibrary.sub", { active: activeCount, archived: skills.length - activeCount })}
+      </div>
       <DataView
         items={skills}
         isLoading={isLoading}
@@ -52,7 +50,7 @@ export function SkillLibraryTab() {
           );
         }}
       </DataView>
-    </WorkspaceViewLayout>
+    </>
   );
 }
 

@@ -35,8 +35,6 @@ export const VISUAL_WORKSPACE_STATES = [
   "dock-runs",
   "dock-explorer",
   "dock-search",
-  "dock-skill-proposals",
-  "dock-skill-library",
   "dock-recipes",
   "dock-agent-docs",
   "dock-skills",

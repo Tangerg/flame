@@ -1,65 +1,34 @@
-import * as stylex from "@stylexjs/stylex";
-import { DataView, Tag, vocab } from "@/ui";
-import { type as typeStep } from "@/styles/tokens.stylex";
-import { viewStyles as vs } from "./views/viewStyles";
+import { useState } from "react";
+import { Segmented } from "@/ui";
 import { useT } from "@/lib/i18n";
+import { AvailableSkills } from "./views/AvailableSkills";
+import { SkillLibrary } from "./views/SkillLibrary";
+import { SkillProposals } from "./views/SkillProposals";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
-import { useWorkspaceSkills } from "@/plugins/builtin/workspace/application/workspaceQueries";
-import { useWorkspaceCapability } from "@/plugins/builtin/workspace/application/workspaceCapabilities";
-import { workspaceSkillsViewModel } from "@/plugins/builtin/workspace/application/workspaceCatalogViewModel";
-import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
+
+type SkillSection = "available" | "review" | "library";
 
 export function SkillsTab() {
   const t = useT();
-  const skillsEnabled = useWorkspaceCapability("skills");
-  const workspace = useActiveSessionWorkspace();
-  const { data, isLoading, isError, refetch } = useWorkspaceSkills(
-    workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
+  const [section, setSection] = useState<SkillSection>("available");
+  const actions = (
+    <Segmented
+      value={section}
+      onChange={setSection}
+      ariaLabel={t("skills.title")}
+      options={[
+        { value: "available", label: t("skills.tab.available") },
+        { value: "review", label: t("skills.tab.review") },
+        { value: "library", label: t("skills.tab.library") },
+      ]}
+    />
   );
-  const view = workspaceSkillsViewModel(data ?? [], skillsEnabled);
 
   return (
-    <WorkspaceViewLayout
-      icon="sparkle"
-      title="skills.title"
-      sub={view.enabled ? t("skills.available", { count: view.count }) : t("skills.off")}
-    >
-      <DataView
-        items={view.rows}
-        isLoading={view.enabled && (isLoading || workspace.status === "resolving")}
-        isError={isError}
-        onRetry={refetch}
-        skeletonCount={4}
-        empty={
-          skillsEnabled
-            ? {
-                icon: "sparkle",
-                title: t("skills.empty.title"),
-                sub: t("skills.empty.sub"),
-              }
-            : {
-                icon: "sparkle",
-                title: t("skills.disabled.title"),
-                sub: t("skills.disabled.sub"),
-              }
-        }
-      >
-        {(rows) => (
-          <div {...stylex.props(vocab.column)}>
-            {rows.map((s) => (
-              <div key={s.id} {...stylex.props(vs.gutter, vs.rowPad)}>
-                <div {...stylex.props(vocab.line, vocab.min)}>
-                  <div {...stylex.props(vs.title, vocab.truncate, typeStep.uiMd)}>{s.name}</div>
-                  {s.scope && <Tag>{s.scope}</Tag>}
-                </div>
-                {s.description && (
-                  <div {...stylex.props(vs.description, typeStep.uiSm)}>{s.description}</div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </DataView>
+    <WorkspaceViewLayout icon="sparkle" title="skills.title" actions={actions}>
+      {section === "available" && <AvailableSkills />}
+      {section === "review" && <SkillProposals />}
+      {section === "library" && <SkillLibrary />}
     </WorkspaceViewLayout>
   );
 }

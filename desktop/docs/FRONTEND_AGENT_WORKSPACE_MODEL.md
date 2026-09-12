@@ -158,6 +158,8 @@ Context Dock 是当前 session/cwd 的材料区。它不是永久抢戏的第三
 
 Each capability has one dock destination. Review owns changed-file navigation and diffs.
 The conversation owns command execution output; a read-only command history is not a terminal.
+Skills owns discovery, proposal review, and personal library curation inside one destination.
+Its internal sections share the dock tab; they do not register separate workspace views.
 Do not add separate summary or statistics panels that repackage the same execution facts.
 
 Context Dock 的内容由 active `Session.cwd` 驱动。切换 session 后，应恢复该 session 自己的 dock 状态，而不是共享一份全局状态。

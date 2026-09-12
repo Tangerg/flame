@@ -699,6 +699,9 @@ export const zh: Record<string, string> = {
   "approval.fallbackText": "批准此操作？",
 
   "skills.title": "技能",
+  "skills.tab.available": "可用",
+  "skills.tab.review": "审核",
+  "skills.tab.library": "个人库",
   "skills.available": "{{count}} 个可用",
   "skills.off": "关闭",
   "skills.empty.title": "无技能",
@@ -893,8 +896,6 @@ export const zh: Record<string, string> = {
 
   // Filled 2026-07 — these keys had fallen behind en.
   "composer.drop.images": "拖入图片以附加",
-  "workspace.view.title.skillLibrary": "技能库",
-  "skillLibrary.title": "技能库",
   "skillLibrary.sub": "{{active}} 个启用 · {{archived}} 个已归档",
   "skillLibrary.section.active": "启用中",
   "skillLibrary.section.archived": "已归档",
@@ -905,8 +906,6 @@ export const zh: Record<string, string> = {
   "skillLibrary.error": "无法更新该技能。",
   "plan.unavailable.title": "计划不可用",
   "plan.unavailable.sub": "当前运行时未提供智能体的计划。",
-  "workspace.view.title.skillProposals": "技能提案",
-  "skillProposals.title": "技能提案",
   "skillProposals.sub": "{{count}} 条待审阅",
   "skillProposals.approve": "批准",
   "skillProposals.reject": "拒绝",
