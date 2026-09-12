@@ -12,7 +12,6 @@ import { vocab } from "@/ui";
 
 interface Props {
   tools: ToolCall[];
-  onSelectTool: (id: string) => void;
   expandedIds: Set<string>;
   onToggleExpand: (id: string) => void;
   superseded?: boolean;
@@ -22,7 +21,7 @@ const tg = stylex.create({
   members: { display: "flex", flexDirection: "column", gap: space.s1 },
 });
 
-export function ToolGroup({ tools, onSelectTool, expandedIds, onToggleExpand, superseded }: Props) {
+export function ToolGroup({ tools, expandedIds, onToggleExpand, superseded }: Props) {
   const [pinned, setPinned] = useState<ToolGroupPinnedState>(null);
   const t = useT();
   const model = toolGroupModel(t, tools, pinned, superseded);
@@ -48,10 +47,7 @@ export function ToolGroup({ tools, onSelectTool, expandedIds, onToggleExpand, su
             key={tool.id}
             tool={tool}
             expanded={expandedIds.has(tool.id)}
-            onToggleExpand={() => {
-              onSelectTool(tool.id);
-              onToggleExpand(tool.id);
-            }}
+            onToggleExpand={() => onToggleExpand(tool.id)}
           />
         ))}
       </div>

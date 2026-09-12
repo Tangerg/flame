@@ -33,7 +33,6 @@ export { ProgressBar } from "./progress-bar";
 export { ProviderIcon, providerDisplayName } from "./provider-icon";
 export { ScrollArea } from "./scroll-area";
 export { SearchField } from "./text-field";
-export { Sparkline } from "./sparkline";
 export { SearchOverlay } from "./search-overlay";
 export { SectionLabel } from "./section-label";
 export { SelectTrigger } from "./select-trigger";

@@ -151,10 +151,14 @@ Context Dock 是当前 session/cwd 的材料区。它不是永久抢戏的第三
 
 - review mode：changed files + checklist + diff + inline comments。
 - file mode：file tree + opened file + breadcrumb。
-- tool mode：selected tool call detail + outputs。
-- run mode：完整 Run tree、按 source Run 组织的 Timeline、Session tool log。
+- tool diagnostics: one catalog for available tools, MCP status, and explicit diagnostic invocation.
+- run inspection: the Run tree and Timeline preserve source Run identity; individual tool output stays in the conversation.
 - search mode：grep / symbols；不维护独立向量索引状态。
 - memory / skills / recipes：围绕当前 cwd 展示。
+
+Each capability has one dock destination. Review owns changed-file navigation and diffs.
+The conversation owns command execution output; a read-only command history is not a terminal.
+Do not add separate summary or statistics panels that repackage the same execution facts.
 
 Context Dock 的内容由 active `Session.cwd` 驱动。切换 session 后，应恢复该 session 自己的 dock 状态，而不是共享一份全局状态。
 
@@ -397,7 +401,7 @@ P129 进一步固定 Conversation 与 Transcript 的可见性边界：Applicatio
 
 已落地：
 
-- Context Dock 的 `dockViewIds`、`lastViewId`、`fileFocus`、`fileViewer`、`selectedToolId`、`expandedToolIds` 已按 active session scope 保存/恢复。
+- Context Dock 的 `dockViewIds`、`lastViewId`、`fileFocus`、`fileViewer`、`expandedToolIds` 已按 active session scope 保存/恢复。
 - 切换 session 会保存离开的 dock scope，恢复进入的 dock scope；没有保存过的 session 使用空 scope。
 - 关闭 session 后会清理不再打开的 dock scope。
 - app-global surface state 住在路由 search param（`lib/navigation`），session-scoped dock state 在 `contextDockStore`。

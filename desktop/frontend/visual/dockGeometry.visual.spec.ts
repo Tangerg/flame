@@ -74,7 +74,6 @@ const NAMING_VIEWS = [
   "dock-skills",
   "dock-knowledge",
   "dock-search",
-  "dock-files",
   "dock-inbox",
   "dock-review",
   "dock-runs",

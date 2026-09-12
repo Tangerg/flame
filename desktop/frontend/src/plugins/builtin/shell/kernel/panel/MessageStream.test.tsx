@@ -85,7 +85,6 @@ vi.mock("use-stick-to-bottom", () => {
 import { MessageStream, type MessageStreamController } from "./MessageStream";
 
 const CTX: BlockCtx = {
-  onSelectTool: vi.fn(),
   expandedIds: new Set(),
   onToggleExpand: vi.fn(),
   textReveal: "smooth",

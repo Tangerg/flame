@@ -45,15 +45,6 @@ export const fileView = defineWorkspaceView({
   component: lazy(() => import("./file").then((m) => ({ default: m.FileViewTab }))),
 });
 
-export const filesView = defineWorkspaceView({
-  id: "files",
-  title: "workspace.view.title.files",
-  icon: "filetext",
-  order: 30,
-  dock: "workspace",
-  component: lazy(() => import("./files").then((m) => ({ default: m.FilesView }))),
-});
-
 export const diffView = defineWorkspaceView({
   id: "diff",
   title: "workspace.view.title.diff",
@@ -62,17 +53,6 @@ export const diffView = defineWorkspaceView({
   order: 40,
   dock: "workspace",
   component: lazy(() => import("./diff").then((m) => ({ default: m.DiffWorkspaceSurface }))),
-});
-
-export const terminalView = defineWorkspaceView({
-  id: "terminal",
-  title: "workspace.view.title.terminal",
-  icon: "terminal",
-  order: 60,
-  dock: "workspace",
-  component: lazy(() =>
-    import("./terminal").then((m) => ({ default: m.TerminalWorkspaceSurface })),
-  ),
 });
 
 export const toolsView = defineWorkspaceView({
@@ -157,15 +137,6 @@ export const planView = defineWorkspaceView({
   component: lazy(() => import("./plan").then((m) => ({ default: m.PlanTab }))),
 });
 
-export const runSummaryView = defineWorkspaceView({
-  id: "run-summary",
-  title: "workspace.view.title.runSummary",
-  icon: "check",
-  order: 130,
-  dock: "run",
-  component: lazy(() => import("./run-summary").then((m) => ({ default: m.RunSummaryTab }))),
-});
-
 export const timelineView = defineWorkspaceView({
   id: "timeline",
   title: "workspace.view.title.timeline",
@@ -182,13 +153,4 @@ export const notificationsView = defineWorkspaceView({
   order: 145,
   dock: "session",
   component: lazy(() => import("./notifications").then((m) => ({ default: m.NotificationsTab }))),
-});
-
-export const toolStatsView = defineWorkspaceView({
-  id: "tool-stats",
-  title: "workspace.view.title.toolStats",
-  icon: "chart",
-  order: 150,
-  dock: "session",
-  component: lazy(() => import("./toolStats").then((m) => ({ default: m.ToolStatsTab }))),
 });

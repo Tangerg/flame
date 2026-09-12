@@ -41,8 +41,6 @@ interface WorkspaceNavigationPort {
   useFileViewer(): WorkspaceFileViewer | null;
   useSettingsPaneTarget(): string | null;
   useExpandedToolIds(): Set<string>;
-  useSelectedToolId(): string;
-  useSelectTool(): (id: string) => void;
   useToggleTool(): (id: string) => void;
   useSidebarDrawer(): WorkspaceDrawer;
   useSidebarWidth(): WorkspaceColumnWidth;
@@ -64,8 +62,6 @@ interface WorkspaceNavigationPort {
   setSettingsPane(pane: string): void;
   focusFile(path: string): void;
   openFile(path: string, line?: number): void;
-  selectedToolId(): string;
-  setSelectedTool(id: string): void;
   locateTool(id: string): void;
   activateSessionScope(sessionId: string): void;
   forgetSessionScopes(openSessionIds: string[]): void;

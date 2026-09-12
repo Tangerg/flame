@@ -26,7 +26,7 @@ import {
   RootRunOutcome,
 } from "@/plugins/builtin/chat/message/public/rendering";
 import { transcriptTurnContentVisibility } from "./transcriptTurnContentVisibility";
-import { durationText } from "@/plugins/builtin/agent/public/runDigest";
+import { durationText } from "@/lib/format";
 import { useElapsedMillis } from "./useElapsedMillis";
 import { space } from "@/styles/tokens.stylex";
 

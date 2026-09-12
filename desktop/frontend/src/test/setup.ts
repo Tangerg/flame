@@ -64,7 +64,6 @@ beforeEach(async () => {
     lastViewId: null,
     fileFocus: WorkspaceFileFocus.empty(),
     fileViewer: null,
-    selectedToolId: "",
     expandedToolIds: new Set<string>(),
   });
 });

@@ -97,15 +97,6 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     await expect(page.getByText("+2", { exact: true })).toBeVisible();
     return;
   }
-  if (state === "dock-stats") {
-    const view = page.locator(".agent-workspace-view:visible");
-    await expect(view).toContainText("6 calls · 8.7s");
-    await expect(view).toContainText("1 failed");
-    await expect(view).toContainText("1 denied");
-    const listing = await view.innerText();
-    expect(listing.indexOf("shell")).toBeLessThan(listing.indexOf("read"));
-    return;
-  }
   if (state === "dock-tools") {
     const view = page.locator(".agent-workspace-view:visible");
     const listing = await view.innerText();
@@ -150,7 +141,6 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     "dock-knowledge": "2 scopes",
     "dock-agent-memory": "1 pending",
     "dock-feature-off": "Skills are off",
-    "dock-run-summary": "run_root",
     "dock-notifications": "No notifications",
   };
   const catalogueReady = CATALOGUE_READY[state];
@@ -164,37 +154,10 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     );
     return;
   }
-  if (state === "dock-files") {
-    const view = page.locator(".agent-workspace-view:visible");
-    await expect(view).toContainText("2 files changed");
-    await expect(view).toContainText("DockResizer.tsx");
-    return;
-  }
   if (state === "dock-explorer") {
     const view = page.locator(".agent-workspace-view:visible");
     await expect(view).toContainText("go.mod");
     await expect(view).toContainText("README.md");
-    return;
-  }
-  if (state === "dock-terminal") {
-    const view = page.locator(".agent-workspace-view:visible");
-    await expect(view).toContainText("exit 1");
-    const failing = view.getByText("FAIL:", { exact: false }).first();
-    await expect(failing).toBeVisible();
-    expect(
-      await failing.evaluate((element) => {
-        const ink = getComputedStyle(element).color;
-        const negative = getComputedStyle(document.documentElement).getPropertyValue(
-          "--color-negative",
-        );
-        const probe = document.createElement("span");
-        probe.style.color = negative;
-        document.body.append(probe);
-        const resolved = getComputedStyle(probe).color;
-        probe.remove();
-        return ink === resolved;
-      }),
-    ).toBe(true);
     return;
   }
   if (state === "dock-error") {
@@ -216,7 +179,7 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
   }
   if (state === "full-view") {
     await expect(
-      page.getByRole("main").getByText(en["search.title"]!, { exact: true }),
+      page.getByRole("main").getByRole("searchbox", { name: en["search.aria"]! }),
     ).toBeVisible();
     return;
   }
@@ -244,7 +207,7 @@ test("collapse and reopen preserve the dock workspace", async ({ page }) => {
   await expect(page.getByTestId("dock-open")).toHaveText("false");
   await expect(page.getByTestId("active-dock-view")).toHaveText("");
   await expect(page.getByTestId("dock-view-ids")).toHaveText(
-    "explorer,file,diff,terminal,plan,timeline",
+    "explorer,file,diff,search,plan,timeline",
   );
   await page.getByRole("button", { name: "Open right workspace" }).click();
 
@@ -283,7 +246,7 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
     page.getByRole("button", { name: "Widen the window to open the right workspace" }),
   ).toBeDisabled();
   await expect(page.getByTestId("dock-view-ids")).toHaveText(
-    "explorer,file,diff,terminal,plan,timeline",
+    "explorer,file,diff,search,plan,timeline",
   );
 });
 
@@ -319,16 +282,16 @@ test("closing tabs selects a neighbor without collapsing the workspace", async (
 
   await page.getByRole("tab", { name: "Timeline" }).hover();
   await page.getByRole("button", { name: "Close Timeline" }).click();
-  await expect(page.getByTestId("active-dock-view")).toHaveText("terminal");
-  await expect(page.getByTestId("dock-view-ids")).toHaveText("explorer,file,diff,terminal");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("search");
+  await expect(page.getByTestId("dock-view-ids")).toHaveText("explorer,file,diff,search");
 });
 
 test("add-panel menu restores a closed singleton and focuses it", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
-  await page.getByRole("tab", { name: "Terminal" }).hover();
-  await page.getByRole("button", { name: "Close Terminal" }).click();
-  await expect(page.getByTestId("dock-view-ids")).not.toContainText("terminal");
+  await page.getByRole("tab", { name: "Search" }).hover();
+  await page.getByRole("button", { name: "Close Search" }).click();
+  await expect(page.getByTestId("dock-view-ids")).not.toContainText("search");
 
   await page.getByRole("button", { name: "Browse panels" }).click();
 
@@ -340,13 +303,13 @@ test("add-panel menu restores a closed singleton and focuses it", async ({ page 
   });
   expect(onTop).toBe(true);
 
-  await page.getByRole("combobox").fill("Terminal");
-  await page.getByRole("option", { name: "Terminal" }).waitFor();
+  await page.getByRole("combobox").fill("Search");
+  await page.getByRole("option", { name: "Search" }).waitFor();
   await page.keyboard.press("Enter");
 
-  await expect(page.getByTestId("active-dock-view")).toHaveText("terminal");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("search");
   await expect(page.getByTestId("dock-view-ids")).toHaveText(
-    "explorer,file,diff,plan,timeline,terminal",
+    "explorer,file,diff,plan,timeline,search",
   );
 });
 
@@ -357,9 +320,9 @@ test("dock tabs use roving focus and arrow-key activation", async ({ page }) => 
   await plan.focus();
   await plan.press("ArrowLeft");
 
-  await expect(page.getByTestId("active-dock-view")).toHaveText("terminal");
-  await expect(page.getByRole("tab", { name: "Terminal" })).toBeFocused();
-  await expect(page.getByRole("tab", { name: "Terminal" })).toHaveAttribute("data-active", "");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("search");
+  await expect(page.getByRole("tab", { name: "Search" })).toBeFocused();
+  await expect(page.getByRole("tab", { name: "Search" })).toHaveAttribute("data-active", "");
 });
 
 test("the active overflow tab stays visible and both hidden edges remain signposted", async ({

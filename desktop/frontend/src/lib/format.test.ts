@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import { fmtCost, fmtDuration, fmtTokens } from "./format";
+import { t } from "./i18n";
+import { durationText, fmtCost, fmtDuration, fmtTokens } from "./format";
 
 const locale = vi.hoisted(() => ({ current: "en" }));
-vi.mock("./i18n", () => ({ activeLocale: () => locale.current }));
+vi.mock("./i18n", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./i18n")>()),
+  activeLocale: () => locale.current,
+}));
 
 describe("fmtDuration", () => {
   it("keeps one decimal under ten seconds and drops it above", () => {
@@ -61,5 +65,17 @@ describe("in a locale that writes decimals with a comma", () => {
     } finally {
       locale.current = "en";
     }
+  });
+});
+
+describe("durationText", () => {
+  it("reads an elapsed run in the largest unit it fills", () => {
+    expect(durationText(t, 1_000, null)).toBe("—");
+    expect(durationText(t, 1_000, 1_000)).toBe("0s");
+    expect(durationText(t, 1_000, 31_400)).toBe("30s");
+    expect(durationText(t, 1_000, 61_000)).toBe("1m 0s");
+    expect(durationText(t, 1_000, 155_000)).toBe("2m 34s");
+    expect(durationText(t, 1_000, 3_601_000)).toBe("1h 0m");
+    expect(durationText(t, 1_000, 23_401_000)).toBe("6h 30m");
   });
 });

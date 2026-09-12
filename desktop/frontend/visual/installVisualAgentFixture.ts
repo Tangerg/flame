@@ -257,6 +257,7 @@ const visualAgentLifecycle = definePlugin({
 
 export async function installVisualAgentFixture(
   state: VisualAgentState,
+  commandOutput?: string,
 ): Promise<AgentSessionView> {
   const projectless = state === "empty";
   queryClient.clear();
@@ -338,6 +339,14 @@ export async function installVisualAgentFixture(
   }));
 
   let view = projectAgentSessionSnapshot(AGENT_SESSION_SNAPSHOTS[state]);
+  if (commandOutput !== undefined) {
+    const command = Object.values(view.toolCalls).find((tool) => tool.name === "shell");
+    if (!command) throw new Error("The fixture needs a shell call to show command output");
+    view = {
+      ...view,
+      toolCalls: { ...view.toolCalls, [command.id]: { ...command, result: commandOutput } },
+    };
+  }
   for (const event of AGENT_SESSION_TAIL_EVENTS[state]) {
     view = reduceAgentEvent(view, event);
   }

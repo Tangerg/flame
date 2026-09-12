@@ -86,7 +86,6 @@ test("a renderer that forbids the break is caught", async ({ page }) => {
 const DOCK_STATES = [
   "dock-light",
   "dock-review",
-  "dock-files",
   "dock-inbox",
   "dock-agent-memory",
   "dock-skill-library",
@@ -94,7 +93,6 @@ const DOCK_STATES = [
   "dock-recipes",
   "dock-knowledge",
   "dock-timeline",
-  "dock-run-summary",
   "dock-notifications",
 ];
 

@@ -42,14 +42,6 @@ export function useExpandedWorkspaceToolIds(): Set<string> {
   return workspaceNavigation().useExpandedToolIds();
 }
 
-export function useSelectedWorkspaceToolId(): string {
-  return workspaceNavigation().useSelectedToolId();
-}
-
-export function useSelectWorkspaceTool(): (id: string) => void {
-  return workspaceNavigation().useSelectTool();
-}
-
 export function useToggleWorkspaceTool(): (id: string) => void {
   return workspaceNavigation().useToggleTool();
 }
@@ -162,17 +154,6 @@ export function focusWorkspaceFile(path: string): void {
 
 export function openWorkspaceFile(path: string, line?: number): void {
   workspaceNavigation().openFile(path, line);
-}
-
-export function selectWorkspaceTool(id: string): void {
-  workspaceNavigation().setSelectedTool(id);
-}
-
-export function reconcileWorkspaceToolSelection(availableToolIds: readonly string[]): void {
-  const current = workspaceNavigation().selectedToolId();
-  if (current && availableToolIds.includes(current)) return;
-  const next = availableToolIds.at(-1) ?? "";
-  if (current !== next) workspaceNavigation().setSelectedTool(next);
 }
 
 export function locateWorkspaceTool(id: string): void {

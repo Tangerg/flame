@@ -15,7 +15,6 @@ import {
   locateWorkspaceTool,
   openWorkspaceView,
   openWorkspaceViewInDock,
-  reconcileWorkspaceToolSelection,
   selectWorkspaceDockView,
   showWorkspaceDock,
   toggleWorkspaceDock,
@@ -31,7 +30,6 @@ function reset() {
     lastViewId: null,
     fileFocus: WorkspaceFileFocus.empty(),
     fileViewer: null,
-    selectedToolId: "",
     expandedToolIds: new Set<string>(),
   });
 }
@@ -223,7 +221,6 @@ describe("workspace navigation port", () => {
     locateWorkspaceTool("task-item");
 
     expect(navigator().get().view).toBeNull();
-    expect(useContextDockStore.getState().selectedToolId).toBe("task-item");
     expect(useContextDockStore.getState().expandedToolIds).toEqual(new Set(["task-item"]));
     expect(document.activeElement).toBe(button);
   });
@@ -242,21 +239,5 @@ describe("workspace navigation port", () => {
     await new Promise((resolve) => requestAnimationFrame(resolve));
 
     expect(document.activeElement).toBe(button);
-  });
-
-  it("reconciles a stale tool selection to the latest surviving item", () => {
-    useContextDockStore.setState({ selectedToolId: "tool-gone" });
-
-    reconcileWorkspaceToolSelection(["tool-old", "tool-latest"]);
-
-    expect(useContextDockStore.getState().selectedToolId).toBe("tool-latest");
-  });
-
-  it("clears the selected tool when an authoritative snapshot has none", () => {
-    useContextDockStore.setState({ selectedToolId: "tool-gone" });
-
-    reconcileWorkspaceToolSelection([]);
-
-    expect(useContextDockStore.getState().selectedToolId).toBe("");
   });
 });

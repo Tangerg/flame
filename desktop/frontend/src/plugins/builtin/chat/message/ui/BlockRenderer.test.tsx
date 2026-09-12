@@ -7,7 +7,6 @@ import type { BlockCtx } from "./BlockRenderer";
 import { renderBlock } from "./BlockRenderer";
 
 const CTX: BlockCtx = {
-  onSelectTool: vi.fn(),
   expandedIds: new Set(),
   onToggleExpand: vi.fn(),
   textReveal: "smooth",

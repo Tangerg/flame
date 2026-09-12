@@ -30,7 +30,7 @@ describe("Agent session state adapter continuity", () => {
   });
 
   it("retires a deleted deep-link's promoted view with the authoritative Session", () => {
-    navigator().go({ session: "ses_gone", view: "run-summary", dock: "diff" });
+    navigator().go({ session: "ses_gone", view: "timeline", dock: "diff" });
     useAgentSessionStore.setState({
       openSessionIds: ["ses_live", "ses_gone"],
       lastSessionId: "ses_gone",
@@ -64,7 +64,7 @@ describe("Agent session state adapter continuity", () => {
   });
 
   it("keeps the active Session's promoted view when reconciliation only trims its peers", () => {
-    navigator().go({ session: "ses_a", view: "run-summary", dock: "diff" });
+    navigator().go({ session: "ses_a", view: "timeline", dock: "diff" });
     useAgentSessionStore.setState({
       openSessionIds: ["ses_a", "ses_gone"],
       lastSessionId: "ses_a",
@@ -74,7 +74,7 @@ describe("Agent session state adapter continuity", () => {
 
     expect(navigator().get()).toMatchObject({
       session: "ses_a",
-      view: "run-summary",
+      view: "timeline",
       dock: "diff",
     });
     expect(useAgentSessionStore.getState().lastSessionId).toBe("ses_a");

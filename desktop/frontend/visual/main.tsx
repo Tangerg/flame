@@ -161,7 +161,10 @@ async function fixtureNode(): Promise<ReactNode> {
     import("./VisualAgentStateFixture"),
     import("./installVisualAgentFixture"),
   ]);
-  const view = await installVisualAgentFixture(state);
+  const output = query.has("long-output")
+    ? Array.from({ length: 50_000 }, (_, index) => `build output line ${index}`).join("\n")
+    : undefined;
+  const view = await installVisualAgentFixture(state, output);
   return <VisualAgentStateFixture state={state} view={view} />;
 }
 

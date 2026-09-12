@@ -46,8 +46,6 @@ export function installWorkspaceNavigationPort(): () => void {
     useFileViewer: () => useContextDockStore((state) => state.fileViewer),
     useSettingsPaneTarget: () => navigator().use((location) => location.settings),
     useExpandedToolIds: () => useContextDockStore((state) => state.expandedToolIds),
-    useSelectedToolId: () => useContextDockStore((state) => state.selectedToolId),
-    useSelectTool: () => useContextDockStore((state) => state.setSelectedToolId),
     useToggleTool: () => useContextDockStore((state) => state.toggleExpandedTool),
     // The drawer follows the user's preference and nothing else. The dock is a
     // separate resizable column, so opening it cannot override that preference.
@@ -110,8 +108,6 @@ export function installWorkspaceNavigationPort(): () => void {
       useContextDockStore.getState().setFileViewer(path, line);
       showDockView("file", "alone");
     },
-    selectedToolId: () => useContextDockStore.getState().selectedToolId,
-    setSelectedTool: (id) => useContextDockStore.getState().setSelectedToolId(id),
     locateTool: (id) => {
       selectChat();
       useContextDockStore.getState().revealTool(id);

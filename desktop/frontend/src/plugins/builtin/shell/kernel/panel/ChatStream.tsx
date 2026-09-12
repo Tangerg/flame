@@ -1,15 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
-import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import { useActiveConversationRows } from "@/plugins/builtin/agent/public/conversation";
-import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { Slot } from "@/plugins/host/Slot";
 import {
-  reconcileWorkspaceToolSelection,
   useExpandedWorkspaceToolIds,
-  useSelectWorkspaceTool,
   useToggleWorkspaceTool,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { useStreamRevealStore } from "@/plugins/builtin/chat/message/public/streamReveal";
@@ -96,31 +93,19 @@ const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string
 export function ChatStream({ onSend }: Props) {
   const sessionId = useActiveSessionId();
   const rows = useActiveConversationRows();
-  const toolCalls = useActiveSessionToolCalls();
 
   const expandedToolIds = useExpandedWorkspaceToolIds();
-  const selectTool = useSelectWorkspaceTool();
   const toggleExpandedTool = useToggleWorkspaceTool();
 
   const textReveal = useStreamRevealStore((state) => state.streamReveal);
 
-  const toolIdSignature = useMemo(() => Object.keys(toolCalls).join("\u001f"), [toolCalls]);
-  const toolIds = useMemo(
-    () => (toolIdSignature ? toolIdSignature.split("\u001f") : []),
-    [toolIdSignature],
-  );
-  useEffect(() => {
-    reconcileWorkspaceToolSelection(toolIds);
-  }, [toolIds]);
-
   const ctx = useMemo(
     () => ({
-      onSelectTool: selectTool,
       expandedIds: expandedToolIds,
       onToggleExpand: toggleExpandedTool,
       textReveal,
     }),
-    [selectTool, expandedToolIds, toggleExpandedTool, textReveal],
+    [expandedToolIds, toggleExpandedTool, textReveal],
   );
 
   const pendingQuestion = useMemo(() => pendingQuestionRequest(rows), [rows]);

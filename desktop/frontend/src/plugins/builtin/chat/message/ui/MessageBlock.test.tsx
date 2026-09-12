@@ -16,7 +16,6 @@ vi.mock("@/plugins/host/Slot", () => ({
 }));
 
 const CTX: BlockCtx = {
-  onSelectTool: vi.fn(),
   expandedIds: new Set(),
   onToggleExpand: vi.fn(),
   textReveal: "smooth",

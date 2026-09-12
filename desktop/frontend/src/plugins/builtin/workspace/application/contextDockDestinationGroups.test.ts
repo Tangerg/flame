@@ -42,12 +42,12 @@ describe("groupContextDockDestinations", () => {
     const groups = groupContextDockDestinations([
       item({ viewId: "timeline", scope: "session", order: 10 }),
       item({ viewId: "plan", scope: "run", order: 10 }),
-      item({ viewId: "files", scope: "workspace", order: 20 }),
+      item({ viewId: "diff", scope: "workspace", order: 20 }),
       item({ viewId: "search", scope: "workspace", order: 10 }),
     ]);
 
     expect(groups.map((group) => group.id)).toEqual(["workspace", "run", "session"]);
-    expect(groups[0]?.destinations.map((d) => d.viewId)).toEqual(["search", "files"]);
+    expect(groups[0]?.destinations.map((d) => d.viewId)).toEqual(["search", "diff"]);
     expect(groups[1]?.destinations.map((d) => d.viewId)).toEqual(["plan"]);
     expect(groups[2]?.destinations.map((d) => d.viewId)).toEqual(["timeline"]);
   });

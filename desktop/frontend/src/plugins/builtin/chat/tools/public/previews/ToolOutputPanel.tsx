@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { hasAnsi } from "@/lib/ansi";
 import { cn } from "@/lib/classNames";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
@@ -32,21 +33,14 @@ const op = stylex.create({
     backgroundImage: "linear-gradient(to top, var(--color-sunken), transparent)",
   },
   more: { justifyContent: "center", paddingBlock: space.s1_5 },
-  note: {
-    paddingInline: space.s3,
-    paddingBottom: space.s2,
-    textAlign: "center",
-    color: color.fgFaint,
-  },
+  viewport: { height: "min(50vh, 20lh)", overflowY: "auto" },
+  canvas: { position: "relative", width: "100%" },
+  virtualLine: { position: "absolute", top: 0, left: 0, width: "100%" },
 });
 
 const COLLAPSED_LINES = 9;
-// Expanding used to render every line there was, and the cost is superlinear: measured at
-// 120ms for a thousand lines, 700ms for ten thousand and over nine seconds for fifty
-// thousand, which a `shell` running a build reaches without trying. The whole output is a
-// click away in the terminal view either way, so inline expansion stops where it is still
-// a frame rather than a freeze.
-const EXPANDED_LINES = 1_000;
+// Large output stays fully accessible without mounting every line at once.
+const VIRTUALIZE_AFTER_LINES = 1_000;
 
 // Plain lines go through `LinkedText`, which turns a path into somewhere to click. A line
 // carrying escape codes does not: the link scanner would have to be taught the codes, and a
@@ -55,6 +49,42 @@ const EXPANDED_LINES = 1_000;
 function OutputLine({ text }: { text: string }) {
   if (!hasAnsi(text)) return <LinkedText text={text || " "} />;
   return <AnsiText text={text} />;
+}
+
+function ScrollableOutput({ lines }: { lines: string[] }) {
+  const t = useT();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rows = useVirtualizer({
+    count: lines.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 24,
+    overscan: 8,
+  });
+  return (
+    <div
+      ref={scrollRef}
+      role="region"
+      aria-label={t("tools.output.label")}
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The scroll region needs keyboard scrolling independently of the transcript.
+      tabIndex={0}
+      {...stylex.props(op.sheet, op.viewport, typeStep.code)}
+    >
+      <div {...stylex.props(op.canvas)} style={{ height: rows.getTotalSize() }}>
+        {rows.getVirtualItems().map((row) => (
+          <div
+            key={row.key}
+            data-index={row.index}
+            data-output-line=""
+            ref={rows.measureElement}
+            {...stylex.props(op.line, op.virtualLine)}
+            style={{ transform: `translateY(${row.start}px)` }}
+          >
+            <OutputLine text={lines[row.index]!} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 interface ToolOutputPanelProps {
@@ -79,8 +109,7 @@ export function ToolOutputPanel({
   const { copied, copy } = useCopyFeedback(copyMaterial);
 
   const hidden = lines.length - COLLAPSED_LINES;
-  const shown = lines.slice(0, expanded ? EXPANDED_LINES : COLLAPSED_LINES);
-  const beyond = lines.length - shown.length;
+  const shown = expanded ? lines : lines.slice(0, COLLAPSED_LINES);
 
   if (lines.length === 0) {
     return (
@@ -97,20 +126,24 @@ export function ToolOutputPanel({
   return (
     <div {...stylex.props(op.panel)}>
       <div className={cn(stylex.props(reveal.host).className, "relative")}>
-        <div {...stylex.props(op.sheet, typeStep.code)}>
-          {shown.map((line, index) => (
-            <div key={index} data-output-line="" {...stylex.props(op.line)}>
-              <OutputLine text={line} />
-            </div>
-          ))}
-        </div>
+        {expanded && lines.length > VIRTUALIZE_AFTER_LINES ? (
+          <ScrollableOutput lines={lines} />
+        ) : (
+          <div {...stylex.props(op.sheet, typeStep.code)}>
+            {shown.map((line, index) => (
+              <div key={index} data-output-line="" {...stylex.props(op.line)}>
+                <OutputLine text={line} />
+              </div>
+            ))}
+          </div>
+        )}
         <IconButton
           data-reveal="hover"
           icon={copied ? "check" : "copy"}
           size="xs"
           title={t(copied ? "tools.output.copied" : "tools.output.copy")}
           onClick={() => void copy()}
-          className={cn(undefined, stylex.props(reveal.shown).className)}
+          className={stylex.props(reveal.shown).className}
         />
       </div>
       {hidden > 0 && (
@@ -125,15 +158,8 @@ export function ToolOutputPanel({
             <Icon name={expanded ? "chevron-up" : "chevron-down"} size="xs" />
             {expanded
               ? t("tools.output.collapse")
-              : lines.length > EXPANDED_LINES
-                ? t("tools.output.showSome", { count: EXPANDED_LINES, total: lines.length })
-                : t("tools.output.showAll", { count: lines.length })}
+              : t("tools.output.showAll", { count: lines.length })}
           </TextButton>
-          {expanded && beyond > 0 && (
-            <div {...stylex.props(op.note, typeStep.uiSm)}>
-              {t("tools.output.beyond", { count: beyond })}
-            </div>
-          )}
         </div>
       )}
     </div>

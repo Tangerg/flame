@@ -55,7 +55,6 @@ interface ContextDockSessionScope {
   lastViewId: string | null;
   fileFocus: WorkspaceFileFocus;
   fileViewer: WorkspaceFileViewer | null;
-  selectedToolId: string;
   expandedToolIds: Set<string>;
 }
 
@@ -84,7 +83,6 @@ interface ContextDockActions {
   dockTabToShow: (defaultViewId: string) => string;
   focusFile: (path: string) => void;
   setFileViewer: (path: string, line?: number) => void;
-  setSelectedToolId: (id: string) => void;
   revealTool: (id: string) => void;
   toggleExpandedTool: (id: string) => void;
   /** Swap to `sessionId`'s scope; answers the destination it remembers. */
@@ -96,7 +94,6 @@ function emptySessionScope(): ContextDockSessionScope {
   return {
     fileFocus: WorkspaceFileFocus.empty(),
     fileViewer: null,
-    selectedToolId: "",
     expandedToolIds: new Set<string>(),
     dockViewIds: [],
     lastViewId: null,
@@ -107,7 +104,6 @@ function cloneSessionScope(scope: ContextDockSessionScope): ContextDockSessionSc
   return {
     fileFocus: scope.fileFocus,
     fileViewer: scope.fileViewer ? { ...scope.fileViewer } : null,
-    selectedToolId: scope.selectedToolId,
     expandedToolIds: new Set(scope.expandedToolIds),
     dockViewIds: [...scope.dockViewIds],
     lastViewId: scope.lastViewId,
@@ -151,7 +147,6 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
       lastViewId: null,
       fileFocus: WorkspaceFileFocus.empty(),
       fileViewer: null,
-      selectedToolId: "",
       expandedToolIds: new Set<string>(),
 
       adoptDockLocation: (id) =>
@@ -196,11 +191,10 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
       },
       focusFile: (path) => set((state) => ({ fileFocus: state.fileFocus.moveTo(path) })),
       setFileViewer: (path, line) => set({ fileViewer: { path, line: line ?? 0 } }),
-      setSelectedToolId: (id) => set({ selectedToolId: id }),
       revealTool: (id) => {
         const expandedToolIds = new Set(get().expandedToolIds);
         expandedToolIds.add(id);
-        set({ selectedToolId: id, expandedToolIds });
+        set({ expandedToolIds });
       },
       toggleExpandedTool: (id) => {
         const next = new Set(get().expandedToolIds);

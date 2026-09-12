@@ -8,7 +8,6 @@ const EMPTY = {
   lastViewId: null,
   fileFocus: WorkspaceFileFocus.empty(),
   fileViewer: null,
-  selectedToolId: "",
   expandedToolIds: new Set<string>(),
 };
 
@@ -51,10 +50,10 @@ describe("the open tab set", () => {
   it("answers which tab takes the place of a closed one", () => {
     dock().adoptDockLocation("explorer");
     dock().adoptDockLocation("diff");
-    dock().adoptDockLocation("terminal");
+    dock().adoptDockLocation("search");
 
-    expect(dock().closeDockTab("diff")).toBe("terminal");
-    expect(dock().dockViewIds).toEqual(["explorer", "terminal"]);
+    expect(dock().closeDockTab("diff")).toBe("search");
+    expect(dock().dockViewIds).toEqual(["explorer", "search"]);
   });
 
   it("falls back to the tab before it when the last one closes", () => {
@@ -73,7 +72,7 @@ describe("the open tab set", () => {
   it("keeps only the named tab when the others close", () => {
     dock().adoptDockLocation("explorer");
     dock().adoptDockLocation("diff");
-    dock().adoptDockLocation("terminal");
+    dock().adoptDockLocation("search");
 
     dock().closeOtherDockTabs("diff");
     expect(dock().dockViewIds).toEqual(["diff"]);
@@ -96,10 +95,10 @@ describe("the open tab set", () => {
   it("moves a tab to the requested position", () => {
     dock().adoptDockLocation("explorer");
     dock().adoptDockLocation("diff");
-    dock().adoptDockLocation("terminal");
+    dock().adoptDockLocation("search");
 
     dock().reorderDockTab("explorer", 2);
-    expect(dock().dockViewIds).toEqual(["diff", "terminal", "explorer"]);
+    expect(dock().dockViewIds).toEqual(["diff", "search", "explorer"]);
   });
 
   it("clamps a reorder into the open set and ignores an unknown tab", () => {
@@ -135,7 +134,7 @@ describe("what a re-open returns to", () => {
     dock().adoptDockLocation("explorer");
     dock().adoptDockLocation("diff");
 
-    expect(dock().dockTabToShow("terminal")).toBe("diff");
+    expect(dock().dockTabToShow("search")).toBe("diff");
   });
 
   it("remembers the remaining tab when the last shown one closes", () => {
@@ -143,11 +142,11 @@ describe("what a re-open returns to", () => {
     dock().adoptDockLocation("diff");
     dock().closeDockTab("diff");
 
-    expect(dock().dockTabToShow("terminal")).toBe("explorer");
+    expect(dock().dockTabToShow("search")).toBe("explorer");
   });
 
   it("is the caller's default when nothing is open", () => {
-    expect(dock().dockTabToShow("terminal")).toBe("terminal");
+    expect(dock().dockTabToShow("search")).toBe("search");
   });
 });
 
@@ -256,17 +255,15 @@ describe("per-session scopes", () => {
       lastViewId: "diff",
       fileFocus: { path: "src/runtime.ts", revision: 1n },
       fileViewer: { path: "src/runtime.ts", line: 42 },
-      selectedToolId: "",
       expandedToolIds: new Set(),
     });
   });
 });
 
-describe("tool selection inside a scope", () => {
-  it("reveals a tool by selecting and expanding it", () => {
+describe("tool disclosure inside a scope", () => {
+  it("reveals a tool by expanding it", () => {
     dock().revealTool("call-1");
 
-    expect(dock().selectedToolId).toBe("call-1");
     expect(dock().expandedToolIds).toEqual(new Set(["call-1"]));
   });
 

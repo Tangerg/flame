@@ -638,17 +638,16 @@ for (const path of sourceFiles(SRC_DIR)) {
 // Rule 10 — a workspace view is called one thing.
 //
 // Every view's name is written TWICE: `workspace.view.title.<x>` for its dock tab and the
-// catalog, and `<x>.title` for the header it draws at full placement. Twenty views, eight
-// locales — 320 strings for 160 facts, and drift is what a second copy is for. Three English
+// catalog, and `<x>.title` for the header it draws at full placement. Duplicated
+// names drift across locales. Three English
 // pairs had already parted (`Skill Library` in the tab, `Skill library` in the header) while
 // every other locale still agreed, which is the shape of a copy nobody compares.
 //
-// Two pairs disagree on the NAME rather than its case, and that is a product decision this
+// Some pairs disagree on the NAME rather than its case, and that is a product decision this
 // guard is not entitled to make — so they are named here, with the question, instead of
 // diverging quietly.
 {
   const UNDECIDED = new Map([
-    ["files", 'tab "Changed files" vs header "Working tree" — which is the view called?'],
     ["timeline", 'tab "Timeline" vs header "Run timeline" — is the short one for the strip?'],
   ]);
   const views = readFileSync(

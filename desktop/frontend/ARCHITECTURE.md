@@ -630,7 +630,8 @@ ChatPanel → ChatStream → MessageBlock → BlockRenderer
 用户点 "Open in …"
    → ToolCard 从 TOOL_VIEW_OPENER 里挑第一个 predicate 命中的 opener
    → workspace 的那个 opener → openWorkspaceViewForTool(tool)
-   → 按 tool 决定 view id（commandExecution→terminal, fileChange→diff …）
+   → File edits open Diff; reads with an authoritative path open the file viewer.
+   → Command output stays in the conversation tool card.
    → openWorkspaceViewInDock(id)：dock tab set 里新增或聚焦这个 singleton tab
 ```
 

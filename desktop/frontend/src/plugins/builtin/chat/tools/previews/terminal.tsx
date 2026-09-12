@@ -7,7 +7,7 @@ import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPrevi
 import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
 import { commandToolResult } from "@/plugins/sdk";
 
-function TerminalResult({ tool, onOpenView }: ToolPreviewProps) {
+function ShellOutput({ tool, onOpenView }: ToolPreviewProps) {
   return (
     <div>
       <ToolOutputPanel
@@ -15,21 +15,9 @@ function TerminalResult({ tool, onOpenView }: ToolPreviewProps) {
         status={tool.status}
         idleLabel="tools.preview.idle.noOutput"
       />
-      <PreviewFoot label="tools.preview.openTerminal" onClick={onOpenView} />
+      <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
     </div>
   );
-}
-
-function ShellCommandPreview(props: ToolPreviewProps) {
-  return <TerminalResult {...props} />;
-}
-
-function ShellOutputPreview(props: ToolPreviewProps) {
-  return <TerminalResult {...props} />;
-}
-
-function StopShellPreview(props: ToolPreviewProps) {
-  return <TerminalResult {...props} />;
 }
 
 function CommandShapePreview({ tool, onOpenView }: ToolPreviewProps) {
@@ -40,7 +28,7 @@ function CommandShapePreview({ tool, onOpenView }: ToolPreviewProps) {
         status={tool.status}
         idleLabel="tools.preview.idle.noOutput"
       />
-      <PreviewFoot label="tools.preview.openTerminal" onClick={onOpenView} />
+      <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
     </div>
   );
 }
@@ -51,9 +39,9 @@ export const shellPreview = definePlugin({
     // Backgrounding is an ARGUMENT of `shell` (run_in_background), not a tool of its own —
     // read_shell_output / stop_shell are how you then read and stop it.
     for (const preview of toolPreviews({
-      shell: ShellCommandPreview,
-      read_shell_output: ShellOutputPreview,
-      stop_shell: StopShellPreview,
+      shell: ShellOutput,
+      read_shell_output: ShellOutput,
+      stop_shell: ShellOutput,
       [toolShapeKey("command")]: CommandShapePreview,
     })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });

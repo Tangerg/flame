@@ -1,4 +1,4 @@
-import { activeLocale } from "./i18n";
+import { activeLocale, type Translate } from "./i18n";
 
 // The NUMBER follows the locale; the UNIT is notation. `toFixed` always writes a period,
 // wrong in five of the eight locales here. NOT `Intl` compact notation: Japanese counts in
@@ -44,4 +44,16 @@ export function fmtDuration(ms: number): string {
   // half hours reads 6h 30m, not 390m 00s. Agent work is expected to run this long.
   const hours = Math.floor(minutes / 60);
   return `${hours}h ${String(minutes - hours * 60).padStart(2, "0")}m`;
+}
+
+export function durationText(t: Translate, start: number, end: number | null): string {
+  if (!end) return "—";
+  const sec = Math.round((end - start) / 1000);
+  if (sec < 60) return t("duration.seconds", { sec });
+  const min = Math.floor(sec / 60);
+  if (min < 60) return t("duration.minutes", { min, sec: sec % 60 });
+  // The wait as lived, and it can be hours: this reads the wall clock across approval pauses.
+  // A clock drops its finest unit as its coarsest grows — 6h 30m, never 390m 0s.
+  const hr = Math.floor(min / 60);
+  return t("duration.hours", { hr, min: min % 60 });
 }

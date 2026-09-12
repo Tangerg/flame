@@ -26,15 +26,10 @@ describe("ToolOutputPanel copy material ownership", () => {
     expect(screen.getByRole("button", { name: "Copy output" })).toBeTruthy();
   });
 
-  it("stops expanding where the frame is still a frame", () => {
-    const lines = 3_000;
-    const output = Array.from({ length: lines }, (_, index) => `line ${index}`).join("\n");
-    const { container } = render(<ToolOutputPanel output={output} status="ok" />);
-
-    fireEvent.click(screen.getByRole("button", { name: /Show 1000 of 3000/ }));
-
-    const rendered = container.querySelectorAll("[data-output-line]");
-    expect(rendered).toHaveLength(1_000);
-    expect(screen.getByText(/2000 more lines/)).toBeTruthy();
+  it("copies the complete output, including lines beyond the preview", () => {
+    const output = Array.from({ length: 3_000 }, (_, index) => `line ${index}`).join("\n");
+    render(<ToolOutputPanel output={output} status="ok" />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy output" }));
+    expect(copyText).toHaveBeenCalledWith(output);
   });
 });

@@ -1633,3 +1633,31 @@ for (const theme of ["light", "dark"] as const) {
     await expect(card).toHaveScreenshot(`agent-${theme}-delegated-card.png`);
   });
 }
+
+test("large command output stays fully readable inside the tool card", async ({ page }) => {
+  await page.goto("/visual/?fixture=agent&theme=light&state=tool-shells&long-output=1");
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.getByRole("button", { name: /steps/ }).first().click();
+  const command = page.locator('[data-tool="shell"]').first();
+  await command.getByRole("button").first().click();
+  await command.getByRole("button", { name: /Show all 50000 lines/ }).click();
+
+  const output = command.getByRole("region", { name: "Tool output" });
+  await expect(output).toContainText("build output line 0");
+  expect(await output.locator("[data-output-line]").count()).toBeLessThan(100);
+
+  await output.focus();
+  await expect(output).toBeFocused();
+  await output.press("PageDown");
+  await expect.poll(() => output.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+
+  await output.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect(output).toContainText("build output line 49999");
+  expect(await output.locator("[data-output-line]").count()).toBeLessThan(100);
+
+  await command.getByRole("button", { name: "Collapse" }).click();
+  await expect(output).toHaveCount(0);
+  await expect(command.locator("[data-output-line]")).toHaveCount(9);
+});

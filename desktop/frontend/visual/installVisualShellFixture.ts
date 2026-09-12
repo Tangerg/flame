@@ -12,7 +12,7 @@ import commandMenu from "@/plugins/builtin/command/command-menu";
 import { useSessionSearchStore } from "@/plugins/builtin/command/session-search/application/sessionSearchState";
 import { useCommandMenuStore } from "@/plugins/builtin/command/command-menu/application/commandMenuState";
 import { defaultCommands } from "@/plugins/builtin/defaults";
-import { searchView, terminalView } from "@/plugins/builtin/workspace/workspace-views";
+import { searchView } from "@/plugins/builtin/workspace/workspace-views";
 import {
   sidebarActions,
   sidebarFooter,
@@ -198,7 +198,6 @@ export async function installVisualShellFixture(
     defaultCommands,
     commandMenu,
     searchView,
-    terminalView,
     sidebarActions,
     sidebarProjects,
     sidebarRecents,

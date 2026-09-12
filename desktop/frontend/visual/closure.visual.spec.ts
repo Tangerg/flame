@@ -424,7 +424,6 @@ const LOCALE_ROUTES: FixtureRoute[] = [
   { fixture: "agent", state: "tool-remote" },
   { fixture: "agent", state: "tool-tail" },
   { fixture: "shell", state: "populated" },
-  { fixture: "workspace", state: "dock-stats" },
   { fixture: "workspace", state: "settings", pane: "schedules" },
   { fixture: "workspace", state: "settings", pane: "providers" },
 ];

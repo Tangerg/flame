@@ -51,10 +51,7 @@ export function renderBlock(
           <ToolCard
             tool={tool}
             expanded={ctx.expandedIds.has(block.toolCallId)}
-            onToggleExpand={() => {
-              ctx.onSelectTool(block.toolCallId);
-              ctx.onToggleExpand(block.toolCallId);
-            }}
+            onToggleExpand={() => ctx.onToggleExpand(block.toolCallId)}
           />
           {delegatedRuns.map((narrative, index) => (
             <DelegatedNarrative
@@ -117,7 +114,6 @@ function renderUnit(unit: MessageRenderUnit, facts: TurnFacts, ctx: BlockCtx) {
     return (
       <ToolGroup
         tools={unit.tools}
-        onSelectTool={ctx.onSelectTool}
         expandedIds={ctx.expandedIds}
         onToggleExpand={ctx.onToggleExpand}
         superseded={unit.superseded}

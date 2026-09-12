@@ -71,7 +71,6 @@ export const viewStyles = stylex.create({
     backgroundColor: { default: null, ":hover": surface.hover },
   },
   glyphTop: { marginTop: space.s0_5 },
-  glyphInline: { flexShrink: 0, alignSelf: "center", color: color.fgMuted },
   origin: { marginTop: space.s1, color: color.fgFaint },
   actions: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s2 },
   actionsTight: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s0_5 },
@@ -83,7 +82,6 @@ export const viewStyles = stylex.create({
   formLine: { marginTop: space.s2, display: "flex", alignItems: "center", gap: space.s2 },
   filterLine: { display: "flex", alignItems: "center", gap: space.s1 },
   pinLine: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1 },
-  meterLine: { marginTop: space.s1, display: "flex", alignItems: "center", gap: space.s2_5 },
   dotTop: { marginTop: space.s1_5 },
   subLine: {
     marginTop: space.s0_5,
@@ -131,9 +129,6 @@ export const viewStyles = stylex.create({
   dotSep: { lineHeight: 1, color: color.fgFaint },
   subCaptionMuted: { marginTop: space.s0_5, color: color.fgMuted },
 
-  sectionHead: { marginBottom: space.s1_5, display: "flex", alignItems: "baseline", gap: space.s2 },
-  sectionBody: { display: "grid", gap: space.s1 },
-  sectionOuterPad: { paddingBlock: space.s3 },
   entry: {
     display: "flex",
     alignItems: "baseline",
@@ -261,14 +256,6 @@ export const toolStyles = stylex.create({
  */
 export const codeStyles = stylex.create({
   sheet: { paddingBlock: space.s2, fontFamily: "var(--font-mono)", lineHeight: leading.relaxed },
-  /** Its block inset differs from `sheet`'s, which is why it is composed AFTER it, never before. */
-  sheetInset: {
-    display: "flex",
-    flexDirection: "column",
-    gap: space.s2_5,
-    paddingInline: space.s3,
-    paddingBlock: space.s3,
-  },
   gutter: { textAlign: "right", color: color.fgFaint, userSelect: "none" },
   wrap: { minWidth: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
   // `anywhere`, like `wrap` above and for the same reason: a hunk header carries the enclosing
@@ -303,24 +290,6 @@ export const codeStyles = stylex.create({
   metaDeleted: { color: "var(--color-diff-deleted-meta)" },
   metaContext: { color: color.fgFaint },
 
-  commandPlate: {
-    borderRadius: radius.card,
-    paddingInline: space.s3,
-    paddingBlock: space.s2_5,
-    transitionProperty: "background-color",
-    transitionDuration: motion.color,
-  },
-  commandSelected: { backgroundColor: surface.selected },
-  commandResting: { backgroundColor: surface.sunken },
-  prompt: { flexShrink: 0, color: color.fgFaint },
-  running: { flexShrink: 0, color: color.accent },
-  failed: { flexShrink: 0, color: color.negative },
-  output: {
-    marginTop: space.s1_5,
-    whiteSpace: "pre-wrap",
-    overflowWrap: "break-word",
-    color: color.fgMuted,
-  },
   fileCard: {
     marginBottom: space.s2,
     marginTop: { default: null, ":first-child": space.s2 },

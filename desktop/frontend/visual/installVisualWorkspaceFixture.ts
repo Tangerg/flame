@@ -62,12 +62,9 @@ import {
   inboxView,
   fileTreeView,
   planView,
-  terminalView,
   timelineView,
-  toolStatsView,
   toolsView,
   searchView,
-  filesView,
   skillsView,
   skillProposalsView,
   skillLibraryView,
@@ -75,7 +72,6 @@ import {
   knowledgeView,
   agentMemoryView,
   agentDocsView,
-  runSummaryView,
   notificationsView,
 } from "@/plugins/builtin/workspace/workspace-views";
 import { PENDING_WORK_KEY, type PendingWorkItem } from "@/plugins/builtin/agent/public/hitl";
@@ -586,10 +582,7 @@ async function loadVisualPlugins(plugins: readonly AnyPlugin[]): Promise<void> {
 
 const OPENED_BY_ITS_OWN_STATE = new Set([
   "inbox",
-  "tool-stats",
   "tools",
-  "search",
-  "files",
   "skill-proposals",
   "skill-library",
   "recipes",
@@ -597,7 +590,6 @@ const OPENED_BY_ITS_OWN_STATE = new Set([
   "skills",
   "knowledge",
   "agent-memory",
-  "run-summary",
   "notifications",
 ]);
 
@@ -606,13 +598,10 @@ const FULL_VIEW_ID = "search";
 const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-light": "plan",
   "dock-inbox": "inbox",
-  "dock-stats": "tool-stats",
   "dock-timeline": "timeline",
   "dock-runs": "timeline",
   "dock-explorer": "explorer",
-  "dock-terminal": "terminal",
   "dock-search": "search",
-  "dock-files": "files",
   "dock-skill-proposals": "skill-proposals",
   "dock-skill-library": "skill-library",
   "dock-recipes": "recipes",
@@ -621,7 +610,6 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-knowledge": "knowledge",
   "dock-agent-memory": "agent-memory",
   "dock-feature-off": "skills",
-  "dock-run-summary": "run-summary",
   "dock-notifications": "notifications",
   "dock-tools": "tools",
   "dock-file": "file",
@@ -639,7 +627,7 @@ export async function installVisualWorkspaceFixture(
       ? "running"
       : state === "dock-runs"
         ? "delegated"
-        : state === "dock-stats" || state === "dock-timeline" || state === "dock-terminal"
+        : state === "dock-timeline"
           ? "tool-shells"
           : "idle",
   );
@@ -669,14 +657,13 @@ export async function installVisualWorkspaceFixture(
             "explorer",
             "file",
             "diff",
-            "terminal",
+            "search",
             "plan",
             "timeline",
           ],
     lastViewId: state === "dock-catalog" ? null : dockViewId,
     fileFocus: WorkspaceFileFocus.empty().moveTo(ACTIVE_DIFF_FILE),
     fileViewer: { path: ACTIVE_DIFF_FILE, line: 6 },
-    selectedToolId: "",
     expandedToolIds: new Set(),
   });
   navigator().go({
@@ -699,13 +686,10 @@ export async function installVisualWorkspaceFixture(
     fileView,
     fileTreeView,
     inboxView,
-    terminalView,
-    toolStatsView,
     toolsView,
     planView,
     timelineView,
     searchView,
-    filesView,
     skillsView,
     skillProposalsView,
     skillLibraryView,
@@ -713,7 +697,6 @@ export async function installVisualWorkspaceFixture(
     knowledgeView,
     agentMemoryView,
     agentDocsView,
-    runSummaryView,
     notificationsView,
     kernelSettings,
     ...localePlugins,

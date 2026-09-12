@@ -28,14 +28,5 @@ describe("built-in tool rendering composition", () => {
       names.filter((name) => !STANDING.has(name) && preview(name) === undefined),
       "tools the transcript draws must preview",
     ).toEqual([]);
-
-    const drawn = names
-      .filter((name) => !STANDING.has(name))
-      .map((name) => ({ name, component: preview(name) }));
-
-    expect(STANDING.size).toBeGreaterThan(0);
-    expect(drawn.length).toBeGreaterThan(STANDING.size);
-
-    expect(new Set(drawn.map(({ component }) => component)).size).toBe(drawn.length);
   });
 });

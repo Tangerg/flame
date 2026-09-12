@@ -387,8 +387,7 @@ for (const file of files(SRC)) {
   // takes the timestamp of the wire event that caused it, or carries none.
   //
   // Actions are exempt by not being here: "when did this export happen" is the
-  // event's own timestamp, and `runSummaryViewModel` shows the other way out —
-  // take `now` as a parameter.
+  // event's own timestamp. A projection needing the current time takes it as a parameter.
   if (
     !isTest &&
     /plugins\/builtin\/.+\/(?:domain|presentation|application\/fold)\/.+\.(ts|tsx)$/.test(rel) &&
