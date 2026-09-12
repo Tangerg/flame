@@ -137,7 +137,6 @@ export const zhTW: Record<string, string> = {
   "tools.preview.viewMatches": "檢視所有符合",
   "tools.preview.viewDetails": "檢視詳情",
   "tools.preview.viewText": "檢視完整文字",
-  "tools.preview.viewReply": "檢視完整回覆",
   "tools.preview.pending.matching": "比對中…",
   "tools.preview.pending.querying": "查詢中…",
   "tools.preview.pending.running": "執行中…",

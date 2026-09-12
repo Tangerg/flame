@@ -136,7 +136,6 @@ export const de: Record<string, string> = {
   "tools.preview.viewMatches": "Alle Treffer anzeigen",
   "tools.preview.viewDetails": "Details anzeigen",
   "tools.preview.viewText": "Volltext anzeigen",
-  "tools.preview.viewReply": "Ganze Antwort anzeigen",
   "tools.preview.pending.matching": "Wird abgeglichen…",
   "tools.preview.pending.querying": "Wird abgefragt…",
   "tools.preview.pending.running": "Läuft…",

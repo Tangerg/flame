@@ -143,7 +143,6 @@ export const zh: Record<string, string> = {
   "tools.preview.viewMatches": "查看所有匹配",
   "tools.preview.viewDetails": "查看详情",
   "tools.preview.viewText": "查看完整文本",
-  "tools.preview.viewReply": "查看完整回复",
   "tools.preview.pending.matching": "匹配中…",
   "tools.preview.pending.querying": "查询中…",
   "tools.preview.pending.running": "运行中…",

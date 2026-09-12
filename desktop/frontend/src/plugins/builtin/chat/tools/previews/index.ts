@@ -9,6 +9,5 @@ export { httpPreviews } from "./http";
 export { lspPreviews } from "./lsp";
 export { recallPreviews } from "./recall";
 export { skillPreview } from "./skill";
-export { taskPreview } from "./task";
 export { toolSearchPreviewPlugin } from "./toolSearch";
 export { webSearchPreview } from "./webSearch";

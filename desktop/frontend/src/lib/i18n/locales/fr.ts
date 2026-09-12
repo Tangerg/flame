@@ -136,7 +136,6 @@ export const fr: Record<string, string> = {
   "tools.preview.viewMatches": "Voir toutes les correspondances",
   "tools.preview.viewDetails": "Voir les détails",
   "tools.preview.viewText": "Voir le texte complet",
-  "tools.preview.viewReply": "Voir la réponse entière",
   "tools.preview.pending.matching": "Correspondance…",
   "tools.preview.pending.querying": "Requête…",
   "tools.preview.pending.running": "En cours…",

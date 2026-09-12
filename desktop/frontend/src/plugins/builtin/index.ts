@@ -70,6 +70,7 @@ import { tasksPill } from "./workspace/tasks";
 import { appearancePlugins } from "./theme";
 import toaster from "./shell/toaster";
 import { toolActions, toolIcons } from "./chat/tools/toolMeta";
+import { taskPreview } from "./chat/message/taskPreview";
 import toolViewOpener from "./workspace/tool-view-opener";
 import {
   askUserPreview,
@@ -82,7 +83,6 @@ import {
   lspPreviews,
   recallPreviews,
   skillPreview,
-  taskPreview,
   toolSearchPreviewPlugin,
   webSearchPreview,
 } from "./chat/tools/previews";

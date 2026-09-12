@@ -152,7 +152,6 @@ export const en: Record<string, string> = {
   "tools.preview.viewMatches": "View all matches",
   "tools.preview.viewDetails": "View details",
   "tools.preview.viewText": "View full text",
-  "tools.preview.viewReply": "View full reply",
   "tools.preview.pending.matching": "Matching…",
   "tools.preview.pending.querying": "Querying…",
   "tools.preview.pending.running": "Running…",

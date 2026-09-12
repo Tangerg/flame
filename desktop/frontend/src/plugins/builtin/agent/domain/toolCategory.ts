@@ -7,7 +7,7 @@ export type ToolCategory =
   | "search" // grep / glob → { pattern } + { hits: SearchHit[] }
   | "webSearch" // web_search → { query } + { results: WebSearchResult[] }
   | "read" // read → { path, start_line?, max_lines? } + { content, start_line, … }
-  | "subagent" // delegate_task → { summary, instructions } + a plain-string reply
+  | "subagent" // delegate_task → { summary, instructions } + { reply }, or a plain-string failure
   | "generic"; // MCP "<server>_<tool>" / anything unknown → JSON tree
 
 // A Map, not an object: an MCP server names its own tools, so this is indexed by a

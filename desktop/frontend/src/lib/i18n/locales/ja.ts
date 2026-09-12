@@ -135,7 +135,6 @@ export const ja: Record<string, string> = {
   "tools.preview.viewMatches": "すべての一致を表示",
   "tools.preview.viewDetails": "詳細を表示",
   "tools.preview.viewText": "テキスト全体を表示",
-  "tools.preview.viewReply": "返信全体を表示",
   "tools.preview.pending.matching": "照合中…",
   "tools.preview.pending.querying": "問い合わせ中…",
   "tools.preview.pending.running": "実行中…",

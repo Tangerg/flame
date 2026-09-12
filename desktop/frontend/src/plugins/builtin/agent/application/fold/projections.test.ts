@@ -62,6 +62,15 @@ describe("toolLabel — name-keyed specialised tools", () => {
 });
 
 describe("toolFields — runtime wire shapes", () => {
+  it("delegate_task: projects the completed reply as text and preserves failure results", () => {
+    const reply = '## Findings\n\nThe "child" completed.\n\n末尾。';
+    expect(toolFields(tool("delegate_task", {}, { reply })).result).toBe(reply);
+    expect(toolFields(tool("delegate_task", {}))).not.toHaveProperty("result");
+    expect(toolFields(tool("delegate_task", {}, "error: delegated worker canceled")).result).toBe(
+      "error: delegated worker canceled",
+    );
+  });
+
   it("shell: reads the projected {output, exitCode} and carries the command", () => {
     const f = toolFields(
       tool(

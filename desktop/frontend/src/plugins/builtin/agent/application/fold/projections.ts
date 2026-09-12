@@ -286,6 +286,8 @@ function categoryFields(
         ...(partial ? { range: { start: start!, end: end! } } : {}),
       };
     }
+    case "subagent":
+      return rawResult(asString(result?.reply) ?? tool.result);
     default:
       return tool.result === undefined
         ? {}

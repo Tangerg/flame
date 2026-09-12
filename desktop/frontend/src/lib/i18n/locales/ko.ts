@@ -135,7 +135,6 @@ export const ko: Record<string, string> = {
   "tools.preview.viewMatches": "모든 일치 보기",
   "tools.preview.viewDetails": "세부 정보 보기",
   "tools.preview.viewText": "전체 텍스트 보기",
-  "tools.preview.viewReply": "전체 답장 보기",
   "tools.preview.pending.matching": "검색 중…",
   "tools.preview.pending.querying": "조회 중…",
   "tools.preview.pending.running": "실행 중…",

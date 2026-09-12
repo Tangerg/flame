@@ -136,7 +136,6 @@ export const es: Record<string, string> = {
   "tools.preview.viewMatches": "Ver todas las coincidencias",
   "tools.preview.viewDetails": "Ver detalles",
   "tools.preview.viewText": "Ver texto completo",
-  "tools.preview.viewReply": "Ver respuesta completa",
   "tools.preview.pending.matching": "Buscando coincidencias…",
   "tools.preview.pending.querying": "Consultando…",
   "tools.preview.pending.running": "En ejecución…",

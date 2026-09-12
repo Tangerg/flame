@@ -1628,8 +1628,10 @@ interface DelegateTaskArguments {
   summary: string;       // ≤80，3-5 词动作标签，无首尾空白
   instructions: string;  // 完整自足工作指令 —— 子 Agent 看不到父对话
 }
-type DelegateTaskResult = string;   // 子 agent 的最终答复
+type DelegateTaskResult = { reply: string } | string; // Reply on success; plain-text failure.
 ```
+
+The Item projection extracts `reply` once. The message context contributes the tool preview through `TOOL_PREVIEW`, reusing the conversation Markdown renderer. The existing disclosure contains the entire returned reply in a bounded, keyboard-scrollable region; it does not truncate lines or open a second reply panel.
 
 **唯一会长出第二层内容的工具。** 审批时允许"改参数后批准"。
 
