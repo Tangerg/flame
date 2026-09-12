@@ -1,7 +1,6 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
-import type { QueryFilters } from "@tanstack/react-query";
 import { createPublicationSlot } from "@/lib/publicationSlot";
-import { queryClient } from "@/lib/queryClient";
+import { replaceCachedRead } from "@/lib/queryClient";
 import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
 import type { SkillCurationGateway, SkillProposalHandle } from "./ports/skillCurationGateway";
@@ -9,17 +8,7 @@ import {
   WORKSPACE_MANAGED_SKILLS_KEY,
   WORKSPACE_SKILLS_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
-  type ManagedSkill,
-  type SkillProposal,
-  type WorkspaceCatalogQuery,
-  type WorkspaceSkill,
 } from "./workspaceQueries";
-
-interface SkillCurationCommand {
-  execute(): Promise<void>;
-  commit(): void;
-  repair(): readonly QueryFilters[];
-}
 
 class SkillCurationGeneration {
   readonly #gateway: SkillCurationGateway;
@@ -33,43 +22,19 @@ class SkillCurationGeneration {
   }
 
   archive(name: string): Promise<void> {
-    return this.#run(userSkillIdentity(name), {
-      execute: () => this.#gateway.archive(name),
-      commit: () => commitManagedSkillLifecycle(name, "archived"),
-      repair: libraryRepair,
-    });
+    return this.#run(userSkillIdentity(name), () => this.#gateway.archive(name));
   }
 
   restore(name: string): Promise<void> {
-    return this.#run(userSkillIdentity(name), {
-      execute: () => this.#gateway.restore(name),
-      commit: () => commitManagedSkillLifecycle(name, "active"),
-      repair: libraryRepair,
-    });
+    return this.#run(userSkillIdentity(name), () => this.#gateway.restore(name));
   }
 
   approveProposal(handle: SkillProposalHandle): Promise<void> {
-    let binding: CachedProposalBinding | undefined;
-    return this.#run(proposalIdentity(handle), {
-      execute: () => {
-        binding = cachedProposal(handle);
-        return this.#gateway.approveProposal(handle);
-      },
-      commit: () => commitProposalDecision(handle, binding, true),
-      repair: () => proposalRepair(handle, binding?.query, true),
-    });
+    return this.#run(proposalIdentity(handle), () => this.#gateway.approveProposal(handle));
   }
 
   rejectProposal(handle: SkillProposalHandle): Promise<void> {
-    let binding: CachedProposalBinding | undefined;
-    return this.#run(proposalIdentity(handle), {
-      execute: () => {
-        binding = cachedProposal(handle);
-        return this.#gateway.rejectProposal(handle);
-      },
-      commit: () => commitProposalDecision(handle, binding, false),
-      repair: () => proposalRepair(handle, binding?.query, false),
-    });
+    return this.#run(proposalIdentity(handle), () => this.#gateway.rejectProposal(handle));
   }
 
   retire(): void {
@@ -77,37 +42,28 @@ class SkillCurationGeneration {
     this.#chain.clear();
   }
 
-  #run(identity: string, command: SkillCurationCommand): Promise<void> {
+  #run(identity: string, execute: () => Promise<void>): Promise<void> {
     return this.#chain.chain(identity, (tail) =>
       this.#cohort.settle(tail).then(async () => {
         this.#cohort.assertCurrent();
         try {
-          await this.#cohort.settle(command.execute());
-        } catch (error) {
-          if (this.#cohort.retired) throw error;
-          await this.#repair(command.repair());
-          throw error;
+          await this.#cohort.settle(execute());
+        } finally {
+          if (!this.#cohort.retired) {
+            // Only Runtime can resolve discovery precedence, library order, and
+            // proposal revisions. A failed command may also have committed.
+            await Promise.all(
+              [
+                WORKSPACE_SKILLS_KEY,
+                WORKSPACE_MANAGED_SKILLS_KEY,
+                WORKSPACE_SKILL_PROPOSALS_KEY,
+              ].map((key) => this.#cohort.settle(replaceCachedRead({ queryKey: [key] }))),
+            );
+          }
         }
-        this.#cohort.assertCurrent();
-        command.commit();
-        await this.#repair(command.repair());
         this.#cohort.assertCurrent();
       }),
     );
-  }
-
-  async #repair(filters: readonly QueryFilters[]): Promise<void> {
-    try {
-      await Promise.all(
-        filters.map((filter) =>
-          this.#cohort.settle(queryClient.invalidateQueries(filter)).then(() => undefined),
-        ),
-      );
-    } catch (error) {
-      if (this.#cohort.retired) throw error;
-      // The accepted command already committed every fact it proved. Runtime
-      // events and the next read retain the projection repair path.
-    }
   }
 }
 
@@ -193,125 +149,4 @@ function proposalIdentity(handle: SkillProposalHandle): string {
   return handle.scope === "user"
     ? userSkillIdentity(handle.name)
     : tupleKey("project", handle.workspace, handle.name);
-}
-
-function libraryRepair(): QueryFilters[] {
-  return [
-    { queryKey: [WORKSPACE_MANAGED_SKILLS_KEY], exact: true },
-    { queryKey: [WORKSPACE_SKILLS_KEY] },
-  ];
-}
-
-function proposalRepair(
-  handle: SkillProposalHandle,
-  query: WorkspaceCatalogQuery | undefined,
-  approved: boolean,
-): QueryFilters[] {
-  const filters: QueryFilters[] = [
-    query
-      ? { queryKey: [WORKSPACE_SKILL_PROPOSALS_KEY, query], exact: true }
-      : { queryKey: [WORKSPACE_SKILL_PROPOSALS_KEY] },
-  ];
-  if (!approved) return filters;
-  if (handle.scope === "user") filters.push(...libraryRepair());
-  else if (query) filters.push({ queryKey: [WORKSPACE_SKILLS_KEY, query], exact: true });
-  else filters.push({ queryKey: [WORKSPACE_SKILLS_KEY] });
-  return filters;
-}
-
-function commitManagedSkillLifecycle(name: string, lifecycle: ManagedSkill["lifecycle"]): void {
-  let saved: ManagedSkill | undefined;
-  queryClient.setQueryData<ManagedSkill[]>([WORKSPACE_MANAGED_SKILLS_KEY], (current) =>
-    current?.map((skill) => {
-      if (skill.name !== name) return skill;
-      saved = { ...skill, lifecycle };
-      return saved;
-    }),
-  );
-  if (lifecycle === "archived") removeDiscoveredSkill(name, "user");
-  else if (saved) upsertDiscoveredSkill({ name, description: saved.description, scope: "user" });
-}
-
-interface CachedProposalBinding {
-  proposal: SkillProposal;
-  query: WorkspaceCatalogQuery;
-}
-
-function cachedProposal(handle: SkillProposalHandle): CachedProposalBinding | undefined {
-  for (const [queryKey, proposals] of queryClient.getQueriesData<SkillProposal[]>({
-    queryKey: [WORKSPACE_SKILL_PROPOSALS_KEY],
-  })) {
-    const proposal = proposals?.find((candidate) => proposalMatches(candidate, handle));
-    const query = workspaceCatalogQuery(queryKey[1]);
-    if (proposal && query) return { proposal, query };
-  }
-  return undefined;
-}
-
-function commitProposalDecision(
-  handle: SkillProposalHandle,
-  binding: CachedProposalBinding | undefined,
-  approved: boolean,
-): void {
-  queryClient.setQueriesData<SkillProposal[]>(
-    { queryKey: [WORKSPACE_SKILL_PROPOSALS_KEY] },
-    (current) => current?.filter((candidate) => !proposalMatches(candidate, handle)),
-  );
-  const proposal = binding?.proposal;
-  if (!approved || !proposal) return;
-  const discovered = {
-    name: proposal.name,
-    description: proposal.description,
-    scope: proposal.scope,
-  } satisfies WorkspaceSkill;
-  if (proposal.scope === "user") {
-    queryClient.setQueryData<ManagedSkill[]>([WORKSPACE_MANAGED_SKILLS_KEY], (current) =>
-      current
-        ? upsertByName(current, {
-            name: discovered.name,
-            description: discovered.description,
-            lifecycle: "active",
-          })
-        : current,
-    );
-    upsertDiscoveredSkill(discovered);
-    return;
-  }
-  if (!binding) return;
-  queryClient.setQueryData<WorkspaceSkill[]>([WORKSPACE_SKILLS_KEY, binding.query], (current) =>
-    current ? upsertByName(current, discovered) : current,
-  );
-}
-
-function workspaceCatalogQuery(value: unknown): WorkspaceCatalogQuery | undefined {
-  if (typeof value !== "object" || value === null || !("cwd" in value)) return undefined;
-  return typeof value.cwd === "string" || value.cwd === undefined ? { cwd: value.cwd } : undefined;
-}
-
-function proposalMatches(proposal: SkillProposal, handle: SkillProposalHandle): boolean {
-  return (
-    proposal.workspace === handle.workspace &&
-    proposal.name === handle.name &&
-    proposal.revision === handle.revision &&
-    proposal.scope === handle.scope
-  );
-}
-
-function removeDiscoveredSkill(name: string, scope: WorkspaceSkill["scope"]): void {
-  queryClient.setQueriesData<WorkspaceSkill[]>({ queryKey: [WORKSPACE_SKILLS_KEY] }, (current) =>
-    current?.filter((skill) => skill.name !== name || skill.scope !== scope),
-  );
-}
-
-function upsertDiscoveredSkill(saved: WorkspaceSkill): void {
-  queryClient.setQueriesData<WorkspaceSkill[]>({ queryKey: [WORKSPACE_SKILLS_KEY] }, (current) =>
-    current ? upsertByName(current, saved) : current,
-  );
-}
-
-function upsertByName<T extends { name: string }>(current: T[], saved: T): T[] {
-  const found = current.some((item) => item.name === saved.name);
-  return found
-    ? current.map((item) => (item.name === saved.name ? saved : item))
-    : [...current, saved];
 }

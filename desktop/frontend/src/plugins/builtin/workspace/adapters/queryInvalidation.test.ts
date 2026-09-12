@@ -3,15 +3,19 @@ import { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/se
 
 const { cancelQueries, invalidateQueries, resetQueries, synchronizeMountedAgentSessions } =
   vi.hoisted(() => ({
-    cancelQueries: vi.fn(),
-    invalidateQueries: vi.fn(),
-    resetQueries: vi.fn(),
+    cancelQueries: vi.fn().mockResolvedValue(undefined),
+    invalidateQueries: vi.fn().mockResolvedValue(undefined),
+    resetQueries: vi.fn().mockResolvedValue(undefined),
     synchronizeMountedAgentSessions: vi.fn(),
   }));
 
-vi.mock("@/lib/queryClient", () => ({
-  queryClient: { cancelQueries, invalidateQueries, resetQueries },
-}));
+vi.mock("@/lib/queryClient", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/queryClient")>();
+  vi.spyOn(actual.queryClient, "cancelQueries").mockImplementation(cancelQueries);
+  vi.spyOn(actual.queryClient, "invalidateQueries").mockImplementation(invalidateQueries);
+  vi.spyOn(actual.queryClient, "resetQueries").mockImplementation(resetQueries);
+  return actual;
+});
 
 vi.mock("@/plugins/builtin/agent/public/session", () => ({
   AGENT_SESSIONS_KEY: "agent-sessions",
@@ -85,7 +89,7 @@ describe("workspace session projection invalidation", () => {
     invalidateWorkspaceEverything();
 
     expect(cancelQueries).toHaveBeenCalledOnce();
-    expect(invalidateQueries).toHaveBeenCalledWith();
+    expect(invalidateQueries.mock.calls.map(([options]) => options)).toEqual([undefined]);
     expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
       ownership: "replace-live",
     });

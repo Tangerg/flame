@@ -30,3 +30,13 @@ export async function repairCachedProjection(
     // Deliberately swallowed; see above.
   }
 }
+
+/** Replace a read admitted before a committed change. Cancellation is explicit because
+ *  invalidation alone can reuse an in-flight first read that has no cached value yet. */
+export function replaceCachedRead(options?: {
+  queryKey: readonly unknown[];
+  exact?: boolean;
+}): Promise<void> {
+  void queryClient.cancelQueries(options);
+  return queryClient.invalidateQueries(options);
+}

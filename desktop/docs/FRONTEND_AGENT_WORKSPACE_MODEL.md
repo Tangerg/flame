@@ -160,6 +160,9 @@ Each capability has one dock destination. Review owns changed-file navigation an
 The conversation owns command execution output; a read-only command history is not a terminal.
 Skills owns discovery, proposal review, and personal library curation inside one destination.
 Its internal sections share the dock tab; they do not register separate workspace views.
+Skill curation refreshes all three Runtime-owned catalogs after a command settles.
+The client never promotes a cached proposal into a discovered skill or resolves project/personal
+precedence itself. A pending earlier catalog read is canceled before the new read starts.
 Do not add separate summary or statistics panels that repackage the same execution facts.
 
 Context Dock 的内容由 active `Session.cwd` 驱动。切换 session 后，应恢复该 session 自己的 dock 状态，而不是共享一份全局状态。

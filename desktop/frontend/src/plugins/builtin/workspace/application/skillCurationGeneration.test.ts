@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { QueryObserver } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import {
   approveSkillProposal,
@@ -11,12 +12,31 @@ import {
   WORKSPACE_MANAGED_SKILLS_KEY,
   WORKSPACE_SKILLS_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
+  type WorkspaceSkill,
 } from "./workspaceQueries";
 import { rejected } from "@/test/rejected";
 
 let owner: SkillCurationOwner | undefined;
+const unsubscribeQueries: Array<() => void> = [];
+
+function observeCatalog<T>(
+  queryKey: readonly unknown[],
+  initialData: T,
+  queryFn: () => Promise<T>,
+) {
+  const observer = new QueryObserver(queryClient, {
+    queryKey,
+    queryFn,
+    initialData,
+    staleTime: Infinity,
+    retry: false,
+  });
+  unsubscribeQueries.push(observer.subscribe(() => undefined));
+  return observer;
+}
 
 afterEach(() => {
+  for (const unsubscribe of unsubscribeQueries.splice(0)) unsubscribe();
   owner?.dispose();
   owner = undefined;
   queryClient.removeQueries({ queryKey: [WORKSPACE_MANAGED_SKILLS_KEY] });
@@ -26,6 +46,67 @@ afterEach(() => {
 });
 
 describe("skill curation generation", () => {
+  it("keeps project discovery authoritative while a personal skill restore refreshes", async () => {
+    const project: WorkspaceSkill = {
+      name: "review-checklist",
+      description: "Project review",
+      scope: "project",
+    };
+    const refreshed = Promise.withResolvers<WorkspaceSkill[]>();
+    const read = vi.fn(() => refreshed.promise);
+    const discovered = observeCatalog([WORKSPACE_SKILLS_KEY, { cwd: "/repo" }], [project], read);
+    queryClient.setQueryData(
+      [WORKSPACE_MANAGED_SKILLS_KEY],
+      [
+        {
+          name: project.name,
+          description: "Personal review",
+          lifecycle: "archived",
+        },
+      ],
+    );
+    owner = SkillCurationOwner.install({
+      restore: vi.fn().mockResolvedValue(undefined),
+    } as unknown as SkillCurationGateway);
+
+    const restoring = restoreSkill(project.name);
+    try {
+      await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
+      expect(discovered.getCurrentResult().data).toEqual([project]);
+    } finally {
+      refreshed.resolve([project]);
+      await restoring;
+    }
+    expect(discovered.getCurrentResult().data).toEqual([project]);
+  });
+
+  it("refreshes a personal proposal in every workspace that listed it", async () => {
+    const handle = {
+      workspace: "/repo",
+      name: "review",
+      revision: "rev-2",
+      scope: "user" as const,
+    };
+    const first = observeCatalog(
+      [WORKSPACE_SKILL_PROPOSALS_KEY, { cwd: "/repo" }],
+      [handle],
+      async () => [],
+    );
+    const second = observeCatalog(
+      [WORKSPACE_SKILL_PROPOSALS_KEY, { cwd: "/other" }],
+      [{ ...handle, workspace: "/other" }],
+      async () => [],
+    );
+    owner = SkillCurationOwner.install({
+      approveProposal: vi.fn().mockResolvedValue(undefined),
+    } as unknown as SkillCurationGateway);
+
+    await approveSkillProposal(handle);
+
+    expect(first.getCurrentResult().data).toEqual([]);
+    expect(second.getCurrentResult().data).toEqual([]);
+  });
+
   it("serializes library and proposal decisions that write the same user Skill", async () => {
     const restored = Promise.withResolvers<void>();
     const restore = vi.fn(() => restored.promise);
@@ -86,112 +167,100 @@ describe("skill curation generation", () => {
     archived.resolve();
   });
 
-  it("commits exact library facts even when projection repair fails", async () => {
-    const skill = { name: "review-checklist", description: "Review safely" };
-    owner = SkillCurationOwner.install({
-      archive: vi.fn().mockResolvedValue(undefined),
-      restore: vi.fn().mockResolvedValue(undefined),
-    } as unknown as SkillCurationGateway);
-    const sibling = { name: "release-notes", description: "Draft notes", lifecycle: "active" };
-    queryClient.setQueryData(
-      [WORKSPACE_MANAGED_SKILLS_KEY],
-      [{ ...skill, lifecycle: "active" }, sibling],
-    );
-    queryClient.setQueryData(
-      [WORKSPACE_SKILLS_KEY, { cwd: "/one" }],
-      [{ ...skill, scope: "user" }],
-    );
-    queryClient.setQueryData(
-      [WORKSPACE_SKILLS_KEY, { cwd: "/two" }],
-      [{ ...skill, scope: "user" }],
-    );
-    vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("read unavailable"));
-
-    await expect(archiveSkill(skill.name)).resolves.toBeUndefined();
-    expect(queryClient.getQueryData([WORKSPACE_MANAGED_SKILLS_KEY])).toEqual([
-      { ...skill, lifecycle: "archived" },
-      sibling,
-    ]);
-    expect(queryClient.getQueryData([WORKSPACE_SKILLS_KEY, { cwd: "/one" }])).toEqual([]);
-    expect(queryClient.getQueryData([WORKSPACE_SKILLS_KEY, { cwd: "/two" }])).toEqual([]);
-
-    await expect(restoreSkill(skill.name)).resolves.toBeUndefined();
-    expect(queryClient.getQueryData([WORKSPACE_MANAGED_SKILLS_KEY])).toEqual([
-      { ...skill, lifecycle: "active" },
-      sibling,
-    ]);
-    expect(queryClient.getQueryData([WORKSPACE_SKILLS_KEY, { cwd: "/one" }])).toEqual([
-      { ...skill, scope: "user" },
-    ]);
-    expect(queryClient.getQueryData([WORKSPACE_SKILLS_KEY, { cwd: "/two" }])).toEqual([
-      { ...skill, scope: "user" },
-    ]);
-  });
-
-  it("promotes the exact reviewed user proposal into every affected projection", async () => {
-    const handle = {
-      workspace: "/repo",
+  it("keeps read failure visible without inventing an accepted command's catalog", async () => {
+    const skill = {
       name: "review-checklist",
-      revision: "rev-2",
+      description: "Review safely",
       scope: "user" as const,
     };
-    const proposal = {
-      ...handle,
-      description: "Review safely",
-      instructions: "Check the diff",
-      origin: "requested" as const,
-      revises: false,
-      sourceSession: "ses_1",
-    };
+    const failure = new Error("catalog unavailable");
+    const discovered = observeCatalog(
+      [WORKSPACE_SKILLS_KEY, { cwd: "/repo" }],
+      [skill],
+      async () => {
+        throw failure;
+      },
+    );
     owner = SkillCurationOwner.install({
-      approveProposal: vi.fn().mockResolvedValue(undefined),
+      archive: vi.fn().mockResolvedValue(undefined),
     } as unknown as SkillCurationGateway);
-    queryClient.setQueryData([WORKSPACE_SKILL_PROPOSALS_KEY, { cwd: "/repo" }], [proposal]);
-    queryClient.setQueryData([WORKSPACE_MANAGED_SKILLS_KEY], []);
-    queryClient.setQueryData([WORKSPACE_SKILLS_KEY, { cwd: "/repo" }], []);
-    queryClient.setQueryData([WORKSPACE_SKILLS_KEY, { cwd: "/other" }], []);
 
-    await expect(approveSkillProposal(handle)).resolves.toBeUndefined();
+    await expect(archiveSkill(skill.name)).resolves.toBeUndefined();
 
-    expect(queryClient.getQueryData([WORKSPACE_SKILL_PROPOSALS_KEY, { cwd: "/repo" }])).toEqual([]);
-    expect(queryClient.getQueryData([WORKSPACE_MANAGED_SKILLS_KEY])).toEqual([
-      { name: handle.name, description: proposal.description, lifecycle: "active" },
-    ]);
-    expect(queryClient.getQueryData([WORKSPACE_SKILLS_KEY, { cwd: "/repo" }])).toEqual([
-      { name: handle.name, description: proposal.description, scope: "user" },
-    ]);
-    expect(queryClient.getQueryData([WORKSPACE_SKILLS_KEY, { cwd: "/other" }])).toEqual([
-      { name: handle.name, description: proposal.description, scope: "user" },
-    ]);
+    expect(discovered.getCurrentResult()).toMatchObject({
+      isError: true,
+      error: failure,
+      data: [skill],
+    });
   });
 
-  it("keeps a project proposal bound to the query scope that listed its canonical workspace", async () => {
+  it("refreshes canonical workspace results through the query's original alias", async () => {
     const handle = {
       workspace: "/canonical/repo",
       name: "project-review",
       revision: "rev-1",
       scope: "project" as const,
     };
+    const skill = { name: handle.name, description: "Project review", scope: handle.scope };
     const query = { cwd: "/repo-alias" };
-    const proposal = {
-      ...handle,
-      description: "Project review",
-      instructions: "Inspect project files",
-      origin: "requested" as const,
-      revises: false,
-      sourceSession: "ses_1",
-    };
+    const proposals = observeCatalog(
+      [WORKSPACE_SKILL_PROPOSALS_KEY, query],
+      [handle],
+      async () => [],
+    );
+    const discovered = observeCatalog<WorkspaceSkill[]>(
+      [WORKSPACE_SKILLS_KEY, query],
+      [],
+      async () => [skill],
+    );
     owner = SkillCurationOwner.install({
       approveProposal: vi.fn().mockResolvedValue(undefined),
     } as unknown as SkillCurationGateway);
-    queryClient.setQueryData([WORKSPACE_SKILL_PROPOSALS_KEY, query], [proposal]);
-    queryClient.setQueryData([WORKSPACE_SKILLS_KEY, query], []);
 
-    await expect(approveSkillProposal(handle)).resolves.toBeUndefined();
+    await approveSkillProposal(handle);
 
-    expect(queryClient.getQueryData([WORKSPACE_SKILL_PROPOSALS_KEY, query])).toEqual([]);
-    expect(queryClient.getQueryData([WORKSPACE_SKILLS_KEY, query])).toEqual([
-      { name: handle.name, description: proposal.description, scope: "project" },
-    ]);
+    expect(proposals.getCurrentResult().data).toEqual([]);
+    expect(discovered.getCurrentResult().data).toEqual([skill]);
+  });
+
+  it("preserves command failure while refreshing an uncertain durable outcome", async () => {
+    const failure = new Error("connection closed after commit");
+    const library = observeCatalog(
+      [WORKSPACE_MANAGED_SKILLS_KEY],
+      [{ name: "review", lifecycle: "active" }],
+      async () => [{ name: "review", lifecycle: "archived" }],
+    );
+    owner = SkillCurationOwner.install({
+      archive: vi.fn().mockRejectedValue(failure),
+    } as unknown as SkillCurationGateway);
+
+    await expect(archiveSkill("review")).rejects.toBe(failure);
+
+    expect(library.getCurrentResult().data).toEqual([{ name: "review", lifecycle: "archived" }]);
+  });
+
+  it("replaces an in-flight first read before publishing the post-command catalog", async () => {
+    const beforeArchive = Promise.withResolvers<WorkspaceSkill[]>();
+    const read = vi.fn().mockReturnValueOnce(beforeArchive.promise).mockResolvedValue([]);
+    const discovered = new QueryObserver<WorkspaceSkill[]>(queryClient, {
+      queryKey: [WORKSPACE_SKILLS_KEY, { cwd: "/repo" }],
+      queryFn: read,
+      retry: false,
+    });
+    unsubscribeQueries.push(discovered.subscribe(() => undefined));
+    owner = SkillCurationOwner.install({
+      archive: vi.fn().mockResolvedValue(undefined),
+    } as unknown as SkillCurationGateway);
+
+    try {
+      await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
+      await archiveSkill("review");
+      expect(read).toHaveBeenCalledTimes(2);
+      expect(discovered.getCurrentResult().data).toEqual([]);
+    } finally {
+      beforeArchive.resolve([{ name: "review", description: "Old personal skill", scope: "user" }]);
+      await beforeArchive.promise;
+    }
+    expect(discovered.getCurrentResult().data).toEqual([]);
   });
 });

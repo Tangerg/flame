@@ -3,7 +3,7 @@ import {
   type AgentSessionSummary,
 } from "@/plugins/builtin/agent/public/session";
 import { WORKSPACE_PROJECTS_KEY } from "@/plugins/builtin/workspace/public/queries";
-import { replaceCachedRead } from "./queryInvalidation";
+import { replaceCachedRead } from "@/lib/queryClient";
 
 /**
  * Owns the cross-context edge: the agent PUBLISHES Session facts and workspace invalidates
@@ -15,7 +15,7 @@ import { replaceCachedRead } from "./queryInvalidation";
  */
 export function installProjectIndexRefresh(): () => void {
   return subscribeAgentSessionProjection(workspaceProjectRevision, () => {
-    replaceCachedRead({ queryKey: [WORKSPACE_PROJECTS_KEY] });
+    void replaceCachedRead({ queryKey: [WORKSPACE_PROJECTS_KEY] });
   });
 }
 

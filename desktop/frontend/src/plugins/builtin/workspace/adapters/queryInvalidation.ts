@@ -1,4 +1,4 @@
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, replaceCachedRead } from "@/lib/queryClient";
 import {
   AGENT_SESSIONS_KEY,
   AGENT_SESSION_USAGE_KEY,
@@ -95,7 +95,7 @@ function invalidateWorkspaceTargets(
     if (target === "agentSessionProjection") {
       continue;
     }
-    replaceCachedRead({ queryKey: [QUERY_KEYS[target]] });
+    void replaceCachedRead({ queryKey: [QUERY_KEYS[target]] });
   }
 }
 
@@ -129,23 +129,5 @@ function replaceWorkspaceReadModels(): void {
   // from the same SQLite transaction, so an independent goals.get writer for a
   // mounted Session would split the generation this boundary is replacing.
   synchronizeMountedAgentSessions({ ownership: "replace-live" });
-  replaceCachedRead();
-}
-
-export function replaceCachedRead(options?: {
-  queryKey: readonly unknown[];
-  exact?: boolean;
-}): void {
-  // A query with no cached value normally reuses its in-flight Promise when it
-  // is invalidated. Both a committed change event and a Runtime replacement
-  // must retire that writer before starting the successor read; late settlement
-  // remains owned by TanStack Query's canceled retryer and cannot populate the
-  // cache.
-  if (options) {
-    void queryClient.cancelQueries(options);
-    void queryClient.invalidateQueries(options);
-    return;
-  }
-  void queryClient.cancelQueries();
-  void queryClient.invalidateQueries();
+  void replaceCachedRead();
 }

@@ -3437,6 +3437,31 @@ for await (const line of lines) {
     await runtimeEvents.return?.();
   }, 30_000);
 
+  it("keeps project skill precedence when the personal library changes", async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    const workspaceRoot = join(root, "skill-precedence");
+    const skillDirectory = join(workspaceRoot, ".flame", "skills", managedSkillName);
+    await mkdir(skillDirectory, { recursive: true });
+    await writeFile(
+      join(skillDirectory, "SKILL.md"),
+      `---\nname: ${managedSkillName}\ndescription: Project-owned review.\n---\n\nFollow the project review process.\n`,
+    );
+    const workspace = client.workspace({ path: workspaceRoot });
+    const projectSkill = {
+      name: managedSkillName,
+      description: "Project-owned review.",
+      scope: "project",
+    };
+    try {
+      await client.skills.archive(managedSkillName);
+      expect((await workspace.skills.listDiscovered()).data).toContainEqual(projectSkill);
+      await client.skills.restore(managedSkillName);
+      expect((await workspace.skills.listDiscovered()).data).toContainEqual(projectSkill);
+    } finally {
+      await client.skills.restore(managedSkillName);
+    }
+  });
+
   it("reviews project and user skill proposals produced by a real run tool", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
