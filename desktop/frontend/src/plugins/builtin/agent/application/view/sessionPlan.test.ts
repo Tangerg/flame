@@ -30,25 +30,23 @@ describe("SessionPlan", () => {
     steps: [{ id: "1", text: "Inspect", status: "active" as const }],
   };
 
-  it("uses exact projection generation, Session and whole-replacement revision as identity", () => {
+  it("keeps one presentation identity for revisions within a Session projection", () => {
     const current = SessionPlan.fromSnapshot("ses-a", 2n, snapshot);
     expect(SessionPlan.fromSnapshot("ses-a", 2n, snapshot).identity).toBe(current.identity);
-    expect(SessionPlan.fromSnapshot("ses-a", 2n, { ...snapshot, revision: 8 }).identity).not.toBe(
+    expect(SessionPlan.fromSnapshot("ses-a", 2n, { ...snapshot, revision: 8 }).identity).toBe(
       current.identity,
     );
     expect(SessionPlan.fromSnapshot("ses-b", 2n, snapshot).identity).not.toBe(current.identity);
     expect(SessionPlan.fromSnapshot("ses-a", 3n, snapshot).identity).not.toBe(current.identity);
   });
 
-  it("keeps an unwritten Plan distinct from an explicitly cleared replacement", () => {
+  it("projects both unwritten and cleared Plans as empty content in the same Session", () => {
     const unwritten = SessionPlan.fromSnapshot("ses-a", 2n, undefined);
     const cleared = SessionPlan.fromSnapshot("ses-a", 2n, { revision: 1, steps: [] });
 
-    expect(unwritten.revision).toBeUndefined();
-    expect(cleared.revision).toBe(1);
     expect(unwritten.steps).toEqual([]);
     expect(cleared.steps).toEqual([]);
-    expect(unwritten.identity).not.toBe(cleared.identity);
+    expect(unwritten.identity).toBe(cleared.identity);
   });
 
   it("owns active-step and completion behavior", () => {

@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { ActivePlan } from "./ActivePlan";
@@ -47,7 +47,7 @@ describe("ActivePlan", () => {
     await drainBrowserTasks();
   });
 
-  it("updates the compact progress identity with the authoritative replacement", () => {
+  it("updates the compact progress with the authoritative replacement", () => {
     const { rerender } = render(<ActivePlan />);
     expect(screen.getByRole("button", { name: "Step 1 / 1" })).toBeTruthy();
 
@@ -59,6 +59,43 @@ describe("ActivePlan", () => {
     rerender(<ActivePlan />);
     expect(screen.getByRole("button", { name: "Step 2 / 2" })).toBeTruthy();
   });
+
+  it("keeps the focused checklist open while the accepted Plan advances", async () => {
+    const { rerender } = render(<ActivePlan />);
+    act(() => screen.getByRole("button", { name: "Step 1 / 1" }).focus());
+    await waitFor(() => expect(screen.getByRole("tooltip").textContent).toContain("Inspect"));
+
+    model.revision = 2;
+    model.steps = [
+      { id: "step-1", text: "Inspect", status: "done" },
+      { id: "step-2", text: "Fix", status: "active" },
+    ];
+    rerender(<ActivePlan />);
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Step 2 / 2" }));
+      expect(screen.getByRole("tooltip").textContent).toContain("Fix");
+    });
+  });
+
+  it.each(["session", "projection"] as const)(
+    "closes the previous checklist when the %s changes",
+    async (boundary) => {
+      const { rerender } = render(<ActivePlan />);
+      act(() => screen.getByRole("button", { name: "Step 1 / 1" }).focus());
+      await waitFor(() => expect(screen.getByRole("tooltip").textContent).toContain("Inspect"));
+
+      if (boundary === "session") model.sessionId = "ses-b";
+      else model.generation = 2n;
+      model.steps = [{ id: "step-1", text: "Other work", status: "active" }];
+      rerender(<ActivePlan />);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("tooltip")).toBeNull();
+        expect(document.activeElement).not.toBe(screen.getByRole("button", { name: "Step 1 / 1" }));
+      });
+    },
+  );
 
   it("shows a non-dismissible Plan only while its current Run is active", async () => {
     const { rerender } = render(<ActivePlan />);

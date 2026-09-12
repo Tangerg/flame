@@ -1046,7 +1046,7 @@ Plan, Goal, and schedule tools omit their transcript rows only after Runtime rep
 
 ### 5.3 Plan 紧凑进度（C3）
 
-**何时** 当前 active Run 的 Plan 存在 `in_progress` 步，且未被本 Run dismiss。
+The compact pill is visible while the current root Run is active and the Session Plan has an active or pending step. It is not dismissible.
 
 ```
 ◔  第 3 / 7 步
@@ -1057,7 +1057,9 @@ Plan, Goal, and schedule tools omit their transcript rows only after Runtime rep
 | --- | --- | --- |
 | `done` / `total`（派生） | 环形进度 + `第 N / M 步` pill | Composer overlay |
 | `plan[]` 全量 | hover / focus tooltip 中的三态 checklist | tooltip |
-| `revision` | 折叠依据，**不上屏** | — |
+| `revision` | The event fold accepts newer Runtime content; it does not identify a new UI instance. | — |
+
+The pill keeps focus and its open checklist across accepted Plan updates. Switching Session or retiring the projection generation resets that interaction state; an ordinary content revision does not. An empty or completed Plan removes the pill.
 
 Plan 不创建 disclosure card、底部 progress bar、关闭按钮或 click-expanded 第二状态；空 contribution 为零高度。**冷读**：重载 / 回退 / replay 过期后靠 `plan.get` 接回来。
 

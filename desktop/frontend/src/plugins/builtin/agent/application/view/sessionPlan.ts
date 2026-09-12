@@ -16,29 +16,15 @@ export function planSteps(plan: AgentPlan | undefined): readonly PlanStep[] {
   return Object.freeze(steps.map((step) => Object.freeze({ ...step })));
 }
 
-// The Runtime revision identifies a whole replacement WITHIN one projection generation;
-// `generation` is what stops a server/recovery successor carrying the same session and
-// revision from inheriting its predecessor's presentation state.
+// Plan updates replace content within one Session projection. The fold uses revision for
+// freshness; presentation identity changes only at a Session or projection boundary, so a
+// live update preserves focus while recovery cannot inherit a retired tooltip's state.
 export class SessionPlan {
   readonly identity: string;
-  readonly generation: bigint;
-  readonly revision: number | undefined;
   readonly steps: readonly PlanStep[];
 
-  private constructor(
-    sessionId: string,
-    generation: bigint,
-    revision: number | undefined,
-    steps: readonly PlanStep[],
-  ) {
-    this.identity = tupleKey(
-      sessionId,
-      generation.toString(),
-      revision === undefined ? "unwritten" : "committed",
-      ...(revision === undefined ? [] : [String(revision)]),
-    );
-    this.generation = generation;
-    this.revision = revision;
+  private constructor(sessionId: string, generation: bigint, steps: readonly PlanStep[]) {
+    this.identity = tupleKey(sessionId, generation.toString());
     this.steps = steps;
   }
 
@@ -47,7 +33,7 @@ export class SessionPlan {
     generation: bigint,
     plan: AgentPlan | undefined,
   ): SessionPlan {
-    return new SessionPlan(sessionId, generation, plan?.revision, planSteps(plan));
+    return new SessionPlan(sessionId, generation, planSteps(plan));
   }
 
   activeStep(): PlanStep | undefined {

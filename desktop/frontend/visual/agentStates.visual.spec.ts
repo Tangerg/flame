@@ -338,6 +338,79 @@ test("the compact Plan pill reveals the production checklist on hover", async ({
   await expect(tooltip).toHaveScreenshot("active-plan-tooltip-light.png");
 });
 
+for (const [theme, input] of [
+  ["light", "keyboard"],
+  ["dark", "pointer"],
+] as const) {
+  test(`the Plan checklist stays open across a live update with ${input}`, async ({ page }) => {
+    await page.goto(`/visual/?fixture=agent&theme=${theme}&state=running`);
+    await page.locator("html[data-visual-ready]").waitFor();
+
+    const pill = page.getByRole("button", { name: "Step 2 / 3" });
+    if (input === "keyboard") await pill.focus();
+    else await pill.hover();
+    await expect(page.getByRole("tooltip")).toBeVisible();
+
+    await page.evaluate(async () => {
+      const storePath = "/src/plugins/builtin/agent/adapters/agentStore.ts";
+      const fixturePath = "/visual/agentSessionSnapshots.ts";
+      const { useAgentStore } = (await import(
+        storePath
+      )) as typeof import("../src/plugins/builtin/agent/adapters/agentStore");
+      const { VISUAL_SESSION_ID } = (await import(
+        fixturePath
+      )) as typeof import("./agentSessionSnapshots");
+      const store = useAgentStore.getState();
+      const view = store.sessions[VISUAL_SESSION_ID]!.view;
+      const run = Object.values(view.runsById).find(
+        (entry) => entry.parentRunId === null && entry.status === "running",
+      );
+      if (!run?.activeSegmentId || !view.plan) throw new Error("expected a running Plan fixture");
+      store.applyRunEvents(VISUAL_SESSION_ID, [
+        {
+          eventId: "plan-progress-update",
+          runId: run.id,
+          segmentId: run.activeSegmentId,
+          timestamp: "2026-07-31T08:00:11.000Z",
+          event: {
+            type: "plan.updated",
+            plan: {
+              sessionId: VISUAL_SESSION_ID,
+              state: {
+                revision: view.plan.revision + 1,
+                updatedAt: "2026-07-31T08:00:11.000Z",
+                steps: [
+                  {
+                    id: "step_boundary",
+                    description: "Verify boundary ownership",
+                    status: "completed",
+                  },
+                  {
+                    id: "step_visual",
+                    description: "Review visual evidence",
+                    status: "completed",
+                  },
+                  {
+                    id: "step_gates",
+                    description: "Run quality gates after the update",
+                    status: "in_progress",
+                  },
+                ],
+              },
+            },
+          },
+        },
+      ]);
+    });
+
+    const updated = page.getByRole("button", { name: "Step 3 / 3" });
+    await expect(updated).toBeVisible();
+    if (input === "keyboard") await expect(updated).toBeFocused();
+    await expect(page.getByRole("tooltip")).toContainText("Run quality gates after the update");
+    await expect(page.getByRole("tooltip")).toBeVisible();
+  });
+}
+
 test("the active plan stays with the composer instead of claiming the transcript header", async ({
   page,
 }) => {
