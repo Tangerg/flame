@@ -47,7 +47,7 @@ const compactionCutpointMarker = "E2E_COMPACTION_CUTPOINT";
 const compactionSummaryMarker = "E2E_COMPACTION_SUMMARY";
 const compactionRecoveryMarker = "E2E_COMPACTION_RECOVERY";
 const unavailableProviderStatus = 503;
-const compactionSteerCount = 21;
+const compactionContextPressure = "context ".repeat(4_200);
 const defaultTestDeadlineMilliseconds = 5_000;
 const compactionCutpointDeadlineMilliseconds = 15_000;
 
@@ -300,8 +300,18 @@ function scriptedReply(body: FakeChatRequest): {
   if (transcript.includes(compactionSummaryMarker) && availableTools.has("get_goal")) {
     return { text: "The post-compaction model call completed." };
   }
-  if (transcript.includes(compactionCutpointMarker) && availableTools.has("get_goal")) {
-    return { tool: { name: "get_goal", arguments: "{}" } };
+  if (transcript.includes(compactionCutpointMarker) && availableTools.has("set_plan")) {
+    return {
+      text: compactionContextPressure,
+      tool: {
+        name: "set_plan",
+        arguments: JSON.stringify({
+          steps: [
+            { description: `Process context batch ${toolResultCount + 1}`, status: "in_progress" },
+          ],
+        }),
+      },
+    };
   }
   if (transcript.includes(compactionCutpointMarker) && availableTools.size === 0) {
     return { text: `${compactionSummaryMarker}: preserve only the durable progress boundary.` };
@@ -530,7 +540,7 @@ function writeChatCompletion(
     tools.length > 0
       ? {
           role: "assistant",
-          content: "",
+          content: reply.text ?? "",
           tool_calls: tools.map((tool, index) => ({
             id: callID(index),
             type: "function",
@@ -538,6 +548,11 @@ function writeChatCompletion(
           })),
         }
       : { role: "assistant", content: reply.text };
+  // Fixed usage is useful for accounting assertions but would erase growing context pressure
+  // through Runtime's provider calibration. Compaction scenarios leave usage unreported.
+  const usage = JSON.stringify(body.messages ?? []).includes("E2E_COMPACTION_")
+    ? undefined
+    : { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 };
 
   if (!body.stream) {
     response.writeHead(200, { "Content-Type": "application/json" });
@@ -547,7 +562,7 @@ function writeChatCompletion(
         object: "chat.completion",
         model,
         choices: [{ index: 0, message, finish_reason: finishReason }],
-        usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
+        usage,
       }),
     );
     return;
@@ -557,7 +572,11 @@ function writeChatCompletion(
   const chunks =
     tools.length > 0
       ? [
-          { choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }] },
+          {
+            choices: [
+              { index: 0, delta: { role: "assistant", content: reply.text }, finish_reason: null },
+            ],
+          },
           {
             choices: [
               {
@@ -598,7 +617,7 @@ function writeChatCompletion(
       object: "chat.completion.chunk",
       model,
       choices: [],
-      usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 },
+      usage,
     })}\n\n`,
   );
   response.end("data: [DONE]\n\n");
@@ -4344,23 +4363,22 @@ for await (const line of lines) {
         input: [
           {
             type: "text",
-            text: `${compactionCutpointMarker} keep calling a read-only Tool until compaction.`,
+            text: `${compactionCutpointMarker} advance the Plan while processing long context.`,
           },
         ],
+        limits: { maxSteps: 32 },
       });
       const failedEvents = collectRunEvents(started.events);
-      await within(openingCall.arrived.promise, "the steerable opening model call");
-      for (let index = 0; index < compactionSteerCount; index++) {
-        await client.runs.steer(
-          asRunId(started.result.runId),
-          asSegmentId(started.result.segmentId),
-          [{ type: "text", text: `Queued compaction boundary message ${index + 1}.` }],
-        );
-      }
+      await within(openingCall.arrived.promise, "the opening model call");
       providerGate = failedCall;
       openingCall.release.resolve();
       await within(
-        failedCall.arrived.promise,
+        Promise.race([
+          failedCall.arrived.promise,
+          failedEvents.then((events) => {
+            throw new Error(`Run ended before compaction: ${JSON.stringify(events.at(-1)?.event)}`);
+          }),
+        ]),
         "the post-compaction provider failure cutpoint",
         compactionCutpointDeadlineMilliseconds,
       );
@@ -4371,6 +4389,8 @@ for await (const line of lines) {
       expect(failedCall.request.tools?.some((entry) => entry.function?.name === "get_goal")).toBe(
         true,
       );
+      const { plan } = await client.sessions.snapshot(sessionId);
+      expect(plan?.state?.revision).toBeGreaterThan(1);
 
       failedCall.release.resolve();
       const terminalEvents = await failedEvents;
@@ -4404,6 +4424,7 @@ for await (const line of lines) {
         type: "segment.finished",
         outcome: { type: "completed" },
       });
+      await expect(client.sessions.snapshot(sessionId)).resolves.toMatchObject({ plan });
     } finally {
       openingCall.release.resolve();
       failedCall.release.resolve();
@@ -4433,20 +4454,14 @@ for await (const line of lines) {
             text: `${compactionCutpointMarker} reach the compaction crash cutpoint.`,
           },
         ],
+        limits: { maxSteps: 32 },
       });
       const runId = asRunId(started.result.runId);
       const killedStream = collectRunEvents(started.events).then(
         () => undefined,
         () => undefined,
       );
-      await within(openingCall.arrived.promise, "the steerable SIGKILL opening model call");
-      for (let index = 0; index < compactionSteerCount; index++) {
-        await client.runs.steer(
-          asRunId(started.result.runId),
-          asSegmentId(started.result.segmentId),
-          [{ type: "text", text: `Queued SIGKILL compaction message ${index + 1}.` }],
-        );
-      }
+      await within(openingCall.arrived.promise, "the SIGKILL opening model call");
       providerGate = cutpoint;
       openingCall.release.resolve();
       await within(
@@ -4461,6 +4476,8 @@ for await (const line of lines) {
       expect(cutpoint.request.tools?.some((entry) => entry.function?.name === "get_goal")).toBe(
         true,
       );
+      const { plan } = await client.sessions.snapshot(sessionId);
+      expect(plan?.state?.revision).toBeGreaterThan(1);
 
       await killRuntimeProcess();
       await within(cutpoint.closed.promise, "the compacted provider connection to close");
@@ -4502,6 +4519,7 @@ for await (const line of lines) {
         type: "segment.finished",
         outcome: { type: "completed" },
       });
+      await expect(client.sessions.snapshot(sessionId)).resolves.toMatchObject({ plan });
     } finally {
       openingCall.release.resolve();
       cutpoint.release.resolve();
