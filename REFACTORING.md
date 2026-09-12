@@ -6,7 +6,7 @@ This guide applies [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md) to structural 
 
 Before editing:
 
-1. Read the root and nearest module `AGENTS.md`.
+1. Read the root `AGENTS.md` and the target module's `README.md`.
 2. Inspect the worktree and preserve unrelated changes.
 3. Trace the production entrypoint through composition, delivery, Application, Domain, adapters, persistence, and projection.
 4. Search direct callers, dynamic registration, serialized names, generated artifacts, tests, and documentation.

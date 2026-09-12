@@ -13,7 +13,22 @@ Runtime owns durable product semantics and exposes the same behavior through an 
 | `cli/` | Command routing, one-shot output, terminal interaction, and CLI-local authoring state |
 | `desktop/` | Wails host and graphical presentation |
 
-Read [`AGENTS.md`](AGENTS.md) before changing the repository. Current design and workflow are documented in [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md), [`REFACTORING.md`](REFACTORING.md), and [`DEVELOPMENT.md`](DEVELOPMENT.md).
+Each module's own `README.md` carries its boundaries and module instructions.
+
+## Documents
+
+Read [`AGENTS.md`](AGENTS.md) before changing the repository. Each document below has one job, so a reader
+knows where to look and a writer knows where to add.
+
+| Document | Holds |
+| --- | --- |
+| [`AGENTS.md`](AGENTS.md) | Engineering conventions that apply to every change |
+| [`PROJECT_RULES.md`](PROJECT_RULES.md) | Rules that apply only to this repository |
+| [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md) | Why Flame is shaped the way it is |
+| [`REFACTORING.md`](REFACTORING.md) | How to make a structural change and prove it |
+| [`DEVELOPMENT.md`](DEVELOPMENT.md) | Active scope, workflow, and verification commands |
+| [`runtime/doc/ARCHITECTURE.md`](runtime/doc/ARCHITECTURE.md) | Current Runtime boundaries |
+| [`docs/`](docs/) | Comparisons against reference runtimes, and the Scope adoption record |
 
 ## Development
 

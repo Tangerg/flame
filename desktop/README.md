@@ -111,7 +111,7 @@ perf 排查沉淀的硬规则 —— 几个"看似没事其实在累积"的坑�
 
 - ❌ 把 Zustand 换 Redux/Jotai/Effector、React Query 换 SWR/RTK Query、Wails 换 Tauri、或切换前端框架（Vue/Solid/Svelte…）—— 都评估过，切框架 zero-feature 期 + 生态损失换不来收益。
 - ❌ 给内部数据流加 Zod —— 只用在信任边界（§3）。
-- ❌ 引入**运行时** CSS-in-JS（emotion / styled-components）/ 退回手写 CSS、引入完整 UI Kit（shadcn-as-npm / HeroUI / DaisyUI …）—— 跟设计语言打架。**StyleX 例外**：编译期原子 CSS，无运行时注入；2026-09 评估后采纳，迁移已完成、Tailwind 已彻底移除（管线与实测代价见 `UI_REFINEMENT_LOG.md` Round 105，移除的六层与三个只有像素才看得见的根因见 Round 166–177）。
+- ❌ 引入**运行时** CSS-in-JS（emotion / styled-components）/ 退回手写 CSS、引入完整 UI Kit（shadcn-as-npm / HeroUI / DaisyUI …）—— 跟设计语言打架。**StyleX 例外**：编译期原子 CSS，无运行时注入。迁移已完成,Tailwind 已彻底移除。
 - ❌ 把贡献面退回 per-slot 的 `addX/removeX` map —— 已塌进单一 `extensions` 底座；加贡献面 = 定义一个 ExtensionPoint + 一个 selector，不动 registry。
 - ❌ 把分层模块拆成 monorepo、把 VoidZero 栈（OxLint/Vite-Rolldown）退回 ESLint/Rollup —— 触发条件没命中 / 是退步。
 

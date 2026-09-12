@@ -1,31 +1,138 @@
-# Repository instructions
+# AGENTS.md
 
-Flame is a local agent product. `runtime` owns durable product semantics and exposes them through one in-process Go binding and one Runtime Protocol. `cli` and `desktop` are consumers that own command, terminal, and graphical presentation. Scope supplies released framework and provider libraries; Flame does not rebuild them.
+## Priorities
 
-Stable design rationale lives in [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md). Structural changes follow [`REFACTORING.md`](REFACTORING.md). Repository workflow, verification, active scope, and reference-project rules live in [`DEVELOPMENT.md`](DEVELOPMENT.md). Read the nearest module `AGENTS.md` before changing that module.
+Preserve correctness, security, data integrity, and explicit requirements. Within those constraints, optimize
+for maintainability, readability, and testability. Add extensibility, flexibility, and reuse only when current
+needs justify them.
 
-- Do not preserve backward compatibility for a wrong design. Fix the semantic owner, migrate every in-scope consumer, and remove obsolete APIs, packages, schemas, aliases, fallbacks, tests, and documentation in the same batch.
-- Apply Occam's razor. Prefer the smallest complete design that explains all proven requirements; every abstraction, representation, state, dependency, package, and call path must justify its existence.
-- Give each fact one owner, one representation, and one primary call path. Projections may encode or cache an owner-provided fact but never advance it independently.
-- Runtime is the sole authority for Session, Run, Segment, Item, Goal, Plan, Interrupt, execution, persistence, recovery, provider/model selection, and compaction. CLI and Desktop do not rebuild those state machines.
-- The Runtime Go binding and Runtime Protocol are two projections of one semantic core. Both enter the same delivery endpoint before capability checks, idempotency, lifecycle control, Application invocation, and error or event projection.
-- Use domain-driven design and clean dependency direction to express ownership, not to generate a directory matrix. Domain models own invariants and pure transitions; Application owns use-case ordering; external adapters own translation; delivery owns bindings; bootstrap owns composition and shutdown.
-- Prefer behavior-rich owners over procedural orchestration around mutable records. An aggregate or value object validates construction, protects its state, and exposes intention-revealing queries and transitions. Configuration, wire, storage, request, response, and projection structs remain data unless they own a real invariant.
-- Keep Domain behavior deterministic and free of I/O. Application coordinates clocks, cancellation, transactions, and external effects around Domain decisions; adapters do not reach back in and mutate aggregate fields.
-- Prefer explicit, readable, shallow, sparse Go. A package must own a coherent vocabulary, aggregate invariant, use-case lifecycle, external translation, or reusable technical mechanism. Prefer several responsibility-named files in one package over a package per concept. When a ring has several proven contexts, use one non-package namespace level to expose that context map; reserve direct ring packages for ring-wide mechanisms or an aggregate that names its context.
-- Let the import path and package qualifier state an owner once. A leaf must not repeat an enclosing ring or context, and an exported name must not repeat the package qualifier before adding another noun. Exact ubiquitous aggregates such as `run.Run` are allowed when renaming either side would damage the domain language.
-- Namespace directories never contain facade Go files. Do not add a single-child namespace, nest beyond `ring/context/package`, or move a cross-context mechanism under one consumer merely to make the tree symmetrical.
-- Do not create `service`, `repository`, `manager`, `impl`, `common`, `helpers`, or umbrella packages to make a diagram look complete. A forwarding wrapper or cycle-avoidance package is a refactoring signal, not an architectural boundary.
-- Start with concrete types. Define narrow interfaces in consuming packages only when they reverse a dependency, isolate an external boundary, or support real substitution. Return concrete types from constructors.
-- Keep composition explicit. Do not use ambient globals, service locators, reflection registries, dependency-injection containers, optional service bags, or configuration objects that leak across boundaries.
-- Make invalid states unconstructable where practical. Use closed states and named values instead of primitive sentinels, boolean combinations, magic strings, anonymous maps, or typed-nil ambiguity.
-- Constructors validate once and return errors instead of leaving partially valid objects. When optional policy grows beyond a self-evident argument, use an owner-named `Config` with closed values rather than positional primitives or boolean switches.
-- Preserve one vocabulary across domain types, protocol values, storage, errors, CLI output, tests, and documentation. Do not retain former names as aliases.
-- Provider identity is the exact provider/model pair plus model-owned options. Credential precedence, endpoints, SDK construction, and provider-specific translation remain at the provider boundary.
-- Prefer the current module Go version and standard library, then an existing mature dependency. Use modern language and library features when they make ownership clearer. A wrapper must own policy, translation, lifecycle, or authority; otherwise delete it.
-- Errors preserve their cause, use stable domain or protocol categories only where callers branch, and add concise owner context at boundaries. Error strings are lowercase, contain no credentials, and are not parsed as control flow.
-- Do not guess where performance matters. Measure first, fix the data model before adding machinery, and optimize only a demonstrated dominant bottleneck.
-- Derive lifecycle decisions from owner-provided facts and real limits. Do not substitute arbitrary message/item counts, hand-maintained schema epochs, or similar counters for request capacity, compatibility, or state.
-- Test observable contracts, owner invariants, dependency direction, and real single-Runtime product lifecycles. Prioritize Goal, Plan, steer, interruption, compaction, long context, long execution, restart, and recovery over speculative races or multi-client and multi-server scenarios. Do not freeze file paths, private fields, package counts, implementation inventories, or speculative topologies.
-- Preserve unrelated user changes. Never edit, format, stage, revert, or generate into a user-owned path outside the active scope.
-- Reply to the user in Chinese. Keep code, identifiers, comments, errors, and repository documentation in English. Comments explain why, not what.
+Use design principles as judgment aids, not a checklist of patterns to implement. Resolve trade-offs in favor
+of clear behavior and lower overall complexity.
+
+## Working approach
+
+- Read applicable instructions and relevant implementation, callers, and tests. Expand context as dependencies
+  or uncertainty require; load documentation and skills only when their scope matches the task.
+- Use commands verified in repository scripts, configuration, or CI. Follow sound local conventions; introduce
+  a different pattern to address a concrete limitation, not a stylistic preference.
+- For cross-cutting or risky work, identify intended behavior, affected contracts, and verification before
+  editing. Make straightforward changes directly.
+- Resolve ambiguity from contracts and repository evidence. Ask only when remaining uncertainty materially
+  affects behavior, scope, or data safety; otherwise use the simplest consistent interpretation.
+- Within the authorized scope, implement and verify the change. Run checks and fix introduced failures without
+  repeated approval in confirmed isolated environments. Before unfamiliar or potentially state-changing
+  commands, confirm the target environment and expected side effects are within the authorized scope. Changes
+  to shared or external state require explicit authorization; a command named `test` is not proof of isolation.
+- Preserve unrelated work. Production actions, destructive data operations, and destructive Git operations
+  require explicit authorization beyond permission to edit code.
+
+## Design and implementation
+
+### Simplicity and abstraction
+
+- **Occam's razor / KISS:** Choose the least complex sufficient solution: fewer assumptions, concepts, states,
+  dependencies, and indirections. Reduce understanding and change costs, not line count.
+- **YAGNI:** Add only capabilities required now. Do not prebuild configuration, extension points, or
+  frameworks. Necessary safety checks and tests are not speculative work.
+- **DRY:** Give each business rule one authoritative representation. Share stable knowledge, not merely
+  similar syntax; keep independently changing concepts separate.
+- An abstraction must reduce complexity for its callers, consolidate stable knowledge, or isolate an actual
+  variation. Moving code behind another name is not enough.
+- Prefer standard-library and existing project capabilities. Add dependencies only when their benefits justify
+  their maintenance cost; use established implementations for security-sensitive primitives.
+
+### Boundaries and contracts (SOLID)
+
+- **SRP:** Group code by its reason to change; split independent responsibilities, not cohesive logic to
+  satisfy arbitrary size limits.
+- **OCP:** Extend behavior at demonstrated variation points; repair flawed abstractions instead of preserving
+  them behind extra layers.
+- **LSP:** Preserve behavioral contracts, including invariants and failure semantics. Do not strengthen
+  preconditions or weaken postconditions.
+- **ISP:** Shape small, cohesive interfaces around consumer needs, not every capability of an implementation.
+- **DIP:** Separate business policy from volatile infrastructure through explicit boundaries; do not create an
+  interface for every type.
+- **LoD:** Depend on direct collaborators' public contracts, not their internal object graphs. Avoid
+  forwarding layers that merely disguise coupling.
+
+### Readability and state (Zen of Python)
+
+- Use the host language's idioms. Prefer explicit dependencies, flat control flow, readable spacing, and
+  coherent namespaces over implicit magic or clever compression.
+- Represent necessary complexity behind clear boundaries. Keep justified exceptions local and prefer practical
+  clarity over rigid uniformity.
+- Keep mutable state minimal, ownership explicit, and each fact authoritative in one place. Separate business
+  decisions from external I/O.
+- Prefer one clear path per behavior. Simplify hard-to-explain logic without fragmenting cohesive code into
+  tiny helpers.
+- Make failures explicit; suppress only specific expected errors allowed by the contract. Never turn
+  unexpected failure into apparent success.
+
+### Data and performance (Rob Pike)
+
+1. Do not guess bottlenecks or add speculative speed hacks.
+2. Measure representative workloads before tuning; optimize significant bottlenecks and compare results
+   against the baseline.
+3. Choose algorithms for actual input sizes; consider constant costs as well as asymptotic complexity.
+4. Use simple algorithms and data structures unless requirements or measurements justify the added complexity.
+5. Design data representations and invariants first; simplify algorithms through better structure.
+
+Respect known scale and resource limits during design.
+
+### Comments
+
+- Default to no comments; use naming, types, and structure to express intent.
+- At critical data structures, non-obvious algorithms, interfaces, or pitfalls, explain **why**: constraints,
+  trade-offs, or essential contracts the types cannot express, such as ownership, lifetime, concurrency, or
+  failure semantics. Do not narrate operations or repeat signatures.
+- Keep necessary comments accurate; remove stale comments and commented-out code. Preserve licenses and tool
+  directives. Do not use TODOs in place of required work.
+
+## Fixes and evolution
+
+- Establish the root cause through reproduction, tests, or traced behavior. Fix the responsible model,
+  invariant, or boundary and check other affected paths.
+- Do not conceal defects with stacked special cases, duplicated state, blind retries, or silent fallbacks.
+  Keep validation and resilience where real contracts require them.
+- **Breaking changes are allowed** to fix faulty contracts or achieve a simplification worth the migration
+  cost. Honor explicit compatibility requirements; do not break sound contracts for style.
+- Update affected callers, types, tests, and documentation together. Address protocol, persisted-data, and
+  external-consumer migrations explicitly; disclose what remains outside the task's control.
+- Keep compatibility adapters only for real consumers or rollout needs, with a removal condition. Delete
+  superseded code and configuration when that condition is met.
+- Make the smallest complete change that fixes the cause. Refactor obstructive related code in verifiable
+  steps; distinguish behavior-preserving cleanup from intentional contract changes.
+- At iteration or milestone reviews, revisit repeatedly broken, frequently changed, or hard-to-test modules.
+  Record out-of-scope debt with its impact and a trigger for revisiting it; do not start unrelated rewrites.
+
+## Verification and completion
+
+- Use checks sufficient to demonstrate changed behavior. Broaden coverage for shared contracts, cross-module
+  changes, or build configuration. Honor required repository checks.
+- For bug fixes, add regression coverage that exposes the original failure when feasible. Test observable
+  behavior and contracts, including relevant boundaries and failures.
+- Control time, randomness, and external state where needed for reliable tests. Do not distort production
+  interfaces merely to mock them.
+- Do not disable checks, skip failing tests, or weaken valid assertions to manufacture a pass. Correct test
+  expectations only for intentional contract changes or demonstrated test errors.
+- Review the diff for concrete defects, contract violations, and maintainability problems. Remove accidental
+  edits, debug residue, and dead code; do not treat stylistic alternatives as defects.
+- Finish when requested behavior and affected integrations are complete and relevant verification passes.
+  Report genuine blockers rather than claiming completion; stop improving when acceptance criteria are met.
+- Report changes, actual verification results, and any migrations or remaining risks. Distinguish passed,
+  failed, and not-run checks; identify unrelated pre-existing failures.
+
+## Maintaining these instructions
+
+- Keep durable rules that prevent recurring mistakes or record non-obvious project decisions. Put scoped rules
+  near affected code and occasional procedures in narrowly triggered skills or linked documentation.
+- When maintaining instructions, remove stale or redundant guidance and evaluate changes on representative
+  tasks. Let observed task outcomes guide further revisions. Keep skill descriptions short and triggers
+  precise; do not rewrite policy during unrelated coding work.
+- Enforce mechanical requirements through formatters, linters, hooks, and CI rather than repeated prose. Never
+  weaken instructions or checks to excuse a noncompliant change.
+## Project-specific rules
+
+Rules that apply only to this repository live in [`PROJECT_RULES.md`](PROJECT_RULES.md).
+
+@./PROJECT_RULES.md

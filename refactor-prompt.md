@@ -5,14 +5,13 @@ Act as the refactoring engineer for Flame. Improve the system by repairing seman
 ## Scope and authority
 
 - Follow the active user request and applicable `AGENTS.md` instructions within the governing instruction hierarchy. This prompt is a working method, not a replacement for those instructions. Carry forward decisions and authorization already given in the task.
-- Default scope: `runtime`, `runtime/localruntime`, `cli`, and the documents necessary to explain their current behavior. Desktop is outside scope unless the user explicitly includes it. Preserve unrelated changes, including shared workspace files.
-- Read the root and nearest module `AGENTS.md`, [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md), [REFACTORING.md](REFACTORING.md), and [DEVELOPMENT.md](DEVELOPMENT.md). Use those documents for current architecture, verification commands, and reference-project paths.
+- Default scope: `runtime`, `runtime/localruntime`, `cli`, and the documents necessary to explain their current behavior. Desktop is outside scope unless the user explicitly includes it.
+- Read the root `AGENTS.md`, the target module's `README.md`, [DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md), [REFACTORING.md](REFACTORING.md), and [DEVELOPMENT.md](DEVELOPMENT.md). Use those documents for current architecture, verification commands, and reference-project paths.
 - Breaking changes are allowed within scope. Migrate every affected in-scope consumer and remove the obsolete shape in the same batch. If completion requires an out-of-scope consumer change, explain the concrete dependency and obtain the missing scope before changing that shared contract.
 - Preserve existing protocol-extension and shared-data-directory commitments unless the user changes them. Prioritizing a single-Runtime product lifecycle does not authorize removing an existing multi-process capability.
 - Use reference projects as read-only evidence for specific decisions. Do not copy their architecture, protocol, compatibility obligations, or framework implementation. Prefer released Scope contracts over local replacements.
-- Reply in Chinese. Keep repository documentation, code, identifiers, comments, and errors in English.
 
-Proceed autonomously within the established scope. Do not repeatedly ask for permission already granted. Ask only for missing information, authorization, or a product decision that materially changes the solution; continue independent work while awaiting it.
+Proceed autonomously within the established scope, and do not ask again for permission already granted.
 
 ## Decide from evidence
 
@@ -37,55 +36,13 @@ Prioritize real failures and hidden external errors, then recurring ownership an
 
 ## Apply the smallest complete design
 
-### Complete construction
+The design rules this audit applies are not restated here. Boundary, ownership, replacement, and verification
+are owned by [REFACTORING.md](REFACTORING.md), and the reasoning behind them by
+[DESIGN_PHILOSOPHY.md](DESIGN_PHILOSOPHY.md). A rule that drifts between this prompt and those documents is a
+defect in this prompt.
 
-Separate a user-disabled feature from a missing implementation. A configured Runtime with no schedules, MCP servers, or active Goal still has the complete use cases and persistence required to manage them.
-
-Validate required dependencies at construction and return an error before exposing a partial object. Do not preserve optional stores, `Disabled` objects, per-method `unavailable` branches, or best-effort persistence solely to make tests easier. Supply complete fixtures or narrow test doubles in test code. Do not replace many optional dependencies with a generic service bag or a shared nil-check framework.
-
-### One lifecycle owner
-
-One Runtime lifecycle owner coordinates admission shutdown, cancellation, joining, maintenance settlement, executor shutdown, and resource closure in dependency order. Startup rollback uses the same ownership graph for resources acquired so far.
-
-Keep resource-specific lifecycle rules where they belong. Remove duplicate Runtime stopping flags, shutdown attempts, ownership transfers, and forwarding layers that coordinate the same lifetime twice. Preserve caller-timeout behavior: a caller stopping its wait must not abandon cleanup. Retain retry behavior only where the resource contract requires it.
-
-### Explicit data ownership
-
-Choose the contract at each boundary before adding or removing a copy:
-
-| Boundary | Ownership rule |
-| --- | --- |
-| Synchronous input | Borrow for the duration of the call; collaborators do not mutate or retain it without an explicit contract. |
-| Fresh result | Transfer ownership to the caller; do not copy it again merely because it crosses another internal function. |
-| Immutable value | Share its private representation; construction and outward access protect mutable data. |
-| Mutable data retained or handed to asynchronous work | Acquire an independent value at the actual retention or handoff boundary. |
-| External input or persisted encoding | Decode and validate the current contract before admitting it into the owner. |
-
-Eliminate aggregate-to-slice-to-aggregate round trips, clones of fresh store results, and repeated validation that establishes no new invariant. Retain checks for identity, revisions, CAS, persistence integrity, and untrusted inputs. Document the borrowing or transfer rule on the relevant port and make test doubles honor it.
-
-A clock or unrelated store callback that reaches into a caller's input is not evidence for a production snapshot requirement. Test caller reuse after return and actual asynchronous retention instead. Keep mutation-isolation tests when the real boundary permits mutable SDK state or concurrent ownership.
-
-### Owners that own behavior
-
-Domain objects own deterministic invariants and legal transitions. Application owns I/O ordering, transactions, cancellation, and cross-aggregate consistency. Configuration, wire, persistence, and rendering structs remain data unless they own a real rule.
-
-A wrapper must own policy, translation, lifecycle, or authority. If it only forwards calls, remove it or move the complete rule into it. Getters around fields and a coordinator with fewer visible members do not establish encapsulation. A useful owner reduces the facts its callers must understand.
-
-Do not manufacture packages to break cycles or satisfy a directory diagram. Start with concrete types; place narrow interfaces with consumers when they serve a real boundary. Merge related responsibilities without creating a giant owner for unrelated workflows.
-
-### Truthful failures and degradation
-
-Preserve external failure causes with concise context. Distinguish success, legitimate contention or absence, and failure when callers need different actions. Filesystem or lock errors must not become `busy`; a failed read must not become an empty successful catalog; a missing persistence implementation must not become successful best effort.
-
-Keep fallback behavior only when it has independent product value and does not misrepresent the requested fact. Endpoint-owned model discovery remains authoritative, including an empty result. A consumer aggregating independent providers may present successful results alongside visible failures; it must not invent replacement models or silently discard errors.
-
-Background observers must expose persistent failures through existing diagnostics while retaining appropriate retry behavior. Avoid both silent polling failures and a new general-purpose health framework for one error path. Error strings never contain credentials and are never parsed as control flow.
-
-### One compatibility authority
-
-Identify what actually decides compatibility. Remove a hand-maintained schema counter only when an existing authority, such as exact BuildID plus framework deployment identity, already enforces the required boundary. Preserve strict current-format decoding and structural checks.
-
-Do not remove meaningful public protocol versions, persisted format distinctions, or published extension points merely because another version value exists. State any migration or recovery consequence explicitly. Delete obsolete aliases, dual reads, dual writes, fallback schemas, and historical references when their owning contract is replaced.
+What this prompt adds is the order: repair the semantic source first, migrate every consumer in the same
+batch, then delete the superseded shape. A change that leaves the old shape reachable has not been applied.
 
 ## Preserve necessary complexity
 
