@@ -91,8 +91,7 @@ describe("workspace session navigation", () => {
 
   it("restores the dock destination the session it moves to remembers", async () => {
     await loadPluginsForTest(ports, sessionNavigation);
-    useContextDockStore.getState().openDockTab("diff");
-    useContextDockStore.getState().rememberDockView("diff");
+    useContextDockStore.getState().adoptDockLocation("diff");
 
     agentSession.goTo("s2");
     expect(navigator().get().dock).toBeNull();
@@ -104,7 +103,7 @@ describe("workspace session navigation", () => {
 
   it("keeps each session's own tabs", async () => {
     await loadPluginsForTest(ports, sessionNavigation);
-    useContextDockStore.getState().openDockTab("diff");
+    useContextDockStore.getState().adoptDockLocation("diff");
 
     agentSession.goTo("s2");
     expect(useContextDockStore.getState().dockViewIds).toEqual([]);

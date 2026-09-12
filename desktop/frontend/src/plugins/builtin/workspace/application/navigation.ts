@@ -110,7 +110,8 @@ export function reorderWorkspaceDockView(id: string, toIndex: number): void {
 export function closeActiveWorkspaceDockView(): boolean {
   const activeViewId = workspaceNavigation().dock().activeViewId;
   if (!activeViewId) return false;
-  workspaceNavigation().closeDockView(activeViewId);
+  if (activeViewId === WORKSPACE_DOCK_CATALOG) workspaceNavigation().collapseDock();
+  else workspaceNavigation().closeDockView(activeViewId);
   return true;
 }
 

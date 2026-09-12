@@ -22,9 +22,8 @@ beforeEach(() => {
 describe("the round trip", () => {
   it("gets back everything it chose to persist", async () => {
     dock().activateSessionScope("s1");
-    dock().openDockTab("explorer");
-    dock().openDockTab("diff");
-    dock().rememberDockView("diff");
+    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("diff");
     dock().setFileViewer("a/b.ts", 12);
     dock().revealTool("tool_1");
 
@@ -44,51 +43,50 @@ describe("the round trip", () => {
 
 describe("the open tab set", () => {
   it("holds a tab open once", () => {
-    dock().openDockTab("diff");
-    dock().openDockTab("diff");
+    dock().adoptDockLocation("diff");
+    dock().adoptDockLocation("diff");
     expect(dock().dockViewIds).toEqual(["diff"]);
   });
 
   it("answers which tab takes the place of a closed one", () => {
-    dock().openDockTab("explorer");
-    dock().openDockTab("diff");
-    dock().openDockTab("terminal");
+    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("diff");
+    dock().adoptDockLocation("terminal");
 
     expect(dock().closeDockTab("diff")).toBe("terminal");
     expect(dock().dockViewIds).toEqual(["explorer", "terminal"]);
   });
 
   it("falls back to the tab before it when the last one closes", () => {
-    dock().openDockTab("explorer");
-    dock().openDockTab("diff");
+    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("diff");
 
     expect(dock().closeDockTab("diff")).toBe("explorer");
   });
 
   it("answers null when the last tab closes, and for a tab it never had", () => {
-    dock().openDockTab("diff");
+    dock().adoptDockLocation("diff");
     expect(dock().closeDockTab("diff")).toBeNull();
     expect(dock().closeDockTab("nope")).toBeNull();
   });
 
   it("keeps only the named tab when the others close", () => {
-    dock().openDockTab("explorer");
-    dock().openDockTab("diff");
-    dock().openDockTab("terminal");
+    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("diff");
+    dock().adoptDockLocation("terminal");
 
     dock().closeOtherDockTabs("diff");
     expect(dock().dockViewIds).toEqual(["diff"]);
   });
 
   it("leaves the set alone when closing the others around a tab it never had", () => {
-    dock().openDockTab("explorer");
+    dock().adoptDockLocation("explorer");
     dock().closeOtherDockTabs("nope");
     expect(dock().dockViewIds).toEqual(["explorer"]);
   });
 
   it("forgets the remembered destination when every tab closes", () => {
-    dock().openDockTab("explorer");
-    dock().rememberDockView("explorer");
+    dock().adoptDockLocation("explorer");
 
     dock().closeAllDockTabs();
     expect(dock().dockViewIds).toEqual([]);
@@ -96,17 +94,17 @@ describe("the open tab set", () => {
   });
 
   it("moves a tab to the requested position", () => {
-    dock().openDockTab("explorer");
-    dock().openDockTab("diff");
-    dock().openDockTab("terminal");
+    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("diff");
+    dock().adoptDockLocation("terminal");
 
     dock().reorderDockTab("explorer", 2);
     expect(dock().dockViewIds).toEqual(["diff", "terminal", "explorer"]);
   });
 
   it("clamps a reorder into the open set and ignores an unknown tab", () => {
-    dock().openDockTab("explorer");
-    dock().openDockTab("diff");
+    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("diff");
 
     dock().reorderDockTab("diff", 99);
     expect(dock().dockViewIds).toEqual(["explorer", "diff"]);
@@ -134,16 +132,16 @@ describe("what a re-open returns to", () => {
   });
 
   it("is the destination last shown, when it is still open", () => {
-    dock().openDockTab("explorer");
-    dock().openDockTab("diff");
-    dock().rememberDockView("diff");
+    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("diff");
 
     expect(dock().dockTabToShow("terminal")).toBe("diff");
   });
 
-  it("is the first tab when the remembered one is gone", () => {
-    dock().openDockTab("explorer");
-    dock().rememberDockView("diff");
+  it("remembers the remaining tab when the last shown one closes", () => {
+    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("diff");
+    dock().closeDockTab("diff");
 
     expect(dock().dockTabToShow("terminal")).toBe("explorer");
   });
@@ -175,8 +173,7 @@ describe("per-session scopes", () => {
 
   it("keeps each session's tabs and returns the destination it remembers", () => {
     dock().activateSessionScope("s1");
-    dock().openDockTab("diff");
-    dock().rememberDockView("diff");
+    dock().adoptDockLocation("diff");
     dock().focusFile("a.ts");
 
     expect(dock().activateSessionScope("s2")).toBeNull();
@@ -190,15 +187,15 @@ describe("per-session scopes", () => {
 
   it("is a no-op for the session already in scope", () => {
     dock().activateSessionScope("s1");
-    dock().rememberDockView("diff");
+    dock().adoptDockLocation("diff");
 
     expect(dock().activateSessionScope("s1")).toBe("diff");
-    expect(dock().dockViewIds).toEqual([]);
+    expect(dock().dockViewIds).toEqual(["diff"]);
   });
 
   it("forgets scopes for sessions no longer held open", () => {
     dock().activateSessionScope("s1");
-    dock().openDockTab("diff");
+    dock().adoptDockLocation("diff");
     dock().activateSessionScope("s2");
 
     dock().forgetSessionScopes(["s2"]);
@@ -208,9 +205,9 @@ describe("per-session scopes", () => {
 
   it("retires the active scope when the Session owner has already released it", async () => {
     dock().activateSessionScope("s1");
-    dock().openDockTab("diff");
+    dock().adoptDockLocation("diff");
     dock().activateSessionScope("s2");
-    dock().openDockTab("explorer");
+    dock().adoptDockLocation("explorer");
 
     dock().forgetSessionScopes(["s1"]);
 
@@ -229,10 +226,10 @@ describe("per-session scopes", () => {
 
   it("restores inactive tabs and file targets after renderer replacement", async () => {
     dock().activateSessionScope("s1");
-    dock().openDockTab("explorer");
-    dock().openDockTab("diff");
-    dock().openDockTab("file");
-    dock().rememberDockView("diff");
+    dock().adoptDockLocation("explorer");
+    dock().adoptDockLocation("diff");
+    dock().adoptDockLocation("file");
+    dock().adoptDockLocation("diff");
     dock().focusFile("src/runtime.ts");
     dock().setFileViewer("src/runtime.ts", 42);
     dock().revealTool("call-from-retired-renderer");
@@ -288,6 +285,23 @@ describe("tool selection inside a scope", () => {
 });
 
 describe("renderer storage validation", () => {
+  it("rejects persisted catalog entries masquerading as tabs", async () => {
+    dock().activateSessionScope("s1");
+    dock().adoptDockLocation("diff");
+    const key = useContextDockStore.persist.getOptions().name!;
+    const payload = JSON.parse(localStorage.getItem(key)!) as {
+      state: { sessionScopes: [string, { dockViewIds: string[] }][] };
+    };
+    payload.state.sessionScopes[0]![1].dockViewIds = ["catalog"];
+    useContextDockStore.setState({ ...EMPTY, sessionScopes: new Map() });
+    localStorage.setItem(key, JSON.stringify(payload));
+
+    await useContextDockStore.persist.rehydrate();
+    dock().activateSessionScope("s1");
+
+    expect(dock().dockViewIds).toEqual([]);
+  });
+
   it("discards an older scope payload and restamps the current version", async () => {
     localStorage.setItem(
       "flame.context-dock",

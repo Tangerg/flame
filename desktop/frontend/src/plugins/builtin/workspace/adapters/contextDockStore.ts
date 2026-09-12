@@ -2,12 +2,13 @@ import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
+import { WORKSPACE_DOCK_CATALOG } from "../application/navigation";
 
 const CONTEXT_DOCK_STORAGE_KEY = "flame.context-dock";
 const NON_NEGATIVE_DECIMAL = /^(0|[1-9]\d*)$/;
 
 const persistedDockScopeSchema = z.object({
-  dockViewIds: z.array(z.string()),
+  dockViewIds: z.array(z.string().refine((id) => id !== WORKSPACE_DOCK_CATALOG)),
   lastViewId: z.string().nullable(),
   fileFocus: z.object({ path: z.string(), revision: z.string().regex(NON_NEGATIVE_DECIMAL) }),
   fileViewer: z.object({ path: z.string(), line: z.number().int().nonnegative() }).nullable(),
@@ -71,9 +72,7 @@ interface ContextDockState extends ContextDockSessionScope {
 }
 
 interface ContextDockActions {
-  /** Hold `id` open. Which destination shows is the caller's navigation. */
-  openDockTab: (id: string) => void;
-  /** Adopt an already-authoritative location as open and last-shown in one write. */
+  /** Remember a destination and hold its tab open; the catalog never creates a tab. */
   adoptDockLocation: (id: string) => void;
   /** Drop `id`; answers which tab should take its place, or null for none. */
   closeDockTab: (id: string) => string | null;
@@ -83,7 +82,6 @@ interface ContextDockActions {
   reorderDockTab: (id: string, toIndex: number) => void;
   /** The destination a re-open should return to, given a fallback. */
   dockTabToShow: (defaultViewId: string) => string;
-  rememberDockView: (id: string) => void;
   focusFile: (path: string) => void;
   setFileViewer: (path: string, line?: number) => void;
   setSelectedToolId: (id: string) => void;
@@ -156,32 +154,27 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
       selectedToolId: "",
       expandedToolIds: new Set<string>(),
 
-      openDockTab: (id) =>
-        set((state) => ({
-          dockViewIds: state.dockViewIds.includes(id)
-            ? state.dockViewIds
-            : [...state.dockViewIds, id],
-        })),
       adoptDockLocation: (id) =>
         set((state) => ({
-          dockViewIds: state.dockViewIds.includes(id)
-            ? state.dockViewIds
-            : [...state.dockViewIds, id],
+          dockViewIds:
+            id === WORKSPACE_DOCK_CATALOG || state.dockViewIds.includes(id)
+              ? state.dockViewIds
+              : [...state.dockViewIds, id],
           lastViewId: id,
         })),
       closeDockTab: (id) => {
-        const { dockViewIds } = get();
+        const { dockViewIds, lastViewId } = get();
         const index = dockViewIds.indexOf(id);
         if (index < 0) return null;
         const remaining = dockViewIds.filter((viewId) => viewId !== id);
-        set({ dockViewIds: remaining });
-        // The tab that slid into its place, else the one before it.
-        return remaining[index] ?? remaining[index - 1] ?? null;
+        const next = remaining[index] ?? remaining[index - 1] ?? null;
+        set({ dockViewIds: remaining, lastViewId: lastViewId === id ? next : lastViewId });
+        return next;
       },
       closeOtherDockTabs: (id) =>
-        set((state) => ({
-          dockViewIds: state.dockViewIds.includes(id) ? [id] : state.dockViewIds,
-        })),
+        set((state) =>
+          state.dockViewIds.includes(id) ? { dockViewIds: [id], lastViewId: id } : {},
+        ),
       closeAllDockTabs: () => set({ dockViewIds: [], lastViewId: null }),
       reorderDockTab: (id, toIndex) =>
         set((state) => {
@@ -201,7 +194,6 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
           ? lastViewId
           : (dockViewIds[0] ?? defaultViewId);
       },
-      rememberDockView: (id) => set({ lastViewId: id }),
       focusFile: (path) => set((state) => ({ fileFocus: state.fileFocus.moveTo(path) })),
       setFileViewer: (path, line) => set({ fileViewer: { path, line: line ?? 0 } }),
       setSelectedToolId: (id) => set({ selectedToolId: id }),

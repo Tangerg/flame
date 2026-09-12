@@ -30,7 +30,7 @@ type DockArrival = "alone" | "beside";
 function showDockView(id: string, arrival: DockArrival): void {
   // Remembered by the mover rather than by a subscriber on the location: this
   // port is installed while plugins load, before the router exists.
-  useContextDockStore.getState().rememberDockView(id);
+  useContextDockStore.getState().adoptDockLocation(id);
   navigator().go(arrival === "alone" ? { view: null, dock: id } : { dock: id });
 }
 
@@ -73,18 +73,14 @@ export function installWorkspaceNavigationPort(): () => void {
     openView: (id) => navigator().go({ view: id }),
     // One move: the tab opens and the location shows it, leaving the promoted
     // view behind.
-    openViewInDock: (id) => {
-      useContextDockStore.getState().openDockTab(id);
-      showDockView(id, "alone");
-    },
+    openViewInDock: (id) => showDockView(id, "alone"),
     selectDockView: (id) => {
       if (useContextDockStore.getState().dockViewIds.includes(id)) showDockView(id, "beside");
     },
     closeDockView: (id) => {
       const next = useContextDockStore.getState().closeDockTab(id);
       if (navigator().get().dock !== id) return;
-      if (next === null) navigator().go({ dock: WORKSPACE_DOCK_CATALOG });
-      else showDockView(next, "beside");
+      showDockView(next ?? WORKSPACE_DOCK_CATALOG, "beside");
     },
     closeOtherDockViews: (id) => {
       const state = useContextDockStore.getState();
@@ -94,15 +90,12 @@ export function installWorkspaceNavigationPort(): () => void {
     },
     closeAllDockViews: () => {
       useContextDockStore.getState().closeAllDockTabs();
-      navigator().go({ dock: WORKSPACE_DOCK_CATALOG });
+      showDockView(WORKSPACE_DOCK_CATALOG, "beside");
     },
     reorderDockView: (id, toIndex) => useContextDockStore.getState().reorderDockTab(id, toIndex),
     collapseDock: () => navigator().go({ dock: null }),
     showDock: (defaultViewId) => {
       const target = useContextDockStore.getState().dockTabToShow(defaultViewId);
-      // The catalogue is a destination, not a tab: opening one for it would leave the person
-      // closing a tab they never asked for.
-      if (target !== WORKSPACE_DOCK_CATALOG) useContextDockStore.getState().openDockTab(target);
       showDockView(target, "alone");
     },
     /** A stale id is a no-op: it is not the surface on screen. */
@@ -115,7 +108,6 @@ export function installWorkspaceNavigationPort(): () => void {
     focusFile: (path) => useContextDockStore.getState().focusFile(path),
     openFile: (path, line) => {
       useContextDockStore.getState().setFileViewer(path, line);
-      useContextDockStore.getState().openDockTab("file");
       showDockView("file", "alone");
     },
     selectedToolId: () => useContextDockStore.getState().selectedToolId,

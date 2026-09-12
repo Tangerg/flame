@@ -116,6 +116,38 @@ describe("workspace navigation port", () => {
     expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
   });
 
+  it("restores the catalogue after renderer replacement without opening a phantom tab", () => {
+    navigator().go({ session: "s1", dock: WORKSPACE_DOCK_CATALOG });
+
+    activateWorkspaceSessionScope("s1");
+
+    expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
+    expect(useContextDockStore.getState().dockViewIds).toEqual([]);
+  });
+
+  it("does not resurrect the last closed tab when returning to a session", () => {
+    activateWorkspaceSessionScope("s1");
+    openWorkspaceViewInDock("diff");
+    closeWorkspaceDockView("diff");
+
+    navigator().go({ session: "s2" });
+    activateWorkspaceSessionScope("s2");
+    navigator().go({ session: "s1" });
+    activateWorkspaceSessionScope("s1");
+
+    expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
+    expect(useContextDockStore.getState().dockViewIds).toEqual([]);
+  });
+
+  it("closes an empty dock through the active-view close command", () => {
+    showWorkspaceDock();
+
+    expect(closeActiveWorkspaceDockView()).toBe(true);
+
+    expect(navigator().get().dock).toBeNull();
+    expect(useContextDockStore.getState().dockViewIds).toEqual([]);
+  });
+
   it("shows the remembered panel instead of the catalogue when there is one", () => {
     openWorkspaceViewInDock("diff");
     collapseWorkspaceDock();
