@@ -3,6 +3,7 @@
 // any key a sister locale hasn't translated yet.
 
 export const en: Record<string, string> = {
+  "recipes.error.load": "Couldn't load recipes.",
   "common.cancel": "Cancel",
   "common.close": "Close",
 

@@ -1,4 +1,5 @@
 export const zhTW: Record<string, string> = {
+  "recipes.error.load": "無法載入配方。",
   "common.cancel": "取消",
   "common.close": "關閉",
 

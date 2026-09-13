@@ -33,6 +33,7 @@ beforeEach(() => {
   for (const topic of [
     "files.changed",
     "skills.changed",
+    "recipes.changed",
     "mcp.changed",
     "schedules.changed",
     "sessions.changed",

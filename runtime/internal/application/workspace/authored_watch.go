@@ -19,11 +19,12 @@ const (
 	AuthoredKnowledge AuthoredResource = AuthoredResource(invalidation.Knowledge)
 	AuthoredHooks     AuthoredResource = AuthoredResource(invalidation.Hooks)
 	AuthoredSkills    AuthoredResource = AuthoredResource(invalidation.Skills)
+	AuthoredRecipes   AuthoredResource = AuthoredResource(invalidation.Recipes)
 )
 
 // Valid reports whether a is one externally authored product source.
 func (a AuthoredResource) Valid() bool {
-	return a == AuthoredKnowledge || a == AuthoredHooks || a == AuthoredSkills
+	return a == AuthoredKnowledge || a == AuthoredHooks || a == AuthoredSkills || a == AuthoredRecipes
 }
 
 // InvalidationResource maps a to the same application-owned change
@@ -187,7 +188,7 @@ func (m *managedAuthoredObservation) Close() error {
 func distinctAuthoredResources(resources []AuthoredResource) []AuthoredResource {
 	out := make([]AuthoredResource, 0, len(resources))
 	for _, resource := range resources {
-		if (resource == AuthoredKnowledge || resource == AuthoredHooks || resource == AuthoredSkills) && !slices.Contains(out, resource) {
+		if resource.Valid() && !slices.Contains(out, resource) {
 			out = append(out, resource)
 		}
 	}

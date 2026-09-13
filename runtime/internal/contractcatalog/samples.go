@@ -100,6 +100,7 @@ func Samples() []Sample {
 		// says the stream lost its place.
 		{"rtevent.files-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
 		{"rtevent.skills-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
+		{"rtevent.recipes-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
 		{"rtevent.mcp-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
 		{"rtevent.schedules-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
 		{"rtevent.plan-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},

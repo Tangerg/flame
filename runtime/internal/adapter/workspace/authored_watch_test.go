@@ -29,7 +29,7 @@ func TestAuthoredWatcherReportsOutagesAndRecovers(t *testing.T) {
 			previousLogger := slog.Default()
 			slog.SetDefault(slog.New(observationDiagnostics{Handler: slog.NewTextHandler(io.Discard, nil), failures: reports}))
 			t.Cleanup(func() { slog.SetDefault(previousLogger) })
-			watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), "")
+			watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), "", "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -127,7 +127,7 @@ func TestAuthoredWatcherMapsGlobalAndWorkspaceCascades(t *testing.T) {
 	if err := os.MkdirAll(workspace, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := NewAuthoredWatcher(knowledgeHome, home, skillsHome)
+	watcher, err := NewAuthoredWatcher(knowledgeHome, home, skillsHome, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestAuthoredWatcherScopesSkillsToSelectedWorkspace(t *testing.T) {
 	if err := os.MkdirAll(workspace, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), t.TempDir())
+	watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), t.TempDir(), "")
 	if err != nil {
 		t.Fatal(err)
 	}

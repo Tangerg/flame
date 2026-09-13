@@ -8007,6 +8007,27 @@
             "paths": false,
             "runIds": false,
             "scheduleIds": false,
+            "serverIds": false,
+            "sessionIds": false,
+            "topics": false,
+            "type": {
+              "const": "recipes.changed"
+            },
+            "watchId": false,
+            "watchIds": false,
+            "workspace": false
+          },
+          "required": [
+            "sequence",
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "names": false,
+            "paths": false,
+            "runIds": false,
+            "scheduleIds": false,
             "sessionIds": false,
             "topics": false,
             "type": {
@@ -8282,6 +8303,7 @@
       "enum": [
         "files.changed",
         "skills.changed",
+        "recipes.changed",
         "mcp.changed",
         "schedules.changed",
         "sessions.changed",
@@ -8419,6 +8441,7 @@
       "enum": [
         "files.changed",
         "skills.changed",
+        "recipes.changed",
         "mcp.changed",
         "schedules.changed",
         "sessions.changed",

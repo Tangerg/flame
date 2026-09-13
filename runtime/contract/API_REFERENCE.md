@@ -378,6 +378,7 @@ Forbidden on every variant: `durable`.
 | --- | --- | --- |
 | `files.changed` | `sequence`, `paths` | `watchId`, `workspace` |
 | `skills.changed` | `sequence` | `names` |
+| `recipes.changed` | `sequence` | — |
 | `mcp.changed` | `sequence` | `serverIds` |
 | `schedules.changed` | `sequence` | `scheduleIds` |
 | `sessions.changed` | `sequence` | `sessionIds` |

@@ -1,4 +1,5 @@
 export const ja: Record<string, string> = {
+  "recipes.error.load": "レシピを読み込めませんでした。",
   "common.cancel": "キャンセル",
   "common.close": "閉じる",
 

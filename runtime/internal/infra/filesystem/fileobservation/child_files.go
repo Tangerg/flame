@@ -13,24 +13,24 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
-// ChildFileTarget identifies one bounded directory and the exact file directly
-// below each immediate child directory whose contents define its observable
-// projection. Other files and directory metadata are deliberately ignored.
+// ChildFileTarget identifies a bounded collection of authored files. FileName
+// selects an exact document in each immediate child directory; Extension selects
+// non-hidden files directly in Path. Exactly one selector is required.
 // MaxEntries and MaxBytes are required hard bounds.
 type ChildFileTarget struct {
 	Key        string
 	Path       string
 	Boundary   string
 	FileName   string
+	Extension  string
 	MaxEntries int
 	MaxBytes   int64
 }
 
-// WatchChildFiles observes a dynamic set of exact child files. It watches the
-// root, each admitted immediate child directory, and the nearest existing
-// ancestor of a missing root, so additions, replacements, removals, and
-// in-place writes converge through one content-derived baseline. Error reporting
-// and callback lifetime follow Watch.
+// WatchChildFiles observes bounded file collections through one content-derived
+// baseline. Watches cover roots, admitted child directories, external file aliases,
+// and missing roots' existing ancestors. Error reporting and callback lifetime
+// follow Watch.
 func WatchChildFiles(targets []ChildFileTarget, notify func([]string), report func(error)) (Observation, error) {
 	canonical, err := canonicalChildFileTargets(targets)
 	if err != nil {
@@ -66,6 +66,7 @@ type childFileTarget struct {
 	path             string
 	physicalBoundary string
 	fileName         string
+	extension        string
 	maxEntries       int
 	maxBytes         int64
 }
@@ -81,7 +82,13 @@ func canonicalChildFileTarget(index int, candidate ChildFileTarget) (childFileTa
 	if candidate.Path == "" || !filepath.IsAbs(candidate.Path) {
 		return childFileTarget{}, fmt.Errorf("observe child files: target %d path must be absolute", index)
 	}
-	if candidate.FileName == "" || filepath.Base(candidate.FileName) != candidate.FileName {
+	if (candidate.FileName == "") == (candidate.Extension == "") {
+		return childFileTarget{}, fmt.Errorf("observe child files: target %d needs exactly one file selector", index)
+	}
+	if candidate.Extension != "" && (candidate.Extension == "." || !strings.HasPrefix(candidate.Extension, ".") || filepath.Base(candidate.Extension) != candidate.Extension) {
+		return childFileTarget{}, fmt.Errorf("observe child files: target %d extension must be a dotted suffix", index)
+	}
+	if candidate.FileName != "" && filepath.Base(candidate.FileName) != candidate.FileName {
 		return childFileTarget{}, fmt.Errorf("observe child files: target %d filename must be one path element", index)
 	}
 	if candidate.MaxEntries <= 0 {
@@ -96,7 +103,7 @@ func canonicalChildFileTarget(index int, candidate ChildFileTarget) (childFileTa
 	}
 	return childFileTarget{
 		key: candidate.Key, path: filepath.Clean(candidate.Path), physicalBoundary: boundary,
-		fileName: candidate.FileName, maxEntries: candidate.MaxEntries, maxBytes: candidate.MaxBytes,
+		fileName: candidate.FileName, extension: candidate.Extension, maxEntries: candidate.MaxEntries, maxBytes: candidate.MaxBytes,
 	}, nil
 }
 
@@ -250,19 +257,31 @@ func scanChildFileDirectory(
 	directories := []string{physical}
 	if !overflow {
 		for _, entry := range entries {
-			if !entry.IsDir() {
-				continue
+			relative := entry.Name()
+			if candidate.extension != "" {
+				if entry.IsDir() || strings.HasPrefix(relative, ".") || !strings.HasSuffix(relative, candidate.extension) {
+					continue
+				}
+			} else {
+				if !entry.IsDir() {
+					continue
+				}
+				directories = append(directories, filepath.Join(physical, relative))
+				relative = filepath.Join(relative, candidate.fileName)
 			}
-			directory := filepath.Join(physical, entry.Name())
-			directories = append(directories, directory)
-			logical, observed, present, err := observeImmediateChildFile(
-				candidate, directory, entry.Name(), roots,
-			)
+			logical, observed, present, err := observeImmediateChildFile(candidate, physical, relative, roots)
 			if err != nil {
 				return childFileSnapshot{}, nil, err
 			}
 			if present {
 				snapshot.files[logical] = observed
+				if candidate.extension != "" && candidate.physicalBoundary == "" && observed.physical != "" {
+					directory, err := nearestExistingDirectory(filepath.Dir(observed.physical))
+					if err != nil {
+						return childFileSnapshot{}, nil, err
+					}
+					directories = append(directories, directory)
+				}
 			}
 		}
 	}
@@ -272,10 +291,10 @@ func scanChildFileDirectory(
 func observeImmediateChildFile(
 	candidate childFileTarget,
 	directory string,
-	childName string,
+	relative string,
 	roots *observationRoots,
 ) (string, childFileEntry, bool, error) {
-	path := filepath.Join(directory, candidate.fileName)
+	path := filepath.Join(directory, relative)
 	root, name, inside, err := roots.access(candidate.physicalBoundary, path)
 	if err != nil {
 		return "", childFileEntry{}, false, fmt.Errorf("observe child files: confine %q: %w", path, err)
@@ -298,7 +317,7 @@ func observeImmediateChildFile(
 	if matched.IsDir() {
 		return "", childFileEntry{}, false, nil
 	}
-	logical := filepath.Join(candidate.path, childName, candidate.fileName)
+	logical := filepath.Join(candidate.path, relative)
 	value, resolved, err := fingerprintChildFile(
 		logical, path, candidate.physicalBoundary, candidate.maxBytes, roots,
 	)
@@ -383,6 +402,13 @@ func fingerprintResolvedChildFile(
 		info, err = root.Stat(name)
 	} else {
 		info, err = os.Stat(name)
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		encoder := newFingerprintEncoder()
+		encoder.field(fingerprintFieldLogicalPath, logical)
+		encoder.field(fingerprintFieldPhysicalPath, resolved)
+		encoder.state(fingerprintStateMissingTarget)
+		return encoder.sum(), resolved, nil
 	}
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe child files: inspect file %q: %w", logical, err)

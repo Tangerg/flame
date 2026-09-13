@@ -1,4 +1,5 @@
 export const ko: Record<string, string> = {
+  "recipes.error.load": "레시피를 불러오지 못했습니다.",
   "common.cancel": "취소",
   "common.close": "닫기",
 

@@ -2920,6 +2920,19 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         paths: absent(),
         runIds: absent(),
         scheduleIds: absent(),
+        serverIds: absent(),
+        sessionIds: absent(),
+        topics: absent(),
+        type: literal("recipes.changed"),
+        watchId: absent(),
+        watchIds: absent(),
+        workspace: absent(),
+      }, ["sequence", "type"]),
+      fields({
+        names: absent(),
+        paths: absent(),
+        runIds: absent(),
+        scheduleIds: absent(),
         sessionIds: absent(),
         topics: absent(),
         type: literal("mcp.changed"),
@@ -3078,7 +3091,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   RuntimeEventNotification: object({
     event: ref(() => CHECKS.RuntimeEvent),
   }, ["event"]),
-  RuntimeEventType: enumOf(["files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"]),
+  RuntimeEventType: enumOf(["files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"]),
   RuntimeInfo: object({
     endpoints: ref(() => CHECKS.RuntimeInfoEndpoints),
     protocolVersion: text(),
@@ -3108,7 +3121,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     watches: array(ref(() => CHECKS.WatchSpec)),
   }, ["topics"]),
   RuntimeSubscribeResponse: object({}, []),
-  RuntimeTopic: enumOf(["files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"]),
+  RuntimeTopic: enumOf(["files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"]),
   SafetyClass: enumOf(["safe", "write", "exec", "network"]),
   Schedule: allOf([
     object({

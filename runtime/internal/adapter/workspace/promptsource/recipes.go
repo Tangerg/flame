@@ -13,6 +13,7 @@ import (
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileobservation"
 )
 
 const (
@@ -185,7 +186,7 @@ func openRecipeDirectory(directory string) (*os.File, bool, error) {
 	return dir, true, nil
 }
 
-func recipeDir(cwd string) string {
+func RecipeDirectory(cwd string) string {
 	if cwd == "" {
 		return ""
 	}
@@ -238,4 +239,12 @@ func parseRecipeBody(content []byte) (recipeFrontmatter, string) {
 		return recipeFrontmatter{}, strings.TrimSpace(text)
 	}
 	return frontmatter, strings.TrimSpace(strings.Join(lines[end+1:], "\n"))
+}
+
+// RecipeFileTarget shares the catalog's directory and document limits with observation.
+func RecipeFileTarget(directory string) fileobservation.ChildFileTarget {
+	return fileobservation.ChildFileTarget{
+		Key: string(workspaceapp.AuthoredRecipes), Path: directory, Extension: recipeFileExt,
+		MaxEntries: maxRecipeDirectoryEntries, MaxBytes: workspaceapp.MaxAuthoredPromptDocumentBytes,
+	}
 }

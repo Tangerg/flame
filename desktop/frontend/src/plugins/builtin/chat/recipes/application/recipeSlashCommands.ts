@@ -1,5 +1,7 @@
-import { QueryObserver } from "@tanstack/react-query";
+import { QueryObserver, type QueryObserverResult } from "@tanstack/react-query";
 import type { Disposable, Contributor } from "@/plugins/sdk";
+import { t } from "@/lib/i18n";
+import { notifyError } from "@/plugins/sdk/notifications";
 import { queryClient } from "@/lib/queryClient";
 import { lookupDataProvider } from "@/plugins/sdk";
 import { SLASH_COMMAND } from "@/plugins/sdk/kernelPoints";
@@ -81,10 +83,21 @@ export function installRecipeSlashCommands(
     };
   };
   const observer = new QueryObserver<Recipe[]>(queryClient, queryOptions());
-  const unsubscribeRecipes = observer.subscribe((result) => rebuild(result.data ?? []));
+  let lastError: Error | null = null;
+  const syncResult = (result: QueryObserverResult<Recipe[]>) => {
+    if (result.error && result.error !== lastError) {
+      notifyError(t("recipes.error.load"), {
+        source: "composer",
+        description: result.error.message,
+      });
+    }
+    lastError = result.error;
+    rebuild(result.isError ? [] : (result.data ?? []));
+  };
+  const unsubscribeRecipes = observer.subscribe(syncResult);
   const refresh = () => {
     observer.setOptions(queryOptions());
-    rebuild(observer.getCurrentResult().data ?? []);
+    syncResult(observer.getCurrentResult());
   };
   refresh();
   const unsubscribeSession = sessionPorts.subscribeActiveSessionId(refresh);

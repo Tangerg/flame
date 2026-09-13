@@ -574,6 +574,9 @@ func subscribedAuthoredResources(topics map[protocol.RuntimeTopic]bool) []worksp
 	if topics[protocol.TopicHooksChanged] {
 		resources = append(resources, workspaceapp.AuthoredHooks)
 	}
+	if topics[protocol.TopicRecipesChanged] {
+		resources = append(resources, workspaceapp.AuthoredRecipes)
+	}
 	if topics[protocol.TopicSkillsChanged] {
 		resources = append(resources, workspaceapp.AuthoredSkills)
 	}

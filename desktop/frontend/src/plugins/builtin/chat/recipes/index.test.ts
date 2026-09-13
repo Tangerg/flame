@@ -6,10 +6,12 @@ import { queryClient } from "@/lib/queryClient";
 import { DATA_PROVIDER, SLASH_COMMAND } from "@/plugins/sdk/kernelPoints";
 import { lookupExtensionByKey } from "@/plugins/sdk/selectors/extensions";
 import { WORKSPACE_RECIPES_KEY } from "@/plugins/builtin/workspace/public/queries";
+import { useNotificationStore } from "@/plugins/sdk/notifications";
 import recipesSlash from "./index";
 
 afterEach(async () => {
   await resetKernelForTest();
+  useNotificationStore.getState().clearAll();
 });
 
 describe("Recipe slash bootstrap", () => {
@@ -39,6 +41,7 @@ describe("Recipe slash bootstrap", () => {
 });
 
 it("keeps slash recipes current when the workspace catalog is invalidated", async () => {
+  let failure: Error | undefined;
   let recipes = [
     {
       name: "review",
@@ -52,7 +55,13 @@ it("keeps slash recipes current when the workspace catalog is invalidated", asyn
       name: "test.recipe-catalog",
       provides: { sessions: AGENT_SESSIONS },
       setup(ctx) {
-        ctx.contribute(DATA_PROVIDER, { key: WORKSPACE_RECIPES_KEY, fetcher: async () => recipes });
+        ctx.contribute(DATA_PROVIDER, {
+          key: WORKSPACE_RECIPES_KEY,
+          fetcher: async () => {
+            if (failure) throw failure;
+            return recipes;
+          },
+        });
         return {
           sessions: {
             getActiveSessionId: () => "",
@@ -79,6 +88,21 @@ it("keeps slash recipes current when the workspace catalog is invalidated", asyn
       "Inspect changes  <file>",
     ),
   );
+  failure = new Error("Recipe source is unavailable");
+  await queryClient.invalidateQueries({ queryKey: [WORKSPACE_RECIPES_KEY] });
+  expect(lookupExtensionByKey(SLASH_COMMAND, "review")).toBeUndefined();
+  expect(
+    useNotificationStore
+      .getState()
+      .log.some(
+        (entry) =>
+          entry.level === "error" && entry.message.includes("Recipe source is unavailable"),
+      ),
+  ).toBe(true);
+  failure = undefined;
+  await queryClient.invalidateQueries({ queryKey: [WORKSPACE_RECIPES_KEY] });
+  expect(lookupExtensionByKey(SLASH_COMMAND, "review")).toBeDefined();
+
   recipes = [];
   await queryClient.invalidateQueries({ queryKey: [WORKSPACE_RECIPES_KEY] });
   await vi.waitFor(() => expect(lookupExtensionByKey(SLASH_COMMAND, "review")).toBeUndefined());

@@ -56,6 +56,8 @@ func runtimeEventFor(notice invalidation.Notice) (protocol.RuntimeEvent, bool) {
 		return protocol.RuntimeEvent{Type: protocol.RuntimeKnowledgeChanged}, true
 	case invalidation.Hooks:
 		return protocol.RuntimeEvent{Type: protocol.RuntimeHooksChanged}, true
+	case invalidation.Recipes:
+		return protocol.RuntimeEvent{Type: protocol.RuntimeRecipesChanged}, true
 	case invalidation.Skills:
 		return protocol.RuntimeEvent{Type: protocol.RuntimeSkillsChanged}, true
 	case invalidation.MCP:

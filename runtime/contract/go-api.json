@@ -1754,6 +1754,11 @@
           "value": "\"plan.changed\""
         },
         {
+          "name": "RuntimeRecipesChanged",
+          "type": "RuntimeEventType",
+          "value": "\"recipes.changed\""
+        },
+        {
           "name": "RuntimeResync",
           "type": "RuntimeEventType",
           "value": "\"resync\""
@@ -1992,6 +1997,11 @@
           "name": "TopicPlanChanged",
           "type": "RuntimeTopic",
           "value": "\"plan.changed\""
+        },
+        {
+          "name": "TopicRecipesChanged",
+          "type": "RuntimeTopic",
+          "value": "\"recipes.changed\""
         },
         {
           "name": "TopicRunsChanged",

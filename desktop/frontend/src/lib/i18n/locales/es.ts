@@ -1,4 +1,5 @@
 export const es: Record<string, string> = {
+  "recipes.error.load": "No se pudieron cargar las recetas.",
   "common.cancel": "Cancelar",
   "common.close": "Cerrar",
 

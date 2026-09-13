@@ -131,6 +131,7 @@ func buildWorkspaceComposition(
 		cfg.Stores.DataDirectory,
 		cfg.UserHome,
 		cfg.SkillsUserDir,
+		cfg.RecipesGlobalDir,
 	)
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource watcher: %w", err)

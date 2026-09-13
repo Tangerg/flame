@@ -219,11 +219,11 @@ func TestListRecipesRejectsUnboundedCascadeMaterial(t *testing.T) {
 }
 
 func TestRecipeFileConventions(t *testing.T) {
-	if got := recipeDir("/work"); got != "/work/.flame/recipes" {
-		t.Fatalf("recipeDir(/work) = %q", got)
+	if got := RecipeDirectory("/work"); got != "/work/.flame/recipes" {
+		t.Fatalf("RecipeDirectory(/work) = %q", got)
 	}
-	if got := recipeDir(""); got != "" {
-		t.Fatalf("recipeDir(\"\") = %q, want empty", got)
+	if got := RecipeDirectory(""); got != "" {
+		t.Fatalf("RecipeDirectory(\"\") = %q, want empty", got)
 	}
 
 	for _, test := range []struct {

@@ -57,6 +57,7 @@ export const WIRE_SAMPLES: readonly WireSample[] = [
   { file: "session.artifact.json", shape: "SessionArtifact" },
   { file: "rtevent.files-changed.json", shape: "RuntimeEvent" },
   { file: "rtevent.skills-changed.json", shape: "RuntimeEvent" },
+  { file: "rtevent.recipes-changed.json", shape: "RuntimeEvent" },
   { file: "rtevent.mcp-changed.json", shape: "RuntimeEvent" },
   { file: "rtevent.schedules-changed.json", shape: "RuntimeEvent" },
   { file: "rtevent.plan-changed.json", shape: "RuntimeEvent" },

@@ -1,4 +1,5 @@
 export const zh: Record<string, string> = {
+  "recipes.error.load": "无法加载配方。",
   "common.cancel": "取消",
   "common.close": "关闭",
 

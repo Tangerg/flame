@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { workspaceInvalidations } from "./eventInvalidation";
 
+it("refreshes the recipe catalog when authored templates change", () => {
+  expect(workspaceInvalidations({ type: "recipes.changed", sequence: 1 })).toEqual(["recipes"]);
+});
+
 describe("workspaceInvalidations", () => {
   it("maps each subscribed topic to the reads it invalidates", () => {
     expect(workspaceInvalidations({ type: "files.changed", sequence: 1 })).toEqual([

@@ -40,6 +40,50 @@ func TestWatchChildFilesObservesDynamicExactFiles(t *testing.T) {
 	assertObservedKey(t, events, "skills")
 }
 
+func TestWatchChildFilesObservesDirectMarkdownAndAliases(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "recipes")
+	events := make(chan []string, 16)
+	watcher, err := WatchChildFiles([]ChildFileTarget{{Key: "recipes", Path: root, Extension: ".md", MaxEntries: 16, MaxBytes: testMaxBytes}}, func(keys []string) { events <- keys }, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = watcher.Close() }()
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(root, "review.md")
+	for _, body := range []string{"first", "second"} {
+		if err := os.WriteFile(file, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		assertObservedKey(t, events, "recipes")
+	}
+	external := filepath.Join(t.TempDir(), "shared.md")
+	if err := os.WriteFile(external, []byte("shared"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(external, filepath.Join(root, "shared.md")); err != nil {
+		t.Fatal(err)
+	}
+	assertObservedKey(t, events, "recipes")
+	if err := os.WriteFile(external, []byte("updated"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	assertObservedKey(t, events, "recipes")
+	if err := os.Remove(external); err != nil {
+		t.Fatal(err)
+	}
+	assertObservedKey(t, events, "recipes")
+	if err := os.WriteFile(external, []byte("restored"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	assertObservedKey(t, events, "recipes")
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	assertObservedKey(t, events, "recipes")
+}
+
 func TestWatchChildFilesRequiresPositiveHardLimits(t *testing.T) {
 	root := t.TempDir()
 	for _, target := range []ChildFileTarget{

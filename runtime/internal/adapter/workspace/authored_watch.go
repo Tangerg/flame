@@ -22,24 +22,25 @@ const (
 	authoredKnowledgeKey = "knowledge"
 	authoredHooksKey     = "hooks"
 	authoredSkillsKey    = "skills"
+	authoredRecipesKey   = "recipes"
 )
 
-// AuthoredWatcher maps the Knowledge, Hooks, and Skills filesystem layouts onto the
+// AuthoredWatcher maps the Knowledge, Hooks, Skills, and Recipes filesystem layouts onto the
 // workspace application's semantic observation port. Global roots are fixed at
 // process composition; request-owned workspace roots arrive from Application.
 type AuthoredWatcher struct {
 	knowledgeHome string
 	hooksHome     string
 	skillsHome    string
+	recipesHome   string
 }
 
 var _ workspaceapp.AuthoredResourceWatcher = AuthoredWatcher{}
 
-// NewAuthoredWatcher binds the global Knowledge, Hooks, and Skills roots
-// explicitly. They are intentionally distinct product locations. An empty
-// Skills root disables only global Skill observation; project Skills remain
-// observable from request scopes.
-func NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome string) (AuthoredWatcher, error) {
+// NewAuthoredWatcher binds the global Knowledge, Hooks, Skills, and Recipes roots
+// explicitly. Empty Skills or Recipes roots disable their global observation;
+// project sources remain observable from request scopes.
+func NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome, recipesHome string) (AuthoredWatcher, error) {
 	if knowledgeHome == "" || !filepath.IsAbs(knowledgeHome) {
 		return AuthoredWatcher{}, errors.New("workspace authored watcher: knowledge home must be absolute")
 	}
@@ -49,10 +50,14 @@ func NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome string) (AuthoredWa
 	if skillsHome != "" && !filepath.IsAbs(skillsHome) {
 		return AuthoredWatcher{}, errors.New("workspace authored watcher: skills home must be absolute when set")
 	}
+	if recipesHome != "" && !filepath.IsAbs(recipesHome) {
+		return AuthoredWatcher{}, errors.New("workspace authored watcher: recipes home must be absolute when set")
+	}
 	return AuthoredWatcher{
 		knowledgeHome: filepath.Clean(knowledgeHome),
 		hooksHome:     filepath.Clean(hooksHome),
 		skillsHome:    cleanOptionalPath(skillsHome),
+		recipesHome:   cleanOptionalPath(recipesHome),
 	}, nil
 }
 
@@ -104,15 +109,18 @@ func (a AuthoredWatcher) Watch(
 	if err != nil {
 		return nil, err
 	}
-	skillFiles, err := fileobservation.WatchChildFiles(a.skillFileTargets(scopes, resources), func(keys []string) {
-		if slices.Contains(keys, authoredSkillsKey) {
-			notify(workspaceapp.AuthoredSkills)
+	directoryFiles, err := fileobservation.WatchChildFiles(a.directoryFileTargets(scopes, resources), func(keys []string) {
+		for _, key := range keys {
+			resource := workspaceapp.AuthoredResource(key)
+			if resource.Valid() {
+				notify(resource)
+			}
 		}
 	}, report)
 	if err != nil {
 		return nil, errors.Join(err, files.Close())
 	}
-	return &authoredObservation{observations: []fileobservation.Observation{files, skillFiles}}, nil
+	return &authoredObservation{observations: []fileobservation.Observation{files, directoryFiles}}, nil
 }
 
 type authoredObservation struct {
@@ -138,6 +146,8 @@ func (a *authoredObservation) Accept(changes []workspaceapp.AuthoredChange) erro
 			keys = append(keys, authoredHooksKey)
 		case workspaceapp.AuthoredSkills:
 			keys = append(keys, authoredSkillsKey)
+		case workspaceapp.AuthoredRecipes:
+			keys = append(keys, authoredRecipesKey)
 		}
 		identities = append(identities, change.Identities...)
 	}
@@ -148,14 +158,22 @@ func (a *authoredObservation) Accept(changes []workspaceapp.AuthoredChange) erro
 	return errors.Join(errs...)
 }
 
-func (a AuthoredWatcher) skillFileTargets(
+func (a AuthoredWatcher) directoryFileTargets(
 	scopes []workspaceapp.AuthoredScope,
 	resources []workspaceapp.AuthoredResource,
 ) []fileobservation.ChildFileTarget {
-	if !slices.Contains(resources, workspaceapp.AuthoredSkills) {
-		return nil
+	targets := make([]fileobservation.ChildFileTarget, 0, 2*(len(scopes)+1))
+	if slices.Contains(resources, workspaceapp.AuthoredRecipes) {
+		if a.recipesHome != "" {
+			targets = append(targets, promptsource.RecipeFileTarget(a.recipesHome))
+		}
+		for _, scope := range scopes {
+			targets = append(targets, promptsource.RecipeFileTarget(promptsource.RecipeDirectory(scope.Workspace)))
+		}
 	}
-	targets := make([]fileobservation.ChildFileTarget, 0, len(scopes)+1)
+	if !slices.Contains(resources, workspaceapp.AuthoredSkills) {
+		return targets
+	}
 	if a.skillsHome != "" {
 		targets = append(targets, fileobservation.ChildFileTarget{
 			Key: authoredSkillsKey, Path: a.skillsHome, Boundary: a.skillsHome, FileName: skillspec.SkillFile,

@@ -16,6 +16,7 @@ import type { WorkspaceWatchTarget } from "../application/workspaceEventLoop";
 const SUBSCRIBED_TOPICS: readonly RuntimeTopic[] = [
   "files.changed",
   "skills.changed",
+  "recipes.changed",
   "mcp.changed",
   "schedules.changed",
   "sessions.changed",

@@ -2113,6 +2113,9 @@
       "type": "skills.changed"
     },
     {
+      "type": "recipes.changed"
+    },
+    {
       "type": "mcp.changed"
     },
     {
@@ -3219,6 +3222,12 @@
           ],
           "optional": [
             "names"
+          ]
+        },
+        {
+          "tag": "recipes.changed",
+          "required": [
+            "sequence"
           ]
         },
         {
@@ -8757,6 +8766,10 @@
     },
     {
       "file": "rtevent.skills-changed.json",
+      "shape": "RuntimeEvent"
+    },
+    {
+      "file": "rtevent.recipes-changed.json",
       "shape": "RuntimeEvent"
     },
     {

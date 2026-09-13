@@ -237,7 +237,7 @@ func (r RuntimeSubscribeRequest) ValidateWire() error {
 	return collectWireViolations("RuntimeSubscribeRequest",
 		requiredItems("topics", r.Topics),
 		uniqueItems("topics", r.Topics),
-		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
+		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
 	)
 }
 
@@ -1280,8 +1280,8 @@ func (r RuntimeEvent) ValidateWire() error {
 		maxItemLength("sessionIds", r.SessionIDs, 256),
 		identityItems("runIds", r.RunIDs),
 		maxItemLength("runIds", r.RunIDs, 256),
-		closedEnum("type", string(r.Type), []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"}, false),
-		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
+		closedEnum("type", string(r.Type), []string{"files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"}, false),
+		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
 		requiredWhen(wireFieldEquals(r, "type", "files.changed"), "sequence", r),
 		requiredWhen(wireFieldEquals(r, "type", "files.changed"), "paths", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "files.changed"), "names", r),
@@ -1301,6 +1301,17 @@ func (r RuntimeEvent) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "runIds", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "topics", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "watchIds", r),
+		requiredWhen(wireFieldEquals(r, "type", "recipes.changed"), "sequence", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "paths", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "watchId", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "workspace", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "names", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "serverIds", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "scheduleIds", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "sessionIds", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "runIds", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "topics", r),
+		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "watchIds", r),
 		requiredWhen(wireFieldEquals(r, "type", "mcp.changed"), "sequence", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "mcp.changed"), "paths", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "mcp.changed"), "watchId", r),
@@ -2428,7 +2439,7 @@ func (s ServerCapabilities) ValidateWire() error {
 		uniqueItems("streamingMethods", s.StreamingMethods),
 		textPatternItems("streamingMethods", s.StreamingMethods, "\\S"),
 		closedEnumItems("runEvents", s.RunEvents, []string{"segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"}),
-		closedEnumItems("runtimeTopics", s.RuntimeTopics, []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
+		closedEnumItems("runtimeTopics", s.RuntimeTopics, []string{"files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
 	)
 }
 

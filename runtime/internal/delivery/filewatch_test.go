@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
@@ -141,7 +142,7 @@ func TestWorkspaceSubscribe_GlobalAuthoredFilesDoNotRequireWorkspaceWatch(t *tes
 	knowledgeHome := t.TempDir()
 	hooksHome := t.TempDir()
 	skillsHome := t.TempDir()
-	authored, err := workspaceadapter.NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome)
+	authored, err := workspaceadapter.NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,7 +255,7 @@ func TestWorkspaceSubscribe_SkillArchiveDoesNotDoublePublishFromTreeObservation(
 	if err != nil {
 		t.Fatal(err)
 	}
-	authored, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), t.TempDir(), skillsHome)
+	authored, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), t.TempDir(), skillsHome, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,5 +352,56 @@ func TestWorkspaceSubscribe_MissingWatchID(t *testing.T) {
 		Watches: []protocol.WatchSpec{{}},
 	}); err == nil {
 		t.Fatal("watch missing watchId must be invalid_params")
+	}
+}
+
+func TestRecipeObservationRefreshesExternalCatalogChanges(t *testing.T) {
+	workspace := t.TempDir()
+	global := filepath.Join(t.TempDir(), "recipes")
+	authored, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), t.TempDir(), "", global)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := newWorkspaceHandlerWithConfig(workspace, workspaceTestConfig{AuthoredWatcher: authored, Recipes: promptsource.NewRecipes(global)})
+	s.workspaceHub = newWorkspaceHub()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, seq, err := s.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicRecipesChanged},
+		Watches: []protocol.WatchSpec{{WatchID: "recipes", Workspace: protocol.WorkspaceRef{Path: workspace}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := drainSeq(ctx, seq)
+	projectFile := filepath.Join(workspace, ".flame", "recipes", "review.md")
+	for _, step := range []struct {
+		path, body, want string
+		remove           bool
+	}{
+		{path: filepath.Join(global, "review.md"), body: "global prompt", want: "global prompt"},
+		{path: projectFile, body: "project prompt", want: "project prompt"},
+		{path: projectFile, body: "updated project prompt", want: "updated project prompt"},
+		{path: projectFile, remove: true, want: "global prompt"},
+	} {
+		if step.remove {
+			err = os.Remove(step.path)
+		} else {
+			if err = os.MkdirAll(filepath.Dir(step.path), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			err = os.WriteFile(step.path, []byte(step.body), 0o600)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertRuntimeEventType(t, events, protocol.RuntimeRecipesChanged)
+		catalog, err := s.ListRecipes(ctx, protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: workspace}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(catalog.Data) != 1 || catalog.Data[0].Body != step.want {
+			t.Fatalf("catalog after %q = %+v, want %q", step.path, catalog.Data, step.want)
+		}
 	}
 }

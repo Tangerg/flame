@@ -1206,6 +1206,7 @@ export interface RunSummary {
 export type RuntimeEvent =
   | { type: "files.changed"; paths: string[]; sequence: number; watchId?: string; workspace?: WorkspaceRef }
   | { type: "skills.changed"; names?: string[]; sequence: number }
+  | { type: "recipes.changed"; sequence: number }
   | { type: "mcp.changed"; sequence: number; serverIds?: string[] }
   | { type: "schedules.changed"; scheduleIds?: string[]; sequence: number }
   | { type: "sessions.changed"; sequence: number; sessionIds?: string[] }
@@ -1224,7 +1225,7 @@ export interface RuntimeEventNotification {
   event: RuntimeEvent;
 }
 
-export type RuntimeEventType = "files.changed" | "skills.changed" | "mcp.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "knowledge.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed" | "resync";
+export type RuntimeEventType = "files.changed" | "skills.changed" | "recipes.changed" | "mcp.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "knowledge.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed" | "resync";
 
 export interface RuntimeInfo {
   endpoints: RuntimeInfoEndpoints;
@@ -1262,7 +1263,7 @@ export interface RuntimeSubscribeRequest {
 export interface RuntimeSubscribeResponse {
 }
 
-export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "knowledge.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed";
+export type RuntimeTopic = "files.changed" | "skills.changed" | "recipes.changed" | "mcp.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "knowledge.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed";
 
 export type SafetyClass = "safe" | "write" | "exec" | "network";
 
@@ -1681,8 +1682,8 @@ export const WIRE_ENUMS = {
   RunProtocolFeature: ["subagents"],
   RunReplayScope: ["runtimeInstanceRootSegment"],
   RunStatus: ["running", "waiting", "finished"],
-  RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"],
-  RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"],
+  RuntimeEventType: ["files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"],
+  RuntimeTopic: ["files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
   ScheduleWorkspaceMode: ["default"],
   SegmentOutcomeType: ["interrupt", "suspended", "completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"],
