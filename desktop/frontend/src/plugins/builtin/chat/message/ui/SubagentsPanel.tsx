@@ -52,6 +52,7 @@ const styles = stylex.create({
   transcript: { display: "flex", flexDirection: "column", gap: space.s5, minWidth: 0 },
   status: { display: "flex", alignItems: "center", gap: space.s2 },
   summary: { flex: 1, minWidth: 0 },
+  detail: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
   user: { borderRadius: radius.lg, padding: space.s3 },
 });
 
@@ -153,6 +154,9 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
             />
           )}
         </div>
+        {model.detail && (
+          <p {...stylex.props(styles.detail, typeStep.uiSm, toneInk[model.ink])}>{model.detail}</p>
+        )}
         {narrative.messages.length === 0 && (
           <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("agent.runTree.material.empty")}</p>
         )}

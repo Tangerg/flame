@@ -6,12 +6,17 @@ import { navigator } from "@/lib/navigation";
 import { openWorkspaceSubagentRun } from "@/plugins/builtin/workspace/public/navigation";
 import { SubagentsPanel } from "./SubagentsPanel";
 
-const material = vi.hoisted(() => ({ rows: [] as readonly TranscriptRow[] }));
+const material = vi.hoisted(() => ({
+  rows: [] as readonly TranscriptRow[],
+  available: true,
+  cancel: vi.fn(),
+}));
+vi.mock("@/plugins/builtin/agent/public/run", () => ({ cancelSessionRun: material.cancel }));
 vi.mock("@/plugins/builtin/agent/public/conversation", () => ({
   useActiveConversationRows: () => material.rows,
 }));
 vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
-  useRuntimeCommandsAvailable: () => true,
+  useRuntimeCommandsAvailable: () => material.available,
 }));
 
 const child: AgentRunView = {
@@ -111,4 +116,40 @@ it("projects live child material, returns to the list, and never carries it into
   rerender(<SubagentsPanel />);
   expect(screen.getByText("No subagents yet")).toBeTruthy();
   expect(navigator().get().subagent).toBeNull();
+});
+
+it("keeps the selected run failure visible when no narrative was produced", () => {
+  material.rows = rows({
+    ...child,
+    status: "finished",
+    activeSegmentId: null,
+    outcome: { type: "maxBudget", detail: "The review exhausted its token budget." },
+  });
+  material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages = [];
+  navigator().go({ session: "session" });
+  openWorkspaceSubagentRun("child");
+  render(<SubagentsPanel />);
+  expect(screen.getByText("The review exhausted its token budget.")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
+});
+
+it("cancels the currently selected child and disables mutations while disconnected", () => {
+  material.rows = rows();
+  material.available = true;
+  navigator().go({ session: "session" });
+  openWorkspaceSubagentRun("child");
+  const { rerender } = render(<SubagentsPanel />);
+  fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
+  expect(material.cancel).toHaveBeenLastCalledWith({ sessionId: "session", runId: "child" });
+  const nested = material.rows[0]!.facts.delegatedRuns.nested![0]!;
+  nested.run = { ...child, id: "nested", parentRunId: "child", spawnedByItemId: "nested" };
+  act(() => openWorkspaceSubagentRun("nested"));
+  fireEvent.click(screen.getByRole("button", { name: "Cancel this run" }));
+  expect(material.cancel).toHaveBeenLastCalledWith({ sessionId: "session", runId: "nested" });
+  material.available = false;
+  rerender(<SubagentsPanel />);
+  expect(screen.getByRole("button", { name: "Cancel this run" }).hasAttribute("disabled")).toBe(
+    true,
+  );
+  material.available = true;
 });
