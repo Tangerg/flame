@@ -89,6 +89,8 @@ func (s *segmentPump) run(initialErr error) {
 }
 
 func (s *segmentPump) processEvent(event ExecutorEvent) bool {
+	s.owner.observation.Lock()
+	defer s.owner.observation.Unlock()
 	if request, reserving := event.Payload.(ChildRunReservationRequest); reserving {
 		return s.handleChildRunReservation(event, request)
 	}
@@ -551,6 +553,8 @@ func (s *segmentPump) fail(err error) {
 }
 
 func (s *segmentPump) finish() {
+	s.owner.observation.Lock()
+	defer s.owner.observation.Unlock()
 	s.failPendingToolCommits(errors.New("runs: execution ended before concurrent Tool results formed a durable prefix"))
 	for memberID, managed := range s.childStarts {
 		if !managed.outcome.Valid() {

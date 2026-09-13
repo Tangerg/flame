@@ -3,10 +3,8 @@ import { asRunId, asSegmentId, asSessionId, createMutationSettler, isErrorType }
 import { configureAgentRuntimeGateway } from "../application/ports/runtimeGateway";
 import type { AgentRuntimeGateway } from "../application/ports/runtimeGateway";
 import { agentInputToContentBlocks, contentBlocksToAgentInput } from "./wireInput";
-import { runtimePlan } from "./runtimePlan";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
-import { runtimeItem, runtimePendingInterruptSet, runtimeRunFact } from "./runtimeAgentFacts";
-import { stageAgentSessionSharedMaterial } from "../application/ports/sessionSharedMaterial";
+import { runtimeSessionMaterial } from "./runtimeSessionMaterial";
 import { AgentCommandOwner } from "../application/agentCommandOwner";
 import { AgentSessionUsageOwner } from "../application/session/sessionUsage";
 
@@ -62,16 +60,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     const includeDescendants = runtimeCapability("subagents");
     try {
       const snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
-      const plan = snapshot.plan ? runtimePlan(snapshot.plan) : undefined;
-      return {
-        snapshot: {
-          items: snapshot.items.map(runtimeItem),
-          runs: snapshot.runs.map(runtimeRunFact),
-          pendingInterruptSets: snapshot.interrupts.map(runtimePendingInterruptSet),
-          ...(plan ? { plan } : {}),
-        },
-        projectAssociatedSharedMaterial: stageAgentSessionSharedMaterial(sessionId, snapshot),
-      };
+      return runtimeSessionMaterial(sessionId, snapshot);
     } catch (error) {
       if (isErrorType(error, "session_not_found")) return null;
       throw error;

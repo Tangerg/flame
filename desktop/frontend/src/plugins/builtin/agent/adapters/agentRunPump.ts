@@ -27,6 +27,11 @@ interface RunStreamAck {
 
 export type RunStream = StreamingResult<RunStreamAck, RunEvent>;
 
+export interface RunStreamReattachment extends RunStream {
+  /** The successor position selected by replay or snapshot recovery. */
+  cursor: string;
+}
+
 /** lastEventId is empty when this client folded nothing and was given no head; the reattach
  *  is then tail-only and the durable snapshot supplies the projection. */
 export interface RunStreamPosition {
@@ -46,7 +51,10 @@ interface AgentRunPumpOptions {
   applyRunSnapshot?: (run: RunRef) => void;
   /** null means no longer attachable at all — finished, waiting on a person, or moved to
    *  another segment — after the durable projection reconciled that transition. */
-  reattach?: (position: RunStreamPosition, signal: AbortSignal) => Promise<RunStream | null>;
+  reattach?: (
+    position: RunStreamPosition,
+    signal: AbortSignal,
+  ) => Promise<RunStreamReattachment | null>;
   onIdle?: () => void;
 }
 
@@ -122,9 +130,7 @@ export function createAgentRunPump({
           position = {
             runId,
             segmentId: next.result.segmentId,
-            // Only adopt the ack's head with no cursor of our own: a replaying attach's
-            // head sits AHEAD of what was asked for, so taking it skips the replay.
-            lastEventId: position.lastEventId || (next.result.headEventId ?? ""),
+            lastEventId: next.cursor,
             recovery: "replay",
           };
           currentSegmentId = next.result.segmentId;

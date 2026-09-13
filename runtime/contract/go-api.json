@@ -7736,6 +7736,11 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "Snapshot",
+              "type": "bool",
+              "tag": "json:\"snapshot,omitempty\""
+            },
+            {
               "name": "RunID",
               "type": "string",
               "tag": "json:\"runId\""
@@ -7757,6 +7762,11 @@
           "name": "SubscribeRunResponse",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Snapshot",
+              "type": "*SessionSnapshot",
+              "tag": "json:\"snapshot,omitempty\""
+            },
             {
               "name": "RunID",
               "type": "string",

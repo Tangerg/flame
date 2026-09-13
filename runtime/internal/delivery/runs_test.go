@@ -53,6 +53,32 @@ func TestSubscribeRun_AttachesToTheAddressedSegment(t *testing.T) {
 	}
 }
 
+func TestSubscribeRun_SnapshotHandsOffToAddressedTail(t *testing.T) {
+	s := newBlockingHandler(t)
+	runID, segmentID := startLiveRun(t, s, t.TempDir())
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	out, events, err := s.SubscribeRun(ctx, protocol.SubscribeRunRequest{RunID: runID, SegmentID: segmentID, Snapshot: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Snapshot == nil || out.Snapshot.Plan == nil || events == nil || out.HeadEventID == nil {
+		t.Fatalf("incomplete snapshot handoff: %+v", out)
+	}
+	found := false
+	for _, record := range out.Snapshot.Runs {
+		if record.ID == runID {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("snapshot omitted addressed Run: %+v", out.Snapshot.Runs)
+	}
+	if _, _, err := s.SubscribeRun(withAfterEventID(ctx, *out.HeadEventID), protocol.SubscribeRunRequest{RunID: runID, SegmentID: segmentID, Snapshot: true}); !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("snapshot with replay cursor: %v", err)
+	}
+}
+
 // A steer addresses the same live segment a subscribe does, and refuses the same
 // way. Before this, every one of these was run_not_found — which told the client
 // to go looking for a run that was right there.

@@ -40,15 +40,16 @@ describe("Goal and mounted Session integration", () => {
       await import("@/plugins/builtin/chat/goal/application/goalCommands");
     const update = vi.fn().mockResolvedValue({ sessionId: SID });
     const stop = vi.fn().mockResolvedValue({ sessionId: SID });
-    const snapshot = vi.fn().mockResolvedValue({
+    const material = {
       items: [],
       runs: [run],
       interrupts: [],
       plan: { sessionId: SID },
-    });
+    };
+    const snapshot = vi.fn().mockResolvedValue(material);
     const closeStream = vi.fn().mockResolvedValue({ done: true });
     const subscribe = vi.fn().mockResolvedValue({
-      result: { runId: "run_default", segmentId: "seg_default" },
+      result: { runId: "run_default", segmentId: "seg_default", snapshot: material },
       events: {
         [Symbol.asyncIterator]: () => ({
           next: () => new Promise<IteratorResult<RunEvent>>(() => {}),

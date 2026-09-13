@@ -150,14 +150,29 @@ func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequ
 	if err != nil {
 		return nil, nil, err
 	}
-	attached, err := s.runs.Subscribe(ctx, runs.SubscribeRequest{
+	request := runs.SubscribeRequest{
 		RunID:     in.RunID,
 		SegmentID: in.SegmentID,
 		// The application's cursor is prefix-free; the evt_ framing is this layer's.
 		// TrimPrefix leaves an absent id untouched, which is the tail-only case.
 		Cursor:             strings.TrimPrefix(AfterEventIDFrom(ctx), protocol.IDPrefixEvent),
 		CallerCapabilities: caller,
-	})
+	}
+	var snapshot *protocol.SessionSnapshot
+	var attached runs.Subscription
+	if in.Snapshot {
+		if request.Cursor != "" {
+			return nil, nil, fmt.Errorf("%w: snapshot subscription cannot replay a cursor", protocol.ErrInvalidParams)
+		}
+		attached, err = s.runs.SubscribeSnapshot(ctx, request, func(ctx context.Context, sessionID string) error {
+			var readErr error
+			snapshot, readErr = s.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: sessionID, IncludeDescendants: true})
+			return readErr
+		})
+	} else {
+		attached, err = s.runs.Subscribe(ctx, request)
+	}
+
 	if err != nil {
 		return nil, nil, wireLiveSegmentError(err)
 	}
@@ -167,7 +182,7 @@ func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequ
 		head = &framed
 	}
 	return &protocol.SubscribeRunResponse{
-		RunID: in.RunID, SegmentID: attached.Record.SegmentID, HeadEventID: head,
+		RunID: in.RunID, SegmentID: attached.Record.SegmentID, HeadEventID: head, Snapshot: snapshot,
 	}, mapRunEvents(attached.Events), nil
 }
 

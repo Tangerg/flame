@@ -4,7 +4,8 @@ import type { AgentRunView, AgentSessionView } from "@/plugins/sdk/types/agentSe
 import { refreshAgentSessionProjection } from "../application/session/refreshSessionProjection";
 import { agentRuntime } from "../application/ports/runtimeGateway";
 import type { RunStream } from "./agentRunPump";
-import { retireRunStream, settleRunStreamOpening } from "./runStreamOpening";
+import { retireRunStream } from "./runStreamOpening";
+import { snapshotRunStream } from "./snapshotRunStream";
 
 interface AgentSessionRecoveryOptions {
   client: Pick<FlameClient, "runs">;
@@ -75,11 +76,14 @@ async function attachRootRun(
   try {
     let stream: Awaited<ReturnType<typeof options.client.runs.subscribe>>;
     try {
-      const opening = options.client.runs.subscribe(
-        { runId: asRunId(run.id), segmentId: asSegmentId(segmentId) },
+      const opened = await snapshotRunStream(
+        options.client,
+        options.sessionId,
+        run.id,
+        segmentId,
         controller.signal,
+        () => !stale(options) && !controller.signal.aborted,
       );
-      const opened = await settleRunStreamOpening(opening, controller.signal);
       if (!opened) return;
       stream = opened;
     } catch (error) {

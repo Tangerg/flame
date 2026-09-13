@@ -357,6 +357,7 @@ func (s *segmentStartup) activate(
 	if spec.admission != nil && !spec.admission.Admit(spec.RunID) {
 		panic("runs: committed opening without a pending admission")
 	}
+	s.treeOwner.observation.Lock()
 	s.coordinator.registry.Open(Record{
 		ID:             spec.RunID,
 		SegmentID:      spec.SegmentID,
@@ -372,6 +373,7 @@ func (s *segmentStartup) activate(
 	// has no earlier events to replay.
 	subscription := s.journal.tail()
 	publicationErr := s.publishOpenings(openings)
+	s.treeOwner.observation.Unlock()
 	if publicationErr != nil {
 		subscription.Cancel()
 		publicationErr = errors.Join(publicationErr, s.treeOwner.rejectActivation(publicationErr))
@@ -562,26 +564,65 @@ func (c *Coordinator) rejectUnadmittedExecution(ctx context.Context, ref Executo
 // caller so the two entry points into an existing Run cannot disagree about it.
 func (c *Coordinator) Subscribe(ctx context.Context, req SubscribeRequest) (Subscription, error) {
 	req = req.clone()
-	live, err := c.addressLiveSegment(ctx, req.RunID, req.SegmentID)
+	live, err := c.addressSubscription(ctx, req)
 	if err != nil {
 		return Subscription{}, err
 	}
-	if gap := live.record.Capabilities.MissingFrom(req.CallerCapabilities); !gap.IsEmpty() {
-		return Subscription{}, &rundomain.InsufficientCapabilitiesError{RunID: req.RunID, Missing: gap}
+	return subscribeLiveSegment(ctx, live, req)
+}
+
+// SubscribeSnapshot reads durable material and establishes its successor tail
+// while the addressed tree cannot commit or publish. The reader stays with its
+// own use case; this boundary owns continuity with the executing Run.
+func (c *Coordinator) SubscribeSnapshot(ctx context.Context, req SubscribeRequest, read func(context.Context, string) error) (Subscription, error) {
+	req = req.clone()
+	if req.Cursor != "" {
+		return Subscription{}, errors.New("runs: snapshot subscription cannot replay a cursor")
 	}
+	live, err := c.addressSubscription(ctx, req)
+	if err != nil {
+		return Subscription{}, err
+	}
+	live.owner.observation.Lock()
+	defer live.owner.observation.Unlock()
+	if err := ctx.Err(); err != nil {
+		return Subscription{}, err
+	}
+	// Waiting for publication may cross a park/finish/resume boundary. The
+	// snapshot must not describe a successor Segment while tailing the old one.
+	if _, err := c.addressLiveSegment(ctx, req.RunID, req.SegmentID); err != nil {
+		return Subscription{}, err
+	}
+	if err := read(ctx, live.record.SessionID); err != nil {
+		return Subscription{}, err
+	}
+	return subscribeLiveSegment(ctx, live, req)
+}
+
+func subscribeLiveSegment(ctx context.Context, live liveSegment, req SubscribeRequest) (Subscription, error) {
 	attached, err := live.owner.hub.attach(req.Cursor)
 	if err != nil {
 		return Subscription{}, err
 	}
 	stopUnsubscribe := context.AfterFunc(ctx, attached.Cancel)
 	return Subscription{
-		Record:     live.record,
-		HeadCursor: attached.HeadCursor,
+		Record: live.record, HeadCursor: attached.HeadCursor,
 		Events: func(yield func(Event) bool) {
 			defer stopUnsubscribe()
 			attached.Events(yield)
 		},
 	}, nil
+}
+
+func (c *Coordinator) addressSubscription(ctx context.Context, req SubscribeRequest) (liveSegment, error) {
+	live, err := c.addressLiveSegment(ctx, req.RunID, req.SegmentID)
+	if err != nil {
+		return liveSegment{}, err
+	}
+	if gap := live.record.Capabilities.MissingFrom(req.CallerCapabilities); !gap.IsEmpty() {
+		return liveSegment{}, &rundomain.InsufficientCapabilitiesError{RunID: req.RunID, Missing: gap}
+	}
+	return live, nil
 }
 
 // addressLiveSegment resolves the run and segment a control command addresses,

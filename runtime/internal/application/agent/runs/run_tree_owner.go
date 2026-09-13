@@ -18,6 +18,8 @@ const runCleanupTimeout = 5 * time.Second
 // lifecycle join, event journal, immutable executor bindings and the root-owned
 // cancellation arbiter; specialized behavior lives beside those concerns.
 type runTreeOwner struct {
+	// observation excludes a snapshot/tail handoff from commit-to-publication windows.
+	observation     sync.Mutex
 	mu              sync.Mutex
 	cancel          context.CancelFunc
 	taskContext     context.Context

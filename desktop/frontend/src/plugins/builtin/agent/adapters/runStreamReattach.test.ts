@@ -1,8 +1,21 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RpcConnectionError, RpcError, type FlameClient } from "@/rpc";
 import { asRunId, asSegmentId } from "@/rpc";
 import type { RunStream, RunStreamPosition } from "./agentRunPump";
 import { createRunStreamReattach } from "./runStreamReattach";
+
+import { useAgentStore } from "./agentStore";
+import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+
+beforeEach(async () => {
+  const { default: spec } = await import("../bootstrap/foldPlugin");
+  await loadPluginsForTest(spec);
+  useAgentStore.getState().ensureSession("ses_1");
+});
+afterEach(() => {
+  useAgentStore.getState().dropSession("ses_1");
+  vi.restoreAllMocks();
+});
 
 const RUN = asRunId("run_1");
 const SEGMENT = asSegmentId("seg_1");
@@ -28,14 +41,19 @@ function runClient(subscribe: FlameClient["runs"]["subscribe"]): Pick<FlameClien
 }
 
 describe("run stream reattach", () => {
-  it("rebuilds the durable projection before tailing after a protocol violation", async () => {
-    const order: string[] = [];
-    const recoverProjection = vi.fn(async (_signal: AbortSignal) => {
-      order.push("recover");
-    });
+  it("commits the snapshot supplied with the cold tail and returns its successor cursor", async () => {
+    useAgentStore.getState().setCommandError("ses_1", { code: "old" });
+    const recoverProjection = vi.fn(async (_signal: AbortSignal) => {});
     const subscribe = vi.fn<FlameClient["runs"]["subscribe"]>(async () => {
-      order.push("subscribe");
-      return emptyStream();
+      const stream = emptyStream();
+      return {
+        ...stream,
+        result: {
+          ...stream.result,
+          headEventId: "evt_new",
+          snapshot: { items: [], runs: [], interrupts: [] },
+        },
+      };
     });
     const reattach = createRunStreamReattach({
       sessionId: "ses_1",
@@ -44,11 +62,14 @@ describe("run stream reattach", () => {
       recoverProjection,
     });
     const signal = new AbortController().signal;
-
-    await expect(reattach(position("cold"), signal)).resolves.not.toBeNull();
-
-    expect(order).toEqual(["recover", "subscribe"]);
-    expect(subscribe).toHaveBeenCalledWith({ runId: RUN, segmentId: SEGMENT }, signal);
+    const result = await reattach(position("cold"), signal);
+    expect(result?.cursor).toBe("evt_new");
+    expect(useAgentStore.getState().sessions.ses_1!.view.commandError).toBeNull();
+    expect(recoverProjection).not.toHaveBeenCalled();
+    expect(subscribe).toHaveBeenCalledWith(
+      { runId: RUN, segmentId: SEGMENT, snapshot: true },
+      signal,
+    );
   });
 
   it("replays from the last folded event while the cursor remains trustworthy", async () => {

@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RunEvent, RunRef } from "@/rpc";
 import { asRunId, asSegmentId, asSessionId, RpcConnectionError, RpcProtocolError } from "@/rpc";
-import { createAgentRunPump, type RunStream, type RunStreamPosition } from "./agentRunPump";
+import {
+  createAgentRunPump,
+  type RunStream,
+  type RunStreamReattachment,
+  type RunStreamPosition,
+} from "./agentRunPump";
 
 const RUN = asRunId("run_1");
 const SEGMENT = asSegmentId("seg_1");
@@ -59,7 +64,9 @@ function terminalRun(): RunRef {
   };
 }
 
-function pumpWith(reattach: (position: RunStreamPosition) => Promise<RunStream | null>) {
+function pumpWith(
+  reattach: (position: RunStreamPosition) => Promise<RunStreamReattachment | null>,
+) {
   const positions: RunStreamPosition[] = [];
   const pump = createAgentRunPump({
     sessionId: "ses_1",
@@ -76,8 +83,8 @@ function pumpWith(reattach: (position: RunStreamPosition) => Promise<RunStream |
 
 describe("agent run pump reattach", () => {
   it("resumes from the last event it folded when a stream ends without a terminal", async () => {
-    const { pump, positions } = pumpWith(() =>
-      Promise.resolve(streamOf([frame("evt_9", finished)])),
+    const { pump, positions } = pumpWith((position) =>
+      Promise.resolve({ ...streamOf([frame("evt_9", finished)]), cursor: position.lastEventId }),
     );
 
     await pump.pump(streamOf([frame("evt_7", progressed)]), new AbortController().signal);
@@ -129,8 +136,8 @@ describe("agent run pump reattach", () => {
         ]);
       })(),
     };
-    const { pump, positions } = pumpWith(() =>
-      Promise.resolve(streamOf([frame("evt_9", finished)])),
+    const { pump, positions } = pumpWith((position) =>
+      Promise.resolve({ ...streamOf([frame("evt_9", finished)]), cursor: position.lastEventId }),
     );
 
     await pump.pump(failed, new AbortController().signal);
@@ -164,8 +171,8 @@ describe("agent run pump reattach", () => {
   });
 
   it("hands back the head the attach captured when it folded nothing", async () => {
-    const { pump, positions } = pumpWith(() =>
-      Promise.resolve(streamOf([frame("evt_5", finished)])),
+    const { pump, positions } = pumpWith((position) =>
+      Promise.resolve({ ...streamOf([frame("evt_5", finished)]), cursor: position.lastEventId }),
     );
 
     await pump.pump(streamOf([], "evt_head"), new AbortController().signal);
@@ -282,18 +289,42 @@ describe("agent run pump reattach", () => {
 
   it("keeps its own cursor across a replaying reattach", async () => {
     let attempt = 0;
-    const { pump, positions } = pumpWith(() => {
+    const { pump, positions } = pumpWith((position) => {
       attempt += 1;
-      return Promise.resolve(
-        attempt === 1
+      return Promise.resolve({
+        ...(attempt === 1
           ? streamOf([], "evt_head_ahead")
-          : streamOf([frame("evt_terminal", finished)]),
-      );
+          : streamOf([frame("evt_terminal", finished)])),
+        cursor: position.lastEventId,
+      });
     });
 
     await pump.pump(streamOf([frame("evt_3", progressed)]), new AbortController().signal);
 
     expect(positions.map((p) => p.lastEventId)).toEqual(["evt_3", "evt_3"]);
+  });
+
+  it("uses a cold recovery's successor cursor even when its tail disconnects before any event", async () => {
+    let attempt = 0;
+    const { pump, positions } = pumpWith(() => {
+      attempt += 1;
+      return Promise.resolve({
+        ...streamOf(attempt === 1 ? [] : [frame("evt_terminal", finished)], "evt_new_head"),
+        cursor: "evt_new_head",
+      });
+    });
+    const failed: RunStream = {
+      result: { runId: RUN, segmentId: SEGMENT },
+      events: (async function* () {
+        yield frame("evt_old", progressed);
+        throw new RpcProtocolError("event", []);
+      })(),
+    };
+    await pump.pump(failed, new AbortController().signal);
+    expect(positions.map(({ lastEventId, recovery }) => ({ lastEventId, recovery }))).toEqual([
+      { lastEventId: "evt_old", recovery: "cold" },
+      { lastEventId: "evt_new_head", recovery: "replay" },
+    ]);
   });
 
   it("gives up when the run is no longer attachable", async () => {

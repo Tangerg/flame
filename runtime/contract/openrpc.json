@@ -1031,6 +1031,12 @@
       "paramStructure": "by-name",
       "params": [
         {
+          "name": "snapshot",
+          "schema": {
+            "type": "boolean"
+          }
+        },
+        {
           "name": "runId",
           "required": true,
           "schema": {

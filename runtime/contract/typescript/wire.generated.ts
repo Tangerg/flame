@@ -1450,12 +1450,14 @@ export type StreamEventType = "segment.started" | "segment.progress" | "segment.
 export interface SubscribeRunRequest {
   runId: string;
   segmentId: string;
+  snapshot?: boolean;
 }
 
 export interface SubscribeRunResponse {
   headEventId?: string;
   runId: string;
   segmentId: string;
+  snapshot?: SessionSnapshot;
 }
 
 export interface SubscriptionLimits {

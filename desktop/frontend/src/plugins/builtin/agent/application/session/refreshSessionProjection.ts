@@ -1,7 +1,7 @@
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { ASYNC_OWNERSHIP_RETIRED as ABORTED, settleBeforeAbort } from "@/lib/asyncOwnership";
 import type { SessionProjectionSynchronizationOwnership } from "../ports/sessionView";
-import { agentRuntime } from "../ports/runtimeGateway";
+import { agentRuntime, type AgentSessionMaterialRead } from "../ports/runtimeGateway";
 import { agentSessionView } from "../ports/sessionView";
 import { projectAgentSessionSnapshot } from "./sessionSnapshot";
 
@@ -37,11 +37,23 @@ export async function revalidateAgentSessionProjection(
   sessionId: string,
   options: RefreshSessionProjectionOptions = {},
 ): Promise<AgentSessionProjectionRevalidation | null> {
+  return revalidateAgentSessionMaterial(
+    sessionId,
+    () => agentRuntime().loadSessionSnapshot(sessionId, options.signal),
+    options,
+  );
+}
+
+export async function revalidateAgentSessionMaterial(
+  sessionId: string,
+  readMaterial: () => Promise<AgentSessionMaterialRead | null>,
+  options: RefreshSessionProjectionOptions = {},
+): Promise<AgentSessionProjectionRevalidation | null> {
   const viewPort = agentSessionView();
   const token = viewPort.beginViewRefresh(sessionId, options.invalidateQueuedRunEvents ?? false);
   if (!token) return null;
 
-  const read = agentRuntime().loadSessionSnapshot(sessionId, options.signal);
+  const read = readMaterial();
   const material = options.signal ? await settleBeforeAbort(read, options.signal) : await read;
   if (material === ABORTED) return null;
   if (!material || (options.canCommit && !options.canCommit())) return null;

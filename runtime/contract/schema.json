@@ -9656,6 +9656,9 @@
           "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "snapshot": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -9687,6 +9690,9 @@
           "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/SessionSnapshot"
         }
       },
       "required": [

@@ -83,6 +83,7 @@ type runUseCases interface {
 	Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error)
 	Steer(ctx context.Context, cmd runs.SteerCommand) error
 	Subscribe(ctx context.Context, req runs.SubscribeRequest) (runs.Subscription, error)
+	SubscribeSnapshot(ctx context.Context, req runs.SubscribeRequest, read func(context.Context, string) error) (runs.Subscription, error)
 	// ReplayRetention is what discovery publishes. Reading it from the enforcer is
 	// the point: a limit the client is told and a limit the runtime evicts by must
 	// be one number, or discovery is describing a runtime that does not exist.

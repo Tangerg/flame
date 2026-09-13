@@ -375,6 +375,8 @@ type ResumeRunRequest struct {
 // makes the mismatch a stale_segment refusal, and the client re-reads the run to
 // find out what actually happened.
 type SubscribeRunRequest struct {
+	// Snapshot requests a coherent Session read with a successor tail; it cannot be combined with a replay cursor.
+	Snapshot  bool   `json:"snapshot,omitempty"`
 	RunID     string `json:"runId"`
 	SegmentID string `json:"segmentId"`
 }
@@ -385,8 +387,9 @@ type SubscribeRunRequest struct {
 // userItemId, and an ack that declared one would publish a field nothing on this
 // path can write.
 type SubscribeRunResponse struct {
-	RunID     string `json:"runId"`
-	SegmentID string `json:"segmentId"`
+	Snapshot  *SessionSnapshot `json:"snapshot,omitempty"`
+	RunID     string           `json:"runId"`
+	SegmentID string           `json:"segmentId"`
 	// HeadEventID is the stream's position at the instant the subscription was
 	// established, absent when the stream has published nothing yet.
 	//

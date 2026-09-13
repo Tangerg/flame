@@ -513,8 +513,11 @@ unmount → abort follower + 解绑 actions；projection 留到 Session 不再 o
 
 `runs.start/resume` 的 ack 是 accepted boundary：只有 ack 前拒绝进入 command error / HITL
 `onStartError`；ack 后 stream/recovery failure 不能否定已经提交的命令。cold recovery 或 replay
-reattach 在 snapshot 与 subscribe 之间遇到 terminal/waiting/stale Run 时，必须经 Agent
-application port 重读完整 durable projection；不能把旧 Running 留给 UI 等待偶然 invalidation。
+reattach 通过 `runs.subscribe({ snapshot: true })` 获取同一次交接的完整 Session snapshot
+与后续流；Runtime 的 publication fence 排除持久化提交与事件发布之间的空窗。Application
+仍是 snapshot 的唯一 CAS 提交者。冷恢复以该 ack 的 headEventId 重置游标；普通 replay
+保留已消费游标。若目标已经 terminal/waiting/stale，则经 Agent application port 重读完整
+durable projection；不能把旧 Running 留给 UI 等待偶然 invalidation。
 
 Session snapshot 的同步 Promise 在权威投影提交后结束；由该快照恢复的 Run 订阅继续存活，
 并沿用会话持有的 generation signal，直到替换或卸载时回收。Goal 命令提交后通过

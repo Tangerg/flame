@@ -569,7 +569,11 @@ describe("useAgentSession durable recovery", () => {
     const readSnapshot = vi.fn().mockResolvedValue(materialSnapshot(snapshotOverrides));
     const subscribe = vi.fn((_params: unknown, signal: AbortSignal) =>
       Promise.resolve({
-        result: { runId: "run_live", segmentId: "seg_live" },
+        result: {
+          runId: "run_live",
+          segmentId: "seg_live",
+          snapshot: materialSnapshot(snapshotOverrides),
+        },
         events: abortRejectingEvents(signal),
       }),
     );
@@ -727,7 +731,7 @@ describe("useAgentSession durable recovery", () => {
     });
     expect(subscribe).toHaveBeenCalledTimes(1);
     expect(subscribe).toHaveBeenCalledWith(
-      { runId: "run_live", segmentId: "seg_live" },
+      { runId: "run_live", segmentId: "seg_live", snapshot: true },
       expect.any(AbortSignal),
     );
     expect(selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)?.id).toBe("run_live");
@@ -737,74 +741,76 @@ describe("useAgentSession durable recovery", () => {
     let restarted = false;
     const closeOldStream = vi.fn(async () => ({ value: undefined, done: true }) as const);
     let releaseOldNext!: (result: IteratorResult<RunEvent>) => void;
-    const readSnapshot = vi.fn().mockImplementation(() =>
-      Promise.resolve(
-        materialSnapshot({
-          items: restarted
-            ? [
-                {
-                  id: "item_after_restart",
-                  runId: "run_after_restart",
-                  type: "toolCall",
-                  status: "running",
-                  startedAt: "2026-08-13T00:00:01.000Z",
-                  tool: { name: "shell", arguments: { command: "npm test" } },
-                },
-              ]
-            : [],
-          runs: [
-            restarted
-              ? runRef({
-                  id: "run_after_restart",
-                  sessionId: RID,
-                  status: "waiting",
-                  activeSegmentId: undefined,
-                })
-              : runRef({
-                  id: "run_before_restart",
-                  sessionId: RID,
-                  activeSegmentId: "seg_before_restart",
-                }),
-          ],
-          interrupts: restarted
-            ? [
-                {
-                  rootRunId: "run_after_restart",
-                  sessionId: RID,
-                  createdAt: "2026-08-13T00:00:02.000Z",
-                  interrupts: [
-                    {
-                      type: "approval",
-                      itemId: "item_after_restart",
-                      runId: "run_after_restart",
-                      payload: {
-                        tool: { name: "shell", arguments: { command: "npm test" } },
-                      },
+    const readMaterial = () =>
+      materialSnapshot({
+        items: restarted
+          ? [
+              {
+                id: "item_after_restart",
+                runId: "run_after_restart",
+                type: "toolCall",
+                status: "running",
+                startedAt: "2026-08-13T00:00:01.000Z",
+                tool: { name: "shell", arguments: { command: "npm test" } },
+              },
+            ]
+          : [],
+        runs: [
+          restarted
+            ? runRef({
+                id: "run_after_restart",
+                sessionId: RID,
+                status: "waiting",
+                activeSegmentId: undefined,
+              })
+            : runRef({
+                id: "run_before_restart",
+                sessionId: RID,
+                activeSegmentId: "seg_before_restart",
+              }),
+        ],
+        interrupts: restarted
+          ? [
+              {
+                rootRunId: "run_after_restart",
+                sessionId: RID,
+                createdAt: "2026-08-13T00:00:02.000Z",
+                interrupts: [
+                  {
+                    type: "approval",
+                    itemId: "item_after_restart",
+                    runId: "run_after_restart",
+                    payload: {
+                      tool: { name: "shell", arguments: { command: "npm test" } },
                     },
-                  ],
-                },
-              ]
-            : [],
-          plan: {
-            sessionId: RID,
-            state: {
-              revision: restarted ? 2 : 1,
-              steps: [
-                {
-                  id: restarted ? "step_after_restart" : "step_before_restart",
-                  description: restarted ? "Approve resumed tool" : "Run old generation",
-                  status: "in_progress",
-                },
-              ],
-              updatedAt: "2026-08-13T00:00:03.000Z",
-            },
+                  },
+                ],
+              },
+            ]
+          : [],
+        plan: {
+          sessionId: RID,
+          state: {
+            revision: restarted ? 2 : 1,
+            steps: [
+              {
+                id: restarted ? "step_after_restart" : "step_before_restart",
+                description: restarted ? "Approve resumed tool" : "Run old generation",
+                status: "in_progress",
+              },
+            ],
+            updatedAt: "2026-08-13T00:00:03.000Z",
           },
-        }),
-      ),
-    );
+        },
+      });
+    const readSnapshot = vi.fn().mockImplementation(async () => readMaterial());
     const subscribe = vi.fn(() =>
       Promise.resolve({
-        result: { runId: "run_before_restart", segmentId: "seg_before_restart" },
+        result: {
+          runId: "run_before_restart",
+          segmentId: "seg_before_restart",
+          snapshot: readMaterial(),
+        },
         events: {
           [Symbol.asyncIterator]: () => ({
             next: () =>
@@ -981,30 +987,28 @@ describe("useAgentSession durable recovery", () => {
     });
     const closeOldStream = vi.fn(async () => ({ value: undefined, done: true }) as const);
     const subscribe = vi.fn(() => oldOpening);
-    const readSnapshot = vi.fn().mockImplementation(() =>
-      Promise.resolve(
-        materialSnapshot({
-          runs: restarted
-            ? []
-            : [
-                runRef({
-                  id: "run_retired_opening",
-                  sessionId: RID,
-                  status: "running",
-                  activeSegmentId: "seg_retired_opening",
-                }),
-              ],
-          plan: {
-            sessionId: RID,
-            state: {
-              revision: restarted ? 2 : 1,
-              steps: [],
-              updatedAt: "2026-08-13T00:00:03.000Z",
-            },
+    const readMaterial = () =>
+      materialSnapshot({
+        runs: restarted
+          ? []
+          : [
+              runRef({
+                id: "run_retired_opening",
+                sessionId: RID,
+                status: "running",
+                activeSegmentId: "seg_retired_opening",
+              }),
+            ],
+        plan: {
+          sessionId: RID,
+          state: {
+            revision: restarted ? 2 : 1,
+            steps: [],
+            updatedAt: "2026-08-13T00:00:03.000Z",
           },
-        }),
-      ),
-    );
+        },
+      });
+    const readSnapshot = vi.fn().mockImplementation(async () => readMaterial());
     setContainer({
       client: () =>
         ({
@@ -1056,7 +1060,7 @@ describe("useAgentSession durable recovery", () => {
       subscribeCalls += 1;
       if (subscribeCalls === 1) {
         return Promise.resolve({
-          result: { runId: "run_reconnect", segmentId: "seg_reconnect" },
+          result: { runId: "run_reconnect", segmentId: "seg_reconnect", snapshot: readMaterial() },
           events: {
             [Symbol.asyncIterator]: () =>
               ({
@@ -1067,30 +1071,28 @@ describe("useAgentSession durable recovery", () => {
       }
       return reconnectOpening;
     });
-    const readSnapshot = vi.fn().mockImplementation(() =>
-      Promise.resolve(
-        materialSnapshot({
-          runs: restarted
-            ? []
-            : [
-                runRef({
-                  id: "run_reconnect",
-                  sessionId: RID,
-                  status: "running",
-                  activeSegmentId: "seg_reconnect",
-                }),
-              ],
-          plan: {
-            sessionId: RID,
-            state: {
-              revision: restarted ? 2 : 1,
-              steps: [],
-              updatedAt: "2026-08-13T00:00:03.000Z",
-            },
+    const readMaterial = () =>
+      materialSnapshot({
+        runs: restarted
+          ? []
+          : [
+              runRef({
+                id: "run_reconnect",
+                sessionId: RID,
+                status: "running",
+                activeSegmentId: "seg_reconnect",
+              }),
+            ],
+        plan: {
+          sessionId: RID,
+          state: {
+            revision: restarted ? 2 : 1,
+            steps: [],
+            updatedAt: "2026-08-13T00:00:03.000Z",
           },
-        }),
-      ),
-    );
+        },
+      });
+    const readSnapshot = vi.fn().mockImplementation(async () => readMaterial());
     setContainer({
       client: () =>
         ({
@@ -1134,7 +1136,7 @@ describe("useAgentSession durable recovery", () => {
     const get = vi.fn(() => exactRead);
     const subscribe = vi.fn(() =>
       Promise.resolve({
-        result: { runId: "run_exact_read", segmentId: "seg_exact_read" },
+        result: { runId: "run_exact_read", segmentId: "seg_exact_read", snapshot: readMaterial() },
         events: (async function* () {
           yield {
             eventId: "evt_exact_terminal",
@@ -1150,30 +1152,28 @@ describe("useAgentSession durable recovery", () => {
         })(),
       }),
     );
-    const readSnapshot = vi.fn().mockImplementation(() =>
-      Promise.resolve(
-        materialSnapshot({
-          runs: restarted
-            ? []
-            : [
-                runRef({
-                  id: "run_exact_read",
-                  sessionId: RID,
-                  status: "running",
-                  activeSegmentId: "seg_exact_read",
-                }),
-              ],
-          plan: {
-            sessionId: RID,
-            state: {
-              revision: restarted ? 2 : 1,
-              steps: [],
-              updatedAt: "2026-08-13T00:00:03.000Z",
-            },
+    const readMaterial = () =>
+      materialSnapshot({
+        runs: restarted
+          ? []
+          : [
+              runRef({
+                id: "run_exact_read",
+                sessionId: RID,
+                status: "running",
+                activeSegmentId: "seg_exact_read",
+              }),
+            ],
+        plan: {
+          sessionId: RID,
+          state: {
+            revision: restarted ? 2 : 1,
+            steps: [],
+            updatedAt: "2026-08-13T00:00:03.000Z",
           },
-        }),
-      ),
-    );
+        },
+      });
+    const readSnapshot = vi.fn().mockImplementation(async () => readMaterial());
     setContainer({
       client: () =>
         ({
@@ -1286,7 +1286,7 @@ describe("useAgentSession durable recovery", () => {
     });
     const subscribe = vi.fn((request: { runId: string; segmentId: string }, signal: AbortSignal) =>
       Promise.resolve({
-        result: request,
+        result: { ...request, snapshot: readMaterial() },
         events: abortRejectingEvents(signal),
       }),
     );
@@ -1294,13 +1294,11 @@ describe("useAgentSession durable recovery", () => {
       canceled = true;
       return { type: "child", run: childAfter, rootRun: rootAfter };
     });
-    const readSnapshot = vi.fn().mockImplementation(() =>
-      Promise.resolve(
-        materialSnapshot({
-          runs: canceled ? [rootAfter, childAfter] : [rootBefore, childBefore],
-        }),
-      ),
-    );
+    const readMaterial = () =>
+      materialSnapshot({
+        runs: canceled ? [rootAfter, childAfter] : [rootBefore, childBefore],
+      });
+    const readSnapshot = vi.fn().mockImplementation(async () => readMaterial());
     setContainer({
       client: () =>
         ({
@@ -1316,7 +1314,7 @@ describe("useAgentSession durable recovery", () => {
 
     await waitFor(() => {
       expect(subscribe).toHaveBeenCalledWith(
-        { runId: "run_root", segmentId: "seg_before" },
+        { runId: "run_root", segmentId: "seg_before", snapshot: true },
         expect.any(AbortSignal),
       );
     });
@@ -1326,7 +1324,7 @@ describe("useAgentSession durable recovery", () => {
 
     await waitFor(() => {
       expect(subscribe).toHaveBeenCalledWith(
-        { runId: "run_root", segmentId: "seg_after" },
+        { runId: "run_root", segmentId: "seg_after", snapshot: true },
         expect.any(AbortSignal),
       );
     });

@@ -1,26 +1,19 @@
 import type { FlameClient } from "@/rpc";
 import { asRunId, asSegmentId, RpcConnectionError } from "@/rpc";
 import { agentRuntime } from "../application/ports/runtimeGateway";
-import type { RunStream, RunStreamPosition } from "./agentRunPump";
+import type { RunStreamReattachment, RunStreamPosition } from "./agentRunPump";
 import { retireRunStream, settleRunStreamOpening } from "./runStreamOpening";
+import { snapshotRunStream } from "./snapshotRunStream";
 
 interface RunStreamReattachOptions {
   sessionId: string;
   client: () => Pick<FlameClient, "runs">;
   isCancelled: () => boolean;
-  /** Rebuild the complete durable projection when the replay window no longer
-   *  reaches this client's cursor. Missed deltas are gone, but their completed
-   *  items and lifecycle facts remain queryable. */
+  /** Refresh final durable material when the addressed Run can no longer be followed. */
   recoverProjection: (signal: AbortSignal) => Promise<void>;
 }
 
-/**
- * The cursor is handed back VERBATIM. The runtime's two refusals mean different things:
- * "not attachable" leaves nothing to follow, so the durable projection is re-read; a
- * replay window that has moved past the cursor loses the events but not the Items they
- * produced, so history is re-read BEFORE reattaching tail-only — reattaching first would
- * leave the transcript missing whatever the gap contained.
- */
+/** Replay preserves its consumed cursor; cold recovery takes the coherent snapshot tail's head. */
 export function createRunStreamReattach({
   sessionId,
   client,
@@ -30,24 +23,38 @@ export function createRunStreamReattach({
   return async function reattach(
     position: RunStreamPosition,
     signal: AbortSignal,
-  ): Promise<RunStream | null> {
+  ): Promise<RunStreamReattachment | null> {
     if (isCancelled() || signal.aborted) return null;
     const target = {
       runId: asRunId(position.runId),
       segmentId: asSegmentId(position.segmentId),
     };
-    const recoverAndTail = async (): Promise<RunStream | null> => {
-      await recoverProjection(signal);
+    const recoverAndTail = async (): Promise<RunStreamReattachment | null> => {
       if (isCancelled() || signal.aborted) return null;
       try {
-        const tail = await settleRunStreamOpening(client().runs.subscribe(target, signal), signal);
+        const tail = await snapshotRunStream(
+          client(),
+          sessionId,
+          target.runId,
+          target.segmentId,
+          signal,
+          () => !isCancelled() && !signal.aborted,
+        );
         if (!tail) return null;
         if (isCancelled() || signal.aborted) {
           retireRunStream(tail);
           return null;
         }
-        return { result: brandAck(tail.result), events: tail.events };
+        return {
+          result: brandAck(tail.result),
+          events: tail.events,
+          cursor: tail.result.headEventId ?? "",
+        };
       } catch (tailErr) {
+        if (!isCancelled() && !signal.aborted && agentRuntime().isRunGone(tailErr)) {
+          await recoverProjection(signal);
+          return null;
+        }
         if (
           !isCancelled() &&
           !signal.aborted &&
@@ -72,7 +79,11 @@ export function createRunStreamReattach({
         retireRunStream(stream);
         return null;
       }
-      return { result: brandAck(stream.result), events: stream.events };
+      return {
+        result: brandAck(stream.result),
+        events: stream.events,
+        cursor: position.lastEventId || stream.result.headEventId || "",
+      };
     } catch (err) {
       if (isCancelled() || signal.aborted) return null;
       if (agentRuntime().isRunGone(err)) {

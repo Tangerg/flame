@@ -3485,11 +3485,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   SubscribeRunRequest: object({
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    snapshot: flag(),
   }, ["runId", "segmentId"]),
   SubscribeRunResponse: object({
     headEventId: allOf([text(), maxLength(65540), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^evt_")]),
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    snapshot: ref(() => CHECKS.SessionSnapshot),
   }, ["runId", "segmentId"]),
   SubscriptionLimits: object({
     maxTopics: allOf([integer(), minimum(1)]),
