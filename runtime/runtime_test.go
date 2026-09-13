@@ -16,6 +16,53 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+func TestFreshRuntimeSubscriptionObservesFirstSkill(t *testing.T) {
+	for _, name := range []string{
+		"FLAME_PROVIDER", "FLAME_MODEL", "FLAME_APIKEY", "FLAME_BASEURL",
+		"FLAME_MCP_SERVERS", "FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS",
+	} {
+		t.Setenv(name, "")
+	}
+	t.Setenv("FLAME_PROVIDER", "anthropic")
+	data := t.TempDir()
+	rt, err := Open(t.Context(), Config{
+		DataDirectory: data, UserHomePath: t.TempDir(), DefaultWorkspacePath: t.TempDir(),
+		ConfigDirectories: []string{t.TempDir()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := rt.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	_, events, err := rt.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{
+		Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged, protocol.TopicSessionsChanged},
+	}, SubscriptionOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(data, "skills", "first", "SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(file, []byte("---\nname: first\ndescription: First skill\n---\nUse the first skill.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for event, err := range events {
+		if err != nil {
+			t.Fatal(err)
+		}
+		if event.Type == protocol.RuntimeSkillsChanged {
+			return
+		}
+	}
+	t.Fatal("subscription ended before the first skill became observable")
+}
+
 func TestRuntimePreservesCallerCancellation(t *testing.T) {
 	for _, name := range []string{
 		"FLAME_PROVIDER", "FLAME_MODEL", "FLAME_APIKEY", "FLAME_BASEURL", "ANTHROPIC_API_KEY",

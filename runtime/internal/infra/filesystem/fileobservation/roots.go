@@ -33,7 +33,7 @@ func openObservationRoots(boundaries []string) (_ *observationRoots, err error) 
 			continue
 		}
 		root, openErr := os.OpenRoot(boundary)
-		if openErr != nil {
+		if openErr != nil && !errors.Is(openErr, os.ErrNotExist) {
 			return nil, fmt.Errorf("open observation boundary %q: %w", boundary, openErr)
 		}
 		roots.byBoundary[boundary] = root
@@ -58,7 +58,16 @@ func (r *observationRoots) access(boundary, physical string) (*os.Root, string, 
 	}
 	root := r.byBoundary[boundary]
 	if root == nil {
-		return nil, "", false, fmt.Errorf("observation boundary %q is not open", boundary)
+		// A catalog may not exist until its first authored file. Pin its boundary
+		// when it appears; until then the observer watches the existing ancestor.
+		root, err = os.OpenRoot(boundary)
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, "", false, nil
+		}
+		if err != nil {
+			return nil, "", false, fmt.Errorf("open observation boundary %q: %w", boundary, err)
+		}
+		r.byBoundary[boundary] = root
 	}
 	return root, name, true, nil
 }
@@ -74,6 +83,9 @@ func (r *observationRoots) Close() error {
 		}
 		slices.Sort(boundaries)
 		for _, boundary := range boundaries {
+			if r.byBoundary[boundary] == nil {
+				continue
+			}
 			if err := r.byBoundary[boundary].Close(); err != nil {
 				r.closeErr = errors.Join(r.closeErr, fmt.Errorf("close observation boundary %q: %w", boundary, err))
 			}

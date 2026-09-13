@@ -14,7 +14,7 @@ func TestWatchChildFilesObservesDynamicExactFiles(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "skills")
 	events := make(chan []string, 8)
 	watcher, err := WatchChildFiles([]ChildFileTarget{{
-		Key: "skills", Path: root, Boundary: filepath.Dir(root), FileName: "SKILL.md",
+		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md",
 		MaxEntries: 16, MaxBytes: testMaxBytes,
 	}}, func(keys []string) { events <- keys }, nil)
 	if err != nil {
