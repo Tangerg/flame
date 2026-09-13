@@ -2,11 +2,13 @@
 
 Flame is one product with one durable model. Runtime owns product semantics and exposes them through an in-process Go binding and the Runtime Protocol. CLI and Desktop own presentation and interaction. Scope owns the agent framework and provider libraries.
 
-## One fact, one owner
+## Why Runtime owns the durable facts
 
-Session, Run, Segment, Item, Goal, Plan, Interrupt, execution, persistence, recovery, provider selection, and compaction advance only in Runtime. Storage records, protocol values, CLI state, and Desktop state are projections of those facts.
+[`AGENTS.md`](AGENTS.md) states the general rule, and [`PROJECT_RULES.md`](PROJECT_RULES.md) names the exact facts Runtime owns. What that ownership buys is the reason to keep it.
 
-When a fact appears in several representations, identify the representation that may change it. Every other representation may encode, cache, or render it, but cannot create a competing transition.
+A product with three surfaces — an in-process binding, a protocol, and a desktop client — can give each surface its own copy of a Run's state and reconcile them later. Flame does not, because reconciliation is where the cost lands: every added surface multiplies the pairs that can disagree, and a crash during disagreement leaves no representation that can be trusted to say what happened.
+
+Concentrating the transitions in Runtime moves that cost once, into one state machine that persistence and recovery already have to be correct about. The surfaces keep only what they can rebuild by reading: selection, focus, drafts, rendering. Losing a surface then costs nothing a restart cannot restore.
 
 ## Repair the semantic source
 

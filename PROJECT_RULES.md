@@ -6,7 +6,6 @@ Stable design rationale lives in [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md).
 
 - Do not preserve backward compatibility for a wrong design. Fix the semantic owner, migrate every in-scope consumer, and remove obsolete APIs, packages, schemas, aliases, fallbacks, tests, and documentation in the same batch.
 - Every abstraction, representation, state, dependency, package, and call path must justify its existence against a proven requirement.
-- Give each fact one owner, one representation, and one primary call path. Projections may encode or cache an owner-provided fact but never advance it independently.
 - Runtime is the sole authority for Session, Run, Segment, Item, Goal, Plan, Interrupt, execution, persistence, recovery, provider/model selection, and compaction. CLI and Desktop do not rebuild those state machines.
 - The Runtime Go binding and Runtime Protocol are two projections of one semantic core. Both enter the same delivery endpoint before capability checks, idempotency, lifecycle control, Application invocation, and error or event projection.
 - Use domain-driven design and clean dependency direction to express ownership, not to generate a directory matrix. Domain models own invariants and pure transitions; Application owns use-case ordering; external adapters own translation; delivery owns bindings; bootstrap owns composition and shutdown.
