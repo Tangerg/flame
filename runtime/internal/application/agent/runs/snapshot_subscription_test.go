@@ -144,3 +144,63 @@ func TestSnapshotSubscriptionIncludesChildOpeningAndCompletion(t *testing.T) {
 	}
 	requirePublishedChildLifecycle(t, events, "run_child", "seg_child")
 }
+
+func TestSnapshotSubscriptionWaitsForCommittedOpeningPublication(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer cancel()
+	executor := &snapshotExecutor{publish: make(chan struct{}), attempted: make(chan struct{})}
+	effects := &fakeEffects{}
+	coordinator := testCoordinator(executor, effects)
+	spec := testSegment()
+	readStarted := make(chan struct{}, 1)
+	coordinator.runs = &racingRunProjection{value: runForSegment(spec), beforeReturn: func() {
+		select {
+		case readStarted <- struct{}{}:
+		default:
+		}
+	}}
+	committed, release := make(chan struct{}), make(chan struct{})
+	spec.CommitOpening = func(ctx context.Context, opening OpeningCommit) error {
+		if err := effects.CommitOpening(ctx, opening); err != nil {
+			return err
+		}
+		close(committed)
+		select {
+		case <-release:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	opened := make(chan error, 1)
+	go func() { _, err := coordinator.openSegment(ctx, spec); opened <- err }()
+	<-committed
+	attached := make(chan error, 1)
+	go func() {
+		_, err := coordinator.SubscribeSnapshot(ctx, SubscribeRequest{RunID: spec.RunID, SegmentID: spec.SegmentID}, func(context.Context, string) error { return nil })
+		attached <- err
+	}()
+	<-readStarted
+	var earlyErr error
+	early := false
+	select {
+	case earlyErr = <-attached:
+		early = true
+	case <-time.After(25 * time.Millisecond):
+	}
+	close(release)
+	if err := <-opened; err != nil {
+		t.Fatal(err)
+	}
+	if !early {
+		earlyErr = <-attached
+	}
+	cancel()
+	coordinator.BeginShutdown()
+	if err := coordinator.AwaitShutdown(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if earlyErr != nil {
+		t.Fatalf("committed opening had no observable owner: %v", earlyErr)
+	}
+}

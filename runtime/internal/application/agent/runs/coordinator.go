@@ -259,11 +259,7 @@ func (c *Coordinator) openSegment(reqCtx context.Context, spec segmentSpec) (ite
 	if err != nil {
 		return nil, err
 	}
-	openings, err := c.commitOpening(reqCtx, spec, startup.routes)
-	if err != nil {
-		return nil, startup.abort(err)
-	}
-	return startup.activate(reqCtx, openings)
+	return startup.activate(reqCtx)
 }
 
 // segmentStartup owns the reversible process-local resources between executor
@@ -349,16 +345,11 @@ func (s *segmentStartup) abort(cause error) error {
 	return cause
 }
 
-func (s *segmentStartup) activate(
-	requestContext context.Context,
-	openings []routeOpening,
-) (iter.Seq[Event], error) {
+func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Event], error) {
 	spec := s.spec
-	if spec.admission != nil && !spec.admission.Admit(spec.RunID) {
-		panic("runs: committed opening without a pending admission")
-	}
 	s.treeOwner.observation.Lock()
-	s.coordinator.registry.Open(Record{
+	var openings []routeOpening
+	err := s.coordinator.registry.Open(Record{
 		ID:             spec.RunID,
 		SegmentID:      spec.SegmentID,
 		SessionID:      spec.SessionID,
@@ -367,7 +358,21 @@ func (s *segmentStartup) activate(
 		ExecutorID:     spec.ExecutorID,
 		ModelSelection: spec.ModelSelection,
 		Capabilities:   spec.effectiveCapabilities(),
-	}, s.treeOwner)
+	}, s.treeOwner, func() error {
+		var err error
+		openings, err = s.coordinator.commitOpening(requestContext, spec, s.routes)
+		if err != nil {
+			return err
+		}
+		if spec.admission != nil && !spec.admission.Admit(spec.RunID) {
+			panic("runs: committed opening without a pending admission")
+		}
+		return nil
+	})
+	if err != nil {
+		s.treeOwner.observation.Unlock()
+		return nil, s.abort(err)
+	}
 	s.markSegmentsStarted()
 	// Attach before publishing so this opening stream has no gap; a fresh journal
 	// has no earlier events to replay.
@@ -659,7 +664,7 @@ func (c *Coordinator) addressLiveSegment(ctx context.Context, runID, segmentID s
 	if run.ActiveSegmentID() != segmentID {
 		return liveSegment{}, fmt.Errorf("%w: run %q is executing %q", ErrStaleSegment, runID, run.ActiveSegmentID())
 	}
-	live, ok := c.registry.Get(runID)
+	live, ok := c.registry.Running(runID)
 	if !ok {
 		// A Running record whose segment this process does not own. Restart recovery
 		// terminalizes orphans before the runtime serves, so this is a broken

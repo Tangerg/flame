@@ -2658,13 +2658,9 @@ func TestCoordinatorOpeningPublicationFailureReclaimsCommittedRun(t *testing.T) 
 	if err != nil {
 		t.Fatalf("prepare Segment: %v", err)
 	}
-	openings, err := coordinator.commitOpening(t.Context(), spec, startup.routes)
-	if err != nil {
-		t.Fatalf("commit opening: %v", err)
-	}
 	startup.journal.head = math.MaxUint64
 
-	if stream, err := startup.activate(t.Context(), openings); stream != nil || !errors.Is(err, errReplaySequenceExhausted) {
+	if stream, err := startup.activate(t.Context()); stream != nil || !errors.Is(err, errReplaySequenceExhausted) {
 		t.Fatalf("activate = (stream %v, error %v), want replay exhaustion", stream != nil, err)
 	}
 	select {

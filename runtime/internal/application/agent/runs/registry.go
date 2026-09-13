@@ -38,16 +38,24 @@ type liveSegment struct {
 //
 // Its zero value is usable.
 type registry struct {
-	mu   sync.Mutex
-	runs map[string]liveSegment
+	opening sync.RWMutex
+	mu      sync.Mutex
+	runs    map[string]liveSegment
 }
 
-// Open registers an active run segment.
-func (r *registry) Open(record Record, owner *runTreeOwner) {
+// Open publishes the process-local owner together with its durable opening.
+// Running-owner readers cannot pass a committed opening without its owner.
+func (r *registry) Open(record Record, owner *runTreeOwner, commit func() error) error {
+	r.opening.Lock()
+	defer r.opening.Unlock()
+	if err := commit(); err != nil {
+		return err
+	}
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.initLocked()
 	r.runs[record.ID] = liveSegment{record: cloneRecord(record), owner: owner}
-	r.mu.Unlock()
+	return nil
 }
 
 // RemoveSegment drops one exact completed segment and returns its former live
@@ -72,6 +80,15 @@ func (r *registry) Get(id string) (liveSegment, bool) {
 	segment, ok := r.runs[id]
 	segment.record = cloneRecord(segment.record)
 	return segment, ok
+}
+
+// Running follows a durable Running read across the opening handoff. Waiting
+// cancellation uses Get: it must remain free to reject a contending resume before
+// that resume's commit returns.
+func (r *registry) Running(id string) (liveSegment, bool) {
+	r.opening.RLock()
+	defer r.opening.RUnlock()
+	return r.Get(id)
 }
 
 // MarkCancel records the human-facing cancel reason and returns the live run.

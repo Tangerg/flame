@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -12,7 +13,7 @@ func TestRegistryRemovesCompletedRun(t *testing.T) {
 	var r registry
 	started := time.Unix(42, 0).UTC()
 	owner := testRunTreeOwner(t, nil)
-	r.Open(Record{ID: "run_1", SessionID: "ses_1", CWD: "/repo", CreatedAt: started}, owner)
+	r.Open(Record{ID: "run_1", SessionID: "ses_1", CWD: "/repo", CreatedAt: started}, owner, func() error { return nil })
 
 	e, ok := r.Get("run_1")
 	if !ok || e.record.CreatedAt != started || e.owner != owner {
@@ -32,8 +33,8 @@ func TestRegistryOldSegmentCannotRemoveItsReplacement(t *testing.T) {
 	var reg registry
 	oldOwner := testRunTreeOwner(t, nil)
 	newOwner := testRunTreeOwner(t, nil)
-	reg.Open(Record{ID: "run_1", SegmentID: "segment_old"}, oldOwner)
-	reg.Open(Record{ID: "run_1", SegmentID: "segment_new"}, newOwner)
+	reg.Open(Record{ID: "run_1", SegmentID: "segment_old"}, oldOwner, func() error { return nil })
+	reg.Open(Record{ID: "run_1", SegmentID: "segment_new"}, newOwner, func() error { return nil })
 
 	if removed, ok := reg.RemoveSegment("run_1", "segment_old"); ok {
 		t.Fatalf("old Segment removed replacement: %+v", removed)
@@ -49,7 +50,7 @@ func TestRegistryOldSegmentCannotRemoveItsReplacement(t *testing.T) {
 
 func TestRegistryCancelReason(t *testing.T) {
 	var r registry
-	r.Open(Record{ID: "run_1", SessionID: "ses_1"}, nil)
+	r.Open(Record{ID: "run_1", SessionID: "ses_1"}, nil, func() error { return nil })
 	e, ok := r.MarkCancel("run_1", "user asked")
 	if !ok {
 		t.Fatal("mark cancel must find the run")
@@ -67,7 +68,7 @@ func TestRegistryOwnsRunCapabilities(t *testing.T) {
 	capabilities := run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Approval},
 	}
-	reg.Open(Record{ID: "run_1", Capabilities: capabilities}, nil)
+	reg.Open(Record{ID: "run_1", Capabilities: capabilities}, nil, func() error { return nil })
 	capabilities.InterruptKinds[0] = interrupt.Question
 
 	first, ok := reg.Get("run_1")
@@ -79,5 +80,21 @@ func TestRegistryOwnsRunCapabilities(t *testing.T) {
 	second, ok := reg.Get("run_1")
 	if !ok || second.record.Capabilities.InterruptKinds[0] != interrupt.Approval {
 		t.Fatalf("Get leaked stored capabilities ownership: %+v", second.record.Capabilities)
+	}
+}
+
+func TestRegistryFailedOpeningPreservesExistingOwner(t *testing.T) {
+	var reg registry
+	owner := testRunTreeOwner(t, nil)
+	if err := reg.Open(Record{ID: "run_1", SegmentID: "seg_old"}, owner, func() error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	rejected := errors.New("opening rejected")
+	if err := reg.Open(Record{ID: "run_1", SegmentID: "seg_new"}, testRunTreeOwner(t, nil), func() error { return rejected }); !errors.Is(err, rejected) {
+		t.Fatalf("opening error = %v", err)
+	}
+	live, ok := reg.Running("run_1")
+	if !ok || live.owner != owner || live.record.SegmentID != "seg_old" {
+		t.Fatalf("failed opening replaced owner: %+v", live)
 	}
 }

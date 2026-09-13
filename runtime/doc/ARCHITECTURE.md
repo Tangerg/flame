@@ -43,6 +43,8 @@ A model error remains an unknown external outcome in Scope. After committing the
 
 Framework observations are wake-ups, not durable commits. Runtime reconciles authoritative framework state into an Application write set before publishing durable product facts. A completed durable Item or snapshot wins over a missing or duplicated preview event.
 
+The live registry fences opening commits together with owner registration. A consumer that has read a durable Running Run waits for that handoff before resolving its stream or cancellation owner. Waiting-state cancellation does not join the opening fence: a competing resume must still be rejected through Session admission without waiting for its commit. Failed openings leave any existing owner untouched.
+
 Cold stream recovery uses `runs.subscribe` with `snapshot: true`. The tree owner fences its durable commits and event publication while the Session use case reads material and the successor tail attaches. The reply contains both the snapshot and its tail head; a replay cursor is mutually exclusive with this mode. Ordinary replay retains the consumed cursor. Waiting for the fence revalidates the addressed Segment so a replacement cannot be paired with an old tail.
 
 Model-call allowances apply to cumulative usage across the execution tree. A limit denial belongs to the member whose next call was refused; it does not replace a sibling's completed, canceled, or failed outcome.
