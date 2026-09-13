@@ -63,6 +63,7 @@ type interactionState struct {
 	begun                      bool
 	finished                   bool
 	boundary                   interactionBoundary
+	dispatchReady              chan struct{}
 	waitingCheckpoint          runs.ExecutorCheckpoint
 	subtreeChange              *interactionWaitingSubtreeChange
 	subtreePrepared            chan struct{}
@@ -419,6 +420,7 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 		return false
 	}
 	i.state.boundary = interactionBoundaryWaiting
+	i.state.dispatchReady = make(chan struct{})
 	i.state.waitingCheckpoint = checkpoint.Clone()
 	i.state.mu.Unlock()
 	published := i.lifetime.send(runs.ExecutorEvent{
@@ -477,9 +479,17 @@ func isInteractionWaitingBoundary(status agent.Status) bool {
 
 func (i *interactionSession) continuationAccepted() {
 	i.state.mu.Lock()
-	i.state.boundary = interactionBoundaryInactive
-	i.state.waitingCheckpoint = runs.ExecutorCheckpoint{}
+	i.state.continueExecution()
 	i.state.mu.Unlock()
+}
+
+// continueExecution releases Effects woken by child cancellation only after the
+// replacement product Segment owns their projections. The caller holds mu.
+func (i *interactionState) continueExecution() {
+	i.boundary = interactionBoundaryInactive
+	i.waitingCheckpoint = runs.ExecutorCheckpoint{}
+	close(i.dispatchReady)
+	i.dispatchReady = nil
 }
 
 func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {

@@ -270,8 +270,7 @@ func (i *interactionSession) acceptSubtreeContinuation(change *interactionWaitin
 		return runs.ErrExecutionClaimed
 	}
 	i.state.subtreeChange = nil
-	i.state.boundary = interactionBoundaryInactive
-	i.state.waitingCheckpoint = runs.ExecutorCheckpoint{}
+	i.state.continueExecution()
 	return nil
 }
 

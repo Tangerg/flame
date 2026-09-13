@@ -58,6 +58,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 	i.state.admittedProcessID = root.ID()
 	i.state.begun = true
 	i.state.boundary = boundary
+	i.state.dispatchReady = make(chan struct{})
 	i.state.waitingCheckpoint = continuation.Checkpoint.Clone()
 	i.state.delegateCalls = delegateCalls
 	i.state.delegateChildren = delegateChildren

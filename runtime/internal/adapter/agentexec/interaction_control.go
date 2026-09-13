@@ -64,7 +64,16 @@ func (i *interactionSession) beginDispatch(
 			cancel:    cancel,
 		}
 	}
+	ready := i.state.dispatchReady
 	i.state.mu.Unlock()
+	// A child cancellation can wake its waiting parent before Application opens
+	// the next Segment. Keep that Effect off the model/Tool boundary until then.
+	if ready != nil {
+		select {
+		case <-ready:
+		case <-bound.Done():
+		}
+	}
 	return bound, func() {
 		i.state.mu.Lock()
 		delete(i.state.activeDispatches, key)

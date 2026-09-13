@@ -49,6 +49,8 @@ Cold stream recovery uses `runs.subscribe` with `snapshot: true`. The tree owner
 
 Model-call allowances apply to cumulative usage across the execution tree. A limit denial belongs to the member whose next call was refused; it does not replace a sibling's completed, canceled, or failed outcome.
 
+A parked Interaction holds new Effect dispatch until the next product Segment activates. Canceling a waiting child can wake its parent in Scope before that activation; the execution adapter keeps that Effect behind the same continuation boundary. Activation releases it before reconciling the parent Tool results and reducing model context. Session cancellation and release also unblock the waiter through its owned context.
+
 A Delegate retains its admitted child across a human-input barrier. Each continuation opens fresh Segments, so the executor observation reopens the parent Tool attempt before forwarding child results. Application reuses the durable Tool Item identity; continuation does not admit another child or repeat its completed work.
 
 Tool continuation uses the executor's stable call identity. Edited approval arguments change the execution input while preserving that identity; a new call with the same name or arguments receives its own Item. One remaining-call index owns whether a suspended Item still needs to resume or settle.

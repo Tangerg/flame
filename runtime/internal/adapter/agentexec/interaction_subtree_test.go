@@ -52,11 +52,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 	projected.Members[0].MemberID = "member_projected"
 	projected.Checkpoint.Payload[0] = 'y'
 	projected.Capabilities.InterruptKinds[0] = "projected"
-	// Preparing a waiting-subtree cancellation now requests the cancellation of
-	// the target Process and captures the tree it drained into. The Framework
-	// commits a requested cancellation, so there is no prepared state to revoke
-	// and no second attempt at the same target: Discard releases this session's
-	// boundary, it does not restore the subtree.
+	// Preparation must remain abandonable; only Apply submits the cancellation.
 	prepareCtx, cancelPrepare := context.WithTimeout(t.Context(), 2*time.Second)
 	prepared, err := fixture.executor.PrepareWaitingSubtreeCancellation(prepareCtx, request)
 	if err != nil {
@@ -74,6 +70,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 		cancelPrepare()
 		t.Fatal(err)
 	}
+	time.Sleep(30 * time.Millisecond)
 	if calls := fixture.model.Calls(); calls != 2 {
 		cancelPrepare()
 		t.Fatalf("provider calls after state apply = %d, want 2 before continuation activation", calls)

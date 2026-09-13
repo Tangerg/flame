@@ -2,7 +2,9 @@ package agentexec
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
 	agent "github.com/Tangerg/scope/agent"
 )
@@ -95,5 +97,33 @@ func assertInteractionDispatchRunning(t *testing.T, ctx context.Context, name st
 	case <-ctx.Done():
 		t.Fatalf("%s dispatch was canceled: %v", name, context.Cause(ctx))
 	default:
+	}
+}
+
+func TestInteractionDispatchWaitingForContinuationReleasesWithLifetime(t *testing.T) {
+	session := &interactionSession{
+		lifetime: newInteractionLifetime(t.Context()),
+		state:    interactionState{dispatchReady: make(chan struct{}), activeDispatches: make(map[interactionDispatchIdentity]activeInteractionDispatch)},
+	}
+	defer session.lifetime.beginRelease()
+	stopped := make(chan error, 1)
+	go func() {
+		ctx, finish := session.beginDispatch(t.Context(), interactionDispatchIdentity{processID: mustInteractionProcessID(t, "root"), effectID: mustInteractionEffectID(t, "model")})
+		defer finish()
+		stopped <- ctx.Err()
+	}()
+	select {
+	case err := <-stopped:
+		t.Fatalf("dispatch crossed the unopened Segment: %v", err)
+	case <-time.After(20 * time.Millisecond):
+	}
+	session.lifetime.beginRelease()
+	select {
+	case err := <-stopped:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("released dispatch = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("released session retained a dispatch waiting for continuation")
 	}
 }
