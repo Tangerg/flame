@@ -37,9 +37,7 @@ export function sourceTimestamp(source: AgentFoldSource): number {
   return timestamp;
 }
 
-/** One timeline entry per (event, kind). Both the run handlers and the item handlers build
- *  these, and they were building them separately from the same four source facts — so the
- *  id scheme that has to stay unique across the whole fold had two authors. */
+/** Run observations retain their transport identity; Item boundaries use durable Item identity. */
 export function timelineEntry(
   source: AgentFoldSource,
   kind: TimelineEntry["kind"],

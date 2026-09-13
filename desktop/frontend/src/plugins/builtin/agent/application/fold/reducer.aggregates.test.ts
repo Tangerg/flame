@@ -10,7 +10,14 @@ function item(partial: Record<string, unknown>): Item {
   return {
     runId: "r1",
     status: "running",
-    createdAt: "2026-06-03T00:00:00Z",
+    ...(partial.type === "toolCall"
+      ? {
+          startedAt: "2026-06-03T00:00:02Z",
+          ...(partial.status === "running" || partial.status === undefined
+            ? {}
+            : { finishedAt: "2026-06-03T00:00:03Z" }),
+        }
+      : { createdAt: "2026-06-03T00:00:00Z" }),
     ...partial,
   } as Item;
 }
@@ -62,7 +69,7 @@ describe("reducer — timeline accumulator", () => {
     ]);
     expect(s.timeline.every((t) => t.runId === "r1")).toBe(true);
     expect(s.timeline.find((t) => t.kind === "tool-end")?.status).toBe("ok");
-    expect(s.timeline.find((t) => t.kind === "tool-start")?.summary).toBe("ls");
+    expect(s.toolCalls["tc1"]?.fn).toBe("ls");
   });
 
   it("records an approval-request when a run finishes with an approval interrupt", () => {

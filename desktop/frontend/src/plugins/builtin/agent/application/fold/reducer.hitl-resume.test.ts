@@ -9,7 +9,14 @@ function item(partial: Record<string, unknown>): Item {
   return {
     runId: "run_X",
     status: "running",
-    createdAt: "2026-06-03T00:00:00Z",
+    ...(partial.type === "toolCall"
+      ? {
+          startedAt: "2026-06-03T00:00:02Z",
+          ...(partial.status === "running" || partial.status === undefined
+            ? {}
+            : { finishedAt: "2026-06-03T00:00:03Z" }),
+        }
+      : { createdAt: "2026-06-03T00:00:00Z" }),
     ...partial,
   } as Item;
 }

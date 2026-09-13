@@ -522,6 +522,9 @@ export const es: Record<string, string> = {
   "timeline.empty.title": "Sin actividad aún",
   "timeline.empty.sub":
     "Cuando el agent se ejecuta, cada llamada a herramienta, aprobación y límite de ejecución aparece aquí.",
+  "timeline.recentWindow": "Se muestran las últimas {{count}} observaciones",
+  "timeline.kind.compaction": "Contexto compactado",
+  "timeline.executionDuration": "Tiempo de ejecución (sin espera de aprobación)",
   "timeline.kind.runStart": "Ejecución iniciada",
   "timeline.kind.runEnd": "Ejecución finalizada",
   "timeline.kind.runError": "Error de ejecución",

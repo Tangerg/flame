@@ -495,6 +495,9 @@ export const ja: Record<string, string> = {
   "timeline.empty.title": "まだアクティビティがありません",
   "timeline.empty.sub":
     "agent が実行されると、すべてのツール呼び出し、承認、実行境界がここに表示されます。",
+  "timeline.recentWindow": "最新 {{count}} 件の記録を表示",
+  "timeline.kind.compaction": "コンテキスト圧縮済み",
+  "timeline.executionDuration": "実行時間（承認待ちを除く）",
   "timeline.kind.runStart": "実行開始",
   "timeline.kind.runEnd": "実行終了",
   "timeline.kind.runError": "実行エラー",

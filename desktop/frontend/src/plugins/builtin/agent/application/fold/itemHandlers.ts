@@ -1,6 +1,5 @@
 import type { AgentItem, AgentItemDelta } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
-import { appendTimelineEntry } from "@/plugins/sdk";
 import { blockStatus } from "./projections";
 import {
   appendUserMessage,
@@ -13,7 +12,7 @@ import {
   writeToolCall,
 } from "./fold";
 import type { AgentFoldSource } from "./source";
-import { timelineEntry } from "./source";
+import { recordCompactionTimeline, recordToolTimeline } from "./itemTimeline";
 
 function assertItemSource(item: AgentItem, source: AgentFoldSource): void {
   if (item.runId !== source.runId) {
@@ -52,14 +51,12 @@ export function onItemStarted(
       return foldReasoning(state, item, blockStatus(item.status));
     case "toolCall": {
       const { state: next, tool } = writeToolCall(state, item);
-      return appendTimelineEntry(
-        timelineEntry(source, "tool-start", { refId: item.id, summary: tool.fn }),
-      )(next);
+      return recordToolTimeline(next, item, tool);
     }
     case "question":
       return foldQuestion(state, item, blockStatus(item.status));
     case "compaction":
-      return foldCompaction(state, item);
+      return recordCompactionTimeline(foldCompaction(state, item), item);
   }
 }
 
@@ -180,17 +177,11 @@ export function onItemCompleted(
       return foldReasoning(state, item, blockStatus(item.status));
     case "toolCall": {
       const { state: next, tool } = writeToolCall(state, item);
-      return appendTimelineEntry(
-        timelineEntry(source, "tool-end", {
-          refId: item.id,
-          status: tool.status === "err" ? "err" : tool.status === "denied" ? "declined" : "ok",
-          summary: tool.fn,
-        }),
-      )(next);
+      return recordToolTimeline(next, item, tool);
     }
     case "question":
       return foldQuestion(state, item, blockStatus(item.status));
     case "compaction":
-      return foldCompaction(state, item);
+      return recordCompactionTimeline(foldCompaction(state, item), item);
   }
 }

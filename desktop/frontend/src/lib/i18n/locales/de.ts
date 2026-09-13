@@ -514,6 +514,9 @@ export const de: Record<string, string> = {
   "timeline.empty.title": "Noch keine Aktivität",
   "timeline.empty.sub":
     "Wenn der Agent läuft, erscheinen hier alle Tool-Aufrufe, Freigaben und Lauf-Grenzen.",
+  "timeline.recentWindow": "Die letzten {{count}} Beobachtungen werden angezeigt",
+  "timeline.kind.compaction": "Kontext komprimiert",
+  "timeline.executionDuration": "Ausführungszeit (ohne Freigabewartezeit)",
   "timeline.kind.runStart": "Lauf gestartet",
   "timeline.kind.runEnd": "Lauf beendet",
   "timeline.kind.runError": "Lauf-Fehler",

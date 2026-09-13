@@ -4,6 +4,8 @@ import type { IconName } from "@/ui";
 import type { TimelineEntry, TimelineEntryKind } from "@/plugins/sdk/types/agentSessionView";
 import { Badge, EmptyState, Icon, IconButton, toneInk, vocab } from "@/ui";
 import { useT, type Translate } from "@/lib/i18n";
+import { fmtDuration } from "@/lib/format";
+import { TIMELINE_WINDOW_SIZE } from "@/plugins/sdk/types/agentTimeline";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { toolIntent } from "@/plugins/builtin/agent/public/messagePresentation";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
@@ -37,6 +39,7 @@ const KIND_ICON: Record<TimelineEntryKind, IconName> = {
   "tool-end": "tool",
   "approval-request": "shield",
   "approval-result": "shield",
+  compaction: "history",
 };
 
 const KIND_I18N: Record<TimelineEntryKind, string> = {
@@ -51,6 +54,7 @@ const KIND_I18N: Record<TimelineEntryKind, string> = {
   // already reports a failure. As a bare noun it also lied in four languages: 核准, 承認,
   // 승인 and Aprobación all mean GRANTED, so a denial was filed under approved.
   "approval-result": "timeline.kind.approvalResult",
+  compaction: "timeline.kind.compaction",
 };
 
 // A glyph, not a dot. `tool-start` and `tool-end` carry the same kind icon and the same label,
@@ -67,17 +71,9 @@ const STATUS_MARK: Record<NonNullable<TimelineEntry["status"]>, { icon: IconName
   declined: { icon: "x", tone: "warning" },
 };
 
-/**
- * What the row is ABOUT.
- *
- * The fold puts the identifying argument here and falls back to the tool's wire NAME when it
- * finds none — deliberately, because a translated string in view state would freeze a
- * language into it. The transcript resolves that fallback through `toolIntent`; this surface
- * printed it, so a run's audit trail read `ask_user`, `read_tool_result` and `sh_01` beside
- * rows that said "Verify package dependencies".
- */
 function entrySubject(t: Translate, entry: TimelineEntry, tool: ToolCall | undefined): string {
-  if (!tool || entry.summary === undefined || entry.summary !== tool.name)
+  if (!tool) return entry.summary ?? "";
+  if (entry.kind !== "tool-start" && entry.kind !== "tool-end" && entry.summary !== tool.name)
     return entry.summary ?? "";
   const intent = toolIntent(t, tool);
   return intent.detail?.value ?? intent.label.value;
@@ -118,6 +114,15 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
           {...stylex.props(ts.mark, toneInk[STATUS_MARK[entry.status].tone])}
         >
           <Icon name={STATUS_MARK[entry.status].icon} size="xs" />
+        </span>
+      )}
+      {entry.kind === "tool-end" && (
+        <span title={t("timeline.executionDuration")} {...stylex.props(ts.stamp, typeStep.uiXs)}>
+          {tool?.durationMillis === undefined
+            ? "—"
+            : tool.durationMillis < 1000
+              ? `${tool.durationMillis}ms`
+              : fmtDuration(tool.durationMillis)}
         </span>
       )}
       <span {...stylex.props(ts.stamp, typeStep.uiXs)}>{timelineTimeOfDay(entry.ts)}</span>
@@ -223,7 +228,11 @@ export function TimelineTab() {
     <WorkspaceViewLayout
       icon="history"
       title="timeline.title"
-      sub={timelineSubtext(t, view)}
+      sub={
+        timeline.length === TIMELINE_WINDOW_SIZE
+          ? t("timeline.recentWindow", { count: TIMELINE_WINDOW_SIZE })
+          : timelineSubtext(t, view)
+      }
       actions={
         <IconButton
           icon="chat"

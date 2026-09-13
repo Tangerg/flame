@@ -2,7 +2,7 @@ import type { AgentSessionView, TimelineEntry } from "@/plugins/sdk/types/agentS
 
 type StateUpdate = (state: AgentSessionView) => AgentSessionView;
 
-const TIMELINE_MAX = 500;
+export const TIMELINE_WINDOW_SIZE = 500;
 
 /** Insert one idempotent entry in server-time order and retain the newest
  * bounded window. Stable sorting preserves source order for equal timestamps. */
@@ -12,7 +12,8 @@ export function appendTimelineEntry(entry: TimelineEntry): StateUpdate {
     const next = [...state.timeline, entry].sort((left, right) => left.ts - right.ts);
     return {
       ...state,
-      timeline: next.length > TIMELINE_MAX ? next.slice(next.length - TIMELINE_MAX) : next,
+      timeline:
+        next.length > TIMELINE_WINDOW_SIZE ? next.slice(next.length - TIMELINE_WINDOW_SIZE) : next,
     };
   };
 }

@@ -525,6 +525,9 @@ export const fr: Record<string, string> = {
   "timeline.empty.title": "Aucune activité pour l'instant",
   "timeline.empty.sub":
     "Lorsque l'agent s'exécute, chaque appel d'outil, approbation et limite d'exécution apparaît ici.",
+  "timeline.recentWindow": "Affichage des {{count}} dernières observations",
+  "timeline.kind.compaction": "Contexte compacté",
+  "timeline.executionDuration": "Durée d’exécution (hors attente d’approbation)",
   "timeline.kind.runStart": "Exécution démarrée",
   "timeline.kind.runEnd": "Exécution terminée",
   "timeline.kind.runError": "Erreur d'exécution",

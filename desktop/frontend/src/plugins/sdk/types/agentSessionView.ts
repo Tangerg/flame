@@ -168,8 +168,7 @@ export interface AgentRunView {
   finishedAt: string | null;
 }
 
-/** Drives the Run Timeline view: the message stream is for READING, the timeline for
- *  AUDITING. Renderers may collapse, filter or group by `runId`. */
+/** Recent Run observations for the timeline. Durable history remains owned by Runtime. */
 export type TimelineEntryKind =
   | "run-start"
   | "run-end"
@@ -177,6 +176,7 @@ export type TimelineEntryKind =
   | "tool-start"
   | "tool-end"
   | "approval-request"
+  | "compaction"
   | "approval-result";
 
 export interface TimelineEntry {
@@ -218,7 +218,7 @@ export interface AgentSessionView {
    *  Items fold together until a user boundary or finalAnswer closes it. Each
    *  Run owns its cursor because root and child Items can arrive interleaved. */
   assistantTurnByRunId: Record<string, string>;
-  /** Append-only audit log of run-significant events. See TimelineEntry. */
+  /** Bounded projection of recent observations, not a complete durable audit log. */
   timeline: TimelineEntry[];
   /** Pending HITL references for this session. Runtime payloads are
    *  materialized into message blocks at the fold boundary; the read model

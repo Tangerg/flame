@@ -667,6 +667,9 @@ export const en: Record<string, string> = {
   "timeline.empty.title": "No activity yet",
   "timeline.empty.sub":
     "As the agent runs, every tool call, approval, and run boundary lands here.",
+  "timeline.recentWindow": "Showing the latest {{count}} observations",
+  "timeline.kind.compaction": "Context compacted",
+  "timeline.executionDuration": "Execution time (excluding approval waits)",
   "timeline.kind.runStart": "Run started",
   "timeline.kind.runEnd": "Run finished",
   "timeline.kind.runError": "Run error",

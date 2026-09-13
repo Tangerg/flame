@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
+import type { AgentRunView, TimelineEntry, ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
@@ -9,6 +9,8 @@ import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 const projection = vi.hoisted(() => ({
   runtimeAvailable: false,
   cancelRun: vi.fn(),
+  timeline: [] as TimelineEntry[],
+  tools: {} as Record<string, ToolCall>,
 }));
 
 const running: AgentRunView = {
@@ -34,8 +36,8 @@ const running: AgentRunView = {
 vi.mock("@/plugins/builtin/agent/public/run", () => ({
   cancelSessionRun: projection.cancelRun,
   useActiveSessionRunTree: () => [{ run: running, children: [] }],
-  useActiveSessionTimeline: () => [],
-  useActiveSessionToolCalls: () => ({}),
+  useActiveSessionTimeline: () => projection.timeline,
+  useActiveSessionToolCalls: () => projection.tools,
 }));
 
 vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
@@ -55,6 +57,42 @@ import { timelineView } from "./index";
 import { TimelineTab } from "./timeline";
 
 describe("Timeline runtime actions", () => {
+  beforeEach(() => {
+    projection.timeline = [];
+    projection.tools = {};
+  });
+
+  it("shows measured execution time and keeps absent timing unknown", () => {
+    projection.tools = {
+      measured: {
+        id: "measured",
+        runId: running.id,
+        name: "shell",
+        fn: "Verify axios",
+        args: "",
+        status: "ok",
+        durationMillis: 230,
+      },
+      unknown: {
+        id: "unknown",
+        runId: running.id,
+        name: "shell",
+        fn: "Inspect axios",
+        args: "",
+        status: "ok",
+      },
+    };
+    projection.timeline = [
+      { id: "measured-end", runId: running.id, refId: "measured", kind: "tool-end", ts: 1 },
+      { id: "unknown-end", runId: running.id, refId: "unknown", kind: "tool-end", ts: 2 },
+      { id: "compact", runId: running.id, refId: "item_compact", kind: "compaction", ts: 3 },
+    ];
+    render(<TimelineTab />);
+    expect(screen.getByText("230ms")).toBeTruthy();
+    expect(screen.getByText("—")).toBeTruthy();
+    expect(screen.getByText("Verify axios")).toBeTruthy();
+    expect(screen.getByText("Context compacted")).toBeTruthy();
+  });
   it("does not offer an active cancel command while the Runtime is unavailable", async () => {
     await loadPluginsForTest(timelineView);
     expect(lookupExtensionPoint(WORKSPACE_VIEW).some((view) => view.id === "timeline")).toBe(true);
