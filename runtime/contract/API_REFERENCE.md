@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-08-30` · 86 methods
+Protocol `2026-08-30` · 87 methods
 
 ## Methods
 
@@ -22,6 +22,7 @@ Protocol `2026-08-30` · 86 methods
 | `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `checkpoint_unavailable`, `capability_not_negotiated` |
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `session_not_found`, `capability_not_negotiated` |
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `capability_not_negotiated` |
+| `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
 | `runs.start` | command | stream | replayRunStream | run | none | — | — | `session_not_found`, `session_busy`, `session_has_active_run`, `unsupported_mime`, `capability_not_negotiated` |
 | `runs.resume` | command | stream | replayRunStream | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated` |
 | `runs.subscribe` | subscription | stream | none | run | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment`, `replay_cursor_invalid`, `replay_unavailable`, `capability_not_negotiated` |

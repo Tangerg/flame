@@ -8,16 +8,23 @@ import (
 )
 
 const (
-	RunsStart     Name = "runs.start"
-	RunsResume    Name = "runs.resume"
-	RunsSubscribe Name = "runs.subscribe"
-	RunsCancel    Name = "runs.cancel"
-	RunsSteer     Name = "runs.steer"
-	RunsGet       Name = "runs.get"
-	RunsList      Name = "runs.list"
+	RunsStart            Name = "runs.start"
+	RunsResume           Name = "runs.resume"
+	RunsSubscribe        Name = "runs.subscribe"
+	RunsCancel           Name = "runs.cancel"
+	RunsSteer            Name = "runs.steer"
+	RunsGet              Name = "runs.get"
+	RunsList             Name = "runs.list"
+	ModelInvocationsList Name = "modelInvocations.list"
 )
 
 func registerRuns(registry *Registry) {
+	registry.Query(MethodMeta{Name: ModelInvocationsList, Errors: []string{protocol.ErrRunNotFound.Error(), protocol.ErrCapabilityNotNeg.Error()}}, func(service interface {
+		ListModelInvocations(context.Context, protocol.ListModelInvocationsRequest) (*protocol.Page[protocol.ModelInvocation], error)
+	}, ctx context.Context, request protocol.ListModelInvocationsRequest) (*protocol.Page[protocol.ModelInvocation], error) {
+		return service.ListModelInvocations(ctx, request)
+	})
+
 	// runs.start and runs.resume open a run. A same-key retry must land back on
 	// THAT run — replaying the cached ack alone would give the client a runId with
 	// no stream behind it.

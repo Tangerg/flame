@@ -91,6 +91,7 @@ type runUseCases interface {
 }
 
 type queryUseCases interface {
+	ListModelInvocationPage(context.Context, string, string, pagination.RequestedLimit) (pagination.Page[runs.ModelInvocationCommit], error)
 	ListItemPage(ctx context.Context, scope sessions.ItemScope, order transcript.SequenceOrder, cursor string, limit pagination.RequestedLimit) (sessions.ItemPage, error)
 	ListPendingInterruptPage(ctx context.Context, sessionID, rootRunID string, caller run.Capabilities, cursor string, limit pagination.RequestedLimit) (pagination.Page[runs.Pending], error)
 	Run(ctx context.Context, runID string) (run.Run, bool, error)

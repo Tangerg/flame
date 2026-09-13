@@ -86,6 +86,13 @@ func (e ExportSessionRequest) ValidateWire() error {
 	)
 }
 
+func (l ListModelInvocationsRequest) ValidateWire() error {
+	return collectWireViolations("ListModelInvocationsRequest",
+		optionalPositiveNumber("limit", l.Limit),
+		maxLength("cursor", l.Cursor, 65536),
+	)
+}
+
 func (s StartRunRequest) ValidateWire() error {
 	return collectWireViolations("StartRunRequest",
 		requiredText("sessionId", s.SessionID),
@@ -2525,6 +2532,12 @@ func (i InterruptPayload) ValidateWire() error {
 func (l ListItemsResponse) ValidateWire() error {
 	return collectWireViolations("ListItemsResponse",
 		maxLength("nextCursor", l.NextCursor, 65536),
+	)
+}
+
+func (m ModelInvocation) ValidateWire() error {
+	return collectWireViolations("ModelInvocation",
+		closedEnum("state", string(m.State), []string{"started", "completed", "failed", "unknown"}, false),
 	)
 }
 

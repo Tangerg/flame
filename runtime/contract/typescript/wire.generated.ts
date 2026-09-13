@@ -684,6 +684,12 @@ export interface ListItemsResponse {
   runs: RunSummary[];
 }
 
+export interface ListModelInvocationsRequest {
+  cursor?: string;
+  limit?: number;
+  runId: string;
+}
+
 export interface ListModelsRequest {
   provider?: string;
 }
@@ -846,6 +852,17 @@ export interface ModelCapabilities {
   toolUse?: boolean;
 }
 
+export interface ModelInvocation {
+  callId: string;
+  runId: string;
+  segmentId: string;
+  settledAt?: string;
+  startedAt: string;
+  state: ModelInvocationState;
+}
+
+export type ModelInvocationState = "started" | "completed" | "failed" | "unknown";
+
 export interface ModelPricing {
   cacheReadUsdPerMillionTokens?: number;
   cacheWriteUsdPerMillionTokens?: number;
@@ -881,6 +898,8 @@ export type PageOfMCPTool = Page<MCPTool>;
 export type PageOfManagedSkill = Page<ManagedSkill>;
 
 export type PageOfModel = Page<Model>;
+
+export type PageOfModelInvocation = Page<ModelInvocation>;
 
 export type PageOfPendingInterruptSet = Page<PendingInterruptSet>;
 
@@ -1672,6 +1691,7 @@ export const WIRE_ENUMS = {
   MCPTransport: ["stdio", "streamableHttp"],
   MessagePhase: ["commentary", "finalAnswer"],
   Modality: ["text", "image", "audio", "video", "pdf"],
+  ModelInvocationState: ["started", "completed", "failed", "unknown"],
   PlanStatus: ["pending", "in_progress", "completed"],
   ProviderConfigChangeType: ["set", "clear"],
   ProviderCredentialRequirement: ["apiKeyRequired", "apiKeyOptional"],

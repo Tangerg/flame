@@ -137,6 +137,7 @@ export type WireTypeName =
   | "ListInterruptsRequest"
   | "ListItemsRequest"
   | "ListItemsResponse"
+  | "ListModelInvocationsRequest"
   | "ListModelsRequest"
   | "ListRunsRequest"
   | "ListSessionsRequest"
@@ -169,6 +170,8 @@ export type WireTypeName =
   | "Modality"
   | "Model"
   | "ModelCapabilities"
+  | "ModelInvocation"
+  | "ModelInvocationState"
   | "ModelPricing"
   | "ModelTokenLimits"
   | "ModelUsage"
@@ -179,6 +182,7 @@ export type WireTypeName =
   | "PageOfMCPTool"
   | "PageOfManagedSkill"
   | "PageOfModel"
+  | "PageOfModelInvocation"
   | "PageOfPendingInterruptSet"
   | "PageOfProvider"
   | "PageOfRecipe"
@@ -1730,6 +1734,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     nextCursor: allOf([text(), maxLength(65536)]),
     runs: array(ref(() => CHECKS.RunSummary)),
   }, ["data", "runs"]),
+  ListModelInvocationsRequest: object({
+    cursor: allOf([text(), maxLength(65536)]),
+    limit: allOf([integer(), minimum(1)]),
+    runId: text(),
+  }, ["runId"]),
   ListModelsRequest: object({
     provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, []),
@@ -2039,6 +2048,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     structuredOutput: flag(),
     toolUse: flag(),
   }, []),
+  ModelInvocation: object({
+    callId: text(),
+    runId: text(),
+    segmentId: text(),
+    settledAt: text(),
+    startedAt: text(),
+    state: ref(() => CHECKS.ModelInvocationState),
+  }, ["callId", "runId", "segmentId", "startedAt", "state"]),
+  ModelInvocationState: enumOf(["started", "completed", "failed", "unknown"]),
   ModelPricing: object({
     cacheReadUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
     cacheWriteUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
@@ -2087,6 +2105,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["data"]),
   PageOfModel: object({
     data: array(ref(() => CHECKS.Model)),
+    nextCursor: allOf([text(), maxLength(65536)]),
+  }, ["data"]),
+  PageOfModelInvocation: object({
+    data: array(ref(() => CHECKS.ModelInvocation)),
     nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfPendingInterruptSet: object({
@@ -3744,6 +3766,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "sessions.rollback": ref(() => CHECKS.RollbackSessionResponse),
   "sessions.export": ref(() => CHECKS.ExportSessionResponse),
   "sessions.import": ref(() => CHECKS.ImportSessionResponse),
+  "modelInvocations.list": ref(() => CHECKS.PageOfModelInvocation),
   "runs.start": ref(() => CHECKS.StartRunResponse),
   "runs.resume": ref(() => CHECKS.ResumeRunResponse),
   "runs.subscribe": ref(() => CHECKS.SubscribeRunResponse),

@@ -1165,6 +1165,9 @@ func mustQueryCoordinator(deps sessions.QueryDependencies) *sessions.QueryCoordi
 	if deps.Sessions == nil {
 		deps.Sessions = inertQueryStores{}
 	}
+	if deps.ModelInvocations == nil {
+		deps.ModelInvocations = emptyModelInvocations{}
+	}
 	coordinator, err := sessions.NewQueryCoordinator(deps)
 	if err != nil {
 		panic(err)
@@ -1465,3 +1468,9 @@ func (inertSegmentToolResults) Bind(context.Context, string, string, string, too
 	return nil
 }
 func (inertSegmentToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }
+
+type emptyModelInvocations struct{}
+
+func (emptyModelInvocations) PageModelInvocations(context.Context, string, int64, string, int) ([]runs.ModelInvocationCommit, error) {
+	return nil, nil
+}

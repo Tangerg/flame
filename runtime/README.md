@@ -74,3 +74,11 @@ Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), a
 - Public API, wire, storage, and generated-contract changes are replaced completely. Migrate all in-scope consumers and delete the former shape without aliases, fallback decoding, dual persistence, or compatibility packages.
 - Prefer real single-Runtime end-to-end scenarios for Goal, Plan, steer, HITL, interruption, compaction, long context, long execution, provider failure, restart, and recovery. Test concurrency only where Runtime owns concurrent lifecycle; do not invent multi-client or multi-server scenarios without a product obligation.
 - Decide compaction only at an imminent model call from that complete request's token footprint. Do not trigger it from protocol message counts or Run completion. Pre-release SQLite installs the current schema directly; do not add hand-maintained epochs or a migration graph without an explicit migration requirement.
+
+## Model invocation history
+
+`modelInvocations.list` reads recorded provider attempts for one exact Run, newest first, with an opaque cursor and a maximum page size of 100. Child Run reads require the subagent capability, just like `runs.get`. The Go binding exposes the same operation as `ListModelInvocations`.
+
+The invocation journal owns call identity, Segment identity, observed state, and timestamps. These records now survive Run completion and restart; deletion of their Run cascades to the records. Schema installation replaces the former pruning trigger on existing databases. Attempts already deleted by older versions cannot be reconstructed from Run token totals or transcript text.
+
+`started` has no settlement timestamp. `completed` and `failed` identify observed provider outcomes. `unknown` means execution or recovery could not establish the outcome: its `settledAt` is when that uncertainty was recorded, not a provider completion time. Consumers must not infer a measured model duration or throughput from an unknown outcome. Per-call token usage, first-token timing, and prompt inspection are not present in this read; aggregate Run accounting remains separate.

@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ModelInvocationHistory } from "./views/ModelInvocationHistory";
 import * as stylex from "@stylexjs/stylex";
 import type { Tone } from "@/lib/tone";
 import type { IconName } from "@/ui";
@@ -139,6 +141,7 @@ function TimelineRunHeader({
 }) {
   const t = useT();
   const run = group.run;
+  const [showModels, setShowModels] = useState(false);
   if (!run) {
     return group.runId ? (
       <div {...stylex.props(vs.gutter, vs.sectionPad, vocab.faint, typeStep.uiXs, face.mono)}>
@@ -152,67 +155,77 @@ function TimelineRunHeader({
   const spawnedByItemId = run.spawnedByItemId;
   const child = parentRunId !== null;
   return (
-    <div {...stylex.props(ts.runHeader)}>
-      <Icon
-        name={child ? "bot" : "branch"}
-        size="sm"
-        className={stylex.props(vocab.hold, vocab.muted).className}
-      />
-      <div {...stylex.props(vocab.fill, vs.rowPad)}>
-        <div {...stylex.props(vs.titleLine)}>
-          <span {...stylex.props(vocab.hold, vs.title, typeStep.uiSm)}>
-            {t(child ? "timeline.delegatedRun" : "timeline.rootRun")}
-          </span>
-          <span
-            title={run.id}
-            {...stylex.props(vocab.truncate, vocab.faint, typeStep.uiXs, face.mono)}
-          >
-            {run.id}
-          </span>
-          <Badge tone={status.tone}>{t(status.labelKey)}</Badge>
-        </div>
-        {/* The detail truncates, so there is no rag left for `vocab.pretty` to balance — and
+    <>
+      <div {...stylex.props(ts.runHeader)}>
+        <Icon
+          name={child ? "bot" : "branch"}
+          size="sm"
+          className={stylex.props(vocab.hold, vocab.muted).className}
+        />
+        <div {...stylex.props(vocab.fill, vs.rowPad)}>
+          <div {...stylex.props(vs.titleLine)}>
+            <span {...stylex.props(vocab.hold, vs.title, typeStep.uiSm)}>
+              {t(child ? "timeline.delegatedRun" : "timeline.rootRun")}
+            </span>
+            <span
+              title={run.id}
+              {...stylex.props(vocab.truncate, vocab.faint, typeStep.uiXs, face.mono)}
+            >
+              {run.id}
+            </span>
+            <Badge tone={status.tone}>{t(status.labelKey)}</Badge>
+          </div>
+          {/* The detail truncates, so there is no rag left for `vocab.pretty` to balance — and
             the two are a second answer to `text-wrap-mode` on one element, settled by
             whichever rule the bundler wrote last. */}
-        <div {...stylex.props(ts.runDetail, typeStep.uiXs)}>
-          {status.detail && (
-            <span title={status.detail} {...stylex.props(vocab.truncate)}>
-              {status.detail}
+          <div {...stylex.props(ts.runDetail, typeStep.uiXs)}>
+            {status.detail && (
+              <span title={status.detail} {...stylex.props(vocab.truncate)}>
+                {status.detail}
+              </span>
+            )}
+            {child && (
+              <span title={parentRunId} {...stylex.props(vocab.truncate, vocab.faint, face.mono)}>
+                {t("timeline.parentRun", { id: parentRunId })}
+              </span>
+            )}
+            <span {...stylex.props(vs.pushEnd, vocab.hold, face.mono)}>
+              {t("agent.steps", { count: status.stepCount })}
             </span>
-          )}
-          {child && (
-            <span title={parentRunId} {...stylex.props(vocab.truncate, vocab.faint, face.mono)}>
-              {t("timeline.parentRun", { id: parentRunId })}
-            </span>
-          )}
-          <span {...stylex.props(vs.pushEnd, vocab.hold, face.mono)}>
-            {t("agent.steps", { count: status.stepCount })}
-          </span>
+          </div>
         </div>
+        <IconButton
+          icon="bot"
+          quiet
+          title={t("timeline.modelCalls")}
+          aria-expanded={showModels}
+          onClick={() => setShowModels(!showModels)}
+        />
+        {spawnedByItemId && (
+          <IconButton
+            icon="chat"
+            size="lg"
+            quiet
+            disabled={!runtimeAvailable}
+            title={t("timeline.locateParent")}
+            onClick={() => locateWorkspaceTool(spawnedByItemId)}
+          />
+        )}
+        {status.cancelable && (
+          <IconButton
+            icon="stop"
+            size="lg"
+            quiet
+            disabled={!runtimeAvailable}
+            title={t("agent.runTree.action.cancel")}
+            onClick={() => {
+              cancelSessionRun({ sessionId: run.sessionId, runId: run.id });
+            }}
+          />
+        )}
       </div>
-      {spawnedByItemId && (
-        <IconButton
-          icon="chat"
-          size="lg"
-          quiet
-          disabled={!runtimeAvailable}
-          title={t("timeline.locateParent")}
-          onClick={() => locateWorkspaceTool(spawnedByItemId)}
-        />
-      )}
-      {status.cancelable && (
-        <IconButton
-          icon="stop"
-          size="lg"
-          quiet
-          disabled={!runtimeAvailable}
-          title={t("agent.runTree.action.cancel")}
-          onClick={() => {
-            cancelSessionRun({ sessionId: run.sessionId, runId: run.id });
-          }}
-        />
-      )}
-    </div>
+      {showModels && <ModelInvocationHistory key={run.id} run={run} />}
+    </>
   );
 }
 

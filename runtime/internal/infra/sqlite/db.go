@@ -183,9 +183,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			ON runs(commit_id) WHERE commit_id != ''`,
 		// model_invocations is the provider-attempt journal. It deliberately stores
 		// neither semantic response content nor accounting: those facts belong to
-		// history_items and runs. Terminal rows remain only while their Run is alive,
-		// acting as idempotency tombstones against stale start-event replay. Run
-		// terminalization and deletion prune the complete operational journal.
+		// history_items and runs. Attempt timing and outcomes survive terminalization
+		// for trajectory inspection; deleting the owning Run removes them.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS model_invocations (
 			call_id     TEXT    PRIMARY KEY,
 			session_id  TEXT    NOT NULL,
@@ -205,8 +204,9 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			modelInvocationFailed.databaseValue(),
 			modelInvocationUnknown.databaseValue(),
 		),
-		`CREATE INDEX IF NOT EXISTS idx_model_invocations_run
-			ON model_invocations(run_id, segment_id)`,
+		`DROP INDEX IF EXISTS idx_model_invocations_run`,
+		`CREATE INDEX IF NOT EXISTS idx_model_invocations_trajectory
+			ON model_invocations(run_id, started_at DESC, call_id DESC)`,
 		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_model_invocations_open
 			ON model_invocations(state) WHERE state = '%s'`, modelInvocationStarted.databaseValue()),
 		// tool_invocations has the same Run-bounded tombstone lifecycle. Its
@@ -237,16 +237,21 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			ON tool_invocations(run_id, segment_id)`,
 		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_tool_invocations_open
 			ON tool_invocations(state) WHERE state = '%s'`, toolInvocationStarted.databaseValue()),
-		// A terminal Run owns no external attempt. This trigger is a storage-level
-		// lifecycle backstop for every normal, recovery, and cancellation path; the
-		// ordinary settlement path has already made observed attempts terminal before
-		// it fires.
-		`CREATE TRIGGER IF NOT EXISTS prune_terminal_run_invocations
+		// Replace the former trigger on existing databases as well. Previously it
+		// erased model-call history as soon as a Run ended.
+		`DROP TRIGGER IF EXISTS prune_terminal_run_invocations`,
+		`CREATE TRIGGER prune_terminal_run_invocations
 			AFTER UPDATE OF state ON runs
 			WHEN OLD.state != 'terminal' AND NEW.state = 'terminal'
 			BEGIN
-				DELETE FROM model_invocations WHERE run_id = NEW.run_id;
 				DELETE FROM tool_invocations WHERE run_id = NEW.run_id;
+			END`,
+		`CREATE TRIGGER IF NOT EXISTS require_settled_model_invocations
+			BEFORE UPDATE OF state ON runs
+			WHEN OLD.state != 'terminal' AND NEW.state = 'terminal'
+			 AND EXISTS (SELECT 1 FROM model_invocations WHERE run_id = NEW.run_id AND state = 'started')
+			BEGIN
+				SELECT RAISE(ABORT, 'model invocations must settle before run terminalization');
 			END`,
 		// child_run_start_reservations are invisible executor/application ACL
 		// records. They allocate product identity after a managed child admission

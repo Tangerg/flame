@@ -4344,6 +4344,25 @@
         "runs"
       ]
     },
+    "ListModelInvocationsRequest": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "maxLength": 65536
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "runId"
+      ]
+    },
     "ListModelsRequest": {
       "type": "object",
       "properties": {
@@ -5318,6 +5337,47 @@
         }
       }
     },
+    "ModelInvocation": {
+      "type": "object",
+      "properties": {
+        "callId": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "segmentId": {
+          "type": "string"
+        },
+        "settledAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "state": {
+          "$ref": "#/$defs/ModelInvocationState"
+        }
+      },
+      "required": [
+        "callId",
+        "runId",
+        "segmentId",
+        "startedAt",
+        "state"
+      ]
+    },
+    "ModelInvocationState": {
+      "type": "string",
+      "enum": [
+        "started",
+        "completed",
+        "failed",
+        "unknown"
+      ]
+    },
     "ModelPricing": {
       "type": "object",
       "properties": {
@@ -5521,6 +5581,24 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/Model"
+          }
+        },
+        "nextCursor": {
+          "type": "string",
+          "maxLength": 65536
+        }
+      },
+      "required": [
+        "data"
+      ]
+    },
+    "PageOfModelInvocation": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModelInvocation"
           }
         },
         "nextCursor": {

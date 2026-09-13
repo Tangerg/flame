@@ -40,6 +40,20 @@ function agentMessageItem(id: string, runId: string, status: Item["status"]): It
 afterEach(() => vi.useRealTimers());
 
 describe("methods factory", () => {
+  it("reads one model invocation page without draining older history", async () => {
+    const page = { data: [], nextCursor: "opaque-older-page" };
+    const call = vi.fn().mockResolvedValue(page);
+    const methods = createMethods({ call } as unknown as RpcClient);
+    const controller = new AbortController();
+    const query = { runId: "run_trajectory", limit: 50 };
+    expect(await methods.modelInvocations.list(query, controller.signal)).toEqual(page);
+    expect(call).toHaveBeenCalledTimes(1);
+    expect(call).toHaveBeenCalledWith(
+      "modelInvocations.list",
+      query,
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
   it("forwards the complete generated schedule update contract", async () => {
     const call = vi.fn().mockResolvedValue({ id: "schedule_1", revision: 3 });
     const methods = createMethods({ call } as unknown as RpcClient);

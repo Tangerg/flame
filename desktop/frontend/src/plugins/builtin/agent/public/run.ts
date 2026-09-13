@@ -19,3 +19,6 @@ export {
 } from "../application/run/rootAttention";
 export type { RootRunSettlement } from "../application/run/rootAttention";
 export type { AgentRunTreeNode } from "../application/view/runTree";
+
+export { MODEL_INVOCATIONS_KEY, useModelInvocations } from "../application/run/modelInvocations";
+export type { ModelInvocationQuery, ModelInvocation } from "../application/run/modelInvocations";

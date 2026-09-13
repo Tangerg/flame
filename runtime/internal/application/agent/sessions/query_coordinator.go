@@ -84,20 +84,22 @@ type QueryRunReader interface {
 // QueryCoordinator serves the session read projections. Stateless beyond its store
 // collaborators; safe to share.
 type QueryCoordinator struct {
-	transcript QueryTranscriptReader
-	interrupts QueryInterruptReader
-	runs       QueryRunReader
-	sessions   QuerySessionReader
-	plan       QueryPlanReader
+	modelInvocations QueryModelInvocationReader
+	transcript       QueryTranscriptReader
+	interrupts       QueryInterruptReader
+	runs             QueryRunReader
+	sessions         QuerySessionReader
+	plan             QueryPlanReader
 }
 
 // QueryDependencies is the collaborator set [NewQueryCoordinator] wires into a QueryCoordinator.
 type QueryDependencies struct {
-	Transcript QueryTranscriptReader
-	Interrupts QueryInterruptReader
-	Runs       QueryRunReader
-	Sessions   QuerySessionReader
-	Plan       QueryPlanReader
+	ModelInvocations QueryModelInvocationReader
+	Transcript       QueryTranscriptReader
+	Interrupts       QueryInterruptReader
+	Runs             QueryRunReader
+	Sessions         QuerySessionReader
+	Plan             QueryPlanReader
 }
 
 // NewQueryCoordinator returns a complete query coordinator over deps.
@@ -111,6 +113,7 @@ func NewQueryCoordinator(deps QueryDependencies) (*QueryCoordinator, error) {
 		{"Run reader", deps.Runs},
 		{"session reader", deps.Sessions},
 		{"Plan reader", deps.Plan},
+		{"model invocation reader", deps.ModelInvocations},
 	}
 	for _, required := range required {
 		if dependency.Missing(required.value) {
@@ -118,11 +121,12 @@ func NewQueryCoordinator(deps QueryDependencies) (*QueryCoordinator, error) {
 		}
 	}
 	return &QueryCoordinator{
-		transcript: deps.Transcript,
-		interrupts: deps.Interrupts,
-		runs:       deps.Runs,
-		sessions:   deps.Sessions,
-		plan:       deps.Plan,
+		transcript:       deps.Transcript,
+		modelInvocations: deps.ModelInvocations,
+		interrupts:       deps.Interrupts,
+		runs:             deps.Runs,
+		sessions:         deps.Sessions,
+		plan:             deps.Plan,
 	}, nil
 }
 

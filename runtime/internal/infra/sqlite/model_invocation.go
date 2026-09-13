@@ -23,8 +23,8 @@ func (m modelInvocationState) databaseValue() string { return string(m) }
 
 // ModelInvocationStore is the SQLite operational journal for provider-call
 // attempts. Semantic messages stay in history_items and accounting stays on the
-// Run row. Terminal rows are Run-bounded idempotency tombstones, not a second
-// semantic ledger.
+// Run row. Attempt timing and outcomes remain available until the owning Run is
+// deleted, without copying semantic content or aggregate accounting.
 type ModelInvocationStore struct{ db *sql.DB }
 
 func NewModelInvocationStore(db *sql.DB) *ModelInvocationStore {
@@ -194,4 +194,48 @@ func validateModelInvocationIdentity(sessionID, runID, segmentID, callID string)
 		return fmt.Errorf("sqlite: model invocation: %w", err)
 	}
 	return nil
+}
+
+// ModelInvocationRecord is a stored attempt, without semantic response content.
+type ModelInvocationRecord struct {
+	CallID     string
+	SegmentID  string
+	State      string
+	StartedAt  time.Time
+	FinishedAt time.Time
+}
+
+// PageModelInvocations seeks newest-first within one Run. State updates do not
+// move an attempt between pages because its start identity is immutable.
+func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID string, beforeStartedAt int64, beforeCallID string, limit int) ([]ModelInvocationRecord, error) {
+	query := `SELECT call_id, segment_id, state, started_at, finished_at FROM model_invocations WHERE run_id = ?`
+	args := []any{runID}
+	if beforeCallID != "" {
+		query += ` AND (started_at, call_id) < (?, ?)`
+		args = append(args, beforeStartedAt, beforeCallID)
+	}
+	query += ` ORDER BY started_at DESC, call_id DESC LIMIT ?`
+	args = append(args, limit)
+	rows, err := conn(ctx, m.db).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: page model invocations: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var records []ModelInvocationRecord
+	for rows.Next() {
+		var record ModelInvocationRecord
+		var startedAt, finishedAt int64
+		if err := rows.Scan(&record.CallID, &record.SegmentID, &record.State, &startedAt, &finishedAt); err != nil {
+			return nil, fmt.Errorf("sqlite: scan model invocation: %w", err)
+		}
+		record.StartedAt = time.Unix(0, startedAt).UTC()
+		if finishedAt != 0 {
+			record.FinishedAt = time.Unix(0, finishedAt).UTC()
+		}
+		records = append(records, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("sqlite: iterate model invocations: %w", err)
+	}
+	return records, nil
 }

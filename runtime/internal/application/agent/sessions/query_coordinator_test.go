@@ -231,6 +231,9 @@ func newQueryCoordinator(t *testing.T, deps QueryDependencies) *QueryCoordinator
 	if deps.Plan == nil {
 		deps.Plan = &planStoreFake{}
 	}
+	if deps.ModelInvocations == nil {
+		deps.ModelInvocations = emptyModelInvocations{}
+	}
 	coordinator, err := NewQueryCoordinator(deps)
 	if err != nil {
 		t.Fatal(err)
@@ -1249,4 +1252,10 @@ func TestListPendingInterruptPagePagesOldestFirst(t *testing.T) {
 	if _, err := c.ListPendingInterruptPage(ctx, "ses_1", "", approvalCapabilities(), runPage.NextCursor, explicitPageLimit(t, 2)); !errors.Is(err, pagination.ErrInvalidCursor) {
 		t.Fatalf("run cursor on the interrupt page err = %v, want ErrInvalidCursor", err)
 	}
+}
+
+type emptyModelInvocations struct{}
+
+func (emptyModelInvocations) PageModelInvocations(context.Context, string, int64, string, int) ([]runs.ModelInvocationCommit, error) {
+	return nil, nil
 }

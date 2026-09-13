@@ -1,0 +1,85 @@
+import { useState } from "react";
+import * as stylex from "@stylexjs/stylex";
+import { useModelInvocations, type ModelInvocation } from "@/plugins/builtin/agent/public/run";
+import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
+import { useT, activeLocale } from "@/lib/i18n";
+import { fmtDuration } from "@/lib/format";
+import { Badge, Button, DataView, IconButton, vocab } from "@/ui";
+import { face, type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./viewStyles";
+
+function duration(call: ModelInvocation): string {
+  if ((call.state !== "completed" && call.state !== "failed") || call.settledAt === undefined)
+    return "—";
+  return fmtDuration(Date.parse(call.settledAt) - Date.parse(call.startedAt));
+}
+
+export function ModelInvocationHistory({ run }: { run: AgentRunView }) {
+  const t = useT();
+  const [cursor, setCursor] = useState<string>();
+  const { data, isLoading, isError, refetch } = useModelInvocations(run, cursor);
+  return (
+    <div {...stylex.props(vs.gutter, vs.rowPad)}>
+      <div {...stylex.props(vs.splitLine)}>
+        <span {...stylex.props(typeStep.uiSm)}>{t("timeline.modelCalls")}</span>
+        <IconButton
+          icon="loop"
+          title={t("timeline.refreshCalls")}
+          onClick={() => {
+            void refetch();
+          }}
+        />
+      </div>
+      <DataView
+        items={data?.data ?? []}
+        isLoading={isLoading}
+        isError={isError}
+        onRetry={refetch}
+        skeletonCount={2}
+        empty={{ icon: "bot", title: t("timeline.noModelCalls") }}
+      >
+        {(calls) =>
+          calls.map((call) => (
+            <div key={call.callId} {...stylex.props(vs.splitLine, vs.rowPad)}>
+              <div {...stylex.props(vocab.min)}>
+                <div
+                  title={call.callId}
+                  {...stylex.props(vocab.truncate, face.mono, typeStep.uiXs)}
+                >
+                  {call.callId}
+                </div>
+                <div title={call.segmentId} {...stylex.props(vocab.faint, typeStep.uiXs)}>
+                  {new Date(call.startedAt).toLocaleString(activeLocale())}
+                </div>
+              </div>
+              <Badge
+                tone={
+                  call.state === "failed"
+                    ? "negative"
+                    : call.state === "unknown"
+                      ? "warning"
+                      : "neutral"
+                }
+              >
+                {t(`timeline.modelCall.${call.state}`)}
+              </Badge>
+              <span {...stylex.props(vocab.hold, face.mono, typeStep.uiXs)}>{duration(call)}</span>
+            </div>
+          ))
+        }
+      </DataView>
+      <div {...stylex.props(vs.splitLine)}>
+        {cursor && (
+          <Button variant="ghost" onClick={() => setCursor(undefined)}>
+            {t("timeline.latestCalls")}
+          </Button>
+        )}
+        {data?.nextCursor && (
+          <Button variant="ghost" onClick={() => setCursor(data.nextCursor)}>
+            {t("timeline.olderCalls")}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}

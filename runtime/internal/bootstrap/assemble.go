@@ -369,12 +369,17 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: build workspace git watch: %w", err)
 	}
+	modelInvocations, err := persistence.NewModelInvocationReader(cfg.Stores.ModelInvocations)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct model invocation reader: %w", err)
+	}
 	queries, err := sessions.NewQueryCoordinator(sessions.QueryDependencies{
-		Transcript: cfg.Stores.Transcript,
-		Interrupts: cfg.Stores.Interrupts,
-		Runs:       cfg.Stores.Runs,
-		Sessions:   cfg.Stores.Sessions,
-		Plan:       cfg.Stores.Plan,
+		ModelInvocations: modelInvocations,
+		Transcript:       cfg.Stores.Transcript,
+		Interrupts:       cfg.Stores.Interrupts,
+		Runs:             cfg.Stores.Runs,
+		Sessions:         cfg.Stores.Sessions,
+		Plan:             cfg.Stores.Plan,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct session queries: %w", err)

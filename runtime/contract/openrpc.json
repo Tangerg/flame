@@ -820,6 +820,76 @@
       }
     },
     {
+      "name": "modelInvocations.list",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "runId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "type": "string",
+            "maxLength": 65536
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "schema.json#/$defs/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/PageOfModelInvocation"
+        }
+      },
+      "errors": [
+        {
+          "code": -32003,
+          "message": "run_not_found"
+        },
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "cursor",
+      "x-flame-requestFrame": {
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/ListModelInvocationsRequest"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "_meta": {
+                "$ref": "schema.json#/$defs/RequestMeta"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "runs.start",
       "paramStructure": "by-name",
       "params": [

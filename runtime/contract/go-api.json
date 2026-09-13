@@ -295,6 +295,10 @@
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.ManagedSkill], error)"
             },
             {
+              "name": "ListModelInvocations",
+              "signature": "func(ctx context.Context, request protocol.ListModelInvocationsRequest, options CallOptions) (*protocol.Page[protocol.ModelInvocation], error)"
+            },
+            {
               "name": "ListModels",
               "signature": "func(ctx context.Context, request protocol.ListModelsRequest, options CallOptions) (*protocol.Page[protocol.Model], error)"
             },
@@ -1402,6 +1406,26 @@
           "name": "ModalityVideo",
           "type": "Modality",
           "value": "\"video\""
+        },
+        {
+          "name": "ModelInvocationCompleted",
+          "type": "ModelInvocationState",
+          "value": "\"completed\""
+        },
+        {
+          "name": "ModelInvocationFailed",
+          "type": "ModelInvocationState",
+          "value": "\"failed\""
+        },
+        {
+          "name": "ModelInvocationStarted",
+          "type": "ModelInvocationState",
+          "value": "\"started\""
+        },
+        {
+          "name": "ModelInvocationUnknown",
+          "type": "ModelInvocationState",
+          "value": "\"unknown\""
         },
         {
           "name": "OutcomeCanceled",
@@ -4903,6 +4927,27 @@
           ]
         },
         {
+          "name": "ListModelInvocationsRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId\""
+            },
+            {
+              "name": "PageQuery",
+              "type": "PageQuery"
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "ListModelsRequest",
           "kind": "struct",
           "fields": [
@@ -5629,6 +5674,53 @@
               "signature": "func() error"
             }
           ]
+        },
+        {
+          "name": "ModelInvocation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CallID",
+              "type": "string",
+              "tag": "json:\"callId\""
+            },
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId\""
+            },
+            {
+              "name": "SegmentID",
+              "type": "string",
+              "tag": "json:\"segmentId\""
+            },
+            {
+              "name": "State",
+              "type": "ModelInvocationState",
+              "tag": "json:\"state\""
+            },
+            {
+              "name": "StartedAt",
+              "type": "time.Time",
+              "tag": "json:\"startedAt\""
+            },
+            {
+              "name": "SettledAt",
+              "type": "time.Time",
+              "tag": "json:\"settledAt,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ModelInvocationState",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "ModelPricing",

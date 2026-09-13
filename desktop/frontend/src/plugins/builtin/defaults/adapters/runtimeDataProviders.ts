@@ -1,3 +1,7 @@
+import {
+  MODEL_INVOCATIONS_KEY,
+  type ModelInvocationQuery,
+} from "@/plugins/builtin/agent/public/run";
 import type { ApprovalRulesQuery } from "@/plugins/builtin/agent/public/approvalPolicy";
 import { emptyListIfUngated } from "@/lib/rpcErrors";
 import {
@@ -106,6 +110,14 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     ctx.contribute(DATA_PROVIDER, provider);
   };
 
+  contribute({
+    key: MODEL_INVOCATIONS_KEY,
+    fetcher: (read, params) =>
+      read.client.modelInvocations.list(
+        requiredParams<ModelInvocationQuery>(MODEL_INVOCATIONS_KEY, params),
+        read.signal,
+      ),
+  });
   contribute({
     key: AGENT_SESSIONS_KEY,
     fetcher: async (read) =>

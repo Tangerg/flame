@@ -168,6 +168,18 @@
       ]
     },
     {
+      "name": "modelInvocations.list",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "cursor",
+      "errors": [
+        "run_not_found",
+        "capability_not_negotiated"
+      ]
+    },
+    {
       "name": "runs.start",
       "kind": "stream",
       "operation": "command",
@@ -1221,6 +1233,7 @@
           "mcp.servers.test",
           "mcp.servers.update",
           "mcp.tools.list",
+          "modelInvocations.list",
           "plan.get",
           "runs.cancel",
           "runs.get",
@@ -1411,6 +1424,7 @@
         "recoveryAction": "refetch",
         "methods": [
           "items.list",
+          "modelInvocations.list",
           "runs.cancel",
           "runs.get",
           "runs.resume",

@@ -575,9 +575,9 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		t.Fatalf("recovered Tool Item = found:%t value:%+v err:%v", found, recoveredToolItem, err)
 	}
 	if scanErr := db.QueryRowContext(ctx,
-		`SELECT call_id FROM model_invocations WHERE call_id = ?`, "model_call_lost",
-	).Scan(&modelState); !errors.Is(scanErr, sql.ErrNoRows) {
-		t.Fatalf("recovered model invocation read = %v, want consumed journal row", scanErr)
+		`SELECT state FROM model_invocations WHERE call_id = ?`, "model_call_lost",
+	).Scan(&modelState); scanErr != nil || modelState != "unknown" {
+		t.Fatalf("recovered model invocation = %q, %v, want retained unknown outcome", modelState, scanErr)
 	}
 	if scanErr := db.QueryRowContext(ctx,
 		`SELECT call_id FROM tool_invocations WHERE call_id = ? AND segment_id = ?`,

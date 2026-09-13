@@ -42,3 +42,8 @@ func (r *Runtime) GetRun(ctx context.Context, request protocol.GetRunRequest, op
 func (r *Runtime) ListRuns(ctx context.Context, request protocol.ListRunsRequest, options CallOptions) (*protocol.Page[protocol.RunRef], error) {
 	return r.invoke[protocol.ListRunsRequest, *protocol.Page[protocol.RunRef]](ctx, delivery.RunsList, request, callOptions(options))
 }
+
+// ListModelInvocations returns one cursor page of recorded provider attempts for a Run.
+func (r *Runtime) ListModelInvocations(ctx context.Context, request protocol.ListModelInvocationsRequest, options CallOptions) (*protocol.Page[protocol.ModelInvocation], error) {
+	return r.invoke[protocol.ListModelInvocationsRequest, *protocol.Page[protocol.ModelInvocation]](ctx, delivery.ModelInvocationsList, request, callOptions(options))
+}

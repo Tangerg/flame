@@ -20,6 +20,7 @@ import (
 // where the runtime accepts three words, which is a published contract that
 // permits frames the runtime rejects.
 var wireEnums = map[reflect.Type][]string{
+	reflect.TypeFor[protocol.ModelInvocationState]():              {string(protocol.ModelInvocationStarted), string(protocol.ModelInvocationCompleted), string(protocol.ModelInvocationFailed), string(protocol.ModelInvocationUnknown)},
 	reflect.TypeFor[protocol.AgentDocScope]():                     {string(protocol.AgentDocScopeCWD), string(protocol.AgentDocScopeProjectRoot), string(protocol.AgentDocScopeHome)},
 	reflect.TypeFor[protocol.AgentMemoryOrigin]():                 {string(protocol.AgentMemoryOriginAuto), string(protocol.AgentMemoryOriginUser)},
 	reflect.TypeFor[protocol.AgentMemoryReviewDecision]():         {string(protocol.AgentMemoryReviewApprove), string(protocol.AgentMemoryReviewReject)},

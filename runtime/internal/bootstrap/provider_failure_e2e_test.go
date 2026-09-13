@@ -66,6 +66,16 @@ func TestProviderFailureTerminalizesRunAndReleasesSession(t *testing.T) {
 		completed.Outcome.Type != protocol.OutcomeCompleted {
 		t.Fatalf("post-failure Run = %+v, want completed", completed)
 	}
+	for runID, state := range map[string]protocol.ModelInvocationState{failed.RunID: protocol.ModelInvocationFailed, followUp.RunID: protocol.ModelInvocationCompleted} {
+		calls, err := api.ListModelInvocations(ctx, protocol.ListModelInvocationsRequest{RunID: runID})
+		if err != nil || len(calls.Data) != 1 {
+			t.Fatalf("model calls for %s = %+v, %v", runID, calls, err)
+		}
+		call := calls.Data[0]
+		if call.State != state || call.RunID != runID || call.CallID == "" || call.SegmentID == "" || call.StartedAt.IsZero() || call.SettledAt.Before(call.StartedAt) {
+			t.Fatalf("model call = %+v, want %s", call, state)
+		}
+	}
 }
 
 type providerFailureThenReplyModel struct {

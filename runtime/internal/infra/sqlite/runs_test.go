@@ -331,7 +331,7 @@ func TestRunAdmitEnforcesOneActivePerSession(t *testing.T) {
 	}
 }
 
-func TestRunLifecyclePrunesPendingInvocationJournals(t *testing.T) {
+func TestRunLifecycleRetainsSettledModelInvocationsUntilDeletion(t *testing.T) {
 	for _, test := range []struct {
 		name   string
 		settle func(context.Context, *sqlite.RunStore, run.Draft) error
@@ -368,6 +368,11 @@ func TestRunLifecyclePrunesPendingInvocationJournals(t *testing.T) {
 			); err != nil {
 				t.Fatalf("start model invocation: %v", err)
 			}
+			if err := sqlite.NewModelInvocationStore(database).CompleteModelInvocation(
+				ctx, draft.SessionID, draft.RunID, draft.SegmentID, "model_call_pending", startedAt, startedAt.Add(time.Second),
+			); err != nil {
+				t.Fatalf("complete model invocation: %v", err)
+			}
 			if err := sqlite.NewToolInvocationStore(database).StartToolInvocation(
 				ctx, draft.SessionID, draft.RunID, draft.SegmentID,
 				"tool_call_pending", "item_call_pending", startedAt,
@@ -386,8 +391,12 @@ func TestRunLifecyclePrunesPendingInvocationJournals(t *testing.T) {
 				if err := database.QueryRowContext(ctx, query).Scan(&rows); err != nil {
 					t.Fatalf("count %s: %v", table, err)
 				}
-				if rows != 0 {
-					t.Fatalf("%s rows = %d, want none after Run %s", table, rows, test.name)
+				want := 0
+				if table == "model_invocations" && test.name == "terminal" {
+					want = 1
+				}
+				if rows != want {
+					t.Fatalf("%s rows = %d, want %d after Run %s", table, rows, want, test.name)
 				}
 			}
 		})

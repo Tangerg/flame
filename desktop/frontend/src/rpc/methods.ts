@@ -7,6 +7,8 @@ import { createWireCallPath, type MethodsOptions, type WireCall } from "./wireCa
 import type { RunId, SegmentId, SessionId } from "./ids";
 import type {
   AgentDoc,
+  ModelInvocation,
+  ListModelInvocationsRequest,
   ApprovalMode,
   ApprovalModeResult,
   CancelRunResponse,
@@ -196,6 +198,12 @@ export interface Methods {
     export: (sessionId: SessionId, format?: "md" | "json") => Promise<ExportSessionResponse>;
     // Rebuilds under the artifact's ORIGINAL id, so it is idempotent.
     import: (artifact: SessionArtifact) => MutationPromise<ImportSessionResponse>;
+  };
+  modelInvocations: {
+    list: (
+      query: ListModelInvocationsRequest,
+      signal?: AbortSignal,
+    ) => AutoPagingPromise<Page<ModelInvocation>>;
   };
   runs: {
     start: (
@@ -476,6 +484,9 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         call("sessions.import", {
           artifact,
         }),
+    },
+    modelInvocations: {
+      list: (query, signal) => call("modelInvocations.list", query, { signal }),
     },
     runs: {
       start: (params, signal) =>
