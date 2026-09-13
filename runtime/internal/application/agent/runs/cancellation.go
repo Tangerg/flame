@@ -174,7 +174,7 @@ func (c *Coordinator) cancelWaitingChild(
 	if err != nil {
 		return CancelResult{}, err
 	}
-	runAdmission, ok, leaseErr := c.admission.AcquireRun(sess.ID(), sess.Workspace().Path())
+	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, sess.ID(), sess.Workspace().Path())
 	if leaseErr != nil {
 		return CancelResult{}, leaseErr
 	}
@@ -620,7 +620,7 @@ func (c *Coordinator) cancelWithoutLiveSegment(ctx context.Context, cmd CancelCo
 // Session decides the one durable transition, and the loser observes busy or
 // the resulting terminal state instead of misreporting run_not_found.
 func (c *Coordinator) cancelParkedRun(ctx context.Context, cmd CancelCommand, value rundomain.Run) (CancelResult, error) {
-	releaseSession, ok, leaseErr := c.admission.AcquireSession(value.SessionID())
+	releaseSession, ok, leaseErr := c.admission.AcquireSession(ctx, value.SessionID())
 	if leaseErr != nil {
 		return CancelResult{}, leaseErr
 	}
@@ -674,7 +674,7 @@ func (c *Coordinator) cancelKnownParkedRun(
 			cmd.RunID, value.SessionID(), ref.SessionID,
 		)
 	}
-	releaseSession, ok, leaseErr := c.admission.AcquireSession(value.SessionID())
+	releaseSession, ok, leaseErr := c.admission.AcquireSession(ctx, value.SessionID())
 	if leaseErr != nil {
 		return CancelResult{}, leaseErr
 	}

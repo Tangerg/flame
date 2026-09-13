@@ -187,7 +187,7 @@ type testClaimer struct {
 	released []string
 }
 
-func (t *testClaimer) AcquireSession(sessionID string) (func(), bool, error) {
+func (t *testClaimer) AcquireSession(_ context.Context, sessionID string) (func(), bool, error) {
 	if t.claimed == nil {
 		t.claimed = map[string]bool{}
 	}

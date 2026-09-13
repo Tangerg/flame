@@ -281,7 +281,7 @@ func (c *Coordinator) resolveSession(
 }
 
 func (c *Coordinator) claimFreshRun(ctx context.Context, sess session.Session) (ownership.RunAdmission, error) {
-	runAdmission, ok, leaseErr := c.admission.AcquireRun(sess.ID(), sess.Workspace().Path())
+	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, sess.ID(), sess.Workspace().Path())
 	if leaseErr != nil {
 		return ownership.RunAdmission{}, leaseErr
 	}

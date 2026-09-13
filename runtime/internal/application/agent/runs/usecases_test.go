@@ -945,7 +945,7 @@ func TestStartReleasesStagedExecutionWhenSessionReplacementPreparationFails(t *t
 	if control.activated || len(effects.openings) != 0 {
 		t.Fatalf("failed preparation reached opening: activated=%v openings=%d", control.activated, len(effects.openings))
 	}
-	if admission, ok, _ := coordinator.admission.AcquireRun("ses_1", "/work"); !ok {
+	if admission, ok, _ := coordinator.admission.AcquireRun(t.Context(), "ses_1", "/work"); !ok {
 		t.Fatal("failed Start retained Session admission")
 	} else {
 		admission.Release()
@@ -1023,7 +1023,7 @@ func TestFastStartReleaseCannotCrossTerminalMaintenance(t *testing.T) {
 	if !hasActiveSession(c, "ses_1") {
 		t.Fatal("Start release erased the in-flight terminal-maintenance claim")
 	}
-	if release, ok, _ := c.admission.AcquireSession("ses_1"); ok {
+	if release, ok, _ := c.admission.AcquireSession(t.Context(), "ses_1"); ok {
 		release()
 		t.Fatal("new admission crossed terminal maintenance after Start returned")
 	}

@@ -49,7 +49,7 @@ type WaitingExecutionResumability interface {
 // live Run and Session mutations. Recovery skips a Session when another
 // Runtime process still owns it; such a Run is live, not abandoned.
 type RecoveryAdmissions interface {
-	AcquireSession(sessionID string) (release func(), ok bool, err error)
+	AcquireRecoverySession(sessionID string) (release func(), ok bool, err error)
 }
 
 // RecoveryCommit is the complete atomic write-set for one ownership-scoped
@@ -330,7 +330,7 @@ func (r *Recovery) claimAbandonedSessions(
 		releases:   make([]func(), 0, len(ids)),
 	}
 	for _, sessionID := range ids {
-		release, ok, err := r.admissions.AcquireSession(sessionID)
+		release, ok, err := r.admissions.AcquireRecoverySession(sessionID)
 		if err != nil {
 			claims.release()
 			return nil, fmt.Errorf("runs: acquire recovery Session %q: %w", sessionID, err)

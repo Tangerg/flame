@@ -88,7 +88,7 @@ func TestClaimSessionMutationAllowsOpenInterrupt(t *testing.T) {
 	}
 	claimer := &testClaimer{}
 
-	admission, err := newCoordinatorWithAdmissions(stores, nil, claimer).ClaimSessionMutation("ses_1")
+	admission, err := newCoordinatorWithAdmissions(stores, nil, claimer).ClaimSessionMutation(t.Context(), "ses_1")
 	if err != nil {
 		t.Fatalf("claim mutation slot: %v", err)
 	}

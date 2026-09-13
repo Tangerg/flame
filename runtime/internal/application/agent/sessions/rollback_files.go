@@ -100,7 +100,7 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 	}
 	result := RollbackResult{}
 
-	sessionMutation, err := c.ClaimSessionMutation(spec.SessionID)
+	sessionMutation, err := c.ClaimSessionMutation(ctx, spec.SessionID)
 	if err != nil {
 		return result, err
 	}

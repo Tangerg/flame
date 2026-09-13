@@ -46,7 +46,7 @@ func TestRollbackFilesRejectsWorkingTreeRunAdmission(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	runAdmission, ok, _ := rt.admissions.AcquireRun("ses_sibling", cwd)
+	runAdmission, ok, _ := rt.admissions.AcquireRun(t.Context(), "ses_sibling", cwd)
 	if !ok {
 		t.Fatal("claim run")
 	}

@@ -342,7 +342,7 @@ type selectiveRecoveryAdmissions struct {
 	acquired []string
 }
 
-func (s *selectiveRecoveryAdmissions) AcquireSession(sessionID string) (func(), bool, error) {
+func (s *selectiveRecoveryAdmissions) AcquireRecoverySession(sessionID string) (func(), bool, error) {
 	s.acquired = append(s.acquired, sessionID)
 	if s.busy[sessionID] {
 		return nil, false, nil

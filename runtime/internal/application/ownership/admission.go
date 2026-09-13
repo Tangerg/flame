@@ -77,7 +77,15 @@ type runAdmissionLease struct {
 // registry identity because the claim never crosses the Gate boundary.
 type sessionClaim struct {
 	sessionID string
+	kind      sessionClaimKind
 }
+
+type sessionClaimKind uint8
+
+const (
+	sessionMutation sessionClaimKind = iota
+	sessionRecovery
+)
 
 // Admit converts the pending reservation into the live run identified by
 // runID. It returns false when the reservation had already been released or
@@ -119,19 +127,33 @@ func (r RunAdmission) Release() {
 			g.mu.Unlock()
 			return
 		}
+		releaseLeases(pending.leases)
 		delete(g.pending, r.lease)
 		g.releaseTreeRunLocked(pending.cwd)
 		g.notifyLocked()
 		g.mu.Unlock()
-		releaseLeases(pending.leases)
 	})
 }
 
 // AcquireSession reserves one session's single-writer slot. Release is safe to
 // call more than once and affects only this acquisition.
-func (g *Gate) AcquireSession(sessionID string) (release func(), ok bool, err error) {
+func (g *Gate) AcquireSession(ctx context.Context, sessionID string) (release func(), ok bool, err error) {
+	if err := g.lockForegroundSession(ctx, sessionID); err != nil {
+		return nil, false, err
+	}
+	defer g.mu.Unlock()
+	return g.acquireSessionLocked(sessionID, sessionMutation)
+}
+
+// AcquireRecoverySession probes abandoned ownership without delaying other recovery sweeps.
+// Foreground commands wait for this internal check instead of reporting a live Run conflict.
+func (g *Gate) AcquireRecoverySession(sessionID string) (release func(), ok bool, err error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.acquireSessionLocked(sessionID, sessionRecovery)
+}
+
+func (g *Gate) acquireSessionLocked(sessionID string, kind sessionClaimKind) (release func(), ok bool, err error) {
 	if g.activeSessionLocked(sessionID) {
 		return nil, false, nil
 	}
@@ -139,12 +161,12 @@ func (g *Gate) AcquireSession(sessionID string) (release func(), ok bool, err er
 	if err != nil || !ok {
 		return nil, false, err
 	}
-	releaseLocal := g.addClaimLocked(sessionID)
+	releaseLocal := g.addClaimLocked(sessionID, kind)
 	var once sync.Once
 	return func() {
 		once.Do(func() {
-			releaseLocal()
 			lease.Release()
+			releaseLocal()
 		})
 	}, true, nil
 }
@@ -152,8 +174,10 @@ func (g *Gate) AcquireSession(sessionID string) (release func(), ok bool, err er
 // AcquireRun atomically reserves a fresh run's session and working tree. The
 // returned admission must be either admitted after the durable opening commit
 // or released when admission fails.
-func (g *Gate) AcquireRun(sessionID, cwd string) (RunAdmission, bool, error) {
-	g.mu.Lock()
+func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmission, bool, error) {
+	if err := g.lockForegroundSession(ctx, sessionID); err != nil {
+		return RunAdmission{}, false, err
+	}
 	defer g.mu.Unlock()
 	if g.activeSessionLocked(sessionID) {
 		return RunAdmission{}, false, nil
@@ -192,14 +216,14 @@ func (g *Gate) BeginMaintenance(runID string) (release func(), ok bool) {
 		return nil, false
 	}
 	delete(g.runs, runID)
-	releaseSession := g.addClaimLocked(run.sessionID)
+	releaseSession := g.addClaimLocked(run.sessionID, sessionMutation)
 	releaseTree := g.addTreeRunLocked(run.cwd)
 	var once sync.Once
 	return func() {
 		once.Do(func() {
+			releaseLeases(run.leases)
 			releaseTree()
 			releaseSession()
-			releaseLeases(run.leases)
 		})
 	}, true
 }
@@ -225,8 +249,8 @@ func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, 
 	var once sync.Once
 	return func() {
 		once.Do(func() {
-			releaseLocal()
 			lease.Release()
+			releaseLocal()
 		})
 	}, true, nil
 }
@@ -298,6 +322,34 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 	}
 }
 
+// Successful return transfers the locked Gate to the foreground admission. The
+// recheck and reservation share that lock, so another probe cannot slip between them.
+func (g *Gate) lockForegroundSession(ctx context.Context, sessionID string) error {
+	for {
+		if err := ctx.Err(); err != nil {
+			return context.Cause(ctx)
+		}
+		g.mu.Lock()
+		recovering := false
+		for claim := range g.claims[sessionID] {
+			if claim.kind == sessionRecovery {
+				recovering = true
+				break
+			}
+		}
+		if !recovering {
+			return nil
+		}
+		changed := g.changed
+		g.mu.Unlock()
+		select {
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		case <-changed:
+		}
+	}
+}
+
 func (g *Gate) activeSessionLocked(sessionID string) bool {
 	for id := range g.activeSessionsLocked {
 		if id == sessionID {
@@ -316,8 +368,8 @@ func (g *Gate) hasLiveRunOnTreeLocked(cwd string) bool {
 	return false
 }
 
-func (g *Gate) addClaimLocked(sessionID string) func() {
-	claim := &sessionClaim{sessionID: sessionID}
+func (g *Gate) addClaimLocked(sessionID string, kind sessionClaimKind) func() {
+	claim := &sessionClaim{sessionID: sessionID, kind: kind}
 	owners := g.claims[sessionID]
 	if owners == nil {
 		owners = map[*sessionClaim]struct{}{}

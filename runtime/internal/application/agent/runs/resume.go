@@ -35,7 +35,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if err != nil {
 		return StartResult{}, err
 	}
-	runAdmission, ok, leaseErr := c.admission.AcquireRun(pending.SessionID, sess.Workspace().Path())
+	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, pending.SessionID, sess.Workspace().Path())
 	if leaseErr != nil {
 		return StartResult{}, leaseErr
 	}

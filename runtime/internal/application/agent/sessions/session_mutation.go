@@ -21,7 +21,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 		return err
 	}
 	sessionID = deletion.SessionID()
-	admission, err := c.ClaimSessionMutation(sessionID)
+	admission, err := c.ClaimSessionMutation(ctx, sessionID)
 	if err != nil {
 		return err
 	}
