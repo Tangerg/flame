@@ -55,6 +55,16 @@ afterEach(() => {
 });
 
 describe("refreshAgentSessionProjection", () => {
+  it("preserves the mounted owner's shared settlement for repeated notifications", async () => {
+    const pending = Promise.withResolvers<boolean>();
+    useAgentStore.getState().setSynchronize(SESSION_ID, () => pending.promise);
+    try {
+      expect(synchronizeMountedAgentSession(SESSION_ID, "after-live")).toBe(pending.promise);
+    } finally {
+      pending.resolve(false);
+    }
+  });
+
   it("lets a command await the mounted Session lifecycle owner", async () => {
     const synchronize = vi.fn().mockResolvedValue(true);
     useAgentStore.getState().setSynchronize(SESSION_ID, synchronize);

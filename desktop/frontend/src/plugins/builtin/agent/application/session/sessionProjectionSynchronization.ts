@@ -29,55 +29,44 @@ export function createSessionProjectionSynchronization({
   isLiveStreamActive,
   synchronize,
 }: SessionProjectionSynchronizationOptions): SessionProjectionSynchronization {
-  let requested = false;
-  let synchronizing = false;
+  type Refresh = ReturnType<typeof Promise.withResolvers<boolean>>;
   let disposed = false;
   // Snapshot settlement leaves its subscription alive until this generation retires.
   let generationAbort: AbortController | null = null;
-  let pendingWaiters: Array<(committed: boolean) => void> = [];
-  let activeWaiters: Array<(committed: boolean) => void> = [];
+  let pending: Refresh | null = null;
+  let active: Refresh | null = null;
 
   const drain = (): void => {
-    if (disposed || synchronizing || !requested || isLiveStreamActive()) return;
-    requested = false;
-    synchronizing = true;
-    const waiters = pendingWaiters;
-    pendingWaiters = [];
-    activeWaiters = waiters;
+    if (disposed || active || !pending || isLiveStreamActive()) return;
+    const refresh = pending;
+    pending = null;
+    active = refresh;
     generationAbort?.abort();
     const controller = new AbortController();
     generationAbort = controller;
     void settleBeforeAbort(synchronize(controller.signal), controller.signal)
       .then((committed) => (committed === ABORTED ? false : committed))
       .catch(() => false)
-      .then((committed) => {
-        for (const settle of waiters) settle(committed);
-      })
+      .then(refresh.resolve)
       .finally(() => {
-        if (activeWaiters === waiters) activeWaiters = [];
-        synchronizing = false;
+        active = null;
         drain();
       });
   };
 
   const enqueue = (): Promise<boolean> => {
     if (disposed) return Promise.resolve(false);
-    return new Promise<boolean>((resolve) => {
-      pendingWaiters.push(resolve);
-      requested = true;
-      drain();
-    });
+    pending ??= Promise.withResolvers<boolean>();
+    const promise = pending.promise;
+    drain();
+    return promise;
   };
 
   const retire = (): void => {
-    requested = false;
     generationAbort?.abort();
-    const pending = pendingWaiters;
-    pendingWaiters = [];
-    for (const settle of pending) settle(false);
-    const inFlight = activeWaiters;
-    activeWaiters = [];
-    for (const settle of inFlight) settle(false);
+    pending?.resolve(false);
+    pending = null;
+    active?.resolve(false);
   };
 
   return {

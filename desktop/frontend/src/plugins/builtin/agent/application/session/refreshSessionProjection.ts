@@ -64,15 +64,15 @@ export interface MountedAgentSessionSynchronization {
 
 /** Reconcile one Session through its mounted lifecycle owner and let a command
  * wait for the same authoritative material boundary the event loop uses. */
-export async function synchronizeMountedAgentSession(
+export function synchronizeMountedAgentSession(
   sessionId: string,
   ownership: SessionProjectionSynchronizationOwnership,
 ): Promise<boolean> {
   const entry = agentSessionView().getSession(sessionId);
-  if (!entry) return false;
+  if (!entry) return Promise.resolve(false);
   if (entry.synchronize) return entry.synchronize(ownership);
-  if (ownership === "retire-live") return false;
-  return (await refreshAgentSessionProjection(sessionId)) !== null;
+  if (ownership === "retire-live") return Promise.resolve(false);
+  return refreshAgentSessionProjection(sessionId).then((view) => view !== null);
 }
 
 export function synchronizeMountedAgentSessions(
