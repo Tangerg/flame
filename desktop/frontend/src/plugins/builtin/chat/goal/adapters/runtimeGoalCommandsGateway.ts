@@ -126,10 +126,10 @@ export function installGoalRuntimeAdapter(
   let gateway = hasRuntimeGeneration
     ? new RuntimeGoalCommandsGateway(getContainer().client())
     : null;
-  // A Goal command repairs its own Session's material; the live stream, when one is running,
-  // is still the ordered owner, so the read waits for it rather than superseding it.
+  // Goal edits must settle while a Run is active. The Session owner replaces its
+  // subscription from the committed snapshot before admitting the next command.
   const commandOwner = GoalCommandOwner.install(gateway, (sessionId) =>
-    synchronizeMountedAgentSession(sessionId, "after-live"),
+    synchronizeMountedAgentSession(sessionId, "replace-live"),
   );
   const disposeSharedMaterial = registerAgentSessionSharedMaterial<SessionSnapshot>(
     "goal",

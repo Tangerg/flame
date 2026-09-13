@@ -10,6 +10,25 @@ function deferred() {
 }
 
 describe("session projection synchronization", () => {
+  it("retains subscription ownership after snapshot settlement until replacement or disposal", async () => {
+    const signals: AbortSignal[] = [];
+    const coordinator = createSessionProjectionSynchronization({
+      isLiveStreamActive: () => false,
+      synchronize: async (signal) => {
+        signals.push(signal);
+        return true;
+      },
+    });
+
+    await expect(coordinator.request()).resolves.toBe(true);
+    expect(signals[0]?.aborted).toBe(false);
+    await expect(coordinator.replace()).resolves.toBe(true);
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[1]?.aborted).toBe(false);
+    coordinator.dispose();
+    expect(signals[1]?.aborted).toBe(true);
+  });
+
   it("coalesces snapshot requests behind the active live-stream owner", async () => {
     let active = true;
     const synchronize = vi.fn().mockResolvedValue(true);

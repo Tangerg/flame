@@ -32,7 +32,8 @@ export function createSessionProjectionSynchronization({
   let requested = false;
   let synchronizing = false;
   let disposed = false;
-  let activeAbort: AbortController | null = null;
+  // Snapshot settlement leaves its subscription alive until this generation retires.
+  let generationAbort: AbortController | null = null;
   let pendingWaiters: Array<(committed: boolean) => void> = [];
   let activeWaiters: Array<(committed: boolean) => void> = [];
 
@@ -43,8 +44,9 @@ export function createSessionProjectionSynchronization({
     const waiters = pendingWaiters;
     pendingWaiters = [];
     activeWaiters = waiters;
+    generationAbort?.abort();
     const controller = new AbortController();
-    activeAbort = controller;
+    generationAbort = controller;
     void settleBeforeAbort(synchronize(controller.signal), controller.signal)
       .then((committed) => (committed === ABORTED ? false : committed))
       .catch(() => false)
@@ -52,7 +54,6 @@ export function createSessionProjectionSynchronization({
         for (const settle of waiters) settle(committed);
       })
       .finally(() => {
-        if (activeAbort === controller) activeAbort = null;
         if (activeWaiters === waiters) activeWaiters = [];
         synchronizing = false;
         drain();
@@ -70,7 +71,7 @@ export function createSessionProjectionSynchronization({
 
   const retire = (): void => {
     requested = false;
-    activeAbort?.abort();
+    generationAbort?.abort();
     const pending = pendingWaiters;
     pendingWaiters = [];
     for (const settle of pending) settle(false);
@@ -82,7 +83,7 @@ export function createSessionProjectionSynchronization({
   return {
     request: enqueue,
     replace() {
-      activeAbort?.abort();
+      generationAbort?.abort();
       return enqueue();
     },
     retire,
@@ -90,7 +91,7 @@ export function createSessionProjectionSynchronization({
     dispose() {
       disposed = true;
       retire();
-      activeAbort = null;
+      generationAbort = null;
     },
   };
 }

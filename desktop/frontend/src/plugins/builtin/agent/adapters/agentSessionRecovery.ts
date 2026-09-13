@@ -48,7 +48,15 @@ async function recover(options: AgentSessionRecoveryOptions): Promise<AgentSessi
     );
   }
   const root = runningRoots[0];
-  if (root) await attachRootRun(options, root);
+  // Snapshot settlement must not wait for the Run's lifetime. Its subscription
+  // remains owned by this generation's signal, including while opening.
+  if (root) {
+    void attachRootRun(options, root).catch((error: unknown) => {
+      if (!options.signal.aborted && !options.isCancelled()) {
+        console.error("[agent] recovered run stream failed:", options.sessionId, error);
+      }
+    });
+  }
   return view;
 }
 

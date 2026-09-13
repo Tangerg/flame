@@ -516,6 +516,11 @@ unmount → abort follower + 解绑 actions；projection 留到 Session 不再 o
 reattach 在 snapshot 与 subscribe 之间遇到 terminal/waiting/stale Run 时，必须经 Agent
 application port 重读完整 durable projection；不能把旧 Running 留给 UI 等待偶然 invalidation。
 
+Session snapshot 的同步 Promise 在权威投影提交后结束；由该快照恢复的 Run 订阅继续存活，
+并沿用会话持有的 generation signal，直到替换或卸载时回收。Goal 命令提交后通过
+`replace-live` 读取新快照并恢复订阅，再放行下一条 Goal 命令；不能等待长任务的流结束。
+普通变更通知仍使用 `after-live`，合并到下一次空闲边界，避免和 live fold 并发写入。
+
 默认 driver 由 `rpc-agent` 插件贡献（`AGENT_SOURCE`，走 JSON-RPC）；插件可替换成 mock / IPC / 本地模型等。
 
 ---
