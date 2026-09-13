@@ -37,8 +37,18 @@ func (w *workerStore) Get(context.Context, string) (schedule.Schedule, error) {
 func (w *workerStore) Insert(context.Context, schedule.Schedule) error    { return nil }
 func (w *workerStore) Update(context.Context, schedule.Replacement) error { return nil }
 func (w *workerStore) Delete(context.Context, string) (bool, error)       { return false, nil }
-func (w *workerStore) Due(_ context.Context, _ time.Time, _ int) ([]schedule.Schedule, error) {
-	return w.due, w.dueErr
+func (w *workerStore) Due(_ context.Context, now time.Time, limit int) ([]schedule.Schedule, error) {
+	var rows []schedule.Schedule
+	for _, scheduled := range w.due {
+		if scheduled.NextRunAt().After(now) || slices.ContainsFunc(w.pending, func(occurrence schedule.Occurrence) bool { return occurrence.ScheduleID() == scheduled.ID() }) {
+			continue
+		}
+		rows = append(rows, scheduled)
+		if len(rows) == limit {
+			break
+		}
+	}
+	return rows, w.dueErr
 }
 func (w *workerStore) Claim(ctx context.Context, claim schedule.Claim) (bool, error) {
 	occurrence := claim.Occurrence()
@@ -54,8 +64,18 @@ func (w *workerStore) Claim(ctx context.Context, claim schedule.Claim) (bool, er
 	w.pending = append(w.pending, occurrence)
 	return true, nil
 }
-func (w *workerStore) Pending(context.Context, int) ([]schedule.Occurrence, error) {
-	return w.pending, nil
+func (w *workerStore) Pending(_ context.Context, afterDueAt time.Time, afterID string, limit int) ([]schedule.Occurrence, error) {
+	var rows []schedule.Occurrence
+	for _, occurrence := range w.pending {
+		if occurrence.DueAt().Before(afterDueAt) || occurrence.DueAt().Equal(afterDueAt) && occurrence.ID() <= afterID {
+			continue
+		}
+		rows = append(rows, occurrence)
+		if len(rows) == limit {
+			break
+		}
+	}
+	return rows, nil
 }
 func (w *workerStore) RecordRun(context.Context, schedule.RunRecord) error { return nil }
 
@@ -96,86 +116,6 @@ func TestWorkerFireDueLeavesFailedOccurrenceDue(t *testing.T) {
 	}
 	if got := output.String(); strings.Count(got, "level=ERROR") != 2 || strings.Count(got, runner.startErr.Error()) != 2 || strings.Count(got, "sch_1") != 2 {
 		t.Fatalf("diagnostics = %q, want both failed starts with the Schedule identity and cause", got)
-	}
-}
-
-func TestWorkerFireDueRejectsAnInvalidAggregate(t *testing.T) {
-	now := time.Date(2026, 6, 30, 10, 0, 0, 0, time.UTC)
-	store := &workerStore{due: []schedule.Schedule{dueSchedule(t, "sch_valid", now), {}}}
-	runner := &recordingScheduledRunStarter{}
-
-	newWorker(workerDependencies{Store: store, RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID}).fireDue(context.Background(), now)
-
-	if len(runner.startedScheduleIDs) != 0 {
-		t.Fatalf("started = %d, want 0", len(runner.startedScheduleIDs))
-	}
-	if len(store.claims) != 0 {
-		t.Fatalf("claims = %+v, want none", store.claims)
-	}
-}
-
-func TestWorkerFireDueValidatesCompletePendingBatchBeforeDispatch(t *testing.T) {
-	now := time.Date(2026, 6, 30, 10, 0, 0, 0, time.UTC)
-	store := &workerStore{pending: []schedule.Occurrence{
-		pendingOccurrence(t, "sch_valid", now.Add(-time.Minute)),
-		{},
-	}}
-	runner := &recordingScheduledRunStarter{}
-
-	newWorker(workerDependencies{
-		Store: store, RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID,
-	}).fireDue(t.Context(), now)
-
-	if len(runner.startedScheduleIDs) != 0 {
-		t.Fatalf("started = %v, want none", runner.startedScheduleIDs)
-	}
-}
-
-func TestValidatePendingBatchRejectsBrokenStoreResults(t *testing.T) {
-	now := time.Date(2026, 6, 30, 10, 0, 0, 0, time.UTC)
-	first := pendingOccurrence(t, "sch_1", now.Add(-2*time.Minute))
-	second := pendingOccurrence(t, "sch_2", now.Add(-time.Minute))
-	sameSchedule := pendingOccurrence(t, "sch_1", now.Add(-time.Minute))
-	for name, test := range map[string]struct {
-		rows    []schedule.Occurrence
-		maximum int
-	}{
-		"excess rows":          {rows: []schedule.Occurrence{first, second}, maximum: 1},
-		"invalid after valid":  {rows: []schedule.Occurrence{first, {}}, maximum: 2},
-		"duplicate occurrence": {rows: []schedule.Occurrence{first, first}, maximum: 2},
-		"duplicate Schedule":   {rows: []schedule.Occurrence{first, sameSchedule}, maximum: 2},
-		"out of order":         {rows: []schedule.Occurrence{second, first}, maximum: 2},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if err := validatePendingBatch(test.rows, test.maximum); err == nil {
-				t.Fatal("validatePendingBatch accepted a broken store result")
-			}
-		})
-	}
-}
-
-func TestValidateDueBatchRejectsBrokenStoreResults(t *testing.T) {
-	now := time.Date(2026, 6, 30, 10, 0, 0, 0, time.UTC)
-	first := dueSchedule(t, "sch_1", now.Add(-2*time.Minute))
-	second := dueSchedule(t, "sch_2", now.Add(-time.Minute))
-	for name, test := range map[string]struct {
-		rows    []schedule.Schedule
-		maximum int
-	}{
-		"excess rows":         {rows: []schedule.Schedule{first, second}, maximum: 1},
-		"invalid after valid": {rows: []schedule.Schedule{first, {}}, maximum: 2},
-		"duplicate Schedule":  {rows: []schedule.Schedule{first, first}, maximum: 2},
-		"not due":             {rows: []schedule.Schedule{dueSchedule(t, "sch_future", now.Add(time.Minute))}, maximum: 1},
-		"cursor out of order": {rows: []schedule.Schedule{second, first}, maximum: 2},
-		"id tie out of order": {rows: []schedule.Schedule{
-			dueSchedule(t, "sch_b", now), dueSchedule(t, "sch_a", now),
-		}, maximum: 2},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if err := validateDueBatch(test.rows, now, test.maximum); err == nil {
-				t.Fatal("validateDueBatch accepted a broken store result")
-			}
-		})
 	}
 }
 
@@ -251,12 +191,12 @@ type cancelingWorkerStore struct {
 	err       error
 }
 
-func (c cancelingWorkerStore) Pending(ctx context.Context, limit int) ([]schedule.Occurrence, error) {
+func (c cancelingWorkerStore) Pending(ctx context.Context, afterDueAt time.Time, afterID string, limit int) ([]schedule.Occurrence, error) {
 	if c.operation == "pending" {
 		c.cancel()
 		return nil, fmt.Errorf("pending query: %w", c.err)
 	}
-	return c.WorkerStore.Pending(ctx, limit)
+	return c.WorkerStore.Pending(ctx, afterDueAt, afterID, limit)
 }
 
 func (c cancelingWorkerStore) Due(ctx context.Context, now time.Time, limit int) ([]schedule.Schedule, error) {

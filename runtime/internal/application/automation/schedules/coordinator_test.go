@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"slices"
-	"strconv"
 	"testing"
 	"time"
 
@@ -177,21 +176,6 @@ func TestRunNowRejectsInvalidRunFactBeforeStarting(t *testing.T) {
 	}
 }
 
-func TestRunNowRejectsMismatchedStoreScheduleBeforeStarting(t *testing.T) {
-	store := &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{
-		ID: "sch_other", Instructions: "review",
-	})}
-	runner := &recordingScheduledRunStarter{}
-	firing := mustFiring(t, FiringDependencies{Store: store, RunStarter: runner})
-
-	if _, err := firing.RunNow(t.Context(), "sch_requested"); err == nil {
-		t.Fatal("RunNow accepted a Schedule belonging to another request")
-	}
-	if len(runner.startedScheduleIDs) != 0 {
-		t.Fatalf("started schedules = %v, want none", runner.startedScheduleIDs)
-	}
-}
-
 type cwdResolverFunc func(string) (string, error)
 
 func (c cwdResolverFunc) ResolveExistingDir(path string) (string, error) {
@@ -307,33 +291,6 @@ func TestUpdateRequiresAnExplicitRevision(t *testing.T) {
 	}
 }
 
-func TestUpdateRejectsInvalidOrMismatchedStoreScheduleBeforeWriting(t *testing.T) {
-	for _, test := range []struct {
-		name      string
-		scheduled schedule.Schedule
-	}{
-		{name: "invalid Schedule"},
-		{name: "mismatched Schedule", scheduled: mustStoredSchedule(t, schedule.Snapshot{
-			ID: "sch_other", Instructions: "review",
-		})},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			store := &runNowStore{schedule: test.scheduled}
-			coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}})
-			title := "after"
-
-			if _, err := coordinator.Update(t.Context(), UpdateCommand{
-				ID: "sch_requested", ExpectedRevision: 1, Patch: Patch{Title: &title},
-			}); err == nil {
-				t.Fatal("Update accepted an invalid persistence result")
-			}
-			if store.updated.ID() != "" {
-				t.Fatalf("store Update received %+v before point-read validation", store.updated)
-			}
-		})
-	}
-}
-
 func TestCreateValidatesBeforeResolvingCWD(t *testing.T) {
 	resolved := false
 	c := mustCoordinator(t, Dependencies{
@@ -379,7 +336,7 @@ func (r *runNowStore) Due(context.Context, time.Time, int) ([]schedule.Schedule,
 	return nil, nil
 }
 func (r *runNowStore) Claim(context.Context, schedule.Claim) (bool, error) { return false, nil }
-func (r *runNowStore) Pending(context.Context, int) ([]schedule.Occurrence, error) {
+func (r *runNowStore) Pending(context.Context, time.Time, string, int) ([]schedule.Occurrence, error) {
 	return nil, nil
 }
 
@@ -392,15 +349,6 @@ type pagedStore struct {
 
 	afterID string
 	limit   int
-}
-
-type rawPagedStore struct {
-	*runNowStore
-	rows []schedule.Schedule
-}
-
-func (p *rawPagedStore) ListPage(context.Context, time.Time, string, int) ([]schedule.Schedule, error) {
-	return slices.Clone(p.rows), nil
 }
 
 func (p *pagedStore) ListPage(_ context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error) {
@@ -472,54 +420,6 @@ func TestListPagePagesNewestFirstAndRefusesAForeignCursor(t *testing.T) {
 	}
 	if _, err := c.ListPage(ctx, first.NextCursor+"x", explicitPageLimit(t, 2)); !errors.Is(err, pagination.ErrInvalidCursor) {
 		t.Fatalf("damaged cursor err = %v, want ErrInvalidCursor", err)
-	}
-}
-
-func TestListPageRejectsBrokenStorePages(t *testing.T) {
-	ordered := scheduleRows(t, "sch_1", "sch_2", "sch_3")
-	tieTime := time.UnixMilli(1).UTC()
-	tieAscending := []schedule.Schedule{
-		mustStoredSchedule(t, schedule.Snapshot{ID: "sch_a", Instructions: "review", CreatedAt: tieTime}),
-		mustStoredSchedule(t, schedule.Snapshot{ID: "sch_b", Instructions: "review", CreatedAt: tieTime}),
-	}
-	for name, rows := range map[string][]schedule.Schedule{
-		"invalid aggregate":     {{}},
-		"duplicate identity":    {ordered[0], ordered[0]},
-		"creation out of order": {ordered[1], ordered[0]},
-		"id tie out of order":   tieAscending,
-		"excess overfetch":      ordered,
-	} {
-		t.Run(name, func(t *testing.T) {
-			store := &rawPagedStore{runNowStore: &runNowStore{}, rows: rows}
-			coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}})
-			if _, err := coordinator.ListPage(t.Context(), "", explicitPageLimit(t, 1)); err == nil {
-				t.Fatal("ListPage accepted a broken store page")
-			}
-		})
-	}
-}
-
-func TestListPageRejectsRowsAtOrBeforeCursorAndDoesNotAliasStore(t *testing.T) {
-	rows := scheduleRows(t, "sch_1", "sch_2")
-	store := &rawPagedStore{runNowStore: &runNowStore{}, rows: rows}
-	coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}})
-	cursor, err := pagination.Encode(listPageNamespace, nil, []string{
-		strconv.FormatInt(rows[0].CreatedAt().UnixNano(), 10), rows[0].ID(),
-	})
-	if err != nil {
-		t.Fatalf("encode cursor: %v", err)
-	}
-	if _, err := coordinator.ListPage(t.Context(), cursor, explicitPageLimit(t, 2)); err == nil {
-		t.Fatal("ListPage accepted the cursor anchor again")
-	}
-
-	page, err := coordinator.ListPage(t.Context(), "", explicitPageLimit(t, 2))
-	if err != nil {
-		t.Fatalf("ListPage: %v", err)
-	}
-	page.Rows[0] = schedule.Schedule{}
-	if store.rows[0].ID() != "sch_1" {
-		t.Fatal("ListPage aliases store-owned row storage")
 	}
 }
 

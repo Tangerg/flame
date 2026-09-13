@@ -287,7 +287,7 @@ func TestScheduleRevisionExhaustionIsAtomicAcrossOperationalMutations(t *testing
 	if claimed, err := store.Claim(ctx, claim); claimed || !errors.Is(err, schedule.ErrRevisionExhausted) {
 		t.Fatalf("Claim = (%v, %v), want false, ErrRevisionExhausted", claimed, err)
 	}
-	if pending, err := store.Pending(ctx, 10); err != nil || len(pending) != 0 {
+	if pending, err := store.Pending(ctx, time.Time{}, "", 10); err != nil || len(pending) != 0 {
 		t.Fatalf("Pending after rejected Claim = (%+v, %v)", pending, err)
 	}
 
@@ -306,7 +306,7 @@ func TestScheduleRevisionExhaustionIsAtomicAcrossOperationalMutations(t *testing
 	if err := store.Accept(ctx, testAcceptance(occurrence)); !errors.Is(err, schedule.ErrRevisionExhausted) {
 		t.Fatalf("Accept error = %v, want ErrRevisionExhausted", err)
 	}
-	if pending, err := store.Pending(ctx, 10); err != nil || len(pending) != 1 || pending[0].ID() != occurrence.ID() {
+	if pending, err := store.Pending(ctx, time.Time{}, "", 10); err != nil || len(pending) != 1 || pending[0].ID() != occurrence.ID() {
 		t.Fatalf("Pending after rolled-back Accept = (%+v, %v)", pending, err)
 	}
 	unchanged, err := store.Get(ctx, created.ID())
@@ -357,9 +357,57 @@ func TestScheduleClaimRejectsStaleRevisionWithUnchangedCursor(t *testing.T) {
 	if err != nil || !claimed {
 		t.Fatalf("fresh Claim = (%v, %v), want true, nil", claimed, err)
 	}
-	pending, err := store.Pending(ctx, 1)
+	pending, err := store.Pending(ctx, time.Time{}, "", 1)
 	if err != nil || len(pending) != 1 || pending[0].Execution().Instructions() != "new instructions" {
 		t.Fatalf("Pending = (%+v, %v), want the updated snapshot", pending, err)
+	}
+}
+
+func TestPendingOccurrenceAcceptsAfterScheduleDeletionAndReopen(t *testing.T) {
+	ctx := t.Context()
+	path := filepath.Join(t.TempDir(), "deleted-schedule.db")
+	db, err := sqlite.Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlite.NewScheduleStore(db)
+	dueAt := time.Date(2026, 9, 14, 9, 0, 0, 0, time.UTC)
+	created, err := insertSchedule(ctx, store, schedule.Snapshot{
+		Title: "review", Instructions: "review", Cron: "0 * * * *", Enabled: true,
+		NextRunAt: dueAt, ModelSelection: testsupport.DefaultModelSelection(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claim := testClaim(created, "ses_deleted_schedule", "run_deleted_schedule", dueAt)
+	if claimed, err := store.Claim(ctx, claim); err != nil || !claimed {
+		t.Fatalf("Claim = %v, %v", claimed, err)
+	}
+	if deleted, err := store.Delete(ctx, created.ID()); err != nil || !deleted {
+		t.Fatalf("Delete = %v, %v", deleted, err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = sqlite.Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store = sqlite.NewScheduleStore(db)
+	pending, err := store.Pending(ctx, time.Time{}, "", 1)
+	if err != nil || len(pending) != 1 {
+		t.Fatalf("pending after reopen = %v, %v", pending, err)
+	}
+	admitOccurrenceRun(t, sqlite.NewRunStore(db), pending[0])
+	if err := store.Accept(ctx, testAcceptance(pending[0])); err != nil {
+		t.Fatalf("Accept after deletion: %v", err)
+	}
+	if pending, err := store.Pending(ctx, time.Time{}, "", 1); err != nil || len(pending) != 0 {
+		t.Fatalf("pending after acceptance = %v, %v", pending, err)
+	}
+	if _, err := store.Get(ctx, created.ID()); !errors.Is(err, schedule.ErrNotFound) {
+		t.Fatalf("deleted schedule restored: %v", err)
 	}
 }
 
@@ -389,7 +437,7 @@ func TestScheduleOccurrenceSurvivesDispatchAndAcceptsOnce(t *testing.T) {
 	if err != nil || claimed {
 		t.Fatalf("repeat Claim = (%v, %v), want false, nil", claimed, err)
 	}
-	pending, err := store.Pending(ctx, 100)
+	pending, err := store.Pending(ctx, time.Time{}, "", 100)
 	if err != nil || len(pending) != 1 || pending[0].RunID() != occurrence.RunID() || pending[0].SessionID() != occurrence.SessionID() || pending[0].Execution().ModelSelection() != selection {
 		t.Fatalf("Pending = (%+v, %v), want persisted occurrence", pending, err)
 	}
@@ -400,7 +448,7 @@ func TestScheduleOccurrenceSurvivesDispatchAndAcceptsOnce(t *testing.T) {
 	if acceptErr := store.Accept(ctx, testAcceptance(occurrence)); acceptErr == nil {
 		t.Fatal("Accept succeeded before its Run was admitted")
 	}
-	if pending, pendingErr := store.Pending(ctx, 100); pendingErr != nil || len(pending) != 1 {
+	if pending, pendingErr := store.Pending(ctx, time.Time{}, "", 100); pendingErr != nil || len(pending) != 1 {
 		t.Fatalf("Pending after ownerless Accept = (%+v, %v), want original occurrence", pending, pendingErr)
 	}
 	admitOccurrenceRun(t, runStore, occurrence)
@@ -410,7 +458,7 @@ func TestScheduleOccurrenceSurvivesDispatchAndAcceptsOnce(t *testing.T) {
 	if acceptErr := store.Accept(ctx, testAcceptance(occurrence)); acceptErr != nil {
 		t.Fatalf("repeat Accept: %v", acceptErr)
 	}
-	if pending, err = store.Pending(ctx, 100); err != nil || len(pending) != 0 {
+	if pending, err = store.Pending(ctx, time.Time{}, "", 100); err != nil || len(pending) != 0 {
 		t.Fatalf("Pending after Accept = (%+v, %v), want empty", pending, err)
 	}
 	got, err = store.Get(ctx, created.ID())
@@ -513,7 +561,7 @@ func TestScheduleClaimKeepsOnlyOnePendingOccurrencePerSchedule(t *testing.T) {
 	if err != nil || claimed {
 		t.Fatalf("second Claim = (%v, %v), want false, nil while first is pending", claimed, err)
 	}
-	pending, err := store.Pending(ctx, 100)
+	pending, err := store.Pending(ctx, time.Time{}, "", 100)
 	if err != nil || len(pending) != 1 || pending[0].ID() != first.ID() {
 		t.Fatalf("Pending = (%+v, %v), want only first occurrence", pending, err)
 	}
@@ -619,7 +667,7 @@ func TestScheduleReadsRejectNonPositiveLimits(t *testing.T) {
 			return err
 		},
 		"pending": func() error {
-			_, err := store.Pending(t.Context(), 0)
+			_, err := store.Pending(t.Context(), time.Time{}, "", 0)
 			return err
 		},
 	} {

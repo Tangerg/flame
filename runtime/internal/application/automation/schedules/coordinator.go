@@ -28,10 +28,6 @@ type ManagementStore interface {
 	Delete(ctx context.Context, id string) (bool, error)
 }
 
-type scheduleReader interface {
-	Get(ctx context.Context, id string) (schedule.Schedule, error)
-}
-
 // Coordinator owns editable scheduled-run management over its narrow store.
 // It is stateless beyond its dependencies and safe to share.
 type Coordinator struct {
@@ -158,42 +154,9 @@ func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit paginat
 	if err != nil {
 		return pagination.Page[schedule.Schedule]{}, err
 	}
-	if err := validateManagementPage(rows, afterCreatedAt, afterID, size+1); err != nil {
-		return pagination.Page[schedule.Schedule]{}, err
-	}
 	return pagination.PageOf(rows, size, listPageNamespace, nil, func(scheduled schedule.Schedule) []string {
 		return []string{strconv.FormatInt(scheduled.CreatedAt().UnixNano(), 10), scheduled.ID()}
 	})
-}
-
-func validateManagementPage(rows []schedule.Schedule, afterCreatedAt time.Time, afterID string, maximum int) error {
-	if len(rows) > maximum {
-		return fmt.Errorf("schedules: store returned %d rows, maximum %d", len(rows), maximum)
-	}
-	seen := make(map[string]struct{}, len(rows))
-	for index, scheduled := range rows {
-		if err := scheduled.Validate(); err != nil {
-			return fmt.Errorf("schedules: store row %d is invalid: %w", index+1, err)
-		}
-		if _, duplicate := seen[scheduled.ID()]; duplicate {
-			return fmt.Errorf("schedules: store page repeats schedule %q", scheduled.ID())
-		}
-		seen[scheduled.ID()] = struct{}{}
-		if (!afterCreatedAt.IsZero() || afterID != "") &&
-			(scheduled.CreatedAt().After(afterCreatedAt) ||
-				scheduled.CreatedAt().Equal(afterCreatedAt) && scheduled.ID() >= afterID) {
-			return fmt.Errorf("schedules: store row %q does not follow the page cursor", scheduled.ID())
-		}
-		if index == 0 {
-			continue
-		}
-		previous := rows[index-1]
-		if scheduled.CreatedAt().After(previous.CreatedAt()) ||
-			scheduled.CreatedAt().Equal(previous.CreatedAt()) && scheduled.ID() >= previous.ID() {
-			return fmt.Errorf("schedules: store row %q is out of order after %q", scheduled.ID(), previous.ID())
-		}
-	}
-	return nil
 }
 
 // Create validates, normalizes, schedules, and persists a new schedule.
@@ -237,7 +200,7 @@ func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.S
 	if cmd.ExpectedRevision == 0 {
 		return schedule.Schedule{}, schedule.ErrRevisionRequired
 	}
-	existing, err := loadSchedule(ctx, c.store, cmd.ID)
+	existing, err := c.store.Get(ctx, cmd.ID)
 	if err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: get %q for update: %w", cmd.ID, err)
 	}
@@ -286,20 +249,6 @@ func (c *Coordinator) updateExisting(
 	}
 	c.invalidations.Notify(invalidation.ForSchedules(updated.ID()))
 	return updated, nil
-}
-
-func loadSchedule(ctx context.Context, store scheduleReader, id string) (schedule.Schedule, error) {
-	scheduled, err := store.Get(ctx, id)
-	if err != nil {
-		return schedule.Schedule{}, err
-	}
-	if err := scheduled.Validate(); err != nil {
-		return schedule.Schedule{}, fmt.Errorf("schedules: store Get(%q) returned an invalid Schedule: %w", id, err)
-	}
-	if scheduled.ID() != id {
-		return schedule.Schedule{}, fmt.Errorf("schedules: store Get(%q) returned Schedule %q", id, scheduled.ID())
-	}
-	return scheduled, nil
 }
 
 // Delete removes a schedule by id.

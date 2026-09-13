@@ -75,7 +75,7 @@ func (f *Firing) RunNow(ctx context.Context, id string) (StartedRun, error) {
 	if err := schedule.ValidateID(id); err != nil {
 		return StartedRun{}, err
 	}
-	scheduled, err := loadSchedule(ctx, f.runNowStore, id)
+	scheduled, err := f.runNowStore.Get(ctx, id)
 	if err != nil {
 		return StartedRun{}, err
 	}

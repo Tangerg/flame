@@ -61,7 +61,7 @@ func (f *fakeScheduleRegistry) Due(context.Context, time.Time, int) ([]schedule.
 func (f *fakeScheduleRegistry) Claim(context.Context, schedule.Claim) (bool, error) {
 	return false, nil
 }
-func (f *fakeScheduleRegistry) Pending(context.Context, int) ([]schedule.Occurrence, error) {
+func (f *fakeScheduleRegistry) Pending(context.Context, time.Time, string, int) ([]schedule.Occurrence, error) {
 	return nil, nil
 }
 

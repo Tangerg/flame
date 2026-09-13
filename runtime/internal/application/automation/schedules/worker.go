@@ -21,9 +21,8 @@ var workerTracer = otel.Tracer("scope/flame/schedule")
 const workerTick = time.Minute
 
 // workerBatchSize bounds the durable work admitted by one ticker pass. Pending
-// work is oldest-first; newly due schedules are claimed and dispatched together
-// so shutdown cannot materialize an unbounded backlog that never reaches Run
-// admission.
+// retries rotate through durable ordering. Newly due schedules are claimed and
+// dispatched together so shutdown cannot materialize an unbounded backlog.
 const workerBatchSize = 32
 
 // ScheduledRunStarter starts one scheduled instruction set as a headless run. It is the
@@ -44,7 +43,7 @@ type StartedRun struct {
 type WorkerStore interface {
 	Due(ctx context.Context, now time.Time, limit int) ([]schedule.Schedule, error)
 	Claim(ctx context.Context, claim schedule.Claim) (claimed bool, err error)
-	Pending(ctx context.Context, limit int) ([]schedule.Occurrence, error)
+	Pending(ctx context.Context, afterDueAt time.Time, afterID string, limit int) ([]schedule.Occurrence, error)
 }
 
 // workerDependencies is the complete collaborator set for a due scanner.
@@ -57,21 +56,23 @@ type workerDependencies struct {
 }
 
 // worker scans due schedules, atomically materializes occurrence work items,
-// and dispatches pending work. It is the ticker component of the automation
+// and dispatches pending work. Its retry cursor belongs to one Run loop. It is the ticker component of the automation
 // use case — the schedule spec and next-fire rule are the domain's
 // ([schedule.Schedule] / [schedule.NextRun]); the periodic scan and side-effecting
 // firing are the application's.
 type worker struct {
-	schedules     WorkerStore
-	runStarter    ScheduledRunStarter
-	newSessionID  func() string
-	newRunID      func() string
-	now           func() time.Time
-	invalidations invalidation.Publish
+	pendingAfterDueAt time.Time
+	pendingAfterID    string
+	schedules         WorkerStore
+	runStarter        ScheduledRunStarter
+	newSessionID      func() string
+	newRunID          func() string
+	now               func() time.Time
+	invalidations     invalidation.Publish
 }
 
-func newWorker(deps workerDependencies) worker {
-	return worker{
+func newWorker(deps workerDependencies) *worker {
+	return &worker{
 		schedules: deps.Store, runStarter: deps.RunStarter,
 		newSessionID: deps.NewSessionID, newRunID: deps.NewRunID,
 		now: time.Now, invalidations: deps.Invalidations,
@@ -79,7 +80,7 @@ func newWorker(deps workerDependencies) worker {
 }
 
 // Run starts the scheduled-run loop until ctx is canceled.
-func (w worker) Run(ctx context.Context) {
+func (w *worker) Run(ctx context.Context) {
 	w.fireDue(ctx, w.now())
 	t := time.NewTicker(workerTick)
 	defer t.Stop()
@@ -114,21 +115,26 @@ func Fire(ctx context.Context, runStarter ScheduledRunStarter, request schedule.
 	return StartedRun{SessionID: request.SessionID(), RunID: request.RunID()}, nil
 }
 
-func (w worker) fireDue(ctx context.Context, now time.Time) {
+func (w *worker) fireDue(ctx context.Context, now time.Time) {
 	if ctx.Err() != nil {
 		return
 	}
-	occurrences, err := w.schedules.Pending(ctx, workerBatchSize)
+	occurrences, err := w.schedules.Pending(ctx, w.pendingAfterDueAt, w.pendingAfterID, workerBatchSize/2)
 	if err != nil {
 		if !errors.Is(err, ctx.Err()) {
 			slog.ErrorContext(ctx, "schedule: pending query failed", "error", err)
 		}
 		return
 	}
-	if err := validatePendingBatch(occurrences, workerBatchSize); err != nil {
-		slog.ErrorContext(ctx, "schedule: invalid pending batch", "error", err)
-		return
+	// Reserve at least half the pass for newly due work, and seek past failed
+	// pending work on the next pass so later durable occurrences also advance.
+	if len(occurrences) < workerBatchSize/2 {
+		w.pendingAfterDueAt, w.pendingAfterID = time.Time{}, ""
+	} else {
+		last := occurrences[len(occurrences)-1]
+		w.pendingAfterDueAt, w.pendingAfterID = last.DueAt(), last.ID()
 	}
+
 	batch := occurrenceBatch{ctx: ctx, runStarter: w.runStarter, invalidations: w.invalidations}
 	if !batch.dispatchAll(occurrences) || batch.full() {
 		return
@@ -140,10 +146,7 @@ func (w worker) fireDue(ctx context.Context, now time.Time) {
 		}
 		return
 	}
-	if err := validateDueBatch(due, now, batch.remaining()); err != nil {
-		slog.ErrorContext(ctx, "schedule: invalid due batch", "error", err)
-		return
-	}
+
 	for _, scheduled := range due {
 		if batch.full() {
 			return
@@ -156,64 +159,6 @@ func (w worker) fireDue(ctx context.Context, now time.Time) {
 			return
 		}
 	}
-}
-
-func validatePendingBatch(occurrences []schedule.Occurrence, maximum int) error {
-	if len(occurrences) > maximum {
-		return fmt.Errorf("schedules: store returned %d pending occurrences, maximum %d", len(occurrences), maximum)
-	}
-	seenOccurrences := make(map[string]struct{}, len(occurrences))
-	seenSchedules := make(map[string]struct{}, len(occurrences))
-	for index, occurrence := range occurrences {
-		if err := occurrence.Validate(); err != nil {
-			return fmt.Errorf("schedules: pending occurrence[%d] is invalid: %w", index, err)
-		}
-		if _, duplicate := seenOccurrences[occurrence.ID()]; duplicate {
-			return fmt.Errorf("schedules: pending batch repeats occurrence %q", occurrence.ID())
-		}
-		seenOccurrences[occurrence.ID()] = struct{}{}
-		if _, duplicate := seenSchedules[occurrence.ScheduleID()]; duplicate {
-			return fmt.Errorf("schedules: pending batch repeats Schedule %q", occurrence.ScheduleID())
-		}
-		seenSchedules[occurrence.ScheduleID()] = struct{}{}
-		if index == 0 {
-			continue
-		}
-		previous := occurrences[index-1]
-		if occurrence.DueAt().Before(previous.DueAt()) ||
-			occurrence.DueAt().Equal(previous.DueAt()) && occurrence.ID() <= previous.ID() {
-			return fmt.Errorf("schedules: pending occurrence %q is out of order after %q", occurrence.ID(), previous.ID())
-		}
-	}
-	return nil
-}
-
-func validateDueBatch(due []schedule.Schedule, now time.Time, maximum int) error {
-	if len(due) > maximum {
-		return fmt.Errorf("schedules: store returned %d due schedules, maximum %d", len(due), maximum)
-	}
-	seen := make(map[string]struct{}, len(due))
-	for index, scheduled := range due {
-		if err := scheduled.Validate(); err != nil {
-			return fmt.Errorf("schedules: due schedule[%d] is invalid: %w", index, err)
-		}
-		if !scheduled.Enabled() || scheduled.NextRunAt().IsZero() || scheduled.NextRunAt().After(now) {
-			return fmt.Errorf("schedules: Schedule %q is not due", scheduled.ID())
-		}
-		if _, duplicate := seen[scheduled.ID()]; duplicate {
-			return fmt.Errorf("schedules: due batch repeats Schedule %q", scheduled.ID())
-		}
-		seen[scheduled.ID()] = struct{}{}
-		if index == 0 {
-			continue
-		}
-		previous := due[index-1]
-		if scheduled.NextRunAt().Before(previous.NextRunAt()) ||
-			scheduled.NextRunAt().Equal(previous.NextRunAt()) && scheduled.ID() <= previous.ID() {
-			return fmt.Errorf("schedules: due Schedule %q is out of order after %q", scheduled.ID(), previous.ID())
-		}
-	}
-	return nil
 }
 
 type occurrenceBatch struct {
@@ -258,7 +203,7 @@ func (o *occurrenceBatch) dispatch(occurrence schedule.Occurrence) bool {
 	return true
 }
 
-func (w worker) claimDueOccurrence(
+func (w *worker) claimDueOccurrence(
 	ctx context.Context,
 	scheduled schedule.Schedule,
 	now time.Time,
