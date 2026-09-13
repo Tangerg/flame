@@ -80,7 +80,7 @@ export interface RuntimeConnectionOwner {
   subscribeConnection(onChange: () => void): () => void;
   subscribeServerReplacement(onReplace: () => void): () => void;
   replaceEndpoint(commit: () => void): Promise<void>;
-  reportConnectionLoss(expectedGeneration: RuntimeConnectionGeneration): Promise<void>;
+  reportConnectionLoss(expectedGeneration: RuntimeConnectionGeneration): void;
   dispose(): void;
 }
 
@@ -164,20 +164,20 @@ class RuntimeConnectionOwnerImplementation implements RuntimeConnectionOwner {
     useRuntimeConnectionStore.setState(initialConnectionState(), true);
     commit();
     for (const listener of this.#serverReplacementListeners) listener();
-    return this.#controller.recover();
+    return this.#controller.replace();
   }
 
-  reportConnectionLoss(expectedGeneration: RuntimeConnectionGeneration): Promise<void> {
-    if (!this.#ownsGeneration()) return Promise.resolve();
+  reportConnectionLoss(expectedGeneration: RuntimeConnectionGeneration): void {
+    if (!this.#ownsGeneration()) return;
     const current = useRuntimeConnectionStore.getState();
-    if (current.connectionGeneration !== expectedGeneration) return Promise.resolve();
+    if (current.connectionGeneration !== expectedGeneration) return;
 
     // The stream is an ordered member of this connection generation. Once it
     // ends unexpectedly, the generation is no longer capable of admitting
     // commands, queries, mutations, or material writers — even if the same
     // Runtime process will answer the recovery inspection a moment later.
     useRuntimeConnectionStore.setState(reconnectingConnectionState(), true);
-    return this.#controller.recover();
+    this.#controller.recover();
   }
 
   #ownsGeneration(): boolean {

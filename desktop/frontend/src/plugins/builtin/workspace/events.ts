@@ -40,7 +40,7 @@ export default definePlugin({
       handleEvent: invalidateWorkspaceEvent,
       invalidateAll: invalidateWorkspaceEverything,
       reportDisconnect: (connectionGeneration) => {
-        void ctx.runtime.reportConnectionLoss(connectionGeneration);
+        ctx.runtime.reportConnectionLoss(connectionGeneration);
       },
     });
 

@@ -61,10 +61,10 @@ function assertRuntimeProcessGeneration(
 }
 
 export function runtimeServiceInspector(): RuntimeConnectionInspector<ServerCapabilities> {
-  const sidecar = getContainer().sidecar();
-  const client = getContainer().client();
   return {
     async inspect(signal) {
+      const sidecar = getContainer().sidecar();
+      const client = getContainer().client();
       const cohort = new AbortController();
       const linkedSignal = AbortSignal.any([signal, cohort.signal]);
       let info: RuntimeInfo;

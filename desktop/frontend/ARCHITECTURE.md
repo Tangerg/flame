@@ -217,8 +217,13 @@ Runtime endpoint 是 Runtime context 的应用配置：application 拥有默认�
 config/storage。`flame.builtin.runtime` 在 capability discovery 之前同步恢复 endpoint，
 `main/container.ts` 只通过 Runtime `public/endpoint` 读取 active endpoint，并按
 endpoint 与 Wails bootstrap 返回的 local token 缓存客户端。Connection 面板把稳定 rejection code 翻译为当前 locale
-文案；应用变更后重载前端，让 streams、queries、capabilities 与 Session read models
-在同一个 Runtime 边界上重新装配，不做半热切换。
+文案。
+Endpoint replacement retires the previous connection, commits the new address, clears
+server-scoped projections, and immediately inspects the successor without reloading the renderer.
+The Runtime connection controller owns recovery: stream loss withdraws the current generation
+and schedules a bounded exponential retry. Successful discovery alone does not reset backoff;
+the connection must survive a full healthy polling interval. The workspace subscription reports
+failure and ends its generation instead of running a second reconnect loop.
 
 本地 token 属于 Wails DesktopHost；它不进入 Runtime Protocol，也不借 Runtime HTTP
 endpoint 建立第二套旁路 API。Desktop 不扫描或执行用户目录中的 JavaScript。

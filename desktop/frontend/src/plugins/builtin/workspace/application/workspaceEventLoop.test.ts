@@ -198,7 +198,7 @@ describe("workspace event loop", () => {
     ]);
   });
 
-  it("interrupts reconnect backoff when the workspace target changes", async () => {
+  it("ends the failed generation and leaves recovery to the connection owner", async () => {
     vi.useFakeTimers();
     const outer = new AbortController();
     const subscribe = vi.fn().mockRejectedValue(new Error("offline"));
@@ -210,27 +210,22 @@ describe("workspace event loop", () => {
       reportDisconnect,
     });
 
-    const run = loop.start(outer.signal, CONNECTION_ONE);
-    await vi.advanceTimersByTimeAsync(0);
-    expect(subscribe).toHaveBeenCalledTimes(1);
-    expect(reportDisconnect).toHaveBeenCalledOnce();
-    expect(reportDisconnect).toHaveBeenCalledWith(
+    await loop.start(outer.signal, CONNECTION_ONE);
+    expect(reportDisconnect).toHaveBeenCalledExactlyOnceWith(
       CONNECTION_ONE,
       expect.objectContaining({ message: "offline" }),
     );
-    expect(subscribe.mock.calls[0]?.[0].target).toEqual({ type: "none" });
-
     loop.retarget({ type: "workspace", cwd: "/new-repo" });
-    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(subscribe).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+
+    await loop.start(outer.signal, CONNECTION_TWO);
     expect(subscribe).toHaveBeenCalledTimes(2);
     expect(subscribe.mock.calls[1]?.[0].target).toEqual({
       type: "workspace",
       cwd: "/new-repo",
     });
-
-    outer.abort();
-    await vi.advanceTimersByTimeAsync(0);
-    await run;
   });
 
   it("reports a clean remote stream end as a connection signal", async () => {
@@ -400,13 +395,17 @@ describe("workspace event loop", () => {
       })(),
     );
 
-    await vi.advanceTimersByTimeAsync(1_000);
+    await run;
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(calls).toBe(1);
+    const successor = loop.start(outer.signal, CONNECTION_TWO);
+    await vi.advanceTimersByTimeAsync(0);
     expect(calls).toBe(2);
     expect(invalidateAll).toHaveBeenCalledOnce();
 
     outer.abort();
     await vi.runAllTimersAsync();
-    await run;
+    await successor;
   });
 
   it("cancels an in-flight subscription opening before retargeting", async () => {

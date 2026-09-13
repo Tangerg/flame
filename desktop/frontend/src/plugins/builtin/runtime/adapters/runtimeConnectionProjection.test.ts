@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FeatureCapability, ServerCapabilities } from "@/rpc";
 import {
   RUNTIME_SERVICE_RETRY_BASE_MS,
@@ -70,6 +70,11 @@ function inspection(capabilities = makeCaps()): RuntimeConnectionInspection<Serv
 describe("runtime connection projection", () => {
   beforeEach(() => {
     resetRuntimeConnectionForTest();
+  });
+
+  afterEach(() => {
+    resetRuntimeConnectionForTest();
+    vi.useRealTimers();
   });
 
   it("starts empty before discovery", () => {
@@ -250,6 +255,7 @@ describe("runtime connection projection", () => {
   });
 
   it("withdraws a lost event-stream generation before its verification settles", async () => {
+    vi.useFakeTimers();
     let settleRetiredInspection: (
       value: RuntimeConnectionInspection<ServerCapabilities>,
     ) => void = () => undefined;
@@ -276,17 +282,17 @@ describe("runtime connection projection", () => {
         ),
     };
     const owner = startRuntimeConnection(inspector);
-    await vi.waitFor(() => expect(owner.connectionGeneration()).not.toBeNull());
+    await vi.advanceTimersByTimeAsync(0);
     const predecessorGeneration = owner.connectionGeneration()!;
     const connectionChanges = vi.fn();
     const unsubscribe = owner.subscribeConnection(connectionChanges);
     const retiredInspection = runtimeServiceStatus().refresh();
-    await vi.waitFor(() => expect(inspector.inspect).toHaveBeenCalledTimes(2));
+    expect(inspector.inspect).toHaveBeenCalledTimes(2);
 
-    const recovery = owner.reportConnectionLoss(predecessorGeneration);
+    owner.reportConnectionLoss(predecessorGeneration);
     await Promise.resolve();
 
-    expect(inspector.inspect).toHaveBeenCalledTimes(3);
+    expect(inspector.inspect).toHaveBeenCalledTimes(2);
     expect(signals[0]?.aborted).toBe(true);
     expect(owner.connectionGeneration()).toBeNull();
     expect(useRuntimeConnectionStore.getState().service.phase).toBe("reconnecting");
@@ -296,8 +302,10 @@ describe("runtime connection projection", () => {
     await Promise.resolve();
     expect(owner.connectionGeneration()).toBeNull();
 
+    await vi.advanceTimersByTimeAsync(RUNTIME_SERVICE_RETRY_BASE_MS);
+    expect(inspector.inspect).toHaveBeenCalledTimes(3);
     settleRecovery(inspection());
-    await recovery;
+    await vi.advanceTimersByTimeAsync(0);
     const successorGeneration = owner.connectionGeneration();
     expect(successorGeneration).not.toBeNull();
     expect(successorGeneration).not.toBe(predecessorGeneration);
@@ -305,7 +313,7 @@ describe("runtime connection projection", () => {
     expect(successorGeneration?.belongsTo("runtime_1")).toBe(true);
     expect(connectionChanges).toHaveBeenCalledTimes(2);
 
-    await owner.reportConnectionLoss(predecessorGeneration);
+    owner.reportConnectionLoss(predecessorGeneration);
     expect(owner.connectionGeneration()).toBe(successorGeneration);
     expect(connectionChanges).toHaveBeenCalledTimes(2);
     unsubscribe();
@@ -327,14 +335,15 @@ describe("runtime connection projection", () => {
       const predecessorGeneration = owner.connectionGeneration();
       expect(predecessorGeneration).not.toBeNull();
 
-      await owner.reportConnectionLoss(predecessorGeneration!);
+      owner.reportConnectionLoss(predecessorGeneration!);
+      await vi.advanceTimersByTimeAsync(RUNTIME_SERVICE_RETRY_BASE_MS);
       expect(useRuntimeConnectionStore.getState()).toMatchObject({
         connectionGeneration: null,
         capabilities: null,
         service: { phase: "unavailable" },
       });
 
-      await vi.advanceTimersByTimeAsync(RUNTIME_SERVICE_RETRY_BASE_MS);
+      await vi.advanceTimersByTimeAsync(RUNTIME_SERVICE_RETRY_BASE_MS * 2);
       const successorGeneration = owner.connectionGeneration();
       expect(successorGeneration).not.toBeNull();
       expect(successorGeneration).not.toBe(predecessorGeneration);

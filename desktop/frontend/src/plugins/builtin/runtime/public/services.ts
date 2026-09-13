@@ -25,7 +25,7 @@ export class RuntimeConnectionGeneration {
 export interface RuntimeStream {
   connectionGeneration: () => RuntimeConnectionGeneration | null;
   subscribeConnection: (onChange: () => void) => () => void;
-  reportConnectionLoss: (expectedGeneration: RuntimeConnectionGeneration) => Promise<void>;
+  reportConnectionLoss: (expectedGeneration: RuntimeConnectionGeneration) => void;
 }
 
 export const RUNTIME_STREAM = service<RuntimeStream>("flame.runtime.stream");

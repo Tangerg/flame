@@ -32,9 +32,8 @@ export type RuntimeServiceFailure = { reason: "timeout" } | { reason: "failed"; 
 export interface RuntimeServiceController {
   start(): void;
   refresh(): Promise<void>;
-  /** Supersede any inspection admitted before a proven transport loss and inspect
-   *  again without waiting for that predecessor to cooperate. */
-  recover(): Promise<void>;
+  replace(): Promise<void>;
+  recover(): void;
   dispose(): void;
 }
 
@@ -66,11 +65,21 @@ export function createRuntimeServiceController<Capabilities>(
     scheduled = undefined;
   };
 
-  const scheduleNext = (delay: number) => {
+  const scheduleNext = (kind: "poll" | "retry") => {
     if (!active || !monitoring) return;
     clearSchedule();
+    const delay =
+      kind === "poll"
+        ? RUNTIME_SERVICE_HEALTHY_POLL_MS
+        : Math.min(
+            RUNTIME_SERVICE_RETRY_BASE_MS * 2 ** Math.max(0, failures - 1),
+            RUNTIME_SERVICE_RETRY_CAP_MS,
+          );
     scheduled = setTimeout(() => {
       scheduled = undefined;
+      // Discovery can succeed while the event stream repeatedly fails. Only a
+      // full interval without another loss establishes a stable connection.
+      if (kind === "poll") failures = 0;
       void inspect(false);
     }, delay);
   };
@@ -113,7 +122,6 @@ export function createRuntimeServiceController<Capabilities>(
       .then((result) => {
         if (!active || controller.signal.aborted) return;
         succeeded = true;
-        failures = 0;
         sink.replace(result);
       })
       .catch((error: unknown) => {
@@ -134,21 +142,20 @@ export function createRuntimeServiceController<Capabilities>(
         releaseDeadline();
         const ownsAttempt = attempt?.controller === controller;
         if (ownsAttempt) attempt = null;
-        // A forced recovery publishes its successor attempt before this retired
-        // one settles. Its cleanup may neither clear the successor nor install a
-        // competing retry/poll timer.
+        // A retired inspection cannot replace the successor's retry or poll.
         if (!active || !monitoring || !ownsAttempt) return;
-        if (succeeded) {
-          scheduleNext(RUNTIME_SERVICE_HEALTHY_POLL_MS);
-          return;
-        }
-        const exponent = Math.max(0, failures - 1);
-        scheduleNext(
-          Math.min(RUNTIME_SERVICE_RETRY_BASE_MS * 2 ** exponent, RUNTIME_SERVICE_RETRY_CAP_MS),
-        );
+        scheduleNext(succeeded ? "poll" : "retry");
       });
     attempt = { controller, promise, releaseDeadline };
     return promise;
+  };
+
+  const retireInspection = () => {
+    clearSchedule();
+    const predecessor = attempt;
+    attempt = null;
+    predecessor?.controller.abort();
+    predecessor?.releaseDeadline();
   };
 
   return {
@@ -160,28 +167,23 @@ export function createRuntimeServiceController<Capabilities>(
     refresh() {
       return inspect(true);
     },
-    recover() {
+    replace() {
       if (!active) return Promise.resolve();
-      clearSchedule();
-      const predecessor = attempt;
-      if (predecessor) {
-        // Abort is the cooperative path. Releasing the inspection deadline is
-        // the non-cooperative path that lets the successor start in this turn;
-        // the foreign promise remains observed by Promise.race.
-        attempt = null;
-        predecessor.controller.abort();
-        predecessor.releaseDeadline();
-      }
+      retireInspection();
+      failures = 0;
       return inspect(false);
+    },
+    recover() {
+      if (!active) return;
+      retireInspection();
+      failures += 1;
+      scheduleNext("retry");
     },
     dispose() {
       if (!active) return;
       active = false;
       monitoring = false;
-      clearSchedule();
-      attempt?.releaseDeadline();
-      attempt?.controller.abort();
-      attempt = null;
+      retireInspection();
     },
   };
 }

@@ -88,23 +88,43 @@ describe("runtime service controller", () => {
     expect(target.replace).toHaveBeenCalledWith(inspection);
   });
 
-  it("silently recovers a consumer-reported connection loss", async () => {
-    const inspector: RuntimeConnectionInspector<ServerCapabilities> = {
-      inspect: vi.fn().mockRejectedValue(new Error("connection refused")),
-    };
+  it("backs off repeated stream losses even when every inspection succeeds", async () => {
+    vi.useFakeTimers();
+    const inspector = { inspect: vi.fn().mockResolvedValue(inspection) };
     const target = sink();
     const controller = createRuntimeServiceController(inspector, target);
+    try {
+      controller.start();
+      await vi.advanceTimersByTimeAsync(0);
+      for (const delay of [1_000, 2_000, 4_000, 8_000, 16_000, 30_000, 30_000]) {
+        const calls = inspector.inspect.mock.calls.length;
+        controller.recover();
+        await vi.advanceTimersByTimeAsync(delay - 1);
+        expect(inspector.inspect).toHaveBeenCalledTimes(calls);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(inspector.inspect).toHaveBeenCalledTimes(calls + 1);
+      }
+      expect(target.checking).toHaveBeenCalledOnce();
+      expect(target.unavailable).not.toHaveBeenCalled();
 
-    await controller.recover();
+      await vi.advanceTimersByTimeAsync(RUNTIME_SERVICE_HEALTHY_POLL_MS);
+      const calls = inspector.inspect.mock.calls.length;
+      controller.recover();
+      await vi.advanceTimersByTimeAsync(RUNTIME_SERVICE_RETRY_BASE_MS);
+      expect(inspector.inspect).toHaveBeenCalledTimes(calls + 1);
 
-    expect(target.checking).not.toHaveBeenCalled();
-    expect(target.unavailable).toHaveBeenCalledWith({
-      reason: "failed",
-      detail: "connection refused",
-    });
+      controller.recover();
+      controller.dispose();
+      await vi.advanceTimersByTimeAsync(RUNTIME_SERVICE_RETRY_CAP_MS);
+      expect(inspector.inspect).toHaveBeenCalledTimes(calls + 1);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      controller.dispose();
+      vi.useRealTimers();
+    }
   });
 
-  it("supersedes an older inspection before starting recovery", async () => {
+  it("supersedes an older inspection when replacing the endpoint", async () => {
     let settle: (value: RuntimeConnectionInspection<ServerCapabilities>) => void = () => undefined;
     const inspector: RuntimeConnectionInspector<ServerCapabilities> = {
       inspect: vi
@@ -121,7 +141,7 @@ describe("runtime service controller", () => {
     const controller = createRuntimeServiceController(inspector, target);
 
     const older = controller.refresh();
-    const recovery = controller.recover();
+    const recovery = controller.replace();
     expect(inspector.inspect).toHaveBeenCalledTimes(2);
     await older;
     settle(inspection);

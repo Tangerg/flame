@@ -7,10 +7,7 @@ import {
 } from "@/lib/asyncOwnership";
 import type { WorkspaceEventLike } from "../domain/eventInvalidation";
 import type { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/services";
-import { delayUntilAborted } from "@/lib/abortableDelay";
 
-const RECONNECT_BASE_MS = 1_000;
-const RECONNECT_CAP_MS = 30_000;
 const EVENT_OPENING_TIMEOUT_MS = 10_000;
 const RETARGET = Symbol("workspace-events.retarget");
 
@@ -101,7 +98,6 @@ async function subscribeLoop(
   watchTarget: () => WorkspaceWatchTarget,
   setIterAbort: (controller: AbortController | null) => void,
 ): Promise<void> {
-  let attempt = 0;
   while (!signal.aborted) {
     const iter = new AbortController();
     setIterAbort(iter);
@@ -123,7 +119,6 @@ async function subscribeLoop(
       const iterator = events[Symbol.asyncIterator]();
       let iteratorDone = false;
       try {
-        attempt = 0;
         deps.invalidateAll();
         let lastSequence = 0;
         while (!iter.signal.aborted) {
@@ -161,33 +156,13 @@ async function subscribeLoop(
     }
     if (signal.aborted) return;
     if (iter.signal.reason === RETARGET) {
-      attempt = 0;
       continue;
     }
     // An RPC stream ending without outer cancellation is also a connection
     // signal. Let the Runtime context withdraw this exact connection and recover
     // instead of allowing this consumer to guess global connection health.
     deps.reportDisconnect(connectionGeneration, failure);
-    // The connection owner withdraws the generation synchronously. That aborts
-    // this exact loop before its asynchronous recovery inspection begins; do not
-    // leave a predecessor reconnect timer behind that boundary.
-    if (signal.aborted) return;
-    const backoff = new AbortController();
-    setIterAbort(backoff);
-    const abortBackoff = () => backoff.abort();
-    signal.addEventListener("abort", abortBackoff, { once: true });
-    await delayUntilAborted(
-      Math.min(RECONNECT_BASE_MS * 2 ** attempt, RECONNECT_CAP_MS),
-      backoff.signal,
-    );
-    signal.removeEventListener("abort", abortBackoff);
-    setIterAbort(null);
-    if (signal.aborted) return;
-    if (backoff.signal.reason === RETARGET) {
-      attempt = 0;
-      continue;
-    }
-    attempt += 1;
+    return;
   }
 }
 

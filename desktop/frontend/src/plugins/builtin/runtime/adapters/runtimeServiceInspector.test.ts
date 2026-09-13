@@ -62,6 +62,26 @@ function sidecar(overrides: Partial<SidecarClient> = {}): SidecarClient {
 afterEach(resetContainer);
 
 describe("runtime service inspector", () => {
+  it("resolves the active endpoint clients for each inspection", async () => {
+    const previousSidecar = sidecar();
+    const previousRuntime = runtimeClient();
+    let activeSidecar = previousSidecar;
+    let activeRuntime = previousRuntime;
+    setContainer({ sidecar: () => activeSidecar, client: () => activeRuntime });
+    const inspector = runtimeServiceInspector();
+    const signal = new AbortController().signal;
+    await inspector.inspect(signal);
+
+    activeSidecar = sidecar();
+    activeRuntime = runtimeClient();
+    await inspector.inspect(signal);
+
+    expect(previousSidecar.info).toHaveBeenCalledTimes(1);
+    expect(previousRuntime.runtime.discover).toHaveBeenCalledTimes(1);
+    expect(activeSidecar.info).toHaveBeenCalledTimes(1);
+    expect(activeRuntime.runtime.discover).toHaveBeenCalledTimes(1);
+  });
+
   it("consumes all sidecars and removes their HTTP representation", async () => {
     const client = sidecar();
     const runtime = runtimeClient();
