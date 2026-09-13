@@ -597,6 +597,11 @@ export const zh: Record<string, string> = {
   "session.status.waiting": "等待输入",
 
   "agent.runTree.delegated.one": "子智能体",
+  "subagents.title": "子智能体",
+  "subagents.active": "进行中",
+  "subagents.completed": "已完成",
+  "subagents.empty": "暂无子智能体",
+  "subagents.unavailable": "此子智能体已不可用",
   "agent.runTree.delegated.many": "子智能体 {{index}} / {{count}}",
   "agent.runTree.status.running": "运行中",
   "agent.runTree.status.waiting": "等待输入",
@@ -609,7 +614,6 @@ export const zh: Record<string, string> = {
   "agent.runOutcome.maxBudget": "已达到预算上限",
   "agent.steps_other": "{{count}} 步",
   "agent.working": "正在处理",
-  "agent.runTree.action.audit": "打开完整运行审计",
   "agent.runTree.action.cancel": "取消此次运行",
   "agent.runTree.material.empty": "暂无叙事内容。",
 

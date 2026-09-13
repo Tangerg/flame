@@ -1,5 +1,7 @@
 export {
   WORKSPACE_DOCK_CATALOG,
+  useWorkspaceSubagentRunId,
+  openWorkspaceSubagentRun,
   WORKSPACE_SETTINGS_VIEW,
   activateWorkspaceSessionScope,
   closeActiveWorkspaceDockView,

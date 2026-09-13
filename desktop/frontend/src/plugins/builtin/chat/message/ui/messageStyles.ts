@@ -90,12 +90,6 @@ export const messageStyles = stylex.create({
     paddingInline: space.s3,
     paddingBlock: space.s2,
   },
-  delegatedBody: {
-    minWidth: 0,
-    textWrap: "pretty",
-    lineHeight: leading.prose,
-    color: color.fgSoft,
-  },
   delegatedBubble: {
     borderRadius: radius.card,
     backgroundColor: surface.sunken,

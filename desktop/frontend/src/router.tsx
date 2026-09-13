@@ -22,6 +22,7 @@ interface AppSearch {
   view?: string;
   dock?: string;
   settings?: string;
+  subagent?: string;
 }
 
 function locationFrom(read: (key: string) => unknown): AppLocation {
@@ -34,6 +35,7 @@ function locationFrom(read: (key: string) => unknown): AppLocation {
     view: param("view"),
     dock: param("dock"),
     settings: param("settings"),
+    subagent: param("subagent"),
   };
 }
 
@@ -50,6 +52,7 @@ function searchOf(location: AppLocation): AppSearch {
     view: location.view ?? undefined,
     dock: location.dock ?? undefined,
     settings: location.settings ?? undefined,
+    subagent: location.subagent ?? undefined,
   };
 }
 

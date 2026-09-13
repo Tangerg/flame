@@ -1,6 +1,6 @@
 // OWNERSHIP RULE: the location owns where you ARE, stores own what you KEPT. A transition
 // may read memory to seed a navigation; nothing writes memory back into the location, and
-// nothing keeps a second copy of these four scalars.
+// nothing keeps a second copy of these location fields.
 
 import { createSingletonPort } from "./ports/singletonPort";
 
@@ -13,6 +13,8 @@ export interface AppLocation {
   dock: string | null;
   /** The open settings pane; null when settings are closed. */
   settings: string | null;
+  /** Selected delegated Run within the active session. */
+  subagent: string | null;
 }
 
 export const EMPTY_LOCATION: AppLocation = {
@@ -20,6 +22,7 @@ export const EMPTY_LOCATION: AppLocation = {
   view: null,
   dock: null,
   settings: null,
+  subagent: null,
 };
 
 export type LocationPatch = Partial<AppLocation>;
@@ -49,11 +52,21 @@ export const configureNavigator = port.configure;
 export const navigator = port.get;
 
 export function applyPatch(location: AppLocation, patch: LocationPatch): AppLocation {
-  return { ...location, ...patch };
+  return {
+    ...location,
+    ...(patch.session !== undefined && patch.session !== location.session
+      ? { subagent: null }
+      : {}),
+    ...patch,
+  };
 }
 
 export function sameLocation(a: AppLocation, b: AppLocation): boolean {
   return (
-    a.session === b.session && a.view === b.view && a.dock === b.dock && a.settings === b.settings
+    a.session === b.session &&
+    a.view === b.view &&
+    a.dock === b.dock &&
+    a.settings === b.settings &&
+    a.subagent === b.subagent
   );
 }

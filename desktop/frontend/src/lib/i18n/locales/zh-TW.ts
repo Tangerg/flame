@@ -461,6 +461,11 @@ export const zhTW: Record<string, string> = {
   "session.status.waiting": "等待輸入",
 
   "agent.runTree.delegated.one": "子代理",
+  "subagents.title": "子代理",
+  "subagents.active": "進行中",
+  "subagents.completed": "已完成",
+  "subagents.empty": "尚無子代理",
+  "subagents.unavailable": "此子代理已無法使用",
   "agent.runTree.delegated.many": "子代理 {{index}} / {{count}}",
   "agent.runTree.status.running": "執行中",
   "agent.runTree.status.waiting": "等待輸入",
@@ -473,7 +478,6 @@ export const zhTW: Record<string, string> = {
   "agent.runOutcome.maxBudget": "已達預算上限",
   "agent.steps_other": "{{count}} 步",
   "agent.working": "正在處理",
-  "agent.runTree.action.audit": "開啟完整執行稽核",
   "agent.runTree.action.cancel": "取消此次執行",
   "agent.runTree.material.empty": "尚無敘事內容。",
 

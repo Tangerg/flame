@@ -461,6 +461,11 @@ export const ja: Record<string, string> = {
   "session.status.waiting": "入力待ち",
 
   "agent.runTree.delegated.one": "サブエージェント",
+  "subagents.title": "サブエージェント",
+  "subagents.active": "実行中",
+  "subagents.completed": "完了",
+  "subagents.empty": "サブエージェントはまだありません",
+  "subagents.unavailable": "このサブエージェントは利用できません",
   "agent.runTree.delegated.many": "サブエージェント {{index}} / {{count}}",
   "agent.runTree.status.running": "実行中",
   "agent.runTree.status.waiting": "入力待ち",
@@ -473,7 +478,6 @@ export const ja: Record<string, string> = {
   "agent.runOutcome.maxBudget": "予算上限に到達",
   "agent.steps_other": "{{count}} ステップ",
   "agent.working": "処理中",
-  "agent.runTree.action.audit": "完全な実行監査を開く",
   "agent.runTree.action.cancel": "この実行をキャンセル",
   "agent.runTree.material.empty": "ナラティブはまだありません。",
 

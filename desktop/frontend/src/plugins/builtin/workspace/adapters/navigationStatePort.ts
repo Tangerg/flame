@@ -42,6 +42,11 @@ export function installWorkspaceNavigationPort(): () => void {
       viewIds: useContextDockStore((state) => state.dockViewIds),
       activeViewId: navigator().use((location) => location.dock),
     }),
+    useSubagentRunId: () => navigator().use((location) => location.subagent),
+    openSubagentRun: (runId) => {
+      useContextDockStore.getState().adoptDockLocation("subagents");
+      navigator().go({ view: null, dock: "subagents", subagent: runId });
+    },
     useFileFocus: () => useContextDockStore((state) => state.fileFocus),
     useFileViewer: () => useContextDockStore((state) => state.fileViewer),
     useSettingsPaneTarget: () => navigator().use((location) => location.settings),

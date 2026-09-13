@@ -195,55 +195,87 @@ test("delegated narrative stays under its exact spawning Item anchor", async ({ 
   await expect(spawningItem.getByRole("button", { name: /Sub-agent/ }).first()).toBeVisible();
 });
 
-test("a delegated sub-agent reads as a nested line, not a card", async ({ page }) => {
+test("delegated links keep child conversations in the right dock", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=delegated");
   await page.locator("html[data-visual-ready]").waitFor();
-
-  const rows = page.getByRole("button", { name: /Sub-agent/ });
-  await expect(rows).toHaveCount(6);
-
-  await expect(rows.nth(0)).toContainText("Needs input");
-  await expect(rows.nth(1)).toContainText("Running");
-  const nesting = await rows.nth(1).evaluate((deep, shallowId) => {
-    const shallow = document.getElementById(shallowId);
-    return shallow ? shallow.contains(deep) : null;
-  }, "item_delegate");
-  expect(nesting).toBe(true);
-
-  const shell = await rows.nth(0).evaluate((row) => {
-    const style = getComputedStyle(row);
-    return { background: style.backgroundColor, radius: style.borderTopLeftRadius };
-  });
-  expect(shell.background).toBe("rgba(0, 0, 0, 0)");
+  const root = page.locator("#item_delegate");
+  await expect(page.locator('[data-slot="delegated-run-link"]')).toHaveCount(5);
+  await expect(page.getByText("Package graph verification is still running.")).toHaveCount(0);
+  await root.getByRole("button", { name: /Sub-agent/ }).click();
+  const panel = page.locator('[data-dock-view-id="subagents"]');
+  await expect(panel).toBeVisible();
+  await expect(root).toBeVisible();
+  await expect(panel.locator('[data-slot="approval-surface"]')).toBeVisible();
+  await expect(panel.locator('[data-run-id="run_nested"]')).toBeVisible();
+  await panel
+    .locator('[data-run-id="run_nested"]')
+    .getByRole("button", { name: /Sub-agent/ })
+    .click();
+  await expect(panel.getByText("Package graph verification is still running.")).toBeVisible();
+  await expect(root).toBeVisible();
+  await panel.getByRole("button", { name: "Subagents", exact: true }).click();
+  await expect(panel.locator('[data-slot="delegated-run-link"]')).toHaveCount(6);
 });
 
-test("a sub-agent's own delegation indents one step further, from both sides", async ({ page }) => {
+test("the subagent transcript follows new output and respects reading above the tail", async ({
+  page,
+}) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=delegated");
   await page.locator("html[data-visual-ready]").waitFor();
-
-  await page.locator("[aria-expanded='false']").filter({ hasText: "Sub-agent" }).first().click();
-  await expect(page.getByText("Package graph verification is still running.")).toBeVisible();
-
-  const boxes = await page.evaluate(() =>
-    Object.fromEntries(
-      [...document.querySelectorAll("[data-block-anchor]")].map((element) => [
-        element.getAttribute("data-block-anchor"),
-        {
-          x: Math.round(element.getBoundingClientRect().x),
-          width: Math.round(element.getBoundingClientRect().width),
-        },
-      ]),
-    ),
-  );
-
-  const root = boxes["turn:item_response:b:0"]!;
-  const child = boxes["turn:item_child_response:b:0"]!;
-  const grandchild = boxes["turn:item_nested_response:b:0"]!;
-  const step = child.x - root.x;
-  expect(step).toBeGreaterThan(0);
-  expect(grandchild.x - child.x).toBe(step);
-  expect(root.width - child.width).toBe(step * 2);
-  expect(child.width - grandchild.width).toBe(step * 2);
+  await page
+    .locator("#item_delegate")
+    .getByRole("button", { name: /Sub-agent/ })
+    .click();
+  const panel = page.locator('[data-dock-view-id="subagents"]');
+  await expect(panel.locator('[data-slot="approval-surface"]')).toBeVisible();
+  const transcript = panel.getByRole("region", { name: "Sub-agent", exact: true });
+  const scroller = transcript.locator("..");
+  const append = async (count: number) => {
+    await page.evaluate(async (count) => {
+      const storePath = "/src/plugins/builtin/agent/adapters/agentStore.ts";
+      const fixturePath = "/visual/agentSessionSnapshots.ts";
+      const { useAgentStore } = (await import(
+        storePath
+      )) as typeof import("../src/plugins/builtin/agent/adapters/agentStore");
+      const { VISUAL_SESSION_ID } = (await import(
+        fixturePath
+      )) as typeof import("./agentSessionSnapshots");
+      const store = useAgentStore.getState();
+      const view = store.sessions[VISUAL_SESSION_ID]!.view;
+      const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, true);
+      if (!refresh) throw new Error("Expected a refresh token");
+      const message = {
+        id: "subagent-progress",
+        role: "assistant" as const,
+        runId: "run_child",
+        phase: "commentary" as const,
+        blocks: [
+          {
+            kind: "text" as const,
+            status: "running" as const,
+            text: Array.from({ length: count }, (_, i) => `Review line ${i}`).join("\n\n"),
+          },
+        ],
+      };
+      store.commitViewRefresh(VISUAL_SESSION_ID, refresh, {
+        ...view,
+        messages: [...view.messages.filter((m) => m.id !== message.id), message],
+      });
+    }, count);
+  };
+  await append(40);
+  await expect
+    .poll(() => scroller.evaluate((e) => e.scrollHeight - e.clientHeight - e.scrollTop))
+    .toBeLessThan(2);
+  await scroller.hover();
+  await page.mouse.wheel(0, -500);
+  await expect
+    .poll(() => scroller.evaluate((e) => e.scrollHeight - e.clientHeight - e.scrollTop))
+    .toBeGreaterThan(100);
+  const top = await scroller.evaluate((e) => e.scrollTop);
+  await append(50);
+  await expect(transcript.getByText("Review line 49")).toBeAttached();
+  await expect.poll(() => scroller.evaluate((e) => e.scrollTop)).toBe(top);
 });
 
 test("running composer exposes both steer and stop actions without unnamed controls", async ({
@@ -1544,26 +1576,23 @@ test("a question the run was canceled out from under says so in one line", async
   await expect(page.getByRole("textbox", { name: "Scope" })).toHaveCount(0);
 });
 
-test("a second delegation keeps every sub-agent, and its own status column", async ({ page }) => {
+test("every sibling keeps its own status and child approval target", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=delegated");
   await page.locator("html[data-visual-ready]").waitFor();
-
-  await expect(page.getByRole("button", { name: /\d+ calls/ })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /Sub-agent/ })).toHaveCount(6);
-  await expect(page.locator('[data-slot="approval-surface"]')).toBeVisible();
-
-  const ends = await page
-    .locator("#item_fanout [data-slot='agent-activity-disclosure']")
-    .evaluateAll((rows) =>
-      rows.flatMap((row) => {
-        const steps = [...row.querySelectorAll("span")].find((span) =>
-          /steps?$/.test((span.textContent ?? "").trim()),
-        );
-        return steps ? [Math.round(steps.getBoundingClientRect().right)] : [];
-      }),
-    );
-  expect(ends).toHaveLength(4);
-  expect(new Set(ends).size).toBe(1);
+  const siblings = page.locator('#item_fanout [data-slot="delegated-run-link"]');
+  await expect(siblings).toHaveCount(4);
+  await page
+    .locator("#item_delegate")
+    .getByRole("button", { name: /Sub-agent/ })
+    .click();
+  const panel = page.locator('[data-dock-view-id="subagents"]');
+  await panel.getByRole("button", { name: "Allow once", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-visual-resumed-run", "run_root");
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-visual-resumed-item",
+    "item_child_approval",
+  );
+  await expect(siblings).toHaveCount(4);
 });
 
 const GOAL_CONTROLS: ReadonlyArray<{ state: string; label: string; actions: string[] }> = [
@@ -1704,15 +1733,19 @@ for (const theme of ["light", "dark"] as const) {
 }
 
 for (const theme of ["light", "dark"] as const) {
-  test(`agent delegated card ${theme}`, async ({ page }) => {
+  test(`agent subagent panel ${theme}`, async ({ page }) => {
     await page.goto(`/visual/?fixture=agent&theme=${theme}&state=delegated`);
     await page.locator("html[data-visual-ready]").waitFor();
     await layOutTranscript(page);
     await freezeVisualClock(page);
 
-    const card = page.locator('[data-shell="card"]').first();
-    await expect(card).toBeVisible();
-    await expect(card).toHaveScreenshot(`agent-${theme}-delegated-card.png`);
+    await page
+      .locator("#item_delegate")
+      .getByRole("button", { name: /Sub-agent/ })
+      .click();
+    const card = page.locator('[data-dock-view-id="subagents"]');
+    await expect(card.locator('[data-slot="approval-surface"]')).toBeVisible();
+    await expect(card).toHaveScreenshot(`agent-${theme}-subagent-panel.png`);
   });
 }
 

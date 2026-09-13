@@ -62,7 +62,7 @@ Session
 | ----------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
 | `Session`                                 | Work Index                                     | 可恢复、可继续、可 fork 的 agent 工作上下文                               |
 | root `Run`                                | Agent Narrative                                | 用户发起的一条主执行；composer、plan 与顶层 status 只跟随当前 root        |
-| delegated `Run`                           | Agent Narrative disclosure + Context Dock      | 由准确 `spawnedByItemId` 挂到父 task；默认摘要，按需展开                   |
+| delegated `Run`                           | Agent Narrative link + Subagents Dock      | Anchored by exact `spawnedByItemId`; compact status links open the Run in the right dock                   |
 | `RunRef` lineage                          | Context Dock Timeline                          | parent/root/source identity 的 durable 审计树                              |
 | `Segment`                                 | 不单独占据导航区域                             | 同一 Run 的执行/等待/续跑边界；用于生命周期与恢复，不冒充新 Run            |
 | `Item`                                    | Agent Narrative                                | message、reasoning、plan、tool call、question 等 durable source-owned 单元；terminal AgentMessage phase 区分过程与最终回答 |
@@ -121,7 +121,7 @@ Agent Narrative 是主舞台。它承载用户和 agent 的共同时间线。
 - session header：title、status、overflow actions；模型、权限和 context 占用留在 Composer control rung，不在标题右侧重复。
 - root transcript：全部 root-owned user / assistant turns。
 - work/final hierarchy：commentary、reasoning、tool activity 组成可折叠 work narrative；最终回答是独立 message row，只有该 row 拥有 message actions。
-- delegated disclosure：按 `spawnedByItemId` 锚定的 child / sibling / nested narrative。
+- Delegated Run links stay under their exact `spawnedByItemId`. Opening a link selects its Run in the Subagents dock without replacing the parent conversation. Nested delegation uses the same navigation.
 - run progress：当前 root plan；每个 delegated Run 自己的 reasoning、plan、progress、usage。
 - HITL：approval、question、client tool result。
 - composer：draft、attachments、permission/model controls、send/stop。
@@ -134,7 +134,9 @@ Agent Narrative 不负责重新发明 tree 事实：
 - 不把 child Item 拼进 root assistant turn；
 - 不把 commentary/tool work 与 terminal final answer 拼进同一 Assistant row，也不按位置猜 phase；
 - 不用一个 `running: boolean` 表达 waiting/finished/error/canceled；
-- cancel target 永远是 disclosure 对应的 exact RunID，UI 不先伪造 terminal。
+- Cancellation targets the selected exact RunID. Approval and question responses target the root interrupt set and exact child Item; the UI never invents terminal state.
+
+The URL owns the selected subagent Run ID. Changing sessions clears it; browser history restores it. The Subagents dock projects the existing transcript facts, including live output and interrupts, without another cache or event subscription. Its list groups active and completed Runs.
 
 ### 3.3 Context Dock
 
@@ -329,7 +331,7 @@ plugins/builtin/workspace/application/
 - Agent Narrative 只消费 Agent public conversation / Run / HITL language，不读取 Agent
   Store 或 Runtime wire。
 - Agent context 以一份 `AgentSessionView` 保存 normalized `runsById` 与 source-owned
-  material；root narrative、delegated disclosures 和 Session-wide audit 都是 selector。
+  material；root narrative、delegated links / dock transcripts 和 Session-wide audit 都是 selector。
 - Runtime AgentMessage phase 经 adapter 进入同一 `AgentSessionView`；fold 可在 terminal frame 到达时把 provisional text 从 commentary rehome 到稳定 `final:<itemId>` row，但不得新增第二 transcript store/writer。
 - `agent/public/run.ts` 的 current-root、active-Session 与 exact-Run command 名称不能互换。
 - app-global surface state 与 session/cwd-scoped dock state 不应混在同一个 store shape。

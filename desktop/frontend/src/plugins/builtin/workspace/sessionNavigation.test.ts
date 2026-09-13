@@ -89,6 +89,26 @@ describe("workspace session navigation", () => {
     });
   });
 
+  it("opens a subagent deep link before the open-session list has hydrated", async () => {
+    agentSession.setOpen([]);
+    navigator().go({ session: "s1", dock: "subagents", subagent: "child" });
+    useContextDockStore.setState({
+      activeSessionScopeId: null,
+      sessionScopes: new Map(),
+      dockViewIds: [],
+      lastViewId: null,
+    });
+
+    await loadPluginsForTest(ports, sessionNavigation);
+
+    expect(navigator().get()).toMatchObject({
+      session: "s1",
+      dock: "subagents",
+      subagent: "child",
+    });
+    expect(useContextDockStore.getState().dockViewIds).toEqual(["subagents"]);
+  });
+
   it("restores the dock destination the session it moves to remembers", async () => {
     await loadPluginsForTest(ports, sessionNavigation);
     useContextDockStore.getState().adoptDockLocation("diff");

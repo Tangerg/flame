@@ -460,6 +460,11 @@ export const ko: Record<string, string> = {
   "session.status.waiting": "입력 대기",
 
   "agent.runTree.delegated.one": "서브에이전트",
+  "subagents.title": "서브에이전트",
+  "subagents.active": "진행 중",
+  "subagents.completed": "완료",
+  "subagents.empty": "아직 서브에이전트가 없습니다",
+  "subagents.unavailable": "이 서브에이전트는 더 이상 사용할 수 없습니다",
   "agent.runTree.delegated.many": "서브에이전트 {{index}} / {{count}}",
   "agent.runTree.status.running": "실행 중",
   "agent.runTree.status.waiting": "입력 필요",
@@ -472,7 +477,6 @@ export const ko: Record<string, string> = {
   "agent.runOutcome.maxBudget": "예산 한도에 도달함",
   "agent.steps_other": "{{count}}단계",
   "agent.working": "처리 중",
-  "agent.runTree.action.audit": "전체 실행 감사 열기",
   "agent.runTree.action.cancel": "이 실행 취소",
   "agent.runTree.material.empty": "아직 내러티브 내용이 없습니다.",
 

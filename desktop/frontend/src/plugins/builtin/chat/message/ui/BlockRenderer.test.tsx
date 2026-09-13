@@ -1,3 +1,4 @@
+import { navigator } from "@/lib/navigation";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AgentRunView, Message, ToolCall } from "@/plugins/sdk/types/agentSessionView";
@@ -81,7 +82,7 @@ function renderRootTool(toolCallId: string, facts: TurnFacts) {
 }
 
 describe("delegated Run rendering", () => {
-  it("mounts child and nested narratives under their exact parent task Items", () => {
+  it("opens a child in the dock without expanding descendants into its parent", () => {
     const parentTool = tool("task-root");
     const nestedTool = { ...tool("task-child"), runId: "child-run" };
     const facts: TurnFacts = {
@@ -110,13 +111,14 @@ describe("delegated Run rendering", () => {
     expect(screen.queryByText("No narrative material yet.")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: /Sub-agent/ }));
-    expect(screen.getAllByText("Sub-agent")).toHaveLength(2);
+    expect(navigator().get()).toMatchObject({ dock: "subagents", subagent: "child-run" });
+    expect(screen.getAllByText("Sub-agent")).toHaveLength(1);
 
     const taskAnchors = document.querySelectorAll("#task-root, #task-child");
-    expect(taskAnchors).toHaveLength(2);
+    expect(taskAnchors).toHaveLength(1);
   });
 
-  it("targets the exact descendant Run when its disclosure is canceled", () => {
+  it("targets the exact descendant Run when its stop action is used", () => {
     agentRunCommands.cancel.mockClear();
     const parentTool = tool("task-root");
     const facts: TurnFacts = {

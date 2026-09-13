@@ -171,3 +171,11 @@ export function activateWorkspaceSessionScope(sessionId: string): void {
 export function forgetWorkspaceSessionScopes(openSessionIds: string[]): void {
   workspaceNavigation().forgetSessionScopes(openSessionIds);
 }
+
+export function useWorkspaceSubagentRunId(): string | null {
+  return workspaceNavigation().useSubagentRunId();
+}
+
+export function openWorkspaceSubagentRun(runId: string | null): void {
+  workspaceNavigation().openSubagentRun(runId);
+}

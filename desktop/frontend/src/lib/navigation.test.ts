@@ -17,6 +17,7 @@ describe("a location patch", () => {
       view: null,
       dock: "review",
       settings: null,
+      subagent: null,
     });
   });
 

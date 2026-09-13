@@ -70,6 +70,7 @@ import { tasksPill } from "./workspace/tasks";
 import { appearancePlugins } from "./theme";
 import toaster from "./shell/toaster";
 import { toolActions, toolIcons } from "./chat/tools/toolMeta";
+import { subagentsView } from "./chat/message/subagents";
 import { taskPreview } from "./chat/message/taskPreview";
 import toolViewOpener from "./workspace/tool-view-opener";
 import {
@@ -188,6 +189,7 @@ const panes: AnyPlugin[] = [
   diffView,
   fileView,
   planView,
+  subagentsView,
   timelineView,
   toolsView,
   skillsView,

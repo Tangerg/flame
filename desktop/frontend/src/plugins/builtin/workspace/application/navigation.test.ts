@@ -6,6 +6,7 @@ import {
 import { navigator } from "@/lib/navigation";
 import {
   WORKSPACE_DOCK_CATALOG,
+  openWorkspaceSubagentRun,
   activateWorkspaceSessionScope,
   closeActiveWorkspaceDockView,
   closeAllWorkspaceDockViews,
@@ -240,4 +241,22 @@ describe("workspace navigation port", () => {
 
     expect(document.activeElement).toBe(button);
   });
+});
+
+it("keeps subagent selection in session-scoped history without replacing the main conversation", () => {
+  navigator().go({ session: "parent-session" });
+  openWorkspaceSubagentRun("child-run");
+  expect(navigator().get()).toMatchObject({
+    session: "parent-session",
+    view: null,
+    dock: "subagents",
+    subagent: "child-run",
+  });
+  openWorkspaceSubagentRun("nested-run");
+  navigator().back();
+  expect(navigator().get().subagent).toBe("child-run");
+  navigator().go({ session: "other-session" });
+  expect(navigator().get().subagent).toBeNull();
+  navigator().back();
+  expect(navigator().get()).toMatchObject({ session: "parent-session", subagent: "child-run" });
 });

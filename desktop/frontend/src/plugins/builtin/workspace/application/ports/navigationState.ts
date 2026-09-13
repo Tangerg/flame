@@ -38,6 +38,8 @@ interface WorkspaceNavigationPort {
   useActiveViewId(): string | null;
   useDock(): WorkspaceDockSnapshot;
   useFileFocus(): WorkspaceFileFocusSnapshot;
+  useSubagentRunId(): string | null;
+  openSubagentRun(runId: string | null): void;
   useFileViewer(): WorkspaceFileViewer | null;
   useSettingsPaneTarget(): string | null;
   useExpandedToolIds(): Set<string>;

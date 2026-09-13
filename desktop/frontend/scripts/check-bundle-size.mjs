@@ -126,6 +126,7 @@ const LAZY_FEATURES = [
       "plan-",
       "search-",
       "skills-",
+      "SubagentsPanel-",
       "timeline-",
       "tools-",
     ],

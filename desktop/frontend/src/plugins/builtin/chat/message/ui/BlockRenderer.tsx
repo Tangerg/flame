@@ -13,7 +13,7 @@ import { messageBlockRenderUnits, narratedBlocks } from "../application/messageB
 import { BLOCK_ANCHOR_ATTR, renderUnitAnchor } from "../application/renderUnitAnchor";
 import { unitSeam } from "../application/renderUnitRhythm";
 import { seamStep } from "./messageStyles";
-import { DelegatedNarrative } from "./DelegatedNarrative";
+import { DelegatedRunLink } from "./DelegatedRunLink";
 import { NarrativeWave } from "./NarrativeWave";
 
 export function renderBlock(
@@ -54,14 +54,11 @@ export function renderBlock(
             onToggleExpand={() => ctx.onToggleExpand(block.toolCallId)}
           />
           {delegatedRuns.map((narrative, index) => (
-            <DelegatedNarrative
+            <DelegatedRunLink
               key={narrative.run.id}
-              narrative={narrative}
+              run={narrative.run}
               ordinal={index + 1}
               siblingCount={delegatedRuns.length}
-              facts={facts}
-              ctx={ctx}
-              renderMessageBlocks={renderMessageBlocks}
             />
           ))}
         </div>

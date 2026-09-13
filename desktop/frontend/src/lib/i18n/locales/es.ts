@@ -482,6 +482,11 @@ export const es: Record<string, string> = {
   "session.status.waiting": "Esperando entrada",
 
   "agent.runTree.delegated.one": "Subagente",
+  "subagents.title": "Subagentes",
+  "subagents.active": "En curso",
+  "subagents.completed": "Completados",
+  "subagents.empty": "Aún no hay subagentes",
+  "subagents.unavailable": "Este subagente ya no está disponible",
   "agent.runTree.delegated.many": "Subagente {{index}} de {{count}}",
   "agent.runTree.status.running": "Ejecutando",
   "agent.runTree.status.waiting": "Necesita entrada",
@@ -496,7 +501,6 @@ export const es: Record<string, string> = {
   "agent.steps_many": "{{count}} pasos",
   "agent.steps_other": "{{count}} pasos",
   "agent.working": "Trabajando",
-  "agent.runTree.action.audit": "Abrir auditoría completa",
   "agent.runTree.action.cancel": "Cancelar esta ejecución",
   "agent.runTree.material.empty": "Aún no hay contenido narrativo.",
 

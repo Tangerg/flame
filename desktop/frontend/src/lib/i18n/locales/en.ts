@@ -630,6 +630,11 @@ export const en: Record<string, string> = {
   "session.status.waiting": "Needs input",
 
   "agent.runTree.delegated.one": "Sub-agent",
+  "subagents.title": "Subagents",
+  "subagents.active": "Active",
+  "subagents.completed": "Completed",
+  "subagents.empty": "No subagents yet",
+  "subagents.unavailable": "This subagent is no longer available",
   "agent.runTree.delegated.many": "Sub-agent {{index}} of {{count}}",
   "agent.runTree.status.running": "Running",
   "agent.runTree.status.waiting": "Needs input",
@@ -643,7 +648,6 @@ export const en: Record<string, string> = {
   "agent.steps_one": "{{count}} step",
   "agent.steps_other": "{{count}} steps",
   "agent.working": "Working",
-  "agent.runTree.action.audit": "Open full run audit",
   "agent.runTree.action.cancel": "Cancel this run",
   "agent.runTree.material.empty": "No narrative material yet.",
 

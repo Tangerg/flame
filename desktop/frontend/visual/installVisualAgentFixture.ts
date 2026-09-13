@@ -1,3 +1,4 @@
+import { subagentsView } from "@/plugins/builtin/chat/message/subagents";
 import { installAgentStatePorts } from "@/plugins/builtin/agent/adapters/agentStatePorts";
 import { navigator } from "@/lib/navigation";
 import { useAgentSessionStore } from "@/plugins/builtin/agent/adapters/agentSessionStore";
@@ -318,6 +319,7 @@ export async function installVisualAgentFixture(
     messageFeedback,
     goal,
     planProgress,
+    subagentsView,
     schedulesPane,
     ...toolRenderingPlugins,
     fileHeadProvider,

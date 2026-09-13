@@ -25,8 +25,8 @@ export function syncWorkspaceSessionLifecycle(
  * only activates the current scope and forgets scopes for closed sessions.
  */
 export function bindWorkspaceSessionNavigation(ports: WorkspaceSessionNavigationPorts): () => void {
-  ports.activateSessionScope(ports.getActiveSessionId());
   ports.forgetSessionScopes(ports.getLifecycleSnapshot().openSessionIds);
+  ports.activateSessionScope(ports.getActiveSessionId());
 
   const unsubscribeSession = ports.subscribeActiveSessionId((sessionId) => {
     ports.activateSessionScope(sessionId);
