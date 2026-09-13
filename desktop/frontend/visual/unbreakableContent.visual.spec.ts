@@ -88,10 +88,8 @@ const DOCK_STATES = [
   "dock-review",
   "dock-inbox",
   "dock-agent-memory",
-  "dock-recipes",
   "dock-knowledge",
   "dock-timeline",
-  "dock-notifications",
 ];
 
 test("a dock view keeps an unbreakable run inside its pane", async ({ page }) => {

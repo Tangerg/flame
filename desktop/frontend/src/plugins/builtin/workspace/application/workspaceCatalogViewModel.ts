@@ -29,22 +29,6 @@ export interface WorkspaceSkillRowViewModel {
   scope: "project" | "user";
 }
 
-export interface WorkspaceRecipeCatalogEntry {
-  name: string;
-  description?: string;
-  argumentHint?: string;
-  scope: string;
-  source: string;
-}
-
-export interface WorkspaceRecipeRowViewModel {
-  id: string;
-  command: string;
-  description?: string;
-  argumentHint?: string;
-  scope: string;
-}
-
 export interface WorkspaceAgentDocRowViewModel {
   id: string;
   title: string;
@@ -113,20 +97,6 @@ export function workspaceSkillsViewModel(
       name: skill.name,
       description: skill.description,
       scope: skill.scope,
-    })),
-  );
-}
-
-export function workspaceRecipesViewModel(
-  recipes: readonly WorkspaceRecipeCatalogEntry[],
-): WorkspaceCatalogViewModel<WorkspaceRecipeRowViewModel> {
-  return catalog(
-    recipes.map((recipe) => ({
-      id: `${recipe.source}:${recipe.name}`,
-      command: `/${recipe.name}`,
-      description: recipe.description,
-      argumentHint: recipe.argumentHint,
-      scope: recipe.scope,
     })),
   );
 }

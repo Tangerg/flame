@@ -3,7 +3,6 @@ import {
   scopeLabelKey,
   workspaceAgentDocsViewModel,
   workspaceKnowledgeViewModel,
-  workspaceRecipesViewModel,
   workspaceSkillsViewModel,
 } from "./workspaceCatalogViewModel";
 
@@ -66,33 +65,13 @@ describe("workspace catalog view models", () => {
     });
   });
 
-  it("projects skills, recipes, and agent docs into stable rows", () => {
+  it("projects skills and agent docs into stable rows", () => {
     expect(
       workspaceSkillsViewModel(
         [{ name: "review", description: "Review code", scope: "project" as const }],
         true,
       ).rows,
     ).toEqual([{ id: "review", name: "review", description: "Review code", scope: "project" }]);
-
-    expect(
-      workspaceRecipesViewModel([
-        {
-          name: "fix",
-          argumentHint: "<file>",
-          description: "Fix a file",
-          source: "project",
-          scope: "project",
-        },
-      ]).rows,
-    ).toEqual([
-      {
-        id: "project:fix",
-        command: "/fix",
-        argumentHint: "<file>",
-        description: "Fix a file",
-        scope: "project",
-      },
-    ]);
 
     expect(
       workspaceAgentDocsViewModel([

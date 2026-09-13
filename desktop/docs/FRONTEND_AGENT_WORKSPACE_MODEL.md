@@ -68,7 +68,7 @@ Session
 | `Item`                                    | Agent Narrative                                | message、reasoning、plan、tool call、question 等 durable source-owned 单元；terminal AgentMessage phase 区分过程与最终回答 |
 | `Session.cwd`                             | Work Index + Context Dock                      | 项目身份 + 文件系统工具根                                                 |
 | `Project`                                 | Work Index decoration                          | 按 `Session.cwd` 派生的分组视图，无 opaque id、无 active 标记             |
-| `workspace.*`                             | Context Dock                                   | 当前 cwd 的文件、diff、grep、skills、recipes、memory、hooks 等            |
+| `workspace.*`                             | Context Dock                                   | 当前 cwd 的文件、diff、grep、skills、memory、hooks 等            |
 | `PendingInterruptSet` / waiting root tree | Agent Narrative first, Work Index badge second | agent 等待用户介入；action 仍留在其 source narrative                       |
 
 几个强结论：
@@ -102,7 +102,7 @@ Work Index 的心率要低。它应当稳定、稀疏、可扫视，像 Codex �
 - files / file tree。
 - diff / review。
 - semantic index search；文件检索只通过明确的 grep / file / symbol 能力进入。
-- memory / skills / recipes / hooks。
+- memory / skills / hooks。
 - tool detail。
 - session-scoped settings 或 cwd-scoped panels。
 
@@ -154,9 +154,13 @@ Context Dock 是当前 session/cwd 的材料区。它不是永久抢戏的第三
 - tool diagnostics: one catalog for available tools, MCP status, and explicit diagnostic invocation.
 - run inspection: the Run tree and Timeline preserve source Run identity; individual tool output stays in the conversation.
 - search mode：grep / symbols；不维护独立向量索引状态。
-- memory / skills / recipes：围绕当前 cwd 展示。
+- memory / skills：围绕当前 cwd 展示。
 
-Each capability has one dock destination. Review owns changed-file navigation and diffs.
+Global notifications belong to the sidebar status popover and never replace the active session or dock.
+Recipes are discovered and executed through the composer slash menu, whose active workspace catalog
+subscription refreshes on Runtime invalidation. A separate read-only recipe dock is not registered.
+
+Each contextual capability has one dock destination. Review owns changed-file navigation and diffs.
 The conversation owns command execution output; a read-only command history is not a terminal.
 Skills owns discovery, proposal review, and personal library curation inside one destination.
 Its internal sections share the dock tab; they do not register separate workspace views.

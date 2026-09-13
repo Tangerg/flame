@@ -1,3 +1,4 @@
+import { QueryObserver } from "@tanstack/react-query";
 import type { Disposable, Contributor } from "@/plugins/sdk";
 import { queryClient } from "@/lib/queryClient";
 import { lookupDataProvider } from "@/plugins/sdk";
@@ -41,21 +42,6 @@ function sessionWorkspaceRevision(sessions: readonly AgentSessionSummary[] | und
   return JSON.stringify(sessions?.map(({ id, workspace }) => [id, workspace.path]) ?? null);
 }
 
-function fetchRecipes(query: WorkspaceRecipesQuery): Promise<Recipe[]> {
-  return queryClient.fetchQuery({
-    queryKey: [WORKSPACE_RECIPES_KEY, query],
-    staleTime: 60_000,
-    queryFn: () => {
-      const provider = lookupDataProvider<Recipe[], WorkspaceRecipesQuery>(WORKSPACE_RECIPES_KEY);
-      return provider ? provider(query) : Promise.resolve<Recipe[]>([]);
-    },
-  });
-}
-
-function recipeSignature(recipes: Recipe[]): string {
-  return JSON.stringify(recipes.map((recipe) => [recipe.name, recipe.body]));
-}
-
 export function installRecipeSlashCommands(
   ctx: Contributor,
   sessionPorts: AgentSessions,
@@ -64,7 +50,7 @@ export function installRecipeSlashCommands(
   let lastSignature = "";
 
   const rebuild = (recipes: Recipe[]) => {
-    const signature = recipeSignature(recipes);
+    const signature = JSON.stringify(recipes);
     if (signature === lastSignature) return;
     lastSignature = signature;
     for (const disposable of dynamic) disposable.dispose();
@@ -81,33 +67,32 @@ export function installRecipeSlashCommands(
     });
   };
 
-  let refreshLease: object = {};
-  const refresh = () => {
-    const lease = (refreshLease = {});
+  const queryOptions = () => {
     const sessions = queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]);
     const query = recipeWorkspaceQuery(sessionPorts.getActiveSessionId(), sessions);
-    // Remove commands from the previous project immediately. An active id whose
-    // Session row has not arrived is not permission to fall back to the Runtime's
-    // default workspace.
-    if (!query) {
-      rebuild([]);
-      return;
-    }
-    void fetchRecipes(query)
-      .then((recipes) => {
-        if (lease === refreshLease) rebuild(recipes);
-      })
-      .catch(() => {
-        if (lease === refreshLease) rebuild([]);
-      });
+    return {
+      queryKey: [WORKSPACE_RECIPES_KEY, query],
+      enabled: query !== undefined,
+      staleTime: 60_000,
+      queryFn: () => {
+        const provider = lookupDataProvider<Recipe[], WorkspaceRecipesQuery>(WORKSPACE_RECIPES_KEY);
+        return provider ? provider(query) : Promise.resolve<Recipe[]>([]);
+      },
+    };
   };
-
+  const observer = new QueryObserver<Recipe[]>(queryClient, queryOptions());
+  const unsubscribeRecipes = observer.subscribe((result) => rebuild(result.data ?? []));
+  const refresh = () => {
+    observer.setOptions(queryOptions());
+    rebuild(observer.getCurrentResult().data ?? []);
+  };
   refresh();
   const unsubscribeSession = sessionPorts.subscribeActiveSessionId(refresh);
   const unsubscribeQuery = subscribeAgentSessionProjection(sessionWorkspaceRevision, refresh);
 
   return () => {
-    refreshLease = {};
+    unsubscribeRecipes();
+    observer.destroy();
     unsubscribeSession();
     unsubscribeQuery();
     for (const disposable of dynamic) disposable.dispose();

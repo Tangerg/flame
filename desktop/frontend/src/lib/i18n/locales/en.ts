@@ -485,11 +485,9 @@ export const en: Record<string, string> = {
   "contextDock.group.session": "Session",
   "workspace.view.title.plan": "Plan",
   "workspace.view.title.agentDocs": "Agent docs",
-  "workspace.view.title.notifications": "Notifications",
   "workspace.view.title.inbox": "Inbox",
   "workspace.view.title.timeline": "Timeline",
   "workspace.view.title.skills": "Skills",
-  "workspace.view.title.recipes": "Recipes",
   "workspace.view.title.knowledge": "Knowledge",
   "workspace.view.title.tools": "Tools",
   "workspace.view.title.search": "Search",
@@ -675,9 +673,7 @@ export const en: Record<string, string> = {
   "notifications.title": "Notifications",
   "notifications.clearAll": "Clear all",
   "notifications.dismiss": "Dismiss",
-  "notifications.subtext": "{{unread}} unread · {{total}} total",
   "notifications.empty.title": "No notifications",
-  "notifications.empty.sub": "Anything a plugin reports via host.notify() will appear here.",
 
   "search.title": "Search",
   "search.placeholder": "Search pattern (regex)…",
@@ -803,11 +799,6 @@ export const en: Record<string, string> = {
   "agentMemory.noProject.sub":
     "Open or select a session to review its project memory. Switch to User for cross-project memory.",
   "agentMemory.error": "Couldn't update memory.",
-  "recipes.title": "Recipes",
-  "recipes.available": "{{count}} available",
-  "recipes.empty.title": "No recipes",
-  "recipes.empty.sub":
-    "Drop a .md file in .flame/recipes (project) or ~/.flame/recipes (global) — its name becomes a /slash command.",
   "schedules.intro":
     "Run a saved prompt on a schedule. Each run starts a fresh session while the runtime is serving — find its output in the sidebar.",
   "schedules.add": "New schedule",

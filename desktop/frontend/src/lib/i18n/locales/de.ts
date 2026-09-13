@@ -332,7 +332,6 @@ export const de: Record<string, string> = {
   "contextDock.group.session": "Session",
   "workspace.view.title.plan": "Plan",
   "workspace.view.title.agentDocs": "Agent-Doku",
-  "workspace.view.title.notifications": "Benachrichtigungen",
   "workspace.view.title.inbox": "Eingang",
   "workspace.view.title.timeline": "Timeline",
   "workspace.view.title.skills": "Skills",
@@ -521,9 +520,7 @@ export const de: Record<string, string> = {
   "notifications.title": "Benachrichtigungen",
   "notifications.clearAll": "Alle löschen",
   "notifications.dismiss": "Ausblenden",
-  "notifications.subtext": "{{unread}} ungelesen · {{total}} insgesamt",
   "notifications.empty.title": "Keine Benachrichtigungen",
-  "notifications.empty.sub": "Alles, was ein Plugin über host.notify() meldet, erscheint hier.",
 
   "search.title": "Suche",
   "search.placeholder": "Suchmuster (Regex)…",
@@ -893,7 +890,6 @@ export const de: Record<string, string> = {
   "mcp.error.signIn": "Anmeldung fehlgeschlagen.",
   "mcp.error.test": "Test fehlgeschlagen",
   "workspace.view.title.file": "Dateien",
-  "workspace.view.title.recipes": "Rezepte",
   "settings.theme.system": "System",
   "runError.action.retryIn": "Erneut versuchen in {{seconds}} s",
   "skillLibrary.sub": "{{active}} aktiv · {{archived}} archiviert",
@@ -954,11 +950,6 @@ export const de: Record<string, string> = {
   "agentMemory.noProject.sub":
     "Öffne oder wähle eine Sitzung, um ihr Projektgedächtnis zu prüfen. Wechsle zu Benutzer für projektübergreifendes Gedächtnis.",
   "agentMemory.error": "Gedächtnis konnte nicht aktualisiert werden.",
-  "recipes.title": "Rezepte",
-  "recipes.available": "{{count}} verfügbar",
-  "recipes.empty.title": "Keine Rezepte",
-  "recipes.empty.sub":
-    "Lege eine .md-Datei in .flame/recipes (Projekt) oder ~/.flame/recipes (global) — ihr Name wird zu einem /Slash-Befehl.",
   "schedules.intro":
     "Führt einen gespeicherten Prompt nach Zeitplan aus. Jeder Lauf startet eine frische Sitzung, solange die Runtime läuft — die Ausgabe findest du in der Seitenleiste.",
   "schedules.add": "Neuer Zeitplan",

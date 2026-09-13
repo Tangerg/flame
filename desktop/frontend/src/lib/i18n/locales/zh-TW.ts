@@ -322,7 +322,6 @@ export const zhTW: Record<string, string> = {
   "contextDock.group.session": "會話",
   "workspace.view.title.plan": "計畫",
   "workspace.view.title.agentDocs": "Agent 文件",
-  "workspace.view.title.notifications": "通知",
   "workspace.view.title.inbox": "收件匣",
   "workspace.view.title.timeline": "時間軸",
   "workspace.view.title.skills": "技能",
@@ -501,9 +500,7 @@ export const zhTW: Record<string, string> = {
   "notifications.title": "通知",
   "notifications.clearAll": "全部清除",
   "notifications.dismiss": "忽略",
-  "notifications.subtext": "{{unread}} 則未讀 · 共 {{total}} 則",
   "notifications.empty.title": "尚無通知",
-  "notifications.empty.sub": "外掛透過 host.notify() 報告的任何內容都會顯示在這裡。",
 
   "search.title": "搜尋",
   "search.placeholder": "搜尋模式（正則）…",
@@ -855,7 +852,6 @@ export const zhTW: Record<string, string> = {
   "mcp.error.toggle": "無法變更伺服器。",
   "mcp.error.signIn": "登入失敗。",
   "mcp.error.test": "測試失敗",
-  "workspace.view.title.recipes": "配方",
   "settings.theme.system": "系統",
   "skillLibrary.sub": "{{active}} 個啟用 · {{archived}} 個已歸檔",
   "skillLibrary.section.active": "啟用中",
@@ -912,11 +908,6 @@ export const zhTW: Record<string, string> = {
   "agentMemory.noProject.sub":
     "開啟或選擇一個工作階段以審閱其專案記憶。切換到「使用者」可檢視跨專案記憶。",
   "agentMemory.error": "無法更新記憶。",
-  "recipes.title": "配方",
-  "recipes.available": "{{count}} 個可用",
-  "recipes.empty.title": "沒有配方",
-  "recipes.empty.sub":
-    "把 .md 檔放進 .flame/recipes（專案）或 ~/.flame/recipes（全域）—— 檔名就會變成一個 /slash 指令。",
   "schedules.intro":
     "依排程執行已存的提示。只要執行時在服務中，每次執行都會開一個新的工作階段 —— 輸出可在側邊欄找到。",
   "schedules.add": "新增排程",

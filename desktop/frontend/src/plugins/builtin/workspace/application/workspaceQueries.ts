@@ -199,15 +199,6 @@ export interface WorkspaceRecipesQuery {
   cwd?: string;
 }
 
-export interface WorkspaceRecipe {
-  name: string;
-  description?: string;
-  argumentHint?: string;
-  body: string;
-  scope: "project" | "global";
-  source: string;
-}
-
 export const WORKSPACE_PROJECTS_KEY = "projects";
 export const WORKSPACE_FILES_CHANGED_KEY = "files-changed";
 export const WORKSPACE_DIFF_KEY = "diff";
@@ -272,7 +263,3 @@ export const useWorkspaceReadFile = createParameterizedDataQuery<
   WorkspaceReadFileQuery,
   WorkspaceFileContent
 >(WORKSPACE_READ_FILE_KEY);
-export const useWorkspaceRecipes = createParameterizedDataQuery<
-  WorkspaceRecipesQuery,
-  WorkspaceRecipe[]
->(WORKSPACE_RECIPES_KEY);

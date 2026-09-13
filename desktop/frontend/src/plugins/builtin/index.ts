@@ -93,9 +93,7 @@ import {
   knowledgeView,
   agentMemoryView,
   inboxView,
-  notificationsView,
   planView,
-  recipesView,
   searchView,
   skillsView,
   timelineView,
@@ -193,13 +191,11 @@ const panes: AnyPlugin[] = [
   timelineView,
   toolsView,
   skillsView,
-  recipesView,
   searchView,
   agentDocsView,
   knowledgeView,
   agentMemoryView,
   inboxView,
-  notificationsView,
   diagnostics,
 ];
 

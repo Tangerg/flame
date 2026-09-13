@@ -340,7 +340,6 @@ export const fr: Record<string, string> = {
   "contextDock.group.session": "Session",
   "workspace.view.title.plan": "Plan",
   "workspace.view.title.agentDocs": "Docs de l'agent",
-  "workspace.view.title.notifications": "Notifications",
   "workspace.view.title.inbox": "Boîte",
   "workspace.view.title.timeline": "Chronologie",
   "workspace.view.title.skills": "Compétences",
@@ -532,9 +531,7 @@ export const fr: Record<string, string> = {
   "notifications.title": "Notifications",
   "notifications.clearAll": "Tout effacer",
   "notifications.dismiss": "Ignorer",
-  "notifications.subtext": "{{unread}} non lus · {{total}} au total",
   "notifications.empty.title": "Aucune notification",
-  "notifications.empty.sub": "Tout ce qu'un plugin signale via host.notify() apparaît ici.",
 
   "search.title": "Recherche",
   "search.placeholder": "Motif de recherche (regex)…",
@@ -920,7 +917,6 @@ export const fr: Record<string, string> = {
   "mcp.error.signIn": "Échec de la connexion.",
   "mcp.error.test": "Échec du test",
   "workspace.view.title.file": "Fichiers",
-  "workspace.view.title.recipes": "Recettes",
   "settings.theme.system": "Système",
   "runError.action.retryIn": "Réessayer dans {{seconds}} s",
   "skillLibrary.sub": "{{active}} actives · {{archived}} archivées",
@@ -981,11 +977,6 @@ export const fr: Record<string, string> = {
   "agentMemory.noProject.sub":
     "Ouvrez ou sélectionnez une session pour examiner sa mémoire de projet. Passez à Utilisateur pour la mémoire inter-projets.",
   "agentMemory.error": "Impossible de mettre à jour la mémoire.",
-  "recipes.title": "Recettes",
-  "recipes.available": "{{count}} disponibles",
-  "recipes.empty.title": "Aucune recette",
-  "recipes.empty.sub":
-    "Déposez un fichier .md dans .flame/recipes (projet) ou ~/.flame/recipes (global) — son nom devient une commande /slash.",
   "schedules.intro":
     "Exécute un prompt enregistré selon une planification. Chaque exécution démarre une nouvelle session tant que la runtime tourne — retrouvez sa sortie dans la barre latérale.",
   "schedules.add": "Nouvelle planification",

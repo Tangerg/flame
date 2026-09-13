@@ -321,7 +321,6 @@ export const ko: Record<string, string> = {
   "contextDock.group.session": "세션",
   "workspace.view.title.plan": "플랜",
   "workspace.view.title.agentDocs": "Agent 문서",
-  "workspace.view.title.notifications": "알림",
   "workspace.view.title.inbox": "받은 항목",
   "workspace.view.title.timeline": "타임라인",
   "workspace.view.title.skills": "스킬",
@@ -500,9 +499,7 @@ export const ko: Record<string, string> = {
   "notifications.title": "알림",
   "notifications.clearAll": "모두 지우기",
   "notifications.dismiss": "닫기",
-  "notifications.subtext": "읽지 않음 {{unread}}개 · 전체 {{total}}개",
   "notifications.empty.title": "알림 없음",
-  "notifications.empty.sub": "플러그인이 host.notify()로 보고한 모든 내용이 여기에 표시됩니다.",
 
   "search.title": "검색",
   "search.placeholder": "검색 패턴 (정규식)…",
@@ -853,7 +850,6 @@ export const ko: Record<string, string> = {
   "mcp.error.signIn": "로그인에 실패했습니다.",
   "mcp.error.test": "테스트 실패",
   "workspace.view.title.file": "파일",
-  "workspace.view.title.recipes": "레시피",
   "settings.theme.system": "시스템",
   "runError.action.retryIn": "{{seconds}}초 후 재시도",
   "skillLibrary.sub": "{{active}}개 활성 · {{archived}}개 보관",
@@ -911,11 +907,6 @@ export const ko: Record<string, string> = {
   "agentMemory.noProject.sub":
     "세션을 열거나 선택해 프로젝트 메모리를 검토하세요. 프로젝트 간 메모리는 사용자로 전환하세요.",
   "agentMemory.error": "메모리를 업데이트할 수 없습니다.",
-  "recipes.title": "레시피",
-  "recipes.available": "{{count}}개 사용 가능",
-  "recipes.empty.title": "레시피가 없습니다",
-  "recipes.empty.sub":
-    ".md 파일을 .flame/recipes(프로젝트) 또는 ~/.flame/recipes(전역)에 넣으면 그 이름이 /슬래시 명령이 됩니다.",
   "schedules.intro":
     "저장한 프롬프트를 일정에 따라 실행합니다. 런타임이 서비스 중이면 각 실행은 새 세션으로 시작합니다 — 출력은 사이드바에서 확인하세요.",
   "schedules.add": "새 일정",

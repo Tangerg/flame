@@ -322,7 +322,6 @@ export const ja: Record<string, string> = {
   "contextDock.group.session": "セッション",
   "workspace.view.title.plan": "プラン",
   "workspace.view.title.agentDocs": "Agent ドキュメント",
-  "workspace.view.title.notifications": "通知",
   "workspace.view.title.inbox": "受信箱",
   "workspace.view.title.timeline": "タイムライン",
   "workspace.view.title.skills": "スキル",
@@ -502,9 +501,7 @@ export const ja: Record<string, string> = {
   "notifications.title": "通知",
   "notifications.clearAll": "すべてクリア",
   "notifications.dismiss": "閉じる",
-  "notifications.subtext": "未読 {{unread}} 件 · 全 {{total}} 件",
   "notifications.empty.title": "通知はありません",
-  "notifications.empty.sub": "プラグインが host.notify() で報告した内容がここに表示されます。",
 
   "search.title": "検索",
   "search.placeholder": "検索パターン（正規表現）…",
@@ -859,7 +856,6 @@ export const ja: Record<string, string> = {
   "mcp.error.signIn": "サインインに失敗しました。",
   "mcp.error.test": "テストに失敗しました",
   "workspace.view.title.file": "ファイル",
-  "workspace.view.title.recipes": "レシピ",
   "settings.theme.system": "システム",
   "runError.action.retryIn": "{{seconds}} 秒後に再試行",
   "skillLibrary.sub": "{{active}} 件有効 · {{archived}} 件アーカイブ済み",
@@ -918,11 +914,6 @@ export const ja: Record<string, string> = {
   "agentMemory.noProject.sub":
     "セッションを開くか選択して、そのプロジェクトメモリをレビューしてください。プロジェクト横断のメモリは「ユーザー」に切り替えてください。",
   "agentMemory.error": "メモリを更新できませんでした。",
-  "recipes.title": "レシピ",
-  "recipes.available": "{{count}} 件利用可能",
-  "recipes.empty.title": "レシピがありません",
-  "recipes.empty.sub":
-    ".md ファイルを .flame/recipes（プロジェクト）または ~/.flame/recipes（グローバル）に置くと、その名前が /slash コマンドになります。",
   "schedules.intro":
     "保存したプロンプトをスケジュール実行します。ランタイムが稼働している間、各実行は新しいセッションで始まります — 出力はサイドバーで確認できます。",
   "schedules.add": "新しいスケジュール",

@@ -64,15 +64,6 @@ export const skillsView = defineWorkspaceView({
   component: lazy(() => import("./skills").then((m) => ({ default: m.SkillsTab }))),
 });
 
-export const recipesView = defineWorkspaceView({
-  id: "recipes",
-  title: "workspace.view.title.recipes",
-  icon: "command",
-  order: 95,
-  dock: "workspace",
-  component: lazy(() => import("./recipes").then((m) => ({ default: m.RecipesTab }))),
-});
-
 export const knowledgeView = defineWorkspaceView({
   id: "knowledge",
   title: "workspace.view.title.knowledge",
@@ -117,13 +108,4 @@ export const timelineView = defineWorkspaceView({
   order: 140,
   dock: "session",
   component: lazy(() => import("./timeline").then((m) => ({ default: m.TimelineTab }))),
-});
-
-export const notificationsView = defineWorkspaceView({
-  id: "notifications",
-  title: "workspace.view.title.notifications",
-  icon: "bell",
-  order: 145,
-  dock: "session",
-  component: lazy(() => import("./notifications").then((m) => ({ default: m.NotificationsTab }))),
 });

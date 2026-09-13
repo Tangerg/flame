@@ -458,11 +458,9 @@ export const zh: Record<string, string> = {
   "contextDock.group.session": "会话",
   "workspace.view.title.plan": "计划",
   "workspace.view.title.agentDocs": "Agent 文档",
-  "workspace.view.title.notifications": "通知",
   "workspace.view.title.inbox": "收件箱",
   "workspace.view.title.timeline": "时间线",
   "workspace.view.title.skills": "技能",
-  "workspace.view.title.recipes": "Recipes",
   "workspace.view.title.knowledge": "知识",
   "workspace.view.title.tools": "工具",
   "workspace.view.title.search": "搜索",
@@ -638,9 +636,7 @@ export const zh: Record<string, string> = {
   "notifications.title": "通知",
   "notifications.clearAll": "全部清除",
   "notifications.dismiss": "忽略",
-  "notifications.subtext": "{{unread}} 条未读 · 共 {{total}} 条",
   "notifications.empty.title": "暂无通知",
-  "notifications.empty.sub": "插件通过 host.notify() 报告的任何内容都会显示在这里。",
 
   "search.title": "搜索",
   "search.placeholder": "搜索模式（正则）…",
@@ -706,11 +702,6 @@ export const zh: Record<string, string> = {
   "skills.empty.sub": "在此项目工作目录中发现的技能会显示在这里。",
   "skills.disabled.title": "技能已关闭",
   "skills.disabled.sub": "此运行时未声明技能功能。",
-  "recipes.title": "Recipes",
-  "recipes.available": "{{count}} 个可用",
-  "recipes.empty.title": "暂无 recipe",
-  "recipes.empty.sub":
-    "在 .flame/recipes（项目）或 ~/.flame/recipes（全局）放一个 .md 文件 —— 文件名即一个 /slash 命令。",
   "schedules.intro":
     "按计划运行一段存好的 prompt。运行时在线期间,每次触发开一个新会话 —— 在边栏查看输出。",
   "schedules.add": "新建定时任务",

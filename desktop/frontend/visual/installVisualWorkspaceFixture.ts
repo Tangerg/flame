@@ -35,7 +35,6 @@ import {
   WORKSPACE_READ_FILE_KEY,
   WORKSPACE_AGENT_DOCS_KEY,
   WORKSPACE_MANAGED_SKILLS_KEY,
-  WORKSPACE_RECIPES_KEY,
   WORKSPACE_SKILLS_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
   WORKSPACE_AGENT_MEMORY_KEY,
@@ -45,7 +44,6 @@ import {
   type ManagedSkill,
   type SkillProposal,
   type WorkspaceAgentDoc,
-  type WorkspaceRecipe,
   type WorkspaceKnowledgeEntry,
   type WorkspaceSkill,
   type WorkspaceDiff,
@@ -65,11 +63,9 @@ import {
   toolsView,
   searchView,
   skillsView,
-  recipesView,
   knowledgeView,
   agentMemoryView,
   agentDocsView,
-  notificationsView,
 } from "@/plugins/builtin/workspace/workspace-views";
 import { PENDING_WORK_KEY, type PendingWorkItem } from "@/plugins/builtin/agent/public/hitl";
 import { DATA_PROVIDER, SHORTCUT, definePlugin } from "@/plugins/sdk";
@@ -347,25 +343,7 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
           },
         ],
       });
-      ctx.contribute(DATA_PROVIDER, {
-        key: WORKSPACE_RECIPES_KEY,
-        fetcher: async (): Promise<WorkspaceRecipe[]> => [
-          {
-            name: "review",
-            description: "Review the working tree against the base.",
-            argumentHint: "[path]",
-            body: "Read the diff, then the tests that cover it.",
-            scope: "project",
-            source: ".flame/recipes/review.md",
-          },
-          {
-            name: "digest",
-            body: "Summarise the run for someone who was not watching it.",
-            scope: "global",
-            source: "~/.flame/recipes/digest.md",
-          },
-        ],
-      });
+
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_KNOWLEDGE_KEY,
         fetcher: async (): Promise<WorkspaceKnowledgeEntry[]> => [
@@ -582,12 +560,10 @@ async function loadVisualPlugins(plugins: readonly AnyPlugin[]): Promise<void> {
 const OPENED_BY_ITS_OWN_STATE = new Set([
   "inbox",
   "tools",
-  "recipes",
   "agent-docs",
   "skills",
   "knowledge",
   "agent-memory",
-  "notifications",
 ]);
 
 const FULL_VIEW_ID = "search";
@@ -599,13 +575,11 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-runs": "timeline",
   "dock-files": "file",
   "dock-search": "search",
-  "dock-recipes": "recipes",
   "dock-agent-docs": "agent-docs",
   "dock-skills": "skills",
   "dock-knowledge": "knowledge",
   "dock-agent-memory": "agent-memory",
   "dock-feature-off": "skills",
-  "dock-notifications": "notifications",
   "dock-tools": "tools",
   "dock-file": "file",
   "dock-catalog": WORKSPACE_DOCK_CATALOG,
@@ -687,11 +661,9 @@ export async function installVisualWorkspaceFixture(
     timelineView,
     searchView,
     skillsView,
-    recipesView,
     knowledgeView,
     agentMemoryView,
     agentDocsView,
-    notificationsView,
     kernelSettings,
     ...localePlugins,
     appearanceSettings,

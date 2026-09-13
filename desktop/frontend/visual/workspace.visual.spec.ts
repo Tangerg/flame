@@ -137,13 +137,11 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     return;
   }
   const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {
-    "dock-recipes": "2 available",
     "dock-agent-docs": "3 found",
     "dock-skills": "2 available",
     "dock-knowledge": "2 scopes",
     "dock-agent-memory": "1 pending",
     "dock-feature-off": "Skills are off",
-    "dock-notifications": "No notifications",
   };
   const catalogueReady = CATALOGUE_READY[state];
   if (catalogueReady !== undefined) {

@@ -337,7 +337,6 @@ export const es: Record<string, string> = {
   "contextDock.group.session": "Sesión",
   "workspace.view.title.plan": "Plan",
   "workspace.view.title.agentDocs": "Docs del agent",
-  "workspace.view.title.notifications": "Notificaciones",
   "workspace.view.title.inbox": "Bandeja",
   "workspace.view.title.timeline": "Línea de tiempo",
   "workspace.view.title.skills": "Habilidades",
@@ -529,10 +528,7 @@ export const es: Record<string, string> = {
   "notifications.title": "Notificaciones",
   "notifications.clearAll": "Borrar todo",
   "notifications.dismiss": "Descartar",
-  "notifications.subtext": "{{unread}} sin leer · {{total}} en total",
   "notifications.empty.title": "Sin notificaciones",
-  "notifications.empty.sub":
-    "Todo lo que un plugin informe a través de host.notify() aparece aquí.",
 
   "search.title": "Búsqueda",
   "search.placeholder": "Patrón de búsqueda (regex)…",
@@ -914,7 +910,6 @@ export const es: Record<string, string> = {
   "mcp.error.signIn": "Error al iniciar sesión.",
   "mcp.error.test": "La prueba falló",
   "workspace.view.title.file": "Archivos",
-  "workspace.view.title.recipes": "Recetas",
   "settings.theme.system": "Sistema",
   "runError.action.retryIn": "Reintentar en {{seconds}} s",
   "skillLibrary.sub": "{{active}} activas · {{archived}} archivadas",
@@ -974,11 +969,6 @@ export const es: Record<string, string> = {
   "agentMemory.noProject.sub":
     "Abre o selecciona una sesión para revisar su memoria de proyecto. Cambia a Usuario para la memoria entre proyectos.",
   "agentMemory.error": "No se pudo actualizar la memoria.",
-  "recipes.title": "Recetas",
-  "recipes.available": "{{count}} disponibles",
-  "recipes.empty.title": "No hay recetas",
-  "recipes.empty.sub":
-    "Coloca un archivo .md en .flame/recipes (proyecto) o ~/.flame/recipes (global): su nombre se convierte en un comando /slash.",
   "schedules.intro":
     "Ejecuta un prompt guardado según una programación. Cada ejecución inicia una sesión nueva mientras el runtime esté sirviendo; encontrarás su salida en la barra lateral.",
   "schedules.add": "Nueva programación",
