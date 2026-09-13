@@ -17,9 +17,6 @@ func TestTranscriptPreservesRefusalText(t *testing.T) {
 	if !strings.Contains(rendered, "I cannot help with that request.") {
 		t.Fatalf("renderTranscript = %q, want refusal text", rendered)
 	}
-	if measured := transcriptBytes(messages); measured != len(rendered) {
-		t.Fatalf("transcriptBytes = %d, want rendered size %d", measured, len(rendered))
-	}
 }
 
 func TestCapText(t *testing.T) {
@@ -52,5 +49,24 @@ func TestCapText(t *testing.T) {
 	runes := strings.Repeat("世界", 5_000) // 3 bytes per rune
 	if capped := capText(runes, 401); !utf8.ValidString(capped) {
 		t.Fatal("capText split a multibyte rune (invalid UTF-8)")
+	}
+}
+
+func TestTranscriptPreservesToolCallAndFailureIdentity(t *testing.T) {
+	messages := []chat.Message{
+		chat.NewAssistantMessage(
+			chat.NewToolCallPart(chat.ToolCall{ID: "patch-1", Name: "apply_patch", Arguments: `{"patch":"diff --git a/client.go b/client.go"}`}),
+			chat.NewToolCallPart(chat.ToolCall{ID: "test-1", Name: "shell", Arguments: `{"command":"go test ./..."}`}),
+		),
+		chat.NewToolMessage(
+			chat.ToolResult{ID: "patch-1", Name: "apply_patch", IsError: true, Output: chat.NewTextToolOutput("hunk did not match")},
+			chat.ToolResult{ID: "test-1", Name: "shell", Output: chat.NewTextToolOutput("ok")},
+		),
+	}
+	rendered := renderTranscript(messages)
+	for _, want := range []string{"apply_patch", "patch-1", "diff --git a/client.go b/client.go", "shell", "test-1", "go test ./...", "error=true", "error=false", "hunk did not match"} {
+		if !strings.Contains(rendered, want) {
+			t.Errorf("transcript missing %q: %s", want, rendered)
+		}
 	}
 }

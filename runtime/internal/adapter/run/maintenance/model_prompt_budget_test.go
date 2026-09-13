@@ -158,9 +158,6 @@ func TestMaintenanceModelTranscriptHasAggregateInputBound(t *testing.T) {
 	if len(transcript) > maximumInputBytes {
 		t.Errorf("renderTranscript = %d bytes, want at most %d", len(transcript), maximumInputBytes)
 	}
-	if measured := transcriptBytes(messages); measured <= len(transcript) {
-		t.Fatalf("raw transcript measurement = %d, want greater than bounded rendering %d", measured, len(transcript))
-	}
 	if tokens := mustEstimateModelContextTokens(t, messages, nil, chat.Options{}); tokens <= len(transcript)/asciiBytesPerEstimatedToken {
 		t.Fatalf("compaction estimate = %d, want raw footprint rather than bounded rendering", tokens)
 	}

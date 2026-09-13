@@ -142,6 +142,12 @@ func (l *longContextModel) Call(_ context.Context, request *chat.Request) (*chat
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if isCompactionRequest(request) {
+		transcript := request.Messages[len(request.Messages)-1].Text()
+		for _, fact := range []string{"call_goal_01", tool.GetGoal, "arguments={}", "error=false"} {
+			if !strings.Contains(transcript, fact) {
+				return nil, fmt.Errorf("compaction input lost tool execution fact %q", fact)
+			}
+		}
 		l.summaryCalls++
 		l.summaryAtMainCalls = append(l.summaryAtMainCalls, l.mainCalls)
 		return completedTextResponse(longContextCompactionSummary), nil

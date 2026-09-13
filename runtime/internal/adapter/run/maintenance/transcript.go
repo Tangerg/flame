@@ -48,29 +48,36 @@ func renderTranscript(msgs []chat.Message) string {
 func renderTranscriptMessage(msg chat.Message, budget int) string {
 	switch msg.Role {
 	case chat.RoleSystem:
-		return renderTranscriptParts("[system] ", transcriptTextValues(msg), "", budget)
+		return renderTranscriptParts("[system] ", transcriptValues(msg), "\n", budget)
 	case chat.RoleUser:
-		return renderTranscriptParts("[user] ", transcriptTextValues(msg), "", budget)
+		return renderTranscriptParts("[user] ", transcriptValues(msg), "\n", budget)
 	case chat.RoleAssistant:
-		return renderTranscriptParts("[assistant] ", transcriptTextValues(msg), "", budget)
+		return renderTranscriptParts("[assistant] ", transcriptValues(msg), "\n", budget)
 	case chat.RoleTool:
 		results := make([]string, 0, len(msg.Parts))
 		for _, part := range msg.Parts {
 			if part.Kind == chat.PartToolResult && part.ToolResult != nil {
-				results = append(results, renderToolOutput(part.ToolResult.Output))
+				result := part.ToolResult
+				results = append(results, fmt.Sprintf("[result id=%q name=%q error=%t] %s",
+					result.ID, result.Name, result.IsError, renderToolOutput(result.Output)))
 			}
 		}
-		return renderTranscriptParts("[tool] ", results, " ", budget)
+		return renderTranscriptParts("[tool] ", results, "\n", budget)
 	default:
 		return capText(fmt.Sprintf("[%s] (unrecognized)", msg.Role), budget)
 	}
 }
 
-func transcriptTextValues(msg chat.Message) []string {
+func transcriptValues(msg chat.Message) []string {
 	values := make([]string, 0, len(msg.Parts))
 	for _, part := range msg.Parts {
-		if isTranscriptText(part.Kind) {
+		switch part.Kind {
+		case chat.PartText, chat.PartRefusal:
 			values = append(values, part.Text)
+		case chat.PartToolCall:
+			if call := part.ToolCall; call != nil {
+				values = append(values, fmt.Sprintf("[call id=%q name=%q] arguments=%s", call.ID, call.Name, call.Arguments))
+			}
 		}
 	}
 	return values
@@ -88,49 +95,6 @@ func renderTranscriptParts(prefix string, values []string, separator string, bud
 		rendered.WriteString(separator)
 	}
 	return capText(rendered.String(), budget)
-}
-
-// transcriptBytes measures the original flattened conversation without
-// materializing it. Compaction triggering must observe the real footprint even
-// though every subsequent model request receives a bounded rendering.
-func transcriptBytes(msgs []chat.Message) int {
-	total := 0
-	for _, msg := range msgs {
-		size := 1 // trailing newline
-		switch msg.Role {
-		case chat.RoleSystem:
-			size = saturatedAdd(size, len("[system] "), transcriptTextBytes(msg))
-		case chat.RoleUser:
-			size = saturatedAdd(size, len("[user] "), transcriptTextBytes(msg))
-		case chat.RoleAssistant:
-			size = saturatedAdd(size, len("[assistant] "), transcriptTextBytes(msg))
-		case chat.RoleTool:
-			size = saturatedAdd(size, len("[tool] "))
-			for _, part := range msg.Parts {
-				if part.Kind == chat.PartToolResult && part.ToolResult != nil {
-					size = saturatedAdd(size, encodedToolOutputBytes(part.ToolResult.Output), 1)
-				}
-			}
-		default:
-			size = saturatedAdd(size, len(msg.Role), len("[] (unrecognized)"))
-		}
-		total = saturatedAdd(total, size)
-	}
-	return total
-}
-
-func transcriptTextBytes(msg chat.Message) int {
-	total := 0
-	for _, part := range msg.Parts {
-		if isTranscriptText(part.Kind) {
-			total = saturatedAdd(total, len(part.Text))
-		}
-	}
-	return total
-}
-
-func isTranscriptText(kind chat.PartKind) bool {
-	return kind == chat.PartText || kind == chat.PartRefusal
 }
 
 func saturatedAdd(total int, values ...int) int {

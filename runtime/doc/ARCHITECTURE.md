@@ -151,6 +151,8 @@ Process-local authority follows the facts that justify it. Working-context const
 
 Context compaction is decided only at an imminent main-model call from that call's complete request footprint: instructions, durable and transient messages, Tools, model options, provider limits, and provider-native counting when available. Protocol message count and Run completion are not pressure signals. The same path performs any durable rewrite and emits the observable boundary; post-Run maintenance only consumes the resulting fact.
 
+The bounded summary transcript retains Tool call identities, names, arguments, and result error status alongside output. Summarization may reduce content but must not erase the operation that produced it or turn a failed operation into apparent success. Request budgeting uses the complete model request; auxiliary transcript rendering does not own a competing size estimate.
+
 That boundary first commits completed Delegate results already present in the imminent request. Durable context comparison must observe those results even when background reconciliation has not run yet, including after canceling a waiting sibling and restoring the parent.
 
 Required compaction resolves its current lifecycle Hook policy before calling the summary model or rewriting history. A configuration or trust-read failure stops compaction and preserves its cause. Hook command, observe-only lifecycle Hook, refetchable Tool projection, Skill usage recording, and post-Run maintenance failures produce diagnostics without requiring an active tracing span. Their best-effort policy does not revise the committed Tool result or published lifecycle boundary.
