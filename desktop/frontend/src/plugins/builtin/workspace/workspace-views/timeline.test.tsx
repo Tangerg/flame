@@ -8,6 +8,9 @@ import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 const projection = vi.hoisted(() => ({
   runtimeAvailable: false,
+  child: null as AgentRunView | null,
+  openSubagent: vi.fn(),
+  locateTool: vi.fn(),
   cancelRun: vi.fn(),
   timeline: [] as TimelineEntry[],
   tools: {} as Record<string, ToolCall>,
@@ -35,7 +38,9 @@ const running: AgentRunView = {
 
 vi.mock("@/plugins/builtin/agent/public/run", () => ({
   cancelSessionRun: projection.cancelRun,
-  useActiveSessionRunTree: () => [{ run: running, children: [] }],
+  useActiveSessionRunTree: () => [
+    { run: running, children: projection.child ? [{ run: projection.child, children: [] }] : [] },
+  ],
   useActiveSessionTimeline: () => projection.timeline,
   useActiveSessionToolCalls: () => projection.tools,
 }));
@@ -45,7 +50,8 @@ vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
 }));
 
 vi.mock("@/plugins/builtin/workspace/public/navigation", () => ({
-  locateWorkspaceTool: vi.fn(),
+  locateWorkspaceTool: projection.locateTool,
+  openWorkspaceSubagentRun: projection.openSubagent,
   selectWorkspaceChat: vi.fn(),
 }));
 
@@ -58,6 +64,10 @@ import { TimelineTab } from "./timeline";
 
 describe("Timeline runtime actions", () => {
   beforeEach(() => {
+    projection.child = null;
+    projection.runtimeAvailable = false;
+    projection.openSubagent.mockClear();
+    projection.locateTool.mockClear();
     projection.timeline = [];
     projection.tools = {};
   });
@@ -141,6 +151,27 @@ describe("Timeline runtime actions", () => {
     expect(screen.getAllByRole("img", { name: "err" })).toHaveLength(1);
     expect(screen.getByRole("img", { name: "ok" })).toBeTruthy();
   });
+  it.each([
+    ["run-1", null],
+    ["child-parent", "child-parent"],
+  ])(
+    "opens the retained transcript that owns parent %s while offline",
+    (parentRunId, subagentRunId) => {
+      projection.child = {
+        ...running,
+        id: "child",
+        rootRunId: running.id,
+        parentRunId,
+        spawnedByItemId: "parent-delegation",
+      };
+      render(<TimelineTab />);
+      fireEvent.click(screen.getByRole("button", { name: "Locate parent task" }));
+      expect(projection.openSubagent.mock.calls).toEqual(subagentRunId ? [[subagentRunId]] : []);
+      expect(projection.locateTool.mock.calls).toEqual(
+        subagentRunId ? [] : [["parent-delegation"]],
+      );
+    },
+  );
   it("does not offer an active cancel command while the Runtime is unavailable", async () => {
     await loadPluginsForTest(timelineView);
     expect(lookupExtensionPoint(WORKSPACE_VIEW).some((view) => view.id === "timeline")).toBe(true);

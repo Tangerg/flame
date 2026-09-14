@@ -21,6 +21,7 @@ import {
 } from "@/plugins/builtin/agent/public/run";
 import {
   locateWorkspaceTool,
+  openWorkspaceSubagentRun,
   selectWorkspaceChat,
 } from "@/plugins/builtin/workspace/public/navigation";
 import {
@@ -214,9 +215,14 @@ function TimelineRunHeader({
             icon="chat"
             size="lg"
             quiet
-            disabled={!runtimeAvailable}
             title={t("timeline.locateParent")}
-            onClick={() => locateWorkspaceTool(spawnedByItemId)}
+            onClick={() => {
+              if (parentRunId && parentRunId !== run.rootRunId) {
+                openWorkspaceSubagentRun(parentRunId);
+              } else {
+                locateWorkspaceTool(spawnedByItemId);
+              }
+            }}
           />
         )}
         {status.cancelable && (
