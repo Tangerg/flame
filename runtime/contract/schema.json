@@ -4177,6 +4177,10 @@
         "content": {
           "type": "string"
         },
+        "path": {
+          "type": "string",
+          "pattern": "\\S"
+        },
         "revision": {
           "type": "string",
           "minLength": 1
@@ -4191,6 +4195,7 @@
       },
       "required": [
         "content",
+        "path",
         "revision",
         "scope"
       ]

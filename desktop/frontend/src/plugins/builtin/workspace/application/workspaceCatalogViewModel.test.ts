@@ -12,6 +12,7 @@ describe("workspace catalog view models", () => {
       workspaceKnowledgeViewModel(
         [
           {
+            path: "/custom/data/FLAME.md",
             scope: "cwd",
             content: "knowledge",
             revision: "rev-1",
@@ -31,7 +32,14 @@ describe("workspace catalog view models", () => {
   it("projects knowledge row identity and scope labels", () => {
     expect(
       workspaceKnowledgeViewModel(
-        [{ scope: "projectRoot", content: "knowledge", revision: "rev-1" }],
+        [
+          {
+            path: "/custom/data/FLAME.md",
+            scope: "projectRoot",
+            content: "knowledge",
+            revision: "rev-1",
+          },
+        ],
         true,
       ),
     ).toEqual({
@@ -40,7 +48,7 @@ describe("workspace catalog view models", () => {
           id: "projectRoot",
           scope: "projectRoot",
           scopeLabelKey: "knowledge.scope.projectRoot",
-          path: "project/FLAME.md",
+          path: "/custom/data/FLAME.md",
           content: "knowledge",
           revision: "rev-1",
           updatedAt: undefined,

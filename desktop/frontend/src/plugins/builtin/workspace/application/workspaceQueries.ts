@@ -143,6 +143,7 @@ export interface WorkspaceKnowledgeQuery {
 }
 
 export interface WorkspaceKnowledgeEntry {
+  path: string;
   scope: WorkspaceKnowledgeScope;
   content: string;
   revision: string;

@@ -24,9 +24,17 @@ describe("Knowledge generation", () => {
     const save = vi.fn((input: WorkspaceKnowledgeUpdateInput) => {
       if (input.content === "first") return first.promise;
       if (input.content === "second") {
-        return Promise.resolve({ content: "second", revision: "rev-3" });
+        return Promise.resolve({
+          path: "/custom/data/FLAME.md",
+          content: "second",
+          revision: "rev-3",
+        });
       }
-      return Promise.resolve({ content: "home", revision: "home-2" });
+      return Promise.resolve({
+        path: "/custom/data/FLAME.md",
+        content: "home",
+        revision: "home-2",
+      });
     });
     owner = KnowledgeOwner.install({ save } as unknown as WorkspaceKnowledgeGateway);
 
@@ -36,7 +44,7 @@ describe("Knowledge generation", () => {
     await vi.waitFor(() => expect(save).toHaveBeenCalledTimes(2));
 
     expect(save.mock.calls.map(([input]) => input.scope)).toEqual(["cwd", "home"]);
-    first.resolve({ content: "first", revision: "rev-2" });
+    first.resolve({ path: "/custom/data/FLAME.md", content: "first", revision: "rev-2" });
     await expect(firstSave).resolves.toMatchObject({ revision: "rev-2" });
     await expect(secondSave).resolves.toMatchObject({ revision: "rev-3" });
     await expect(homeSave).resolves.toMatchObject({ revision: "home-2" });
@@ -46,10 +54,11 @@ describe("Knowledge generation", () => {
   it("retires direct reads and queued saves on an in-place Runtime generation", async () => {
     const readResponse = Promise.withResolvers<WorkspaceKnowledgeDocument>();
     const saveResponse = Promise.withResolvers<WorkspaceKnowledgeDocument>();
-    const read = vi
-      .fn()
-      .mockReturnValueOnce(readResponse.promise)
-      .mockResolvedValueOnce({ content: "successor", revision: "rev-new" });
+    const read = vi.fn().mockReturnValueOnce(readResponse.promise).mockResolvedValueOnce({
+      path: "/custom/data/FLAME.md",
+      content: "successor",
+      revision: "rev-new",
+    });
     const save = vi.fn(() => saveResponse.promise);
     owner = KnowledgeOwner.install({ read, save } as unknown as WorkspaceKnowledgeGateway);
 
@@ -75,16 +84,25 @@ describe("Knowledge generation", () => {
       content: "successor",
     });
     expect(save).toHaveBeenCalledOnce();
-    readResponse.resolve({ content: "retired", revision: "rev-old" });
-    saveResponse.resolve({ content: "retired", revision: "rev-old" });
+    readResponse.resolve({
+      path: "/custom/data/FLAME.md",
+      content: "retired",
+      revision: "rev-old",
+    });
+    saveResponse.resolve({
+      path: "/custom/data/FLAME.md",
+      content: "retired",
+      revision: "rev-old",
+    });
   });
 
   it("treats the home document as one resource across workspace bindings", async () => {
     const first = Promise.withResolvers<WorkspaceKnowledgeDocument>();
-    const save = vi
-      .fn()
-      .mockReturnValueOnce(first.promise)
-      .mockResolvedValueOnce({ content: "second", revision: "home-3" });
+    const save = vi.fn().mockReturnValueOnce(first.promise).mockResolvedValueOnce({
+      path: "/custom/data/FLAME.md",
+      content: "second",
+      revision: "home-3",
+    });
     owner = KnowledgeOwner.install({ save } as unknown as WorkspaceKnowledgeGateway);
 
     const firstSave = saveWorkspaceKnowledge({
@@ -97,7 +115,7 @@ describe("Knowledge generation", () => {
     });
     await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
 
-    first.resolve({ content: "first", revision: "home-2" });
+    first.resolve({ path: "/custom/data/FLAME.md", content: "first", revision: "home-2" });
     await expect(firstSave).resolves.toMatchObject({ revision: "home-2" });
     await expect(secondSave).resolves.toMatchObject({ revision: "home-3" });
     expect(save).toHaveBeenCalledTimes(2);
@@ -107,12 +125,20 @@ describe("Knowledge generation", () => {
     const cwdQuery = [WORKSPACE_KNOWLEDGE_KEY, { cwd: "/repo" }];
     const otherQuery = [WORKSPACE_KNOWLEDGE_KEY, { cwd: "/other" }];
     queryClient.setQueryData(cwdQuery, [
-      { scope: "cwd", content: "old", revision: "rev-1" },
-      { scope: "projectRoot", content: "project", revision: "project-1" },
+      { path: "/custom/data/FLAME.md", scope: "cwd", content: "old", revision: "rev-1" },
+      {
+        path: "/custom/data/FLAME.md",
+        scope: "projectRoot",
+        content: "project",
+        revision: "project-1",
+      },
     ]);
-    queryClient.setQueryData(otherQuery, [{ scope: "cwd", content: "other", revision: "other-1" }]);
+    queryClient.setQueryData(otherQuery, [
+      { path: "/custom/data/FLAME.md", scope: "cwd", content: "other", revision: "other-1" },
+    ]);
     owner = KnowledgeOwner.install({
       save: vi.fn().mockResolvedValue({
+        path: "/custom/data/FLAME.md",
         content: "saved",
         revision: "rev-2",
         updatedAt: "2026-08-18T01:00:00Z",
@@ -126,34 +152,48 @@ describe("Knowledge generation", () => {
 
     expect(queryClient.getQueryData(cwdQuery)).toEqual([
       {
+        path: "/custom/data/FLAME.md",
         scope: "cwd",
         content: "saved",
         revision: "rev-2",
         updatedAt: "2026-08-18T01:00:00Z",
       },
-      { scope: "projectRoot", content: "project", revision: "project-1" },
+      {
+        path: "/custom/data/FLAME.md",
+        scope: "projectRoot",
+        content: "project",
+        revision: "project-1",
+      },
     ]);
     expect(queryClient.getQueryData(otherQuery)).toEqual([
-      { scope: "cwd", content: "other", revision: "other-1" },
+      { path: "/custom/data/FLAME.md", scope: "cwd", content: "other", revision: "other-1" },
     ]);
   });
 
   it("commits a home document to every mounted Knowledge projection", async () => {
     const firstQuery = [WORKSPACE_KNOWLEDGE_KEY, { cwd: "/one" }];
     const secondQuery = [WORKSPACE_KNOWLEDGE_KEY, { cwd: "/two" }];
-    queryClient.setQueryData(firstQuery, [{ scope: "home", content: "old", revision: "home-1" }]);
-    queryClient.setQueryData(secondQuery, [{ scope: "home", content: "old", revision: "home-1" }]);
+    queryClient.setQueryData(firstQuery, [
+      { path: "/custom/data/FLAME.md", scope: "home", content: "old", revision: "home-1" },
+    ]);
+    queryClient.setQueryData(secondQuery, [
+      { path: "/custom/data/FLAME.md", scope: "home", content: "old", revision: "home-1" },
+    ]);
     owner = KnowledgeOwner.install({
-      save: vi.fn().mockResolvedValue({ content: "shared", revision: "home-2" }),
+      save: vi.fn().mockResolvedValue({
+        path: "/custom/data/FLAME.md",
+        content: "shared",
+        revision: "home-2",
+      }),
     } as unknown as WorkspaceKnowledgeGateway);
 
     await saveWorkspaceKnowledge(update("home", "shared"));
 
     expect(queryClient.getQueryData(firstQuery)).toEqual([
-      { scope: "home", content: "shared", revision: "home-2" },
+      { path: "/custom/data/FLAME.md", scope: "home", content: "shared", revision: "home-2" },
     ]);
     expect(queryClient.getQueryData(secondQuery)).toEqual([
-      { scope: "home", content: "shared", revision: "home-2" },
+      { path: "/custom/data/FLAME.md", scope: "home", content: "shared", revision: "home-2" },
     ]);
   });
 });

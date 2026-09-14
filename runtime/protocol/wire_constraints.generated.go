@@ -2384,6 +2384,7 @@ func (m ModelCapabilities) ValidateWire() error {
 
 func (k KnowledgeEntry) ValidateWire() error {
 	return collectWireViolations("KnowledgeEntry",
+		requiredTextPattern("path", k.Path, "\\S"),
 		requiredText("revision", k.Revision),
 		closedEnum("scope", string(k.Scope), []string{"cwd", "projectRoot", "home"}, false),
 	)

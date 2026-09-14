@@ -13,6 +13,7 @@ export interface WorkspaceKnowledgeReadInput {
 }
 
 export interface WorkspaceKnowledgeDocument {
+  path: string;
   content: string;
   revision: string;
   updatedAt?: string;

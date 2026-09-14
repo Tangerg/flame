@@ -346,12 +346,14 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
         fetcher: async (): Promise<WorkspaceKnowledgeEntry[]> => [
           {
             scope: "cwd",
+            path: "/workspace/scope/FLAME.md",
             content: "Run the session suite before touching the store.",
             revision: "rev_07",
             updatedAt: "2026-07-31T10:00:00Z",
           },
           {
             scope: "projectRoot",
+            path: "/workspace/FLAME.md",
             content: "Runtime owns durable semantics; the desktop consumes them.",
             revision: "rev_02",
             updatedAt: "2026-07-24T09:12:00Z",

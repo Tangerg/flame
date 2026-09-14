@@ -852,6 +852,7 @@ TypeScript validator from this single registry projection.
 | `ModelCapabilities` | `reasoningDefaultLevel` | `identity` |
 | `ModelCapabilities` | `reasoningDefaultLevel` | `maxLength(32)` |
 | `InvokeToolRequest` | `name` | `nonEmpty` |
+| `KnowledgeEntry` | `path` | `pattern("\\S")` |
 | `KnowledgeEntry` | `revision` | `nonEmpty` |
 | `UpdateKnowledgeRequest` | `expectedRevision` | `nonEmpty` |
 | `AgentDoc` | `path` | `pattern("\\S")` |

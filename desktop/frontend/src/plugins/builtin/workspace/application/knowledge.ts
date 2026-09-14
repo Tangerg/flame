@@ -135,6 +135,8 @@ export class KnowledgeOwner {
 
 const knowledgePublication = createPublicationSlot<KnowledgeOwner>();
 
+type KnowledgeContent = Omit<WorkspaceKnowledgeDocument, "path">;
+
 export class KnowledgeDraft {
   private constructor(
     readonly content: string,
@@ -143,7 +145,7 @@ export class KnowledgeDraft {
     readonly updatedAt?: string,
   ) {}
 
-  static open(snapshot: WorkspaceKnowledgeDocument): KnowledgeDraft {
+  static open(snapshot: KnowledgeContent): KnowledgeDraft {
     return new KnowledgeDraft(
       snapshot.content,
       snapshot.content,
@@ -164,15 +166,12 @@ export class KnowledgeDraft {
     return this.edit(this.content);
   }
 
-  reconcile(snapshot: WorkspaceKnowledgeDocument): KnowledgeDraft {
+  reconcile(snapshot: KnowledgeContent): KnowledgeDraft {
     if (this.revision === snapshot.revision || this.dirty) return this;
     return KnowledgeDraft.open(snapshot);
   }
 
-  settleSave(
-    saved: WorkspaceKnowledgeDocument,
-    latest: WorkspaceKnowledgeDocument,
-  ): KnowledgeDraft {
+  settleSave(saved: KnowledgeContent, latest: KnowledgeContent): KnowledgeDraft {
     const committed = new KnowledgeDraft(
       saved.content,
       this.draft,
@@ -183,7 +182,7 @@ export class KnowledgeDraft {
     return committed.reconcile(latest);
   }
 
-  rebase(snapshot: WorkspaceKnowledgeDocument): KnowledgeDraft {
+  rebase(snapshot: KnowledgeContent): KnowledgeDraft {
     return new KnowledgeDraft(snapshot.content, this.draft, snapshot.revision, snapshot.updatedAt);
   }
 }
@@ -232,6 +231,7 @@ function commitKnowledgeDocument(
     if (!current) return current;
     const entry = {
       scope: input.scope,
+      path: saved.path,
       content: saved.content,
       revision: saved.revision,
       ...(saved.updatedAt ? { updatedAt: saved.updatedAt } : {}),

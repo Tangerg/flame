@@ -20,6 +20,7 @@ func (k KnowledgeScope) Valid() bool {
 
 // KnowledgeEntry is one knowledge record.
 type KnowledgeEntry struct {
+	Path      string         `json:"path"`
 	Scope     KnowledgeScope `json:"scope"`
 	Content   string         `json:"content"`
 	Revision  string         `json:"revision"`

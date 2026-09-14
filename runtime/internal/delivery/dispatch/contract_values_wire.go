@@ -765,7 +765,13 @@ func registerToolValues(s *Shapes) {
 }
 
 func registerKnowledgeValues(s *Shapes) {
-	nonEmpty[protocol.KnowledgeEntry](s, "revision")
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.KnowledgeEntry](),
+		Constraints: []FieldConstraint{
+			{Field: "path", Kind: ConstraintPattern, Value: `\S`},
+			{Field: "revision", Kind: ConstraintNonEmpty},
+		},
+	})
 	nonEmpty[protocol.UpdateKnowledgeRequest](s, "expectedRevision")
 }
 

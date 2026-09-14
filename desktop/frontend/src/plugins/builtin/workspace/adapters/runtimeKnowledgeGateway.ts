@@ -30,6 +30,7 @@ function runtimeKnowledgeGateway(client: FlameClient): WorkspaceKnowledgeGateway
 function knowledgeDocument(entry: KnowledgeEntry, scope: KnowledgeEntry["scope"]) {
   if (entry.scope !== scope) throw new Error("Workspace Knowledge response scope mismatch");
   return {
+    path: entry.path,
     content: entry.content,
     revision: entry.revision,
     ...(entry.updatedAt ? { updatedAt: entry.updatedAt } : {}),

@@ -86,7 +86,7 @@ func TestListKnowledgeMapsEntriesToWire(t *testing.T) {
 	if store.listCWD != canonicalWorkspacePath(t, repo) {
 		t.Fatalf("cwd = %q, want %q", store.listCWD, canonicalWorkspacePath(t, repo))
 	}
-	if len(got.Data) != 2 || got.Data[0].Scope != protocol.KnowledgeScopeHome || got.Data[0].UpdatedAt != captured {
+	if len(got.Data) != 2 || got.Data[0].Scope != protocol.KnowledgeScopeHome || got.Data[0].Path != store.entries[0].Path || got.Data[0].UpdatedAt != captured {
 		t.Fatalf("wire knowledge = %+v", got.Data)
 	}
 }
@@ -105,7 +105,7 @@ func TestGetAndUpdateKnowledgeMapScopeToRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get knowledge: %v", err)
 	}
-	if got.Content != "project notes" || store.getScope != knowledge.ScopeProjectRoot || store.getCWD != canonicalWorkspacePath(t, repo) {
+	if got.Content != "project notes" || got.Path != store.getEntry.Path || store.getScope != knowledge.ScopeProjectRoot || store.getCWD != canonicalWorkspacePath(t, repo) {
 		t.Fatalf("get wire=%+v scope=%v cwd=%q", got, store.getScope, store.getCWD)
 	}
 
@@ -118,7 +118,7 @@ func TestGetAndUpdateKnowledgeMapScopeToRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatalf("update knowledge: %v", err)
 	}
-	if updated.Revision != "rev-2" || store.updateScope != knowledge.ScopeHome || store.updateCWD != "" || store.updateRevision != "rev-1" || store.updateContent != "global prefs" {
+	if updated.Revision != "rev-2" || updated.Path != "/home/.flame/FLAME.md" || store.updateScope != knowledge.ScopeHome || store.updateCWD != "" || store.updateRevision != "rev-1" || store.updateContent != "global prefs" {
 		t.Fatalf("update scope=%v cwd=%q content=%q", store.updateScope, store.updateCWD, store.updateContent)
 	}
 }

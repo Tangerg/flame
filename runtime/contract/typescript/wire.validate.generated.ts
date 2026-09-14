@@ -1695,10 +1695,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ItemType: enumOf(["userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"]),
   KnowledgeEntry: object({
     content: text(),
+    path: allOf([text(), pattern("\\S")]),
     revision: allOf([text(), minLength(1)]),
     scope: ref(() => CHECKS.KnowledgeScope),
     updatedAt: text(),
-  }, ["content", "revision", "scope"]),
+  }, ["content", "path", "revision", "scope"]),
   KnowledgeScope: enumOf(["cwd", "projectRoot", "home"]),
   ListApprovalRulesRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),

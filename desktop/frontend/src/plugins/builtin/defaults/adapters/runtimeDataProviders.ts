@@ -217,6 +217,7 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
       const resources = await read.workspace(optionalParams<WorkspaceKnowledgeQuery>(params)?.cwd);
       return (await pageData(resources.knowledge.list()).catch(emptyListIfUngated)).map((m) => ({
         scope: m.scope,
+        path: m.path,
         content: m.content,
         revision: m.revision,
         updatedAt: m.updatedAt,

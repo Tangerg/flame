@@ -7649,6 +7649,10 @@
       "type": "KnowledgeEntry",
       "rules": [
         {
+          "field": "path",
+          "constraint": "pattern(\"\\\\S\")"
+        },
+        {
           "field": "revision",
           "constraint": "nonEmpty"
         }

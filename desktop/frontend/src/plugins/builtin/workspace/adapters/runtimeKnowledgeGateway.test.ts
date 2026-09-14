@@ -24,6 +24,7 @@ function install(): void {
 describe("runtimeKnowledgeGateway", () => {
   it("reads one exact scope through the requested workspace binding", async () => {
     const get = vi.fn().mockResolvedValue({
+      path: "/custom/data/FLAME.md",
       scope: "projectRoot",
       content: "exact content",
       revision: "rev-1",
@@ -38,6 +39,7 @@ describe("runtimeKnowledgeGateway", () => {
     await expect(
       loadWorkspaceKnowledge({ scope: "projectRoot", cwd: "/work/alpha" }),
     ).resolves.toEqual({
+      path: "/custom/data/FLAME.md",
       content: "exact content",
       revision: "rev-1",
       updatedAt: "2026-08-12T00:00:00Z",
@@ -50,6 +52,7 @@ describe("runtimeKnowledgeGateway", () => {
     const update = vi
       .fn()
       .mockResolvedValueOnce({
+        path: "/custom/data/FLAME.md",
         scope: "cwd",
         content: "saved",
         revision: "rev-2",
@@ -76,6 +79,7 @@ describe("runtimeKnowledgeGateway", () => {
         expectedRevision: "rev-1",
       }),
     ).resolves.toEqual({
+      path: "/custom/data/FLAME.md",
       content: "saved",
       revision: "rev-2",
       updatedAt: "2026-08-12T00:01:00Z",
@@ -93,6 +97,7 @@ describe("runtimeKnowledgeGateway", () => {
   it("retires an old Host read before its response can settle into the successor", async () => {
     const response = Promise.withResolvers<{
       scope: "cwd";
+      path: string;
       content: string;
       revision: string;
     }>();
@@ -111,7 +116,12 @@ describe("runtimeKnowledgeGateway", () => {
       client: () => ({ workspaces: { open: vi.fn() } }) as unknown as FlameClient,
     });
     install();
-    response.resolve({ scope: "cwd", content: "retired", revision: "rev-retired" });
+    response.resolve({
+      path: "/custom/data/FLAME.md",
+      scope: "cwd",
+      content: "retired",
+      revision: "rev-retired",
+    });
 
     await expect(retired).resolves.toMatchObject({
       message: "workspace_knowledge_generation_retired",
@@ -121,6 +131,7 @@ describe("runtimeKnowledgeGateway", () => {
   it("retires an old Host save without repairing successor queries", async () => {
     const response = Promise.withResolvers<{
       scope: "cwd";
+      path: string;
       content: string;
       revision: string;
     }>();
@@ -147,7 +158,12 @@ describe("runtimeKnowledgeGateway", () => {
       client: () => ({ workspaces: { open: vi.fn() } }) as unknown as FlameClient,
     });
     install();
-    response.resolve({ scope: "cwd", content: "retired", revision: "rev-retired" });
+    response.resolve({
+      path: "/custom/data/FLAME.md",
+      scope: "cwd",
+      content: "retired",
+      revision: "rev-retired",
+    });
 
     await expect(retired).resolves.toMatchObject({
       message: "workspace_knowledge_generation_retired",
@@ -158,10 +174,12 @@ describe("runtimeKnowledgeGateway", () => {
   it("retires an admitted read when the same Host observes a new Runtime generation", async () => {
     const response = Promise.withResolvers<{
       scope: "projectRoot";
+      path: string;
       content: string;
       revision: string;
     }>();
     const get = vi.fn().mockReturnValueOnce(response.promise).mockResolvedValueOnce({
+      path: "/custom/data/FLAME.md",
       scope: "projectRoot",
       content: "successor",
       revision: "rev-successor",
@@ -185,6 +203,7 @@ describe("runtimeKnowledgeGateway", () => {
       loadWorkspaceKnowledge({ scope: "projectRoot", cwd: "/work/alpha" }),
     ).resolves.toMatchObject({ content: "successor" });
     response.resolve({
+      path: "/custom/data/FLAME.md",
       scope: "projectRoot",
       content: "retired",
       revision: "rev-retired",

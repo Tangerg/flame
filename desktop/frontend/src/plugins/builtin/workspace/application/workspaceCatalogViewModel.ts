@@ -69,18 +69,12 @@ export function workspaceKnowledgeViewModel(
       id: entry.scope,
       scope: entry.scope,
       scopeLabelKey: scopeLabelKey(entry.scope),
-      path: knowledgePath(entry.scope),
+      path: entry.path,
       content: entry.content,
       revision: entry.revision,
       updatedAt: entry.updatedAt,
     })),
   );
-}
-
-function knowledgePath(scope: WorkspaceKnowledgeScope): string {
-  if (scope === "cwd") return "FLAME.md";
-  if (scope === "projectRoot") return "project/FLAME.md";
-  return "~/.flame/FLAME.md";
 }
 
 export function workspaceSkillsViewModel(

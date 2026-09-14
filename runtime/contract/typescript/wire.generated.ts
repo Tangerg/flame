@@ -635,6 +635,7 @@ export type ItemType = "userMessage" | "agentMessage" | "reasoning" | "question"
 
 export interface KnowledgeEntry {
   content: string;
+  path: string;
   revision: string;
   scope: KnowledgeScope;
   updatedAt?: string;

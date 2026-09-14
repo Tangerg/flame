@@ -109,7 +109,10 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
           size="xs"
           className={stylex.props(chevron.base, vocab.faint, !open && chevron.shut).className}
         />
-        <span {...stylex.props(vocab.ink, vocab.truncate, typeStep.uiMd, face.mono)}>
+        <span
+          title={row.path}
+          {...stylex.props(vocab.ink, vocab.truncate, typeStep.uiMd, face.mono)}
+        >
           {row.path}
         </span>
         <Badge>{t(row.scopeLabelKey)}</Badge>

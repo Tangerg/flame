@@ -66,7 +66,7 @@ func (s *Handler) UpdateKnowledge(ctx context.Context, in protocol.UpdateKnowled
 
 func presentKnowledgeEntry(entry knowledge.Entry) protocol.KnowledgeEntry {
 	return protocol.KnowledgeEntry{
-		Scope: protocol.KnowledgeScope(entry.Scope), Content: entry.Content,
+		Scope: protocol.KnowledgeScope(entry.Scope), Path: entry.Path, Content: entry.Content,
 		Revision: entry.Revision, UpdatedAt: entry.UpdatedAt,
 	}
 }

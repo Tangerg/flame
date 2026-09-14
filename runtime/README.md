@@ -100,3 +100,7 @@ Title generation is nested under `run segment maintenance`, with `run.id`, `gen_
 ## Background shell lifetime
 
 Background commands remain addressable after they exit until `read_shell_output` consumes their final output. That final read reports completion and releases the shell handle and retained buffer; later reads report that the shell is absent. Compaction reminders preserve these retained handles, including commands that have finished with unread output. Reads while a command is running keep its handle available. Stopping a command preserves its unread output for the final read. Session teardown and Runtime shutdown also reclaim owned commands.
+
+## Knowledge document paths
+
+Knowledge reads and accepted writes return the Runtime-resolved absolute `path` alongside scope, content, and revision. Desktop displays that path and preserves it when projecting a saved document into its query cache. Clients must not infer user storage or project roots from a scope label. Writes still target scope and workspace with revision checks; the returned path is descriptive, not a file-write argument.
