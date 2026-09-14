@@ -12,6 +12,7 @@ import (
 // interactionModelFailures owns the product classification of stopped model
 // calls. Scope preserves their unknown external outcome and records the host's
 // cancellation; Runtime projects the cause for the member that observed it.
+// Terminal delivery retires the classification even when another cause wins.
 type interactionModelFailures struct {
 	mu        sync.Mutex
 	byProcess map[agent.ProcessID]run.Failure
@@ -53,15 +54,20 @@ func (i *interactionModelFailures) record(processID agent.ProcessID, cause error
 	i.mu.Unlock()
 }
 
-func (i *interactionModelFailures) take(processID agent.ProcessID) (run.Failure, bool) {
+func (i *interactionModelFailures) lookup(processID agent.ProcessID) (run.Failure, bool) {
 	if i == nil || !processID.Valid() {
 		return run.Failure{}, false
 	}
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	failure, found := i.byProcess[processID]
-	delete(i.byProcess, processID)
 	return failure, found
+}
+
+func (i *interactionModelFailures) forget(processID agent.ProcessID) {
+	i.mu.Lock()
+	delete(i.byProcess, processID)
+	i.mu.Unlock()
 }
 
 func (i *interactionModelFailures) has(processID agent.ProcessID) bool {

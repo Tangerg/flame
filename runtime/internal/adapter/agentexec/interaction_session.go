@@ -585,7 +585,9 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 	if err != nil {
 		return err
 	}
-	i.lifetime.send(runs.ExecutorEvent{Member: member, Payload: end})
+	if i.lifetime.send(runs.ExecutorEvent{Member: member, Payload: end}) {
+		i.modelFailures.forget(result.ProcessID())
+	}
 	if i.lifecycleHooks != nil {
 		if err := i.lifecycleHooks.NotifyStopped(
 			i.lifetime.execution, i.start.SessionID, i.start.CWD, string(end.Reason),
@@ -662,7 +664,7 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 	} else {
 		end = segmentEndFromTermination(termination, duration)
 		if termination.Cause() == agent.TerminationCauseHostCancellation {
-			if classified, found := i.modelFailures.take(result.ProcessID()); found {
+			if classified, found := i.modelFailures.lookup(result.ProcessID()); found {
 				end.reason = run.OutcomeFailed
 				end.failure = &classified
 			}

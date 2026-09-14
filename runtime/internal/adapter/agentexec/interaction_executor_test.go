@@ -476,6 +476,9 @@ func TestInteractionExecutorBindsRunLifetimeToProcessOwner(t *testing.T) {
 	executor := newTestInteractionExecutorWithLifetime(t, lifetime, model)
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), func() {
 		runContext := <-modelContext
+		for _, session := range executor.sessions.snapshot() {
+			session.modelFailures.record(session.state.process.Relation().ProcessID(), errors.New("provider unavailable"))
+		}
 		stopLifetime()
 		select {
 		case <-runContext.Done():
@@ -486,6 +489,17 @@ func TestInteractionExecutorBindsRunLifetimeToProcessOwner(t *testing.T) {
 	ended := payloadsOf[runs.SegmentEnded](events)
 	if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
 		t.Fatalf("segment end after process cancellation = %#v", ended)
+	}
+	for _, event := range events {
+		if _, terminal := event.Payload.(runs.SegmentEnded); !terminal {
+			continue
+		}
+		processID := mustInteractionProcessID(t, event.Member.MemberID)
+		for _, session := range executor.sessions.snapshot() {
+			if session.modelFailures.has(processID) {
+				t.Fatal("canceled process retained its model failure after terminal delivery")
+			}
+		}
 	}
 }
 

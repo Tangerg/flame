@@ -172,6 +172,7 @@ func (i *interactionSession) projectDelegateTerminal(
 		return false, fmt.Errorf("agentexec: publish delegated child terminal: %w", err)
 	}
 	managed.segmentProjected = true
+	i.modelFailures.forget(result.ProcessID())
 	i.committedReplies.forget(result.ProcessID())
 	return true, nil
 }
