@@ -24,10 +24,11 @@ type racingRunProjection struct {
 }
 
 func (r *racingRunProjection) Run(context.Context, string) (run.Run, bool, error) {
+	value := r.value
 	if r.beforeReturn != nil {
 		r.beforeReturn()
 	}
-	return r.value, true, nil
+	return value, true, nil
 }
 
 func (*racingRunProjection) Tree(context.Context, string) ([]run.Run, error) { return nil, nil }
@@ -153,24 +154,57 @@ func TestSubscribeDoesNotRetargetAnOldSegmentToARacingResume(t *testing.T) {
 		Record{ID: testRunID, SegmentID: "segment_old", SessionID: "ses_1", ExecutorID: "executor_old"},
 		testRunTreeOwner(t, oldHub), func() error { return nil },
 	)
+	newOwner := testRunTreeOwner(t, newHub)
+	started, opened := make(chan struct{}), make(chan struct{})
 	projection.beforeReturn = func() {
-		coordinator.registry.Open(
-			Record{ID: testRunID, SegmentID: "segment_new", SessionID: "ses_1", ExecutorID: "executor_new"},
-			testRunTreeOwner(t, newHub), func() error { return nil },
-		)
+		go func() {
+			close(started)
+			defer close(opened)
+			coordinator.registry.Open(Record{ID: testRunID, SegmentID: "segment_new", SessionID: "ses_1", ExecutorID: "executor_new"}, newOwner, func() error {
+				projection.value = runRecord(run.Running, "segment_new", "")
+				return nil
+			})
+		}()
+		<-started
 	}
-
-	_, err := coordinator.Subscribe(t.Context(), SubscribeRequest{
-		RunID: testRunID, SegmentID: "segment_old",
-	})
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	attached, err := coordinator.Subscribe(ctx, SubscribeRequest{RunID: testRunID, SegmentID: "segment_old"})
+	if err != nil || attached.Record.SegmentID != "segment_old" {
+		t.Fatalf("subscription before resume = %+v, %v", attached.Record, err)
+	}
+	<-opened
+	projection.beforeReturn = nil
+	_, err = coordinator.Subscribe(ctx, SubscribeRequest{RunID: testRunID, SegmentID: "segment_old"})
 	if !errors.Is(err, ErrStaleSegment) {
-		t.Fatalf("Subscribe across racing resume = %v, want ErrStaleSegment", err)
+		t.Fatalf("subscription after resume = %v, want ErrStaleSegment", err)
 	}
 	newHub.mu.Lock()
 	newSubscribers := len(newHub.subs)
 	newHub.mu.Unlock()
 	if newSubscribers != 0 {
 		t.Fatalf("old subscribe attached to replacement Segment: subscribers=%d", newSubscribers)
+	}
+}
+
+func TestSubscribeRetainsJournalAcrossRetirement(t *testing.T) {
+	record := runRecord(run.Running, testSegmentID, "")
+	coordinator, hub := liveCoordinator(t, record)
+	mustAppendJournal(t, hub, ev(true))
+	head := hub.tail()
+	cursor := head.HeadCursor
+	head.Cancel()
+	coordinator.runs = &racingRunProjection{value: record, beforeReturn: func() {
+		mustAppendJournal(t, hub, ev(true))
+		mustCloseJournal(t, hub)
+		coordinator.registry.RemoveSegment(testRunID, testSegmentID)
+	}}
+	attached, err := coordinator.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID, Cursor: cursor})
+	if err != nil {
+		t.Fatalf("subscription crossing normal retirement: %v", err)
+	}
+	if got := drain(attached.Events); len(got) != 1 || got[0] != 2 {
+		t.Fatalf("retired journal replay = %v, want its final event", got)
 	}
 }
 

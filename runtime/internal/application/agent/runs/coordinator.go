@@ -642,6 +642,13 @@ func (c *Coordinator) addressSubscription(ctx context.Context, req SubscribeRequ
 // Both entry points into an executing run (subscribe and steer) resolve here, so
 // they cannot come to different conclusions about the same run.
 func (c *Coordinator) addressLiveSegment(ctx context.Context, runID, segmentID string) (liveSegment, error) {
+	// Capture the owner before reading its durable state. Retirement may remove
+	// that entry after the read, but cannot invalidate the captured journal.
+	// Exclude openings until both reads finish so a newly committed Segment
+	// cannot be paired with an absent or predecessor owner.
+	c.registry.opening.RLock()
+	defer c.registry.opening.RUnlock()
+	live, liveFound := c.registry.Get(runID)
 	run, ok, err := c.runs.Run(ctx, runID)
 	if err != nil {
 		return liveSegment{}, fmt.Errorf("runs: read run %q: %w", runID, err)
@@ -664,8 +671,7 @@ func (c *Coordinator) addressLiveSegment(ctx context.Context, runID, segmentID s
 	if run.ActiveSegmentID() != segmentID {
 		return liveSegment{}, fmt.Errorf("%w: run %q is executing %q", ErrStaleSegment, runID, run.ActiveSegmentID())
 	}
-	live, ok := c.registry.Running(runID)
-	if !ok {
+	if !liveFound {
 		// A Running record whose segment this process does not own. Restart recovery
 		// terminalizes orphans before the runtime serves, so this is a broken
 		// invariant rather than a state a client can act on — reporting it as one
@@ -673,13 +679,10 @@ func (c *Coordinator) addressLiveSegment(ctx context.Context, runID, segmentID s
 		return liveSegment{}, fmt.Errorf("runs: run %q is running segment %q with no live stream", runID, segmentID)
 	}
 	if live.record.SegmentID != segmentID {
-		// The durable read and process-local lookup straddled a park/resume
-		// boundary. Never retarget an old subscription or steer to the replacement
-		// Segment: the caller did not name it and may not have observed its HITL
-		// continuation yet.
+		// Opening and owner publication share the fence above; a disagreement is
+		// an ownership fault, not a reason to retarget the caller's Segment.
 		return liveSegment{}, fmt.Errorf(
-			"%w: run %q replaced segment %q with %q while it was addressed",
-			ErrStaleSegment,
+			"runs: run %q is executing segment %q but its live owner names %q",
 			runID,
 			segmentID,
 			live.record.SegmentID,

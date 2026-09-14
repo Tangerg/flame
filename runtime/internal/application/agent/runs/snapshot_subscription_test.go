@@ -152,13 +152,7 @@ func TestSnapshotSubscriptionWaitsForCommittedOpeningPublication(t *testing.T) {
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 	spec := testSegment()
-	readStarted := make(chan struct{}, 1)
-	coordinator.runs = &racingRunProjection{value: runForSegment(spec), beforeReturn: func() {
-		select {
-		case readStarted <- struct{}{}:
-		default:
-		}
-	}}
+	coordinator.runs = &racingRunProjection{value: runForSegment(spec)}
 	committed, release := make(chan struct{}), make(chan struct{})
 	spec.CommitOpening = func(ctx context.Context, opening OpeningCommit) error {
 		if err := effects.CommitOpening(ctx, opening); err != nil {
@@ -180,7 +174,6 @@ func TestSnapshotSubscriptionWaitsForCommittedOpeningPublication(t *testing.T) {
 		_, err := coordinator.SubscribeSnapshot(ctx, SubscribeRequest{RunID: spec.RunID, SegmentID: spec.SegmentID}, func(context.Context, string) error { return nil })
 		attached <- err
 	}()
-	<-readStarted
 	var earlyErr error
 	early := false
 	select {
