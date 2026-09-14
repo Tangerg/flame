@@ -5,6 +5,7 @@ import type { WorkspaceViewSpec } from "@/plugins/sdk";
 import { ChatPanel } from "./ChatPanel";
 
 const model = vi.hoisted(() => ({
+  setWidth: vi.fn(),
   sessionId: "ses_first",
   activeMainView: "stateful" as string | null,
   dock: { open: false, viewIds: [] as string[], activeViewId: null as string | null },
@@ -43,7 +44,7 @@ vi.mock("@/plugins/builtin/workspace/public/contextDockCatalog", () => ({
 }));
 
 vi.mock("@/plugins/builtin/workspace/public/sidebarDrawer", () => ({
-  useDockWidth: () => ({ width: 420, setWidth: vi.fn() }),
+  useDockWidth: () => ({ width: 0.5, setWidth: model.setWidth }),
 }));
 
 vi.mock("@/plugins/sdk", async (importOriginal) => ({
@@ -156,4 +157,38 @@ describe("ChatPanel Session-owned workspace view state", () => {
       }).disabled,
     ).toBe(true);
   });
+});
+
+it("measures dock availability when returning from a promoted main view", () => {
+  let rowWidth = 500;
+  const width = vi
+    .spyOn(HTMLElement.prototype, "clientWidth", "get")
+    .mockImplementation(() => rowWidth);
+  try {
+    model.sessionId = "ses_first";
+    model.activeMainView = "stateful";
+    model.dock = { open: false, viewIds: [], activeViewId: null };
+    model.views = [
+      { id: "stateful", title: "stateful", icon: "tool", component: StatefulWorkspaceView },
+    ];
+    const view = render(<ChatPanel onSend={() => true} />);
+    model.activeMainView = null;
+    view.rerender(<ChatPanel onSend={() => true} />);
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", {
+        name: "Widen the window to open the right workspace",
+      }).disabled,
+    ).toBe(true);
+    model.activeMainView = "stateful";
+    view.rerender(<ChatPanel onSend={() => true} />);
+    rowWidth = 1000;
+    model.activeMainView = null;
+    view.rerender(<ChatPanel onSend={() => true} />);
+    expect(
+      screen.getByRole<HTMLButtonElement>("button", { name: "Open right workspace" }).disabled,
+    ).toBe(false);
+  } finally {
+    cleanup();
+    width.mockRestore();
+  }
 });

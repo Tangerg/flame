@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { Activity, Fragment, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Activity, Fragment, useCallback, useState, type ReactNode } from "react";
 import { dockWidthRow } from "./dockWidth";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import type { ViewPlacement } from "@/plugins/builtin/workspace/public/viewPlacement";
@@ -156,7 +156,6 @@ export function ChatPanel({ onSend }: Props) {
   const activeSessionId = useActiveSessionId();
   const running = useIsCurrentRootRunning();
   const t = useT();
-  const dockRowRef = useRef<HTMLDivElement>(null);
   const [dockAvailable, setDockAvailable] = useState(true);
 
   const hasDockOwner = activeSessionId !== "";
@@ -166,49 +165,53 @@ export function ChatPanel({ onSend }: Props) {
   const ownedDockViewIds = hasDockOwner ? dock.viewIds : [];
   const shellVisible = !isLoading || activeMainView !== null || dock.open;
 
-  useLayoutEffect(() => {
-    const row = dockRowRef.current;
-    if (!row) return;
-    const reconcile = () => {
-      const available = canPresentDock(row.clientWidth);
-      setDockAvailable((current) => (current === available ? current : available));
-      if (!available && dockOpen) collapseWorkspaceDock();
-      if (dockWidthRatio === null && row.clientWidth > 0) {
-        setDockWidthRatio(defaultDockRatio(row.clientWidth, window.innerHeight));
-      }
-    };
-    reconcile();
-    // Deferred out of the observer callback by a frame. Reconciling writes store state, the
-    // re-render changes layout, and that lands more resize notifications in the SAME frame as
-    // the ones being delivered — with ten observers in the shell, the total exceeded Chrome's
-    // per-frame delivery budget and it reported `ResizeObserver loop completed with undelivered
-    // notifications` as an unhandled window error. Measured: the callback itself converges in
-    // three runs at a constant width, so this is cascade depth rather than a runaway loop.
-    // The FIRST delivery stays synchronous. `observe()` fires immediately, and at effect time
-    // the row may still be pre-layout at zero width — so that first notification is what
-    // establishes the ratio, and deferring it moved the dock a fraction of a pixel and shifted
-    // one row's text antialiasing by 270 pixels of golden. Measured separately: the error never
-    // occurred on load, only on resize, so the first delivery is not where the cost is.
-    let delivered = false;
-    let queued = 0;
-    const observer = new ResizeObserver(() => {
-      if (!delivered) {
-        delivered = true;
-        reconcile();
-        return;
-      }
-      if (queued) return;
-      queued = requestAnimationFrame(() => {
-        queued = 0;
-        reconcile();
+  // Activity detaches this row when a promoted view hides the conversation.
+  // The observer follows the DOM lifetime, including a later reattachment.
+  const dockRowRef = useCallback(
+    (row: HTMLDivElement | null) => {
+      if (!row) return;
+      const reconcile = () => {
+        const available = canPresentDock(row.clientWidth);
+        setDockAvailable((current) => (current === available ? current : available));
+        if (!available && dockOpen) collapseWorkspaceDock();
+        if (dockWidthRatio === null && row.clientWidth > 0) {
+          setDockWidthRatio(defaultDockRatio(row.clientWidth, window.innerHeight));
+        }
+      };
+      reconcile();
+      // Deferred out of the observer callback by a frame. Reconciling writes store state, the
+      // re-render changes layout, and that lands more resize notifications in the SAME frame as
+      // the ones being delivered — with ten observers in the shell, the total exceeded Chrome's
+      // per-frame delivery budget and it reported `ResizeObserver loop completed with undelivered
+      // notifications` as an unhandled window error. Measured: the callback itself converges in
+      // three runs at a constant width, so this is cascade depth rather than a runaway loop.
+      // The FIRST delivery stays synchronous. `observe()` fires immediately, and when the ref attaches
+      // the row may still be pre-layout at zero width — so that first notification is what
+      // establishes the ratio, and deferring it moved the dock a fraction of a pixel and shifted
+      // one row's text antialiasing by 270 pixels of golden. Measured separately: the error never
+      // occurred on load, only on resize, so the first delivery is not where the cost is.
+      let delivered = false;
+      let queued = 0;
+      const observer = new ResizeObserver(() => {
+        if (!delivered) {
+          delivered = true;
+          reconcile();
+          return;
+        }
+        if (queued) return;
+        queued = requestAnimationFrame(() => {
+          queued = 0;
+          reconcile();
+        });
       });
-    });
-    observer.observe(row);
-    return () => {
-      if (queued) cancelAnimationFrame(queued);
-      observer.disconnect();
-    };
-  }, [dockOpen, shellVisible, dockWidthRatio, setDockWidthRatio]);
+      observer.observe(row);
+      return () => {
+        if (queued) cancelAnimationFrame(queued);
+        observer.disconnect();
+      };
+    },
+    [dockOpen, dockWidthRatio, setDockWidthRatio],
+  );
 
   if (!shellVisible) return null;
 
