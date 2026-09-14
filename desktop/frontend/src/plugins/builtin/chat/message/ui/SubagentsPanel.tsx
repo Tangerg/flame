@@ -51,7 +51,8 @@ const styles = stylex.create({
   title: { marginBottom: space.s2 },
   transcript: { display: "flex", flexDirection: "column", gap: space.s5, minWidth: 0 },
   status: { display: "flex", alignItems: "center", gap: space.s2 },
-  summary: { flex: 1, minWidth: 0 },
+  summary: { minWidth: 0 },
+  statusAction: { marginInlineStart: "auto" },
   detail: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
   user: { borderRadius: radius.lg, padding: space.s3 },
 });
@@ -148,6 +149,7 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
               size="sm"
               quiet
               disabled={!available}
+              className={stylex.props(styles.statusAction).className}
               title={t("agent.runTree.action.cancel")}
               onClick={() =>
                 cancelSessionRun({ sessionId: narrative.run.sessionId, runId: narrative.run.id })

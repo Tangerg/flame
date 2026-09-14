@@ -785,6 +785,37 @@ test("the timeline names tools the way the transcript does, never by wire name",
   }
 });
 
+test("choosing a subagent swaps the panel's name for the way back", async ({ page }) => {
+  await openWorkspace(page, { state: "dock-subagents" });
+  await waitForWorkspaceState(page, "dock-subagents");
+
+  const panel = page.locator('[data-dock-view-id="subagents"]');
+  await expect(panel.getByRole("button", { name: "Subagents", exact: true })).toHaveCount(0);
+
+  await panel.locator('[data-slot="delegated-run-link"] button').first().click();
+  await expect(panel.getByRole("button", { name: "Subagents", exact: true })).toBeVisible();
+
+  const gap = await panel
+    .locator('[role="region"]')
+    .first()
+    .evaluate((root) => {
+      const name = root.querySelector("span[title]");
+      const status = [...root.querySelectorAll("span")].find(
+        (node) => node.textContent?.trim() === "Needs input",
+      );
+      if (!name || !status) return null;
+      const written = document.createRange();
+      written.selectNodeContents(name);
+      return Math.round(
+        status.getBoundingClientRect().left - written.getBoundingClientRect().right,
+      );
+    });
+  expect(
+    gap,
+    "a run's status reads with the run it names, not at the pane's far edge",
+  ).toBeLessThan(40);
+});
+
 for (const answer of [
   { button: "Allow once", mark: "approved" },
   { button: "Deny", mark: "declined" },
