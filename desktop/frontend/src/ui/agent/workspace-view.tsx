@@ -12,12 +12,18 @@ const styles = stylex.create({
 export function AgentWorkspaceView({
   children,
   className,
+  ariaLabel,
 }: {
   children: ReactNode;
   className?: string;
+  ariaLabel?: string;
 }) {
   return (
-    <div className={cn("agent-workspace-view", stylex.props(styles.view).className, className)}>
+    <div
+      role={ariaLabel === undefined ? undefined : "region"}
+      aria-label={ariaLabel}
+      className={cn("agent-workspace-view", stylex.props(styles.view).className, className)}
+    >
       {children}
     </div>
   );

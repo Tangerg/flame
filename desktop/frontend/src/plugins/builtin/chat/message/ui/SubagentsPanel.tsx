@@ -21,6 +21,7 @@ import {
   toneInk,
   vocab,
 } from "@/ui";
+import { AgentWorkspaceView } from "@/ui/agent";
 import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { radius, space, type as typeStep } from "@/styles/tokens.stylex";
@@ -32,7 +33,6 @@ import { MESSAGE_CONTENT_CLASS } from "./messageContent";
 import { messageStyles as ms } from "./messageStyles";
 
 const styles = stylex.create({
-  panel: { display: "flex", flexDirection: "column", height: "100%", minHeight: 0 },
   header: {
     display: "flex",
     alignItems: "center",
@@ -63,17 +63,15 @@ export function SubagentsPanel() {
   const selectedId = useWorkspaceSubagentRunId();
   const selected = entries.find(({ narrative }) => narrative.run.id === selectedId);
   return (
-    <section aria-label={t("subagents.title")} {...stylex.props(styles.panel)}>
-      <header {...stylex.props(styles.header)}>
-        {selectedId ? (
+    <AgentWorkspaceView ariaLabel={t("subagents.title")}>
+      {selectedId && (
+        <header {...stylex.props(styles.header)}>
           <TextButton onClick={() => openWorkspaceSubagentRun(null)}>
             <Icon name="chevron-left" size="sm" />
             {t("subagents.title")}
           </TextButton>
-        ) : (
-          <SectionLabel>{t("subagents.title")}</SectionLabel>
-        )}
-      </header>
+        </header>
+      )}
       {selected ? (
         <SubagentTranscript key={selectedId} entry={selected} />
       ) : (
@@ -96,7 +94,7 @@ export function SubagentsPanel() {
           )}
         </div>
       )}
-    </section>
+    </AgentWorkspaceView>
   );
 }
 

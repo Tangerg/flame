@@ -19,6 +19,7 @@ export const vocab = stylex.create({
   column: { display: "flex", flexDirection: "column" },
   line: { display: "flex", alignItems: "center", gap: space.s2 },
   lineTight: { display: "flex", alignItems: "center", gap: space.s1_5 },
+  firstLine: { display: "flex", height: "1lh", flexShrink: 0, alignItems: "center" },
 
   afterLine: { marginTop: space.s1_5 },
 

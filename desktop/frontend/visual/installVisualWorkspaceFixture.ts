@@ -493,6 +493,7 @@ async function loadVisualPlugins(plugins: readonly AnyPlugin[]): Promise<void> {
 
 const OPENED_BY_ITS_OWN_STATE = new Set([
   "inbox",
+  "subagents",
   "agent-docs",
   "skills",
   "knowledge",
@@ -506,6 +507,7 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-inbox": "inbox",
   "dock-timeline": "timeline",
   "dock-runs": "timeline",
+  "dock-subagents": "subagents",
   "dock-files": "file",
   "dock-search": "search",
   "dock-agent-docs": "agent-docs",
@@ -526,7 +528,7 @@ export async function installVisualWorkspaceFixture(
   await installVisualAgentFixture(
     state === "dock-light"
       ? "running"
-      : state === "dock-runs"
+      : state === "dock-runs" || state === "dock-subagents"
         ? "delegated"
         : state === "dock-timeline"
           ? "tool-shells"

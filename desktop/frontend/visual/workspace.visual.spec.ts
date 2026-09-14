@@ -129,6 +129,7 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     return;
   }
   const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {
+    "dock-subagents": "Sub-agent 4 of 4",
     "dock-agent-docs": "3 found",
     "dock-skills": "2 available",
     "dock-knowledge": "2 scopes",

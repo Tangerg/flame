@@ -12,7 +12,7 @@ const styles = stylex.create({
   row: { display: "flex", alignItems: "center", gap: space.s1, minWidth: 0 },
   link: {
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: space.s2,
     minWidth: 0,
     flex: 1,
@@ -44,7 +44,9 @@ export function DelegatedRunLink({
         onClick={() => openWorkspaceSubagentRun(run.id)}
         className={stylex.props(styles.link).className}
       >
-        <Icon name="bot" size="sm" />
+        <span {...stylex.props(vocab.firstLine, typeStep.uiSm)}>
+          <Icon name="bot" size="sm" />
+        </span>
         <span {...stylex.props(styles.detail)}>
           <span {...stylex.props(vocab.line, typeStep.uiSm)}>
             <span title={model.label} {...stylex.props(vocab.truncate)}>
@@ -59,7 +61,9 @@ export function DelegatedRunLink({
             </span>
           )}
         </span>
-        <Icon name="panel-r" size="xs" />
+        <span {...stylex.props(vocab.firstLine, typeStep.uiSm)}>
+          <Icon name="panel-r" size="xs" />
+        </span>
       </Pressable>
       {model.cancelable && (
         <IconButton

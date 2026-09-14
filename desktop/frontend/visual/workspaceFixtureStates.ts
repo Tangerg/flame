@@ -33,6 +33,7 @@ export const VISUAL_WORKSPACE_STATES = [
   "dock-inbox",
   "dock-timeline",
   "dock-runs",
+  "dock-subagents",
   "dock-files",
   "dock-search",
   "dock-agent-docs",

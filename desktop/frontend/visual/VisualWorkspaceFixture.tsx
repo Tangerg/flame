@@ -19,6 +19,7 @@ const STATE_LABELS: Record<VisualWorkspaceState, string> = {
   "dock-inbox": "Inbox",
   "dock-timeline": "Timeline",
   "dock-runs": "Run tree",
+  "dock-subagents": "Subagents",
   "dock-files": "Files",
   "dock-search": "Search",
   "dock-agent-docs": "Agent docs",

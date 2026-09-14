@@ -163,7 +163,7 @@ function TimelineRunHeader({
   return (
     <>
       <div {...stylex.props(ts.runHeader)}>
-        <span {...stylex.props(ts.runHeaderLine, typeStep.uiSm)}>
+        <span {...stylex.props(vocab.firstLine, typeStep.uiSm)}>
           <Icon
             name={child ? "bot" : "branch"}
             size="sm"
@@ -201,7 +201,7 @@ function TimelineRunHeader({
             </div>
           )}
         </div>
-        <span {...stylex.props(ts.runHeaderLine, typeStep.uiSm)}>
+        <span {...stylex.props(vocab.firstLine, typeStep.uiSm)}>
           <IconButton
             icon="bot"
             quiet

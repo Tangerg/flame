@@ -194,7 +194,6 @@ export const timelineStyles = stylex.create({
     paddingRight:
       "calc(var(--density-column-gutter-wide) - (var(--control-height-md) - var(--icon-md)) / 2)",
   },
-  runHeaderLine: { display: "flex", height: "1lh", flexShrink: 0, alignItems: "center" },
   runDetail: {
     marginTop: space.s0_5,
     display: "flex",
