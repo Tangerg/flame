@@ -143,8 +143,16 @@ func (m modelContextBudget) hasProviderPricedMedia(messages []chat.Message) bool
 	for _, group := range [][]chat.Message{m.instructions, messages, m.tail} {
 		for messageIndex := range group {
 			for partIndex := range group[messageIndex].Parts {
-				if group[messageIndex].Parts[partIndex].Kind == chat.PartMedia {
+				part := group[messageIndex].Parts[partIndex]
+				if part.Kind == chat.PartMedia {
 					return true
+				}
+				if part.ToolResult != nil {
+					for _, content := range part.ToolResult.Output.Content {
+						if content.Kind == chat.PartMedia {
+							return true
+						}
+					}
 				}
 			}
 		}
@@ -211,26 +219,51 @@ func mediaNormalizedMessages(messages []chat.Message) []chat.Message {
 		for partIndex := range message.Parts {
 			part := message.Parts[partIndex]
 			value := part.Media
+			result := part.ToolResult
 			part.Media = nil
+			part.ToolResult = nil
 			normalized[messageIndex].Parts[partIndex] = part.Clone()
-			if value == nil {
-				continue
-			}
-			mediaValue := *value
-			mediaValue.Source.Bytes = nil
-			mediaValue.Metadata = value.Metadata.Clone()
-			switch mediaValue.Source.Kind {
-			case media.SourceBytes:
-				mediaValue.Source.Bytes = []byte{0}
-			case media.SourceURI:
-				mediaValue.Source.URI = mediaURIPlaceholder
-			case media.SourceReference:
-				mediaValue.Source.Ref = mediaReferencePlaceholder
-			}
-			normalized[messageIndex].Parts[partIndex].Media = &mediaValue
+			normalized[messageIndex].Parts[partIndex].Media = normalizedMedia(value)
+			normalized[messageIndex].Parts[partIndex].ToolResult = mediaNormalizedToolResult(result)
 		}
 	}
 	return normalized
+}
+
+func normalizedMedia(value *media.Media) *media.Media {
+	if value == nil {
+		return nil
+	}
+	normalized := *value
+	normalized.Source.Bytes = nil
+	normalized.Metadata = value.Metadata.Clone()
+	switch normalized.Source.Kind {
+	case media.SourceBytes:
+		normalized.Source.Bytes = []byte{0}
+	case media.SourceURI:
+		normalized.Source.URI = mediaURIPlaceholder
+	case media.SourceReference:
+		normalized.Source.Ref = mediaReferencePlaceholder
+	}
+	return &normalized
+}
+
+func mediaNormalizedToolResult(result *chat.ToolResult) *chat.ToolResult {
+	if result == nil {
+		return nil
+	}
+	// Replace media before cloning so the estimate never copies inline payloads.
+	withoutContent := *result
+	withoutContent.Output.Content = nil
+	normalized := withoutContent.Clone()
+	normalized.Output.Content = make([]chat.ToolContent, len(result.Output.Content))
+	for index, content := range result.Output.Content {
+		value := content.Media
+		content.Media = nil
+		normalized.Output.Content[index] = content.Clone()
+		normalized.Output.Content[index].Media = normalizedMedia(value)
+	}
+	return &normalized
 }
 
 func cloneToolDefinitions(tools []chat.ToolDefinition) []chat.ToolDefinition {

@@ -51,6 +51,11 @@ func TestModelContextBudgetUsesProviderCountOnlyAtLocalThresholdOrForMedia(t *te
 	if over || counter.calls != 1 {
 		t.Fatalf("media preflight = over:%t provider_counts:%d, want false and one", over, counter.calls)
 	}
+	counter.count = threshold + 1
+	over, _, err = budget.triggered(t.Context(), []chat.Message{budgetToolImage(mustBudgetImage(t, []byte{0}))})
+	if err != nil || !over || counter.calls != 2 {
+		t.Fatalf("tool media preflight = over:%t provider_counts:%d error:%v", over, counter.calls, err)
+	}
 }
 
 func TestModelContextBudgetAppliesEstimateCalibrationToCapacityChecks(t *testing.T) {
@@ -211,6 +216,21 @@ func TestModelContextEstimateDoesNotTreatInlineImageBytesAsText(t *testing.T) {
 			largeTokens,
 		)
 	}
+	smallToolTokens := mustEstimateModelContextTokens(t, []chat.Message{budgetToolImage(small)}, nil, chat.Options{})
+	largeTool := budgetToolImage(large)
+	largeToolTokens := mustEstimateModelContextTokens(t, []chat.Message{largeTool}, nil, chat.Options{})
+	if largeToolTokens != smallToolTokens {
+		t.Fatalf("tool image estimates = small:%d large:%d", smallToolTokens, largeToolTokens)
+	}
+	if len(largeTool.Parts[0].ToolResult.Output.Content[1].Media.Source.Bytes) != 2<<20 {
+		t.Fatal("estimating tool media mutated its original payload")
+	}
+}
+
+func budgetToolImage(image *media.Media) chat.Message {
+	return chat.NewToolMessage(chat.ToolResult{ID: "image", Name: "inspect", Output: chat.ToolOutput{
+		Content: []chat.ToolContent{{Kind: chat.PartText, Text: "image result"}, {Kind: chat.PartMedia, Media: image}},
+	}})
 }
 
 func TestModelContextEstimateCountsToolManifestAndOptions(t *testing.T) {
