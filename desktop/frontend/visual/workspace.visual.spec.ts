@@ -794,7 +794,16 @@ for (const answer of [
     await expect(timeline.getByText("Approval requested")).toBeVisible();
     await expect(timeline.getByRole("img", { name: answer.mark })).toHaveCount(0);
 
-    await page.getByRole("button", { name: answer.button, exact: true }).click();
+    await page
+      .locator('[data-slot="delegated-run-link"][data-run-id="run_child"]')
+      .getByRole("button")
+      .first()
+      .click();
+    const subagent = page.locator('[data-dock-view-id="subagents"]');
+    await expect(subagent).toBeVisible();
+    await subagent.getByRole("button", { name: answer.button, exact: true }).click();
+    await expect(subagent.getByRole("button", { name: answer.button, exact: true })).toHaveCount(0);
+    await page.getByRole("tab", { name: "Timeline", exact: true }).click();
 
     await expect(timeline.getByRole("img", { name: answer.mark })).toBeVisible();
     const settled = timeline.getByText("Approval settled").locator("xpath=ancestor::*[2]");
