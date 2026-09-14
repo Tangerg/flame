@@ -16,19 +16,18 @@ const styles = stylex.create({
   // otherwise the two disagree about how tall a line is and the mark sizes itself to the wrong
   // one. `ActivePlan` had it on the text, and this measured 3px too tall in its plan pill.
   mark: { display: "grid", height: "1lh", width: space.s4, flexShrink: 0, placeItems: "center" },
-  ring: {
-    position: "relative",
+  pending: {
     height: space.s3,
     width: space.s3,
     borderWidth: "1.5px",
     borderStyle: "solid",
+    borderColor: surface.fieldStrong,
   },
-  ringActive: { borderColor: color.accent },
-  ringPending: { borderColor: surface.fieldStrong },
-  pulse: {
-    position: "absolute",
-    inset: space.s0_5,
+  active: {
+    height: space.s3,
+    width: space.s3,
     backgroundColor: color.accent,
+    boxShadow: "var(--shadow-live-glow)",
     animation: motion.pulseDot,
   },
   done: { color: color.success },
@@ -51,14 +50,8 @@ export function StepMark({ state }: { state: StepState }) {
   return (
     <div {...stylex.props(styles.mark)}>
       {state === "done" && <Icon name="check" size="sm" {...stylex.props(styles.done)} />}
-      {state === "active" && (
-        <div {...stylex.props(styles.ring, corner.pill, styles.ringActive)}>
-          <div {...stylex.props(styles.pulse, corner.pill)} />
-        </div>
-      )}
-      {state === "pending" && (
-        <div {...stylex.props(styles.ring, corner.pill, styles.ringPending)} />
-      )}
+      {state === "active" && <div {...stylex.props(styles.active, corner.pill)} />}
+      {state === "pending" && <div {...stylex.props(styles.pending, corner.pill)} />}
     </div>
   );
 }

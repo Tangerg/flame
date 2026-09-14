@@ -27,16 +27,18 @@ describe("ModeRow", () => {
     model.setApprovalMode.mockReturnValue(saving.promise);
     const view = render(<ModeRow mode="balanced" />);
 
-    const safe = screen.getByRole("button", { name: "Safe" });
-    const balanced = screen.getByRole("button", { name: "Balanced" });
-    const auto = screen.getByRole("button", { name: "Auto" });
+    const safe = screen.getByRole("radio", { name: "Safe" });
+    const balanced = screen.getByRole("radio", { name: "Balanced" });
+    const auto = screen.getByRole("radio", { name: "Auto" });
     fireEvent.click(auto);
 
     const pendingSelection = {
-      auto: auto.getAttribute("aria-pressed"),
-      balanced: balanced.getAttribute("aria-pressed"),
+      auto: auto.getAttribute("aria-checked"),
+      balanced: balanced.getAttribute("aria-checked"),
       busy: auto.getAttribute("aria-busy"),
-      disabled: [safe, balanced, auto].every((button) => button.hasAttribute("disabled")),
+      disabled: [safe, balanced, auto].every(
+        (button) => button.getAttribute("aria-disabled") === "true",
+      ),
     };
     fireEvent.click(safe);
     const callsWhileSaving = model.setApprovalMode.mock.calls.length;
@@ -46,13 +48,15 @@ describe("ModeRow", () => {
       await saving.promise;
     });
     const acceptedBeforeProjection = {
-      auto: auto.getAttribute("aria-pressed"),
-      balanced: balanced.getAttribute("aria-pressed"),
-      disabled: [safe, balanced, auto].every((button) => button.hasAttribute("disabled")),
+      auto: auto.getAttribute("aria-checked"),
+      balanced: balanced.getAttribute("aria-checked"),
+      disabled: [safe, balanced, auto].every(
+        (button) => button.getAttribute("aria-disabled") === "true",
+      ),
     };
 
     view.rerender(<ModeRow mode="yolo" />);
-    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(false));
+    await waitFor(() => expect(auto.getAttribute("aria-disabled")).toBeNull());
 
     expect(pendingSelection).toEqual({
       auto: "true",
@@ -66,7 +70,7 @@ describe("ModeRow", () => {
       balanced: "false",
       disabled: true,
     });
-    expect(auto.getAttribute("aria-pressed")).toBe("true");
+    expect(auto.getAttribute("aria-checked")).toBe("true");
   });
 
   it("retires a rejected intent and admits a corrected choice", async () => {
@@ -74,17 +78,17 @@ describe("ModeRow", () => {
     model.setApprovalMode.mockReturnValueOnce(rejected.promise).mockResolvedValueOnce("safe");
     render(<ModeRow mode="balanced" />);
 
-    const safe = screen.getByRole("button", { name: "Safe" });
-    const balanced = screen.getByRole("button", { name: "Balanced" });
-    const auto = screen.getByRole("button", { name: "Auto" });
+    const safe = screen.getByRole("radio", { name: "Safe" });
+    const balanced = screen.getByRole("radio", { name: "Balanced" });
+    const auto = screen.getByRole("radio", { name: "Auto" });
     fireEvent.click(auto);
     await act(async () => {
       rejected.reject(new Error("not saved"));
       await rejected.promise.catch(() => undefined);
     });
 
-    await waitFor(() => expect(auto.hasAttribute("disabled")).toBe(false));
-    expect(balanced.getAttribute("aria-pressed")).toBe("true");
+    await waitFor(() => expect(auto.getAttribute("aria-disabled")).toBeNull());
+    expect(balanced.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(safe);
 
     expect(model.setApprovalMode.mock.calls.map(([mode]) => mode)).toEqual(["yolo", "safe"]);

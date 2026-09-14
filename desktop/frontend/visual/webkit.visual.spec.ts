@@ -22,6 +22,7 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   });
   if (route.motion) query.set("motion", route.motion);
   if (route.fontSize !== undefined) query.set("font-size", String(route.fontSize));
+  if (route.motion === "full") await page.emulateMedia({ reducedMotion: "no-preference" });
 
   await page.goto(`/visual/?${query}`);
   await page.locator("html[data-visual-ready]").waitFor();

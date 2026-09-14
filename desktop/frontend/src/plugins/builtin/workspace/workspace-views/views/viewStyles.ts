@@ -187,12 +187,11 @@ export const timelineStyles = stylex.create({
     minHeight: space.s10,
     alignItems: "center",
     gap: space.s2,
-    // A run header is a plate, and a plate takes the corner its own plane owns rather than a
-    // rung of the ladder — `--surface-card-radius` and `--radius-md` are the same value under
-    // two names, and only one of them is the one a visual style may move.
     borderRadius: radius.card,
     backgroundColor: surface.sunken,
-    paddingLeft: space.s3,
+    paddingLeft: "var(--density-column-gutter-wide)",
+    paddingRight:
+      "calc(var(--density-column-gutter-wide) - (var(--control-height-md) - var(--icon-md)) / 2)",
   },
   runDetail: {
     marginTop: space.s0_5,

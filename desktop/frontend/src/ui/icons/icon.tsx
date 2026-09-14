@@ -7,6 +7,7 @@ import {
   ArrowRight,
   ArrowUp,
   Bell,
+  Blocks,
   Book,
   BookOpen,
   Bot,
@@ -172,6 +173,7 @@ export type IconName =
   | "archive"
   | "calendar-plus"
   | "calendar-x"
+  | "blocks"
   | "target"
   | "crosshair"
   | "clipboard-check"
@@ -224,6 +226,7 @@ const ICON_MAP = {
   chart: ChartColumn,
   clock: Clock,
   bell: Bell,
+  blocks: Blocks,
   lightning: Zap,
   bug: Bug,
   shield: ShieldCheck,

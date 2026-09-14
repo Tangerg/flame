@@ -369,6 +369,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
             values={activeQuestion.options.map((option) => option.label)}
             labelledBy={promptId}
             disabled={!runtimeAvailable}
+            numbered
             pending={actions.pending}
             onValueChange={(selected) => selectOptions(activeQuestion, selected)}
           >

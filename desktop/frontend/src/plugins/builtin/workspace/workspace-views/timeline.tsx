@@ -180,25 +180,24 @@ function TimelineRunHeader({
               {run.id}
             </span>
             <Badge tone={status.tone}>{t(status.labelKey)}</Badge>
-          </div>
-          {/* The detail truncates, so there is no rag left for `vocab.pretty` to balance — and
-            the two are a second answer to `text-wrap-mode` on one element, settled by
-            whichever rule the bundler wrote last. */}
-          <div {...stylex.props(ts.runDetail, typeStep.uiXs)}>
-            {status.detail && (
-              <span title={status.detail} {...stylex.props(vocab.truncate)}>
-                {status.detail}
-              </span>
-            )}
-            {child && (
-              <span title={parentRunId} {...stylex.props(vocab.truncate, vocab.faint, face.mono)}>
-                {t("timeline.parentRun", { id: parentRunId })}
-              </span>
-            )}
-            <span {...stylex.props(vs.pushEnd, vocab.hold, face.mono)}>
+            <span {...stylex.props(vocab.hold, vocab.faint, typeStep.uiXs, face.mono)}>
               {t("agent.steps", { count: status.stepCount })}
             </span>
           </div>
+          {(status.detail || child) && (
+            <div {...stylex.props(ts.runDetail, typeStep.uiXs)}>
+              {status.detail && (
+                <span title={status.detail} {...stylex.props(vocab.truncate)}>
+                  {status.detail}
+                </span>
+              )}
+              {child && (
+                <span title={parentRunId} {...stylex.props(vocab.truncate, vocab.faint, face.mono)}>
+                  {t("timeline.parentRun", { id: parentRunId })}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <IconButton
           icon="bot"
@@ -210,7 +209,6 @@ function TimelineRunHeader({
         {spawnedByItemId && (
           <IconButton
             icon="chat"
-            size="lg"
             quiet
             title={t("timeline.locateParent")}
             onClick={() => {
@@ -225,7 +223,6 @@ function TimelineRunHeader({
         {status.cancelable && (
           <IconButton
             icon="stop"
-            size="lg"
             quiet
             disabled={!runtimeAvailable}
             title={t("agent.runTree.action.cancel")}

@@ -1,12 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { Icon, Pressable, vocab } from "@/ui";
+import { ChoiceList, ChoiceOption, Icon, vocab } from "@/ui";
 import { setApprovalMode } from "@/plugins/builtin/agent/public/approvalPolicy";
 import { APPROVAL_MODES, type ApprovalMode } from "../application/approvalConfig";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   color,
   leading,
@@ -24,6 +24,8 @@ type ApprovalModeIntent = {
   settlement: "pending" | "accepted-awaiting-projection";
 } | null;
 
+const MODE_VALUES = APPROVAL_MODES.map((option) => option.value);
+
 const m = stylex.create({
   // Holds the list's measure while the modes load, so the pane does not jump when they land.
   placeholder: {
@@ -32,30 +34,20 @@ const m = stylex.create({
     borderRadius: radius.lg,
     backgroundColor: surface.sunken,
   },
-  list: { marginTop: space.s3, display: "flex", flexDirection: "column", gap: space.s0_5 },
-  option: {
-    display: "flex",
-    alignItems: "center",
-    gap: space.s3,
-    borderRadius: radius.card,
-    paddingInline: space.s3,
-    paddingBlock: space.s3,
-    textAlign: "left",
-    transitionProperty: "background-color",
-  },
-  optionOn: { backgroundColor: surface.accentWash },
-  optionOff: { backgroundColor: { default: null, ":hover": surface.hover } },
-  nameOn: { color: color.accent, fontWeight: weight.medium },
-  nameOff: { color: color.fg },
-  desc: { marginTop: space.s0_5, color: color.fgMuted, lineHeight: leading.body },
+  list: { marginTop: space.s3 },
+  body: { display: "flex", minWidth: 0, flex: 1, flexDirection: "column", gap: space.s0_5 },
+  name: { color: color.fg, fontWeight: weight.medium },
+  desc: { color: color.fgMuted, lineHeight: leading.body },
   spin: { animation: motion.spin },
 });
 
 export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
   const t = useT();
+  const labelId = useId();
   const [intent, setIntent] = useState<ApprovalModeIntent>(null);
   const activeIntent =
     intent?.settlement === "accepted-awaiting-projection" && intent.mode === mode ? null : intent;
+  const shown = activeIntent?.mode ?? mode;
 
   const onChange = async (next: ApprovalMode) => {
     if (activeIntent !== null || next === mode) return;
@@ -75,50 +67,49 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
   };
   return (
     <div>
-      <div {...stylex.props(ss.label, typeStep.uiMd)}>{t("approvals.mode")}</div>
+      <div id={labelId} {...stylex.props(ss.label, typeStep.uiMd)}>
+        {t("approvals.mode")}
+      </div>
       <div {...stylex.props(ss.hintSpaced, typeStep.uiMd)}>{t("approvals.mode.sub")}</div>
       {mode === undefined ? (
         <div {...stylex.props(m.placeholder)} aria-hidden />
       ) : (
         <div {...stylex.props(m.list)}>
-          {APPROVAL_MODES.map((o) => {
-            const selected = o.value === (activeIntent?.mode ?? mode);
-            const saving = o.value === activeIntent?.mode;
-            return (
-              <Pressable
+          <ChoiceList
+            multiple={false}
+            value={shown === undefined ? [] : [shown]}
+            values={MODE_VALUES}
+            labelledBy={labelId}
+            pending={activeIntent !== null}
+            onValueChange={([next]) => {
+              if (next !== undefined) void onChange(next as ApprovalMode);
+            }}
+          >
+            {APPROVAL_MODES.map((o) => (
+              <ChoiceOption
                 key={o.value}
-                type="button"
-                aria-pressed={selected}
-                aria-label={t(o.labelKey)}
-                aria-busy={saving || undefined}
-                disabled={activeIntent !== null}
-                onClick={() => void onChange(o.value)}
-                className={stylex.props(m.option, selected ? m.optionOn : m.optionOff).className}
+                multiple={false}
+                value={o.value}
+                selected={o.value === shown}
+                label={t(o.labelKey)}
+                description={t(o.descKey)}
+                pending={activeIntent !== null}
+                busy={o.value === activeIntent?.mode}
               >
-                <div {...stylex.props(vocab.fill)}>
-                  <div {...stylex.props(selected ? m.nameOn : m.nameOff, typeStep.uiMd)}>
-                    {t(o.labelKey)}
-                  </div>
-                  <div {...stylex.props(m.desc, typeStep.uiMd)}>{t(o.descKey)}</div>
-                </div>
-                {saving ? (
+                <span {...stylex.props(m.body)}>
+                  <span {...stylex.props(m.name, typeStep.uiMd)}>{t(o.labelKey)}</span>
+                  <span {...stylex.props(m.desc, typeStep.uiMd)}>{t(o.descKey)}</span>
+                </span>
+                {o.value === activeIntent?.mode && (
                   <Icon
                     name="loop"
                     size="sm"
                     className={stylex.props(vocab.hold, m.spin, vocab.accent).className}
                   />
-                ) : (
-                  selected && (
-                    <Icon
-                      name="check"
-                      size="md"
-                      className={stylex.props(vocab.hold, vocab.accent).className}
-                    />
-                  )
                 )}
-              </Pressable>
-            );
-          })}
+              </ChoiceOption>
+            ))}
+          </ChoiceList>
         </div>
       )}
     </div>

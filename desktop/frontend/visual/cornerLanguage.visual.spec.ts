@@ -5,7 +5,7 @@ const ROUTES = [
   "/visual/?fixture=agent&state=question&theme=light",
 ] as const;
 
-const ROUND = "round";
+const ROUND = new Set(["round", "superellipse(1)"]);
 const SQUIRCLE = "superellipse(1.5)";
 
 test("speech is round; everything else, including a card in the transcript, is a squircle", async ({
@@ -66,7 +66,7 @@ test("speech is round; everything else, including a card in the transcript, is a
   expect(chrome.length, "the routes have to render controls").toBeGreaterThan(4);
 
   expect(
-    speech.filter((one) => one.shape !== ROUND),
+    speech.filter((one) => !ROUND.has(one.shape)),
     "speech drawn as chrome",
   ).toEqual([]);
   expect(

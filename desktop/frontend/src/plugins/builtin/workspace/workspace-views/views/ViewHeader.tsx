@@ -55,7 +55,7 @@ function DockViewBar({
   if (identity === undefined && sub === undefined && actions === undefined) return null;
   return (
     <AgentSurfaceHeader>
-      <div {...stylex.props(vocab.line, vocab.fill, vocab.muted, typeStep.uiMd, face.mono)}>
+      <div {...stylex.props(vocab.line, vocab.fill, vocab.muted, typeStep.uiSm, face.mono)}>
         {identity !== undefined && <span {...stylex.props(vocab.fill)}>{identity}</span>}
         {identity !== undefined && sub !== undefined && (
           <span aria-hidden {...stylex.props(vocab.hold, vs.dotSep)}>

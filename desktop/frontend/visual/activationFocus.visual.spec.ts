@@ -1,6 +1,7 @@
 import { test as base, expect } from "@playwright/test";
 
-const EXPECTED_NOISE = /RpcConnectionError|Failed to fetch|net::ERR_CONNECTION_REFUSED/;
+const EXPECTED_NOISE =
+  /RpcConnectionError|Failed to fetch|net::ERR_CONNECTION_REFUSED|Reduced Motion enabled on your device/;
 
 const ROUTES = [
   "fixture=agent&state=narrative",

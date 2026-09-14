@@ -2,6 +2,7 @@ import { expect, test } from "./test";
 
 const ROUTES = [
   "fixture=shell&state=populated",
+  "fixture=workspace&state=dock-light",
   "fixture=agent&state=tool-shells",
   "fixture=agent&state=narrative",
   "fixture=agent&state=waiting",

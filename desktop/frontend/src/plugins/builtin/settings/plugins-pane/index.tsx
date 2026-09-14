@@ -14,7 +14,7 @@ export default definePlugin({
       id: PLUGINS_PANE,
       label: "settings.pane.plugins",
       group: "integrations",
-      icon: "tool",
+      icon: "blocks",
       order: 99,
       component: PluginsPane,
     });

@@ -27,6 +27,7 @@ const styles = stylex.create({
     width: "100%",
     alignItems: "center",
     gap: space.s2,
+    borderRadius: radius.row,
     paddingInline: space.s2,
     paddingBlock: space.s1_5,
     textAlign: "left",
@@ -43,20 +44,24 @@ const styles = stylex.create({
 
   mark: {
     display: "grid",
-    height: space.s5,
-    width: space.s5,
+    height: "18px",
+    width: "18px",
     flexShrink: 0,
     placeItems: "center",
-    borderWidth: "1px",
+    borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
     borderColor: surface.field,
-    backgroundColor: surface.surface2,
+    backgroundColor: surface.canvas,
     lineHeight: 1,
     fontWeight: weight.medium,
     color: color.fgMuted,
   },
   markSquare: { borderRadius: radius.step2xs },
-  markChosen: { borderColor: color.fg, backgroundColor: color.fg, color: surface.canvas },
+  markChosen: {
+    borderColor: color.accent,
+    backgroundColor: color.accent,
+    color: color.onAccent,
+  },
   dot: { display: "block", height: space.s1_5, width: space.s1_5, backgroundColor: "currentColor" },
 });
 
@@ -66,6 +71,12 @@ interface ChoiceListProps {
   values: readonly string[];
   labelledBy: string;
   disabled?: boolean;
+  /**
+   * The options carry their ordinal, so typing it picks one. Pass it with `ChoiceOption`'s
+   * `ordinal`: a shortcut nothing on screen announces is one nobody can find, and one that
+   * can change a setting by a stray keypress.
+   */
+  numbered?: boolean;
   /** The answer this list belongs to is being submitted. See `TextField`'s `pending`. */
   pending?: boolean;
   onValueChange: (value: string[]) => void;
@@ -78,12 +89,13 @@ export function ChoiceList({
   values,
   labelledBy,
   disabled,
+  numbered,
   pending,
   onValueChange,
   children,
 }: ChoiceListProps) {
   const selectNumberedChoice = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (multiple || !/^[1-9]$/.test(event.key)) return;
+    if (multiple || !numbered || !/^[1-9]$/.test(event.key)) return;
     const selected = values[Number(event.key) - 1];
     if (selected === undefined) return;
     event.preventDefault();
@@ -124,12 +136,14 @@ interface ChoiceOptionProps {
   multiple: boolean;
   value: string;
   selected: boolean;
-  ordinal: number;
+  ordinal?: number;
   label: string;
   description?: string;
   disabled?: boolean;
   /** The answer this option belongs to is being submitted. */
   pending?: boolean;
+  /** This option is the one being committed. */
+  busy?: boolean;
   onReselect?: () => void;
   children: ReactNode;
 }
@@ -143,6 +157,7 @@ export function ChoiceOption({
   description,
   disabled,
   pending,
+  busy,
   onReselect,
   children,
 }: ChoiceOptionProps) {
@@ -150,13 +165,13 @@ export function ChoiceOption({
   // ancestor selector. `selected` says the same thing on the React side, and the mark below
   // reads it: what the row is showing is known here, so nothing has to be inherited for it.
   const className = ({ checked }: { checked: boolean }) =>
-    stylex.props(styles.row, corner.pill, checked ? styles.rowChosen : styles.rowOpen).className ??
-    "";
+    stylex.props(styles.row, checked ? styles.rowChosen : styles.rowOpen).className ?? "";
 
   const common = {
     value,
     disabled,
     "aria-disabled": pending ? true : undefined,
+    "aria-busy": busy ? true : undefined,
     nativeButton: true,
     "aria-label": label,
     "aria-description": description || undefined,
@@ -188,8 +203,7 @@ export function ChoiceOption({
           </CheckboxPrimitive.Indicator>
         ) : (
           <>
-            {/* The ordinal is the shortcut, so it stands in for the dot until one is chosen. */}
-            {!selected && <span>{ordinal}</span>}
+            {!selected && ordinal !== undefined && <span>{ordinal}</span>}
             <RadioPrimitive.Indicator>
               <span {...stylex.props(styles.dot, corner.pill)} />
             </RadioPrimitive.Indicator>

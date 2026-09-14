@@ -81,7 +81,7 @@ function PendingRow({
         <div {...stylex.props(vs.subLine)}>
           <span {...stylex.props(vocab.muted, typeStep.uiSm)}>{ask}</span>
           {item.subject && (
-            <span {...stylex.props(vocab.fill, vocab.truncate, vocab.soft, typeStep.uiSm)}>
+            <span {...stylex.props(vocab.min, vocab.truncate, vocab.soft, typeStep.uiSm)}>
               {item.subject}
             </span>
           )}

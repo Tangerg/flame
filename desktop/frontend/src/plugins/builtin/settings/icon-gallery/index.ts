@@ -31,7 +31,7 @@ export default definePlugin({
       id: BRAND_ICONS_PANE,
       label: "settings.pane.brandIcons",
       group: "advanced",
-      icon: "spark",
+      icon: "image",
       order: 110,
       component: IconShowcase,
     });

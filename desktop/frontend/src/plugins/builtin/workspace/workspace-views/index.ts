@@ -67,7 +67,7 @@ export const knowledgeView = defineWorkspaceView({
 export const agentMemoryView = defineWorkspaceView({
   id: "agent-memory",
   title: "workspace.view.title.agentMemory",
-  icon: "book",
+  icon: "brain",
   order: 105,
   dock: "workspace",
   component: lazy(() => import("./agentMemory").then((m) => ({ default: m.AgentMemoryTab }))),
