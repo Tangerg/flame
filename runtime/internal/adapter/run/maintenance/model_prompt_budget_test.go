@@ -233,6 +233,30 @@ func budgetToolImage(image *media.Media) chat.Message {
 	}})
 }
 
+func TestModelContextEstimateCountsToolDetailsOnlyWithoutContent(t *testing.T) {
+	output := chat.NewTextToolOutput("visible result")
+	message := chat.NewToolMessage(chat.ToolResult{ID: "details", Name: "inspect", Output: output})
+	baseline := mustEstimateModelContextTokens(t, []chat.Message{message}, nil, chat.Options{})
+	details := json.RawMessage(`"` + strings.Repeat("hidden", 2000) + `"`)
+	message.Parts[0].ToolResult.Output.Details = details
+	withContent := mustEstimateModelContextTokens(t, []chat.Message{message}, nil, chat.Options{})
+	if withContent != baseline {
+		t.Fatalf("hidden tool details changed estimate from %d to %d", baseline, withContent)
+	}
+	if string(message.Parts[0].ToolResult.Output.Details) != string(details) {
+		t.Fatal("estimating context discarded structured tool details")
+	}
+	message.Parts[0].ToolResult.Output.Details = json.RawMessage(`{"invalid"`)
+	if _, err := estimateModelContextTokens([]chat.Message{message}, nil, chat.Options{}); err == nil {
+		t.Fatal("hidden details bypassed request validation")
+	}
+	message.Parts[0].ToolResult.Output.Details = details
+	message.Parts[0].ToolResult.Output.Content = nil
+	if fallback := mustEstimateModelContextTokens(t, []chat.Message{message}, nil, chat.Options{}); fallback <= baseline+2000 {
+		t.Fatalf("model-visible details fallback was omitted: %d", fallback)
+	}
+}
+
 func TestModelContextEstimateCountsToolManifestAndOptions(t *testing.T) {
 	messages := []chat.Message{chat.NewUserMessage(chat.NewTextPart("inspect"))}
 	baseline := mustEstimateModelContextTokens(t, messages, nil, chat.Options{})

@@ -195,11 +195,13 @@ func estimateModelContextTokens(
 	tools []chat.ToolDefinition,
 	options chat.Options,
 ) (int, error) {
-	request := chat.Request{
-		Messages: mediaNormalizedMessages(messages),
-		Tools:    cloneToolDefinitions(tools),
-		Options:  options.Clone(),
+	request := chat.Request{Messages: messages, Tools: tools, Options: options}
+	if err := request.Validate(); err != nil {
+		return 0, err
 	}
+	request.Messages = modelContextEstimateMessages(messages)
+	request.Tools = cloneToolDefinitions(tools)
+	request.Options = options.Clone()
 	payload, err := json.Marshal(&request)
 	if err != nil {
 		return 0, err
@@ -207,7 +209,7 @@ func estimateModelContextTokens(
 	return estimateTextTokens(string(payload)), nil
 }
 
-func mediaNormalizedMessages(messages []chat.Message) []chat.Message {
+func modelContextEstimateMessages(messages []chat.Message) []chat.Message {
 	normalized := make([]chat.Message, len(messages))
 	for messageIndex := range messages {
 		message := messages[messageIndex]
@@ -224,7 +226,7 @@ func mediaNormalizedMessages(messages []chat.Message) []chat.Message {
 			part.ToolResult = nil
 			normalized[messageIndex].Parts[partIndex] = part.Clone()
 			normalized[messageIndex].Parts[partIndex].Media = normalizedMedia(value)
-			normalized[messageIndex].Parts[partIndex].ToolResult = mediaNormalizedToolResult(result)
+			normalized[messageIndex].Parts[partIndex].ToolResult = modelContextEstimateToolResult(result)
 		}
 	}
 	return normalized
@@ -248,12 +250,16 @@ func normalizedMedia(value *media.Media) *media.Media {
 	return &normalized
 }
 
-func mediaNormalizedToolResult(result *chat.ToolResult) *chat.ToolResult {
+func modelContextEstimateToolResult(result *chat.ToolResult) *chat.ToolResult {
 	if result == nil {
 		return nil
 	}
 	// Replace media before cloning so the estimate never copies inline payloads.
 	withoutContent := *result
+	// Content supersedes Details in the provider projection.
+	if len(result.Output.Content) > 0 {
+		withoutContent.Output.Details = nil
+	}
 	withoutContent.Output.Content = nil
 	normalized := withoutContent.Clone()
 	normalized.Output.Content = make([]chat.ToolContent, len(result.Output.Content))
