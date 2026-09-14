@@ -6,6 +6,7 @@ import { DOCK_MIN_WIDTH_PX, DOCK_SAFE_AREA_PX } from "@/lib/shellGeometry";
 import {
   VISUAL_DOCK_WIDTH_RATIO,
   VISUAL_REVIEW_VIEWPORT,
+  VISUAL_SETTINGS_PANES,
   VISUAL_WORKSPACE_STATES,
   VISUAL_WORKSPACE_VIEWPORT,
   type VisualSettingsPane,
@@ -706,7 +707,7 @@ for (const theme of ["light", "dark"] as const) {
   }
 }
 
-for (const pane of ["plugins", "providers", "brand-icons"] as const) {
+for (const pane of VISUAL_SETTINGS_PANES) {
   test(`workspace golden settings pane ${pane}`, async ({ page }) => {
     await openWorkspace(page, { state: "settings", pane });
     await waitForWorkspaceState(page, "settings");

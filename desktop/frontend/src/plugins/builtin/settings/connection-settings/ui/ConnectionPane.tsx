@@ -152,7 +152,7 @@ export function ConnectionPane() {
                 caret in the middle of typing. */}
             <Button
               type="button"
-              variant="soft"
+              variant="outline"
               size="lg"
               disabled={isDefault}
               onClick={reset}
@@ -162,6 +162,7 @@ export function ConnectionPane() {
             </Button>
             <Button
               type="button"
+              variant="primary"
               size="lg"
               disabled={!dirty}
               onClick={apply}

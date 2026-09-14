@@ -17,6 +17,7 @@ import { settingStyles as ss } from "../../kit/settingStyles";
 
 const u = stylex.create({
   cost: { width: space.s16, textAlign: "right", color: color.fg },
+  glyphRail: { width: "var(--icon-md)", flexShrink: 0 },
   totalLine: {
     display: "flex",
     alignItems: "baseline",
@@ -56,7 +57,7 @@ function BreakdownSection({
         {buckets.map((b) => (
           <div key={b.key} {...stylex.props(ss.nameGrid, ss.hoverRow, ss.hoverRowTight)}>
             <div {...stylex.props(vocab.line, vocab.min)}>
-              {icon?.(b.key)}
+              {icon ? icon(b.key) : <span aria-hidden {...stylex.props(u.glyphRail)} />}
               <span {...stylex.props(vocab.truncate, vocab.ink, typeStep.uiMd)}>{b.key}</span>
             </div>
             <div {...stylex.props(ss.lineWide, typeStep.uiMd, face.mono)}>
