@@ -93,6 +93,54 @@ describe("Timeline runtime actions", () => {
     expect(screen.getByText("Verify axios")).toBeTruthy();
     expect(screen.getByText("Context compacted")).toBeTruthy();
   });
+  it("shows outcome details only on completion and does not classify a nonzero exit as failure", () => {
+    projection.tools = {
+      failed: {
+        id: "failed",
+        runId: running.id,
+        name: "shell",
+        fn: "Verify axios",
+        args: "",
+        status: "err",
+        error: "request canceled while reading the response body",
+        exitCode: 2,
+      },
+      noMatch: {
+        id: "noMatch",
+        runId: running.id,
+        name: "shell",
+        fn: "Find axios TODOs",
+        args: "",
+        status: "ok",
+        exitCode: 1,
+      },
+    };
+    projection.timeline = [
+      { id: "failed-start", runId: running.id, refId: "failed", kind: "tool-start", ts: 1 },
+      {
+        id: "failed-end",
+        runId: running.id,
+        refId: "failed",
+        kind: "tool-end",
+        ts: 2,
+        status: "err",
+      },
+      {
+        id: "no-match-end",
+        runId: running.id,
+        refId: "noMatch",
+        kind: "tool-end",
+        ts: 3,
+        status: "ok",
+      },
+    ];
+    render(<TimelineTab />);
+    expect(screen.getAllByText("request canceled while reading the response body")).toHaveLength(1);
+    expect(screen.getAllByText("exit 2")).toHaveLength(1);
+    expect(screen.getByText("exit 1")).toBeTruthy();
+    expect(screen.getAllByRole("img", { name: "err" })).toHaveLength(1);
+    expect(screen.getByRole("img", { name: "ok" })).toBeTruthy();
+  });
   it("does not offer an active cancel command while the Runtime is unavailable", async () => {
     await loadPluginsForTest(timelineView);
     expect(lookupExtensionPoint(WORKSPACE_VIEW).some((view) => view.id === "timeline")).toBe(true);

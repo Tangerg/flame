@@ -105,6 +105,14 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
             </span>
           )}
         </div>
+        {entry.kind === "tool-end" && tool?.exitCode !== undefined && (
+          <div {...stylex.props(vocab.faint, face.mono, typeStep.uiXs)}>
+            {t("tool.meta.exit", { code: tool.exitCode })}
+          </div>
+        )}
+        {entry.kind === "tool-end" && tool?.error && (
+          <div {...stylex.props(vs.body, typeStep.uiXs)}>{tool.error}</div>
+        )}
       </div>
       {entry.status && (
         // `Icon` is `aria-hidden` by design and takes no name, so the label lives on a wrapper
