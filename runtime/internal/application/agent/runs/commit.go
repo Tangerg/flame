@@ -210,8 +210,9 @@ func (r ProgressCommit) validate() error {
 }
 
 type EventCommit struct {
-	RunID     string
-	SessionID string
+	ResultPublication *ResultPublication
+	RunID             string
+	SessionID         string
 	// SegmentID owns the complete event write-set, including projections that do
 	// not otherwise carry segment identity. Persistence admits the transaction
 	// only while this exact Segment is still active for the Run.
@@ -246,6 +247,9 @@ type EventCommit struct {
 
 // clone returns an ownership-isolated copy of one complete event write-set.
 func (e EventCommit) clone() EventCommit {
+	if e.ResultPublication != nil {
+		e.ResultPublication = new(*e.ResultPublication)
+	}
 	e.Items = slices.Clone(e.Items)
 	e.ConversationMessages = cloneCommitMessages(e.ConversationMessages)
 	e.ModelInvocations = slices.Clone(e.ModelInvocations)
@@ -285,6 +289,14 @@ func cloneCommitMessages(messages []corechat.Message) []corechat.Message {
 // Validate proves that one event projection is owner-bound and that any Goal
 // charge is exactly the accounting fact implied by its terminal Run.
 func (e EventCommit) Validate() error {
+	if e.ResultPublication != nil {
+		if err := e.ResultPublication.Validate(); err != nil {
+			return err
+		}
+		if e.State != StateUnchanged || len(e.ToolInvocations) == 0 {
+			return errors.New("runs: result publication requires a Tool result transaction")
+		}
+	}
 	if err := e.validateEnvelope(); err != nil {
 		return err
 	}
@@ -496,7 +508,7 @@ func (e EventCommit) isEmpty() bool {
 	return len(e.Items) == 0 &&
 		len(e.ConversationMessages) == 0 &&
 		len(e.ModelInvocations) == 0 &&
-		len(e.ToolInvocations) == 0 &&
+		len(e.ToolInvocations) == 0 && e.ResultPublication == nil &&
 		e.Progress == nil &&
 		e.Outcome == "" &&
 		e.Run == nil &&

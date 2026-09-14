@@ -21,6 +21,7 @@ import (
 )
 
 type interactionCheckpointPayloadWire struct {
+	ToolMetadata        []toolResultMetadata                `json:"tool_metadata,omitempty"`
 	Tree                json.RawMessage                     `json:"tree"`
 	Instructions        []corechat.Message                  `json:"instructions,omitempty"`
 	Members             []interactionMemberCallsWire        `json:"members,omitempty"`
@@ -65,6 +66,7 @@ type interactionContentBlockWire struct {
 }
 
 type interactionCheckpointState struct {
+	toolMetadata        map[string]toolResultMetadata
 	tree                agent.TreeSnapshot
 	callsByProcess      map[agent.ProcessID]map[string]int
 	carriedCallCount    map[string]int
@@ -109,11 +111,13 @@ func encodeInteractionCheckpointPayload(
 	instructions []corechat.Message,
 	pendingSteers map[agent.SignalID]pendingInteractionSteer,
 	pendingContinuation *pendingInteractionContinuation,
+	toolMetadata []toolResultMetadata,
 ) ([]byte, error) {
 	if !tree.Valid() {
 		return nil, errors.New("agentexec: encode invalid Interaction tree checkpoint")
 	}
 	wire := interactionCheckpointPayloadWire{
+		ToolMetadata: toolMetadata,
 		Tree:         tree.JSON(),
 		Instructions: cloneChatMessages(instructions),
 	}
@@ -345,10 +349,14 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint pending continuation: %w", err)
 	}
+	metadata, err := decodeToolMetadata(wire.ToolMetadata, processes)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
 	return interactionCheckpointState{
 		tree: tree, callsByProcess: callsByProcess, carriedCallCount: carriedCallCount,
 		contextByProcess: contextByProcess, instructions: instructions, pendingSteers: pendingSteers,
-		pendingContinuation: pendingContinuation,
+		pendingContinuation: pendingContinuation, toolMetadata: metadata,
 	}, nil
 }
 

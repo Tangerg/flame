@@ -73,17 +73,6 @@ func (r *reducer) closeOpenToolContext(
 	return appended, nil
 }
 
-func completedTerminalToolResults(open []*openTool) []corechat.ToolResult {
-	results := make([]corechat.ToolResult, 0, len(open))
-	for _, ref := range open {
-		if ref == nil || ref.modelCallSequence == 0 || ref.end == nil {
-			continue
-		}
-		results = append(results, conversationToolResult(ref, *ref.end))
-	}
-	return results
-}
-
 func (r *reducer) cancelReason() string {
 	if r.cfg.CancelReason == nil {
 		return ""

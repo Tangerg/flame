@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -58,10 +57,6 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 		}
 		return strings.Compare(left.childProcessID.String(), right.childProcessID.String())
 	})
-	type delegateBatch struct {
-		parentID          agent.ProcessID
-		modelCallSequence uint32
-	}
 	// One inspection decides which delegated children have finished. Asking each
 	// child separately would compose the answer out of readings taken at
 	// different moments, and this reconciliation publishes terminal facts.
@@ -69,31 +64,22 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 	if !readable {
 		return false, nil
 	}
-	i.state.mu.Lock()
-	executing := i.state.boundary == interactionBoundaryInactive
-	i.state.mu.Unlock()
-	blocked := make(map[delegateBatch]struct{})
 	progressed := false
 	for _, managed := range calls {
 		managed.mu.Lock()
 		processID := managed.childProcessID
 		done := managed.parentToolFinished
-		batch := delegateBatch{
-			parentID:          managed.identity.parentID,
-			modelCallSequence: managed.modelCallSequence,
-		}
+
 		managed.mu.Unlock()
 		if done || !processID.Valid() {
 			continue
 		}
 		member, inspected := inspection.Process(processID)
 		if !inspected || !member.Snapshot.Status().Terminal() {
-			blocked[batch] = struct{}{}
 			continue
 		}
 		process, found := i.engine.Process(processID)
 		if !found {
-			blocked[batch] = struct{}{}
 			continue
 		}
 		result, err := process.Await(ctx)
@@ -105,18 +91,7 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 			return progressed, err
 		}
 		progressed = progressed || projected
-		// A child owns its terminal state independently of sibling completion.
-		// Only parent Tool results wait for the model's declared call order, and
-		// for a Segment to own them: a tree that is parked or crossing a boundary
-		// has not announced the parent's Tool attempt yet, so the result stays
-		// owed until the Segment that reopens it is executing.
-		if _, predecessorPending := blocked[batch]; predecessorPending || !executing {
-			continue
-		}
-		if err := i.finishCompletedDelegateTool(ctx, managed, result); err != nil {
-			return progressed, err
-		}
-		progressed = true
+
 	}
 	return progressed, nil
 }
@@ -177,44 +152,6 @@ func (i *interactionSession) projectDelegateTerminal(
 	return true, nil
 }
 
-func (i *interactionSession) finishCompletedDelegateTool(
-	ctx context.Context,
-	managed *managedDelegateCall,
-	result agent.Result,
-) error {
-	managed.mu.Lock()
-	defer managed.mu.Unlock()
-	var modelResult corechat.ToolResult
-	var childFailure error
-	if result.Status() == agent.StatusCompleted {
-		erased, present := result.Output()
-		if !present {
-			return errors.New("agentexec: completed delegated child has no output")
-		}
-		output, err := corechat.NewJSONToolOutput(erased.JSON())
-		if err != nil {
-			return fmt.Errorf("agentexec: encode delegated child result: %w", err)
-		}
-		modelResult = corechat.ToolResult{
-			ID: managed.call.ID, Name: managed.call.Name, Output: output,
-		}
-	} else {
-		termination := result.Termination()
-		diagnostic := delegateTerminationDiagnostic(result.Status(), termination.Cause(), termination.Reason())
-		childFailure = errors.New("delegated " + diagnostic)
-		modelResult = delegateFailureModelResult(managed.call, diagnostic)
-	}
-	return i.finishDelegateTool(ctx, managed, modelResult, childFailure)
-}
-
-func delegateTerminationDiagnostic(status agent.Status, cause agent.TerminationCause, reason string) string {
-	diagnostic := "child ended with " + status.String() + " (" + cause.String() + ")"
-	if reason != "" {
-		diagnostic += ": " + reason
-	}
-	return diagnostic
-}
-
 func messageRequestsTools(message corechat.Message) bool {
 	for _, part := range message.Parts {
 		if part.Kind == corechat.PartToolCall {
@@ -222,76 +159,4 @@ func messageRequestsTools(message corechat.Message) bool {
 		}
 	}
 	return false
-}
-
-func (i *interactionSession) finishDelegateTool(
-	ctx context.Context,
-	managed *managedDelegateCall,
-	modelResult corechat.ToolResult,
-	cause error,
-) error {
-	if managed.parentToolFinished {
-		return nil
-	}
-	if !managed.toolStarted {
-		return errors.New("agentexec: cannot finish a Delegate Tool before its start")
-	}
-	if err := modelResult.Validate(); err != nil ||
-		modelResult.ID != managed.call.ID || modelResult.Name != managed.call.Name {
-		return errors.New("agentexec: Delegate Tool result differs from its model call")
-	}
-	output, textual := modelResult.Output.Text()
-	if !textual {
-		return errors.New("agentexec: Delegate Tool result is not textual")
-	}
-	result := tool.StringResult(output)
-	if parsed, err := tool.ParseResult([]byte(output)); err == nil {
-		result = parsed
-	}
-	exactModelResult := modelResult.Clone()
-	fact := runs.ToolCallFinished{
-		CallID: managed.callID.String(), Arguments: managed.arguments.Canonical(),
-		ModelResult: &exactModelResult, Result: &result,
-	}
-	if cause != nil {
-		fact.Failure = &tool.Failure{
-			Kind:   tool.FailureExecution,
-			Detail: executorDiagnostic(cause),
-		}
-	}
-	if err := i.commitFact(ctx, i.executorMember(managed.parentRelation), fact); err != nil {
-		return fmt.Errorf("agentexec: commit Delegate Tool result: %w", err)
-	}
-	managed.parentToolFinished = true
-	return nil
-}
-
-// delegateFailureModelResult mirrors Interaction's documented Delegate result
-// contract at the Runtime projection boundary. Runtime must persist the exact
-// model-visible value, not reconstruct it later from the client transcript.
-func delegateFailureModelResult(call corechat.ToolCall, diagnostic string) corechat.ToolResult {
-	diagnostic = boundDiagnostic(diagnostic, maximumDelegateDiagnosticBytes)
-	if diagnostic == "" {
-		diagnostic = "Interaction operation failed"
-	}
-	return corechat.ToolResult{
-		ID: call.ID, Name: call.Name,
-		Output:  corechat.NewTextToolOutput("error: delegated worker " + diagnostic),
-		IsError: true,
-	}
-}
-
-func delegateStartFailureModelResult(
-	call corechat.ToolCall,
-	code string,
-	message string,
-) corechat.ToolResult {
-	message = strings.TrimSpace(message)
-	if message == "" {
-		message = "unknown error"
-	}
-	return delegateFailureModelResult(
-		call,
-		"child start failed: "+code+": "+message,
-	)
 }

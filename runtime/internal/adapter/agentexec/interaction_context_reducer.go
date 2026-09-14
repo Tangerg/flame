@@ -61,11 +61,6 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		return nil, err
 	}
 	attempt.modelAllowance = turn
-	// Scope can already include completed Delegate results in this request.
-	// Commit their product projection before comparing against durable history.
-	if _, err := i.session.reconcileCompletedDelegateChildren(ctx); err != nil {
-		return nil, err
-	}
 	prefixMatches, err := sameInteractionMessages(
 		request.Messages[:min(len(request.Messages), len(i.instructions))],
 		i.instructions,

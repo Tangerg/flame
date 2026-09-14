@@ -216,7 +216,7 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 		out.Question = &question
 	}
 	if invocation, present := item.ToolInvocation(); present {
-		tool := protocol.ToolInvocation{Name: invocation.Name, Arguments: invocation.Arguments.Map()}
+		tool := protocol.ToolInvocation{Name: invocation.Name, ArgumentsText: invocation.ArgumentsText, Arguments: invocation.Arguments.Map()}
 		if invocation.Result != nil {
 			tool.Result = invocation.Result.Any()
 		}

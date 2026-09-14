@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -197,6 +198,8 @@ type ModelCallFailed struct {
 }
 
 type ToolCallStarted struct {
+	// ArgumentsText preserves rejected input that was never admitted as an argument object.
+	ArgumentsText string
 	executionFactBase
 	CallID            string
 	ModelCallSequence uint32
@@ -212,10 +215,9 @@ type ToolCallStarted struct {
 }
 
 type ToolCallFinished struct {
-	executionFactBase
 	CallID    string
 	Arguments string
-	// ModelResult is the exact provider-neutral value returned to Interaction.
+	// ModelResult is the exact provider-neutral value published by Scope.
 	// Result remains the independently presented client transcript value.
 	ModelResult  *corechat.ToolResult
 	Result       *tool.Result
@@ -476,4 +478,21 @@ type AppliedSteerMessage struct {
 type SteerMessagesApplied struct {
 	executionFactBase
 	Messages []AppliedSteerMessage
+}
+
+func (t ToolCallFinished) clone() ToolCallFinished {
+	if t.ModelResult != nil {
+		t.ModelResult = new(t.ModelResult.Clone())
+	}
+	if t.Result != nil {
+		t.Result = new(*t.Result)
+	}
+	if t.Offload != nil {
+		t.Offload = new(*t.Offload)
+	}
+	if t.Failure != nil {
+		t.Failure = new(*t.Failure)
+	}
+	t.MutatedPaths = slices.Clone(t.MutatedPaths)
+	return t
 }

@@ -159,7 +159,7 @@ func presentTool(tool transcript.ToolInvocation) protocol.ToolInvocation {
 		result = tool.Result.Any()
 	}
 	return protocol.ToolInvocation{
-		Name: tool.Name, Arguments: tool.Arguments.Map(), Result: result,
+		Name: tool.Name, ArgumentsText: tool.ArgumentsText, Arguments: tool.Arguments.Map(), Result: result,
 	}
 }
 

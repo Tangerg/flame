@@ -662,6 +662,13 @@ func runInteractionHarness(
 func payloadsOf[T any](events []runs.ExecutorEvent) []T {
 	return slices.Collect(func(yield func(T) bool) {
 		for _, event := range events {
+			if batch, ok := event.Payload.(runs.ToolResultsCommitted); ok {
+				for _, result := range batch.Results {
+					if payload, matches := any(result).(T); matches && !yield(payload) {
+						return
+					}
+				}
+			}
 			if payload, ok := event.Payload.(T); ok && !yield(payload) {
 				return
 			}

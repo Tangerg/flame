@@ -54,6 +54,7 @@ type interactionSession struct {
 // committed replies, and Segment timing have independent invariants and do not
 // belong under this lock.
 type interactionState struct {
+	toolMetadata               map[string]toolResultMetadata
 	mu                         sync.Mutex
 	pendingSteers              map[agent.SignalID]pendingInteractionSteer
 	pendingContinuation        *pendingInteractionContinuation

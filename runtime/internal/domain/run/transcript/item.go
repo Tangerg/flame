@@ -430,6 +430,10 @@ func (i Item) rejectDisallowedPayload() error {
 // Validate reports whether an invocation has a canonical identity and result
 // shape. pending requires the result and offload reference to be absent.
 func (t ToolInvocation) Validate(pending bool) error {
+	if t.ArgumentsText != "" && !t.Arguments.Equal(tool.Arguments{}) {
+		return errors.New("transcript: Tool invocation carries both parsed and rejected arguments")
+	}
+
 	if strings.TrimSpace(t.Name) == "" || t.Name != strings.TrimSpace(t.Name) {
 		return errors.New("transcript: Tool name is required without surrounding whitespace")
 	}

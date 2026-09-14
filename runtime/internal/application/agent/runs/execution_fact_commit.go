@@ -94,25 +94,8 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 		return value, true
 	case ToolCallStarted:
 		return value, true
-	case ToolCallFinished:
-		if value.ModelResult != nil {
-			modelResult := value.ModelResult.Clone()
-			value.ModelResult = &modelResult
-		}
-		if value.Result != nil {
-			result := *value.Result
-			value.Result = &result
-		}
-		if value.Offload != nil {
-			offload := *value.Offload
-			value.Offload = &offload
-		}
-		value.MutatedPaths = slices.Clone(value.MutatedPaths)
-		if value.Failure != nil {
-			failure := *value.Failure
-			value.Failure = &failure
-		}
-		return value, true
+	case ToolResultsCommitted:
+		return value.clone(), true
 	case CompactionBoundary:
 		return value, true
 	case SegmentInterrupted:

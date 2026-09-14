@@ -353,12 +353,10 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 0 {
 		t.Fatalf("canceled Tool became an unknown Effect: %#v", unknown)
 	}
-	finished := payloadsOf[runs.ToolCallFinished](events)
-	if len(finished) != 1 || finished[0].Failure == nil ||
-		finished[0].Failure.Kind != domaintool.FailureCanceled ||
-		finished[0].Failure.Detail != "" {
-		t.Fatalf("canceled Tool completion = %#v", finished)
+	if finished := payloadsOf[runs.ToolCallFinished](events); len(finished) != 0 {
+		t.Fatalf("cancellation without a definite outcome produced a Tool result: %#v", finished)
 	}
+
 	ended := payloadsOf[runs.SegmentEnded](events)
 	if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
 		t.Fatalf("segment end = %#v, want canceled", ended)
@@ -774,7 +772,7 @@ func TestInteractionExecutorStopsWhenPreparationFailureCannotCommit(t *testing.T
 		ToolHooks:       failingPreparationHooks{},
 	})
 	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
-		if _, result := fact.(runs.ToolCallFinished); result {
+		if _, result := fact.(runs.ToolResultsCommitted); result {
 			return errors.New("tool result store unavailable")
 		}
 		return nil
@@ -928,7 +926,7 @@ func TestInteractionExecutorReconcilesToolResultCommitFailureAsUnknown(t *testin
 		ToolAuthorizer:  allowInteractionTools{},
 	})
 	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
-		if _, complete := fact.(runs.ToolCallFinished); complete {
+		if _, complete := fact.(runs.ToolResultsCommitted); complete {
 			return errors.New("Tool result store unavailable")
 		}
 		return nil
@@ -959,6 +957,8 @@ func TestInteractionExecutorPreservesConcurrentToolAttributionWhenCompletionIsOu
 		mu.Unlock()
 		if value.Value == "first" {
 			<-allowFirst
+		} else {
+			close(allowFirst)
 		}
 		return value.Value, nil
 	})
@@ -979,17 +979,13 @@ func TestInteractionExecutorPreservesConcurrentToolAttributionWhenCompletionIsOu
 		ToolAuthorizer:         allowInteractionTools{},
 		MaxConcurrentToolCalls: intPointer(2),
 	})
-	var release sync.Once
 	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
-		if finished, ok := fact.(runs.ToolCallFinished); ok && strings.HasSuffix(finished.CallID, ":1") {
-			release.Do(func() { close(allowFirst) })
-		}
 		return nil
 	})
 	finishes := payloadsOf[runs.ToolCallFinished](events)
-	if len(finishes) != 2 || !strings.HasSuffix(finishes[0].CallID, ":1") ||
-		!strings.HasSuffix(finishes[1].CallID, ":0") {
-		t.Fatalf("Tool completion arrival order = %#v, want second then first", finishes)
+	if len(finishes) != 2 || !strings.HasSuffix(finishes[0].CallID, ":0") ||
+		!strings.HasSuffix(finishes[1].CallID, ":1") {
+		t.Fatalf("Tool completion arrival order = %#v, want canonical first then second", finishes)
 	}
 	starts := payloadsOf[runs.ToolCallStarted](events)
 	byIndex := make(map[uint32]runs.ToolCallStarted, len(starts))
@@ -1010,7 +1006,7 @@ func TestInteractionExecutorPreservesConcurrentToolAttributionWhenCompletionIsOu
 	}
 }
 
-func TestInteractionExecutorMakesWholeConcurrentEffectUnknownWhenOneResultWriteFails(t *testing.T) {
+func TestInteractionExecutorKeepsPublicationUnknownWhenResultWriteFails(t *testing.T) {
 	type input struct {
 		Value string `json:"value"`
 	}
@@ -1027,12 +1023,12 @@ func TestInteractionExecutorMakesWholeConcurrentEffectUnknownWhenOneResultWriteF
 			close(allCallsStarted)
 		}
 		mu.Unlock()
-		// This test exercises a projection failure after every member of the
-		// concurrent batch crossed the external boundary. Without this barrier,
-		// scheduler order may correctly stop a sibling that never started.
+		// Both external calls complete before their publication fails.
 		<-allCallsStarted
 		if value.Value == "first" {
 			<-allowFirst
+		} else {
+			close(allowFirst)
 		}
 		return value.Value, nil
 	})
@@ -1054,10 +1050,8 @@ func TestInteractionExecutorMakesWholeConcurrentEffectUnknownWhenOneResultWriteF
 		MaxConcurrentToolCalls: intPointer(2),
 	})
 	projectionFailure := errors.New("canonical concurrent Tool batch unavailable")
-	var release sync.Once
 	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
-		if finished, ok := fact.(runs.ToolCallFinished); ok && strings.HasSuffix(finished.CallID, ":1") {
-			release.Do(func() { close(allowFirst) })
+		if _, ok := fact.(runs.ToolResultsCommitted); ok {
 			return projectionFailure
 		}
 		return nil
@@ -1069,14 +1063,14 @@ func TestInteractionExecutorMakesWholeConcurrentEffectUnknownWhenOneResultWriteF
 		t.Fatalf("external Tool calls = %d, want both exactly once", gotCalls)
 	}
 	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
-		t.Fatalf("unknown observations = %#v, want whole Effect unknown", unknown)
+		t.Fatalf("unknown observations = %#v, want result publication unknown", unknown)
 	}
 	if len(payloadsOf[runs.SegmentEnded](events)) != 0 {
-		t.Fatalf("unknown concurrent Effect was projected as definite: %#v", events)
+		t.Fatalf("unknown publication was projected as definite: %#v", events)
 	}
 }
 
-func TestInteractionExecutorMakesConcurrentEffectUnknownWhenDeniedSiblingProjectionFails(t *testing.T) {
+func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFails(t *testing.T) {
 	deniedInner, err := toolcontract.NewFunc(toolcontract.FuncConfig{
 		Name: "denied_write", Description: "A write rejected by policy.",
 	}, func(context.Context, struct{}) (string, error) {
@@ -1085,12 +1079,13 @@ func TestInteractionExecutorMakesConcurrentEffectUnknownWhenDeniedSiblingProject
 	if err != nil {
 		t.Fatal(err)
 	}
-	externalResultCommitSeen := make(chan struct{})
+	externalCallFinished := make(chan struct{})
 	var externalCalls int
 	externalInner, err := toolcontract.NewFunc(toolcontract.FuncConfig{
 		Name: "external_write", Description: "A concurrently safe external write.",
 	}, func(context.Context, struct{}) (string, error) {
 		externalCalls++
+		close(externalCallFinished)
 		return "written", nil
 	})
 	if err != nil {
@@ -1109,7 +1104,7 @@ func TestInteractionExecutorMakesConcurrentEffectUnknownWhenDeniedSiblingProject
 		}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer: selectiveDenyInteractionTools{
-			name: "denied_write", reason: "blocked by policy", waitBeforeDenial: externalResultCommitSeen,
+			name: "denied_write", reason: "blocked by policy", waitBeforeDenial: externalCallFinished,
 		},
 		MaxConcurrentToolCalls: intPointer(2),
 	})
@@ -1132,18 +1127,12 @@ func TestInteractionExecutorMakesConcurrentEffectUnknownWhenDeniedSiblingProject
 		var events []runs.ExecutorEvent
 		for event := range sequence {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
-				finished, toolFinished := commit.Fact().(runs.ToolCallFinished)
-				switch {
-				case toolFinished && finished.Failure == nil:
-					// Model-order persistence cannot commit index 1 before the
-					// denied index 0. Keep this receipt unsettled to reproduce the
-					// real pump's pending canonical-prefix wait.
-					close(externalResultCommitSeen)
-				case toolFinished && finished.Failure.Kind == domaintool.FailureDenied:
+				if _, toolFinished := commit.Fact().(runs.ToolResultsCommitted); toolFinished {
 					commit.Complete(projectionFailure)
-				default:
+				} else {
 					commit.Complete(nil)
 				}
+
 				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
@@ -1166,7 +1155,7 @@ func TestInteractionExecutorMakesConcurrentEffectUnknownWhenDeniedSiblingProject
 		t.Fatalf("external Tool calls = %d, want 1", externalCalls)
 	}
 	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
-		t.Fatalf("unknown observations = %#v, want whole concurrent Effect unknown", unknown)
+		t.Fatalf("unknown observations = %#v, want result publication unknown", unknown)
 	}
 	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 0 {
 		t.Fatalf("concurrent external Effect was projected as definite: %#v", ended)
@@ -1225,7 +1214,7 @@ func TestInteractionExecutorTerminatesWhenAutomaticDenialCommitFails(t *testing.
 		ToolAuthorizer:  denyingInteractionTools{reason: "blocked by automatic policy"},
 	})
 	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
-		if _, denied := fact.(runs.ToolCallFinished); denied {
+		if _, denied := fact.(runs.ToolResultsCommitted); denied {
 			return errors.New("denial store unavailable")
 		}
 		return nil

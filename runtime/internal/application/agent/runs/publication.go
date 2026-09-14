@@ -172,6 +172,12 @@ func (t treePublisher) publishAuthoritativeAtomically(
 				index,
 			)
 		}
+		if reduced.Commit.ResultPublication != nil {
+			if combined.ResultPublication != nil {
+				return reductionPublication{}, errors.New("runs: repeated result publication")
+			}
+			combined.ResultPublication = new(*reduced.Commit.ResultPublication)
+		}
 		combined.Items = append(combined.Items, reduced.Commit.Items...)
 		combined.ConversationMessages = appendClonedMessages(
 			combined.ConversationMessages,

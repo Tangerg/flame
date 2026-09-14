@@ -1255,3 +1255,10 @@ func (inlineTaskLauncher) Start(ctx context.Context, task func(context.Context))
 	task(ctx)
 	return true
 }
+
+func (*fakeRunState) ResultPublicationCommitted(context.Context, string, string, string, string, string) (bool, error) {
+	return false, nil
+}
+func (*fakeRunState) RecordResultPublication(context.Context, string, string, string, string, string) error {
+	return nil
+}

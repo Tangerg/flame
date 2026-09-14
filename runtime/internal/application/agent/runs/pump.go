@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"slices"
 	"time"
 
 	"go.opentelemetry.io/otel/trace"
@@ -51,27 +50,15 @@ type segmentPump struct {
 	routes      *executorRoutes
 	publisher   treePublisher
 
-	rootFinished       bool
-	rootParked         bool
-	pendingToolCommits map[toolCommitKey]ExecutionFactCommit
-	childStarts        map[string]*managedChildStart
+	rootFinished bool
+	rootParked   bool
+	childStarts  map[string]*managedChildStart
 }
 
 type managedChildStart struct {
 	prepared  *preparedChildStart
 	outcome   ChildRunStartOutcome
 	startedAt time.Time
-}
-
-type toolCommitKey struct {
-	runID  string
-	callID string
-}
-
-type authoritativeFactResult struct {
-	runID              string
-	deferred           bool
-	settledToolCallIDs []string
 }
 
 func (s *segmentPump) run(initialErr error) {
@@ -108,8 +95,8 @@ func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 			return false
 		}
 		fact := commit.Fact()
-		result, err := s.handleAuthoritativeFact(event.Member, fact)
-		s.completeAuthoritativeFact(commit, fact, result, err)
+		err := s.handleAuthoritativeFact(event.Member, fact)
+		commit.Complete(err)
 		// A rejected authoritative write is reported synchronously to the
 		// executor. It then produces either a definite failed result or
 		// an unknown settlement; stopping this pump here would race that decision
@@ -129,6 +116,10 @@ func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 	executionFact, ok := event.Payload.(ExecutionFact)
 	if !ok {
 		s.fail(fmt.Errorf("runs: unsupported executor payload %T", event.Payload))
+		return false
+	}
+	if _, unacknowledged := executionFact.(ToolResultsCommitted); unacknowledged {
+		s.fail(errors.New("runs: Tool result publication requires a commit receipt"))
 		return false
 	}
 	keep, err := s.handleExecutionFact(event.Member, executionFact)
@@ -295,102 +286,34 @@ func (s *segmentPump) abortPreparedChildStart(prepared *preparedChildStart) {
 	prepared.releaseBinding(s.owner)
 }
 
-func (s *segmentPump) handleAuthoritativeFact(
-	member ExecutorMember,
-	fact ExecutionFact,
-) (authoritativeFactResult, error) {
+func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact ExecutionFact) error {
 	route, err := s.routes.resolve(member)
 	if err != nil {
-		return authoritativeFactResult{}, err
+		return err
 	}
-	result := authoritativeFactResult{runID: route.runID}
 	if route.member.MemberID != "" {
-		if bindExecutorMemberErr := s.owner.bindExecutorMember(route.runID, route.member.MemberID); bindExecutorMemberErr != nil {
-			return result, bindExecutorMemberErr
+		if err := s.owner.bindExecutorMember(route.runID, route.member.MemberID); err != nil {
+			return err
 		}
 	}
 	if route.reducer == nil {
-		return result, fmt.Errorf("runs: admitted child run %q has no segment reducer", route.runID)
+		return fmt.Errorf("runs: admitted child run %q has no segment reducer", route.runID)
 	}
 	fact = s.classifyChildCancellationFact(route, fact)
 	speculative := route.reducer.clone()
-	if speculative == nil {
-		return result, fmt.Errorf("runs: admitted child run %q has no cloneable reducer", route.runID)
-	}
 	batch, err := speculative.reduce(fact)
 	if err != nil {
-		return result, err
+		return err
 	}
-	result.settledToolCallIDs = slices.Clone(batch.settledToolCallIDs)
-	if toolEnd, endingTool := fact.(ToolCallFinished); endingTool && len(batch.settledToolCallIDs) == 0 {
-		// An out-of-order concurrent result is valid speculative reducer state but
-		// has no canonical durable prefix yet. Keep its receipt pending until an
-		// earlier result can commit the whole prefix atomically.
-		if ref, _ := speculative.tools.get(toolEnd.CallID); ref != nil && ref.end != nil {
-			route.reducer = speculative
-			result.deferred = true
-			return result, nil
-		}
-	}
-	publication, err := s.publisher.publishAuthoritativeAtomically(
-		s.ownerCtx,
-		route,
-		batch,
-	)
+	publication, err := s.publisher.publishAuthoritativeAtomically(s.ownerCtx, route, batch)
 	if err != nil {
-		// A failed canonical Tool batch must also discard any later results that
-		// were buffered speculatively in the live reducer. RunLost synthesis may
-		// then close their starts as incomplete, never as persisted successes.
-		route.reducer.forgetToolEnds(batch.settledToolCallIDs)
-		return result, err
+		return err
 	}
 	if publication.finished() {
-		return result, errors.New("runs: authoritative model/tool fact crossed a segment boundary")
+		return errors.New("runs: authoritative model/tool fact crossed a segment boundary")
 	}
 	route.reducer = speculative
-	return result, nil
-}
-
-func (s *segmentPump) completeAuthoritativeFact(
-	current ExecutionFactCommit,
-	fact ExecutionFact,
-	result authoritativeFactResult,
-	err error,
-) {
-	toolEnd, endingTool := fact.(ToolCallFinished)
-	if !endingTool {
-		current.Complete(err)
-		return
-	}
-	currentKey := toolCommitKey{runID: result.runID, callID: toolEnd.CallID}
-	if result.deferred && err == nil {
-		if s.pendingToolCommits == nil {
-			s.pendingToolCommits = make(map[toolCommitKey]ExecutionFactCommit)
-		}
-		if _, duplicate := s.pendingToolCommits[currentKey]; duplicate {
-			current.Complete(fmt.Errorf("runs: Tool call %q already has a pending authoritative commit", toolEnd.CallID))
-			return
-		}
-		s.pendingToolCommits[currentKey] = current
-		return
-	}
-
-	currentCompleted := false
-	for _, callID := range result.settledToolCallIDs {
-		key := toolCommitKey{runID: result.runID, callID: callID}
-		if pending, ok := s.pendingToolCommits[key]; ok {
-			delete(s.pendingToolCommits, key)
-			pending.Complete(err)
-			continue
-		}
-		if key == currentKey {
-			current.Complete(err)
-			currentCompleted = true
-		}
-	}
-	if !currentCompleted {
-		current.Complete(err)
-	}
+	return nil
 }
 
 func (s *segmentPump) handleUnknownEffects(
@@ -534,28 +457,31 @@ func (s *segmentPump) classifyChildCancellationFact(
 	route *executorRoute,
 	fact ExecutionFact,
 ) ExecutionFact {
-	toolEnd, endingTool := fact.(ToolCallFinished)
-	if !endingTool || route == nil || route.reducer == nil {
+	if route == nil || route.reducer == nil {
 		return fact
 	}
-	itemID, open := route.reducer.openToolItemID(toolEnd.CallID)
-	if !open {
-		return fact
+	if batch, ok := fact.(ToolResultsCommitted); ok {
+		batch = batch.clone()
+		for index, result := range batch.Results {
+			if itemID, open := route.reducer.openToolItemID(result.CallID); open {
+				batch.Results[index] = s.owner.classifyChildCancellationTool(route.runID, itemID, result)
+			}
+		}
+		return batch
 	}
-	return s.owner.classifyChildCancellationTool(route.runID, itemID, toolEnd)
+	return fact
 }
 
 func (s *segmentPump) fail(err error) {
 	if s.ctx.Err() == nil && s.ownerCtx.Err() == nil {
 		trace.SpanFromContext(s.ctx).RecordError(err)
-		s.routes.abortUnfinished()
+		s.routes.abortUnfinished(err)
 	}
 }
 
 func (s *segmentPump) finish() {
 	s.owner.observation.Lock()
 	defer s.owner.observation.Unlock()
-	s.failPendingToolCommits(errors.New("runs: execution ended before concurrent Tool results formed a durable prefix"))
 	for memberID, managed := range s.childStarts {
 		if !managed.outcome.Valid() {
 			s.abortPreparedChildStart(managed.prepared)
@@ -572,23 +498,6 @@ func (s *segmentPump) finish() {
 		s.tearDownExecutor()
 	}
 	s.finishBoundary()
-}
-
-func (s *segmentPump) failPendingToolCommits(err error) {
-	if len(s.pendingToolCommits) == 0 {
-		return
-	}
-	byRun := make(map[string][]string)
-	for key, commit := range s.pendingToolCommits {
-		byRun[key.runID] = append(byRun[key.runID], key.callID)
-		commit.Complete(err)
-		delete(s.pendingToolCommits, key)
-	}
-	for runID, callIDs := range byRun {
-		if route := s.routes.byRunID[runID]; route != nil && route.reducer != nil {
-			route.reducer.forgetToolEnds(callIDs)
-		}
-	}
 }
 
 // synthesizeUnfinished establishes durable terminal boundaries before executor

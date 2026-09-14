@@ -3536,6 +3536,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["provider"]),
   ToolInvocation: object({
     arguments: record(anything()),
+    argumentsText: text(),
     name: allOf([text(), pattern("\\S")]),
     result: anything(),
   }, ["arguments", "name"]),

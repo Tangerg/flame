@@ -6,12 +6,7 @@ import (
 )
 
 const (
-	// maximumExecutorDiagnosticBytes bounds every diagnostic Runtime persists,
-	// and maximumDelegateDiagnosticBytes the smaller value a model reads back as
-	// a Delegate Tool result. Both count bytes, because bytes are what storage
-	// and the wire actually cost.
 	maximumExecutorDiagnosticBytes = 4000
-	maximumDelegateDiagnosticBytes = 2048
 
 	diagnosticEllipsis = "…"
 )

@@ -77,16 +77,14 @@ func (i *interactionSession) admitProcess(
 	}
 	request, receipt := runs.NewChildRunReservationRequest()
 	if err := i.sendExecutorRequest(ctx, runs.ExecutorEvent{Member: member, Payload: request}); err != nil {
-		return i.failDelegateAdmission(ctx, managed, err)
+		return err
 	}
 	binding, err := receipt.Await(ctx)
 	if err != nil {
-		return i.failDelegateAdmission(ctx, managed, err)
+		return err
 	}
 	if binding.MemberID != member.MemberID || binding.ParentRunID == "" {
-		return i.failDelegateAdmission(
-			ctx, managed, errors.New("child Run reservation returned a different executor member"),
-		)
+		return errors.New("child Run reservation returned a different executor member")
 	}
 	managed.admission = admission
 	managed.binding = binding
@@ -99,27 +97,6 @@ func sameManagedAdmission(left, right agent.ProcessAdmission) bool {
 		left.Descriptor().Digest() == right.Descriptor().Digest() &&
 		left.Budget() == right.Budget() &&
 		slices.Equal(left.Capabilities().Values(), right.Capabilities().Values())
-}
-
-func (i *interactionSession) failDelegateAdmission(
-	ctx context.Context,
-	managed *managedDelegateCall,
-	cause error,
-) error {
-	frameworkCause := fmt.Errorf("%w: %w", agent.ErrProcessAdmissionRejected, cause)
-	if finishErr := i.finishDelegateTool(
-		ctx,
-		managed,
-		delegateStartFailureModelResult(
-			managed.call,
-			"engine.child.admission.rejected",
-			frameworkCause.Error(),
-		),
-		cause,
-	); finishErr != nil {
-		return errors.Join(cause, finishErr)
-	}
-	return cause
 }
 
 func (i *interactionSession) acknowledgeProcessInitializationOutcome(
@@ -179,35 +156,12 @@ func (i *interactionSession) acknowledgeProcessInitializationOutcome(
 		return err
 	}
 	if err := receipt.Await(ctx); err != nil {
-		if outcome.Status() == agent.ProcessInitializationOutcomeStatusInitialized {
-			if finishErr := i.finishDelegateTool(
-				ctx,
-				managed,
-				delegateStartFailureModelResult(
-					managed.call,
-					"engine.child.start_outcome.unacknowledged",
-					err.Error(),
-				),
-				err,
-			); finishErr != nil {
-				return errors.Join(err, finishErr)
-			}
-		}
 		return err
 	}
 	if outcome.Status() == agent.ProcessInitializationOutcomeStatusFailed {
-		failure, _ := outcome.Failure()
-		return i.finishDelegateTool(
-			ctx,
-			managed,
-			delegateStartFailureModelResult(
-				managed.call,
-				failure.Code(),
-				failure.Message(),
-			),
-			errors.New(failure.Message()),
-		)
+		return nil
 	}
+
 	managed.childProcessID = relation.ProcessID()
 	i.state.mu.Lock()
 	i.state.delegateChildren[relation.ProcessID()] = managed

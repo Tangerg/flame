@@ -164,8 +164,8 @@ func assertRestoredDelegateEventOrder(t *testing.T, observed []runs.ExecutorEven
 			} else if !event.Member.Child() {
 				rootEnd = index
 			}
-		case runs.ToolCallFinished:
-			if !event.Member.Child() && payload.CallID != "" {
+		case runs.ToolResultsCommitted:
+			if !event.Member.Child() && len(payload.Results) > 0 {
 				parentToolEnd = index
 			}
 		}

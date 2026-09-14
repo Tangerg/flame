@@ -2,6 +2,8 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -189,6 +191,44 @@ func validateWaitingRunCommitIdentity(sessionID, runID string, commitID runtimei
 	}
 	if err := commitID.Validate(); err != nil {
 		return fmt.Errorf("sqlite: verify waiting Run commit: %w", err)
+	}
+	return nil
+}
+
+// ResultPublicationCommitted proves exact content under the currently active
+// Segment. A stale writer cannot adopt a receipt from a replaced Segment.
+func (r *RunStore) ResultPublicationCommitted(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string) (bool, error) {
+	if err := r.RequireActiveSegment(ctx, sessionID, runID, segmentID); err != nil {
+		return false, err
+	}
+	var storedSession, storedRun, storedSegment, storedDigest string
+	err := conn(ctx, r.db).QueryRowContext(ctx, `SELECT session_id, run_id, segment_id, digest FROM result_publications WHERE publication_id = ?`, publicationID).Scan(&storedSession, &storedRun, &storedSegment, &storedDigest)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("sqlite: read result publication: %w", err)
+	}
+	if storedSession != sessionID || storedRun != runID || storedSegment != segmentID || storedDigest != digest {
+		return false, errors.New("sqlite: result publication identity conflicts with stored content or owner")
+	}
+	return true, nil
+}
+
+// RecordResultPublication participates in the transaction owning its results.
+func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string) error {
+	if err := r.RequireActiveSegment(ctx, sessionID, runID, segmentID); err != nil {
+		return err
+	}
+	if err := runtimeidentity.ValidateEffect(publicationID); err != nil {
+		return err
+	}
+	if digest == "" {
+		return errors.New("sqlite: result publication digest is required")
+	}
+	_, err := conn(ctx, r.db).ExecContext(ctx, `INSERT INTO result_publications(publication_id, digest, session_id, run_id, segment_id) VALUES (?, ?, ?, ?, ?)`, publicationID, digest, sessionID, runID, segmentID)
+	if err != nil {
+		return fmt.Errorf("sqlite: record result publication: %w", err)
 	}
 	return nil
 }

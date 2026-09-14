@@ -1291,6 +1291,14 @@ func (s stubRuntime) runStore() segment.RunStore {
 
 type stubRunState struct{}
 
+func (stubRunState) ResultPublicationCommitted(context.Context, string, string, string, string, string) (bool, error) {
+	return false, nil
+}
+
+func (stubRunState) RecordResultPublication(context.Context, string, string, string, string, string) error {
+	return nil
+}
+
 func (stubRunState) Run(context.Context, string) (run.Run, bool, error) {
 	return run.Run{}, false, nil
 }

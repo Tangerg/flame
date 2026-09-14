@@ -98,18 +98,18 @@ func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 	toolFact := ToolCallFinished{
 		ModelResult: &modelResult, MutatedPaths: []string{"/original"}, Failure: &failure,
 	}
-	toolCommit, _, err := NewExecutionFactCommit(toolFact)
+	toolCommit, _, err := NewExecutionFactCommit(ToolResultsCommitted{Results: []ToolCallFinished{toolFact}})
 	if err != nil {
 		t.Fatalf("new Tool fact commit: %v", err)
 	}
 	modelResult.Name = "changed"
 	toolFact.MutatedPaths[0] = "/changed"
 	failure.Detail = "changed"
-	projectedTool := toolCommit.Fact().(ToolCallFinished)
+	projectedTool := toolCommit.Fact().(ToolResultsCommitted).Results[0]
 	projectedTool.ModelResult.Name = "projected"
 	projectedTool.MutatedPaths[0] = "/projected"
 	projectedTool.Failure.Detail = "projected"
-	ownedTool := toolCommit.Fact().(ToolCallFinished)
+	ownedTool := toolCommit.Fact().(ToolResultsCommitted).Results[0]
 	if ownedTool.ModelResult.Name != "tool" || ownedTool.MutatedPaths[0] != "/original" ||
 		ownedTool.Failure.Detail != "original" {
 		t.Fatalf("owned Tool fact = %+v", ownedTool)

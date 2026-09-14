@@ -145,21 +145,12 @@ func (r *runTreeOwner) recordChildCancellationItem(parentRunID string, item tran
 		attempt.spawningItemID != item.ID() {
 		return
 	}
-	failure, failed := item.Failure()
-	if !failed || failure.Kind != tool.FailureChildRunCanceled {
-		attempt.err = fmt.Errorf(
-			"runs: canceled child Run %q parent item %q committed without child_run_canceled",
-			attempt.targetRunID,
-			item.ID(),
-		)
-	} else if item.Status() != transcript.ItemIncomplete {
-		attempt.err = fmt.Errorf(
-			"runs: canceled child Run %q parent item %q committed in status %s",
-			attempt.targetRunID,
-			item.ID(),
-			item.Status(),
-		)
+	// A canceled child may retain unknown Effects. Its parent then abandons
+	// the open Item without claiming a definite Tool failure or model result.
+	if item.Status() != transcript.ItemIncomplete {
+		attempt.err = fmt.Errorf("runs: canceled child Run %q parent item %q committed in status %s", attempt.targetRunID, item.ID(), item.Status())
 	}
+
 	r.finishChildCancellationLocked(attempt)
 }
 

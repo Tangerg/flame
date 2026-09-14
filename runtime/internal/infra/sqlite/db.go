@@ -234,6 +234,13 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			toolInvocationCompleted.databaseValue(),
 			toolInvocationIncomplete.databaseValue(),
 		),
+		`CREATE TABLE IF NOT EXISTS result_publications (
+			publication_id TEXT PRIMARY KEY,
+			digest TEXT NOT NULL,
+			session_id TEXT NOT NULL,
+			run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+			segment_id TEXT NOT NULL
+		)`,
 		`CREATE INDEX IF NOT EXISTS idx_tool_invocations_run
 			ON tool_invocations(run_id, segment_id)`,
 		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_tool_invocations_open

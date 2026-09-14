@@ -46,7 +46,7 @@ func TestReducerTerminalIncludesGoalRunRecord(t *testing.T) {
 	config.GoalIncarnationID = "goal_lease"
 	reducer := newReducer(config)
 	mustReduce(t, reducer, ToolCallStarted{CallID: "call_1", ToolName: "inspect", Arguments: `{}`})
-	mustReduce(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "ok")})
+	mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "ok")})
 	reductions := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCompleted,
 		usage:  &SegmentUsage{Cost: mustReducerCost(t, 0.75), Steps: 1},
@@ -76,8 +76,8 @@ func TestReducerStepsCountModelCallsRatherThanParallelTools(t *testing.T) {
 	mustReduce(t, reducer, UsageReported{Steps: 1})
 	mustReduce(t, reducer, ToolCallStarted{CallID: "call_1", ToolName: "inspect", Arguments: `{}`})
 	mustReduce(t, reducer, ToolCallStarted{CallID: "call_2", ToolName: "inspect", Arguments: `{}`})
-	mustReduce(t, reducer, ToolCallFinished{CallID: "call_2", Result: testToolResult(t, "two")})
-	mustReduce(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "one")})
+	mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_2", Result: testToolResult(t, "two")})
+	mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "one")})
 	finished := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCompleted,
 		usage:  &SegmentUsage{Steps: 1},
@@ -167,8 +167,8 @@ func TestReducerClassifiesToolPreambleAndTerminalAnswerAtTheModelBoundary(t *tes
 		ModelCallSequence: 1, ToolCallIndex: 0,
 		ToolName: call.Name, Arguments: call.Arguments,
 	})
-	mustReduce(t, reducer, ToolCallFinished{
-		CallID: "runtime_call_1", Result: testToolResult(t, "contents"),
+	mustFinishTool(t, reducer, ToolCallFinished{
+		CallID: "runtime_call_1", Result: testToolResult(t, "contents"), ModelResult: &corechat.ToolResult{ID: call.ID, Name: call.Name, Output: corechat.NewTextToolOutput("contents")},
 	})
 
 	answer := corechat.NewAssistantMessage(corechat.NewTextPart("The file is ready."))
@@ -329,8 +329,8 @@ func TestReducerProjectsModelToolContextWithProviderCallIdentity(t *testing.T) {
 		ModelCallSequence: 1, ToolCallIndex: 0,
 		ToolName: call.Name, Arguments: call.Arguments, SafetyClass: tool.SafetyClassSafe,
 	})
-	toolBatch := mustReduce(t, reducer, ToolCallFinished{
-		CallID: "runtime_call_1", Result: testToolResult(t, "contents"),
+	toolBatch := mustFinishTool(t, reducer, ToolCallFinished{
+		CallID: "runtime_call_1", Result: testToolResult(t, "contents"), ModelResult: &corechat.ToolResult{ID: call.ID, Name: call.Name, Output: corechat.NewTextToolOutput("contents")},
 	})
 	toolMessages := committedConversationMessages(toolBatch)
 	if len(toolMessages) != 1 || toolMessages[0].Role != corechat.RoleTool || len(toolMessages[0].Parts) != 1 {
@@ -388,8 +388,8 @@ func TestReducerTerminalClosesProviderToolCallCanceledBeforeRuntimeStart(t *test
 		ModelCallSequence: 1, ToolCallIndex: 0,
 		ToolName: first.Name, Arguments: first.Arguments,
 	})
-	toolBatch := mustReduce(t, reducer, ToolCallFinished{
-		CallID: "runtime_first", Result: testToolResult(t, "first result"),
+	toolBatch := mustFinishTool(t, reducer, ToolCallFinished{
+		CallID: "runtime_first", Result: testToolResult(t, "first result"), ModelResult: &corechat.ToolResult{ID: first.ID, Name: first.Name, Output: corechat.NewTextToolOutput("first result")},
 	})
 	terminalBatch := mustReduce(t, reducer, SegmentEnded{Reason: run.OutcomeCanceled})
 	terminalMessages := committedConversationMessages(terminalBatch)
@@ -416,50 +416,6 @@ func TestReducerTerminalClosesProviderToolCallCanceledBeforeRuntimeStart(t *test
 	_, stillOpen, err := history.CloseOpenToolCalls("still open")
 	if err != nil || len(stillOpen) != 0 {
 		t.Fatalf("terminal conversation left open Tool calls: messages=%#v err=%v", stillOpen, err)
-	}
-}
-
-func TestReducerTerminalPreservesCompletedOutOfOrderToolResult(t *testing.T) {
-	reducer := newReducer(testReducerConfig())
-	calls := []corechat.ToolCall{
-		{ID: "provider_first", Name: "first", Arguments: `{}`},
-		{ID: "provider_second", Name: "second", Arguments: `{}`},
-	}
-	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-	mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1",
-		Message: corechat.NewAssistantMessage(
-			corechat.NewToolCallPart(calls[0]),
-			corechat.NewToolCallPart(calls[1]),
-		),
-		Steps: 1,
-	})
-	for index, call := range calls {
-		mustReduce(t, reducer, ToolCallStarted{
-			CallID: "runtime_" + call.Name, SourceCallID: call.ID,
-			ModelCallSequence: 1, ToolCallIndex: uint32(index),
-			ToolName: call.Name, Arguments: call.Arguments,
-		})
-	}
-	if messages := committedConversationMessages(mustReduce(t, reducer, ToolCallFinished{
-		CallID: "runtime_second", Result: testToolResult(t, "known second"),
-	})); len(messages) != 0 {
-		t.Fatalf("out-of-order Tool result committed before its prefix: %#v", messages)
-	}
-
-	terminal := committedConversationMessages(mustReduce(t, reducer, SegmentEnded{Reason: run.OutcomeCanceled}))
-	if len(terminal) != 1 || len(terminal[0].Parts) != 2 {
-		t.Fatalf("terminal conversation closure = %#v, want two ordered results", terminal)
-	}
-	first := terminal[0].Parts[0].ToolResult
-	second := terminal[0].Parts[1].ToolResult
-	if first == nil || second == nil {
-		t.Fatalf("terminal results = %#v, want canceled first then known second", terminal[0].Parts)
-	}
-	secondText, textual := second.Output.Text()
-	if first.ID != calls[0].ID || !first.IsError ||
-		second.ID != calls[1].ID || second.IsError || !textual || secondText != "known second" {
-		t.Fatalf("terminal results = %#v, want canceled first then known second", terminal[0].Parts)
 	}
 }
 
@@ -787,7 +743,7 @@ func TestReducerPreservesRawToolResultsAndExplicitFileNudges(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	mustReduce(t, reducer, ToolCallStarted{CallID: "shell_1", ToolName: "shell", Arguments: `{"command":"echo hi","description":"Print hi"}`})
 	raw := map[string]any{"stdout": "hi\n", "stderr": "oops", "exit_code": 0}
-	reduced := mustReduce(t, reducer, ToolCallFinished{
+	reduced := mustFinishTool(t, reducer, ToolCallFinished{
 		CallID: "shell_1", Result: testToolResult(t, raw), OutputText: "hi\n\noops",
 	})
 	completed := completedItem(t, reduced)
@@ -801,7 +757,7 @@ func TestReducerPreservesRawToolResultsAndExplicitFileNudges(t *testing.T) {
 	}
 
 	mustReduce(t, reducer, ToolCallStarted{CallID: "write_1", ToolName: "write", Arguments: `{"path":"src/a.go"}`})
-	write := mustReduce(t, reducer, ToolCallFinished{
+	write := mustFinishTool(t, reducer, ToolCallFinished{
 		CallID: "write_1", Result: testToolResult(t, map[string]any{}), MutatedPaths: []string{"src/a.go"},
 	})
 	var nudge *Nudge
@@ -815,7 +771,7 @@ func TestReducerPreservesRawToolResultsAndExplicitFileNudges(t *testing.T) {
 	}
 
 	mustReduce(t, reducer, ToolCallStarted{CallID: "partial_1", ToolName: "write", Arguments: `{"path":"src/partial.go"}`})
-	partial := mustReduce(t, reducer, ToolCallFinished{
+	partial := mustFinishTool(t, reducer, ToolCallFinished{
 		CallID: "partial_1", MutatedPaths: []string{"src/partial.go"},
 		Failure: &tool.Failure{Kind: tool.FailureExecution, Detail: "post-write failure"},
 	})
@@ -830,7 +786,7 @@ func TestReducerPreservesRawToolResultsAndExplicitFileNudges(t *testing.T) {
 	}
 
 	mustReduce(t, reducer, ToolCallStarted{CallID: "denied_1", ToolName: "shell", Arguments: `{}`})
-	denied := completedItem(t, mustReduce(t, reducer, ToolCallFinished{
+	denied := completedItem(t, mustFinishTool(t, reducer, ToolCallFinished{
 		CallID:  "denied_1",
 		Failure: &tool.Failure{Kind: tool.FailureDenied},
 	}))
@@ -861,7 +817,7 @@ func TestReducerSeparatesModelAndPresentedToolResults(t *testing.T) {
 		ID: call.ID, Name: call.Name,
 		Output: corechat.NewTextToolOutput(`{"stdout":"hello","stderr":"","exit_code":0}`),
 	}
-	reduced := mustReduce(t, reducer, ToolCallFinished{
+	reduced := mustFinishTool(t, reducer, ToolCallFinished{
 		CallID:      "runtime_shell",
 		ModelResult: &exact,
 		Result: testToolResult(t, map[string]any{
@@ -877,97 +833,6 @@ func TestReducerSeparatesModelAndPresentedToolResults(t *testing.T) {
 	invocation, present := completed.ToolInvocation()
 	if !present || invocation.Result == nil || invocation.Result.Canonical() != `{"exitCode":0,"output":"hello"}` {
 		t.Fatalf("presented transcript result = %#v", invocation.Result)
-	}
-}
-
-func TestReducerCommitsConcurrentToolCompletionsInModelOrder(t *testing.T) {
-	config := testReducerConfig()
-	now := config.CreatedAt
-	config.Now = func() time.Time { return now }
-	reducer := newReducer(config)
-	for _, event := range []ToolCallStarted{
-		{CallID: "call-1", ToolName: "first", Arguments: `{"value":1}`},
-		{CallID: "call-2", ToolName: "second", Arguments: `{"value":2}`},
-		{CallID: "call-3", ToolName: "third", Arguments: `{"value":3}`},
-	} {
-		mustReduce(t, reducer, event)
-	}
-
-	now = now.Add(time.Second)
-	thirdFinishedAt := now
-	if reduced := mustReduce(t, reducer, ToolCallFinished{CallID: "call-3", Result: testToolResult(t, "three")}); len(reduced) != 0 {
-		t.Fatalf("third completion escaped ordering barrier: %+v", reduced)
-	}
-	now = now.Add(time.Second)
-	first := mustReduce(t, reducer, ToolCallFinished{CallID: "call-1", Result: testToolResult(t, "one")})
-	if got := completedToolNames(first); !slices.Equal(got, []string{"first"}) {
-		t.Fatalf("first completion batch = %v, want [first]", got)
-	}
-	now = now.Add(time.Second)
-	secondFinishedAt := now
-	remaining := mustReduce(t, reducer, ToolCallFinished{
-		CallID: "call-2", Arguments: `{"value":20}`, Result: testToolResult(t, "two"),
-	})
-	if got := completedToolNames(remaining); !slices.Equal(got, []string{"second", "third"}) {
-		t.Fatalf("released completion batch = %v, want [second third]", got)
-	}
-	second := completedItem(t, remaining)
-	secondInvocation, _ := second.ToolInvocation()
-	if secondInvocation.Arguments.Map()["value"] != json.Number("20") {
-		t.Fatalf("effective arguments = %#v, want value 20", secondInvocation.Arguments)
-	}
-	var terminalTools []transcript.Item
-	for _, event := range remaining {
-		if completed, ok := event.Event.(ItemCompleted); ok {
-			terminalTools = append(terminalTools, completed.Item)
-		}
-	}
-	if len(terminalTools) != 2 || !terminalTools[0].FinishedAt().Equal(secondFinishedAt) || !terminalTools[1].FinishedAt().Equal(thirdFinishedAt) {
-		t.Fatalf("completion times = %+v, want second=%s third=%s", terminalTools, secondFinishedAt, thirdFinishedAt)
-	}
-}
-
-func TestReducerParksConcurrentToolsWithoutLosingCompletedResults(t *testing.T) {
-	reducer := newReducer(testReducerConfig())
-	firstStart := mustReduce(t, reducer, ToolCallStarted{
-		CallID: "call-1", ToolName: "approval", Arguments: `{"path":"a"}`, SafetyClass: "write",
-	})
-	firstID := startedItemID(t, firstStart)
-	mustReduce(t, reducer, ToolCallStarted{
-		CallID: "call-2", ToolName: "lookup", Arguments: `{"path":"b"}`, SafetyClass: tool.SafetyClassSafe,
-	})
-	if reduced := mustReduce(t, reducer, ToolCallFinished{CallID: "call-2", Result: testToolResult(t, "found")}); len(reduced) != 0 {
-		t.Fatalf("later completion escaped paused prefix: %+v", reduced)
-	}
-
-	parked := mustReduce(t, reducer, SegmentInterrupted{Interrupts: []Interrupt{{
-		Kind: interrupt.Approval,
-		Approval: &ApprovalPrompt{
-			CallID: "call-1", ToolName: "approval", Arguments: `{"path":"a"}`, SafetyClass: "write", Risk: "medium",
-		},
-	}}})
-	commit := parked[0].Commit
-	if commit == nil || commit.Run == nil || len(commit.Items) != 2 {
-		t.Fatalf("park commit = %+v, want two ordered tool items", commit)
-	}
-	if commit.Items[0].ID() != firstID || commit.Items[0].Status() != transcript.ItemRunning {
-		t.Fatalf("active approval item = %+v, want original running item %q", commit.Items[0], firstID)
-	}
-	siblingInvocation, present := commit.Items[1].ToolInvocation()
-	if !present || siblingInvocation.Result == nil {
-		t.Fatalf("completed sibling item = %+v", commit.Items[1])
-	}
-	result, ok := siblingInvocation.Result.String()
-	if siblingInvocation.Name != "lookup" ||
-		commit.Items[1].Status() != transcript.ItemCompleted || !ok || result != "found" {
-		t.Fatalf("completed sibling item = %+v", commit.Items[1])
-	}
-	interrupted := parked[len(parked)-1].Event.(SegmentFinished)
-	if got := interrupted.Interrupts[0].ItemID; got != firstID {
-		t.Fatalf("approval item ID = %q, want original %q", got, firstID)
-	}
-	if len(reducer.drained) != 0 {
-		t.Fatalf("completed or active approval leaked into drained tools: %+v", reducer.drained)
 	}
 }
 
@@ -1027,7 +892,7 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	if got, open := resumed.openToolItemID("call-1"); !open || got != firstID {
 		t.Fatalf("resumed first item = %q/%t, want %q", got, open, firstID)
 	}
-	mustReduce(t, resumed, ToolCallFinished{CallID: "call-1", Result: testToolResult(t, "approved")})
+	mustFinishTool(t, resumed, ToolCallFinished{CallID: "call-1", Result: testToolResult(t, "approved")})
 
 	secondPark := mustReduce(t, resumed, SegmentInterrupted{Interrupts: []Interrupt{{
 		Kind: interrupt.Approval,
@@ -1090,7 +955,7 @@ func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *te
 	if itemID, open := reducer.openToolItemID("call_approval"); !open || itemID != "item_approval" {
 		t.Fatalf("edited resumed approval item = %q/%t, want item_approval", itemID, open)
 	}
-	completed := completedItem(t, mustReduce(t, reducer, ToolCallFinished{
+	completed := completedItem(t, mustFinishTool(t, reducer, ToolCallFinished{
 		CallID: "call_approval", Result: testToolResult(t, "ok"),
 	}))
 	if completed.ID() != "item_approval" || completed.ApprovalDecision() != approval.Allow {
@@ -1246,7 +1111,7 @@ func TestReducerResumeReusesInterruptedItems(t *testing.T) {
 	if itemID, open := reducer.openToolItemID("call_1"); !open || itemID != "item_approval" {
 		t.Fatalf("resumed open tool = %q/%t, want item_approval", itemID, open)
 	}
-	completed := completedItem(t, mustReduce(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "ok")}))
+	completed := completedItem(t, mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "ok")}))
 	if completed.ID() != "item_approval" || !completed.OccurredAt().Equal(approvalAt) {
 		t.Fatalf("resumed completed tool = %s/%s, want original identity and occurrence", completed.ID(), completed.OccurredAt())
 	}
@@ -1422,8 +1287,8 @@ func TestReducerKeepsQuestionToolLifecycleOpenAcrossHITLResume(t *testing.T) {
 		t.Fatalf("resumed Tool started attempts = %d, want one new segment attempt", startedAttempts)
 	}
 	resumeNow = resumeNow.Add(2 * time.Second)
-	completed := completedItem(t, mustReduce(t, resumed, ToolCallFinished{
-		CallID: "call_question", Result: testToolResult(t, "Blue"),
+	completed := completedItem(t, mustFinishTool(t, resumed, ToolCallFinished{
+		CallID: "call_question", Result: testToolResult(t, "Blue"), ModelResult: &corechat.ToolResult{ID: "provider_question", Name: "ask_user", Output: corechat.NewTextToolOutput("Blue")},
 	}))
 	if completed.ID() != toolItemID || completed.Status() != transcript.ItemCompleted {
 		t.Fatalf("resumed question Tool = %+v, want one completion of %q", completed, toolItemID)
@@ -1476,7 +1341,7 @@ func TestReducerRejectsMalformedToolArguments(t *testing.T) {
 		mustReduce(t, reducer, ToolCallStarted{
 			CallID: "call_1", ToolName: "shell", Arguments: `{"command":"go test","description":"Run tests"}`,
 		})
-		_, err := reducer.reduce(ToolCallFinished{CallID: "call_1", Arguments: "null"})
+		_, err := reducer.finishToolCall(ToolCallFinished{CallID: "call_1", Arguments: "null"})
 		if !errors.Is(err, errExecutorContract) || !errors.Is(err, tool.ErrInvalidArguments) {
 			t.Fatalf("tool end error = %v, want executor protocol + invalid arguments", err)
 		}
@@ -1491,7 +1356,6 @@ func TestReducerRejectsInvalidToolLifecycle(t *testing.T) {
 	}{
 		{name: "missing call id", event: ToolCallStarted{ToolName: "shell"}, want: "executor effect identity"},
 		{name: "missing tool name", event: ToolCallStarted{CallID: "call_1"}, want: "name is required"},
-		{name: "end without start", event: ToolCallFinished{CallID: "call_1"}, want: "without an open start"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -1535,14 +1399,14 @@ func TestReducerResumesOnlyTheSameToolCall(t *testing.T) {
 			if itemID := startedItemID(t, started); itemID == "item_original" {
 				t.Fatal("a new same-name Tool call reused the suspended Item")
 			}
-			mustReduce(t, reducer, ToolCallFinished{CallID: "call_new", Result: testToolResult(t, "new")})
+			mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_new", Result: testToolResult(t, "new")})
 			mustReduce(t, reducer, ToolCallStarted{
 				CallID: "call_original", ToolName: "lookup", Arguments: `{"value":1}`,
 			})
 			if itemID, open := reducer.openToolItemID("call_original"); !open || itemID != "item_original" {
 				t.Fatalf("resumed Tool = %q/%t, want original suspended Item", itemID, open)
 			}
-			completed := completedItem(t, mustReduce(t, reducer, ToolCallFinished{
+			completed := completedItem(t, mustFinishTool(t, reducer, ToolCallFinished{
 				CallID: "call_original", Result: testToolResult(t, "original"),
 			}))
 			if completed.ID() != "item_original" || !completed.OccurredAt().Equal(itemOccurredAt) {
@@ -1928,4 +1792,17 @@ func TestSegmentFencesItsFinalPlanBeforeFinishing(t *testing.T) {
 			t.Fatalf("a segment that changed no state published %+v", snapshot)
 		}
 	}
+}
+
+func mustFinishTool(t *testing.T, reducer *reducer, finished ToolCallFinished) []reduction {
+	t.Helper()
+	reduced, err := reducer.finishToolCall(finished)
+	if err != nil {
+		t.Fatalf("finish Tool: %v", err)
+	}
+	batch, err := reducer.projectFact(reduced)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return testReductions(batch)
 }

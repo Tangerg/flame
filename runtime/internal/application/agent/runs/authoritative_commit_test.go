@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -46,28 +47,21 @@ func (c *concurrentToolExecutor) Observe(
 			}
 		}
 
-		second, secondReceipt, err := NewExecutionFactCommit(ToolCallFinished{
-			CallID: "tool_second", Result: toolStringResult("second-result"),
-		})
-		if err != nil || !yield(ExecutorEvent{Member: member, Payload: second}) {
+		batch := testToolPublication(starts,
+			ToolCallFinished{CallID: "tool_first", ModelResult: &corechat.ToolResult{ID: "provider_first", Name: "first", Output: corechat.NewTextToolOutput("first-result")}, Result: toolStringResult("first-result")},
+			ToolCallFinished{CallID: "tool_second", ModelResult: &corechat.ToolResult{ID: "provider_second", Name: "second", Output: corechat.NewTextToolOutput("second-result")}, Result: toolStringResult("second-result")},
+		)
+		commit, receipt, err := NewExecutionFactCommit(batch)
+		if err != nil || !yield(ExecutorEvent{Member: member, Payload: commit}) {
 			return
 		}
-		first, firstReceipt, err := NewExecutionFactCommit(ToolCallFinished{
-			CallID: "tool_first", Result: toolStringResult("first-result"),
-		})
-		if err != nil || !yield(ExecutorEvent{Member: member, Payload: first}) {
+		commitErr := receipt.Await(ctx)
+		c.failures <- commitErr
+		if commitErr != nil {
+			yield(ExecutorEvent{Member: member, Payload: NewUnknownEffectsDetected()})
 			return
 		}
-		firstErr := firstReceipt.Await(ctx)
-		secondErr := secondReceipt.Await(ctx)
-		c.failures <- errors.Join(firstErr, secondErr)
-		if firstErr != nil || secondErr != nil {
-			yield(ExecutorEvent{
-				Member:  member,
-				Payload: NewUnknownEffectsDetected(),
-			})
-			return
-		}
+
 		yield(ExecutorEvent{Member: member, Payload: SegmentEnded{Reason: run.OutcomeCompleted}})
 	}, nil
 }
@@ -361,6 +355,10 @@ func TestTerminalTransactionFailurePreservesRunningToolsForAtomicRecovery(t *tes
 		!runHasFailureKind(*terminal.Run, run.FailureInternal) {
 		t.Fatalf("recovered terminal = %#v, want internal failure", terminal)
 	}
+	failure, present := terminal.Run.Failure()
+	if !present || !strings.Contains(failure.Detail, writeFailure.Error()) {
+		t.Fatalf("terminal failure lost its cause: %+v", failure)
+	}
 	if len(terminal.Items) != 2 || len(terminal.ToolInvocations) != 2 {
 		t.Fatalf("recovered Tool write-set = items %#v invocations %#v", terminal.Items, terminal.ToolInvocations)
 	}
@@ -382,4 +380,28 @@ func TestTerminalTransactionFailurePreservesRunningToolsForAtomicRecovery(t *tes
 	if terminalEvents != 1 {
 		t.Fatalf("published terminal events = %d, want exactly one recovered boundary", terminalEvents)
 	}
+}
+
+func testToolPublication(starts []ToolCallStarted, results ...ToolCallFinished) ToolResultsCommitted {
+	return ToolResultsCommitted{
+		Publication: ResultPublication{ID: "publication_" + starts[0].CallID, Digest: "sha256:" + strings.Repeat("a", 64)},
+		Starts:      starts, Results: results,
+	}
+}
+
+func testPublicationPayload(batch ToolResultsCommitted) ExecutionFactCommit {
+	commit, _, err := NewExecutionFactCommit(batch)
+	if err != nil {
+		panic(err)
+	}
+	return commit
+}
+
+func testDelegatePublication(sourceID string, result ToolCallFinished) ExecutionFactCommit {
+	text := result.OutputText
+	if result.Result != nil {
+		text = result.Result.Canonical()
+	}
+	result.ModelResult = &corechat.ToolResult{ID: sourceID, Name: "delegate_task", Output: corechat.NewTextToolOutput(text), IsError: result.Failure != nil}
+	return testPublicationPayload(testToolPublication([]ToolCallStarted{{CallID: result.CallID, SourceCallID: sourceID, ToolName: "delegate_task", ModelCallSequence: 1, Arguments: `{}`}}, result))
 }

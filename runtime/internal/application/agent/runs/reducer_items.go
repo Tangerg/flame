@@ -9,7 +9,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -360,6 +359,9 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 			)
 		}
 	}
+	if e.ArgumentsText != "" && e.Arguments != "" {
+		return nil, errors.New("tool call carries both parsed and rejected arguments")
+	}
 	arguments, err := parseToolArguments(e.Arguments)
 	if err != nil {
 		return nil, fmt.Errorf("tool %q arguments: %w", e.ToolName, err)
@@ -387,7 +389,7 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 		callID: e.CallID, sourceCallID: e.SourceCallID,
 		modelCallSequence: e.ModelCallSequence, toolCallIndex: e.ToolCallIndex,
 		id: identity.id, occurredAt: identity.occurredAt, attemptStartedAt: r.now(),
-		name: e.ToolName, arguments: arguments, safetyClass: e.SafetyClass,
+		name: e.ToolName, arguments: arguments, argumentsText: e.ArgumentsText, safetyClass: e.SafetyClass,
 		approvalDecision: identity.approvalDecision,
 	}
 	r.toolCallIDs[e.CallID] = struct{}{}
@@ -423,9 +425,11 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 }
 
 func (r *reducer) runningToolItem(ref *openTool) (transcript.Item, error) {
+	invocation := newToolInvocation(ref.name, ref.arguments, nil)
+	invocation.ArgumentsText = ref.argumentsText
 	item, err := transcript.NewToolCall(
 		r.itemIdentity(ref.id, ref.occurredAt),
-		*newToolInvocation(ref.name, ref.arguments, nil),
+		*invocation,
 		ref.safetyClass,
 	)
 	if err != nil || ref.approvalDecision == "" {
@@ -476,101 +480,32 @@ func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocati
 	if !ok {
 		return nil, nil, nil, fmt.Errorf("tool call %q ended without an open start", e.CallID)
 	}
-	if ref.end != nil {
-		return nil, nil, nil, fmt.Errorf("tool call %q ended more than once", e.CallID)
-	}
-	cloned := e
-	if e.Offload != nil {
-		ref := *e.Offload
-		cloned.Offload = &ref
-	}
-	if e.Failure != nil {
-		failure := *e.Failure
-		cloned.Failure = &failure
-	}
-	if e.ModelResult != nil {
+	if ref.modelCallSequence > 0 {
+		if e.ModelResult == nil {
+			return nil, nil, nil, errors.New("model-attributed Tool completion requires its exact model result")
+		}
 		if err := e.ModelResult.Validate(); err != nil {
-			return nil, nil, nil, fmt.Errorf("tool call %q has invalid model result: %w", e.CallID, err)
-		}
-		if e.ModelResult.ID != ref.sourceCallID || e.ModelResult.Name != ref.name {
-			return nil, nil, nil, fmt.Errorf("tool call %q model result differs from its source call", e.CallID)
-		}
-		modelResult := *e.ModelResult
-		cloned.ModelResult = &modelResult
-	}
-	cloned.MutatedPaths = slices.Clone(e.MutatedPaths)
-	r.endToolAttempt(ref)
-	ref.end = &cloned
-	return r.flushEndedTools()
-}
-
-// flushEndedTools commits only the longest completed prefix. Tools may finish
-// concurrently in any order, but transcript identity, mutation nudges, and
-// durable insertion order must follow the model's call order.
-func (r *reducer) flushEndedTools() ([]ProjectionEvent, []ToolInvocationCommit, []corechat.Message, error) {
-	ordered := r.tools.ordered()
-	var out []ProjectionEvent
-	var invocations []ToolInvocationCommit
-	var results []corechat.ToolResult
-	for _, ref := range ordered {
-		if ref.end == nil {
-			break
-		}
-		r.tools.remove(ref.callID)
-		completed, err := r.completeTool(ref, *ref.end)
-		if err != nil {
 			return nil, nil, nil, err
 		}
-		out = append(out, completed...)
-		if r.cfg.Lineage.IsRoot() && ref.modelCallSequence > 0 {
-			results = append(results, conversationToolResult(ref, *ref.end))
-		}
-		if ref.modelCallSequence > 0 {
-			invocations = append(invocations, ToolInvocationCommit{
-				CallID: ref.callID, ItemID: ref.id, SegmentID: r.cfg.SegmentID,
-				State: ToolInvocationCompleted, StartedAt: ref.attemptStartedAt, FinishedAt: ref.finishedAt,
-			})
+		if e.ModelResult.ID != ref.sourceCallID || e.ModelResult.Name != ref.name {
+			return nil, nil, nil, errors.New("Tool result differs from its source call")
 		}
 	}
-	if len(results) == 0 {
-		return out, invocations, nil, nil
+	r.endToolAttempt(ref)
+	events, err := r.completeTool(ref, e)
+	if err != nil {
+		return nil, nil, nil, err
 	}
-	return out, invocations, []corechat.Message{corechat.NewToolMessage(results...)}, nil
-}
-
-func conversationToolResult(ref *openTool, finished ToolCallFinished) corechat.ToolResult {
-	if finished.ModelResult != nil {
-		return *finished.ModelResult
-	}
-	result := ""
-	if finished.Result != nil {
-		if text, ok := finished.Result.String(); ok {
-			result = text
-		} else {
-			result = finished.Result.Canonical()
+	r.tools.remove(ref.callID)
+	var invocations []ToolInvocationCommit
+	var messages []corechat.Message
+	if ref.modelCallSequence > 0 {
+		invocations = []ToolInvocationCommit{{CallID: ref.callID, ItemID: ref.id, SegmentID: r.cfg.SegmentID, State: ToolInvocationCompleted, StartedAt: ref.attemptStartedAt, FinishedAt: ref.finishedAt}}
+		if r.cfg.Lineage.IsRoot() {
+			messages = []corechat.Message{corechat.NewToolMessage(e.ModelResult.Clone())}
 		}
 	}
-	isError := finished.Failure != nil && finished.Failure.Kind != tool.FailureDenied
-	if isError && result == "" {
-		result = fmt.Sprintf("error: tool %q failed: %s", ref.name, finished.Failure.Detail)
-	}
-	return corechat.ToolResult{
-		ID: ref.sourceCallID, Name: ref.name, Output: corechat.NewTextToolOutput(result), IsError: isError,
-	}
-}
-
-// forgetToolEnds removes speculative external results whose canonical batch
-// failed to commit. Their starts remain open so RunLost synthesis records
-// incomplete calls rather than publishing results that persistence rejected.
-func (r *reducer) forgetToolEnds(callIDs []string) {
-	for _, callID := range callIDs {
-		ref, _ := r.tools.get(callID)
-		if ref == nil {
-			continue
-		}
-		ref.end = nil
-		ref.finishedAt = time.Time{}
-	}
+	return events, invocations, messages, nil
 }
 
 func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionEvent, error) {
@@ -594,6 +529,7 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionE
 		arguments = parsed
 	}
 	invocation := newToolInvocation(ref.name, arguments, e.Result)
+	invocation.ArgumentsText = ref.argumentsText
 	invocation.Offload = e.Offload
 	item, err := r.runningToolItem(ref)
 	if err != nil {

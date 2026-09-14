@@ -57,9 +57,10 @@ type questionOptionPayload struct {
 }
 
 type toolInvocationPayload struct {
-	Name      string          `json:"name"`
-	Arguments json.RawMessage `json:"arguments"`
-	Result    json.RawMessage `json:"result,omitempty"`
+	ArgumentsText string          `json:"argumentsText,omitempty"`
+	Name          string          `json:"name"`
+	Arguments     json.RawMessage `json:"arguments"`
+	Result        json.RawMessage `json:"result,omitempty"`
 }
 
 type toolFailurePayload struct {
@@ -270,7 +271,7 @@ func decodeQuestionPayload(payload questionPayload) (transcript.Question, error)
 
 func encodeToolInvocationPayload(invocation transcript.ToolInvocation) toolInvocationPayload {
 	payload := toolInvocationPayload{
-		Name: invocation.Name, Arguments: json.RawMessage(invocation.Arguments.Canonical()),
+		Name: invocation.Name, ArgumentsText: invocation.ArgumentsText, Arguments: json.RawMessage(invocation.Arguments.Canonical()),
 	}
 	if invocation.Result != nil {
 		payload.Result = json.RawMessage(invocation.Result.Canonical())
@@ -283,7 +284,7 @@ func decodeToolInvocationPayload(payload toolInvocationPayload) (transcript.Tool
 	if err != nil {
 		return transcript.ToolInvocation{}, fmt.Errorf("tool arguments: %w", err)
 	}
-	invocation := transcript.ToolInvocation{Name: payload.Name, Arguments: arguments}
+	invocation := transcript.ToolInvocation{Name: payload.Name, Arguments: arguments, ArgumentsText: payload.ArgumentsText}
 	if len(payload.Result) > 0 {
 		result, err := tool.ParseResult(payload.Result)
 		if err != nil {

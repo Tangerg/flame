@@ -110,6 +110,7 @@ type reducer struct {
 }
 
 type openTool struct {
+	argumentsText     string
 	callID            string
 	sourceCallID      string
 	modelCallSequence uint32
@@ -122,7 +123,6 @@ type openTool struct {
 	arguments         tool.Arguments
 	safetyClass       tool.SafetyClass
 	approvalDecision  approval.Decision
-	end               *ToolCallFinished
 }
 
 type toolPosition struct {
@@ -287,8 +287,8 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 		return r.failModelCall(e)
 	case ToolCallStarted:
 		return r.startToolCall(e)
-	case ToolCallFinished:
-		return r.finishToolCall(e)
+	case ToolResultsCommitted:
+		return r.finishToolResults(e)
 	case UsageReported:
 		events, err := r.usageProgress(e)
 		if err != nil {
@@ -506,16 +506,12 @@ func (r *reducer) finishToolCall(finished ToolCallFinished) (factReduction, erro
 	if err != nil {
 		return factReduction{}, fmt.Errorf("%w: tool call end: %w", errExecutorContract, err)
 	}
-	settledCallIDs := make([]string, len(invocations))
-	for index, invocation := range invocations {
-		settledCallIDs[index] = invocation.CallID
-	}
 	if err := r.appendToolContext(messages); err != nil {
 		return factReduction{}, fmt.Errorf("%w: track completed Tool context: %w", errReducerInvariant, err)
 	}
 	return factReduction{
 		events: events, conversationMessages: messages,
-		toolInvocations: invocations, settledToolCallIDs: settledCallIDs,
+		toolInvocations: invocations,
 	}, nil
 }
 
@@ -541,7 +537,7 @@ func (r *reducer) endSegment(ended SegmentEnded) (factReduction, error) {
 	}
 	closure, err := r.closeOpenToolContext(
 		terminalToolResult(ended.Reason, r.cancelReason()),
-		completedTerminalToolResults(openTools),
+		nil,
 	)
 	if err != nil {
 		return factReduction{}, fmt.Errorf("%w: close terminal Tool context: %w", errReducerInvariant, err)
@@ -596,9 +592,6 @@ func closedToolInvocationCommits(segmentID string, tools []*openTool) []ToolInvo
 			continue
 		}
 		state := ToolInvocationIncomplete
-		if ref.end != nil {
-			state = ToolInvocationCompleted
-		}
 		commits = append(commits, ToolInvocationCommit{
 			CallID: ref.callID, ItemID: ref.id, SegmentID: segmentID,
 			State: state, StartedAt: ref.attemptStartedAt, FinishedAt: ref.finishedAt,
@@ -661,7 +654,7 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 	out = append(out, terminal)
 	closure, err := r.closeOpenToolContext(
 		terminalToolResult(outcome, detail),
-		completedTerminalToolResults(openTools),
+		nil,
 	)
 	if err != nil {
 		return reductionBatch{}, fmt.Errorf("%w: close synthesized Tool context: %w", errReducerInvariant, err)
@@ -716,14 +709,11 @@ func (r *reducer) abandonUnconsumedResumeTools() ([]ProjectionEvent, error) {
 	return events, nil
 }
 
-// abort marks the Segment as failed so terminal synthesis produces an error
-// outcome. It takes no cause: an internal failure exposes only its stable problem
-// kind to observers.
-// That makes the caller's span the only place the cause survives — a rejected
-// terminal commit or a contract-violating executor event is otherwise invisible
-// — so every caller records it there before calling this.
-func (r *reducer) abort() {
-	r.errFailure = &run.Failure{Kind: run.FailureInternal}
+// abort retains the first failure through terminal cleanup and persistence retries.
+func (r *reducer) abort(cause error) {
+	if r.errFailure == nil {
+		r.errFailure = &run.Failure{Kind: run.FailureInternal, Detail: cause.Error()}
+	}
 }
 
 func (r *reducer) now() time.Time {
@@ -733,4 +723,58 @@ func (r *reducer) now() time.Time {
 		return createdAt
 	}
 	return now
+}
+
+func (r *reducer) finishToolResults(batch ToolResultsCommitted) (factReduction, error) {
+	if err := batch.Publication.Validate(); err != nil {
+		return factReduction{}, err
+	}
+	if len(batch.Results) == 0 || len(batch.Starts) != len(batch.Results) {
+		return factReduction{}, errors.New("runs: result publication requires its complete call set")
+	}
+	sequence := batch.Starts[0].ModelCallSequence
+	if sequence == 0 {
+		return factReduction{}, errors.New("runs: result publication requires model attribution")
+	}
+	var reduced factReduction
+	for index, start := range batch.Starts {
+		if start.ModelCallSequence != sequence || start.ToolCallIndex != uint32(index) || start.CallID != batch.Results[index].CallID {
+			return factReduction{}, errors.New("runs: result publication call set is not in declared order")
+		}
+		if ref, open := r.tools.get(start.CallID); open {
+			if ref.modelCallSequence != sequence || ref.toolCallIndex != uint32(index) || ref.sourceCallID != start.SourceCallID || ref.name != start.ToolName {
+				return factReduction{}, errors.New("runs: result publication differs from its open call")
+			}
+			continue
+		}
+		started, err := r.startToolCall(start)
+		if err != nil {
+			return factReduction{}, err
+		}
+		// The final Item and journal row supersede the running projection within
+		// this same transaction.
+		reduced.events = append(reduced.events, started.events...)
+	}
+	var results []corechat.ToolResult
+	for _, result := range batch.Results {
+		finished, err := r.finishToolCall(result)
+		if err != nil {
+			return factReduction{}, err
+		}
+		reduced.events = append(reduced.events, finished.events...)
+		reduced.toolInvocations = append(reduced.toolInvocations, finished.toolInvocations...)
+		for _, message := range finished.conversationMessages {
+			for _, part := range message.Parts {
+				results = append(results, part.ToolResult.Clone())
+			}
+		}
+	}
+	if len(reduced.toolInvocations) != len(batch.Results) {
+		return factReduction{}, errors.New("runs: result publication did not settle its entire call set")
+	}
+	if len(results) > 0 {
+		reduced.conversationMessages = []corechat.Message{corechat.NewToolMessage(results...)}
+	}
+	reduced.resultPublication = &batch.Publication
+	return reduced, nil
 }

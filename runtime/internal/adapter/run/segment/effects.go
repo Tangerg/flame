@@ -172,6 +172,8 @@ type RunWriter interface {
 // RunStore combines lifecycle writes with the exact durable reads required to
 // prove and reconstruct a result after an ambiguous command commit.
 type RunStore interface {
+	ResultPublicationCommitted(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string) (bool, error)
+	RecordResultPublication(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string) error
 	RunWriter
 	Run(ctx context.Context, runID string) (run.Run, bool, error)
 	RunCommitCommitted(ctx context.Context, sessionID, runID, segmentID string, commitID runtimeidentity.CommitID) (bool, error)

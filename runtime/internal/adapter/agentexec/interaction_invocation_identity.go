@@ -9,7 +9,6 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
-	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 const (
@@ -30,25 +29,29 @@ func modelInvocationIDFrom(effectID agent.EffectID, modelCallSequence uint32) (r
 }
 
 func toolInvocationID(invocation interaction.ToolInvocation) (runtimeidentity.EffectID, error) {
-	return delegatedToolCallID(
-		invocation.Relation(), invocation.ModelCallSequence(), invocation.ToolCallIndex(), invocation.ToolCall(),
-	)
+	caller, present := invocation.Relation().ParentID()
+	if !present {
+		return runtimeidentity.EffectID{}, agent.ErrInvalidProcessRelation
+	}
+	call := invocation.ToolCall()
+	return logicalToolCallID(caller, invocation.ModelCallSequence(), invocation.ToolCallIndex(), call.ID, call.Name)
 }
 
-func delegatedToolCallID(
-	relation agent.ProcessRelation,
+func logicalToolCallID(
+	caller agent.ProcessID,
 	modelCallSequence uint32,
 	toolCallIndex uint32,
-	call corechat.ToolCall,
+	sourceID string,
+	name string,
 ) (runtimeidentity.EffectID, error) {
 	digest := sha256.New()
-	_, _ = digest.Write([]byte(relation.ProcessID().String()))
+	_, _ = digest.Write([]byte(caller.String()))
 	_, _ = digest.Write([]byte{0})
 	_, _ = digest.Write([]byte(strconv.FormatUint(uint64(modelCallSequence), 10)))
 	_, _ = digest.Write([]byte{0})
-	_, _ = digest.Write([]byte(call.ID))
+	_, _ = digest.Write([]byte(sourceID))
 	_, _ = digest.Write([]byte{0})
-	_, _ = digest.Write([]byte(call.Name))
+	_, _ = digest.Write([]byte(name))
 	return parsedInvocationID(toolInvocationNamespace, digest.Sum(nil), toolCallIndex)
 }
 

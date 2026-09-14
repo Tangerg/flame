@@ -530,6 +530,12 @@ func (e *Effects) reconcileEventCommit(
 	ctx context.Context,
 	commit runs.EventCommit,
 ) (bool, error) {
+	if publication := commit.ResultPublication; publication != nil {
+		reconcileCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), runCommitReconciliationTimeout)
+		defer cancel()
+		return e.runState.ResultPublicationCommitted(reconcileCtx, commit.SessionID, commit.RunID, commit.SegmentID, publication.ID, publication.Digest)
+	}
+
 	return e.reconcileRunCommit(
 		ctx, commit.SessionID, commit.RunID, commit.SegmentID, commit.CommitID,
 	)
@@ -638,6 +644,16 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 	if err := e.runState.RequireActiveSegment(ctx, commit.SessionID, commit.RunID, commit.SegmentID); err != nil {
 		return fmt.Errorf("segment: require active event Segment: %w", err)
 	}
+	if publication := commit.ResultPublication; publication != nil {
+		committed, err := e.runState.ResultPublicationCommitted(ctx, commit.SessionID, commit.RunID, commit.SegmentID, publication.ID, publication.Digest)
+		if err != nil {
+			return err
+		}
+		if committed {
+			return nil
+		}
+	}
+
 	for _, item := range commit.Items {
 		if err := e.appendItem(ctx, item); err != nil {
 			return err
@@ -665,6 +681,12 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 			return fmt.Errorf("segment: record Goal Run: %w", err)
 		}
 	}
+	if publication := commit.ResultPublication; publication != nil {
+		if err := e.runState.RecordResultPublication(ctx, commit.SessionID, commit.RunID, commit.SegmentID, publication.ID, publication.Digest); err != nil {
+			return err
+		}
+	}
+
 	if commit.State == runs.StateUnchanged && !commit.CommitID.IsZero() {
 		if err := e.runState.RecordRunCommit(
 			ctx, commit.SessionID, commit.RunID, commit.SegmentID, commit.CommitID,

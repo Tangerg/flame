@@ -187,16 +187,18 @@ type QuestionOption struct {
 }
 
 type ToolInvocation struct {
-	Name      string
-	Arguments tool.Arguments
-	Result    *tool.Result
-	Offload   *toolresult.Ref
+	// ArgumentsText retains unexecuted input verbatim. When present, Arguments is empty.
+	ArgumentsText string
+	Name          string
+	Arguments     tool.Arguments
+	Result        *tool.Result
+	Offload       *toolresult.Ref
 }
 
 // Equal compares the semantic Tool invocation value without exposing the
 // canonical storage representation of arguments or results to callers.
 func (t ToolInvocation) Equal(other ToolInvocation) bool {
-	if t.Name != other.Name || !t.Arguments.Equal(other.Arguments) {
+	if t.Name != other.Name || t.ArgumentsText != other.ArgumentsText || !t.Arguments.Equal(other.Arguments) {
 		return false
 	}
 	if (t.Result == nil) != (other.Result == nil) {

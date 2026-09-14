@@ -595,12 +595,22 @@ type delegateTreeFixture struct {
 
 func startDelegateTree(t *testing.T, model chat.Model, input string) *delegateTreeFixture {
 	t.Helper()
+	return startDelegateTreeWithCompactor(t, model, input, nil)
+}
+
+func startDelegateTreeWithCompactor(t *testing.T, model chat.Model, input string, compactor ModelContextCompactor) *delegateTreeFixture {
+	t.Helper()
+	var contextState InteractionModelContextState
+	if compactor != nil {
+		contextState = emptyInteractionModelContextState{}
+	}
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-delegate-tree-test-build",
 		ConfigurationIdentity:  "interaction-delegate-tree-test-config", DefaultMaxModelCalls: uint32Pointer(6),
 		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
+		ModelContextCompactor: compactor, ModelContextState: contextState,
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -525,7 +525,7 @@ func seedEveryItemKind(t *testing.T, rt *stubRuntime, sessionID string) {
 			Kind:   tool.FailureExecution,
 			Detail: "exit 1", DocURL: "https://example.invalid/tools",
 		},
-		Tool: &transcript.ToolInvocation{Name: "shell", Arguments: arguments},
+		Tool: &transcript.ToolInvocation{Name: "shell", ArgumentsText: `{"command":`},
 	}), testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_compaction", RunID: "run_failed", Kind: transcript.Compaction,
 		Status: transcript.ItemCompleted, OccurredAt: time.Unix(9, 0).UTC(),

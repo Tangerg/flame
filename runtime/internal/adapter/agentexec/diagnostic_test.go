@@ -5,8 +5,6 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
-
-	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 func TestBoundDiagnosticKeepsTextValidBoundedAndMarked(t *testing.T) {
@@ -37,24 +35,6 @@ func TestBoundDiagnosticKeepsTextValidBoundedAndMarked(t *testing.T) {
 				t.Errorf("result is not valid UTF-8")
 			}
 		})
-	}
-}
-
-func TestDelegateFailureTellsTheModelItWasTruncated(t *testing.T) {
-	call := corechat.ToolCall{ID: "call_1", Name: "delegate"}
-	text, _ := delegateFailureModelResult(call, strings.Repeat("界", maximumDelegateDiagnosticBytes)).Output.Text()
-	if !strings.HasSuffix(text, diagnosticEllipsis) {
-		t.Errorf("truncated Delegate diagnostic is unmarked: %q", text[max(len(text)-16, 0):])
-	}
-	if !utf8.ValidString(text) {
-		t.Error("truncated Delegate diagnostic is not valid UTF-8")
-	}
-
-	for _, empty := range []string{"", "   ", string([]byte{0xff})} {
-		text, _ := delegateFailureModelResult(call, empty).Output.Text()
-		if !strings.Contains(text, "Interaction operation failed") {
-			t.Errorf("diagnostic %q lost its substitute wording: %q", empty, text)
-		}
 	}
 }
 

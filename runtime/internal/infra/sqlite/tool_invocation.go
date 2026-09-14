@@ -111,10 +111,33 @@ func (t *ToolInvocationStore) CompleteToolInvocation(
 	sessionID, runID, segmentID, callID, itemID string,
 	startedAt, finishedAt time.Time,
 ) error {
-	return t.finish(
-		ctx, sessionID, runID, segmentID, callID, itemID,
-		startedAt, finishedAt, toolInvocationCompleted.databaseValue(),
-	)
+	if err := validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID); err != nil {
+		return err
+	}
+	if startedAt.IsZero() || finishedAt.IsZero() || finishedAt.Before(startedAt) {
+		return errors.New("sqlite: completed Tool invocation requires ordered timestamps")
+	}
+	result, err := conn(ctx, t.db).ExecContext(ctx, `
+		INSERT INTO tool_invocations(call_id, item_id, session_id, run_id, segment_id, state, started_at, finished_at)
+		SELECT ?, ?, session_id, run_id, ?, ?, ?, ? FROM runs
+		WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?
+		ON CONFLICT(call_id, segment_id) DO UPDATE SET state = excluded.state, finished_at = excluded.finished_at
+		WHERE tool_invocations.state = ? AND tool_invocations.item_id = excluded.item_id
+		AND tool_invocations.session_id = excluded.session_id AND tool_invocations.run_id = excluded.run_id
+		AND tool_invocations.started_at = excluded.started_at`,
+		callID, itemID, segmentID, toolInvocationCompleted.databaseValue(), startedAt.UTC().UnixNano(), finishedAt.UTC().UnixNano(),
+		sessionID, runID, runStateRunning.databaseValue(), segmentID, toolInvocationStarted.databaseValue())
+	if err != nil {
+		return fmt.Errorf("sqlite: complete Tool invocation %q: %w", callID, err)
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if changed != 1 {
+		return fmt.Errorf("sqlite: Tool invocation %q lost its completion ownership", callID)
+	}
+	return nil
 }
 
 func (t *ToolInvocationStore) MarkToolInvocationIncomplete(

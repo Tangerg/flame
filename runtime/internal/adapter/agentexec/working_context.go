@@ -246,7 +246,7 @@ func (w *WorkingContextComposer) BeforeToolUse(
 	if rewritten := strings.TrimSpace(decision.RewriteArguments); rewritten != "" {
 		arguments, err := tool.ParseArguments(rewritten)
 		if err != nil {
-			return InteractionToolHookDecision{}, fmt.Errorf("agentexec: parse pre-Tool hook argument rewrite: %w", err)
+			return DenyToolHook(fmt.Sprintf("invalid pre-Tool hook argument rewrite: %v", err)), nil
 		}
 		rewrittenArguments = &arguments
 	}

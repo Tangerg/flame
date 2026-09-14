@@ -1503,6 +1503,7 @@ export interface TestProviderRequest {
 
 export interface ToolInvocation {
   arguments: Record<string, unknown>;
+  argumentsText?: string;
   name: string;
   result?: unknown;
 }

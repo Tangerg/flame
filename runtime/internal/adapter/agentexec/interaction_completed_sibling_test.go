@@ -3,8 +3,10 @@ package agentexec
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -24,6 +27,26 @@ import (
 
 func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T) {
 	bStarted := make(chan agent.ProcessID, 1)
+	toolStarted := make(chan agent.ProcessID, 1)
+	var writes atomic.Int32
+	offloads := &fakeOffloader{}
+	ordinary, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "store", Description: "Write a known result."}, func(ctx context.Context, input struct {
+		Value string `json:"value"`
+	}) (string, error) {
+		if input.Value != "edited" {
+			return "", errors.New("effective arguments were lost")
+		}
+		writes.Add(1)
+		invocation, found := interaction.ToolInvocationFromContext(ctx)
+		if !found {
+			return "", errors.New("tool invocation missing")
+		}
+		toolStarted <- invocation.Relation().ProcessID()
+		return strings.Repeat("stored data 界", 100), nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	releaseA := make(chan struct{})
 	var modelCalls atomic.Int32
 	model := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
@@ -47,6 +70,7 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 			return interactionUsageTextResponse("sibling B completed", 2, 1), nil
 		default:
 			return interactionToolBatchResponse([]chat.ToolCall{
+				{ID: "ordinary_c", Name: "store", Arguments: `{"value":"original"}`},
 				{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"waiting sibling A"}`},
 				{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"completed sibling B"}`},
 			}, 2, 1), nil
@@ -60,8 +84,10 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 		Lifetime: t.Context(), ChatResolver: staticInteractionChatResolver(model),
 		ImplementationIdentity: "completed-sibling-build", ConfigurationIdentity: "completed-sibling-config",
 		DefaultMaxModelCalls: uint32Pointer(6), MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{question, ordinary}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+		ToolHooks: siblingEditHook{}, ToolResultStore: offloads,
+		ToolResultOffload: ToolResultOffloadPolicyValues{Threshold: intPointer(100), ReaderName: testToolResultReaderName},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -115,6 +141,28 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 	if _, err := process.Await(ctx); err != nil {
 		t.Fatalf("finish sibling B before A asks for input: %v", err)
 	}
+	var toolProcessID agent.ProcessID
+	select {
+	case toolProcessID = <-toolStarted:
+	case <-ctx.Done():
+		t.Fatal("ordinary sibling did not start")
+	}
+	toolProcess, found := execution.engine.Process(toolProcessID)
+	if !found {
+		t.Fatal("ordinary sibling is unavailable")
+	}
+	if _, err := toolProcess.Await(ctx); err != nil {
+		t.Fatal(err)
+	}
+	execution.state.mu.Lock()
+	var known toolResultMetadata
+	for _, metadata := range execution.state.toolMetadata {
+		known = metadata.clone()
+	}
+	execution.state.mu.Unlock()
+	if known.Offload == nil || known.Arguments != `{"value":"edited"}` || offloads.calls != 1 {
+		t.Fatalf("pending metadata: %+v", known)
+	}
 	close(releaseA)
 	fixture := &waitingDelegateFixture{executor: executor, coordinator: coordinator, projection: projection}
 	barrier := fixture.waitForBarrier(t, 2*time.Second)
@@ -154,6 +202,7 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 		t.Fatal("restored sibling tree did not finish")
 	}
 	var parentStarts, parentResults []string
+	var restoredMetadata *runs.ToolCallFinished
 	var childEnds, rootEnds int
 	for _, event := range observed {
 		if event.Member.MemberID == processID.String() {
@@ -164,9 +213,14 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 			if !event.Member.Child() {
 				parentStarts = append(parentStarts, payload.SourceCallID)
 			}
-		case runs.ToolCallFinished:
-			if !event.Member.Child() && payload.ModelResult != nil {
-				parentResults = append(parentResults, payload.ModelResult.ID)
+		case runs.ToolResultsCommitted:
+			if !event.Member.Child() {
+				for _, result := range payload.Results {
+					parentResults = append(parentResults, result.ModelResult.ID)
+					if result.ModelResult.ID == "ordinary_c" {
+						restoredMetadata = new(result)
+					}
+				}
 			}
 		case runs.SegmentEnded:
 			if payload.Reason != run.OutcomeCompleted {
@@ -182,8 +236,11 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 			}
 		}
 	}
-	wantCalls := []string{"delegate_a", "delegate_b"}
-	if !slices.Equal(parentStarts, wantCalls) || !slices.Equal(parentResults, wantCalls) ||
+	if restoredMetadata == nil || restoredMetadata.CallID != known.Start.CallID || restoredMetadata.Arguments != known.Arguments ||
+		!reflect.DeepEqual(restoredMetadata.Offload, known.Offload) || !reflect.DeepEqual(restoredMetadata.Result, known.Result) || writes.Load() != 1 || offloads.calls != 1 {
+		t.Fatalf("known Tool changed or reran across restore: result=%+v writes=%d offloads=%d", restoredMetadata, writes.Load(), offloads.calls)
+	}
+	if !slices.Equal(parentStarts, []string{"delegate_a", "delegate_b"}) || !slices.Equal(parentResults, []string{"ordinary_c", "delegate_a", "delegate_b"}) ||
 		childEnds != 1 || rootEnds != 1 || modelCalls.Load() != 5 {
 		t.Fatalf("restored tree starts=%v results=%v childEnds=%d rootEnds=%d modelCalls=%d",
 			parentStarts, parentResults, childEnds, rootEnds, modelCalls.Load())
@@ -192,3 +249,18 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 		t.Fatal(err)
 	}
 }
+
+type siblingEditHook struct{}
+
+func (siblingEditHook) BeforeToolUse(_ context.Context, input InteractionToolHookInput) (InteractionToolHookDecision, error) {
+	if input.ToolName != "store" {
+		return AllowToolHook(false, nil), nil
+	}
+	arguments, err := domaintool.ParseArguments(`{"value":"edited"}`)
+	if err != nil {
+		return InteractionToolHookDecision{}, err
+	}
+	return AllowToolHook(false, &arguments), nil
+}
+
+func (siblingEditHook) AfterToolUse(context.Context, InteractionToolHookInput) error { return nil }

@@ -155,8 +155,8 @@ func (i *interactionSession) registerDelegateCalls(
 		identity := delegateCallIdentity{
 			parentID: invocation.Relation().ProcessID(), childKey: childKey,
 		}
-		callID, err := delegatedToolCallID(
-			invocation.Relation(), invocation.ModelCallSequence(), toolCallIndex, call,
+		callID, err := logicalToolCallID(
+			invocation.Relation().ProcessID(), invocation.ModelCallSequence(), toolCallIndex, call.ID, call.Name,
 		)
 		if err != nil {
 			return err

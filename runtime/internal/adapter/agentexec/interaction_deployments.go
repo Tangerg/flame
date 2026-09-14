@@ -220,7 +220,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	// The Dispatcher takes exactly one model capability. Streaming is requested
 	// by configuration but offered only by a provider that has it, so a
 	// non-streaming provider answers complete responses without a second switch.
-	dispatcherConfig := interaction.DispatcherConfig{ModelContextReducer: contextReducer}
+	dispatcherConfig := interaction.DispatcherConfig{ModelContextReducer: contextReducer, ResultCommitter: i.session}
 	if i.executor.config.StreamModelResponses && i.model.Streams() {
 		dispatcherConfig.Streamer = i.model
 	} else {

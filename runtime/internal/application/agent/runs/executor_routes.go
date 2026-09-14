@@ -421,10 +421,10 @@ func (e *executorRoutes) installChild(member ExecutorMember, route *executorRout
 	e.admissionOrder = append(e.admissionOrder, route)
 }
 
-func (e *executorRoutes) abortUnfinished() {
+func (e *executorRoutes) abortUnfinished(cause error) {
 	for _, route := range e.admissionOrder {
 		if !route.segmentFinished && route.reducer != nil {
-			route.reducer.abort()
+			route.reducer.abort(cause)
 		}
 	}
 }

@@ -466,7 +466,7 @@ func portableToolFromArtifact(path string, artifact protocol.ToolInvocation) (tr
 		}
 		result = &value
 	}
-	return transcript.ToolInvocation{Name: artifact.Name, Arguments: arguments, Result: result}, nil
+	return transcript.ToolInvocation{Name: artifact.Name, ArgumentsText: artifact.ArgumentsText, Arguments: arguments, Result: result}, nil
 }
 
 func portableRunFailureFromArtifact(path string, artifact *protocol.ArtifactProblem) (*run.Failure, error) {

@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 // NewPreparedWaitingSubtreeCancellation captures one validated executor change
@@ -22,7 +21,6 @@ func NewPreparedWaitingSubtreeCancellation(
 	pausedMemberIDs []string,
 	pendingInterruptions []MemberInterruption,
 	checkpoint ExecutorCheckpoint,
-	parentToolResult corechat.ToolResult,
 	change WaitingSubtreeChange,
 ) (PreparedWaitingSubtreeCancellation, error) {
 	prepared := PreparedWaitingSubtreeCancellation{
@@ -30,7 +28,6 @@ func NewPreparedWaitingSubtreeCancellation(
 		pausedMemberIDs:      slices.Clone(pausedMemberIDs),
 		pendingInterruptions: cloneMemberInterruptions(pendingInterruptions),
 		checkpoint:           checkpoint.Clone(),
-		parentToolResult:     parentToolResult.Clone(),
 		change:               change,
 	}
 	if err := prepared.Validate(); err != nil {
@@ -91,12 +88,6 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 	}
 	if err := p.checkpoint.Validate(); err != nil {
 		return err
-	}
-	if err := p.parentToolResult.Validate(); err != nil {
-		return fmt.Errorf("runs: prepared child cancellation result: %w", err)
-	}
-	if !p.parentToolResult.IsError {
-		return errors.New("runs: prepared child cancellation has a successful tool result")
 	}
 	if len(p.canceledMemberIDs) == 0 {
 		return errors.New("runs: prepared waiting subtree cancellation has no canceled members")

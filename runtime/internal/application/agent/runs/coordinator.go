@@ -443,8 +443,9 @@ func (s *segmentStartup) beginExecution() {
 		s.spec.BeginExecution,
 	)
 	if err != nil {
-		trace.SpanFromContext(s.taskContext).RecordError(fmt.Errorf("runs: begin execution: %w", err))
-		s.routes.abortUnfinished()
+		cause := fmt.Errorf("runs: begin execution: %w", err)
+		trace.SpanFromContext(s.taskContext).RecordError(cause)
+		s.routes.abortUnfinished(cause)
 		s.cancelRun()
 		return
 	}

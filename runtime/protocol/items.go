@@ -267,9 +267,11 @@ type QuestionOption struct {
 //   - Tool-level failure does NOT go in Result — it rides the toolCall
 //     Item's Error + status:"incomplete".
 type ToolInvocation struct {
-	Name      string         `json:"name"`             // stable tool identity; MCP names are authored by mcpserver.ToolName
-	Arguments map[string]any `json:"arguments"`        // parsed JSON object (always present; never a JSON string)
-	Result    any            `json:"result,omitempty"` // best-effort JSON; absent on item.started, authoritative on item.completed
+	// ArgumentsText is the verbatim rejected input. When present, Arguments is an empty object.
+	ArgumentsText string         `json:"argumentsText,omitempty"`
+	Name          string         `json:"name"`             // stable tool identity; MCP names are authored by mcpserver.ToolName
+	Arguments     map[string]any `json:"arguments"`        // parsed JSON object (always present; never a JSON string)
+	Result        any            `json:"result,omitempty"` // best-effort JSON; absent on item.started, authoritative on item.completed
 }
 
 // DiffRow is one structured row of a unified diff. Code

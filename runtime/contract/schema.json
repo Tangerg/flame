@@ -9861,6 +9861,9 @@
           "type": "object",
           "additionalProperties": {}
         },
+        "argumentsText": {
+          "type": "string"
+        },
         "name": {
           "type": "string",
           "pattern": "\\S"

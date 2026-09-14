@@ -29,7 +29,17 @@ func TestRuntimeStopsRequiredCompactionWhenHookConfigurationCannotBeRead(t *test
 				}
 			})
 		}
-		return longRun.Call(ctx, request)
+		response, err := longRun.Call(ctx, request)
+		if err == nil && response.Output != nil && response.Output.Message != nil {
+			// Rejected calls build context without an earlier PreToolUse lookup.
+			// The unreadable policy must be encountered by required compaction.
+			for index := range response.Output.Message.Parts {
+				if call := response.Output.Message.Parts[index].ToolCall; call != nil {
+					call.Name = "unavailable"
+				}
+			}
+		}
+		return response, err
 	})}
 	stores, api, ctx, home := newSessionStateE2ERuntime(t, model)
 	t.Cleanup(release)

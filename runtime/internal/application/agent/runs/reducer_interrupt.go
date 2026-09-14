@@ -66,15 +66,6 @@ func (r *reducer) projectInterruptedTools(
 			}
 			continue
 		}
-		if ref.end != nil {
-			completed, err := r.completeTool(ref, *ref.end)
-			if err != nil {
-				return err
-			}
-			projection.events = append(projection.events, completed...)
-			projection.items = completedEventItems(projection.items, completed)
-			continue
-		}
 		suspended, err := r.suspendedToolItem(ref)
 		if err != nil {
 			return err
@@ -174,15 +165,6 @@ func (r *reducer) suspend(duration time.Duration) (factReduction, error) {
 		drainedToolRefs(open, nil),
 	)
 	for _, ref := range open {
-		if ref.end != nil {
-			completed, completeToolErr := r.completeTool(ref, *ref.end)
-			if completeToolErr != nil {
-				return factReduction{}, completeToolErr
-			}
-			out = append(out, completed...)
-			parkItems = completedEventItems(parkItems, completed)
-			continue
-		}
 		suspended, suspendedToolItemErr := r.suspendedToolItem(ref)
 		if suspendedToolItemErr != nil {
 			return factReduction{}, suspendedToolItemErr
@@ -270,7 +252,7 @@ func matchToolApprovals(open []*openTool, values []Interrupt) map[*openTool]int 
 			continue
 		}
 		for _, ref := range open {
-			if ref.end != nil || ref.callID != value.Approval.CallID {
+			if ref.callID != value.Approval.CallID {
 				continue
 			}
 			if _, used := matched[ref]; used {
@@ -290,7 +272,7 @@ func drainedToolRefs(
 	var drained []DrainedTool
 	for _, ref := range open {
 		_, activeApproval := matched[ref]
-		if ref.end == nil && !activeApproval {
+		if !activeApproval {
 			drained = append(drained, DrainedTool{
 				ItemID: ref.id, ItemOccurredAt: ref.occurredAt,
 				CallID: ref.callID, SourceCallID: ref.sourceCallID,
@@ -470,30 +452,7 @@ func cloneOpenTool(current *openTool) *openTool {
 	if current == nil {
 		return nil
 	}
-	tool := *current
-	if current.end == nil {
-		return &tool
-	}
-	end := *current.end
-	end.MutatedPaths = slices.Clone(current.end.MutatedPaths)
-	if current.end.ModelResult != nil {
-		modelResult := *current.end.ModelResult
-		end.ModelResult = &modelResult
-	}
-	if current.end.Result != nil {
-		result := *current.end.Result
-		end.Result = &result
-	}
-	if current.end.Offload != nil {
-		offload := *current.end.Offload
-		end.Offload = &offload
-	}
-	if current.end.Failure != nil {
-		failure := *current.end.Failure
-		end.Failure = &failure
-	}
-	tool.end = &end
-	return &tool
+	return new(*current)
 }
 
 func (r *reducer) drainTools() ([]ProjectionEvent, error) {
@@ -503,14 +462,6 @@ func (r *reducer) drainTools() ([]ProjectionEvent, error) {
 	}
 	tools := r.tools.drain()
 	for _, ref := range tools {
-		if ref.end != nil {
-			completed, err := r.completeTool(ref, *ref.end)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, completed...)
-			continue
-		}
 		incomplete, err := r.incompleteStartedToolItem(ref)
 		if err != nil {
 			return nil, err

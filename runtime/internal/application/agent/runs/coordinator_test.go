@@ -194,9 +194,9 @@ func (a *acknowledgedNativeChildExecutor) Observe(
 		result := tool.StringResult(`{"reply":"done"}`)
 		if !yield(ExecutorEvent{
 			Member: a.rootMember,
-			Payload: ToolCallFinished{
+			Payload: testDelegatePublication(a.childMember.SpawnCallID, ToolCallFinished{
 				CallID: "delegate-call", Arguments: `{"summary":"child"}`, Result: &result,
-			},
+			}),
 		}) {
 			return
 		}
@@ -224,7 +224,7 @@ func (c *cancellableChildExecutor) Observe(
 		if !yield(ExecutorEvent{
 			Member: c.rootMember,
 			Payload: ToolCallStarted{
-				CallID:       "canonical_child",
+				CallID: "canonical_child", ModelCallSequence: 1,
 				SourceCallID: c.childMember.SpawnCallID,
 				ToolName:     "delegate_task",
 				Arguments:    `{}`,
@@ -249,13 +249,13 @@ func (c *cancellableChildExecutor) Observe(
 		}
 		if !yield(ExecutorEvent{
 			Member: c.rootMember,
-			Payload: ToolCallFinished{
+			Payload: testDelegatePublication(c.childMember.SpawnCallID, ToolCallFinished{
 				CallID: "canonical_child",
 				Failure: &tool.Failure{
 					Kind:   tool.FailureExecution,
 					Detail: "executor was killed",
 				},
-			},
+			}),
 		}) {
 			return
 		}
@@ -280,7 +280,7 @@ func (a *acknowledgedChildExecutor) Observe(ctx context.Context, _ ExecutorRef) 
 		if !yield(ExecutorEvent{
 			Member: a.rootMember,
 			Payload: ToolCallStarted{
-				CallID:       "canonical_call_delegate",
+				CallID: "canonical_call_delegate", ModelCallSequence: 1,
 				SourceCallID: a.childMember.SpawnCallID,
 				ToolName:     "delegate_task",
 				Arguments:    `{}`,
@@ -1419,7 +1419,7 @@ func TestCoordinatorAtomicallyAdmitsChildRunFromSpawningItem(t *testing.T) {
 		{
 			Member: rootMember,
 			Payload: ToolCallStarted{
-				CallID:       "canonical_call_delegate",
+				CallID: "canonical_call_delegate", ModelCallSequence: 1,
 				SourceCallID: childMember.SpawnCallID,
 				ToolName:     "delegate_task",
 				Arguments:    `{"description":"delegate"}`,
@@ -1654,7 +1654,7 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 		{
 			Member: rootMember,
 			Payload: ToolCallStarted{
-				CallID:       "canonical_call_delegate",
+				CallID: "canonical_call_delegate", ModelCallSequence: 1,
 				SourceCallID: childMember.SpawnCallID,
 				ToolName:     "delegate_task",
 				Arguments:    `{"description":"delegate"}`,
@@ -1666,10 +1666,10 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 			Reason: run.OutcomeCompleted,
 			usage:  &finalUsage,
 		}},
-		{Member: rootMember, Payload: ToolCallFinished{
+		{Member: rootMember, Payload: testDelegatePublication(childMember.SpawnCallID, ToolCallFinished{
 			CallID:     "canonical_call_delegate",
 			OutputText: "child reply",
-		}},
+		})},
 		{Member: rootMember, Payload: SegmentEnded{Reason: run.OutcomeCompleted}},
 	}}
 	effects := &fakeEffects{}
@@ -1737,10 +1737,10 @@ func TestCoordinatorKeepsConcurrentSiblingSegmentsIsolated(t *testing.T) {
 	}
 	executor := &fakeExecutor{executorEvents: []ExecutorEvent{
 		{Member: rootMember, Payload: ToolCallStarted{
-			CallID: "canonical_a", SourceCallID: childA.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`,
+			CallID: "canonical_a", ModelCallSequence: 1, ToolCallIndex: 0, SourceCallID: childA.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`,
 		}},
 		{Member: rootMember, Payload: ToolCallStarted{
-			CallID: "canonical_b", SourceCallID: childB.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`,
+			CallID: "canonical_b", ModelCallSequence: 1, ToolCallIndex: 1, SourceCallID: childB.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`,
 		}},
 		{Member: childA, Payload: requestA},
 		{Member: childB, Payload: requestB},
@@ -1754,8 +1754,14 @@ func TestCoordinatorKeepsConcurrentSiblingSegmentsIsolated(t *testing.T) {
 			Reason: run.OutcomeCompleted,
 			usage:  childUsage("model-a", 5),
 		}},
-		{Member: rootMember, Payload: ToolCallFinished{CallID: "canonical_a", OutputText: "alpha"}},
-		{Member: rootMember, Payload: ToolCallFinished{CallID: "canonical_b", OutputText: "beta"}},
+		{Member: rootMember, Payload: testPublicationPayload(testToolPublication(
+			[]ToolCallStarted{
+				{CallID: "canonical_a", SourceCallID: childA.SpawnCallID, ToolName: "delegate_task", ModelCallSequence: 1, ToolCallIndex: 0, Arguments: `{}`},
+				{CallID: "canonical_b", SourceCallID: childB.SpawnCallID, ToolName: "delegate_task", ModelCallSequence: 1, ToolCallIndex: 1, Arguments: `{}`},
+			},
+			ToolCallFinished{CallID: "canonical_a", OutputText: "alpha", ModelResult: &corechat.ToolResult{ID: childA.SpawnCallID, Name: "delegate_task", Output: corechat.NewTextToolOutput("alpha")}},
+			ToolCallFinished{CallID: "canonical_b", OutputText: "beta", ModelResult: &corechat.ToolResult{ID: childB.SpawnCallID, Name: "delegate_task", Output: corechat.NewTextToolOutput("beta")}},
+		))},
 		{Member: rootMember, Payload: SegmentEnded{Reason: run.OutcomeCompleted}},
 	}}
 	effects := &fakeEffects{}
@@ -1868,11 +1874,11 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 	}
 	executor := &fakeExecutor{executorEvents: []ExecutorEvent{
 		{Member: rootMember, Payload: ToolCallStarted{
-			CallID: "canonical_child", SourceCallID: childMember.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`,
+			CallID: "canonical_child", ModelCallSequence: 1, SourceCallID: childMember.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`,
 		}},
 		{Member: childMember, Payload: childRequest},
 		{Member: childMember, Payload: ToolCallStarted{
-			CallID: "canonical_grandchild", SourceCallID: grandchildSource.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`,
+			CallID: "canonical_grandchild", ModelCallSequence: 1, SourceCallID: grandchildSource.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`,
 		}},
 		{Member: grandchildSource, Payload: grandchildRequest},
 		{Member: grandchildSource, Payload: MessageDelta{Text: "leaf"}},
@@ -1880,17 +1886,17 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 			Reason: run.OutcomeCompleted,
 			usage:  usage(3, 1),
 		}},
-		{Member: childMember, Payload: ToolCallFinished{
+		{Member: childMember, Payload: testDelegatePublication(grandchildSource.SpawnCallID, ToolCallFinished{
 			CallID: "canonical_grandchild", OutputText: "leaf",
-		}},
+		})},
 		{Member: childMember, Payload: MessageDelta{Text: "branch"}},
 		{Member: childMember, Payload: SegmentEnded{
 			Reason: run.OutcomeCompleted,
 			usage:  usage(9, 3),
 		}},
-		{Member: rootMember, Payload: ToolCallFinished{
+		{Member: rootMember, Payload: testDelegatePublication(childMember.SpawnCallID, ToolCallFinished{
 			CallID: "canonical_child", OutputText: "branch",
-		}},
+		})},
 		{Member: rootMember, Payload: SegmentEnded{Reason: run.OutcomeCompleted}},
 	}}
 	effects := &fakeEffects{}
@@ -2054,7 +2060,7 @@ func TestCoordinatorClosesActiveChildrenBeforeRejectingRootTerminal(t *testing.T
 		{
 			Member: rootMember,
 			Payload: ToolCallStarted{
-				CallID:       "canonical_call_delegate",
+				CallID: "canonical_call_delegate", ModelCallSequence: 1,
 				SourceCallID: childMember.SpawnCallID,
 				ToolName:     "delegate_task",
 				Arguments:    `{}`,
@@ -2183,7 +2189,7 @@ func TestCoordinatorRejectsChildWhenAtomicOpeningFails(t *testing.T) {
 		{
 			Member: rootMember,
 			Payload: ToolCallStarted{
-				CallID:       "canonical_call_delegate",
+				CallID: "canonical_call_delegate", ModelCallSequence: 1,
 				SourceCallID: childMember.SpawnCallID,
 				ToolName:     "delegate_task",
 				Arguments:    `{}`,

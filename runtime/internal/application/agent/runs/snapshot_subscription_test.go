@@ -114,11 +114,11 @@ func TestSnapshotSubscriptionIncludesChildOpeningAndCompletion(t *testing.T) {
 	root := ExecutorMember{MemberID: "member_root"}
 	child := ExecutorMember{MemberID: "member_child", ParentID: root.MemberID, SpawnCallID: "delegate_source"}
 	executor := &snapshotExecutor{fakeExecutor: fakeExecutor{executorEvents: []ExecutorEvent{
-		{Member: root, Payload: ToolCallStarted{CallID: "delegate", SourceCallID: child.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`}},
+		{Member: root, Payload: ToolCallStarted{CallID: "delegate", ModelCallSequence: 1, SourceCallID: child.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`}},
 		{Member: child, Payload: request},
 		{Member: child, Payload: MessageDelta{Text: "child review"}},
 		{Member: child, Payload: SegmentEnded{Reason: run.OutcomeCompleted}},
-		{Member: root, Payload: ToolCallFinished{CallID: "delegate", OutputText: "child review"}},
+		{Member: root, Payload: testDelegatePublication(child.SpawnCallID, ToolCallFinished{CallID: "delegate", OutputText: "child review"})},
 		{Member: root, Payload: SegmentEnded{Reason: run.OutcomeCompleted}},
 	}}, publish: make(chan struct{}), attempted: make(chan struct{})}
 	coordinator := testCoordinator(executor, &fakeEffects{})

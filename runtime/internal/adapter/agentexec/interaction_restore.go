@@ -64,6 +64,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 	i.state.delegateChildren = delegateChildren
 	i.state.pendingSteers = checkpoint.pendingSteers
 	i.state.pendingContinuation = checkpoint.pendingContinuation
+	i.state.toolMetadata = checkpoint.toolMetadata
 	return nil
 }
 
@@ -205,8 +206,8 @@ func restoreManagedDelegateCall(
 			return nil, err
 		}
 	}
-	callID, err := delegatedToolCallID(
-		parentSnapshot.Relation(), child.ModelCallSequence(), child.ToolCallIndex(), child.ToolCall(),
+	callID, err := logicalToolCallID(
+		parentSnapshot.Relation().ProcessID(), child.ModelCallSequence(), child.ToolCallIndex(), child.ToolCall().ID, child.ToolCall().Name,
 	)
 	if err != nil {
 		return nil, err

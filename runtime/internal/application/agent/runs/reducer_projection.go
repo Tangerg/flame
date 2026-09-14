@@ -25,21 +25,20 @@ type reduction struct {
 // visible; keeping that boundary on the batch avoids encoding it as a boolean
 // or a privileged first element in the event slice.
 type reductionBatch struct {
-	events             []reduction
-	parkCommit         *EventCommit
-	settledToolCallIDs []string
+	events     []reduction
+	parkCommit *EventCommit
 }
 
 // factReduction is the complete in-memory consequence of one executor fact
 // before Run events are projected into their durable publication shape.
 type factReduction struct {
+	resultPublication    *ResultPublication
 	events               []ProjectionEvent
 	items                []transcript.Item
 	parkItems            []transcript.Item
 	conversationMessages []corechat.Message
 	modelInvocations     []ModelInvocationCommit
 	toolInvocations      []ToolInvocationCommit
-	settledToolCallIDs   []string
 	progress             *ProgressCommit
 }
 
@@ -62,7 +61,6 @@ func (r *reducer) projectFact(reduced factReduction) (reductionBatch, error) {
 	if err != nil {
 		return reductionBatch{}, err
 	}
-	batch.settledToolCallIDs = slices.Clone(reduced.settledToolCallIDs)
 	if len(reduced.parkItems) != 0 {
 		if batch.parkCommit == nil {
 			return reductionBatch{}, fmt.Errorf("%w: parked Items have no park boundary", errReducerInvariant)
@@ -83,6 +81,12 @@ func (r *reducer) projectFact(reduced factReduction) (reductionBatch, error) {
 		reduced.progress,
 	); err != nil {
 		return reductionBatch{}, err
+	}
+	if reduced.resultPublication != nil {
+		if len(batch.events) == 0 || batch.parkCommit != nil {
+			return reductionBatch{}, fmt.Errorf("%w: result publication has no ordinary batch", errReducerInvariant)
+		}
+		r.ensureLastEventCommit(&batch).ResultPublication = new(*reduced.resultPublication)
 	}
 	return batch, nil
 }

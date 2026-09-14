@@ -252,6 +252,13 @@ func (i *interactionSession) interactionCheckpointPayload(
 			content:   transcript.CloneContent(pending.content),
 		}
 	}
+	metadata := make([]toolResultMetadata, 0, len(i.state.toolMetadata))
+	for _, value := range i.state.toolMetadata {
+		metadata = append(metadata, value.clone())
+	}
+	slices.SortFunc(metadata, func(left, right toolResultMetadata) int {
+		return strings.Compare(left.Start.CallID, right.Start.CallID)
+	})
 	i.state.mu.Unlock()
 	i.accounting.mu.Unlock()
 
@@ -267,6 +274,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 		instructions,
 		pendingSteers,
 		pendingContinuation,
+		metadata,
 	)
 }
 

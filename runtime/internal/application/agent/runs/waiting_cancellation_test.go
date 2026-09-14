@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 type fakeItemProjection struct {
@@ -49,13 +48,6 @@ type fakePreparedWaitingCancellation struct {
 	settled     bool
 }
 
-func testChildCancellationResult() corechat.ToolResult {
-	return corechat.ToolResult{
-		ID: "provider_run_a", Name: "delegate_task", IsError: true,
-		Output: corechat.NewTextToolOutput("executor-owned cancellation result"),
-	}
-}
-
 func (f *fakePreparedWaitingCancellation) value(t testing.TB) PreparedWaitingSubtreeCancellation {
 	t.Helper()
 	checkpoint := testExecutorCheckpoint()
@@ -67,7 +59,6 @@ func (f *fakePreparedWaitingCancellation) value(t testing.TB) PreparedWaitingSub
 		nil,
 		f.interruptions,
 		checkpoint,
-		testChildCancellationResult(),
 		f,
 	)
 	if err != nil {
@@ -149,7 +140,7 @@ func TestPreparedWaitingSubtreeCancellationRefusesATypedNilChange(t *testing.T) 
 	var typedNil *fakePreparedWaitingCancellation
 	if _, err := NewPreparedWaitingSubtreeCancellation(
 		[]string{"member_a"}, nil, nil,
-		testExecutorCheckpoint(), testChildCancellationResult(),
+		testExecutorCheckpoint(),
 		&fakePreparedWaitingCancellation{},
 	); err != nil {
 		t.Fatalf("a complete prepared cancellation was refused: %v", err)
@@ -157,7 +148,7 @@ func TestPreparedWaitingSubtreeCancellationRefusesATypedNilChange(t *testing.T) 
 	for _, change := range []WaitingSubtreeChange{nil, typedNil} {
 		if _, err := NewPreparedWaitingSubtreeCancellation(
 			[]string{"member_a"}, nil, nil,
-			testExecutorCheckpoint(), testChildCancellationResult(),
+			testExecutorCheckpoint(),
 			change,
 		); err == nil {
 			t.Fatalf("prepared cancellation accepted a %T executor change", change)
@@ -180,7 +171,6 @@ func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 		paused,
 		interruptions,
 		checkpoint,
-		testChildCancellationResult(),
 		change,
 	)
 	if err != nil {

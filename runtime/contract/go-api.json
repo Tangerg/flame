@@ -7977,6 +7977,11 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "ArgumentsText",
+              "type": "string",
+              "tag": "json:\"argumentsText,omitempty\""
+            },
+            {
               "name": "Name",
               "type": "string",
               "tag": "json:\"name\""
