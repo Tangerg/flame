@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { createParameterizedDataQuery } from "@/plugins/sdk";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 
@@ -31,13 +32,27 @@ const useInvocationPage = createParameterizedDataQuery<
 >(MODEL_INVOCATIONS_KEY);
 
 export function useModelInvocations(run: AgentRunView, cursor?: string) {
-  const query = useInvocationPage({ runId: run.id, cursor, limit: 50 });
+  const client = useQueryClient();
+  const params = useMemo(() => ({ runId: run.id, cursor, limit: 50 }), [run.id, cursor]);
+  const query = useInvocationPage(params);
   const { refetch } = query;
   // Committed Run progress invalidates the current page without retaining a
   // separate cache key for every model step or polling an idle Runtime.
   useEffect(() => {
-    void refetch();
+    let active = true;
+    // Refetch alone joins an unfinished first read, which may predate this
+    // progress. Retire that reader before requesting the committed state.
+    void client
+      .cancelQueries({ queryKey: [MODEL_INVOCATIONS_KEY, params], exact: true })
+      .then(() => {
+        if (active) void refetch();
+      });
+    return () => {
+      active = false;
+    };
   }, [
+    client,
+    params,
     refetch,
     run.status,
     run.activeSegmentId,
