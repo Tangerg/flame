@@ -22,6 +22,13 @@ describe("Model invocation history", () => {
               },
               {
                 callId: "call_done",
+                usage: {
+                  inputTokens: 123,
+                  outputTokens: 0,
+                  cacheReadTokens: 31,
+                  cacheWriteTokens: 0,
+                  reasoningTokens: 0,
+                },
                 runId: "run_one",
                 segmentId: "seg_one",
                 state: "completed",
@@ -40,6 +47,11 @@ describe("Model invocation history", () => {
     expect(screen.getByText("Outcome unknown")).toBeTruthy();
     expect(screen.getByText("—")).toBeTruthy();
     expect(screen.getByText("2s")).toBeTruthy();
+    expect(screen.getByText("↑123")).toBeTruthy();
+    expect(screen.getByText("↓0")).toBeTruthy();
+    expect(screen.getByText("↑—")).toBeTruthy();
+    expect(screen.getByText("↓—")).toBeTruthy();
+    expect(screen.getByText("cache read 31")).toBeTruthy();
     expect(screen.queryByText("1h 00m")).toBeNull();
     expect(query.read).toHaveBeenLastCalledWith(run, undefined);
     fireEvent.click(screen.getByRole("button", { name: "Older calls" }));

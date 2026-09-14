@@ -42,6 +42,7 @@ type modelCallAccountingInput struct {
 	message       corechat.Message
 	delta         accounting.ModelUsage
 	contextTokens int64
+	usageReported bool
 }
 
 func newInteractionAccounting(
@@ -300,6 +301,7 @@ func newModelCallAccountingInput(
 	}
 	return modelCallAccountingInput{
 		message: response.Output.Message.Clone(), delta: delta, contextTokens: delta.PromptTokens,
+		usageReported: response.Metadata != nil && response.Metadata.Usage != nil,
 	}, nil
 }
 
@@ -328,6 +330,10 @@ func (i *interactionAccounting) accountModelCallLocked(
 		CallID: callID, Message: input.message, TokenUsage: total.TokenUsage,
 		ByModel: slices.Clone(models), Cost: total.Cost, Steps: total.Calls,
 		ContextTokens: input.contextTokens,
+	}
+	if input.usageReported {
+		usage := input.delta.TokenUsage
+		completed.ReportedUsage = &usage
 	}
 	i.usageByProcess[processID] = nextUsage
 	if preparedFound {

@@ -859,9 +859,18 @@ export interface ModelInvocation {
   settledAt?: string;
   startedAt: string;
   state: ModelInvocationState;
+  usage?: ModelInvocationUsage;
 }
 
 export type ModelInvocationState = "started" | "completed" | "failed" | "unknown";
+
+export interface ModelInvocationUsage {
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+}
 
 export interface ModelPricing {
   cacheReadUsdPerMillionTokens?: number;

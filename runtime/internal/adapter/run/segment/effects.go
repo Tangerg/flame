@@ -20,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -107,6 +108,7 @@ type ModelInvocationJournal interface {
 		ctx context.Context,
 		sessionID, runID, segmentID, callID string,
 		startedAt, finishedAt time.Time,
+		usage *accounting.TokenUsage,
 	) error
 	FailModelInvocation(
 		ctx context.Context,

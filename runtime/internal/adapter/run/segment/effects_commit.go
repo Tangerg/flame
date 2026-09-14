@@ -687,7 +687,7 @@ func (e *Effects) applyModelInvocations(ctx context.Context, commit runs.EventCo
 		case runs.ModelInvocationCompleted:
 			err = e.modelInvocations.CompleteModelInvocation(
 				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
-				invocation.CallID, invocation.StartedAt, invocation.FinishedAt,
+				invocation.CallID, invocation.StartedAt, invocation.FinishedAt, invocation.Usage,
 			)
 		case runs.ModelInvocationFailed:
 			err = e.modelInvocations.FailModelInvocation(

@@ -5680,6 +5680,11 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "Usage",
+              "type": "*ModelInvocationUsage",
+              "tag": "json:\"usage,omitempty\""
+            },
+            {
               "name": "CallID",
               "type": "string",
               "tag": "json:\"callId\""
@@ -5721,6 +5726,37 @@
           "name": "ModelInvocationState",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "ModelInvocationUsage",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InputTokens",
+              "type": "int64",
+              "tag": "json:\"inputTokens\""
+            },
+            {
+              "name": "OutputTokens",
+              "type": "int64",
+              "tag": "json:\"outputTokens\""
+            },
+            {
+              "name": "CacheReadTokens",
+              "type": "int64",
+              "tag": "json:\"cacheReadTokens\""
+            },
+            {
+              "name": "CacheWriteTokens",
+              "type": "int64",
+              "tag": "json:\"cacheWriteTokens\""
+            },
+            {
+              "name": "ReasoningTokens",
+              "type": "int64",
+              "tag": "json:\"reasoningTokens\""
+            }
+          ]
         },
         {
           "name": "ModelPricing",

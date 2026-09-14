@@ -3,7 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useModelInvocations, type ModelInvocation } from "@/plugins/builtin/agent/public/run";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import { useT, activeLocale } from "@/lib/i18n";
-import { fmtDuration } from "@/lib/format";
+import { fmtDuration, fmtTokens } from "@/lib/format";
 import { Badge, Button, DataView, IconButton, vocab } from "@/ui";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./viewStyles";
@@ -50,6 +50,29 @@ export function ModelInvocationHistory({ run }: { run: AgentRunView }) {
                 </div>
                 <div title={call.segmentId} {...stylex.props(vocab.faint, typeStep.uiXs)}>
                   {new Date(call.startedAt).toLocaleString(activeLocale())}
+                </div>
+                <div {...stylex.props(vs.titleLine, vocab.faint, face.mono, typeStep.uiXs)}>
+                  <span title={call.usage?.inputTokens.toString()}>
+                    ↑{call.usage ? fmtTokens(call.usage.inputTokens) : "—"}
+                  </span>
+                  <span title={call.usage?.outputTokens.toString()}>
+                    ↓{call.usage ? fmtTokens(call.usage.outputTokens) : "—"}
+                  </span>
+                  {call.usage && call.usage.cacheReadTokens > 0 && (
+                    <span>
+                      {t("usage.cache")} {fmtTokens(call.usage.cacheReadTokens)}
+                    </span>
+                  )}
+                  {call.usage && call.usage.cacheWriteTokens > 0 && (
+                    <span>
+                      {t("usage.cacheWrite")} {fmtTokens(call.usage.cacheWriteTokens)}
+                    </span>
+                  )}
+                  {call.usage && call.usage.reasoningTokens > 0 && (
+                    <span>
+                      {t("usage.reasoning")} {fmtTokens(call.usage.reasoningTokens)}
+                    </span>
+                  )}
                 </div>
               </div>
               <Badge

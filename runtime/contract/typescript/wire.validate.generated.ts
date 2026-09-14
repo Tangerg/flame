@@ -172,6 +172,7 @@ export type WireTypeName =
   | "ModelCapabilities"
   | "ModelInvocation"
   | "ModelInvocationState"
+  | "ModelInvocationUsage"
   | "ModelPricing"
   | "ModelTokenLimits"
   | "ModelUsage"
@@ -2055,8 +2056,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     settledAt: text(),
     startedAt: text(),
     state: ref(() => CHECKS.ModelInvocationState),
+    usage: ref(() => CHECKS.ModelInvocationUsage),
   }, ["callId", "runId", "segmentId", "startedAt", "state"]),
   ModelInvocationState: enumOf(["started", "completed", "failed", "unknown"]),
+  ModelInvocationUsage: object({
+    cacheReadTokens: integer(),
+    cacheWriteTokens: integer(),
+    inputTokens: integer(),
+    outputTokens: integer(),
+    reasoningTokens: integer(),
+  }, ["cacheReadTokens", "cacheWriteTokens", "inputTokens", "outputTokens", "reasoningTokens"]),
   ModelPricing: object({
     cacheReadUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
     cacheWriteUsdPerMillionTokens: allOf([numeric(), minimum(0)]),

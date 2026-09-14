@@ -173,7 +173,10 @@ type ModelCallStarted struct {
 // Tool invocation has its own pre-call commit boundary.
 type ModelCallCompleted struct {
 	executionFactBase
-	CallID        string
+	CallID string
+	// ReportedUsage is per-call and absent when unavailable. TokenUsage and
+	// ByModel below remain cumulative for this executing process.
+	ReportedUsage *accounting.TokenUsage
 	Message       corechat.Message
 	TokenUsage    accounting.TokenUsage
 	ByModel       []accounting.ModelUsage

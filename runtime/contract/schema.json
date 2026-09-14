@@ -5359,6 +5359,9 @@
         },
         "state": {
           "$ref": "#/$defs/ModelInvocationState"
+        },
+        "usage": {
+          "$ref": "#/$defs/ModelInvocationUsage"
         }
       },
       "required": [
@@ -5376,6 +5379,33 @@
         "completed",
         "failed",
         "unknown"
+      ]
+    },
+    "ModelInvocationUsage": {
+      "type": "object",
+      "properties": {
+        "cacheReadTokens": {
+          "type": "integer"
+        },
+        "cacheWriteTokens": {
+          "type": "integer"
+        },
+        "inputTokens": {
+          "type": "integer"
+        },
+        "outputTokens": {
+          "type": "integer"
+        },
+        "reasoningTokens": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "cacheReadTokens",
+        "cacheWriteTokens",
+        "inputTokens",
+        "outputTokens",
+        "reasoningTokens"
       ]
     },
     "ModelPricing": {

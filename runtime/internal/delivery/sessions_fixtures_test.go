@@ -22,6 +22,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -1053,7 +1054,7 @@ func (inertRuntimeStores) StartModelInvocation(context.Context, string, string, 
 	return nil
 }
 
-func (inertRuntimeStores) CompleteModelInvocation(context.Context, string, string, string, string, time.Time, time.Time) error {
+func (inertRuntimeStores) CompleteModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *accounting.TokenUsage) error {
 	return nil
 }
 

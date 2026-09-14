@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
@@ -22,9 +23,9 @@ const (
 func (m modelInvocationState) databaseValue() string { return string(m) }
 
 // ModelInvocationStore is the SQLite operational journal for provider-call
-// attempts. Semantic messages stay in history_items and accounting stays on the
-// Run row. Attempt timing and outcomes remain available until the owning Run is
-// deleted, without copying semantic content or aggregate accounting.
+// attempts. Semantic messages and aggregate accounting stay in history_items
+// and runs. Attempt timing, outcomes, and per-call usage remain available until
+// the owning Run is deleted.
 type ModelInvocationStore struct{ db *sql.DB }
 
 func NewModelInvocationStore(db *sql.DB) *ModelInvocationStore {
@@ -112,10 +113,11 @@ func (m *ModelInvocationStore) CompleteModelInvocation(
 	ctx context.Context,
 	sessionID, runID, segmentID, callID string,
 	startedAt, finishedAt time.Time,
+	usage *accounting.TokenUsage,
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationCompleted.databaseValue(),
+		startedAt, finishedAt, modelInvocationCompleted.databaseValue(), usage,
 	)
 }
 
@@ -126,7 +128,7 @@ func (m *ModelInvocationStore) FailModelInvocation(
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationFailed.databaseValue(),
+		startedAt, finishedAt, modelInvocationFailed.databaseValue(), nil,
 	)
 }
 
@@ -137,7 +139,7 @@ func (m *ModelInvocationStore) MarkModelInvocationUnknown(
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationUnknown.databaseValue(),
+		startedAt, finishedAt, modelInvocationUnknown.databaseValue(), nil,
 	)
 }
 
@@ -146,6 +148,7 @@ func (m *ModelInvocationStore) finish(
 	sessionID, runID, segmentID, callID string,
 	startedAt, finishedAt time.Time,
 	state string,
+	usage *accounting.TokenUsage,
 ) error {
 	if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
 		return err
@@ -156,13 +159,18 @@ func (m *ModelInvocationStore) finish(
 	if finishedAt.Before(startedAt) {
 		return errors.New("sqlite: model invocation finish time precedes start time")
 	}
+	encodedUsage, err := encodeModelInvocationUsage(usage)
+	if err != nil {
+		return err
+	}
 	result, err := conn(ctx, m.db).ExecContext(ctx,
 		`UPDATE model_invocations
-		    SET state = ?, finished_at = ?
+		    SET state = ?, finished_at = ?, usage = ?
 		  WHERE call_id = ? AND session_id = ? AND run_id = ? AND segment_id = ?
 		    AND state = ? AND started_at = ?`,
 		state,
 		finishedAt.UTC().UnixNano(),
+		encodedUsage,
 		callID,
 		sessionID,
 		runID,
@@ -198,6 +206,7 @@ func validateModelInvocationIdentity(sessionID, runID, segmentID, callID string)
 
 // ModelInvocationRecord is a stored attempt, without semantic response content.
 type ModelInvocationRecord struct {
+	Usage      *accounting.TokenUsage
 	CallID     string
 	SegmentID  string
 	State      string
@@ -208,7 +217,7 @@ type ModelInvocationRecord struct {
 // PageModelInvocations seeks newest-first within one Run. State updates do not
 // move an attempt between pages because its start identity is immutable.
 func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID string, beforeStartedAt int64, beforeCallID string, limit int) ([]ModelInvocationRecord, error) {
-	query := `SELECT call_id, segment_id, state, started_at, finished_at FROM model_invocations WHERE run_id = ?`
+	query := `SELECT call_id, segment_id, state, started_at, finished_at, usage FROM model_invocations WHERE run_id = ?`
 	args := []any{runID}
 	if beforeCallID != "" {
 		query += ` AND (started_at, call_id) < (?, ?)`
@@ -225,8 +234,15 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID s
 	for rows.Next() {
 		var record ModelInvocationRecord
 		var startedAt, finishedAt int64
-		if err := rows.Scan(&record.CallID, &record.SegmentID, &record.State, &startedAt, &finishedAt); err != nil {
+		var usage sql.NullString
+		if err := rows.Scan(&record.CallID, &record.SegmentID, &record.State, &startedAt, &finishedAt, &usage); err != nil {
 			return nil, fmt.Errorf("sqlite: scan model invocation: %w", err)
+		}
+		if usage.Valid {
+			record.Usage, err = decodeModelInvocationUsage(usage.String)
+			if err != nil {
+				return nil, err
+			}
 		}
 		record.StartedAt = time.Unix(0, startedAt).UTC()
 		if finishedAt != 0 {

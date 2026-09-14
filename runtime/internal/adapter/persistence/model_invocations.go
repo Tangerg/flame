@@ -25,7 +25,7 @@ func (m ModelInvocationReader) PageModelInvocations(ctx context.Context, runID s
 	}
 	records := make([]runs.ModelInvocationCommit, len(rows))
 	for index, row := range rows {
-		records[index] = runs.ModelInvocationCommit{CallID: row.CallID, SegmentID: row.SegmentID, State: runs.ModelInvocationState(row.State), StartedAt: row.StartedAt, FinishedAt: row.FinishedAt}
+		records[index] = runs.ModelInvocationCommit{Usage: row.Usage, CallID: row.CallID, SegmentID: row.SegmentID, State: runs.ModelInvocationState(row.State), StartedAt: row.StartedAt, FinishedAt: row.FinishedAt}
 	}
 	return records, nil
 }

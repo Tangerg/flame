@@ -181,10 +181,9 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			ON runs(parent_run_id) WHERE parent_run_id != ''`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_commit
 			ON runs(commit_id) WHERE commit_id != ''`,
-		// model_invocations is the provider-attempt journal. It deliberately stores
-		// neither semantic response content nor accounting: those facts belong to
-		// history_items and runs. Attempt timing and outcomes survive terminalization
-		// for trajectory inspection; deleting the owning Run removes them.
+		// Attempt observations survive terminalization for trajectory inspection.
+		// Semantic response content and aggregate accounting stay in history_items
+		// and runs; deleting the owning Run also removes its invocation records.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS model_invocations (
 			call_id     TEXT    PRIMARY KEY,
 			session_id  TEXT    NOT NULL,
@@ -193,6 +192,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			state       TEXT    NOT NULL,
 			started_at  INTEGER NOT NULL,
 			finished_at INTEGER NOT NULL DEFAULT 0,
+			usage TEXT CHECK (usage IS NULL OR (state = 'completed' AND json_valid(usage))),
 			CHECK (state IN ('%[1]s', '%[2]s', '%[3]s', '%[4]s')),
 			CHECK (
 				(state = '%[1]s' AND finished_at = 0) OR
@@ -726,10 +726,27 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			updated_at INTEGER NOT NULL DEFAULT 0
 		)`,
 	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("sqlite: begin schema installation: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
 	for _, stmt := range stmts {
-		if _, err := db.ExecContext(ctx, stmt); err != nil {
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("sqlite: install current schema: %w", err)
 		}
+	}
+	var usageColumn int
+	if err := tx.QueryRowContext(ctx, "SELECT count(*) FROM pragma_table_info('model_invocations') WHERE name = 'usage'").Scan(&usageColumn); err != nil {
+		return fmt.Errorf("sqlite: inspect model invocation schema: %w", err)
+	}
+	if usageColumn == 0 {
+		if _, err := tx.ExecContext(ctx, "ALTER TABLE model_invocations ADD COLUMN usage TEXT CHECK (usage IS NULL OR (state = 'completed' AND json_valid(usage)))"); err != nil {
+			return fmt.Errorf("sqlite: add model invocation usage: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("sqlite: commit schema installation: %w", err)
 	}
 	return nil
 }

@@ -438,7 +438,7 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 		conversationMessages: conversationMessages,
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: completed.CallID, SegmentID: r.cfg.SegmentID,
-			State: ModelInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt,
+			State: ModelInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt, Usage: completed.ReportedUsage,
 		}},
 		progress: &ProgressCommit{
 			SegmentID: r.cfg.SegmentID, Metrics: metrics,

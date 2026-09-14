@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
@@ -24,11 +25,12 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 	}
 	calls := sqlite.NewModelInvocationStore(db)
 	startedAt := draft.CreatedAt.Add(time.Second)
-	for _, id := range []string{"call_a", "call_b", "call_c"} {
+	usages := []*accounting.TokenUsage{nil, {}, {PromptTokens: 17, CompletionTokens: 9, CacheReadTokens: 4, CacheWriteTokens: 2, ReasoningTokens: 3}}
+	for index, id := range []string{"call_a", "call_b", "call_c"} {
 		if err := calls.StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, id, startedAt); err != nil {
 			t.Fatal(err)
 		}
-		if err := calls.CompleteModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, id, startedAt, startedAt.Add(time.Second)); err != nil {
+		if err := calls.CompleteModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, id, startedAt, startedAt.Add(time.Second), usages[index]); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -50,6 +52,9 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 	second, err := calls.PageModelInvocations(ctx, draft.RunID, page[1].StartedAt.UnixNano(), page[1].CallID, 2)
 	if err != nil || len(second) != 1 || second[0].CallID != "call_a" || second[0].State != "completed" {
 		t.Fatalf("second page = %+v, %v", second, err)
+	}
+	if page[0].Usage == nil || *page[0].Usage != *usages[2] || page[1].Usage == nil || *page[1].Usage != *usages[1] || second[0].Usage != nil {
+		t.Fatalf("restored usage lost unknown/zero/per-call values: %+v %+v", page, second)
 	}
 	other, err := calls.PageModelInvocations(ctx, "run_other", 0, "", 2)
 	if err != nil || len(other) != 0 {
@@ -86,5 +91,47 @@ func TestRunCannotEraseAnUnsettledModelAttempt(t *testing.T) {
 	rows, err := calls.PageModelInvocations(t.Context(), draft.RunID, 0, "", 2)
 	if err != nil || len(rows) != 1 || rows[0].State != "started" {
 		t.Fatalf("pending attempt = %+v, %v", rows, err)
+	}
+}
+
+func TestModelInvocationUsageAdoptsExistingDatabaseWithoutInventingHistory(t *testing.T) {
+	ctx := t.Context()
+	path := filepath.Join(t.TempDir(), "existing.sqlite")
+	db, err := sqlite.Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	draft := runDraft("run_existing", "ses_existing")
+	if err := sqlite.NewRunStore(db).Admit(ctx, draft); err != nil {
+		t.Fatal(err)
+	}
+	calls := sqlite.NewModelInvocationStore(db)
+	if err := calls.StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_old", draft.CreatedAt); err != nil {
+		t.Fatal(err)
+	}
+	if err := calls.CompleteModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_old", draft.CreatedAt, draft.CreatedAt, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, "ALTER TABLE model_invocations DROP COLUMN usage"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = sqlite.Open(ctx, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls = sqlite.NewModelInvocationStore(db)
+	rows, err := calls.PageModelInvocations(ctx, draft.RunID, 0, "", 10)
+	if err != nil || len(rows) != 1 || rows[0].Usage != nil || rows[0].State != "completed" {
+		t.Fatalf("historical attempt = %+v, %v", rows, err)
+	}
+	if err := calls.StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_new", draft.CreatedAt); err != nil {
+		t.Fatal(err)
+	}
+	if err := calls.CompleteModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_new", draft.CreatedAt, draft.CreatedAt, &accounting.TokenUsage{PromptTokens: 3}); err != nil {
+		t.Fatal(err)
 	}
 }

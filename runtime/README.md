@@ -81,7 +81,7 @@ Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), a
 
 The invocation journal owns call identity, Segment identity, observed state, and timestamps. These records now survive Run completion and restart; deletion of their Run cascades to the records. Schema installation replaces the former pruning trigger on existing databases. Attempts already deleted by older versions cannot be reconstructed from Run token totals or transcript text.
 
-`started` has no settlement timestamp. `completed` and `failed` identify observed provider outcomes. `unknown` means execution or recovery could not establish the outcome: its `settledAt` is when that uncertainty was recorded, not a provider completion time. Consumers must not infer a measured model duration or throughput from an unknown outcome. Per-call token usage, first-token timing, and prompt inspection are not present in this read; aggregate Run accounting remains separate.
+`started` has no settlement timestamp. `completed` and `failed` identify observed provider outcomes. `unknown` means execution or recovery could not establish the outcome: its `settledAt` is when that uncertainty was recorded, not a provider completion time. Consumers must not infer a measured model duration or throughput from an unknown outcome. The optional `usage` records provider-reported tokens for that call before Run aggregation. Missing usage means it was not reported or the attempt predates usage recording; an explicit zero remains zero. First-token timing and prompt inspection are not present in this read. Aggregate Run accounting remains separate. Existing databases receive the nullable usage column in one schema transaction; historical values are not reconstructed.
 
 ## Background shell lifetime
 

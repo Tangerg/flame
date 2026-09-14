@@ -9,6 +9,13 @@ export interface ModelInvocationQuery {
 }
 
 export interface ModelInvocation {
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    reasoningTokens: number;
+  };
   callId: string;
   runId: string;
   segmentId: string;

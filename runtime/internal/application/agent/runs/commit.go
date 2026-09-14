@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -63,6 +64,7 @@ func (m ModelInvocationState) String() string {
 // compare the exact attempt instead of updating whichever row happens to share
 // CallID.
 type ModelInvocationCommit struct {
+	Usage      *accounting.TokenUsage
 	CallID     string
 	SegmentID  string
 	State      ModelInvocationState
@@ -139,6 +141,14 @@ func (t ToolInvocationCommit) validate() error {
 }
 
 func (m ModelInvocationCommit) validate() error {
+	if m.Usage != nil {
+		if m.State != ModelInvocationCompleted {
+			return errors.New("runs: only completed model invocations carry usage")
+		}
+		if err := m.Usage.Validate(); err != nil {
+			return fmt.Errorf("runs: model invocation usage: %w", err)
+		}
+	}
 	if err := runtimeidentity.ValidateEffect(m.CallID); err != nil {
 		return fmt.Errorf("runs: model invocation: %w", err)
 	}
@@ -233,6 +243,12 @@ func (e EventCommit) clone() EventCommit {
 	e.Items = slices.Clone(e.Items)
 	e.ConversationMessages = cloneCommitMessages(e.ConversationMessages)
 	e.ModelInvocations = slices.Clone(e.ModelInvocations)
+	for index := range e.ModelInvocations {
+		if usage := e.ModelInvocations[index].Usage; usage != nil {
+			copy := *usage
+			e.ModelInvocations[index].Usage = &copy
+		}
+	}
 	e.ToolInvocations = slices.Clone(e.ToolInvocations)
 	if e.Progress != nil {
 		progress := *e.Progress

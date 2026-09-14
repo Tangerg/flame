@@ -369,7 +369,7 @@ func TestRunLifecycleRetainsSettledModelInvocationsUntilDeletion(t *testing.T) {
 				t.Fatalf("start model invocation: %v", err)
 			}
 			if err := sqlite.NewModelInvocationStore(database).CompleteModelInvocation(
-				ctx, draft.SessionID, draft.RunID, draft.SegmentID, "model_call_pending", startedAt, startedAt.Add(time.Second),
+				ctx, draft.SessionID, draft.RunID, draft.SegmentID, "model_call_pending", startedAt, startedAt.Add(time.Second), nil,
 			); err != nil {
 				t.Fatalf("complete model invocation: %v", err)
 			}

@@ -77,6 +77,10 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 	case ModelCallStarted:
 		return value, true
 	case ModelCallCompleted:
+		if value.ReportedUsage != nil {
+			usage := *value.ReportedUsage
+			value.ReportedUsage = &usage
+		}
 		value.Message = value.Message.Clone()
 		value.ByModel = slices.Clone(value.ByModel)
 		return value, true

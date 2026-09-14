@@ -21,6 +21,9 @@ func (s *Handler) ListModelInvocations(ctx context.Context, in protocol.ListMode
 	rows := make([]protocol.ModelInvocation, len(page.Rows))
 	for index, row := range page.Rows {
 		rows[index] = protocol.ModelInvocation{CallID: row.CallID, RunID: in.RunID, SegmentID: row.SegmentID, State: protocol.ModelInvocationState(row.State), StartedAt: row.StartedAt, SettledAt: row.FinishedAt}
+		if usage := row.Usage; usage != nil {
+			rows[index].Usage = &protocol.ModelInvocationUsage{InputTokens: usage.PromptTokens, OutputTokens: usage.CompletionTokens, CacheReadTokens: usage.CacheReadTokens, CacheWriteTokens: usage.CacheWriteTokens, ReasoningTokens: usage.ReasoningTokens}
+		}
 	}
 	return protocol.NewPageWithCursor(rows, page.NextCursor), nil
 }

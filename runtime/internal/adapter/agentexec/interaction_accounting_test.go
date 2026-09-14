@@ -3,11 +3,13 @@ package agentexec
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	"github.com/Tangerg/scope/core/chat"
@@ -92,5 +94,25 @@ func TestAdvanceProcessUsageRejectsOverflowWithoutMutatingInput(t *testing.T) {
 	}
 	if current["test-model"] != before {
 		t.Fatalf("failed aggregation mutated input: before=%+v after=%+v", before, current["test-model"])
+	}
+}
+
+func TestModelCallUsageDistinguishesUnavailableFromReportedZero(t *testing.T) {
+	for _, reported := range []bool{false, true} {
+		t.Run(fmt.Sprint(reported), func(t *testing.T) {
+			response := interactionUsageTextResponse("done", 0, 0)
+			if !reported {
+				response.Metadata = nil
+			}
+			model := &observationScriptModel{responses: []*chat.Response{response}}
+			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
+			calls := payloadsOf[runs.ModelCallCompleted](runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil))
+			if len(calls) != 1 {
+				t.Fatalf("model calls = %d", len(calls))
+			}
+			if (calls[0].ReportedUsage != nil) != reported {
+				t.Fatalf("reported usage = %+v, reported=%t", calls[0].ReportedUsage, reported)
+			}
+		})
 	}
 }

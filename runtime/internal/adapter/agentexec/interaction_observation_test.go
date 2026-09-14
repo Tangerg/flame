@@ -61,6 +61,11 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 	if len(models) != 2 {
 		t.Fatalf("model completions = %#v", models)
 	}
+	if models[0].ReportedUsage == nil || models[1].ReportedUsage == nil ||
+		models[0].ReportedUsage.PromptTokens != 7 || models[1].ReportedUsage.PromptTokens != 11 ||
+		models[1].ReportedUsage.CompletionTokens != 3 {
+		t.Fatalf("per-call usage was lost or replaced with cumulative usage: %#v", models)
+	}
 	modelCost, modelCostAvailable := models[1].Cost.USD()
 	if models[1].Steps != 2 || models[1].TokenUsage.PromptTokens != 18 ||
 		models[1].TokenUsage.CompletionTokens != 5 || !modelCostAvailable || modelCost != 0.5 {
