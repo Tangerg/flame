@@ -30,6 +30,21 @@ export function ModelInvocationHistory({ run }: { run: AgentRunView }) {
           }}
         />
       </div>
+      {run.modelSelection && (
+        <div {...stylex.props(vs.titleLine, vocab.faint, face.mono, typeStep.uiXs)}>
+          <span
+            title={`${run.modelSelection.provider}/${run.modelSelection.model}`}
+            {...stylex.props(vocab.truncate)}
+          >
+            {run.modelSelection.provider}/{run.modelSelection.model}
+          </span>
+          {run.modelSelection.reasoningEffort && (
+            <span>
+              {t("composer.model.reasoning")} {run.modelSelection.reasoningEffort}
+            </span>
+          )}
+        </div>
+      )}
       <DataView
         items={data?.data ?? []}
         isLoading={isLoading}

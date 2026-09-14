@@ -43,8 +43,13 @@ describe("Model invocation history", () => {
       isError: false,
       refetch: query.refetch,
     }));
-    const run = { id: "run_one" } as AgentRunView;
+    const run = {
+      id: "run_one",
+      modelSelection: { provider: "deepseek", model: "deepseek-chat", reasoningEffort: "high" },
+    } as AgentRunView;
     render(<ModelInvocationHistory run={run} />);
+    expect(screen.getByText("deepseek/deepseek-chat")).toBeTruthy();
+    expect(screen.getByText("Reasoning high")).toBeTruthy();
     expect(screen.getByText("Outcome unknown")).toBeTruthy();
     expect(screen.getByText("—")).toBeTruthy();
     expect(screen.getByText("2s")).toBeTruthy();
