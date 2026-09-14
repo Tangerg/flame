@@ -735,6 +735,7 @@ export const zh: Record<string, string> = {
   "knowledge.saving": "保存中…",
   "knowledge.revert": "撤销",
   "knowledge.saveError": "知识保存失败",
+  "knowledge.reloadError": "无法重新读取最新文档：{{reason}}",
   "knowledge.updated": "已更新",
   "knowledge.aria": "{{path}} 的知识内容",
 

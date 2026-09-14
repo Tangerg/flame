@@ -571,6 +571,7 @@ export const zhTW: Record<string, string> = {
   "knowledge.saving": "儲存中…",
   "knowledge.revert": "還原",
   "knowledge.saveError": "知識儲存失敗",
+  "knowledge.reloadError": "無法重新讀取最新文件：{{reason}}",
   "knowledge.updated": "已更新",
   "knowledge.aria": "{{path}} 的知識內容",
 

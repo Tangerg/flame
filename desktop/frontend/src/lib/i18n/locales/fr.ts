@@ -614,6 +614,7 @@ export const fr: Record<string, string> = {
   "knowledge.saving": "Enregistrement…",
   "knowledge.revert": "Annuler",
   "knowledge.saveError": "Échec de l'enregistrement des connaissances",
+  "knowledge.reloadError": "Impossible de recharger la dernière version du document : {{reason}}",
   "knowledge.updated": "mis à jour",
   "knowledge.aria": "Contenu des connaissances pour {{path}}",
 

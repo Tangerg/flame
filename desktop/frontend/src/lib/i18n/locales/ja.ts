@@ -573,6 +573,7 @@ export const ja: Record<string, string> = {
   "knowledge.saving": "保存中…",
   "knowledge.revert": "元に戻す",
   "knowledge.saveError": "知識の保存に失敗しました",
+  "knowledge.reloadError": "最新のドキュメントを再読み込みできませんでした: {{reason}}",
   "knowledge.updated": "更新済み",
   "knowledge.aria": "{{path}} の知識内容",
 

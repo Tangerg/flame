@@ -595,6 +595,7 @@ export const de: Record<string, string> = {
   "knowledge.saving": "Speichern…",
   "knowledge.revert": "Zurücksetzen",
   "knowledge.saveError": "Speichern des Wissens fehlgeschlagen",
+  "knowledge.reloadError": "Das aktuelle Dokument konnte nicht erneut geladen werden: {{reason}}",
   "knowledge.updated": "aktualisiert",
   "knowledge.aria": "Wissensinhalt für {{path}}",
 

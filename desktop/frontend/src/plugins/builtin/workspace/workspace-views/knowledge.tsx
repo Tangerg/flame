@@ -76,16 +76,20 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
       })
       .catch(async (error: unknown) => {
         if (wasGenerationRetired(error)) return;
+        let description = error instanceof Error ? error.message : String(error);
         if (isWorkspaceKnowledgeRevisionConflict(error)) {
           try {
             const latest = await loadWorkspaceKnowledge({ scope: row.scope, cwd });
             setEditor((current) => current.rebase(latest));
           } catch (readError) {
             if (wasGenerationRetired(readError)) return;
+            description += `\n${t("knowledge.reloadError", {
+              reason: readError instanceof Error ? readError.message : String(readError),
+            })}`;
           }
         }
         notifyError(t("knowledge.saveError"), {
-          description: error instanceof Error ? error.message : String(error),
+          description,
           source: "knowledge",
         });
       })

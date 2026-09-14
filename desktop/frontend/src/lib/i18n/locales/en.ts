@@ -832,6 +832,7 @@ export const en: Record<string, string> = {
   "knowledge.saving": "Saving…",
   "knowledge.revert": "Revert",
   "knowledge.saveError": "Knowledge save failed",
+  "knowledge.reloadError": "Could not reload the latest document: {{reason}}",
   "knowledge.updated": "updated",
   "knowledge.aria": "Knowledge content for {{path}}",
 

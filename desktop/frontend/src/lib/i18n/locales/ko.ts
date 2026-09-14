@@ -570,6 +570,7 @@ export const ko: Record<string, string> = {
   "knowledge.saving": "저장 중…",
   "knowledge.revert": "되돌리기",
   "knowledge.saveError": "지식 저장 실패",
+  "knowledge.reloadError": "최신 문서를 다시 불러올 수 없습니다: {{reason}}",
   "knowledge.updated": "업데이트됨",
   "knowledge.aria": "{{path}}의 지식 내용",
 

@@ -609,6 +609,7 @@ export const es: Record<string, string> = {
   "knowledge.saving": "Guardando…",
   "knowledge.revert": "Revertir",
   "knowledge.saveError": "Error al guardar el conocimiento",
+  "knowledge.reloadError": "No se pudo volver a cargar el documento más reciente: {{reason}}",
   "knowledge.updated": "actualizado",
   "knowledge.aria": "Contenido de conocimiento para {{path}}",
 
