@@ -82,3 +82,7 @@ Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), a
 The invocation journal owns call identity, Segment identity, observed state, and timestamps. These records now survive Run completion and restart; deletion of their Run cascades to the records. Schema installation replaces the former pruning trigger on existing databases. Attempts already deleted by older versions cannot be reconstructed from Run token totals or transcript text.
 
 `started` has no settlement timestamp. `completed` and `failed` identify observed provider outcomes. `unknown` means execution or recovery could not establish the outcome: its `settledAt` is when that uncertainty was recorded, not a provider completion time. Consumers must not infer a measured model duration or throughput from an unknown outcome. Per-call token usage, first-token timing, and prompt inspection are not present in this read; aggregate Run accounting remains separate.
+
+## Background shell lifetime
+
+Background commands remain addressable after they exit until `read_shell_output` consumes their final output. That final read reports completion and releases the shell handle and retained buffer; later reads report that the shell is absent. Reads while a command is running keep its handle available. Stopping a command preserves its unread output for the final read. Session teardown and Runtime shutdown also reclaim owned commands.

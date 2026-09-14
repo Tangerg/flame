@@ -331,10 +331,9 @@ func (s *Shells) Kill(id string) (running bool, err error) {
 	return true, nil
 }
 
-// Remove drops a shell from the set without killing it. The foreground
-// shell race calls it once a command completes within the auto-background
-// window, so a finished command isn't left behind as a phantom background job.
-// Killing instead would cancel the already-exited process context needlessly.
+// Remove releases a finished shell after its final output has been consumed.
+// Callers must observe completion before draining the output; removing a live
+// shell would orphan its process and discard unread output.
 func (s *Shells) Remove(id string) {
 	identity, valid := parseShellID(id)
 	if !valid {

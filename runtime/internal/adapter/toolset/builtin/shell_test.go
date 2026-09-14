@@ -216,6 +216,13 @@ func TestShell_RunInBackground(t *testing.T) {
 	if err != nil || !strings.Contains(read, "hi") {
 		t.Fatalf("read_shell_output = %q err=%v, want the command's output", read, err)
 	}
+	if _, retained := shells.Get(id); retained {
+		t.Fatal("finished background shell retained after its final output was read")
+	}
+	again, err := callTextTool(t.Context(), output, `{"shell_id":"`+id+`"}`)
+	if err != nil || !strings.Contains(again, "No background shell") {
+		t.Fatalf("read retired shell = %q, %v", again, err)
+	}
 }
 
 // TestReadShellOutput_Wait blocks until a backgrounded command finishes, then
@@ -261,6 +268,9 @@ func TestReadShellOutput_WaitTimeout(t *testing.T) {
 	}
 	if !strings.Contains(read, "still running") {
 		t.Fatalf("read_shell_output(wait,timeout_millis) = %q, want a still-running status", read)
+	}
+	if _, retained := shells.Get(id); !retained {
+		t.Fatal("reading a live background shell released its handle")
 	}
 }
 

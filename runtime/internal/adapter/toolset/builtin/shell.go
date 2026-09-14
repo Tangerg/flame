@@ -129,7 +129,7 @@ func BuildShell(shells *exec.Shells, defaultCWD string) ([]toolcontract.Tool, er
 	outputTool, err := toolcontract.NewFunc[shellOutputArgs, string](
 		toolcontract.FuncConfig{
 			Name:        tool.ReadShellOutput,
-			Description: "Read only the new output produced by a background shell since the previous read and report whether it is still running. Set wait=true to wait event-first for exit instead of sleep polling; bound that wait with timeout_millis for servers or watchers.",
+			Description: "Read only the new output produced by a background shell since the previous read and report whether it is still running. Reading the final output of a finished shell releases its shell_id. Set wait=true to wait event-first for exit instead of sleep polling; bound that wait with timeout_millis for servers or watchers.",
 		},
 		t.output,
 	)
@@ -232,13 +232,16 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 			return "", err
 		}
 	}
-	out, dropped := sh.Read()
+	// Observe completion before draining: a finished result must include every
+	// final byte before its handle is released.
 	done, info := sh.Status()
+	out, dropped := sh.Read()
 	state := "still running"
 	if done {
 		if _, _, _, cleanupErr := sh.Outcome(); cleanupErr != nil {
 			return "", fmt.Errorf("shell: clean background shell %q: %w", a.ShellID, cleanupErr)
 		}
+		c.shells.Remove(a.ShellID)
 		state = "finished (" + info + ")"
 	}
 	var b []byte
