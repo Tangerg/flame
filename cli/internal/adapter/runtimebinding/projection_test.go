@@ -592,3 +592,23 @@ func TestProjectSnapshotRejectsUnownedPendingInterruptSets(t *testing.T) {
 		})
 	}
 }
+
+func TestProjectRejectedToolPreservesRawArguments(t *testing.T) {
+	for _, raw := range []string{`{"path":`, `[]`, `{"shell":"bash"}`} {
+		t.Run(raw, func(t *testing.T) {
+			projected, err := projectTool(toolProjection{invocation: &protocol.ToolInvocation{Name: "read", Arguments: map[string]any{}, ArgumentsText: raw}, status: protocol.ItemStatusIncomplete})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := projected.Validate(); err != nil {
+				t.Fatal(err)
+			}
+			if projected.ArgumentsText != raw || string(projected.ArgumentsJSON) != "{}" {
+				t.Fatalf("arguments lost: %+v", projected)
+			}
+			if !projected.Equal(projected.Clone()) {
+				t.Fatal("clone changed rejected call")
+			}
+		})
+	}
+}

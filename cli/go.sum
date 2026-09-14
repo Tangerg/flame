@@ -7,8 +7,8 @@ cloud.google.com/go/compute/metadata v0.9.0/go.mod h1:E0bWwX5wTnLPedCKqk3pJmVgCB
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Tangerg/flame/runtime v0.0.0-20260914095055-fb9c769b4659 h1:dhEXtg4Z+cEqPXn9X90pZn5SUxGrB//oj/OW6Vg4Q+k=
-github.com/Tangerg/flame/runtime v0.0.0-20260914095055-fb9c769b4659/go.mod h1:NzP3n63yOrjwuYKv4IkzoNuO1E3fhUzZ+CW4HQXyEXk=
+github.com/Tangerg/flame/runtime v0.0.0-20260914142602-af7378f03fe9 h1:97IIaBvsrbdHmbvJEIVMygsmgmoBcjeLvdzqbLIGSxs=
+github.com/Tangerg/flame/runtime v0.0.0-20260914142602-af7378f03fe9/go.mod h1:VE2P0rt2/f9aQPNRIgPdk3UBzi2IcfLxUd8qq6E6HqQ=
 github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260912094153-1dc998bda962 h1:c8TKnP3lWyOtBE4w66VIpQnFnm/lI3lIdLGJPkzKfjY=
 github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260912094153-1dc998bda962/go.mod h1:XqeITG7pzIeQNDNRQQ3Jg63RVvKlXYmURgLHPPrIZ5g=
 github.com/Tangerg/oolong/components v0.16.0 h1:HZrRIjlBgY090VgvU5bHEWH0S+bWtnyTiLCU7SRb2Ks=
@@ -23,8 +23,8 @@ github.com/Tangerg/oolong/ptytest v0.16.0 h1:QDdsn6+Q6hoKvaC4cBbgJbPGxwVn/sM3Z1W
 github.com/Tangerg/oolong/ptytest v0.16.0/go.mod h1:Q6gnOWknnAeyZvE+oFZEWiYB58Yfkd5qDuEJCGCxnv8=
 github.com/Tangerg/scope/a2a v0.22.0 h1:UtEp9Ce22QVymenN5eZnQ2n5szpT9d6HYXH9hCMSe+s=
 github.com/Tangerg/scope/a2a v0.22.0/go.mod h1:jdeqINnXSkJ08ZkjfXo/LOUWSLXtdx7D7CoSlFGb4SM=
-github.com/Tangerg/scope/agent v0.22.0 h1:kvSE9Gco7SEmALBdo6FgMtcXcxC4uQ0+H1U60+vDLQE=
-github.com/Tangerg/scope/agent v0.22.0/go.mod h1:T8LoZKLI3GCQf4zpnjTbAeJOI+H/YPoTUmJdeCeHepc=
+github.com/Tangerg/scope/agent v0.23.0 h1:1N3EmRjYUfcBISxf44aSthh78ayS4MMaUlN+z5x5U3o=
+github.com/Tangerg/scope/agent v0.23.0/go.mod h1:T8LoZKLI3GCQf4zpnjTbAeJOI+H/YPoTUmJdeCeHepc=
 github.com/Tangerg/scope/core v0.22.0 h1:M2STBVaC6unLJ2nubuQB8IFtG4toSOVHwy3jQqRg+Ig=
 github.com/Tangerg/scope/core v0.22.0/go.mod h1:9hOHcD65yh5MRKI/8vXoozbq7PAIJa1L3TLkVkkPIsI=
 github.com/Tangerg/scope/mcp v0.22.0 h1:zkays4cGF4HjUpmAG1krEXz60wGJ9pyzaJyB4Dg7KSo=

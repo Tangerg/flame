@@ -132,24 +132,25 @@ type imageFrame struct {
 }
 
 type toolFrame struct {
-	Kind       string                `json:"kind"`
-	Name       string                `json:"name"`
-	Summary    string                `json:"summary,omitzero"`
-	Status     string                `json:"status"`
-	Safety     string                `json:"safetyClass,omitzero"`
-	StartedAt  time.Time             `json:"startedAt,omitzero"`
-	FinishedAt time.Time             `json:"finishedAt,omitzero"`
-	Command    string                `json:"command,omitzero"`
-	Path       string                `json:"path,omitzero"`
-	Query      string                `json:"query,omitzero"`
-	URL        string                `json:"url,omitzero"`
-	Output     string                `json:"output,omitzero"`
-	Arguments  json.RawMessage       `json:"arguments,omitempty"`
-	Result     json.RawMessage       `json:"result,omitempty"`
-	Problem    *protocol.ProblemData `json:"problem,omitempty"`
-	Diff       string                `json:"diff,omitzero"`
-	ExitCode   *int                  `json:"exitCode,omitzero"`
-	DurationMS float64               `json:"durationMs,omitzero"`
+	Kind          string                `json:"kind"`
+	Name          string                `json:"name"`
+	Summary       string                `json:"summary,omitzero"`
+	Status        string                `json:"status"`
+	Safety        string                `json:"safetyClass,omitzero"`
+	StartedAt     time.Time             `json:"startedAt,omitzero"`
+	FinishedAt    time.Time             `json:"finishedAt,omitzero"`
+	Command       string                `json:"command,omitzero"`
+	Path          string                `json:"path,omitzero"`
+	Query         string                `json:"query,omitzero"`
+	URL           string                `json:"url,omitzero"`
+	Output        string                `json:"output,omitzero"`
+	ArgumentsText string                `json:"argumentsText,omitempty"`
+	Arguments     json.RawMessage       `json:"arguments,omitempty"`
+	Result        json.RawMessage       `json:"result,omitempty"`
+	Problem       *protocol.ProblemData `json:"problem,omitempty"`
+	Diff          string                `json:"diff,omitzero"`
+	ExitCode      *int                  `json:"exitCode,omitzero"`
+	DurationMS    float64               `json:"durationMs,omitzero"`
 }
 
 type planFrame struct {
@@ -504,24 +505,25 @@ func encodeTool(tool *agent.ToolCall) *toolFrame {
 		return nil
 	}
 	return &toolFrame{
-		Kind:       string(tool.Kind),
-		Name:       tool.Name,
-		Summary:    tool.Summary,
-		Status:     string(tool.Status),
-		Safety:     string(tool.Safety),
-		StartedAt:  tool.StartedAt,
-		FinishedAt: tool.FinishedAt,
-		Command:    tool.Command,
-		Path:       tool.Path,
-		Query:      tool.Query,
-		URL:        tool.URL,
-		Output:     tool.Output,
-		Arguments:  json.RawMessage(tool.ArgumentsJSON),
-		Result:     json.RawMessage(tool.ResultJSON),
-		Problem:    failure.Clone(tool.Problem),
-		Diff:       tool.Diff,
-		ExitCode:   tool.ExitCode,
-		DurationMS: float64(tool.Duration.Milliseconds()),
+		Kind:          string(tool.Kind),
+		Name:          tool.Name,
+		Summary:       tool.Summary,
+		Status:        string(tool.Status),
+		Safety:        string(tool.Safety),
+		StartedAt:     tool.StartedAt,
+		FinishedAt:    tool.FinishedAt,
+		Command:       tool.Command,
+		Path:          tool.Path,
+		Query:         tool.Query,
+		URL:           tool.URL,
+		Output:        tool.Output,
+		Arguments:     json.RawMessage(tool.ArgumentsJSON),
+		ArgumentsText: tool.ArgumentsText,
+		Result:        json.RawMessage(tool.ResultJSON),
+		Problem:       failure.Clone(tool.Problem),
+		Diff:          tool.Diff,
+		ExitCode:      tool.ExitCode,
+		DurationMS:    float64(tool.Duration.Milliseconds()),
 	}
 }
 

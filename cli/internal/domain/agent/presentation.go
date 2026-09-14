@@ -238,6 +238,8 @@ type ToolCall struct {
 	// values for generic presenters and machine consumers. Semantic fields such
 	// as Command and Path remain the high-quality projection for known tools.
 	ArgumentsJSON []byte
+	// ArgumentsText preserves the original input of a rejected call.
+	ArgumentsText string
 	ResultJSON    []byte
 	// Problem retains the structured tool-level failure, including documentation,
 	// retry guidance, and capability or field-level details.
@@ -268,7 +270,7 @@ func (t ToolCall) Equal(other ToolCall) bool {
 		t.Status != other.Status || t.Safety != other.Safety || !t.StartedAt.Equal(other.StartedAt) ||
 		!t.FinishedAt.Equal(other.FinishedAt) || t.Command != other.Command || t.Path != other.Path ||
 		t.Query != other.Query || t.URL != other.URL || t.Output != other.Output ||
-		!bytes.Equal(t.ArgumentsJSON, other.ArgumentsJSON) || !bytes.Equal(t.ResultJSON, other.ResultJSON) ||
+		t.ArgumentsText != other.ArgumentsText || !bytes.Equal(t.ArgumentsJSON, other.ArgumentsJSON) || !bytes.Equal(t.ResultJSON, other.ResultJSON) ||
 		!failure.Equal(t.Problem, other.Problem) ||
 		t.Diff != other.Diff || t.Duration != other.Duration ||
 		(t.ExitCode == nil) != (other.ExitCode == nil) {
@@ -283,7 +285,7 @@ func (t ToolCall) Equal(other ToolCall) bool {
 func (t ToolCall) sameInvocation(other ToolCall) bool {
 	return t.Kind == other.Kind && t.Name == other.Name && t.Summary == other.Summary &&
 		t.Command == other.Command && t.Path == other.Path && t.Query == other.Query &&
-		t.URL == other.URL && bytes.Equal(t.ArgumentsJSON, other.ArgumentsJSON)
+		t.URL == other.URL && t.ArgumentsText == other.ArgumentsText && bytes.Equal(t.ArgumentsJSON, other.ArgumentsJSON)
 }
 
 func (t ToolCall) Validate() error {

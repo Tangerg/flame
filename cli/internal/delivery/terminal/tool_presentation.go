@@ -149,7 +149,9 @@ func toolSections(call agent.ToolCall, output ToolSection) []ToolSection {
 			Title: "Execution", Style: toolSectionCode, Text: strings.Join(metadata, "\n"),
 		})
 	}
-	if len(call.ArgumentsJSON) != 0 {
+	if call.ArgumentsText != "" {
+		sections = append(sections, ToolSection{Title: "Arguments", Style: toolSectionCode, Text: call.ArgumentsText})
+	} else if len(call.ArgumentsJSON) != 0 {
 		sections = append(sections, ToolSection{
 			Title: "Arguments", Style: toolSectionCode, Language: "json", Text: prettyJSON(call.ArgumentsJSON),
 		})

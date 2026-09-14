@@ -196,6 +196,7 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 		URL:     toolText(value.Arguments, "url", "uri"),
 	}
 	tool.ArgumentsJSON = argumentsJSON
+	tool.ArgumentsText = value.ArgumentsText
 	if value.Result != nil {
 		resultJSON, err := json.Marshal(value.Result)
 		if err != nil {
