@@ -366,71 +366,74 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 }
 
 func TestInteractionExecutorCancellationStopsCooperativeInflightModel(t *testing.T) {
-	modelStarted := make(chan struct{})
-	modelReturned := make(chan struct{})
-	model := chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
-		close(modelStarted)
-		<-ctx.Done()
-		close(modelReturned)
-		return nil, ctx.Err()
-	})
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
-	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if releaseErr := executor.Release(context.Background(), ref); releaseErr != nil {
-			t.Errorf("Release: %v", releaseErr)
-		}
-	})
-	sequence, err := executor.Observe(context.Background(), ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	eventsReady := make(chan []runs.ExecutorEvent, 1)
-	go func() {
-		var events []runs.ExecutorEvent
-		for event := range sequence {
-			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
-				commit.Complete(nil)
-				event.Payload = commit.Fact()
+	for _, streaming := range []bool{false, true} {
+		t.Run(strconv.FormatBool(streaming), func(t *testing.T) {
+			modelStarted := make(chan struct{})
+			modelReturned := make(chan struct{})
+			model := cancelableObservationModel{started: modelStarted, returned: modelReturned}
+			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: streaming})
+			ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+			if err != nil {
+				t.Fatal(err)
 			}
-			events = append(events, event)
-		}
-		eventsReady <- events
-	}()
-	if err := executor.BeginRoot(t.Context(), ref); err != nil {
-		t.Fatal(err)
-	}
-	select {
-	case <-modelStarted:
-	case <-time.After(time.Second):
-		t.Fatal("model did not start")
-	}
-	if err := executor.RequestRootCancellation(t.Context(), ref, "operator canceled"); err != nil {
-		t.Fatal(err)
-	}
-	select {
-	case <-modelReturned:
-	case <-time.After(time.Second):
-		t.Fatal("model context was not canceled")
-	}
-	var events []runs.ExecutorEvent
-	select {
-	case events = <-eventsReady:
-	case <-time.After(time.Second):
-		t.Fatal("canceled Interaction did not reach a terminal boundary")
-	}
-	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 0 {
-		t.Fatalf("canceled model became an unknown Effect: %#v", unknown)
-	}
-	if failed := payloadsOf[runs.ModelCallFailed](events); len(failed) != 1 {
-		t.Fatalf("model failures = %#v, want one definite failed invocation", failed)
-	}
-	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
-		t.Fatalf("segment end = %#v, want canceled", ended)
+			t.Cleanup(func() {
+				if releaseErr := executor.Release(context.Background(), ref); releaseErr != nil {
+					t.Errorf("Release: %v", releaseErr)
+				}
+			})
+			sequence, err := executor.Observe(context.Background(), ref)
+			if err != nil {
+				t.Fatal(err)
+			}
+			eventsReady := make(chan []runs.ExecutorEvent, 1)
+			go func() {
+				var events []runs.ExecutorEvent
+				for event := range sequence {
+					if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
+						commit.Complete(nil)
+						event.Payload = commit.Fact()
+					}
+					events = append(events, event)
+				}
+				eventsReady <- events
+			}()
+			if err := executor.BeginRoot(t.Context(), ref); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-modelStarted:
+			case <-time.After(time.Second):
+				t.Fatal("model did not start")
+			}
+			if err := executor.RequestRootCancellation(t.Context(), ref, "operator canceled"); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-modelReturned:
+			case <-time.After(time.Second):
+				t.Fatal("model context was not canceled")
+			}
+			var events []runs.ExecutorEvent
+			select {
+			case events = <-eventsReady:
+			case <-time.After(time.Second):
+				t.Fatal("canceled Interaction did not reach a terminal boundary")
+			}
+			if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 0 {
+				t.Fatalf("canceled model became an unknown Effect: %#v", unknown)
+			}
+			failed := payloadsOf[runs.ModelCallFailed](events)
+			if len(failed) != 1 {
+				t.Fatalf("model failures = %#v, want one definite failed invocation", failed)
+			}
+			if (failed[0].FirstOutputLatencyMillis != nil) != streaming {
+				t.Fatalf("canceled call latency = %v, streaming = %v", failed[0].FirstOutputLatencyMillis, streaming)
+			}
+			ended := payloadsOf[runs.SegmentEnded](events)
+			if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
+				t.Fatalf("segment end = %#v, want canceled", ended)
+			}
+		})
 	}
 }
 
@@ -1635,4 +1638,29 @@ func interactionUsageTextResponse(text string, inputTokens, outputTokens int64) 
 		Model: "test-model", Usage: &chat.Usage{InputTokens: inputTokens, OutputTokens: outputTokens},
 	}
 	return response
+}
+
+// Both projections block at the provider boundary until the Run cancels them.
+type cancelableObservationModel struct {
+	started  chan struct{}
+	returned chan struct{}
+}
+
+func (m cancelableObservationModel) Call(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
+	close(m.started)
+	<-ctx.Done()
+	close(m.returned)
+	return nil, ctx.Err()
+}
+
+func (m cancelableObservationModel) Stream(ctx context.Context, _ *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return func(yield func(*chat.ResponseDelta, error) bool) {
+		defer close(m.returned)
+		if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("partial")}}, nil) {
+			return
+		}
+		close(m.started)
+		<-ctx.Done()
+		yield(nil, ctx.Err())
+	}
 }
