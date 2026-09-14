@@ -585,7 +585,6 @@ export const es: Record<string, string> = {
   "skills.available_one": "{{count}} disponible",
   "skills.available_many": "{{count}} de disponibles",
   "skills.available_other": "{{count}} disponibles",
-  "skills.off": "desactivado",
   "skills.empty.title": "Sin habilidades",
   "skills.empty.sub":
     "Las habilidades descubiertas en el directorio de trabajo de este proyecto aparecen aquí.",
@@ -599,7 +598,6 @@ export const es: Record<string, string> = {
   "knowledge.scope.cwd": "directorio actual",
   "knowledge.scope.projectRoot": "raíz del proyecto",
   "knowledge.scope.home": "carpeta personal",
-  "knowledge.off": "desactivado",
   "knowledge.empty.title": "Sin conocimientos todavía",
   "knowledge.empty.sub":
     "Los archivos FLAME.md que el runtime mantiene para el agent aparecen aquí.",

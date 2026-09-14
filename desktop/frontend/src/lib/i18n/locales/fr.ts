@@ -591,7 +591,6 @@ export const fr: Record<string, string> = {
   "skills.available_one": "{{count}} disponible",
   "skills.available_many": "{{count}} de disponibles",
   "skills.available_other": "{{count}} disponibles",
-  "skills.off": "désactivé",
   "skills.empty.title": "Aucune compétence",
   "skills.empty.sub":
     "Les compétences découvertes dans le répertoire de travail de ce projet apparaissent ici.",
@@ -605,7 +604,6 @@ export const fr: Record<string, string> = {
   "knowledge.scope.cwd": "répertoire courant",
   "knowledge.scope.projectRoot": "racine du projet",
   "knowledge.scope.home": "dossier personnel",
-  "knowledge.off": "désactivé",
   "knowledge.empty.title": "Aucune connaissance pour l'instant",
   "knowledge.empty.sub": "Les fichiers FLAME.md que le runtime gère pour l'agent apparaissent ici.",
   "knowledge.disabled.title": "Connaissances désactivées",

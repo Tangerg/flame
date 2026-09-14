@@ -8,7 +8,7 @@ export default definePlugin({
     ctx.contribute(WORKSPACE_VIEW, {
       id: "diagnostics",
       title: "workspace.view.title.diagnostics",
-      icon: "spark",
+      icon: "activity",
       order: 115,
       dock: "workspace",
       component: DiagnosticsView,

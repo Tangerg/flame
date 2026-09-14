@@ -19,9 +19,11 @@ export function AvailableSkills() {
 
   return (
     <>
-      <div {...stylex.props(vs.gutter, vs.rowPad, typeStep.uiSm, vocab.muted)}>
-        {view.enabled ? t("skills.available", { count: view.count }) : t("skills.off")}
-      </div>
+      {view.enabled && (
+        <div {...stylex.props(vs.gutter, vs.rowPad, typeStep.uiSm, vocab.muted)}>
+          {t("skills.available", { count: view.count })}
+        </div>
+      )}
       <DataView
         items={view.rows}
         isLoading={view.enabled && (isLoading || workspace.status === "resolving")}

@@ -573,7 +573,6 @@ export const de: Record<string, string> = {
   "skills.tab.review": "Prüfen",
   "skills.tab.library": "Persönlich",
   "skills.available": "{{count}} verfügbar",
-  "skills.off": "aus",
   "skills.empty.title": "Keine Skills",
   "skills.empty.sub": "Im Arbeitsverzeichnis dieses Projekts entdeckte Skills erscheinen hier.",
   "skills.disabled.title": "Skills sind deaktiviert",
@@ -585,7 +584,6 @@ export const de: Record<string, string> = {
   "knowledge.scope.cwd": "Arbeitsverzeichnis",
   "knowledge.scope.projectRoot": "Projektwurzel",
   "knowledge.scope.home": "Home",
-  "knowledge.off": "aus",
   "knowledge.empty.title": "Noch kein Wissen",
   "knowledge.empty.sub":
     "FLAME.md-Dateien, die die Runtime für den Agenten pflegt, erscheinen hier.",

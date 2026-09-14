@@ -56,7 +56,7 @@ const TONE = {
 const DEFAULT_ICON: Record<SystemMessageVariant, IconName> = {
   info: "question",
   warning: "alert",
-  error: "x",
+  error: "alert",
   success: "check",
 };
 

@@ -552,7 +552,6 @@ export const ja: Record<string, string> = {
   "skills.tab.review": "レビュー",
   "skills.tab.library": "個人用",
   "skills.available": "{{count}} 件利用可能",
-  "skills.off": "オフ",
   "skills.empty.title": "スキルはありません",
   "skills.empty.sub": "このプロジェクトの作業ディレクトリで見つかったスキルがここに表示されます。",
   "skills.disabled.title": "スキルはオフです",
@@ -563,7 +562,6 @@ export const ja: Record<string, string> = {
   "knowledge.scope.cwd": "作業ディレクトリ",
   "knowledge.scope.projectRoot": "プロジェクトルート",
   "knowledge.scope.home": "ホーム",
-  "knowledge.off": "オフ",
   "knowledge.empty.title": "まだ知識はありません",
   "knowledge.empty.sub":
     "ランタイムが agent のために管理する FLAME.md ファイルがここに表示されます。",

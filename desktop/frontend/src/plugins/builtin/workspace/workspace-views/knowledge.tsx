@@ -177,7 +177,7 @@ export function KnowledgeTab() {
     <WorkspaceViewLayout
       icon="filetext"
       title="knowledge.title"
-      sub={view.enabled ? t("knowledge.scopes", { count: view.count }) : t("knowledge.off")}
+      sub={view.enabled ? t("knowledge.scopes", { count: view.count }) : undefined}
     >
       <DataView
         items={view.rows}

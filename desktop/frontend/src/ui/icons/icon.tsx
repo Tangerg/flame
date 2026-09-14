@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import { memo, type CSSProperties } from "react";
 import type { IconSize } from "@/lib/iconScale";
 import {
+  Activity,
   Archive,
   ArrowLeft,
   ArrowRight,
@@ -173,6 +174,7 @@ export type IconName =
   | "archive"
   | "calendar-plus"
   | "calendar-x"
+  | "activity"
   | "blocks"
   | "target"
   | "crosshair"
@@ -181,6 +183,7 @@ export type IconName =
   | "wrap-text";
 
 const ICON_MAP = {
+  activity: Activity,
   search: Search,
   plus: Plus,
   "zoom-in": ZoomIn,

@@ -132,7 +132,7 @@ export function RunErrorBanner() {
                 onClick={openTimelineView}
               />
               <BannerAction
-                icon="spark"
+                icon="activity"
                 label={t("runError.action.diagnostics")}
                 onClick={openDiagnosticsView}
               />
