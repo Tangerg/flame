@@ -189,10 +189,11 @@ export const timelineStyles = stylex.create({
     gap: space.s2,
     borderRadius: radius.card,
     backgroundColor: surface.sunken,
+    marginInline: space.s2,
     paddingBlock: space.s2,
-    paddingLeft: "var(--density-column-gutter-wide)",
+    paddingLeft: "calc(var(--density-column-gutter-wide) - var(--spacing) * 2)",
     paddingRight:
-      "calc(var(--density-column-gutter-wide) - (var(--control-height-md) - var(--icon-md)) / 2)",
+      "calc(var(--density-column-gutter-wide) - var(--spacing) * 2 - (var(--control-height-md) - var(--icon-md)) / 2)",
   },
   runDetail: {
     marginTop: space.s0_5,
