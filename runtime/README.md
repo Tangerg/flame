@@ -89,6 +89,12 @@ The optional `firstOutputLatencyMillis` is measured with the monotonic clock at 
 
 The optional `usage` records provider-reported tokens for that call before Run aggregation. Missing usage means it was not reported or the attempt predates usage recording; an explicit zero remains zero. Prompt inspection is not present in this read. Aggregate Run accounting remains separate. Existing databases receive the nullable usage column in one schema transaction; historical values are not reconstructed.
 
+## Auxiliary model observation
+
+Compaction, memory extraction and curation, skill mining, and title generation emit an `auxiliary model` OpenTelemetry span through the existing Runtime exporter. `auxiliary.operation` identifies the caller's purpose. The span covers selection resolution, the bounded model request, and response acceptance; its duration is not isolated provider latency. The live resolver records the exact provider/model selection, and a valid response contributes its finish reason and reported token usage. Optional cache and reasoning counts remain absent when unreported, including the distinction between absence and an explicit zero. A valid but incomplete response retains its reported usage even though its text is rejected.
+
+Failed attempts record the `resolve`, `call`, or `response` stage and distinguish cancellation from deadline expiry. These spans do not record prompt text, output text, or raw provider errors. They are diagnostic telemetry, not durable `modelInvocations.list` records or additional Run accounting. Persistence and retention depend on the configured telemetry exporter; they do not survive restart through the invocation journal.
+
 ## Background shell lifetime
 
 Background commands remain addressable after they exit until `read_shell_output` consumes their final output. That final read reports completion and releases the shell handle and retained buffer; later reads report that the shell is absent. Compaction reminders preserve these retained handles, including commands that have finished with unread output. Reads while a command is running keep its handle available. Stopping a command preserves its unread output for the final read. Session teardown and Runtime shutdown also reclaim owned commands.

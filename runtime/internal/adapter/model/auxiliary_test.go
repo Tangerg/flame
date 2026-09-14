@@ -18,10 +18,11 @@ type recordingModel struct {
 
 type auxiliaryResponseModel struct {
 	response *chat.Response
+	failure  error
 }
 
 func (m auxiliaryResponseModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
-	return m.response, nil
+	return m.response, m.failure
 }
 
 func (r *recordingModel) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
@@ -41,6 +42,7 @@ func TestCompleteBuildsOneMiddlewareFreePrompt(t *testing.T) {
 		t.Fatal(err)
 	}
 	text, err := fixedAuxiliaryClient(&client).Complete(t.Context(), AuxiliaryPrompt{
+		Operation:    "test",
 		SystemPrompt: "system instructions", UserPrompt: "input",
 		MaxInputBytes: 1024, MaxOutputTokens: 123,
 	})
@@ -65,7 +67,7 @@ func TestCompleteBuildsOneMiddlewareFreePrompt(t *testing.T) {
 }
 
 func TestCompleteRejectsMissingClient(t *testing.T) {
-	_, err := fixedAuxiliaryClient(nil).Complete(t.Context(), AuxiliaryPrompt{MaxInputBytes: 1, MaxOutputTokens: 1})
+	_, err := fixedAuxiliaryClient(nil).Complete(t.Context(), AuxiliaryPrompt{Operation: "test", MaxInputBytes: 1, MaxOutputTokens: 1})
 	if err == nil || err.Error() != "auxiliary model: client is required" {
 		t.Fatalf("Complete nil client error = %v", err)
 	}
@@ -77,9 +79,10 @@ func TestCompleteRejectsInvalidResourceEnvelopeBeforeResolvingModel(t *testing.T
 		return nil, nil
 	})
 	for _, prompt := range []AuxiliaryPrompt{
-		{MaxOutputTokens: 1},
-		{MaxInputBytes: 1},
-		{SystemPrompt: "system", UserPrompt: "input", MaxInputBytes: 5, MaxOutputTokens: 1},
+		{Operation: "test", MaxOutputTokens: 1},
+		{Operation: "test", MaxInputBytes: 1},
+		{Operation: "test", SystemPrompt: "system", UserPrompt: "input", MaxInputBytes: 5, MaxOutputTokens: 1},
+		{MaxInputBytes: 1, MaxOutputTokens: 1},
 	} {
 		if _, err := resolver.Complete(t.Context(), prompt); err == nil {
 			t.Fatalf("Complete(%+v) succeeded, want invalid resource envelope", prompt)
@@ -92,7 +95,7 @@ func TestCompletePreservesResolutionFailure(t *testing.T) {
 	resolver := AuxiliaryResolver(func(context.Context) (*chatclient.Client, error) {
 		return nil, failure
 	})
-	text, err := resolver.Complete(t.Context(), AuxiliaryPrompt{MaxInputBytes: 1, MaxOutputTokens: 1})
+	text, err := resolver.Complete(t.Context(), AuxiliaryPrompt{Operation: "test", MaxInputBytes: 1, MaxOutputTokens: 1})
 	if text != "" || !errors.Is(err, failure) {
 		t.Fatalf("Complete = (%q, %v), want exact resolution failure", text, err)
 	}
@@ -149,6 +152,7 @@ func TestCompleteRejectsIncompleteTextGenerations(t *testing.T) {
 				t.Fatal(err)
 			}
 			text, err := fixedAuxiliaryClient(&client).Complete(t.Context(), AuxiliaryPrompt{
+				Operation:    "test",
 				SystemPrompt: "summarize", UserPrompt: "history",
 				MaxInputBytes: 1024, MaxOutputTokens: 128,
 			})

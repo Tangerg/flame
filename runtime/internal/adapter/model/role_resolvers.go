@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/scope/core/chatclient"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
@@ -47,6 +49,10 @@ func LiveUtilityClient(
 		if role := roles.Role(); role.Configured() {
 			selection = role.Selection()
 		}
+		trace.SpanFromContext(ctx).SetAttributes(
+			attribute.String("flame.provider.id", selection.Provider()),
+			attribute.String("gen_ai.request.model", selection.Model()),
+		)
 		resolved, err := resolver.ResolveChat(ctx, selection)
 		if err != nil {
 			return nil, fmt.Errorf(

@@ -287,6 +287,7 @@ If nothing deserves the append-only memory ledger, respond exactly NO_FACTS.
 Otherwise output at most ` + strconv.Itoa(agentmemory.MaxFactsPerBatch) + ` bullets,
 ordered from most important to least important, without a preamble or code fence.`
 	text, err := m.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
+		Operation:    "memory.extract",
 		SystemPrompt: prompt, UserPrompt: transcript,
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: int64(m.policy.maxTokens),
 	})
@@ -327,6 +328,7 @@ If no facts remain useful, respond exactly NO_MEMORY.`
 		fmt.Fprintf(&input, "[%s #%d] %s\n", fact.Day, fact.Sequence, fact.Content)
 	}
 	text, err := m.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
+		Operation:    "memory.curate",
 		SystemPrompt: systemPrompt, UserPrompt: input.String(),
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: int64(m.policy.maxTokens),
 	})

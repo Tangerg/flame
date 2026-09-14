@@ -314,6 +314,7 @@ const noSkillSentinel = "NO_SKILL"
 // answer: the sentinel means nothing was mined, anything else is the document.
 func (s *SkillProposalMiner) mineDocument(ctx context.Context, system, user string) (string, error) {
 	text, err := s.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
+		Operation:    "skill.mine",
 		SystemPrompt: system, UserPrompt: user,
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: skillMiningOutputTokens,
 	})

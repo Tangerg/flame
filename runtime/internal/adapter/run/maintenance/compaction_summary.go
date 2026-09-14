@@ -54,6 +54,7 @@ func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (string,
 	transcript := renderTranscript(msgs)
 
 	text, err := c.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
+		Operation:    "compaction",
 		SystemPrompt: compactionPrompt, UserPrompt: transcript,
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: compactionSummaryOutputTokens,
 	})
