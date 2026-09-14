@@ -33,6 +33,7 @@ export function fmtCost(usd: number): string {
 }
 
 export function fmtDuration(ms: number): string {
+  if (ms < 1000) return `${decimal(ms, 0)}ms`;
   const seconds = ms / 1000;
   if (seconds < 10) return `${decimal(Math.round(seconds * 10) / 10, 1)}s`;
   // Rounded BEFORE the minute test: 59.6s rounds to 60, and no clock reads "60s".

@@ -9,8 +9,15 @@ vi.mock("./i18n", async (importOriginal) => ({
 }));
 
 describe("fmtDuration", () => {
-  it("keeps one decimal under ten seconds and drops it above", () => {
-    expect(fmtDuration(412)).toBe("0.4s");
+  it("preserves millisecond measurements below one second", () => {
+    expect(fmtDuration(0)).toBe("0ms");
+    expect(fmtDuration(49)).toBe("49ms");
+    expect(fmtDuration(412)).toBe("412ms");
+    expect(fmtDuration(999)).toBe("999ms");
+    expect(fmtDuration(1000)).toBe("1s");
+  });
+
+  it("keeps one decimal below ten seconds and drops it above", () => {
     expect(fmtDuration(9840)).toBe("9.8s");
     expect(fmtDuration(42_300)).toBe("42s");
   });
@@ -60,7 +67,8 @@ describe("in a locale that writes decimals with a comma", () => {
       expect(fmtTokens(1234)).toBe("1,2k");
       expect(fmtTokens(1_200_000)).toBe("1,2M");
       expect(fmtCost(1.5)).toBe("$1,50");
-      expect(fmtDuration(412)).toBe("0,4s");
+      expect(fmtDuration(412)).toBe("412ms");
+      expect(fmtDuration(1412)).toBe("1,4s");
       expect(fmtTokens(999)).toBe("999");
     } finally {
       locale.current = "en";

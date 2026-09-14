@@ -124,11 +124,7 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
       )}
       {entry.kind === "tool" && entry.status !== undefined && (
         <span title={t("timeline.executionDuration")} {...stylex.props(ts.stamp, typeStep.uiXs)}>
-          {tool?.durationMillis === undefined
-            ? "—"
-            : tool.durationMillis < 1000
-              ? `${tool.durationMillis}ms`
-              : fmtDuration(tool.durationMillis)}
+          {tool?.durationMillis === undefined ? "—" : fmtDuration(tool.durationMillis)}
         </span>
       )}
       <time
