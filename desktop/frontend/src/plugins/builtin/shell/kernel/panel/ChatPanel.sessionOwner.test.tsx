@@ -3,9 +3,11 @@ import { useState, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceViewSpec } from "@/plugins/sdk";
 import { ChatPanel } from "./ChatPanel";
+import { dockWidthFromRatio } from "@/lib/shellGeometry";
 
 const model = vi.hoisted(() => ({
   setWidth: vi.fn(),
+  width: 0.5 as number | null,
   sessionId: "ses_first",
   activeMainView: "stateful" as string | null,
   dock: { open: false, viewIds: [] as string[], activeViewId: null as string | null },
@@ -44,7 +46,7 @@ vi.mock("@/plugins/builtin/workspace/public/contextDockCatalog", () => ({
 }));
 
 vi.mock("@/plugins/builtin/workspace/public/sidebarDrawer", () => ({
-  useDockWidth: () => ({ width: 0.5, setWidth: model.setWidth }),
+  useDockWidth: () => ({ width: model.width, setWidth: model.setWidth }),
 }));
 
 vi.mock("@/plugins/sdk", async (importOriginal) => ({
@@ -69,6 +71,8 @@ function StatefulWorkspaceView() {
 
 beforeEach(() => {
   model.isLoading = false;
+  model.width = 0.5;
+  model.setWidth.mockClear();
 });
 
 afterEach(() => cleanup());
@@ -160,11 +164,12 @@ describe("ChatPanel Session-owned workspace view state", () => {
 });
 
 it("measures dock availability when returning from a promoted main view", () => {
-  let rowWidth = 500;
+  let rowWidth = 600;
   const width = vi
     .spyOn(HTMLElement.prototype, "clientWidth", "get")
     .mockImplementation(() => rowWidth);
   try {
+    model.width = null;
     model.sessionId = "ses_first";
     model.activeMainView = "stateful";
     model.dock = { open: false, viewIds: [], activeViewId: null };
@@ -179,14 +184,17 @@ it("measures dock availability when returning from a promoted main view", () => 
         name: "Widen the window to open the right workspace",
       }).disabled,
     ).toBe(true);
+    expect(model.setWidth).not.toHaveBeenCalled();
     model.activeMainView = "stateful";
     view.rerender(<ChatPanel onSend={() => true} />);
-    rowWidth = 1000;
+    rowWidth = 1440;
     model.activeMainView = null;
     view.rerender(<ChatPanel onSend={() => true} />);
     expect(
       screen.getByRole<HTMLButtonElement>("button", { name: "Open right workspace" }).disabled,
     ).toBe(false);
+    expect(model.setWidth).toHaveBeenCalledOnce();
+    expect(dockWidthFromRatio(model.setWidth.mock.calls[0]![0], rowWidth)).toBe(940);
   } finally {
     cleanup();
     width.mockRestore();

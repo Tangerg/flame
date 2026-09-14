@@ -174,7 +174,7 @@ export function ChatPanel({ onSend }: Props) {
         const available = canPresentDock(row.clientWidth);
         setDockAvailable((current) => (current === available ? current : available));
         if (!available && dockOpen) collapseWorkspaceDock();
-        if (dockWidthRatio === null && row.clientWidth > 0) {
+        if (dockWidthRatio === null && available) {
           setDockWidthRatio(defaultDockRatio(row.clientWidth, window.innerHeight));
         }
       };
