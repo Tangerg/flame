@@ -7,6 +7,7 @@ import (
 	"math"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -241,7 +242,7 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	}
 }
 
-func TestInteractionExecutorCancelsRunningDelegateAndKeepsRootRunning(t *testing.T) {
+func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *testing.T) {
 	model := newCancelableDelegateModel()
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime:               t.Context(),
@@ -340,17 +341,17 @@ func TestInteractionExecutorCancelsRunningDelegateAndKeepsRootRunning(t *testing
 		t.Fatal("running Delegate cancellation did not settle")
 	}
 	assertRunningDelegateCancellationResult(t, canceledResult)
-	select {
-	case <-model.rootContinuationStarted:
-	case <-time.After(3 * time.Second):
-		t.Fatal("root did not consume the canceled child result")
-	}
 	close(model.releaseRootContinuation)
 	var events []runs.Event
 	select {
 	case events = <-eventsReady:
 	case <-time.After(3 * time.Second):
-		t.Fatal("root did not finish after child cancellation")
+		t.Fatal("root did not settle after child cancellation")
+	}
+	select {
+	case <-model.rootContinuationStarted:
+		t.Fatal("root consumed a child result with an unresolved model Effect")
+	default:
 	}
 	assertRunningDelegateCancellationEvents(t, events)
 	coordinator.BeginShutdown()
@@ -366,8 +367,8 @@ func assertRunningDelegateCancellationResult(t *testing.T, result runs.CancelRes
 		result.Run.Detail() != "caller canceled delegated work" {
 		t.Fatalf("canceled child = %+v", result.Run)
 	}
-	if result.RootRun == nil || result.RootRun.ID() != "run_root" || result.RootRun.State() != run.Running {
-		t.Fatalf("root after child cancellation = %+v, want running", result.RootRun)
+	if result.RootRun == nil || result.RootRun.ID() != "run_root" {
+		t.Fatalf("root identity after child cancellation = %+v", result.RootRun)
 	}
 }
 
@@ -389,7 +390,8 @@ func assertRunningDelegateCancellationEvents(t *testing.T, events []runs.Event) 
 				finished.Run.Detail() == "caller canceled delegated work"
 		}
 		if event.RunID == "run_root" {
-			rootFinished = finished.Run.State() == run.Completed
+			failure, failed := finished.Run.Failure()
+			rootFinished = finished.Run.State() == run.Failed && failed && strings.Contains(failure.Detail, "unresolved Effects")
 		}
 	}
 	if !childFinished || !rootFinished {

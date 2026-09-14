@@ -181,3 +181,20 @@ func (a *interactionAllowance) denial(processID agent.ProcessID) interactionAllo
 	}
 	return a.stop
 }
+
+func (i *interactionSession) acquireModelAllowance(ctx context.Context, processID agent.ProcessID) (*interactionAllowanceTurn, error) {
+	turn, err := i.allowance.acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	usage, err := i.accounting.snapshot()
+	if err != nil {
+		turn.release()
+		return nil, err
+	}
+	if err := i.allowance.admit(processID, usage); err != nil {
+		turn.release()
+		return nil, err
+	}
+	return turn, nil
+}

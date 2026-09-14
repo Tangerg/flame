@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -29,11 +28,10 @@ func (o *observedInteractionModel) Call(
 	ctx context.Context,
 	request *corechat.Request,
 ) (*corechat.Response, error) {
-	invocation, attempt, callID, allowanceTurn, err := o.begin(ctx)
+	invocation, attempt, callID, err := o.begin(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer allowanceTurn.release()
 	defer o.session.accounting.discardPreparedModelContext(invocation)
 	if beginExternalCallErr := attempt.beginExternalCall(); beginExternalCallErr != nil {
 		return nil, beginExternalCallErr
@@ -60,12 +58,11 @@ func (o *observedInteractionModel) Stream(
 	request *corechat.Request,
 ) iter.Seq2[*corechat.ResponseDelta, error] {
 	return func(yield func(*corechat.ResponseDelta, error) bool) {
-		invocation, attempt, callID, allowanceTurn, err := o.begin(ctx)
+		invocation, attempt, callID, err := o.begin(ctx)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
-		defer allowanceTurn.release()
 		defer o.session.accounting.discardPreparedModelContext(invocation)
 		if err := attempt.beginExternalCall(); err != nil {
 			yield(nil, err)
@@ -155,12 +152,11 @@ func (o *observedInteractionModel) begin(
 	invocation interaction.ModelInvocation,
 	attempt *dispatchAttempt,
 	callID string,
-	allowanceTurn *interactionAllowanceTurn,
 	err error,
 ) {
 	invocation, ok := interaction.ModelInvocationFromContext(ctx)
 	if !ok {
-		return interaction.ModelInvocation{}, nil, "", nil, errors.New("agentexec: model call has no Interaction attribution")
+		return interaction.ModelInvocation{}, nil, "", errors.New("agentexec: model call has no Interaction attribution")
 	}
 	preparedInvocation := invocation
 	defer func() {
@@ -174,54 +170,25 @@ func (o *observedInteractionModel) begin(
 	}()
 	attempt, err = dispatchAttemptFrom(ctx, invocation.EffectID())
 	if err != nil {
-		return interaction.ModelInvocation{}, nil, "", nil, err
+		return interaction.ModelInvocation{}, nil, "", err
 	}
 	callIdentity, err := modelInvocationID(invocation)
 	if err != nil {
-		return interaction.ModelInvocation{}, nil, "", nil, err
+		return interaction.ModelInvocation{}, nil, "", err
 	}
 	callID = callIdentity.String()
-	// The turn is held in a local: a failure below returns a nil allowanceTurn
-	// result, and a cleanup that read the named result would release nothing and
-	// wedge the next model call on a finite Run.
-	turn, err := o.acquireAllowance(ctx, invocation.Relation().ProcessID())
-	if err != nil {
-		return interaction.ModelInvocation{}, nil, "", nil, err
-	}
-	defer func() {
-		if err != nil {
-			turn.release()
-		}
-	}()
 	member := o.session.executorMember(invocation.Relation())
 	if err := o.session.commitAppliedInputs(
 		ctx, member, invocation.Relation().ProcessID(), invocation.AppliedSteerSignalIDs(),
 	); err != nil {
-		return interaction.ModelInvocation{}, nil, "", nil, interaction.HostFailure(err)
+		return interaction.ModelInvocation{}, nil, "", interaction.HostFailure(err)
 	}
 	if err := o.session.commitFact(ctx, member, runs.ModelCallStarted{CallID: callID}); err != nil {
-		return interaction.ModelInvocation{}, nil, "", nil, interaction.HostFailure(
+		return interaction.ModelInvocation{}, nil, "", interaction.HostFailure(
 			fmt.Errorf("agentexec: commit model call start: %w", err),
 		)
 	}
-	return invocation, attempt, callID, turn, nil
-}
-
-func (o *observedInteractionModel) acquireAllowance(ctx context.Context, processID agent.ProcessID) (*interactionAllowanceTurn, error) {
-	turn, err := o.session.allowance.acquire(ctx)
-	if err != nil {
-		return nil, err
-	}
-	usage, err := o.session.accounting.snapshot()
-	if err != nil {
-		turn.release()
-		return nil, interaction.HostFailure(err)
-	}
-	if err := o.session.allowance.admit(processID, usage); err != nil {
-		turn.release()
-		return nil, err
-	}
-	return turn, nil
+	return invocation, attempt, callID, nil
 }
 
 func (o *observedInteractionModel) complete(

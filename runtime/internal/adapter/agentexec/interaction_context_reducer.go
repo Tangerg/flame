@@ -50,6 +50,17 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if i == nil || i.session == nil || request == nil || !invocation.Valid() {
 		return nil, errors.New("agentexec: model-context reduction requires an attributed Interaction request")
 	}
+	// Scope settles a rejected preparation definitively. Admission inside Model.Call
+	// would instead leave an unknown Effect even though no provider was called.
+	attempt, err := dispatchAttemptFrom(ctx, invocation.EffectID())
+	if err != nil {
+		return nil, err
+	}
+	turn, err := i.session.acquireModelAllowance(ctx, invocation.Relation().ProcessID())
+	if err != nil {
+		return nil, err
+	}
+	attempt.modelAllowance = turn
 	// Scope can already include completed Delegate results in this request.
 	// Commit their product projection before comparing against durable history.
 	if _, err := i.session.reconcileCompletedDelegateChildren(ctx); err != nil {

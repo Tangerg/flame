@@ -15,9 +15,11 @@ type dispatchAttemptContextKey struct{}
 // decorators distinguish a definite failure before an external call from a
 // projection failure after any call in the Effect has crossed that boundary.
 type dispatchAttempt struct {
-	effectID agent.EffectID
-	failure  context.Context
-	fail     context.CancelCauseFunc
+	// The Effect owns the turn even if Scope rejects the prepared request before calling the model.
+	modelAllowance *interactionAllowanceTurn
+	effectID       agent.EffectID
+	failure        context.Context
+	fail           context.CancelCauseFunc
 
 	mu                      sync.Mutex
 	externalBoundaryCrossed bool
@@ -86,6 +88,9 @@ func (d *dispatchAttempt) projectionContext(parent context.Context) (context.Con
 }
 
 func (d *dispatchAttempt) close() {
+	if d.modelAllowance != nil {
+		d.modelAllowance.release()
+	}
 	if d.fail != nil {
 		d.fail(context.Canceled)
 	}

@@ -104,3 +104,9 @@ Background commands remain addressable after they exit until `read_shell_output`
 ## Knowledge document paths
 
 Knowledge reads and accepted writes return the Runtime-resolved absolute `path` alongside scope, content, and revision. Desktop displays that path and preserves it when projecting a saved document into its query cache. Clients must not infer user storage or project roots from a scope label. Writes still target scope and workspace with revision checks; the returned path is descriptive, not a file-write argument.
+
+## Scope execution settlement
+
+Runtime uses Scope v0.22.0. Model allowance admission runs during request preparation, before a provider call, and its serialized turn belongs to the entire Effect attempt. A rejected admission therefore has a definite failed settlement and retains the Run's `maxSteps` or `maxBudget` outcome. The turn is released even if later request preparation fails.
+
+Canceling a delegated Run still cancels that child. If its in-flight model attempt returns no definite result, Scope retains the unknown Effect and fails the parent instead of delivering a normal delegate result. Runtime preserves that failure diagnostic; it does not manufacture a settlement or retry the attempt. This intentionally replaces the earlier behavior that allowed the parent to continue despite the child's unresolved Effect. Cancellation before external dispatch and terminal children with definite results remain distinct cases.
