@@ -88,7 +88,7 @@ func trimPart(p chat.Part) (chat.Part, bool) {
 		clone.ToolCall.Arguments = fmt.Sprintf(`{"_trimmed":"%d bytes elided on compaction"}`, len(p.ToolCall.Arguments))
 		return clone, true
 	case p.Kind == chat.PartToolResult && p.ToolResult != nil:
-		output, trimmed := trimToolOutput(p.ToolResult.Output, ladderResultCap)
+		output, trimmed := trimToolOutput(p.ToolResult.Output)
 		if !trimmed {
 			return p, false
 		}

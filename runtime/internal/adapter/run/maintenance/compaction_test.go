@@ -262,6 +262,20 @@ func TestTrimForBudgetPreviewsOldNotRecentAndDoesNotMutate(t *testing.T) {
 	if msgs[0].Parts[0].ToolCall.Arguments != bigArgs || textToolOutput(t, msgs[1].Parts[0].ToolResult.Output) != bigResult {
 		t.Fatal("trimForBudget mutated its input's shared parts")
 	}
+	if _, changed := trimForBudgetBefore(trimmed, 2); changed {
+		t.Fatal("already bounded tool results reported another compaction trim")
+	}
+}
+
+func TestTrimForBudgetPreservesTextAtBodyLimit(t *testing.T) {
+	body := strings.Repeat(`"`, ladderResultCap)
+	message := chat.NewToolMessage(chat.ToolResult{
+		ID: "quoted", Name: "shell", Output: chat.NewTextToolOutput(body),
+	})
+	trimmed, changed := trimForBudgetBefore([]chat.Message{message}, 1)
+	if changed || textToolOutput(t, trimmed[0].Parts[0].ToolResult.Output) != body {
+		t.Fatal("JSON escaping or envelope bytes triggered a text-body trim")
+	}
 }
 
 type textStubModel struct {

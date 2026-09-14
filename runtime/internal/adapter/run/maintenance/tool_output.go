@@ -42,13 +42,16 @@ func encodedToolOutputBytes(output chat.ToolOutput) int {
 	return len(encoded)
 }
 
-func trimToolOutput(output chat.ToolOutput, limit int) (chat.ToolOutput, bool) {
-	encodedBytes := encodedToolOutputBytes(output)
-	if encodedBytes <= limit {
-		return output, false
-	}
+func trimToolOutput(output chat.ToolOutput) (chat.ToolOutput, bool) {
 	if text, textual := output.Text(); textual {
+		if len(text) <= ladderResultCap {
+			return output, false
+		}
 		return chat.NewTextToolOutput(clipResult(text)), true
+	}
+	encodedBytes := encodedToolOutputBytes(output)
+	if encodedBytes <= ladderResultCap {
+		return output, false
 	}
 	return chat.NewTextToolOutput(fmt.Sprintf(
 		"[%d bytes of media tool output trimmed on compaction; not retrievable]",
