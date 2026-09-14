@@ -185,14 +185,16 @@ export const timelineStyles = stylex.create({
   runHeader: {
     display: "flex",
     minHeight: space.s10,
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: space.s2,
     borderRadius: radius.card,
     backgroundColor: surface.sunken,
+    paddingBlock: space.s2,
     paddingLeft: "var(--density-column-gutter-wide)",
     paddingRight:
       "calc(var(--density-column-gutter-wide) - (var(--control-height-md) - var(--icon-md)) / 2)",
   },
+  runHeaderLine: { display: "flex", height: "1lh", flexShrink: 0, alignItems: "center" },
   runDetail: {
     marginTop: space.s0_5,
     display: "flex",

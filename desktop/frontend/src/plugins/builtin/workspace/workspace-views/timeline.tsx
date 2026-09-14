@@ -163,12 +163,14 @@ function TimelineRunHeader({
   return (
     <>
       <div {...stylex.props(ts.runHeader)}>
-        <Icon
-          name={child ? "bot" : "branch"}
-          size="sm"
-          className={stylex.props(vocab.hold, vocab.muted).className}
-        />
-        <div {...stylex.props(vocab.fill, vs.rowPad)}>
+        <span {...stylex.props(ts.runHeaderLine, typeStep.uiSm)}>
+          <Icon
+            name={child ? "bot" : "branch"}
+            size="sm"
+            className={stylex.props(vocab.muted).className}
+          />
+        </span>
+        <div {...stylex.props(vocab.fill)}>
           <div {...stylex.props(vs.titleLine)}>
             <span {...stylex.props(vocab.hold, vs.title, typeStep.uiSm)}>
               {t(child ? "timeline.delegatedRun" : "timeline.rootRun")}
@@ -199,38 +201,40 @@ function TimelineRunHeader({
             </div>
           )}
         </div>
-        <IconButton
-          icon="bot"
-          quiet
-          title={t("timeline.modelCalls")}
-          aria-expanded={showModels}
-          onClick={() => setShowModels(!showModels)}
-        />
-        {spawnedByItemId && (
+        <span {...stylex.props(ts.runHeaderLine, typeStep.uiSm)}>
           <IconButton
-            icon="chat"
+            icon="bot"
             quiet
-            title={t("timeline.locateParent")}
-            onClick={() => {
-              if (parentRunId && parentRunId !== run.rootRunId) {
-                openWorkspaceSubagentRun(parentRunId);
-              } else {
-                locateWorkspaceTool(spawnedByItemId);
-              }
-            }}
+            title={t("timeline.modelCalls")}
+            aria-expanded={showModels}
+            onClick={() => setShowModels(!showModels)}
           />
-        )}
-        {status.cancelable && (
-          <IconButton
-            icon="stop"
-            quiet
-            disabled={!runtimeAvailable}
-            title={t("agent.runTree.action.cancel")}
-            onClick={() => {
-              cancelSessionRun({ sessionId: run.sessionId, runId: run.id });
-            }}
-          />
-        )}
+          {spawnedByItemId && (
+            <IconButton
+              icon="chat"
+              quiet
+              title={t("timeline.locateParent")}
+              onClick={() => {
+                if (parentRunId && parentRunId !== run.rootRunId) {
+                  openWorkspaceSubagentRun(parentRunId);
+                } else {
+                  locateWorkspaceTool(spawnedByItemId);
+                }
+              }}
+            />
+          )}
+          {status.cancelable && (
+            <IconButton
+              icon="stop"
+              quiet
+              disabled={!runtimeAvailable}
+              title={t("agent.runTree.action.cancel")}
+              onClick={() => {
+                cancelSessionRun({ sessionId: run.sessionId, runId: run.id });
+              }}
+            />
+          )}
+        </span>
       </div>
       {showModels && <ModelInvocationHistory key={run.id} run={run} />}
     </>

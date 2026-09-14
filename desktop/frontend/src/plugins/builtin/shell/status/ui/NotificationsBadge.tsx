@@ -70,7 +70,7 @@ export function NotificationsBadge() {
           className={stylex.props(styles.header).className}
           trailing={
             <IconButton
-              icon="x"
+              icon="trash"
               iconSize="sm"
               title={t("notifications.clearAll")}
               disabled={log.length === 0}

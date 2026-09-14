@@ -48,6 +48,7 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
       <span {...stylex.props(fsx.legend, typeStep.uiMd)}>{label}</span>
       <Checkbox
         checked={customEnabled}
+        disabled={fonts.length === 0}
         onCheckedChange={(c) => onChange(c ? (fonts[0] ?? "") : "")}
         label={t("font.useCustom")}
       />
