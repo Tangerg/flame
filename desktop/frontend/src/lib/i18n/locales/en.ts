@@ -666,6 +666,7 @@ export const en: Record<string, string> = {
   "timeline.empty.title": "No activity yet",
   "timeline.empty.sub":
     "As the agent runs, every tool call, approval, and run boundary lands here.",
+  "timeline.firstOutput": "First output",
   "timeline.modelCalls": "Model calls",
   "timeline.refreshCalls": "Refresh model calls",
   "timeline.noModelCalls": "No retained model call records",

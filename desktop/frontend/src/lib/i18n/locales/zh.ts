@@ -629,6 +629,7 @@ export const zh: Record<string, string> = {
   "timeline.jumpToChat": "转到聊天",
   "timeline.empty.title": "暂无活动",
   "timeline.empty.sub": "agent 运行时，每次工具调用、审批和运行边界都会显示在这里。",
+  "timeline.firstOutput": "首次输出",
   "timeline.modelCalls": "模型调用",
   "timeline.refreshCalls": "刷新模型调用",
   "timeline.noModelCalls": "没有保留的模型调用记录",

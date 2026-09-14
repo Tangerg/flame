@@ -64,12 +64,13 @@ func (m ModelInvocationState) String() string {
 // compare the exact attempt instead of updating whichever row happens to share
 // CallID.
 type ModelInvocationCommit struct {
-	Usage      *accounting.TokenUsage
-	CallID     string
-	SegmentID  string
-	State      ModelInvocationState
-	StartedAt  time.Time
-	FinishedAt time.Time
+	FirstOutputLatencyMillis *int64
+	Usage                    *accounting.TokenUsage
+	CallID                   string
+	SegmentID                string
+	State                    ModelInvocationState
+	StartedAt                time.Time
+	FinishedAt               time.Time
 }
 
 // ToolInvocationState records whether one model-requested Tool call has only
@@ -141,6 +142,11 @@ func (t ToolInvocationCommit) validate() error {
 }
 
 func (m ModelInvocationCommit) validate() error {
+	if m.FirstOutputLatencyMillis != nil {
+		if *m.FirstOutputLatencyMillis < 0 || (m.State != ModelInvocationCompleted && m.State != ModelInvocationFailed) {
+			return errors.New("runs: first output latency requires a nonnegative measurement and a definite model outcome")
+		}
+	}
 	if m.Usage != nil {
 		if m.State != ModelInvocationCompleted {
 			return errors.New("runs: only completed model invocations carry usage")
@@ -244,6 +250,9 @@ func (e EventCommit) clone() EventCommit {
 	e.ConversationMessages = cloneCommitMessages(e.ConversationMessages)
 	e.ModelInvocations = slices.Clone(e.ModelInvocations)
 	for index := range e.ModelInvocations {
+		if latency := e.ModelInvocations[index].FirstOutputLatencyMillis; latency != nil {
+			e.ModelInvocations[index].FirstOutputLatencyMillis = new(*latency)
+		}
 		if usage := e.ModelInvocations[index].Usage; usage != nil {
 			copy := *usage
 			e.ModelInvocations[index].Usage = &copy

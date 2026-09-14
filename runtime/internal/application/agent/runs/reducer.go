@@ -439,6 +439,7 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: completed.CallID, SegmentID: r.cfg.SegmentID,
 			State: ModelInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt, Usage: completed.ReportedUsage,
+			FirstOutputLatencyMillis: completed.FirstOutputLatencyMillis,
 		}},
 		progress: &ProgressCommit{
 			SegmentID: r.cfg.SegmentID, Metrics: metrics,
@@ -469,6 +470,7 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: failed.CallID, SegmentID: r.cfg.SegmentID,
 			State: ModelInvocationFailed, StartedAt: startedAt, FinishedAt: finishedAt,
+			FirstOutputLatencyMillis: failed.FirstOutputLatencyMillis,
 		}},
 	}, nil
 }

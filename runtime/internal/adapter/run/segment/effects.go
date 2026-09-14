@@ -108,12 +108,14 @@ type ModelInvocationJournal interface {
 		ctx context.Context,
 		sessionID, runID, segmentID, callID string,
 		startedAt, finishedAt time.Time,
+		firstOutputLatencyMillis *int64,
 		usage *accounting.TokenUsage,
 	) error
 	FailModelInvocation(
 		ctx context.Context,
 		sessionID, runID, segmentID, callID string,
 		startedAt, finishedAt time.Time,
+		firstOutputLatencyMillis *int64,
 	) error
 	MarkModelInvocationUnknown(
 		ctx context.Context,

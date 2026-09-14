@@ -1054,11 +1054,11 @@ func (inertRuntimeStores) StartModelInvocation(context.Context, string, string, 
 	return nil
 }
 
-func (inertRuntimeStores) CompleteModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *accounting.TokenUsage) error {
+func (inertRuntimeStores) CompleteModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *int64, *accounting.TokenUsage) error {
 	return nil
 }
 
-func (inertRuntimeStores) FailModelInvocation(context.Context, string, string, string, string, time.Time, time.Time) error {
+func (inertRuntimeStores) FailModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *int64) error {
 	return nil
 }
 

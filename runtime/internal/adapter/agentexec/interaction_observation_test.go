@@ -61,6 +61,9 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 	if len(models) != 2 {
 		t.Fatalf("model completions = %#v", models)
 	}
+	if models[0].FirstOutputLatencyMillis != nil || models[1].FirstOutputLatencyMillis != nil {
+		t.Fatal("nonstreaming call invented first output latency")
+	}
 	if models[0].ReportedUsage == nil || models[1].ReportedUsage == nil ||
 		models[0].ReportedUsage.PromptTokens != 7 || models[1].ReportedUsage.PromptTokens != 11 ||
 		models[1].ReportedUsage.CompletionTokens != 3 {
@@ -587,6 +590,7 @@ func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
 	}
 	completed := payloadsOf[runs.ModelCallCompleted](events)
 	if len(completed) != 1 || completed[0].Message.Text() != strings.Repeat("x", chunks) ||
+		completed[0].FirstOutputLatencyMillis == nil || *completed[0].FirstOutputLatencyMillis < 0 ||
 		completed[0].TokenUsage.PromptTokens != 5 || completed[0].TokenUsage.CompletionTokens != 2 {
 		t.Fatalf("authoritative model completion = %#v", completed)
 	}

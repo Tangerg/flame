@@ -5343,6 +5343,9 @@
         "callId": {
           "type": "string"
         },
+        "firstOutputLatencyMillis": {
+          "type": "integer"
+        },
         "runId": {
           "type": "string"
         },

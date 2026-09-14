@@ -494,6 +494,7 @@ export const ja: Record<string, string> = {
   "timeline.empty.title": "まだアクティビティがありません",
   "timeline.empty.sub":
     "agent が実行されると、すべてのツール呼び出し、承認、実行境界がここに表示されます。",
+  "timeline.firstOutput": "最初の出力",
   "timeline.modelCalls": "モデル呼び出し",
   "timeline.refreshCalls": "モデル呼び出しを更新",
   "timeline.noModelCalls": "保存されたモデル呼び出し記録はありません",

@@ -24,13 +24,14 @@ type ModelInvocationUsage struct {
 // not establish its result; SettledAt then records that observation, not a
 // provider completion time. Content belongs to Items. Absent usage means it was not recorded, not zero consumption.
 type ModelInvocation struct {
-	Usage     *ModelInvocationUsage `json:"usage,omitempty"`
-	CallID    string                `json:"callId"`
-	RunID     string                `json:"runId"`
-	SegmentID string                `json:"segmentId"`
-	State     ModelInvocationState  `json:"state"`
-	StartedAt time.Time             `json:"startedAt"`
-	SettledAt time.Time             `json:"settledAt,omitzero"`
+	FirstOutputLatencyMillis *int64                `json:"firstOutputLatencyMillis,omitempty"`
+	Usage                    *ModelInvocationUsage `json:"usage,omitempty"`
+	CallID                   string                `json:"callId"`
+	RunID                    string                `json:"runId"`
+	SegmentID                string                `json:"segmentId"`
+	State                    ModelInvocationState  `json:"state"`
+	StartedAt                time.Time             `json:"startedAt"`
+	SettledAt                time.Time             `json:"settledAt,omitzero"`
 }
 
 type ListModelInvocationsRequest struct {

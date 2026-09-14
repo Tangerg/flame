@@ -77,6 +77,9 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 	case ModelCallStarted:
 		return value, true
 	case ModelCallCompleted:
+		if value.FirstOutputLatencyMillis != nil {
+			value.FirstOutputLatencyMillis = new(*value.FirstOutputLatencyMillis)
+		}
 		if value.ReportedUsage != nil {
 			usage := *value.ReportedUsage
 			value.ReportedUsage = &usage
@@ -85,6 +88,9 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 		value.ByModel = slices.Clone(value.ByModel)
 		return value, true
 	case ModelCallFailed:
+		if value.FirstOutputLatencyMillis != nil {
+			value.FirstOutputLatencyMillis = new(*value.FirstOutputLatencyMillis)
+		}
 		return value, true
 	case ToolCallStarted:
 		return value, true

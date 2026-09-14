@@ -513,6 +513,7 @@ export const de: Record<string, string> = {
   "timeline.empty.title": "Noch keine Aktivität",
   "timeline.empty.sub":
     "Wenn der Agent läuft, erscheinen hier alle Tool-Aufrufe, Freigaben und Lauf-Grenzen.",
+  "timeline.firstOutput": "Erste Ausgabe",
   "timeline.modelCalls": "Modellaufrufe",
   "timeline.refreshCalls": "Modellaufrufe aktualisieren",
   "timeline.noModelCalls": "Keine gespeicherten Modellaufrufe",

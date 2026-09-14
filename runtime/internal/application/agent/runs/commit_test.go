@@ -505,3 +505,33 @@ func TestModelInvocationUsageBelongsOnlyToCompletedCallsAndIsIsolated(t *testing
 		t.Fatal("accepted negative call usage")
 	}
 }
+
+func TestFirstOutputLatencyIsOptionalOwnedMeasurement(t *testing.T) {
+	latency := int64(0)
+	invocation := ModelInvocationCommit{CallID: "call_latency", SegmentID: "segment_1", State: ModelInvocationCompleted, StartedAt: time.Unix(1, 0), FinishedAt: time.Unix(2, 0), FirstOutputLatencyMillis: &latency}
+	if err := invocation.validate(); err != nil {
+		t.Fatal(err)
+	}
+	cloned := (EventCommit{ModelInvocations: []ModelInvocationCommit{invocation}}).clone()
+	latency = 99
+	if *cloned.ModelInvocations[0].FirstOutputLatencyMillis != 0 {
+		t.Fatal("latency aliases its producer")
+	}
+	latency = -1
+	if err := invocation.validate(); err == nil {
+		t.Fatal("negative latency accepted")
+	}
+	latency = 0
+	invocation.State = ModelInvocationFailed
+	if err := invocation.validate(); err != nil {
+		t.Fatal(err)
+	}
+	invocation.State = ModelInvocationUnknown
+	if err := invocation.validate(); err == nil {
+		t.Fatal("recovery invented first output latency")
+	}
+	invocation.FirstOutputLatencyMillis = nil
+	if err := invocation.validate(); err != nil {
+		t.Fatal(err)
+	}
+}

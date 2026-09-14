@@ -521,6 +521,7 @@ export const es: Record<string, string> = {
   "timeline.empty.title": "Sin actividad aún",
   "timeline.empty.sub":
     "Cuando el agent se ejecuta, cada llamada a herramienta, aprobación y límite de ejecución aparece aquí.",
+  "timeline.firstOutput": "Primera salida",
   "timeline.modelCalls": "Llamadas al modelo",
   "timeline.refreshCalls": "Actualizar llamadas al modelo",
   "timeline.noModelCalls": "No hay registros de llamadas conservados",

@@ -524,6 +524,7 @@ export const fr: Record<string, string> = {
   "timeline.empty.title": "Aucune activité pour l'instant",
   "timeline.empty.sub":
     "Lorsque l'agent s'exécute, chaque appel d'outil, approbation et limite d'exécution apparaît ici.",
+  "timeline.firstOutput": "Première sortie",
   "timeline.modelCalls": "Appels au modèle",
   "timeline.refreshCalls": "Actualiser les appels au modèle",
   "timeline.noModelCalls": "Aucun appel au modèle conservé",

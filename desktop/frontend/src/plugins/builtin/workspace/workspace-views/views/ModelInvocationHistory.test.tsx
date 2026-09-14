@@ -22,6 +22,7 @@ describe("Model invocation history", () => {
               },
               {
                 callId: "call_done",
+                firstOutputLatencyMillis: 0,
                 usage: {
                   inputTokens: 123,
                   outputTokens: 0,
@@ -47,6 +48,7 @@ describe("Model invocation history", () => {
     expect(screen.getByText("Outcome unknown")).toBeTruthy();
     expect(screen.getByText("—")).toBeTruthy();
     expect(screen.getByText("2s")).toBeTruthy();
+    expect(screen.getByText("First output 0s")).toBeTruthy();
     expect(screen.getByText("↑123")).toBeTruthy();
     expect(screen.getByText("↓0")).toBeTruthy();
     expect(screen.getByText("↑—")).toBeTruthy();

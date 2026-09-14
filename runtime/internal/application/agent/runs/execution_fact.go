@@ -173,7 +173,8 @@ type ModelCallStarted struct {
 // Tool invocation has its own pre-call commit boundary.
 type ModelCallCompleted struct {
 	executionFactBase
-	CallID string
+	CallID                   string
+	FirstOutputLatencyMillis *int64
 	// ReportedUsage is per-call and absent when unavailable. TokenUsage and
 	// ByModel below remain cumulative for this executing process.
 	ReportedUsage *accounting.TokenUsage
@@ -191,7 +192,8 @@ type ModelCallCompleted struct {
 // the invocation open and reconcile the Effect as unknown.
 type ModelCallFailed struct {
 	executionFactBase
-	CallID string
+	FirstOutputLatencyMillis *int64
+	CallID                   string
 }
 
 type ToolCallStarted struct {

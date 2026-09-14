@@ -10,6 +10,7 @@ export interface ModelInvocationQuery {
 }
 
 export interface ModelInvocation {
+  firstOutputLatencyMillis?: number;
   usage?: {
     inputTokens: number;
     outputTokens: number;

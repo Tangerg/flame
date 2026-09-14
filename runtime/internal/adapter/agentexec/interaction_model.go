@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
@@ -39,15 +40,15 @@ func (o *observedInteractionModel) Call(
 	}
 	response, err := o.model.Call(ctx, request)
 	if err != nil {
-		return response, o.finishFailedCall(ctx, invocation, attempt, callID, err)
+		return response, o.finishFailedCall(ctx, invocation, attempt, callID, nil, err)
 	}
 	if response == nil {
-		return nil, o.finishFailedCall(ctx, invocation, attempt, callID, errors.New("agentexec: model returned no response"))
+		return nil, o.finishFailedCall(ctx, invocation, attempt, callID, nil, errors.New("agentexec: model returned no response"))
 	}
 	if err := response.Validate(); err != nil {
-		return response, o.finishFailedCall(ctx, invocation, attempt, callID, err)
+		return response, o.finishFailedCall(ctx, invocation, attempt, callID, nil, err)
 	}
-	if err := o.complete(ctx, invocation, callID, response); err != nil {
+	if err := o.complete(ctx, invocation, callID, response, nil); err != nil {
 		attempt.recordProjectionFailure(err)
 		return nil, err
 	}
@@ -71,17 +72,23 @@ func (o *observedInteractionModel) Stream(
 			return
 		}
 		var accumulated corechat.ResponseAccumulator
+		var firstOutputLatencyMillis *int64
+		dispatchedAt := time.Now()
 		for chunk, streamErr := range o.streamer.Stream(ctx, request) {
 			if streamErr != nil {
-				yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, streamErr))
+				yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, firstOutputLatencyMillis, streamErr))
 				return
 			}
+			receivedAt := time.Now()
 			if err := accumulated.Add(chunk); err != nil {
-				yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, err))
+				yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, firstOutputLatencyMillis, err))
 				return
+			}
+			if firstOutputLatencyMillis == nil && hasModelOutput(chunk) {
+				firstOutputLatencyMillis = new(receivedAt.Sub(dispatchedAt).Milliseconds())
 			}
 			if !yield(chunk, nil) {
-				_ = o.finishFailedCall(ctx, invocation, attempt, callID, nil)
+				_ = o.finishFailedCall(ctx, invocation, attempt, callID, firstOutputLatencyMillis, nil)
 				return
 			}
 		}
@@ -92,15 +99,16 @@ func (o *observedInteractionModel) Stream(
 				invocation,
 				attempt,
 				callID,
+				firstOutputLatencyMillis,
 				responseErr,
 			))
 			return
 		}
 		if err := response.Validate(); err != nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, err))
+			yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, firstOutputLatencyMillis, err))
 			return
 		}
-		if err := o.complete(ctx, invocation, callID, response); err != nil {
+		if err := o.complete(ctx, invocation, callID, response, firstOutputLatencyMillis); err != nil {
 			attempt.recordProjectionFailure(err)
 			yield(nil, err)
 		}
@@ -112,9 +120,10 @@ func (o *observedInteractionModel) finishFailedCall(
 	invocation interaction.ModelInvocation,
 	attempt *dispatchAttempt,
 	callID string,
+	firstOutputLatencyMillis *int64,
 	cause error,
 ) error {
-	projectionErr := o.fail(ctx, invocation, callID)
+	projectionErr := o.fail(ctx, invocation, callID, firstOutputLatencyMillis)
 	if projectionErr == nil {
 		if cause != nil {
 			o.session.modelFailures.record(invocation.Relation().ProcessID(), cause)
@@ -129,13 +138,14 @@ func (o *observedInteractionModel) fail(
 	ctx context.Context,
 	invocation interaction.ModelInvocation,
 	callID string,
+	firstOutputLatencyMillis *int64,
 ) error {
 	projectionCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
 	defer cancel()
 	return o.session.commitFact(
 		projectionCtx,
 		o.session.executorMember(invocation.Relation()),
-		runs.ModelCallFailed{CallID: callID},
+		runs.ModelCallFailed{CallID: callID, FirstOutputLatencyMillis: firstOutputLatencyMillis},
 	)
 }
 
@@ -219,6 +229,7 @@ func (o *observedInteractionModel) complete(
 	invocation interaction.ModelInvocation,
 	callID string,
 	response *corechat.Response,
+	firstOutputLatencyMillis *int64,
 ) error {
 	modelOutput := response.Output
 	if modelOutput == nil || modelOutput.Message == nil {
@@ -234,6 +245,7 @@ func (o *observedInteractionModel) complete(
 	if err != nil {
 		return err
 	}
+	fact.FirstOutputLatencyMillis = firstOutputLatencyMillis
 	projectionCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
 	defer cancel()
 	if err := o.session.commitFact(
@@ -305,4 +317,20 @@ func accountingTokenUsage(usage *corechat.Usage) accounting.TokenUsage {
 		result.CacheWriteTokens = *usage.CacheWriteInputTokens
 	}
 	return result
+}
+
+// Called only after accumulator validation. Opaque reasoning state and citation
+// attachments are replay/annotation data, not the first generated output.
+func hasModelOutput(delta *corechat.ResponseDelta) bool {
+	for _, part := range delta.Parts {
+		switch part.Kind {
+		case corechat.PartDeltaText, corechat.PartDeltaRefusal, corechat.PartDeltaMedia, corechat.PartDeltaToolCall:
+			return true
+		case corechat.PartDeltaReasoning:
+			if part.Text != "" {
+				return true
+			}
+		}
+	}
+	return false
 }

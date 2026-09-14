@@ -2051,6 +2051,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, []),
   ModelInvocation: object({
     callId: text(),
+    firstOutputLatencyMillis: integer(),
     runId: text(),
     segmentId: text(),
     settledAt: text(),

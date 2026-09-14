@@ -113,11 +113,12 @@ func (m *ModelInvocationStore) CompleteModelInvocation(
 	ctx context.Context,
 	sessionID, runID, segmentID, callID string,
 	startedAt, finishedAt time.Time,
+	firstOutputLatencyMillis *int64,
 	usage *accounting.TokenUsage,
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationCompleted.databaseValue(), usage,
+		startedAt, finishedAt, modelInvocationCompleted.databaseValue(), firstOutputLatencyMillis, usage,
 	)
 }
 
@@ -125,10 +126,11 @@ func (m *ModelInvocationStore) FailModelInvocation(
 	ctx context.Context,
 	sessionID, runID, segmentID, callID string,
 	startedAt, finishedAt time.Time,
+	firstOutputLatencyMillis *int64,
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationFailed.databaseValue(), nil,
+		startedAt, finishedAt, modelInvocationFailed.databaseValue(), firstOutputLatencyMillis, nil,
 	)
 }
 
@@ -139,7 +141,7 @@ func (m *ModelInvocationStore) MarkModelInvocationUnknown(
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
-		startedAt, finishedAt, modelInvocationUnknown.databaseValue(), nil,
+		startedAt, finishedAt, modelInvocationUnknown.databaseValue(), nil, nil,
 	)
 }
 
@@ -148,6 +150,7 @@ func (m *ModelInvocationStore) finish(
 	sessionID, runID, segmentID, callID string,
 	startedAt, finishedAt time.Time,
 	state string,
+	firstOutputLatencyMillis *int64,
 	usage *accounting.TokenUsage,
 ) error {
 	if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
@@ -159,17 +162,21 @@ func (m *ModelInvocationStore) finish(
 	if finishedAt.Before(startedAt) {
 		return errors.New("sqlite: model invocation finish time precedes start time")
 	}
+	if firstOutputLatencyMillis != nil && (*firstOutputLatencyMillis < 0 || (state != modelInvocationCompleted.databaseValue() && state != modelInvocationFailed.databaseValue())) {
+		return errors.New("sqlite: invalid first output latency measurement")
+	}
 	encodedUsage, err := encodeModelInvocationUsage(usage)
 	if err != nil {
 		return err
 	}
 	result, err := conn(ctx, m.db).ExecContext(ctx,
 		`UPDATE model_invocations
-		    SET state = ?, finished_at = ?, usage = ?
+		    SET state = ?, finished_at = ?, first_output_latency_millis = ?, usage = ?
 		  WHERE call_id = ? AND session_id = ? AND run_id = ? AND segment_id = ?
 		    AND state = ? AND started_at = ?`,
 		state,
 		finishedAt.UTC().UnixNano(),
+		firstOutputLatencyMillis,
 		encodedUsage,
 		callID,
 		sessionID,
@@ -206,18 +213,19 @@ func validateModelInvocationIdentity(sessionID, runID, segmentID, callID string)
 
 // ModelInvocationRecord is a stored attempt, without semantic response content.
 type ModelInvocationRecord struct {
-	Usage      *accounting.TokenUsage
-	CallID     string
-	SegmentID  string
-	State      string
-	StartedAt  time.Time
-	FinishedAt time.Time
+	FirstOutputLatencyMillis *int64
+	Usage                    *accounting.TokenUsage
+	CallID                   string
+	SegmentID                string
+	State                    string
+	StartedAt                time.Time
+	FinishedAt               time.Time
 }
 
 // PageModelInvocations seeks newest-first within one Run. State updates do not
 // move an attempt between pages because its start identity is immutable.
 func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID string, beforeStartedAt int64, beforeCallID string, limit int) ([]ModelInvocationRecord, error) {
-	query := `SELECT call_id, segment_id, state, started_at, finished_at, usage FROM model_invocations WHERE run_id = ?`
+	query := `SELECT call_id, segment_id, state, started_at, finished_at, usage, first_output_latency_millis FROM model_invocations WHERE run_id = ?`
 	args := []any{runID}
 	if beforeCallID != "" {
 		query += ` AND (started_at, call_id) < (?, ?)`
@@ -235,8 +243,12 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID s
 		var record ModelInvocationRecord
 		var startedAt, finishedAt int64
 		var usage sql.NullString
-		if err := rows.Scan(&record.CallID, &record.SegmentID, &record.State, &startedAt, &finishedAt, &usage); err != nil {
+		var latency sql.NullInt64
+		if err := rows.Scan(&record.CallID, &record.SegmentID, &record.State, &startedAt, &finishedAt, &usage, &latency); err != nil {
 			return nil, fmt.Errorf("sqlite: scan model invocation: %w", err)
+		}
+		if latency.Valid {
+			record.FirstOutputLatencyMillis = new(latency.Int64)
 		}
 		if usage.Valid {
 			record.Usage, err = decodeModelInvocationUsage(usage.String)

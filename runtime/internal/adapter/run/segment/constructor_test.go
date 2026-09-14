@@ -162,11 +162,11 @@ func (inertModelInvocations) StartModelInvocation(context.Context, string, strin
 	return nil
 }
 
-func (inertModelInvocations) CompleteModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *accounting.TokenUsage) error {
+func (inertModelInvocations) CompleteModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *int64, *accounting.TokenUsage) error {
 	return nil
 }
 
-func (inertModelInvocations) FailModelInvocation(context.Context, string, string, string, string, time.Time, time.Time) error {
+func (inertModelInvocations) FailModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *int64) error {
 	return nil
 }
 

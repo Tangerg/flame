@@ -854,6 +854,7 @@ export interface ModelCapabilities {
 
 export interface ModelInvocation {
   callId: string;
+  firstOutputLatencyMillis?: number;
   runId: string;
   segmentId: string;
   settledAt?: string;

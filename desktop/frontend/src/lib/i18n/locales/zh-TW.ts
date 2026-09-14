@@ -493,6 +493,7 @@ export const zhTW: Record<string, string> = {
   "timeline.jumpToChat": "前往聊天",
   "timeline.empty.title": "尚無活動",
   "timeline.empty.sub": "agent 執行時，每次工具呼叫、核准和執行邊界都會顯示在這裡。",
+  "timeline.firstOutput": "首次輸出",
   "timeline.modelCalls": "模型呼叫",
   "timeline.refreshCalls": "重新整理模型呼叫",
   "timeline.noModelCalls": "沒有保留的模型呼叫記錄",

@@ -5680,6 +5680,11 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "FirstOutputLatencyMillis",
+              "type": "*int64",
+              "tag": "json:\"firstOutputLatencyMillis,omitempty\""
+            },
+            {
               "name": "Usage",
               "type": "*ModelInvocationUsage",
               "tag": "json:\"usage,omitempty\""

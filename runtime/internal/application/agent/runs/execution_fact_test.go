@@ -268,3 +268,37 @@ func TestExecutorEventValidateRequiresPayload(t *testing.T) {
 		t.Fatalf("Validate() error = %v, want missing-payload error", err)
 	}
 }
+
+func TestFirstOutputLatencyFactDoesNotAliasProducerOrConsumer(t *testing.T) {
+	latency := int64(0)
+	for _, fact := range []ExecutionFact{
+		ModelCallCompleted{CallID: "call_latency", FirstOutputLatencyMillis: &latency},
+		ModelCallFailed{CallID: "call_latency", FirstOutputLatencyMillis: &latency},
+	} {
+		latency = 0
+		commit, _, err := NewExecutionFactCommit(fact)
+		if err != nil {
+			t.Fatal(err)
+		}
+		latency = 99
+		read := func() *int64 {
+			switch value := commit.Fact().(type) {
+			case ModelCallCompleted:
+				return value.FirstOutputLatencyMillis
+			case ModelCallFailed:
+				return value.FirstOutputLatencyMillis
+			default:
+				t.Fatal("unexpected fact")
+				return nil
+			}
+		}
+		borrowed := read()
+		if borrowed == nil || *borrowed != 0 {
+			t.Fatal("latency aliases producer")
+		}
+		*borrowed = 12
+		if *read() != 0 {
+			t.Fatal("latency aliases consumer")
+		}
+	}
+}

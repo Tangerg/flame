@@ -58,6 +58,11 @@ export function ModelInvocationHistory({ run }: { run: AgentRunView }) {
                   <span title={call.usage?.outputTokens.toString()}>
                     ↓{call.usage ? fmtTokens(call.usage.outputTokens) : "—"}
                   </span>
+                  {call.firstOutputLatencyMillis !== undefined && (
+                    <span>
+                      {t("timeline.firstOutput")} {fmtDuration(call.firstOutputLatencyMillis)}
+                    </span>
+                  )}
                   {call.usage && call.usage.cacheReadTokens > 0 && (
                     <span>
                       {t("usage.cache")} {fmtTokens(call.usage.cacheReadTokens)}

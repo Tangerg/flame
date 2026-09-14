@@ -492,6 +492,7 @@ export const ko: Record<string, string> = {
   "timeline.jumpToChat": "채팅으로 이동",
   "timeline.empty.title": "아직 활동 없음",
   "timeline.empty.sub": "agent가 실행되면 모든 도구 호출, 승인, 실행 경계가 여기에 표시됩니다.",
+  "timeline.firstOutput": "첫 출력",
   "timeline.modelCalls": "모델 호출",
   "timeline.refreshCalls": "모델 호출 새로고침",
   "timeline.noModelCalls": "보관된 모델 호출 기록이 없습니다",
