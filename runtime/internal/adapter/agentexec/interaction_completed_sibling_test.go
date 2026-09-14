@@ -26,6 +26,12 @@ import (
 )
 
 func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T) {
+	t.Run("same delegate batch", func(t *testing.T) { testWaitingTreeWithCompletedSibling(t, false) })
+	t.Run("earlier delegate batch", func(t *testing.T) { testWaitingTreeWithCompletedSibling(t, true) })
+}
+
+func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
+	t.Helper()
 	bStarted := make(chan agent.ProcessID, 1)
 	toolStarted := make(chan agent.ProcessID, 1)
 	var writes atomic.Int32
@@ -69,11 +75,15 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 			bStarted <- invocation.Relation().ProcessID()
 			return interactionUsageTextResponse("sibling B completed", 2, 1), nil
 		default:
-			return interactionToolBatchResponse([]chat.ToolCall{
+			calls := []chat.ToolCall{
 				{ID: "ordinary_c", Name: "store", Arguments: `{"value":"original"}`},
 				{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"waiting sibling A"}`},
 				{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"completed sibling B"}`},
-			}, 2, 1), nil
+			}
+			if splitBatch {
+				calls = []chat.ToolCall{calls[2], calls[0], calls[1]}
+			}
+			return interactionToolBatchResponse(calls, 2, 1), nil
 		}
 	})
 	question, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "ask", Description: "Ask for a value."}, waitingDelegateQuestion)
@@ -157,7 +167,9 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 	execution.state.mu.Lock()
 	var known toolResultMetadata
 	for _, metadata := range execution.state.toolMetadata {
-		known = metadata.clone()
+		if metadata.Offload != nil {
+			known = metadata.clone()
+		}
 	}
 	execution.state.mu.Unlock()
 	if known.Offload == nil || known.Arguments != `{"value":"edited"}` || offloads.calls != 1 {
@@ -168,6 +180,15 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 	barrier := fixture.waitForBarrier(t, 2*time.Second)
 	<-eventsReady
 	pending := barrier.Pending()
+	checkpoint := barrier.Checkpoint()
+	if len(checkpoint.ToolResultIDs) != 1 || checkpoint.ToolResultIDs[0] != known.Offload.ID {
+		t.Fatalf("checkpoint lost body ownership: %v", checkpoint.ToolResultIDs)
+	}
+	invalid := checkpoint.Clone()
+	invalid.ToolResultIDs = nil
+	if _, err := decodeExecutorCheckpoint(invalid); err == nil {
+		t.Fatal("checkpoint accepted missing body ownership")
+	}
 	if len(pending.Continuations) != 2 || len(pending.Bindings) != 1 {
 		t.Fatalf("waiting tree includes a completed sibling: %+v", pending)
 	}
@@ -240,7 +261,13 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 		!reflect.DeepEqual(restoredMetadata.Offload, known.Offload) || !reflect.DeepEqual(restoredMetadata.Result, known.Result) || writes.Load() != 1 || offloads.calls != 1 {
 		t.Fatalf("known Tool changed or reran across restore: result=%+v writes=%d offloads=%d", restoredMetadata, writes.Load(), offloads.calls)
 	}
-	if !slices.Equal(parentStarts, []string{"delegate_a", "delegate_b"}) || !slices.Equal(parentResults, []string{"ordinary_c", "delegate_a", "delegate_b"}) ||
+	expectedStarts := []string{"delegate_a", "delegate_b"}
+	expectedResults := []string{"ordinary_c", "delegate_a", "delegate_b"}
+	if splitBatch {
+		expectedStarts = []string{"delegate_a"}
+		expectedResults = []string{"delegate_b", "ordinary_c", "delegate_a"}
+	}
+	if !slices.Equal(parentStarts, expectedStarts) || !slices.Equal(parentResults, expectedResults) ||
 		childEnds != 1 || rootEnds != 1 || modelCalls.Load() != 5 {
 		t.Fatalf("restored tree starts=%v results=%v childEnds=%d rootEnds=%d modelCalls=%d",
 			parentStarts, parentResults, childEnds, rootEnds, modelCalls.Load())

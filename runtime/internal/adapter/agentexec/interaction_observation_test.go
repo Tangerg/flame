@@ -1062,8 +1062,13 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenResultWriteFails(t *testi
 	if gotCalls != 2 {
 		t.Fatalf("external Tool calls = %d, want both exactly once", gotCalls)
 	}
-	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
-		t.Fatalf("unknown observations = %#v, want result publication unknown", unknown)
+	unknown := payloadsOf[runs.UnknownEffectsDetected](events)
+	if len(unknown) != 1 {
+		t.Fatalf("unknown observations = %#v", unknown)
+	}
+	evidence := unknown[0].Effects()
+	if len(evidence) != 1 || evidence[0].ID == "" || !strings.Contains(evidence[0].Detail, projectionFailure.Error()) {
+		t.Fatalf("publication lost diagnostic: %+v", evidence)
 	}
 	if len(payloadsOf[runs.SegmentEnded](events)) != 0 {
 		t.Fatalf("unknown publication was projected as definite: %#v", events)
@@ -1154,8 +1159,13 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 	if externalCalls != 1 {
 		t.Fatalf("external Tool calls = %d, want 1", externalCalls)
 	}
-	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
-		t.Fatalf("unknown observations = %#v, want result publication unknown", unknown)
+	unknown := payloadsOf[runs.UnknownEffectsDetected](events)
+	if len(unknown) != 1 {
+		t.Fatalf("unknown observations = %#v", unknown)
+	}
+	evidence := unknown[0].Effects()
+	if len(evidence) != 1 || evidence[0].ID == "" || !strings.Contains(evidence[0].Detail, projectionFailure.Error()) {
+		t.Fatalf("publication lost diagnostic: %+v", evidence)
 	}
 	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 0 {
 		t.Fatalf("concurrent external Effect was projected as definite: %#v", ended)

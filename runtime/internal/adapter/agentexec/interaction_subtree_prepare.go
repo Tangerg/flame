@@ -242,17 +242,9 @@ func (i *interactionSession) completeSubtreePreparation(
 	return nil
 }
 
-// partitionCapturedSubtree reads the outcome of a requested cancellation out of
-// the cut that captured it. A member the cancellation took is terminal in the
-// cut; every other member was quiesced by the capture and is the set Continue
-// has to resume. The target itself is always the canceled root of this subtree.
-// partitionCapturedSubtree splits the product members of one captured cut into
-// the target's subtree, which the accepted cancellation ends, and the members it
-// leaves quiesced. The cut freezes the tree at a Strategy-safe boundary while
-// that cancellation is still draining, so lineage states which side a member is
-// on and a status read would only describe how far the drain had got. A Tool
-// call's child Process is not a member of its own: it travels with the member
-// that called it, whichever side that member lands on.
+// The waiting cut precedes cancellation. Terminal processes are historical
+// evidence, not members that this cancellation can end or resume. Tool children
+// travel with their owning product member.
 func (i *interactionSession) partitionCapturedSubtree(
 	tree agent.TreeSnapshot,
 	targetID agent.ProcessID,
@@ -264,7 +256,8 @@ func (i *interactionSession) partitionCapturedSubtree(
 	canceled = make([]agent.ProcessID, 0)
 	quiesced = make([]agent.ProcessID, 0)
 	for _, snapshot := range tree.ProcessSnapshots() {
-		if deployments != nil && deployments.toolChild(snapshot.DeploymentRef()) {
+		if snapshot.Status().Terminal() ||
+			(deployments != nil && deployments.toolChild(snapshot.DeploymentRef())) {
 			continue
 		}
 		processID := snapshot.ProcessID()

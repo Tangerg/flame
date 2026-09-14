@@ -45,10 +45,8 @@ func assemble(ctx context.Context, cfg Config, lifetime *runtimeLifetime, buildT
 	if err != nil {
 		return nil, err
 	}
-	// Offloads are staged before their ordered transcript event commits so a
-	// following model round can read them immediately. A process crash may leave
-	// that short-lived stage behind; startup is the only point with no live tool
-	// calls, so reconcile it before constructing the engine.
+	// Startup can reclaim abandoned staging bodies before execution begins.
+	// Durable Item and checkpoint owners retain their bodies across restarts.
 	if _, err := cfg.Stores.ToolResults.PurgeUnbound(ctx); err != nil {
 		return nil, fmt.Errorf("runtime: reconcile staged tool results: %w", err)
 	}

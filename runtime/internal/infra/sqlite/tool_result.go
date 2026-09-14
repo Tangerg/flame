@@ -177,9 +177,8 @@ func (t *ToolResultStore) Restore(ctx context.Context, blob toolresult.Blob) err
 	return fmt.Errorf("sqlite: restore tool result %q: %w", blob.ID, err)
 }
 
-// Discard removes a staged blob only while it is still unbound. It is the
-// compensation path for a failed atomic event commit: a concurrently or
-// ambiguously committed binding is never deleted.
+// Discard removes only bodies with neither an Item nor a checkpoint owner.
+// Failed publications must not invalidate a durable waiting continuation.
 func (t *ToolResultStore) Discard(ctx context.Context, sessionID string, ref toolresult.Ref) error {
 	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("sqlite: discard tool result: %w", err)
@@ -188,7 +187,7 @@ func (t *ToolResultStore) Discard(ctx context.Context, sessionID string, ref too
 		return fmt.Errorf("sqlite: discard tool result: %w", err)
 	}
 	if _, err := conn(ctx, t.db).ExecContext(ctx,
-		`DELETE FROM tool_result_blobs WHERE id = ? AND session_id = ? AND item_id = ''`,
+		`DELETE FROM tool_result_blobs WHERE id = ? AND session_id = ? AND item_id = '' AND NOT EXISTS (SELECT 1 FROM executor_checkpoint_tool_results WHERE result_id = tool_result_blobs.id)`,
 		ref.ID, sessionID,
 	); err != nil {
 		return fmt.Errorf("sqlite: discard staged tool result %q: %w", ref.ID, err)
@@ -196,12 +195,11 @@ func (t *ToolResultStore) Discard(ctx context.Context, sessionID string, ref too
 	return nil
 }
 
-// PurgeUnbound removes staged blobs left by a process crash before their
-// transcript event committed. It is safe only during startup, before tool
-// execution begins; bound blobs are never touched.
+// PurgeUnbound removes abandoned staging bodies during startup, before new
+// execution begins. Item and checkpoint references are both durable owners.
 func (t *ToolResultStore) PurgeUnbound(ctx context.Context) (int64, error) {
 	result, err := conn(ctx, t.db).ExecContext(ctx,
-		`DELETE FROM tool_result_blobs WHERE item_id = ''`,
+		`DELETE FROM tool_result_blobs WHERE item_id = '' AND NOT EXISTS (SELECT 1 FROM executor_checkpoint_tool_results WHERE result_id = tool_result_blobs.id)`,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("sqlite: purge staged tool results: %w", err)

@@ -36,7 +36,7 @@ func TestUnknownEffectsDetectedRequiresConstruction(t *testing.T) {
 	if err := (UnknownEffectsDetected{}).validate(); err == nil {
 		t.Fatal("zero unknown-Effect observation validated")
 	}
-	if err := NewUnknownEffectsDetected().validate(); err != nil {
+	if err := NewUnknownEffectsDetected([]UnknownEffect{{ID: "effect:test"}}).validate(); err != nil {
 		t.Fatalf("constructed unknown-Effect observation: %v", err)
 	}
 }
@@ -299,6 +299,22 @@ func TestFirstOutputLatencyFactDoesNotAliasProducerOrConsumer(t *testing.T) {
 		*borrowed = 12
 		if *read() != 0 {
 			t.Fatal("latency aliases consumer")
+		}
+	}
+}
+
+func TestUnknownEffectsOwnsAndValidatesEvidence(t *testing.T) {
+	original := []UnknownEffect{{ID: "effect:test", Detail: "write failed"}}
+	fact := NewUnknownEffectsDetected(original)
+	original[0].Detail = "changed"
+	projected := fact.Effects()
+	projected[0].Detail = "changed again"
+	if fact.Effects()[0].Detail != "write failed" {
+		t.Fatal("unknown evidence aliases caller")
+	}
+	for _, effects := range [][]UnknownEffect{nil, {{ID: ""}}, {{ID: "effect:test"}, {ID: "effect:test"}}} {
+		if err := NewUnknownEffectsDetected(effects).validate(); err == nil {
+			t.Fatalf("invalid evidence accepted: %+v", effects)
 		}
 	}
 }

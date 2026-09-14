@@ -261,7 +261,7 @@ func (i *interactionSession) stagedTree() (agent.TreeSnapshot, error) {
 	i.state.mu.Lock()
 	checkpoint := i.state.waitingCheckpoint.Clone()
 	i.state.mu.Unlock()
-	state, err := decodeInteractionCheckpointPayload(checkpoint.Payload)
+	state, err := decodeExecutorCheckpoint(checkpoint)
 	if err != nil {
 		return agent.TreeSnapshot{}, err
 	}

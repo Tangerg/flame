@@ -41,11 +41,17 @@ func (o *observedInteractionTool) Definition() corechat.ToolDefinition {
 
 func (o *observedInteractionTool) Unwrap() toolcontract.Tool { return o.inner }
 
-func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.Invocation) (corechat.ToolOutput, error) {
+func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.Invocation) (returned corechat.ToolOutput, returnedErr error) {
 	invocation, arguments, callID, err := o.attributedInvocation(ctx, bound)
 	if err != nil {
 		return corechat.ToolOutput{}, err
 	}
+	defer func() {
+		var known *toolcontract.Failure
+		if returnedErr != nil && !errors.Is(returnedErr, interaction.ErrToolInputRequired) && !errors.Is(returnedErr, toolcontract.ErrAuthorizationDenied) && !errors.As(returnedErr, &known) {
+			o.session.effectFailures.record(invocation.EffectID(), returnedErr)
+		}
+	}()
 	call := invocation.ToolCall()
 	member, hasCaller := o.session.toolCallMember(invocation.Relation())
 	if !hasCaller {

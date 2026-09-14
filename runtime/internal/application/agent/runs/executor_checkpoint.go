@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
@@ -10,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
@@ -61,6 +63,7 @@ func (e ExecutionScope) Validate() error {
 // implementation; the host owns only the aggregate identity and metadata needed
 // to decide whether and how the continuation may be restored.
 type ExecutorCheckpoint struct {
+	ToolResultIDs  []toolresult.ID
 	RootMemberID   string
 	Payload        []byte
 	BuildID        string
@@ -89,6 +92,7 @@ type ExecutorCheckpointExpectation struct {
 
 // Clone returns an ownership-independent checkpoint value.
 func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
+	e.ToolResultIDs = slices.Clone(e.ToolResultIDs)
 	e.Payload = append([]byte(nil), e.Payload...)
 	e.Capabilities = e.Capabilities.Clone()
 	e.Usage.Models = append([]accounting.ModelUsage(nil), e.Usage.Models...)
@@ -98,6 +102,9 @@ func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
 // Validate verifies the host-owned metadata without interpreting the
 // executor payload.
 func (e ExecutorCheckpoint) Validate() error {
+	if err := toolresult.ValidateReferences(e.ToolResultIDs); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
+	}
 	if err := runtimeidentity.ValidateMember(e.RootMemberID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}

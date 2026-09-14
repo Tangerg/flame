@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
@@ -25,9 +26,10 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 		return err
 	}
 	err := e.storage.SaveCheckpoint(ctx, sqlite.ExecutorCheckpointRecord{
-		RootMemberID: checkpoint.RootMemberID,
-		Payload:      append([]byte(nil), checkpoint.Payload...),
-		BuildID:      checkpoint.BuildID,
+		ToolResultIDs: slices.Clone(checkpoint.ToolResultIDs),
+		RootMemberID:  checkpoint.RootMemberID,
+		Payload:       append([]byte(nil), checkpoint.Payload...),
+		BuildID:       checkpoint.BuildID,
 		Scope: sqlite.ExecutorScopeRecord{
 			SessionID:         checkpoint.Scope.SessionID,
 			CWD:               checkpoint.Scope.CWD,
@@ -49,9 +51,10 @@ func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 		return runs.ExecutorCheckpoint{}, translateCheckpointStorageError(err)
 	}
 	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID: record.RootMemberID,
-		Payload:      append([]byte(nil), record.Payload...),
-		BuildID:      record.BuildID,
+		ToolResultIDs: slices.Clone(record.ToolResultIDs),
+		RootMemberID:  record.RootMemberID,
+		Payload:       append([]byte(nil), record.Payload...),
+		BuildID:       record.BuildID,
 		Scope: runs.ExecutionScope{
 			SessionID:         record.Scope.SessionID,
 			CWD:               record.Scope.CWD,

@@ -13,7 +13,8 @@ import (
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
 
-// toolResultMetadata carries only product projection data across Tool waits.
+// toolResultMetadata retains unpublished call metadata across execution batches
+// and waits, including Delegates admitted before the current child batch.
 // Scope's settled child output remains the sole source of the model result.
 // The checkpoint retains this data when a completed sibling waits for another
 // sibling's input; no completed Tool is rerun to reconstruct its presentation.
@@ -81,7 +82,7 @@ func (i *interactionSession) rememberToolMetadata(metadata toolResultMetadata) e
 		i.state.toolMetadata = make(map[string]toolResultMetadata)
 	}
 	if _, duplicate := i.state.toolMetadata[metadata.Start.CallID]; duplicate {
-		return errors.New("agentexec: completed Tool metadata already exists")
+		return errors.New("agentexec: pending call metadata already exists")
 	}
 	i.state.toolMetadata[metadata.Start.CallID] = metadata.clone()
 	return nil
@@ -133,14 +134,11 @@ func (i *interactionSession) CommitResults(ctx context.Context, batch interactio
 			start = metadata.Start
 			end.Arguments, end.Result, end.Offload = metadata.Arguments, metadata.Result, metadata.Offload
 			end.OutputText, end.MutatedPaths, end.Failure = metadata.OutputText, metadata.MutatedPaths, metadata.Failure
-		} else if managed != nil {
-			managed.mu.Lock()
-			start = managed.toolStart()
-			end.Arguments = managed.arguments.Canonical()
-			managed.mu.Unlock()
-			delegates = append(delegates, managed)
 		} else if entry.Disposition != interaction.ResultRejected {
 			return interaction.ResultReceipt{}, fmt.Errorf("agentexec: known Tool result %q lost its product metadata", entry.Call.ID)
+		}
+		if managed != nil {
+			delegates = append(delegates, managed)
 		}
 		if end.Result == nil {
 			if result, present := runtimeToolResult(entry.Result.Output); present {

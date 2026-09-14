@@ -45,6 +45,7 @@ type interactionSession struct {
 	toolOutcomes        interactionToolOutcomes
 	modelFailures       interactionModelFailures
 	committedReplies    interactionCommittedReplies
+	effectFailures      interactionEffectFailures
 	segmentClock        interactionSegmentClock
 }
 
@@ -494,7 +495,7 @@ func (i *interactionState) continueExecution() {
 }
 
 func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
-	return left.RootMemberID == right.RootMemberID && left.BuildID == right.BuildID &&
+	return slices.Equal(left.ToolResultIDs, right.ToolResultIDs) && left.RootMemberID == right.RootMemberID && left.BuildID == right.BuildID &&
 		left.Scope == right.Scope && left.ModelSelection.Equal(right.ModelSelection) &&
 		left.Limits == right.Limits && slices.Equal(left.Usage.Models, right.Usage.Models) &&
 		bytes.Equal(left.Payload, right.Payload)
@@ -516,7 +517,7 @@ func (i *interactionSession) reportUnknownEffects() bool {
 	member := runs.ExecutorMember{MemberID: i.state.process.Relation().ProcessID().String()}
 	i.state.mu.Unlock()
 	return i.lifetime.send(runs.ExecutorEvent{
-		Member: member, Payload: runs.NewUnknownEffectsDetected(),
+		Member: member, Payload: runs.NewUnknownEffectsDetected(i.effectFailures.observations(ids)),
 	})
 }
 

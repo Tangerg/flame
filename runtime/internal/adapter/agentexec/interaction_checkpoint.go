@@ -83,12 +83,17 @@ func (i *interactionSession) executorCheckpoint(
 	if err != nil {
 		return runs.ExecutorCheckpoint{}, err
 	}
+	decoded, err := decodeInteractionCheckpointPayload(payload)
+	if err != nil {
+		return runs.ExecutorCheckpoint{}, err
+	}
 	usage, err := i.accounting.snapshot()
 	if err != nil {
 		return runs.ExecutorCheckpoint{}, err
 	}
 	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID: tree.RootID().String(), Payload: payload,
+		ToolResultIDs: checkpointToolResultIDs(decoded),
+		RootMemberID:  tree.RootID().String(), Payload: payload,
 		BuildID: i.buildID.String(), Scope: i.scope,
 		ModelSelection: i.start.ModelSelection, Limits: i.start.Limits,
 		Capabilities: run.Capabilities{

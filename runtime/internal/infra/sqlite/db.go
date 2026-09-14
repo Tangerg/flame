@@ -641,6 +641,11 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			body        TEXT    NOT NULL,
 			created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 		)`,
+		`CREATE TABLE IF NOT EXISTS executor_checkpoint_tool_results (
+			root_member_id TEXT NOT NULL REFERENCES executor_checkpoints(root_member_id) ON DELETE CASCADE,
+			result_id TEXT NOT NULL REFERENCES tool_result_blobs(id) ON DELETE RESTRICT,
+			PRIMARY KEY(root_member_id, result_id)
+		)`,
 		`CREATE INDEX IF NOT EXISTS idx_tool_result_blobs_session
 			ON tool_result_blobs(session_id)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_tool_result_blobs_item

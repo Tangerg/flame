@@ -70,6 +70,11 @@ func (i *interactionSession) admitProcess(
 	if err := i.commitFact(ctx, parent, managed.toolStart()); err != nil {
 		return fmt.Errorf("agentexec: commit Delegate call start: %w", err)
 	}
+	if err := i.rememberToolMetadata(toolResultMetadata{
+		MemberID: parent.MemberID, Start: managed.toolStart(), Arguments: managed.arguments.Canonical(),
+	}); err != nil {
+		return err
+	}
 	managed.toolStarted = true
 	member := runs.ExecutorMember{
 		MemberID: relation.ProcessID().String(), ParentID: parentID.String(),

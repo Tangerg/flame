@@ -138,24 +138,39 @@ func (a AssistantMessageCompleted) Message() corechat.Message {
 	return a.message.Clone()
 }
 
-// UnknownEffectsDetected is the executor's fail-closed control observation that
-// one or more externally attempted Effects have no provable settlement. The Run
-// pump—not the executor—maps this condition to the product's RunLost transaction
-// before resource teardown. Effect identities stay with the executor because no
-// Application decision, durable record, or public projection consumes them.
+// UnknownEffect preserves the identity and available cause of an unsettled
+// external operation. Detail is diagnostic evidence, not a definite outcome.
+type UnknownEffect struct {
+	ID     string
+	Detail string
+}
+
+// UnknownEffectsDetected carries unresolved execution evidence into the RunLost
+// transaction before the executor is released.
 type UnknownEffectsDetected struct {
 	executorPayloadBase
-	detected bool
+	effects []UnknownEffect
 }
 
-// NewUnknownEffectsDetected records a proven unknown-settlement condition.
-func NewUnknownEffectsDetected() UnknownEffectsDetected {
-	return UnknownEffectsDetected{detected: true}
+func NewUnknownEffectsDetected(effects []UnknownEffect) UnknownEffectsDetected {
+	return UnknownEffectsDetected{effects: slices.Clone(effects)}
 }
+
+func (u UnknownEffectsDetected) Effects() []UnknownEffect { return slices.Clone(u.effects) }
 
 func (u UnknownEffectsDetected) validate() error {
-	if !u.detected {
+	if len(u.effects) == 0 {
 		return errors.New("runs: unknown Effect observation is empty")
+	}
+	seen := make(map[string]struct{}, len(u.effects))
+	for _, effect := range u.effects {
+		if err := runtimeidentity.ValidateEffect(effect.ID); err != nil {
+			return err
+		}
+		if _, duplicate := seen[effect.ID]; duplicate {
+			return errors.New("runs: duplicate unknown Effect")
+		}
+		seen[effect.ID] = struct{}{}
 	}
 	return nil
 }

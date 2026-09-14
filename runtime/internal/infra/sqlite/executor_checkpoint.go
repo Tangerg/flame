@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
@@ -37,6 +38,7 @@ type ExecutorScopeRecord struct {
 // Payload remains opaque. Product ownership and recovery policy stay in
 // application/agent/runs and are validated again by the consuming adapter.
 type ExecutorCheckpointRecord struct {
+	ToolResultIDs  []toolresult.ID
 	RootMemberID   string
 	Payload        []byte
 	BuildID        string
@@ -48,6 +50,9 @@ type ExecutorCheckpointRecord struct {
 }
 
 func (e ExecutorCheckpointRecord) validate() error {
+	if err := toolresult.ValidateReferences(e.ToolResultIDs); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpointRecord, err)
+	}
 	if err := runtimeidentity.ValidateMember(e.RootMemberID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpointRecord, err)
 	}
@@ -187,7 +192,7 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 			if err != nil {
 				return fmt.Errorf("sqlite: insert executor checkpoint %q: %w", checkpoint.RootMemberID, err)
 			}
-			return nil
+			return e.replaceToolResultReferences(ctx, checkpoint)
 		}
 		if err != nil {
 			return fmt.Errorf("sqlite: inspect executor checkpoint %q before save: %w", checkpoint.RootMemberID, err)
@@ -253,12 +258,26 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 		if written != 1 {
 			return fmt.Errorf("sqlite: advance executor checkpoint %q affected %d rows", checkpoint.RootMemberID, written)
 		}
-		return nil
+		return e.replaceToolResultReferences(ctx, checkpoint)
 	})
 }
 
 // LoadCheckpoint returns one complete opaque executor checkpoint.
 func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (ExecutorCheckpointRecord, error) {
+	var checkpoint ExecutorCheckpointRecord
+	err := RunInTx(ctx, e.db, func(ctx context.Context) error {
+		var err error
+		checkpoint, err = e.loadCheckpoint(ctx, rootMemberID)
+		return err
+	})
+	if err != nil {
+		return ExecutorCheckpointRecord{}, err
+	}
+	return checkpoint, nil
+}
+
+// The payload and its body references must be read from the same snapshot.
+func (e *ExecutorCheckpointStore) loadCheckpoint(ctx context.Context, rootMemberID string) (ExecutorCheckpointRecord, error) {
 	if err := runtimeidentity.ValidateMember(rootMemberID); err != nil {
 		return ExecutorCheckpointRecord{}, fmt.Errorf("sqlite: load executor checkpoint: %w", err)
 	}
@@ -303,6 +322,10 @@ func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 	checkpoint.Payload = append([]byte(nil), payload...)
 	checkpoint.BuildID = buildID
 	checkpoint.Usage = usage
+	checkpoint.ToolResultIDs, err = e.toolResultReferences(ctx, rootMemberID)
+	if err != nil {
+		return ExecutorCheckpointRecord{}, err
+	}
 	if err := checkpoint.validate(); err != nil {
 		return ExecutorCheckpointRecord{}, fmt.Errorf("sqlite: load executor checkpoint %q: %w", rootMemberID, err)
 	}

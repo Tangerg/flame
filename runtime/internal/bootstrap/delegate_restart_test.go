@@ -21,6 +21,7 @@ import (
 func TestProtocolContinuesWaitingTreeBesideCompletedSiblingAfterRestart(t *testing.T) {
 	waiting := chat.ToolCall{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"waiting sibling A"}`}
 	completed := chat.ToolCall{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"completed sibling B"}`}
+	separator := chat.ToolCall{ID: "rejected_between_batches", Name: "unavailable", Arguments: `{}`}
 	for _, test := range []struct {
 		name          string
 		calls         []chat.ToolCall
@@ -28,6 +29,8 @@ func TestProtocolContinuesWaitingTreeBesideCompletedSiblingAfterRestart(t *testi
 	}{
 		{name: "answer with completed successor", calls: []chat.ToolCall{waiting, completed}},
 		{name: "answer with completed predecessor", calls: []chat.ToolCall{completed, waiting}},
+		{name: "answer with completed earlier batch", calls: []chat.ToolCall{completed, separator, waiting}},
+		{name: "cancel with completed earlier batch", calls: []chat.ToolCall{completed, separator, waiting}, cancelWaiting: true},
 		{name: "cancel with completed successor", calls: []chat.ToolCall{waiting, completed}, cancelWaiting: true},
 		{name: "cancel with completed predecessor", calls: []chat.ToolCall{completed, waiting}, cancelWaiting: true},
 	} {
@@ -40,6 +43,12 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 	t.Setenv("FLAME_HOME", home)
 	releaseA := make(chan struct{})
 	var calls atomic.Int32
+	expectedResults := make([]string, len(delegateCalls))
+	parts := make([]chat.Part, len(delegateCalls))
+	for index, call := range delegateCalls {
+		expectedResults[index] = call.ID
+		parts[index] = chat.NewToolCallPart(call)
+	}
 	model := delegateRestartModel{chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 		calls.Add(1)
 		var hasResult, waitingChild, completedChild bool
@@ -61,7 +70,7 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 		switch {
 		case hasResult:
 			if !waitingChild && !completedChild &&
-				!slices.Equal(resultIDs, []string{delegateCalls[0].ID, delegateCalls[1].ID}) {
+				!slices.Equal(resultIDs, expectedResults) {
 				return nil, fmt.Errorf("continued parent received tool results %v in place of both ordered siblings", resultIDs)
 			}
 		case waitingChild:
@@ -77,10 +86,7 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 		case completedChild:
 			message = chat.NewAssistantMessage(chat.NewTextPart("sibling B completed"))
 		default:
-			message = chat.NewAssistantMessage(
-				chat.NewToolCallPart(delegateCalls[0]),
-				chat.NewToolCallPart(delegateCalls[1]),
-			)
+			message = chat.NewAssistantMessage(parts...)
 			finish = chat.FinishReasonToolCalls
 		}
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, &chat.ResponseMetadata{

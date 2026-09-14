@@ -79,7 +79,7 @@ func (i *interactionSession) prepareContinuationAnswers(
 	i.state.mu.Lock()
 	checkpoint := i.state.waitingCheckpoint.Clone()
 	i.state.mu.Unlock()
-	checkpointState, err := decodeInteractionCheckpointPayload(checkpoint.Payload)
+	checkpointState, err := decodeExecutorCheckpoint(checkpoint)
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: decode staged Interaction checkpoint: %w", err)
 	}

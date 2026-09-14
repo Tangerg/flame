@@ -58,7 +58,7 @@ func (c *concurrentToolExecutor) Observe(
 		commitErr := receipt.Await(ctx)
 		c.failures <- commitErr
 		if commitErr != nil {
-			yield(ExecutorEvent{Member: member, Payload: NewUnknownEffectsDetected()})
+			yield(ExecutorEvent{Member: member, Payload: NewUnknownEffectsDetected([]UnknownEffect{{ID: "effect:test", Detail: commitErr.Error()}})})
 			return
 		}
 
@@ -103,7 +103,7 @@ func (a *authoritativeFailureExecutor) Observe(
 		a.receipts <- completionReceipt.Await(ctx)
 		yield(ExecutorEvent{
 			Member:  member,
-			Payload: NewUnknownEffectsDetected(),
+			Payload: NewUnknownEffectsDetected([]UnknownEffect{{ID: "effect:test"}}),
 		})
 	}, nil
 }
@@ -308,6 +308,13 @@ func TestConcurrentToolBatchFailurePublishesOnlyIncompleteRunLost(t *testing.T) 
 		t.Fatalf("committed write-sets = %d, want two starts + RunLost", len(commits))
 	}
 	lost := commits[2]
+	if lost.Run == nil {
+		t.Fatal("RunLost has no Run record")
+	}
+	failure, failed := lost.Run.Failure()
+	if !failed || !strings.Contains(failure.Detail, "effect:test") || !strings.Contains(failure.Detail, writeFailure.Error()) {
+		t.Fatalf("lost root cause: %+v", failure)
+	}
 	if lost.State != StateTerminalize || lost.Outcome != run.OutcomeLost {
 		t.Fatalf("terminal commit = %#v, want RunLost", lost)
 	}

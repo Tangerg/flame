@@ -24,12 +24,13 @@ func (i *interactionDispatcher) Dispatch(
 	ctx context.Context,
 	request agent.EffectRequest,
 	emit agent.DeltaEmitter,
-) (agent.Settlement, error) {
+) (settlement agent.Settlement, err error) {
+	defer func() { i.session.effectFailures.record(request.ID(), err) }()
 	ctx, finishDispatch := i.session.beginDispatch(ctx, interactionDispatchKey(request))
 	defer finishDispatch()
 	attempt := newDispatchAttempt(ctx, request.ID())
 	defer attempt.close()
-	settlement, err := i.inner.Dispatch(withDispatchAttempt(ctx, attempt), request, emit)
+	settlement, err = i.inner.Dispatch(withDispatchAttempt(ctx, attempt), request, emit)
 	if projectionErr := attempt.indeterminateFailure(); projectionErr != nil {
 		i.session.lifetime.wakeUnknown()
 		return agent.Settlement{}, fmt.Errorf(

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel/trace"
@@ -330,12 +331,17 @@ func (s *segmentPump) handleUnknownEffects(
 	if route != s.routes.root {
 		return errors.New("runs: root-only execution reported unknown Effects for a child member")
 	}
-	if activeChildren := s.routes.unfinishedCount() - 1; activeChildren > 0 {
-		return fmt.Errorf("runs: unknown Effects detected with %d active child Runs", activeChildren)
+	details := []string{"external operations have no provable durable result"}
+	for _, effect := range unknown.Effects() {
+		detail := effect.ID
+		if effect.Detail != "" {
+			detail += ": " + effect.Detail
+		}
+		details = append(details, detail)
 	}
-	failure := run.Failure{
-		Kind:   run.FailureLost,
-		Detail: "an external operation completed without a provable durable result",
+	failure := run.Failure{Kind: run.FailureLost, Detail: strings.Join(details, "\n")}
+	if activeChildren := s.routes.unfinishedCount() - 1; activeChildren > 0 {
+		return fmt.Errorf("runs: unknown Effects detected with %d active child Runs: %s", activeChildren, failure.Detail)
 	}
 	batch, err := route.reducer.reduce(NewSegmentEnded(
 		run.OutcomeLost,

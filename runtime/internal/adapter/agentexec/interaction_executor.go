@@ -574,7 +574,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	if err := i.validateRestoreScope(ctx, continuation.Checkpoint.Scope); err != nil {
 		return err
 	}
-	checkpoint, err := decodeInteractionCheckpointPayload(continuation.Checkpoint.Payload)
+	checkpoint, err := decodeExecutorCheckpoint(continuation.Checkpoint)
 	if err != nil {
 		return fmt.Errorf("%w: parse Interaction checkpoint: %w", runs.ErrExecutorStateLost, err)
 	}
