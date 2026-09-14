@@ -109,6 +109,9 @@ describe("Timeline runtime actions", () => {
     expect(screen.getByText("—")).toBeTruthy();
     expect(screen.getByText("Verify axios")).toBeTruthy();
     expect(screen.getByText("Context compacted")).toBeTruthy();
+    expect(
+      screen.getAllByTitle(/^Tool started:/).map((time) => time.getAttribute("datetime")),
+    ).toEqual(["1970-01-01T00:00:00.001Z", "1970-01-01T00:00:00.002Z"]);
   });
   it("shows outcome details only on completion and does not classify a nonzero exit as failure", () => {
     projection.tools = {

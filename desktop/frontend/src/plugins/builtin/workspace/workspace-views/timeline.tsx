@@ -5,7 +5,7 @@ import type { Tone } from "@/lib/tone";
 import type { IconName } from "@/ui";
 import type { TimelineEntry, TimelineEntryKind } from "@/plugins/sdk/types/agentSessionView";
 import { Badge, EmptyState, Icon, IconButton, toneInk, vocab } from "@/ui";
-import { useT, type Translate } from "@/lib/i18n";
+import { activeLocale, useT, type Translate } from "@/lib/i18n";
 import { fmtDuration } from "@/lib/format";
 import { TIMELINE_WINDOW_SIZE } from "@/plugins/sdk/types/agentTimeline";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
@@ -131,7 +131,13 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
               : fmtDuration(tool.durationMillis)}
         </span>
       )}
-      <span {...stylex.props(ts.stamp, typeStep.uiXs)}>{timelineTimeOfDay(entry.ts)}</span>
+      <time
+        dateTime={new Date(entry.ts).toISOString()}
+        title={`${t(KIND_I18N[entry.kind])}: ${new Date(entry.ts).toLocaleString(activeLocale())}`}
+        {...stylex.props(ts.stamp, typeStep.uiXs)}
+      >
+        {timelineTimeOfDay(entry.ts)}
+      </time>
     </div>
   );
 }
