@@ -25,16 +25,13 @@ func renderToolOutput(output chat.ToolOutput) string {
 			rendered.WriteString(transcriptMediaMarker)
 		}
 	}
-	if len(output.Details) > 0 {
-		if rendered.Len() > 0 {
-			rendered.WriteByte(' ')
-		}
-		rendered.Write(output.Details)
-	}
 	return rendered.String()
 }
 
-func encodedToolOutputBytes(output chat.ToolOutput) int {
+func encodedVisibleToolOutputBytes(output chat.ToolOutput) int {
+	if len(output.Content) > 0 {
+		output.Details = nil
+	}
 	encoded, err := json.Marshal(output)
 	if err != nil {
 		return math.MaxInt
@@ -49,7 +46,7 @@ func trimToolOutput(output chat.ToolOutput) (chat.ToolOutput, bool) {
 		}
 		return chat.NewTextToolOutput(clipResult(text)), true
 	}
-	encodedBytes := encodedToolOutputBytes(output)
+	encodedBytes := encodedVisibleToolOutputBytes(output)
 	if encodedBytes <= ladderResultCap {
 		return output, false
 	}
