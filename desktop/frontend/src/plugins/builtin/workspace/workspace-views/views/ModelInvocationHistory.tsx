@@ -40,8 +40,8 @@ export function ModelInvocationHistory({ run }: { run: AgentRunView }) {
       >
         {(calls) =>
           calls.map((call) => (
-            <div key={call.callId} {...stylex.props(vs.splitLine, vs.rowPad)}>
-              <div {...stylex.props(vocab.min)}>
+            <div key={call.callId} {...stylex.props(vs.lineBaseline, vs.rowPad)}>
+              <div {...stylex.props(vocab.fill)}>
                 <div
                   title={call.callId}
                   {...stylex.props(vocab.truncate, face.mono, typeStep.uiXs)}
