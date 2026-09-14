@@ -217,9 +217,9 @@ func (k *knowledgeServiceStub) Entries(context.Context, string) ([]workspace.Kno
 	defer k.mu.Unlock()
 	now := time.Now()
 	return []workspace.KnowledgeEntry{
-		{Scope: protocol.KnowledgeScopeCWD, Content: k.content[protocol.KnowledgeScopeCWD], Revision: k.revisions[protocol.KnowledgeScopeCWD], UpdatedAt: &now},
-		{Scope: protocol.KnowledgeScopeProjectRoot, Content: k.content[protocol.KnowledgeScopeProjectRoot], Revision: k.revisions[protocol.KnowledgeScopeProjectRoot], UpdatedAt: &now},
-		{Scope: protocol.KnowledgeScopeHome, Content: k.content[protocol.KnowledgeScopeHome], Revision: k.revisions[protocol.KnowledgeScopeHome], UpdatedAt: &now},
+		{Path: "/workspace/FLAME.md", Scope: protocol.KnowledgeScopeCWD, Content: k.content[protocol.KnowledgeScopeCWD], Revision: k.revisions[protocol.KnowledgeScopeCWD], UpdatedAt: &now},
+		{Path: "/workspace/FLAME.md", Scope: protocol.KnowledgeScopeProjectRoot, Content: k.content[protocol.KnowledgeScopeProjectRoot], Revision: k.revisions[protocol.KnowledgeScopeProjectRoot], UpdatedAt: &now},
+		{Path: "/workspace/FLAME.md", Scope: protocol.KnowledgeScopeHome, Content: k.content[protocol.KnowledgeScopeHome], Revision: k.revisions[protocol.KnowledgeScopeHome], UpdatedAt: &now},
 	}, nil
 }
 
@@ -229,7 +229,7 @@ func (k *knowledgeServiceStub) Document(_ context.Context, target workspace.Know
 	}
 	k.mu.Lock()
 	defer k.mu.Unlock()
-	return workspace.KnowledgeEntry{Scope: target.Scope, Content: k.content[target.Scope], Revision: k.revisions[target.Scope]}, nil
+	return workspace.KnowledgeEntry{Path: "/workspace/FLAME.md", Scope: target.Scope, Content: k.content[target.Scope], Revision: k.revisions[target.Scope]}, nil
 }
 
 func (k *knowledgeServiceStub) Save(ctx context.Context, update workspace.KnowledgeUpdate) (workspace.KnowledgeEntry, error) {
@@ -262,7 +262,7 @@ func (k *knowledgeServiceStub) Save(ctx context.Context, update workspace.Knowle
 	k.mu.Lock()
 	k.content[target.Scope] = content
 	k.revisions[target.Scope] += "+1"
-	entry := workspace.KnowledgeEntry{Scope: target.Scope, Content: content, Revision: k.revisions[target.Scope]}
+	entry := workspace.KnowledgeEntry{Path: "/workspace/FLAME.md", Scope: target.Scope, Content: content, Revision: k.revisions[target.Scope]}
 	k.mu.Unlock()
 	k.saved <- content
 	return entry, nil

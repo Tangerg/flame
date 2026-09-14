@@ -18,12 +18,12 @@ func TestRuntimeAPIInventoryHasNoUnreviewedMethods(t *testing.T) {
 	covered := runtimeAPIConsumptionByMethod()
 	validModes := []runtimeConsumptionMode{
 		consumedByLifecycle, consumedByCoreFlow, consumedByCommand, consumedBySideChannel,
-		materializedByAggregate,
+		materializedByAggregate, desktopDiagnostics,
 	}
 	var materialized []string
 	for method, consumption := range covered {
 		if consumption.Area == "" || consumption.Entry == "" {
-			t.Fatalf("runtime method %s has no concrete product consumption path: %+v", method, consumption)
+			t.Fatalf("runtime method %s has no concrete consumer or exclusion rationale: %+v", method, consumption)
 		}
 		if !slices.Contains(validModes, consumption.Mode) {
 			t.Fatalf("runtime method %s has invalid consumption mode %q", method, consumption.Mode)
@@ -216,6 +216,7 @@ const (
 	consumedByCommand       runtimeConsumptionMode = "command"
 	consumedBySideChannel   runtimeConsumptionMode = "side-channel"
 	materializedByAggregate runtimeConsumptionMode = "aggregate-materialized"
+	desktopDiagnostics      runtimeConsumptionMode = "desktop-diagnostics"
 )
 
 type runtimeAPIConsumption struct {
@@ -291,8 +292,9 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		return runtimeAPIConsumption{Area: area, Mode: materializedByAggregate, Entry: entry}
 	}
 	return map[string]runtimeAPIConsumption{
-		"Discover": lifecycle("lifecycle", "startup negotiation, capability gates, TUI status, and runtime info"),
-		"Close":    lifecycle("lifecycle", "process-owned connection shutdown"),
+		"ListModelInvocations": {Area: "model-call diagnostics", Mode: desktopDiagnostics, Entry: "Desktop exposes paged attempt history; CLI exposes Run aggregate metrics"},
+		"Discover":             lifecycle("lifecycle", "startup negotiation, capability gates, TUI status, and runtime info"),
+		"Close":                lifecycle("lifecycle", "process-owned connection shutdown"),
 
 		"CreateSession": flow("sessions", "interactive and one-shot session opening"),
 		"DeleteSession": command("sessions", "sessions delete"),

@@ -32,13 +32,14 @@ func (k *knowledgeBindingStub) ListKnowledge(_ context.Context, request protocol
 		return k.listed, nil
 	}
 	return protocol.NewPage([]protocol.KnowledgeEntry{{
+		Path:  "/workspace/FLAME.md",
 		Scope: protocol.KnowledgeScopeProjectRoot, Content: "project rules", Revision: "rev-project", UpdatedAt: k.updated,
 	}}), nil
 }
 
 func TestKnowledgeAdapterRejectsUnaddressableCatalogs(t *testing.T) {
 	now := time.Now()
-	duplicate := protocol.KnowledgeEntry{Scope: protocol.KnowledgeScopeHome, Content: "prefs", Revision: "rev-home", UpdatedAt: now}
+	duplicate := protocol.KnowledgeEntry{Path: "/workspace/FLAME.md", Scope: protocol.KnowledgeScopeHome, Content: "prefs", Revision: "rev-home", UpdatedAt: now}
 	for _, test := range []struct {
 		name    string
 		listed  *protocol.Page[protocol.KnowledgeEntry]
@@ -75,13 +76,14 @@ func (k *knowledgeBindingStub) GetKnowledge(_ context.Context, request protocol.
 			update := k.updates[index]
 			if update.Scope == request.Scope {
 				return &protocol.KnowledgeEntry{
+					Path:  "/workspace/FLAME.md",
 					Scope: request.Scope, Content: update.Content,
 					Revision: "rev-updated", UpdatedAt: k.updated,
 				}, nil
 			}
 		}
 	}
-	return &protocol.KnowledgeEntry{Scope: request.Scope, Content: "document", Revision: "rev-document"}, nil
+	return &protocol.KnowledgeEntry{Path: "/workspace/FLAME.md", Scope: request.Scope, Content: "document", Revision: "rev-document"}, nil
 }
 
 func (k *knowledgeBindingStub) UpdateKnowledge(_ context.Context, request protocol.UpdateKnowledgeRequest, options flameruntime.CommandOptions) (*protocol.KnowledgeEntry, error) {
@@ -90,7 +92,7 @@ func (k *knowledgeBindingStub) UpdateKnowledge(_ context.Context, request protoc
 		k.t.Fatal("update has no idempotency key")
 	}
 	k.updates = append(k.updates, request)
-	return &protocol.KnowledgeEntry{Scope: request.Scope, Content: request.Content, Revision: "rev-updated", UpdatedAt: k.updated}, nil
+	return &protocol.KnowledgeEntry{Path: "/workspace/FLAME.md", Scope: request.Scope, Content: request.Content, Revision: "rev-updated", UpdatedAt: k.updated}, nil
 }
 
 func (k *knowledgeBindingStub) assertMeta(meta protocol.RequestMeta) {
@@ -112,7 +114,7 @@ func TestKnowledgeAdapterKeepsCascadeScopeAndVerbatimContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	entry, err := adapter.Document(t.Context(), project)
-	if err != nil || entry.Scope != protocol.KnowledgeScopeProjectRoot || entry.Content != "document" {
+	if err != nil || entry.Scope != protocol.KnowledgeScopeProjectRoot || entry.Content != "document" || entry.Path != "/workspace/FLAME.md" {
 		t.Fatalf("Document = (%+v, %v)", entry, err)
 	}
 	home, err := workspace.NewKnowledgeTarget(protocol.KnowledgeScopeHome, "")

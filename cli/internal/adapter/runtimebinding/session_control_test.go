@@ -309,17 +309,17 @@ func TestSessionImportRejectsInvalidArtifactContent(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		field string
-		block protocol.ArtifactContentBlock
+		block protocol.ContentBlock
 	}{
-		{name: "blank text", field: "text", block: protocol.ArtifactContentBlock{Type: protocol.ContentBlockText, Text: " \t"}},
-		{name: "non-image media type", field: "mime", block: protocol.ArtifactContentBlock{Type: protocol.ContentBlockImage, Mime: "text/plain", Data: "AA=="}},
+		{name: "blank text", field: "text", block: protocol.ContentBlock{Type: protocol.ContentBlockText, Text: " \t"}},
+		{name: "non-image media type", field: "mime", block: protocol.ContentBlock{Type: protocol.ContentBlockImage, Mime: "text/plain", Data: "AA=="}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			artifact := validSessionImportArtifact()
 			artifact.Items = []protocol.ArtifactItem{{
 				ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
 				CreatedAt: testSessionTime, Type: protocol.ItemTypeUserMessage,
-				Content: []protocol.ArtifactContentBlock{test.block},
+				Content: []protocol.ContentBlock{test.block},
 			}}
 			assertSessionImportRejectsArtifact(t, artifact, test.field)
 		})
@@ -331,7 +331,7 @@ func TestSessionImportRejectsBlankArtifactToolName(t *testing.T) {
 	artifact.Items = []protocol.ArtifactItem{{
 		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusIncomplete,
 		Type: protocol.ItemTypeToolCall, StartedAt: testSessionTime, FinishedAt: testSessionTime,
-		Tool: &protocol.ArtifactToolInvocation{Name: " \t", Arguments: map[string]any{}},
+		Tool: &protocol.ToolInvocation{Name: " \t", Arguments: map[string]any{}},
 	}}
 	assertSessionImportRejectsArtifact(t, artifact, "name")
 }

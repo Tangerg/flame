@@ -43,6 +43,7 @@ func (t KnowledgeTarget) workspaceRef() *protocol.WorkspaceRef {
 }
 
 type KnowledgeEntry struct {
+	Path      string
 	Scope     protocol.KnowledgeScope
 	Content   string
 	Revision  string
@@ -50,7 +51,7 @@ type KnowledgeEntry struct {
 }
 
 func (e KnowledgeEntry) Validate() error {
-	wire := protocol.KnowledgeEntry{Scope: e.Scope, Content: e.Content, Revision: e.Revision}
+	wire := protocol.KnowledgeEntry{Path: e.Path, Scope: e.Scope, Content: e.Content, Revision: e.Revision}
 	if e.UpdatedAt != nil {
 		wire.UpdatedAt = *e.UpdatedAt
 	}

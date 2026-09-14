@@ -21,6 +21,7 @@ func Topics() []protocol.RuntimeTopic {
 	return []protocol.RuntimeTopic{
 		protocol.TopicFilesChanged,
 		protocol.TopicSkillsChanged,
+		protocol.TopicRecipesChanged,
 		protocol.TopicMCPChanged,
 		protocol.TopicSchedulesChanged,
 		protocol.TopicSessionsChanged,

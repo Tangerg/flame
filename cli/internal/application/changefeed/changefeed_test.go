@@ -12,7 +12,7 @@ import (
 func TestTopicsReturnsAnOwnedCompleteInventory(t *testing.T) {
 	t.Parallel()
 	want := []protocol.RuntimeTopic{
-		protocol.TopicFilesChanged, protocol.TopicSkillsChanged, protocol.TopicMCPChanged, protocol.TopicSchedulesChanged,
+		protocol.TopicFilesChanged, protocol.TopicSkillsChanged, protocol.TopicRecipesChanged, protocol.TopicMCPChanged, protocol.TopicSchedulesChanged,
 		protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicGoalsChanged, protocol.TopicInterruptsChanged,
 		protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged,
 		protocol.TopicAgentMemoryChanged,

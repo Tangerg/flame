@@ -105,7 +105,7 @@ func (k *Knowledge) Save(ctx context.Context, update workspace.KnowledgeUpdate) 
 }
 
 func projectKnowledgeEntry(value protocol.KnowledgeEntry) workspace.KnowledgeEntry {
-	entry := workspace.KnowledgeEntry{Scope: value.Scope, Content: value.Content, Revision: value.Revision}
+	entry := workspace.KnowledgeEntry{Path: value.Path, Scope: value.Scope, Content: value.Content, Revision: value.Revision}
 	if !value.UpdatedAt.IsZero() {
 		entry.UpdatedAt = new(value.UpdatedAt)
 	}
