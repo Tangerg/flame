@@ -80,7 +80,7 @@ func TestShell_CompletesInline(t *testing.T) {
 		t.Fatalf("result = %q, want {stdout:hello, exit_code:0}", out)
 	}
 	// A completed command is removed, not left as a background job.
-	if running := shells.RunningForSession(""); len(running) != 0 {
+	if running := shells.RetainedForSession(""); len(running) != 0 {
 		t.Error("finished command should be removed from the shell set")
 	}
 }
@@ -309,7 +309,7 @@ func TestShellCanceledForegroundJoinsBeforeRemoval(t *testing.T) {
 	var running *exec.Shell
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		if live := shells.RunningForSession(""); len(live) == 1 {
+		if live := shells.RetainedForSession(""); len(live) == 1 {
 			shell, ok := shells.Get(live[0].ID)
 			if ok {
 				running = shell
@@ -331,7 +331,7 @@ func TestShellCanceledForegroundJoinsBeforeRemoval(t *testing.T) {
 	default:
 		t.Fatal("foreground shell was removed before process cleanup joined")
 	}
-	if live := shells.RunningForSession(""); len(live) != 0 {
+	if live := shells.RetainedForSession(""); len(live) != 0 {
 		t.Fatal("canceled foreground shell remained in the owner ledger")
 	}
 }

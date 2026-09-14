@@ -144,8 +144,8 @@ type Shell struct {
 	cancel    context.CancelFunc
 	process   *shellProcessOwner
 	started   time.Time
-	id        shellID       // the owner-map key, mirrored here for RunningForSession
-	sessionID string        // session that launched it; scopes RunningForSession
+	id        shellID       // the owner-map key, mirrored here for RetainedForSession
+	sessionID string        // session that launched it; scopes RetainedForSession
 	cwd       string        // canonical working-tree identity used by lifecycle cleanup
 	command   string        // the shell command, for a session's live-state readout
 	done      chan struct{} // closed once the process finishes
@@ -163,8 +163,8 @@ type Shell struct {
 }
 
 // Launch starts command under cwd in the background and returns its shell id.
-// sessionID scopes the shell to its owning session so [Shells.RunningForSession]
-// can report a session's still-running jobs (e.g. for a post-compaction
+// sessionID scopes the shell to its owning session so [Shells.RetainedForSession]
+// can report a session's retained jobs (e.g. for a post-compaction
 // live-state reminder) without leaking another session's shells; "" is allowed
 // for callers with no session.
 //
@@ -276,37 +276,25 @@ func (s *Shells) Get(id string) (*Shell, bool) {
 	return sh, ok
 }
 
-// RunningShell identifies one background shell still executing: its id (for
-// read_shell_output / stop_shell) and the command it runs.
-type RunningShell struct {
+// RetainedShell identifies an addressable command, including completed commands
+// whose final output has not yet been consumed.
+type RetainedShell struct {
 	ID      string
 	Command string
 }
 
-// RunningForSession returns sessionID's background shells that have not yet
-// finished, in stable id order. Empty when the session has no live shells. Used
-// to remind the model of live jobs a history compaction would otherwise drop.
-func (s *Shells) RunningForSession(sessionID string) []RunningShell {
+// RetainedForSession snapshots handles that a compaction must preserve until
+// their results are read or session teardown releases them.
+func (s *Shells) RetainedForSession(sessionID string) []RetainedShell {
 	s.mu.Lock()
-	shells := make([]*Shell, 0, len(s.shells))
+	defer s.mu.Unlock()
+	var out []RetainedShell
 	for _, sh := range s.shells {
 		if sh.sessionID == sessionID {
-			shells = append(shells, sh)
+			out = append(out, RetainedShell{ID: sh.id.String(), Command: sh.command})
 		}
 	}
-	s.mu.Unlock()
-
-	var out []RunningShell
-	for _, sh := range shells {
-		sh.mu.Lock()
-		finished := sh.finished
-		sh.mu.Unlock()
-		if finished {
-			continue
-		}
-		out = append(out, RunningShell{ID: sh.id.String(), Command: sh.command})
-	}
-	slices.SortFunc(out, func(a, b RunningShell) int { return strings.Compare(a.ID, b.ID) })
+	slices.SortFunc(out, func(a, b RetainedShell) int { return strings.Compare(a.ID, b.ID) })
 	return out
 }
 

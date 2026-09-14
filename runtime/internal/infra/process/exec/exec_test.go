@@ -240,9 +240,8 @@ func mustShell(t *testing.T, shells *Shells, id string) *Shell {
 	return sh
 }
 
-// TestShells_RunningForSession scopes the live-shell readout to one session and
-// drops shells that have finished.
-func TestShells_RunningForSession(t *testing.T) {
+// Completed commands remain addressable until their final output is consumed.
+func TestShells_RetainedForSession(t *testing.T) {
 	shells := NewShells(nil, false)
 	t.Cleanup(func() { _ = shells.KillAll() })
 
@@ -257,23 +256,27 @@ func TestShells_RunningForSession(t *testing.T) {
 		t.Fatalf("launch b: %v", err)
 	}
 
-	if got := shells.RunningForSession("sess-a"); len(got) != 2 {
+	if got := shells.RetainedForSession("sess-a"); len(got) != 2 {
 		t.Fatalf("session a running = %d, want 2", len(got))
 	}
-	if got := shells.RunningForSession("sess-a")[0].Command; got != "sleep 30" {
+	if got := shells.RetainedForSession("sess-a")[0].Command; got != "sleep 30" {
 		t.Fatalf("running shell command = %q, want %q", got, "sleep 30")
 	}
-	if got := shells.RunningForSession("other"); len(got) != 0 {
+	if got := shells.RetainedForSession("other"); len(got) != 0 {
 		t.Fatalf("unknown session running = %d, want 0", len(got))
 	}
 
-	// A killed shell drops out of its session's live set.
+	// Stopping a command does not discard its unread final output.
 	if _, err := shells.Kill(bID); err != nil {
 		t.Fatalf("kill b: %v", err)
 	}
 	waitForDone(t, shells, bID)
-	if got := shells.RunningForSession("sess-b"); len(got) != 0 {
-		t.Fatalf("session b after kill = %d, want 0", len(got))
+	if got := shells.RetainedForSession("sess-b"); len(got) != 1 || got[0].ID != bID {
+		t.Fatalf("session b lost its unread command: %+v", got)
+	}
+	shells.Remove(bID)
+	if got := shells.RetainedForSession("sess-b"); len(got) != 0 {
+		t.Fatalf("session b after release = %d, want 0", len(got))
 	}
 }
 

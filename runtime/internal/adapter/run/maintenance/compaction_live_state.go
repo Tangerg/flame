@@ -8,30 +8,30 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// RunningShell is one background shell still executing when a compaction ran.
-type RunningShell struct {
+// RetainedShell is an addressable command whose output may still need reading.
+type RetainedShell struct {
 	ID      string
 	Command string
 }
 
 // LiveStateSnapshot is non-durable process state an LLM history summary cannot
 // reconstruct. Durable Goal and Plan aggregates are refreshed separately before
-// every model call; only running OS resources belong in this reminder.
+// every model call; retained OS resource handles belong in this reminder.
 type LiveStateSnapshot struct {
-	Shells []RunningShell
+	Shells []RetainedShell
 }
 
 func (l LiveStateSnapshot) empty() bool {
 	return len(l.Shells) == 0
 }
 
-// LiveStateSnapshotter snapshots a session's active execution state at the moment a
+// LiveStateSnapshotter snapshots a session's retained execution state when a
 // compaction rewrites its history. It is deterministic (no model call). A nil
 // LiveStateSnapshotter disables the reminder.
 type LiveStateSnapshotter func(ctx context.Context, sessionID string) LiveStateSnapshot
 
 // liveStateReminder renders snap as a system-reminder message to append after a
-// compaction summary, or reports false when there is nothing active to carry
+// compaction summary, or reports false when there is nothing retained to carry
 // over. The tool names it points at (read_shell_output / stop_shell) are the
 // stable names of the tools that own that state.
 func liveStateReminder(snap LiveStateSnapshot) (chat.Message, bool) {
@@ -39,7 +39,7 @@ func liveStateReminder(snap LiveStateSnapshot) (chat.Message, bool) {
 		return chat.Message{}, false
 	}
 	var b strings.Builder
-	b.WriteString("<system-reminder>\nThe earlier conversation was summarized to save context. Execution state that was active then — and may still be — is not captured in the summary:\n")
+	b.WriteString("<system-reminder>\nThe earlier conversation was summarized to save context. These shell handles were still retained at compaction time. Commands may be running or finished with unread output:\n")
 	if len(snap.Shells) > 0 {
 		b.WriteString("\nBackground shells (read their output with read_shell_output, stop them with stop_shell):")
 		for _, sh := range snap.Shells {

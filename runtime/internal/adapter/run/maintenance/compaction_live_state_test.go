@@ -5,13 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
-func TestLiveStateReminderRendersRunningShells(t *testing.T) {
+func TestLiveStateReminderRendersRetainedShells(t *testing.T) {
 	msg, ok := liveStateReminder(LiveStateSnapshot{
-		Shells: []RunningShell{{ID: "bg_1", Command: "npm run dev"}},
+		Shells: []RetainedShell{{ID: "bg_1", Command: "npm run dev"}},
 	})
 	if !ok {
 		t.Fatal("non-empty snapshot should render a reminder")
@@ -30,9 +31,8 @@ func TestLiveStateReminderEmptyIsSkipped(t *testing.T) {
 	}
 }
 
-// TestCompactorAppendsLiveStateReminder drives the full summary rung and asserts
-// the reminder lands right after the summary, ahead of the kept recent slice.
-func TestCompactorAppendsLiveStateReminder(t *testing.T) {
+// The full summary rung must preserve handles even after their processes exit.
+func TestCompactorPreservesUnreadCompletedShell(t *testing.T) {
 	store := newCompactionTestStore()
 	const sessID = "sess-live"
 	const total = 20
@@ -41,14 +41,18 @@ func TestCompactorAppendsLiveStateReminder(t *testing.T) {
 	}
 	client, _ := chatclient.New(newTextStubModel("BULLETS"), chatclient.Config{})
 
-	live := func(_ context.Context, id string) LiveStateSnapshot {
-		if id != sessID {
-			t.Errorf("live-state queried for %q, want %q", id, sessID)
-		}
-		return LiveStateSnapshot{
-			Shells: []RunningShell{{ID: "bg_7", Command: "go test ./..."}},
-		}
+	shells := exec.NewShells(nil, false)
+	t.Cleanup(func() { _ = shells.KillAll() })
+	id, err := shells.Launch(t.Context(), sessID, "", "printf unread-result", exec.Timeout{}, false)
+	if err != nil {
+		t.Fatal(err)
 	}
+	sh, ok := shells.Get(id)
+	if !ok {
+		t.Fatal("launched shell is missing")
+	}
+	<-sh.Done()
+	live := NewLiveStateSnapshotter(shells)
 
 	history, _ := store.Read(context.Background(), sessID)
 	threshold := mustEstimateModelContextTokens(t, history, nil, chat.Options{}) - 1
@@ -70,8 +74,16 @@ func TestCompactorAppendsLiveStateReminder(t *testing.T) {
 		t.Fatalf("after[0] should be the summary, got %q", after[0].Text())
 	}
 	reminder := after[1].Text()
-	if !strings.Contains(reminder, "<system-reminder>") || !strings.Contains(reminder, "bg_7") {
+	if !strings.Contains(reminder, "<system-reminder>") || !strings.Contains(reminder, id) {
 		t.Fatalf("after[1] should be the live-state reminder, got %q", reminder)
+	}
+	output, dropped := sh.Read()
+	if output != "unread-result" || dropped {
+		t.Fatalf("post-compaction shell output = %q, dropped=%t", output, dropped)
+	}
+	shells.Remove(id)
+	if !live(t.Context(), sessID).empty() {
+		t.Fatal("released shell remained in the compaction snapshot")
 	}
 }
 

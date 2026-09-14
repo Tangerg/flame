@@ -441,10 +441,10 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 		t.Fatal(err)
 	}
 	deadline := time.Now().Add(time.Second)
-	for len(shells.RunningForSession(start.SessionID)) == 0 && time.Now().Before(deadline) {
+	for len(shells.RetainedForSession(start.SessionID)) == 0 && time.Now().Before(deadline) {
 		time.Sleep(time.Millisecond)
 	}
-	if running := shells.RunningForSession(start.SessionID); len(running) != 1 {
+	if running := shells.RetainedForSession(start.SessionID); len(running) != 1 {
 		t.Fatalf("running shells = %#v, want one approved foreground command", running)
 	}
 	if err := executor.RequestRootCancellation(t.Context(), ref, "operator canceled"); err != nil {
@@ -455,7 +455,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 	if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
 		t.Fatalf("segment end = %#v, want canceled", ended)
 	}
-	if running := shells.RunningForSession(start.SessionID); len(running) != 0 {
+	if running := shells.RetainedForSession(start.SessionID); len(running) != 0 {
 		t.Fatalf("approved foreground shell survived cancellation: %#v", running)
 	}
 	if err := executor.Release(t.Context(), ref); err != nil {
