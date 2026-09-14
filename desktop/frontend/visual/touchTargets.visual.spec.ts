@@ -7,7 +7,6 @@ const ROUTES = [
   "fixture=shell&state=populated",
   "fixture=agent&state=waiting",
   "fixture=agent&state=tool-shells",
-  "fixture=workspace&state=dock-tools",
   "fixture=workspace&state=dock-light",
   "fixture=workspace&state=settings",
   "fixture=shell&state=populated&overlay=finder",

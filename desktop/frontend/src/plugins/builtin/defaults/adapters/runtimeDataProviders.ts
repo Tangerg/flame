@@ -36,7 +36,6 @@ import type {
 } from "@/plugins/builtin/workspace/public/queries";
 import {
   WORKSPACE_AGENT_DOCS_KEY,
-  WORKSPACE_BUILTIN_TOOLS_KEY,
   WORKSPACE_DIFF_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_FILE_HEAD_KEY,
@@ -211,16 +210,6 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
         }),
       );
     },
-  });
-  contribute({
-    key: WORKSPACE_BUILTIN_TOOLS_KEY,
-    fetcher: async (read) =>
-      (await pageData(read.client.tools.list())).map((t) => ({
-        name: t.name,
-        description: t.description ?? "",
-        parameters: t.parameters ?? {},
-        safetyClass: t.safetyClass,
-      })),
   });
   contribute({
     key: WORKSPACE_KNOWLEDGE_KEY,

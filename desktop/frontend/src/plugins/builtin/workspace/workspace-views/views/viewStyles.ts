@@ -228,26 +228,6 @@ export const indent = [
   indentStyles.d5,
 ] as const;
 
-export const toolStyles = stylex.create({
-  headPad: { paddingTop: space.s2, paddingBottom: space.s1 },
-  familyList: { paddingBottom: space.s1_5 },
-  blurb: { paddingBottom: space.s2, color: color.fgMuted, lineHeight: leading.body },
-  toolRow: {
-    display: "grid",
-    gridTemplateColumns: "calc(var(--spacing) * 3.5) auto minmax(0, 1fr)",
-    alignItems: "flex-start",
-    gap: space.s2_5,
-    paddingBlock: space.s1,
-    textAlign: "left",
-  },
-  rowGlyph: { marginTop: space.s1 },
-  toolBlurb: { display: "block", color: color.fgFaint },
-  panelInset: { paddingTop: space.s1, paddingBottom: space.s3, paddingLeft: "58px" },
-  fieldLabel: { color: color.fgMuted, fontWeight: weight.medium },
-  afterLabel: { marginTop: space.s1 },
-  footer: { paddingTop: space.s3_5, paddingBottom: "18px", lineHeight: leading.body },
-});
-
 /**
  * The code surfaces: a command log, a file, a diff.
  *

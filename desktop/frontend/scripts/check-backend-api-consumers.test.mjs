@@ -134,3 +134,41 @@ test("credits query facts only when their server composite has a product callsit
   );
   assert.deepEqual(errors, []);
 });
+
+const operationMatch = /function checkOperationConsumers\([^)]*\) \{[\s\S]*?\n\}/.exec(script);
+if (!operationMatch) throw new Error("checkOperationConsumers helper was not found");
+const checkOperationConsumers = Function(`return (${operationMatch[0]})`)();
+
+test("requires product consumers for every operation outside terminal diagnostics", () => {
+  const errors = [];
+  checkOperationConsumers(
+    new Map([
+      ["tools.invoke", new Set()],
+      ["runs.start", new Set()],
+    ]),
+    new Map(),
+    new Set(["tools.invoke"]),
+    errors,
+  );
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /runs.start has no non-test frontend consumer/);
+});
+
+test("rejects terminal diagnostics in the Desktop SDK even without a caller", () => {
+  const errors = [];
+  checkOperationConsumers(
+    new Map([["tools.invoke", new Set()]]),
+    new Map([["tools.invoke", new Set(["tools.invoke"])]]),
+    new Set(["tools.invoke"]),
+    errors,
+  );
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /exposes terminal-only diagnostic tools.invoke/);
+});
+
+test("rejects stale terminal diagnostic declarations", () => {
+  const errors = [];
+  checkOperationConsumers(new Map(), new Map(), new Set(["tools.invoke"]), errors);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /absent from the Runtime manifest/);
+});

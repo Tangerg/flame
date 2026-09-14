@@ -40,7 +40,6 @@ export const VISUAL_WORKSPACE_STATES = [
   "dock-knowledge",
   "dock-agent-memory",
   "dock-feature-off",
-  "dock-tools",
   "dock-file",
   "dock-empty",
   "dock-catalog",

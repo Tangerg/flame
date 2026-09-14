@@ -98,7 +98,6 @@ import {
   searchView,
   skillsView,
   timelineView,
-  toolsView,
 } from "./workspace/workspace-views";
 
 // Agent fold — fold v2 RunEvents (run.* / item.* / state.*) into view state.
@@ -191,7 +190,6 @@ const panes: AnyPlugin[] = [
   planView,
   subagentsView,
   timelineView,
-  toolsView,
   skillsView,
   searchView,
   agentDocsView,

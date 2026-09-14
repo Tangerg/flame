@@ -6,7 +6,6 @@ const ROUTES = [
   "fixture=agent&state=narrative",
   "fixture=agent&state=waiting",
   "fixture=agent&state=long-content",
-  "fixture=workspace&state=dock-tools",
 ];
 
 test("nothing invisible can be clicked", async ({ page }) => {

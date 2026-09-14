@@ -153,7 +153,7 @@ Context Dock 是当前 session/cwd 的材料区。它不是永久抢戏的第三
 
 - review mode：changed files + checklist + diff + inline comments。
 - file mode：file tree + opened file + breadcrumb。
-- tool diagnostics: one catalog for available tools, MCP status, and explicit diagnostic invocation.
+- MCP 服务在设置页统一管理；工具调用及结果在对话与轨迹中查看。
 - run inspection: the Run tree and Timeline preserve source Run identity; individual tool output stays in the conversation.
 - search mode：grep / symbols；不维护独立向量索引状态。
 - memory / skills：围绕当前 cwd 展示。
@@ -402,7 +402,7 @@ P129 进一步固定 Conversation 与 Transcript 的可见性边界：Applicatio
 验收：
 
 - 左侧只剩 global actions + cwd groups + sessions + global footer。
-- 当前 session/cwd 的工具都从右侧进入。
+- 当前 session/cwd 的工具调用保留在对话轨迹中；右侧栏呈现文件、变更和执行上下文。
 
 ### Phase 4: Split Workspace Navigation State — `DONE`
 

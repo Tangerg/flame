@@ -28,7 +28,6 @@ import {
 import { localePlugins } from "@/plugins/builtin/i18n";
 import { installWorkspaceErrorClassifier } from "@/plugins/builtin/workspace/adapters/runtimeWorkspaceErrorClassifier";
 import {
-  WORKSPACE_BUILTIN_TOOLS_KEY,
   WORKSPACE_DIFF_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
@@ -40,7 +39,6 @@ import {
   WORKSPACE_AGENT_MEMORY_KEY,
   WORKSPACE_KNOWLEDGE_KEY,
   type AgentMemoryEntry,
-  type BuiltinToolSummary,
   type ManagedSkill,
   type SkillProposal,
   type WorkspaceAgentDoc,
@@ -60,7 +58,6 @@ import {
   inboxView,
   planView,
   timelineView,
-  toolsView,
   searchView,
   skillsView,
   knowledgeView,
@@ -399,71 +396,6 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
         ],
       });
       ctx.contribute(DATA_PROVIDER, {
-        key: WORKSPACE_BUILTIN_TOOLS_KEY,
-        fetcher: async () =>
-          [
-            {
-              name: "shell",
-              description: "Run a shell command",
-              parameters: { type: "object", required: ["command"] },
-              safetyClass: "exec",
-            },
-            {
-              name: "read_shell_output",
-              description: "Read command output",
-              parameters: { type: "object" },
-              safetyClass: "safe",
-            },
-            {
-              name: "read",
-              description: "Read a file",
-              parameters: { type: "object", required: ["path"] },
-              safetyClass: "safe",
-            },
-            {
-              name: "apply_patch",
-              description: "Apply a patch to files",
-              parameters: { type: "object" },
-              safetyClass: "write",
-            },
-            {
-              name: "grep",
-              description: "Search file contents",
-              parameters: { type: "object", required: ["query"] },
-              safetyClass: "safe",
-            },
-            {
-              name: "glob",
-              description: "Find files by name",
-              parameters: { type: "object" },
-              safetyClass: "safe",
-            },
-            {
-              name: "web_fetch",
-              description: "Fetch a page",
-              parameters: { type: "object", required: ["url"] },
-              safetyClass: "network",
-            },
-            {
-              name: "set_plan",
-              description: "Update the Plan",
-              parameters: { type: "object" },
-              safetyClass: "safe",
-            },
-            {
-              name: "search_memory",
-              description: "Search project memory",
-              parameters: { type: "object" },
-              safetyClass: "safe",
-            },
-            {
-              name: "acme_deploy",
-              description: "Ship it (unplaced, from a plugin)",
-              parameters: { type: "object" },
-            },
-          ] satisfies BuiltinToolSummary[],
-      });
-      ctx.contribute(DATA_PROVIDER, {
         key: MCP_SERVERS_KEY,
         fetcher: async () => [] satisfies MCPServerSettings[],
       });
@@ -559,7 +491,6 @@ async function loadVisualPlugins(plugins: readonly AnyPlugin[]): Promise<void> {
 
 const OPENED_BY_ITS_OWN_STATE = new Set([
   "inbox",
-  "tools",
   "agent-docs",
   "skills",
   "knowledge",
@@ -580,7 +511,6 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-knowledge": "knowledge",
   "dock-agent-memory": "agent-memory",
   "dock-feature-off": "skills",
-  "dock-tools": "tools",
   "dock-file": "file",
   "dock-catalog": WORKSPACE_DOCK_CATALOG,
 };
@@ -656,7 +586,6 @@ export async function installVisualWorkspaceFixture(
     diffView,
     fileView,
     inboxView,
-    toolsView,
     planView,
     timelineView,
     searchView,

@@ -46,15 +46,6 @@ export const diffView = defineWorkspaceView({
   component: lazy(() => import("./diff").then((m) => ({ default: m.DiffWorkspaceSurface }))),
 });
 
-export const toolsView = defineWorkspaceView({
-  id: "tools",
-  title: "workspace.view.title.tools",
-  icon: "tool",
-  order: 70,
-  dock: "workspace",
-  component: lazy(() => import("./tools").then((m) => ({ default: m.ToolsTab }))),
-});
-
 export const skillsView = defineWorkspaceView({
   id: "skills",
   title: "workspace.view.title.skills",

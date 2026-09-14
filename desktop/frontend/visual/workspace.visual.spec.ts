@@ -101,15 +101,6 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     await expect(page.getByText("+2", { exact: true })).toBeVisible();
     return;
   }
-  if (state === "dock-tools") {
-    const view = page.locator(".agent-workspace-view:visible");
-    const listing = await view.innerText();
-    expect(listing.indexOf("Shell")).toBeLessThan(listing.indexOf("Files"));
-    expect(listing.indexOf("Files")).toBeLessThan(listing.indexOf("Search"));
-    await expect(view).toContainText("acme_deploy");
-    expect(listing.indexOf("Other")).toBeGreaterThan(listing.indexOf("Recall"));
-    return;
-  }
   if (state === "dock-empty") {
     await expect(page.getByText("Nothing to compare", { exact: true })).toBeVisible();
     return;

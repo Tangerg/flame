@@ -32,7 +32,6 @@ import type {
   ImportSessionResponse,
   DiscoverResponse,
   EmbeddingRole,
-  InvokeToolRequest,
   ListApprovalRulesResult,
   ListFilesRequest,
   ListItemsResponse,
@@ -83,7 +82,6 @@ import type {
   StartRunRequest,
   RuntimeSubscribeRequest,
   RuntimeSubscribeResponse,
-  ToolSpec,
   UpdateSessionRequest,
   UpdateMCPServerRequest,
   Usage,
@@ -324,10 +322,6 @@ export interface Methods {
     // An EMPTY model leaves Agent Memory on keyword ranking.
     getEmbeddingRole: () => Promise<EmbeddingRole>;
     setEmbeddingRole: (params: EmbeddingRole) => MutationPromise<EmbeddingRole>;
-  };
-  tools: {
-    list: () => Promise<Page<ToolSpec>>;
-    invoke: (params: InvokeToolRequest) => MutationPromise<unknown>;
   };
   usage: {
     session: (sessionId: SessionId, signal?: AbortSignal) => Promise<Usage>;
@@ -619,10 +613,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       setUtilityRole: (params) => call("models.setUtilityRole", params),
       getEmbeddingRole: () => call("models.getEmbeddingRole", {}),
       setEmbeddingRole: (params) => call("models.setEmbeddingRole", params),
-    },
-    tools: {
-      list: () => call("tools.list", {}),
-      invoke: (params) => call("tools.invoke", params),
     },
     usage: {
       session: (sessionId, signal) => call("usage.session", { sessionId }, { signal }),

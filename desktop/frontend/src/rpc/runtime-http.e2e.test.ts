@@ -4332,60 +4332,6 @@ for await (const line of lines) {
     await hookEvents.return?.();
   }, 30_000);
 
-  it("invokes the direct diagnostic catalog inside its admitted workspace", async () => {
-    if (!client) throw new Error("runtime client was not initialized");
-
-    const workspaceRoot = join(root, "workspace-direct-tools");
-    await mkdir(workspaceRoot);
-    await writeFile(join(workspaceRoot, "diagnostic.txt"), "direct-tool-marker\n");
-    const session = await client.sessions.create({
-      workspace: { path: workspaceRoot },
-      title: "HTTP direct diagnostic tools",
-    });
-
-    await expect(client.workspaces.resolve(session.workspace.ref)).resolves.toMatchObject({
-      ref: session.workspace.ref,
-    });
-    await expect(client.workspaces.list()).resolves.toMatchObject({
-      data: expect.arrayContaining([
-        expect.objectContaining({
-          workspace: expect.objectContaining({ ref: session.workspace.ref }),
-        }),
-      ]),
-    });
-    await expect(client.tools.list()).resolves.toMatchObject({
-      data: expect.arrayContaining([
-        expect.objectContaining({ name: "read", safetyClass: "safe" }),
-        expect.objectContaining({ name: "glob", safetyClass: "safe" }),
-        expect.objectContaining({ name: "grep", safetyClass: "safe" }),
-      ]),
-    });
-
-    const readResult = await client.tools.invoke({
-      name: "read",
-      arguments: { path: "diagnostic.txt" },
-      workspace: session.workspace.ref,
-    });
-    expect(JSON.stringify(readResult)).toContain("direct-tool-marker");
-    const grepResult = await client.tools.invoke({
-      name: "grep",
-      arguments: { pattern: "direct-tool-marker", path: "." },
-      workspace: session.workspace.ref,
-    });
-    expect(JSON.stringify(grepResult)).toContain("diagnostic.txt");
-
-    await expect(
-      client.tools.invoke({
-        name: "read",
-        arguments: { path: "../outside.txt" },
-        workspace: session.workspace.ref,
-      }),
-    ).rejects.toSatisfy(
-      (error: unknown) =>
-        error instanceof RpcError && errorType(error.data) === "path_outside_root",
-    );
-  }, 30_000);
-
   it("reopens durable reads and event reconciliation after a Runtime process restart", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 

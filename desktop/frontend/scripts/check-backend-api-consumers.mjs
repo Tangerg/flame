@@ -22,6 +22,10 @@ const TSCONFIG_PATH = resolve(ROOT, "tsconfig.json");
 
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
 const operations = new Set(manifest.methods.map((method) => method.name));
+// Direct tool diagnostics are a terminal feature (CLI /tools and /tool-invoke).
+// Desktop presents agent tool calls in the conversation and manages MCP in settings.
+// Keep these methods out of its SDK rather than adding a UI solely for coverage.
+const terminalDiagnostics = new Set(["tools.list", "tools.invoke"]);
 const sidecarEndpoints = new Set(
   manifest.httpEndpoints
     .filter((endpoint) => endpoint.kind === "sidecar")
@@ -149,13 +153,7 @@ const materializedOperations = creditMaterializedOperationConsumers(
   errors,
 );
 
-for (const [operation, consumers] of operationConsumers) {
-  if (consumers.size === 0) {
-    errors.push(
-      `${operation} has no non-test frontend consumer (generated RPC wrappers and visual fixtures do not count)`,
-    );
-  }
-}
+checkOperationConsumers(operationConsumers, implementationMap, terminalDiagnostics, errors);
 
 checkSidecarConsumers(sidecarEndpoints, sidecarMethodMap, sidecarConsumerCalls, errors);
 
@@ -169,8 +167,37 @@ const callCount =
   [...sidecarConsumerCalls.values()].reduce((total, locations) => total + locations.size, 0);
 closeCompiler();
 console.log(
-  `check-backend-api-consumers: ${operations.size}/${operations.size} Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct operations, ${materializedOperations.size} materialized through server composites), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
+  `check-backend-api-consumers: ${operations.size - terminalDiagnostics.size}/${operations.size - terminalDiagnostics.size} Desktop Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct operations, ${materializedOperations.size} materialized through server composites), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
 );
+
+function checkOperationConsumers(
+  consumersByOperation,
+  implementations,
+  terminalOnly,
+  targetErrors,
+) {
+  for (const operation of terminalOnly) {
+    if (!consumersByOperation.has(operation)) {
+      targetErrors.push(
+        `${operation} is marked terminal-only but absent from the Runtime manifest`,
+      );
+    }
+  }
+  for (const [wrapper, operations] of implementations) {
+    for (const operation of operations) {
+      if (terminalOnly.has(operation)) {
+        targetErrors.push(`Methods.${wrapper} exposes terminal-only diagnostic ${operation}`);
+      }
+    }
+  }
+  for (const [operation, consumers] of consumersByOperation) {
+    if (!terminalOnly.has(operation) && consumers.size === 0) {
+      targetErrors.push(
+        `${operation} has no non-test frontend consumer (generated RPC wrappers and visual fixtures do not count)`,
+      );
+    }
+  }
+}
 
 function creditMaterializedOperationConsumers(methods, consumersByOperation, targetErrors) {
   const credited = new Set();

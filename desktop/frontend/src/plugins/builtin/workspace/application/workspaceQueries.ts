@@ -15,13 +15,6 @@ export interface WorkspaceFileChange {
   binary?: boolean;
 }
 
-export interface BuiltinToolSummary {
-  name: string;
-  description: string;
-  parameters: Record<string, unknown>;
-  safetyClass?: string;
-}
-
 export interface WorkspaceSkill {
   name: string;
   description: string;
@@ -207,7 +200,6 @@ export const WORKSPACE_MANAGED_SKILLS_KEY = "managed-skills";
 export const WORKSPACE_SKILL_PROPOSALS_KEY = "skill-proposals";
 export const WORKSPACE_AGENT_MEMORY_KEY = "agent-memory";
 export const WORKSPACE_KNOWLEDGE_KEY = "knowledge";
-export const WORKSPACE_BUILTIN_TOOLS_KEY = "builtin-tools";
 export const WORKSPACE_GREP_KEY = "grep";
 export const WORKSPACE_FILE_HEAD_KEY = "file-head";
 export const WORKSPACE_AGENT_DOCS_KEY = "agent-docs";
@@ -232,9 +224,6 @@ export const useWorkspaceFileHead = createParameterizedDataQuery<
   WorkspaceFileHeadQuery,
   WorkspaceFileLine[]
 >(WORKSPACE_FILE_HEAD_KEY);
-export const useWorkspaceBuiltinTools = createDataQuery<BuiltinToolSummary[]>(
-  WORKSPACE_BUILTIN_TOOLS_KEY,
-);
 export const useWorkspaceSkills = createParameterizedDataQuery<
   WorkspaceCatalogQuery,
   WorkspaceSkill[]

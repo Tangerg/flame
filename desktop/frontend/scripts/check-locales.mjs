@@ -727,11 +727,6 @@ for (const path of sourceFiles(SRC_DIR)) {
   const mappedBlock = read("lib/rpcErrors.ts").match(/MAPPED_TYPES[\s\S]*?\];/)?.[0] ?? "";
   const mapped = [...mappedBlock.matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
 
-  const unplaced = constant(
-    read("plugins/builtin/workspace/application/toolCatalog.ts"),
-    "UNPLACED_FAMILY",
-    "toolCatalog.ts",
-  );
   const generic = constant(
     read("plugins/builtin/agent/presentation/toolPresentation.ts"),
     "GENERIC_VERB_ID",
@@ -758,7 +753,7 @@ for (const path of sourceFiles(SRC_DIR)) {
     );
   };
 
-  holds("tools.family.", [...families, unplaced], "tool families");
+  holds("tools.family.", families, "tool families");
   holds("tool.doing.", [...verbs, generic], "tool verbs while running");
   holds("tool.done.", [...verbs, generic], "tool verbs once settled");
   holds("rpcError.", mapped, "error copy");

@@ -26,7 +26,6 @@ const STATE_LABELS: Record<VisualWorkspaceState, string> = {
   "dock-knowledge": "Knowledge",
   "dock-agent-memory": "Agent memory",
   "dock-feature-off": "Features off",
-  "dock-tools": "Tool catalog",
   "dock-file": "File viewer",
   "dock-empty": "Diff · empty",
   "dock-catalog": "Dock catalogue",

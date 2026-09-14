@@ -128,7 +128,6 @@ const LAZY_FEATURES = [
       "skills-",
       "SubagentsPanel-",
       "timeline-",
-      "tools-",
     ],
     ceiling: 250_000,
   },
