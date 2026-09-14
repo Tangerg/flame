@@ -19,7 +19,7 @@ function runtimeKnowledgeGateway(client: FlameClient): WorkspaceKnowledgeGateway
         return knowledgeDocument(entry, input.scope);
       } catch (error) {
         if (isErrorType(error, "revision_conflict")) {
-          throw new WorkspaceKnowledgeRevisionConflictError();
+          throw new WorkspaceKnowledgeRevisionConflictError(error);
         }
         throw error;
       }

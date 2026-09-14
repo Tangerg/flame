@@ -49,6 +49,11 @@ describe("runtimeKnowledgeGateway", () => {
   });
 
   it("returns the authoritative save result and keeps the wire problem at the adapter", async () => {
+    const conflict = new RpcError({
+      code: -32009,
+      message: "The knowledge document changed after it was read.",
+      data: { type: "revision_conflict" },
+    });
     const update = vi
       .fn()
       .mockResolvedValueOnce({
@@ -58,13 +63,7 @@ describe("runtimeKnowledgeGateway", () => {
         revision: "rev-2",
         updatedAt: "2026-08-12T00:01:00Z",
       })
-      .mockRejectedValueOnce(
-        new RpcError({
-          code: -32009,
-          message: "revision conflict",
-          data: { type: "revision_conflict" },
-        }),
-      );
+      .mockRejectedValueOnce(conflict);
     const open = vi.fn().mockResolvedValue({ knowledge: { update } });
     setContainer({
       client: () => ({ workspaces: { open } }) as unknown as FlameClient,
@@ -84,14 +83,16 @@ describe("runtimeKnowledgeGateway", () => {
       revision: "rev-2",
       updatedAt: "2026-08-12T00:01:00Z",
     });
-    await expect(
+    const failure = await rejected(
       saveWorkspaceKnowledge({
         scope: "cwd",
         cwd: "/work/alpha",
         content: "stale",
         expectedRevision: "rev-1",
       }),
-    ).rejects.toBeInstanceOf(WorkspaceKnowledgeRevisionConflictError);
+    );
+    expect(failure).toBeInstanceOf(WorkspaceKnowledgeRevisionConflictError);
+    expect(failure).toMatchObject({ message: conflict.message, cause: conflict });
   });
 
   it("retires an old Host read before its response can settle into the successor", async () => {

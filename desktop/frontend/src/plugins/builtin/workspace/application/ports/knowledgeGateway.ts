@@ -26,8 +26,8 @@ export interface WorkspaceKnowledgeGateway {
 
 /** Neutral application failure; the Runtime adapter owns the wire problem type. */
 export class WorkspaceKnowledgeRevisionConflictError extends Error {
-  constructor() {
-    super();
+  constructor(cause: Error) {
+    super(cause.message, { cause });
     this.name = "WorkspaceKnowledgeRevisionConflictError";
   }
 }
