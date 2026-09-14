@@ -823,7 +823,7 @@ export const fr: Record<string, string> = {
   "providers.fromEnv": "depuis l'environnement",
   "providers.utility.title": "Modèle utilitaire",
   "providers.utility.desc":
-    "Modèle moins coûteux pour les tâches de fond — résumés, titres, extraction de faits. Retombe sur le modèle principal.",
+    "Modèle pour les résumés, titres et extractions de faits. Sans sélection, le modèle principal est utilisé.",
   "providers.utility.main": "Utiliser le modèle principal",
   "providers.utility.error": "Impossible de définir le modèle utilitaire.",
   "providers.embedding.title": "Modèle d'embedding",

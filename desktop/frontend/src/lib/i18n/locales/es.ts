@@ -816,7 +816,7 @@ export const es: Record<string, string> = {
   "providers.fromEnv": "del entorno",
   "providers.utility.title": "Modelo auxiliar",
   "providers.utility.desc":
-    "Modelo más económico para trabajo en segundo plano: resúmenes, títulos, extracción de hechos. Recurre al modelo principal.",
+    "Modelo para resúmenes, títulos y extracción de hechos. Si no se configura, se usa el modelo principal.",
   "providers.utility.main": "Usar el modelo principal",
   "providers.utility.error": "No se pudo establecer el modelo auxiliar.",
   "providers.embedding.title": "Modelo de embeddings",

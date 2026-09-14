@@ -374,7 +374,7 @@ export const en: Record<string, string> = {
   "providers.empty.sub": "The runtime reports no supported LLM providers.",
   "providers.utility.title": "Utility model",
   "providers.utility.desc":
-    "Cheaper model for background work — summaries, titles, fact extraction. Falls back to the main model.",
+    "Model for summaries, titles, and fact extraction. Uses the main model when unset.",
   "providers.utility.main": "Use main model",
   "providers.utility.error": "Couldn't set the utility model.",
   "providers.embedding.title": "Embedding model",

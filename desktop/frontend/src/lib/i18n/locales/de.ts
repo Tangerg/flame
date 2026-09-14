@@ -797,7 +797,7 @@ export const de: Record<string, string> = {
   "providers.fromEnv": "aus Umgebung",
   "providers.utility.title": "Hilfsmodell",
   "providers.utility.desc":
-    "Günstigeres Modell für Hintergrundarbeit — Zusammenfassungen, Titel, Faktenextraktion. Fällt auf das Hauptmodell zurück.",
+    "Modell für Zusammenfassungen, Titel und Faktenextraktion. Ohne Auswahl wird das Hauptmodell verwendet.",
   "providers.utility.main": "Hauptmodell verwenden",
   "providers.utility.error": "Hilfsmodell konnte nicht gesetzt werden.",
   "providers.embedding.title": "Embedding-Modell",
