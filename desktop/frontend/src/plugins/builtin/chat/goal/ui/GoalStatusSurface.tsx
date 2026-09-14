@@ -104,7 +104,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
   const canChangeStatus = goal.status === "active" || goalCanResume(goal);
   const canEdit = goal.status !== "completing";
   const nextObjective = draft.trim();
-  const canSave = nextObjective.length > 0 && nextObjective !== goal.objective;
+  const canSave = canEdit && nextObjective.length > 0 && nextObjective !== goal.objective;
 
   const runCommand = async (
     kind: "clear" | "status" | "edit",
@@ -147,7 +147,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
   const clear = () => runCommand("clear", () => clearGoal(goal.sessionId), t("goal.error.clear"));
 
   const save = async () => {
-    if (!canEdit || !canSave) return;
+    if (!canSave) return;
     const saved = await runCommand(
       "edit",
       () => updateGoal({ sessionId: goal.sessionId, objective: nextObjective }),

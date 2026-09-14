@@ -124,6 +124,35 @@ describe("Goal status surface", () => {
     );
   });
 
+  it("keeps an open editor aligned with the current Goal lifecycle", async () => {
+    const { rerender } = render(<GoalStatusSurface />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Goal" }), {
+      target: { value: "Ship beta" },
+    });
+
+    model.goal = { ...model.goal, status: "completing" };
+    rerender(<GoalStatusSurface />);
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(save);
+    expect(model.updateGoal).not.toHaveBeenCalled();
+
+    model.goal = { ...model.goal, status: "paused" };
+    rerender(<GoalStatusSurface />);
+    expect((screen.getByRole("textbox", { name: "Goal" }) as HTMLTextAreaElement).value).toBe(
+      "Ship beta",
+    );
+    expect(screen.getByRole("button", { name: "Save" }).hasAttribute("disabled")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() =>
+      expect(model.updateGoal).toHaveBeenCalledWith({
+        sessionId: "session-a",
+        objective: "Ship beta",
+      }),
+    );
+  });
+
   it("refuses to save an objective that is only whitespace", () => {
     render(<GoalStatusSurface />);
 
