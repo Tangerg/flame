@@ -8,6 +8,7 @@ import appearanceSettings from "@/plugins/builtin/settings/appearance";
 import providersSettings from "@/plugins/builtin/settings/providers";
 import approvalsSettings from "@/plugins/builtin/settings/approvals";
 import brandIconsSettings from "@/plugins/builtin/settings/icon-gallery";
+import diagnosticsView from "@/plugins/builtin/workspace/diagnostics";
 import connectionSettings from "@/plugins/builtin/settings/connection-settings";
 import hooksSettings from "@/plugins/builtin/settings/hooks";
 import mcpServersSettings from "@/plugins/builtin/settings/mcp-servers";
@@ -494,6 +495,7 @@ async function loadVisualPlugins(plugins: readonly AnyPlugin[]): Promise<void> {
 const OPENED_BY_ITS_OWN_STATE = new Set([
   "inbox",
   "subagents",
+  "diagnostics",
   "agent-docs",
   "skills",
   "knowledge",
@@ -508,6 +510,7 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-timeline": "timeline",
   "dock-runs": "timeline",
   "dock-subagents": "subagents",
+  "dock-diagnostics": "diagnostics",
   "dock-files": "file",
   "dock-search": "search",
   "dock-agent-docs": "agent-docs",
@@ -597,6 +600,7 @@ export async function installVisualWorkspaceFixture(
     knowledgeView,
     agentMemoryView,
     agentDocsView,
+    diagnosticsView,
     kernelSettings,
     ...localePlugins,
     appearanceSettings,

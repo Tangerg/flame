@@ -4,6 +4,7 @@ import type { MetricRow } from "@/lib/observability/stores";
 import { useTelemetryStore } from "@/lib/observability/stores";
 import { useMemo, useState } from "react";
 import { Button, Segmented, toneInk, vocab } from "@/ui";
+import { AgentWorkspaceView } from "@/ui/agent";
 import { Cell, Empty, Row, VirtualList } from "./primitives";
 import { TracesPanel } from "./TracesPanel";
 import { useT } from "@/lib/i18n";
@@ -27,16 +28,20 @@ const logColumns = stylex.create({
 
 const d = stylex.create({
   page: {
-    display: "flex",
-    height: "100%",
-    flexDirection: "column",
     gap: space.s3,
-    padding: space.s6,
+    paddingInline: "var(--density-column-gutter-wide)",
+    paddingBlock: space.s3,
   },
-  masthead: { display: "flex", alignItems: "center", justifyContent: "space-between" },
+  masthead: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: space.s3,
+  },
+  copy: { minWidth: 0 },
   title: { color: color.fg, fontWeight: weight.semibold },
   subtitle: { marginTop: space.s0_5, color: color.fgMuted },
-  controls: { display: "flex", alignItems: "center", gap: space.s2 },
+  controls: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s2 },
   logRow: { minHeight: "calc(var(--spacing) * 7)" },
   mono: { fontFamily: "var(--font-mono)" },
   metricsScroller: {
@@ -72,16 +77,16 @@ export function DiagnosticsView() {
   const clear = useTelemetryStore((s) => s.clear);
 
   return (
-    <div {...stylex.props(d.page)}>
+    <AgentWorkspaceView className={stylex.props(d.page).className}>
       <div {...stylex.props(d.masthead)}>
-        <div>
+        <div {...stylex.props(d.copy)}>
           <div {...stylex.props(d.title, typeStep.displaySm)}>{t("diagnostics.title")}</div>
           <div {...stylex.props(d.subtitle, typeStep.uiMd)}>{t("diagnostics.description")}</div>
         </div>
         <div {...stylex.props(d.controls)}>
           <Segmented
             value={signal}
-            options={SIGNALS}
+            options={SIGNALS.map((o) => ({ ...o, label: t(o.label) }))}
             onChange={setSignal}
             ariaLabel={t("diagnostics.signalAria")}
           />
@@ -94,7 +99,7 @@ export function DiagnosticsView() {
       {signal === "traces" && <TracesPanel />}
       {signal === "metrics" && <MetricsPanel />}
       {signal === "logs" && <LogsPanel />}
-    </div>
+    </AgentWorkspaceView>
   );
 }
 
