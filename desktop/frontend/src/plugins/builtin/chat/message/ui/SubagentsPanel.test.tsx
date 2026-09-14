@@ -153,3 +153,30 @@ it("cancels the currently selected child and disables mutations while disconnect
   );
   material.available = true;
 });
+
+it("names delegated tasks from their parent tool call in both list and detail", () => {
+  material.rows = rows();
+  material.rows[0]!.facts.toolCalls.delegate = {
+    id: "delegate",
+    runId: "root",
+    name: "delegate_task",
+    fn: "Audit axios cancellation",
+    args: '{"summary":"Audit axios cancellation"}',
+    status: "ok",
+  };
+  material.rows[0]!.facts.toolCalls.nested = {
+    id: "nested",
+    runId: "child",
+    name: "delegate_task",
+    fn: "Review request headers",
+    args: '{"summary":"Review request headers"}',
+    status: "ok",
+  };
+  navigator().go({ session: "session" });
+  openWorkspaceSubagentRun(null);
+  render(<SubagentsPanel />);
+  expect(screen.getByRole("button", { name: /Review request headers/ })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /Audit axios cancellation/ }));
+  expect(screen.getByRole("region", { name: "Audit axios cancellation" })).toBeTruthy();
+  expect(navigator().get().subagent).toBe("child");
+});

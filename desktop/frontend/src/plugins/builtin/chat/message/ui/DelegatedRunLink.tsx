@@ -28,14 +28,16 @@ export function DelegatedRunLink({
   run,
   ordinal,
   siblingCount,
+  taskLabel,
 }: {
   run: AgentRunView;
   ordinal: number;
   siblingCount: number;
+  taskLabel?: string;
 }) {
   const t = useT();
   const available = useRuntimeCommandsAvailable();
-  const model = delegatedRunSummary(t, run, ordinal, siblingCount);
+  const model = delegatedRunSummary(t, run, ordinal, siblingCount, taskLabel);
   return (
     <div data-slot="delegated-run-link" data-run-id={run.id} {...stylex.props(styles.row)}>
       <Pressable
@@ -45,7 +47,9 @@ export function DelegatedRunLink({
         <Icon name="bot" size="sm" />
         <span {...stylex.props(styles.detail)}>
           <span {...stylex.props(vocab.line, typeStep.uiSm)}>
-            <span>{model.label}</span>
+            <span title={model.label} {...stylex.props(vocab.truncate)}>
+              {model.label}
+            </span>
             <StatusDot tone={model.dotTone} />
             <span {...stylex.props(toneInk[model.ink])}>{model.statusLabel}</span>
           </span>

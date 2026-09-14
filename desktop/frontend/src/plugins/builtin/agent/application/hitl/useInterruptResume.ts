@@ -43,7 +43,12 @@ export function useInterruptResume<P>(runId?: string, itemId?: string) {
       };
       // No resume binding (session torn down) ⇒ never latched; roll back so the
       // card stays actionable. On success the latch stays (interrupt resolved).
-      if (!resumeInterrupt(sessionId, runId, itemId, response, settled, { onError: rollback }))
+      if (
+        !resumeInterrupt(sessionId, runId, itemId, response, settled, {
+          onSettled: () => setPending(null),
+          onError: rollback,
+        })
+      )
         rollback();
     },
     [runId, itemId, sessionId],

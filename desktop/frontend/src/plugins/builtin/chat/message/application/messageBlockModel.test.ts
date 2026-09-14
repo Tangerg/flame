@@ -236,7 +236,7 @@ describe("narratedBlocks", () => {
     expect(narratedBlocks(blocks, {}, standing)).toEqual(blocks);
   });
 
-  it("moves only an unanswered question to the composer request surface", () => {
+  it("preserves questions for the enclosing renderer to place", () => {
     const pending: ContentBlock = {
       kind: "question",
       status: "requires-action",
@@ -246,7 +246,9 @@ describe("narratedBlocks", () => {
 
     const planned = (block: ContentBlock) =>
       messageBlockRenderUnits(narratedBlocks([block], {}, standing), {});
-    expect(planned(pending)).toEqual([]);
+    expect(planned(pending)).toEqual([
+      { kind: "block", block: pending, index: 0, superseded: false },
+    ]);
     expect(planned(answered)).toEqual([
       { kind: "block", block: answered, index: 0, superseded: false },
     ]);

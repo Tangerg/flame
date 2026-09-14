@@ -98,7 +98,10 @@ describe("useQuestionAnswer", () => {
       { answered: true, answers: [["x"]] },
       expect.any(Number),
     );
-    expect(onStarted).toHaveBeenCalled();
+    expect(onStarted).toHaveBeenCalledTimes(1);
+    expect(result.current.pending).toBe(false);
+    act(() => result.current.submit([["again"]]));
+    expect(onStarted).toHaveBeenCalledTimes(1);
 
     spy.mockClear();
     bindResume((_r, _resp, _s, onStartError) => (onStartError as () => void)());

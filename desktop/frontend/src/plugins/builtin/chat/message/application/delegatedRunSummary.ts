@@ -57,14 +57,16 @@ export function delegatedRunSummary(
   run: AgentRunView,
   ordinal: number,
   siblingCount: number,
+  taskLabel?: string,
 ): DelegatedRunSummary {
   const status = agentRunPresentationState(run);
   const statusView = STATUS_VIEW[status];
+  const identity =
+    siblingCount === 1
+      ? t("agent.runTree.delegated.one")
+      : t("agent.runTree.delegated.many", { index: ordinal, count: siblingCount });
   return {
-    label:
-      siblingCount === 1
-        ? t("agent.runTree.delegated.one")
-        : t("agent.runTree.delegated.many", { index: ordinal, count: siblingCount }),
+    label: taskLabel ? (siblingCount === 1 ? taskLabel : `${taskLabel} · ${identity}`) : identity,
     statusLabel: t(statusView.labelKey),
     dotTone: statusView.dotTone,
     ink: statusView.ink,

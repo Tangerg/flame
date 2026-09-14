@@ -57,6 +57,7 @@ export function renderBlock(
             <DelegatedRunLink
               key={narrative.run.id}
               run={narrative.run}
+              taskLabel={tool.fn}
               ordinal={index + 1}
               siblingCount={delegatedRuns.length}
             />
@@ -133,7 +134,7 @@ export function renderMessageBlocks(
     facts.toolCalls,
     answerFollows,
     new Set(Object.keys(facts.delegatedRuns)),
-  );
+  ).filter((unit) => unit.kind !== "block" || unit.block !== ctx.questionInComposer);
   return units.map((unit, index) => {
     const anchor = renderUnitAnchor(message.id, unit);
     return (

@@ -17,6 +17,7 @@ export interface QuestionCardSettledView {
 }
 
 interface PendingQuestionRequest {
+  kind: "question";
   status: "requires-action";
   runId?: string;
   itemId?: string;

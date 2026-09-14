@@ -99,16 +99,18 @@ export function ChatStream({ onSend }: Props) {
 
   const textReveal = useStreamRevealStore((state) => state.streamReveal);
 
+  const pendingQuestion = useMemo(() => pendingQuestionRequest(rows), [rows]);
+
   const ctx = useMemo(
     () => ({
       expandedIds: expandedToolIds,
       onToggleExpand: toggleExpandedTool,
       textReveal,
+      questionInComposer: pendingQuestion ?? undefined,
     }),
-    [expandedToolIds, toggleExpandedTool, textReveal],
+    [expandedToolIds, toggleExpandedTool, textReveal, pendingQuestion],
   );
 
-  const pendingQuestion = useMemo(() => pendingQuestionRequest(rows), [rows]);
   const composer = pendingQuestion ? (
     <QuestionCard {...pendingQuestion} />
   ) : (

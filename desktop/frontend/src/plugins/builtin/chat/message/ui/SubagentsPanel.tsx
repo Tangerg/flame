@@ -107,10 +107,11 @@ function SubagentGroup({ title, entries }: { title: string; entries: SubagentEnt
       <SectionLabel className={stylex.props(styles.title).className}>
         {title} · {entries.length}
       </SectionLabel>
-      {entries.map(({ narrative, ordinal, siblingCount }) => (
+      {entries.map(({ narrative, ordinal, siblingCount, taskLabel }) => (
         <DelegatedRunLink
           key={narrative.run.id}
           run={narrative.run}
+          taskLabel={taskLabel}
           ordinal={ordinal}
           siblingCount={siblingCount}
         />
@@ -126,8 +127,8 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
   const expandedIds = useExpandedWorkspaceToolIds();
   const onToggleExpand = useToggleWorkspaceTool();
   const ctx: BlockCtx = { expandedIds, onToggleExpand, textReveal: "instant" };
-  const { narrative, facts, ordinal, siblingCount } = entry;
-  const model = delegatedRunSummary(t, narrative.run, ordinal, siblingCount);
+  const { narrative, facts, ordinal, siblingCount, taskLabel } = entry;
+  const model = delegatedRunSummary(t, narrative.run, ordinal, siblingCount, taskLabel);
   return (
     <div ref={scrollRef} {...stylex.props(styles.scroller)}>
       <div
@@ -138,7 +139,9 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
       >
         <div {...stylex.props(styles.status, typeStep.uiSm)}>
           <Icon name="bot" size="sm" />
-          <span {...stylex.props(styles.summary)}>{model.label}</span>
+          <span title={model.label} {...stylex.props(styles.summary, vocab.truncate)}>
+            {model.label}
+          </span>
           <StatusDot tone={model.dotTone} />
           <span {...stylex.props(toneInk[model.ink])}>{model.statusLabel}</span>
           {model.cancelable && (

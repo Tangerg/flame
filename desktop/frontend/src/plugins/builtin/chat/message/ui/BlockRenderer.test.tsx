@@ -107,12 +107,12 @@ describe("delegated Run rendering", () => {
     };
 
     renderRootTool(parentTool.id, facts);
-    expect(screen.getAllByText("Sub-agent")).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /Delegate work.*Finished/ })).toHaveLength(1);
     expect(screen.queryByText("No narrative material yet.")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: /Sub-agent/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Delegate work.*Finished/ }));
     expect(navigator().get()).toMatchObject({ dock: "subagents", subagent: "child-run" });
-    expect(screen.getAllByText("Sub-agent")).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /Delegate work.*Finished/ })).toHaveLength(1);
 
     const taskAnchors = document.querySelectorAll("#task-root, #task-child");
     expect(taskAnchors).toHaveLength(1);
@@ -185,4 +185,21 @@ describe("standing tool outcomes", () => {
     expect(screen.getByText(error)).toBeTruthy();
     expect(document.querySelectorAll('[data-tool="set_plan"]')).toHaveLength(1);
   });
+});
+
+it("only relocates the exact question already rendered by the composer", () => {
+  const first = {
+    kind: "question" as const,
+    status: "requires-action" as const,
+    itemId: "first",
+    questions: [],
+  };
+  const second = { ...first, itemId: "second" };
+  const row = {
+    message: { ...message("questions", "root-run", "ask"), blocks: [first, second] },
+    facts: { toolCalls: {}, delegatedRuns: {} },
+  };
+  expect(renderMessageBlocks(row, CTX)).toHaveLength(2);
+  expect(renderMessageBlocks(row, { ...CTX, questionInComposer: first })).toHaveLength(1);
+  expect(renderMessageBlocks(row, { ...CTX, questionInComposer: { ...first } })).toHaveLength(2);
 });

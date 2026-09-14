@@ -73,9 +73,6 @@ export function planRenderUnits(
       return;
     }
     flushWave();
-    // Keep the question available to the tool-row planner even while the composer owns its
-    // active form. Once answered, the same durable block returns to the transcript.
-    if (block.kind === "question" && block.status === "requires-action" && !block.answered) return;
     units.push({ kind: "block", block, index, superseded: answered[index]! });
   });
 

@@ -223,7 +223,7 @@ describe("planRenderUnits · read-only grouping", () => {
     ]);
   });
 
-  it("lets the composer own a pending question without leaving its tool row behind", () => {
+  it("keeps a pending question visible without leaving its tool row behind", () => {
     const question: ContentBlock = {
       kind: "question",
       status: "requires-action",
@@ -231,7 +231,9 @@ describe("planRenderUnits · read-only grouping", () => {
     };
     const tools = { ask: { ...tool("ask", "ask_user"), status: "running" as const } };
 
-    expect(planRenderUnits([tb("ask"), question], tools)).toEqual([]);
+    expect(planRenderUnits([tb("ask"), question], tools)).toEqual([
+      { kind: "block", block: question, index: 1, superseded: false },
+    ]);
   });
 
   it("retains a failed Plan approval call beside an earlier answered question", () => {
