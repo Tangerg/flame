@@ -70,3 +70,22 @@ func TestTranscriptPreservesToolCallAndFailureIdentity(t *testing.T) {
 		}
 	}
 }
+
+func TestTranscriptMarksMediaInsteadOfSilentlyDroppingIt(t *testing.T) {
+	image := mustBudgetImage(t, []byte("private inline payload"))
+	messages := []chat.Message{
+		chat.NewUserMessage(chat.NewMediaPart(image)),
+		chat.NewAssistantMessage(chat.NewTextPart("Compare the attachment."), chat.NewMediaPart(image)),
+		budgetToolImage(image),
+	}
+	rendered := renderTranscript(messages)
+	if strings.Count(rendered, "[media content omitted]") != 3 {
+		t.Fatalf("media presence was lost: %q", rendered)
+	}
+	if !strings.Contains(rendered, "[user] [media content omitted]") || !strings.Contains(rendered, "Compare the attachment.") {
+		t.Fatalf("media framing or adjacent text was lost: %q", rendered)
+	}
+	if strings.Contains(rendered, "private inline payload") {
+		t.Fatal("binary media was rendered as transcript text")
+	}
+}

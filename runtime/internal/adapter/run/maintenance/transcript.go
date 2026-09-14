@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	transcriptMediaMarker = "[media content omitted]"
 	// maintenanceModelInputBytes is the hard system+user request envelope for
 	// maintenance calls. Transcript rendering uses the smaller allocation below
 	// so fixed instructions and capability-specific framing still fit.
@@ -74,6 +75,8 @@ func transcriptValues(msg chat.Message) []string {
 		switch part.Kind {
 		case chat.PartText, chat.PartRefusal:
 			values = append(values, part.Text)
+		case chat.PartMedia:
+			values = append(values, transcriptMediaMarker)
 		case chat.PartToolCall:
 			if call := part.ToolCall; call != nil {
 				values = append(values, fmt.Sprintf("[call id=%q name=%q] arguments=%s", call.ID, call.Name, call.Arguments))

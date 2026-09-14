@@ -22,7 +22,7 @@ func renderToolOutput(output chat.ToolOutput) string {
 		case chat.PartText:
 			rendered.WriteString(part.Text)
 		case chat.PartMedia:
-			rendered.WriteString("[media]")
+			rendered.WriteString(transcriptMediaMarker)
 		}
 	}
 	if len(output.Details) > 0 {
