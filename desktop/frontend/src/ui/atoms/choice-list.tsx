@@ -44,8 +44,8 @@ const styles = stylex.create({
 
   mark: {
     display: "grid",
-    height: "18px",
-    width: "18px",
+    height: "var(--control-mark-size)",
+    width: "var(--control-mark-size)",
     flexShrink: 0,
     placeItems: "center",
     borderWidth: "var(--control-edge-width)",
@@ -71,11 +71,7 @@ interface ChoiceListProps {
   values: readonly string[];
   labelledBy: string;
   disabled?: boolean;
-  /**
-   * The options carry their ordinal, so typing it picks one. Pass it with `ChoiceOption`'s
-   * `ordinal`: a shortcut nothing on screen announces is one nobody can find, and one that
-   * can change a setting by a stray keypress.
-   */
+  /** The options show their ordinal, so typing it picks one. Pair with `ChoiceOption`'s `ordinal`. */
   numbered?: boolean;
   /** The answer this list belongs to is being submitted. See `TextField`'s `pending`. */
   pending?: boolean;

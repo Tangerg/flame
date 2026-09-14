@@ -18,8 +18,8 @@ const styles = stylex.create({
   off: { cursor: "not-allowed", opacity: "var(--control-disabled-opacity)" },
   box: {
     display: "grid",
-    height: "18px",
-    width: "18px",
+    height: "var(--control-mark-size)",
+    width: "var(--control-mark-size)",
     flexShrink: 0,
     placeItems: "center",
     borderRadius: radius.step2xs,
