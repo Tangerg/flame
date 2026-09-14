@@ -671,6 +671,7 @@ func TestNudgePublishesFileChange(t *testing.T) {
 }
 
 func TestFinishSeparatesCheckpointBoundaryFromTitleMaintenance(t *testing.T) {
+	_, exporter := installRunsegmentTraceCapture(t)
 	renamed := make(chan string, 1)
 	snapshotted := make(chan string, 1)
 	stores := &fakeStores{
@@ -715,6 +716,31 @@ func TestFinishSeparatesCheckpointBoundaryFromTitleMaintenance(t *testing.T) {
 	case got := <-snapshotted:
 		t.Fatalf("parked run must not snapshot, got %q", got)
 	case <-time.After(20 * time.Millisecond):
+	}
+
+	spans := exporter.GetSpans()
+	if len(spans) != 3 {
+		t.Fatalf("maintenance spans = %d, want terminal checkpoint/title and parked title", len(spans))
+	}
+	for i, recorded := range spans {
+		if recorded.Name != "run segment maintenance" {
+			t.Fatalf("span name = %q", recorded.Name)
+		}
+		attrs := make(map[string]any, len(recorded.Attributes))
+		for _, attr := range recorded.Attributes {
+			attrs[string(attr.Key)] = attr.Value.AsInterface()
+		}
+		wantRun, wantSession, wantOperation := "run_1", "ses_1", "title"
+		if i == 0 {
+			wantOperation = "checkpoint"
+		}
+		if i == 2 {
+			wantRun, wantSession = "run_2", "ses_2"
+		}
+		if attrs["run.id"] != wantRun || attrs["gen_ai.conversation.id"] != wantSession ||
+			attrs["maintenance.operation"] != wantOperation || attrs["run.parked"] != (i == 2) {
+			t.Fatalf("maintenance span %d attributes = %v", i, attrs)
+		}
 	}
 }
 
@@ -797,7 +823,7 @@ func TestFinishRecordsAcceptedBackgroundFailureOnSpan(t *testing.T) {
 	for _, recorded := range exporter.GetSpans() {
 		for _, event := range recorded.Events {
 			for _, attr := range event.Attributes {
-				if recorded.Name == "run terminal maintenance" && event.Name == "exception" && string(attr.Key) == "exception.message" && strings.Contains(attr.Value.AsString(), titleErr.Error()) {
+				if recorded.Name == "run segment maintenance" && event.Name == "exception" && string(attr.Key) == "exception.message" && strings.Contains(attr.Value.AsString(), titleErr.Error()) {
 					return
 				}
 			}

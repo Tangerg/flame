@@ -72,7 +72,7 @@ type ProjectionPorts struct {
 	Finalizer                   SegmentFinalizer
 }
 
-// Finish describes terminal Run-boundary maintenance after the live stream closes.
+// Finish describes maintenance after a segment closes, including a parked Run.
 type Finish struct {
 	SessionID       string
 	RunID           string

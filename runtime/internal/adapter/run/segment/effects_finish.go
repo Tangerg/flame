@@ -46,7 +46,7 @@ type TitleMaintenance struct {
 	Tasks     TaskLauncher
 }
 
-// FinalizerConfig declares the two independent terminal-maintenance features.
+// FinalizerConfig declares the two independent post-segment maintenance features.
 // A nil Checkpoints disables workspace snapshots; a nil Titles disables title
 // generation. Enabled features must be complete at construction.
 type FinalizerConfig struct {
@@ -104,7 +104,7 @@ func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
 	}
 	var errs []error
 	if needsSnapshot {
-		if err := observeTerminalMaintenance(ctx, fin, "checkpoint", func(ctx context.Context) error {
+		if err := observeSegmentMaintenance(ctx, fin, "checkpoint", func(ctx context.Context) error {
 			return f.snapshot(ctx, fin.SessionID, fin.CWD, fin.RunID)
 		}); err != nil {
 			errs = append(errs, err)
@@ -114,24 +114,25 @@ func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
 		return errors.Join(errs...)
 	}
 	title := func(ctx context.Context) error {
-		return observeTerminalMaintenance(ctx, fin, "title", func(ctx context.Context) error {
+		return observeSegmentMaintenance(ctx, fin, "title", func(ctx context.Context) error {
 			return f.title(ctx, fin.SessionID, fin.OpeningUserText)
 		})
 	}
 	if !f.tasks.Start(ctx, func(ctx context.Context) { _ = title(ctx) }) {
-		rejected := fmt.Errorf("segment: terminal maintenance for run %q was rejected during shutdown", fin.RunID)
-		errs = append(errs, observeTerminalMaintenance(ctx, fin, "title", func(context.Context) error { return rejected }))
+		rejected := fmt.Errorf("segment: maintenance for run %q was rejected during shutdown", fin.RunID)
+		errs = append(errs, observeSegmentMaintenance(ctx, fin, "title", func(context.Context) error { return rejected }))
 	}
 	return errors.Join(errs...)
 }
 
-func observeTerminalMaintenance(ctx context.Context, fin runs.Finish, operation string, maintenance func(context.Context) error) error {
-	ctx, span := otel.Tracer(runsegmentTracerName).Start(ctx, "run terminal maintenance",
+func observeSegmentMaintenance(ctx context.Context, fin runs.Finish, operation string, maintenance func(context.Context) error) error {
+	ctx, span := otel.Tracer(runsegmentTracerName).Start(ctx, "run segment maintenance",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
 			attribute.String("run.id", fin.RunID),
 			attribute.String("gen_ai.conversation.id", fin.SessionID),
 			attribute.String("maintenance.operation", operation),
+			attribute.Bool("run.parked", fin.Parked),
 		),
 	)
 	defer span.End()
