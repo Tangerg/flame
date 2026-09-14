@@ -192,7 +192,9 @@ test("delegated narrative stays under its exact spawning Item anchor", async ({ 
 
   const spawningItem = page.locator("#item_delegate");
   await expect(spawningItem).toHaveCount(1);
-  await expect(spawningItem.getByRole("button", { name: /Sub-agent/ }).first()).toBeVisible();
+  await expect(
+    spawningItem.getByRole("button", { name: /^Audit Agent Framework ownership/ }),
+  ).toBeVisible();
 });
 
 test("delegated links keep child conversations in the right dock", async ({ page }) => {
@@ -201,7 +203,7 @@ test("delegated links keep child conversations in the right dock", async ({ page
   const root = page.locator("#item_delegate");
   await expect(page.locator('[data-slot="delegated-run-link"]')).toHaveCount(5);
   await expect(page.getByText("Package graph verification is still running.")).toHaveCount(0);
-  await root.getByRole("button", { name: /Sub-agent/ }).click();
+  await root.getByRole("button", { name: /^Audit Agent Framework ownership/ }).click();
   const panel = page.locator('[data-dock-view-id="subagents"]');
   await expect(panel).toBeVisible();
   await expect(root).toBeVisible();
@@ -209,7 +211,7 @@ test("delegated links keep child conversations in the right dock", async ({ page
   await expect(panel.locator('[data-run-id="run_nested"]')).toBeVisible();
   await panel
     .locator('[data-run-id="run_nested"]')
-    .getByRole("button", { name: /Sub-agent/ })
+    .getByRole("button", { name: /^Verify package dependencies/ })
     .click();
   await expect(panel.getByText("Package graph verification is still running.")).toBeVisible();
   await expect(root).toBeVisible();
@@ -224,11 +226,14 @@ test("the subagent transcript follows new output and respects reading above the 
   await page.locator("html[data-visual-ready]").waitFor();
   await page
     .locator("#item_delegate")
-    .getByRole("button", { name: /Sub-agent/ })
+    .getByRole("button", { name: /^Audit Agent Framework ownership/ })
     .click();
   const panel = page.locator('[data-dock-view-id="subagents"]');
   await expect(panel.locator('[data-slot="approval-surface"]')).toBeVisible();
-  const transcript = panel.getByRole("region", { name: "Sub-agent", exact: true });
+  const transcript = panel.getByRole("region", {
+    name: "Audit Agent Framework ownership",
+    exact: true,
+  });
   const scroller = transcript.locator("..");
   const append = async (count: number) => {
     await page.evaluate(async (count) => {
@@ -1583,7 +1588,7 @@ test("every sibling keeps its own status and child approval target", async ({ pa
   await expect(siblings).toHaveCount(4);
   await page
     .locator("#item_delegate")
-    .getByRole("button", { name: /Sub-agent/ })
+    .getByRole("button", { name: /^Audit Agent Framework ownership/ })
     .click();
   const panel = page.locator('[data-dock-view-id="subagents"]');
   await panel.getByRole("button", { name: "Allow once", exact: true }).click();
@@ -1741,7 +1746,7 @@ for (const theme of ["light", "dark"] as const) {
 
     await page
       .locator("#item_delegate")
-      .getByRole("button", { name: /Sub-agent/ })
+      .getByRole("button", { name: /^Audit Agent Framework ownership/ })
       .click();
     const card = page.locator('[data-dock-view-id="subagents"]');
     await expect(card.locator('[data-slot="approval-surface"]')).toBeVisible();
