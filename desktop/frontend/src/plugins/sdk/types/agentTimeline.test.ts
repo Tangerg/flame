@@ -1,8 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { EMPTY_AGENT_SESSION_VIEW } from "./agentSessionView";
-import { appendTimelineEntry } from "./agentTimeline";
+import { setTimelineEntry } from "./agentTimeline";
 
-describe("appendTimelineEntry", () => {
+describe("setTimelineEntry", () => {
+  it("updates a tool in place without reordering simultaneous observations", () => {
+    const tool = { id: "tool", ts: 1, kind: "tool" as const, runId: "run" };
+    const started = setTimelineEntry(tool)(EMPTY_AGENT_SESSION_VIEW);
+    const sibling = setTimelineEntry({ ...tool, id: "sibling" })(started);
+    const completed = setTimelineEntry({ ...tool, status: "ok" })(sibling);
+    expect(completed.timeline).toEqual([
+      { ...tool, status: "ok" },
+      { ...tool, id: "sibling" },
+    ]);
+    expect(started.timeline).toEqual([tool]);
+  });
+
   it("orders cold-read facts by server timestamp rather than fetch order", () => {
     const newestFirst = [
       { id: "new", ts: 3, kind: "run-start" as const, runId: "run_new" },
@@ -11,7 +23,7 @@ describe("appendTimelineEntry", () => {
     ];
 
     const view = newestFirst.reduce(
-      (current, entry) => appendTimelineEntry(entry)(current),
+      (current, entry) => setTimelineEntry(entry)(current),
       EMPTY_AGENT_SESSION_VIEW,
     );
 
@@ -21,7 +33,7 @@ describe("appendTimelineEntry", () => {
   it("retains the newest 500 facts even when older facts arrive last", () => {
     let view = EMPTY_AGENT_SESSION_VIEW;
     for (let ts = 600; ts >= 1; ts -= 1) {
-      view = appendTimelineEntry({
+      view = setTimelineEntry({
         id: `entry_${ts}`,
         ts,
         kind: "run-start",

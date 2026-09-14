@@ -30,7 +30,7 @@ beforeEach(async () => {
 });
 
 describe("reducer — timeline accumulator", () => {
-  it("records run-start / tool-start+end / run-end entries in order", () => {
+  it("records run-start / one tool record / run-end entries in order", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, { type: "segment.started", run: { id: "r1", sessionId: "s" } as never });
     s = reduce(
@@ -61,14 +61,9 @@ describe("reducer — timeline accumulator", () => {
       metrics: noMetrics,
     });
 
-    expect(s.timeline.map((t) => t.kind)).toEqual([
-      "run-start",
-      "tool-start",
-      "tool-end",
-      "run-end",
-    ]);
+    expect(s.timeline.map((t) => t.kind)).toEqual(["run-start", "tool", "run-end"]);
     expect(s.timeline.every((t) => t.runId === "r1")).toBe(true);
-    expect(s.timeline.find((t) => t.kind === "tool-end")?.status).toBe("ok");
+    expect(s.timeline.find((t) => t.kind === "tool")?.status).toBe("ok");
     expect(s.toolCalls["tc1"]?.fn).toBe("ls");
   });
 

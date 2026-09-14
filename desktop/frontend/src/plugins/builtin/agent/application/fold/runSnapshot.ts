@@ -4,7 +4,7 @@ import type {
   AgentSessionView,
   TimelineEntry,
 } from "@/plugins/sdk/types/agentSessionView";
-import { appendTimelineEntry } from "@/plugins/sdk/types/agentTimeline";
+import { setTimelineEntry } from "@/plugins/sdk/types/agentTimeline";
 import { projectRunRef } from "../view/runProjection";
 import { isAgentRunFailure } from "../view/runOutcome";
 
@@ -28,7 +28,7 @@ export function foldRunSnapshot(state: AgentSessionView, run: AgentRunFact): Age
     },
   };
   if (!next.timeline.some((entry) => entry.runId === run.id && entry.kind === "run-start")) {
-    next = appendTimelineEntry({
+    next = setTimelineEntry({
       id: `snapshot:run:${run.id}:start`,
       ts: snapshotTimestamp(run.id, projected.createdAt),
       kind: "run-start",
@@ -41,7 +41,7 @@ export function foldRunSnapshot(state: AgentSessionView, run: AgentRunFact): Age
       (entry) => entry.runId === run.id && (entry.kind === "run-end" || entry.kind === "run-error"),
     )
   ) {
-    next = appendTimelineEntry({
+    next = setTimelineEntry({
       id: `snapshot:run:${run.id}:terminal`,
       ts: snapshotTimestamp(run.id, projected.finishedAt!),
       kind: isAgentRunFailure(projected.outcome) ? "run-error" : "run-end",

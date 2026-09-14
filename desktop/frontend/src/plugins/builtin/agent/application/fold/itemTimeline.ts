@@ -1,5 +1,5 @@
 import type { AgentItem } from "@/plugins/sdk";
-import { appendTimelineEntry } from "@/plugins/sdk/types/agentTimeline";
+import { setTimelineEntry } from "@/plugins/sdk/types/agentTimeline";
 import type {
   AgentSessionView,
   TimelineEntry,
@@ -20,17 +20,15 @@ export function recordToolTimeline(
   item: Extract<AgentItem, { type: "toolCall" }>,
   tool: ToolCall,
 ): AgentSessionView {
-  const next = appendTimelineEntry(itemEntry(item, "tool-start", item.startedAt))(state);
-  if (item.status === "running" || item.finishedAt === undefined) return next;
-  return appendTimelineEntry({
-    ...itemEntry(item, "tool-end", item.finishedAt),
-    status: tool.status === "err" ? "err" : tool.status === "denied" ? "declined" : "ok",
-  })(next);
+  const entry = itemEntry(item, "tool", item.startedAt);
+  if (item.status !== "running" && item.finishedAt !== undefined)
+    entry.status = tool.status === "err" ? "err" : tool.status === "denied" ? "declined" : "ok";
+  return setTimelineEntry(entry)(state);
 }
 
 export function recordCompactionTimeline(
   state: AgentSessionView,
   item: Extract<AgentItem, { type: "compaction" }>,
 ): AgentSessionView {
-  return appendTimelineEntry(itemEntry(item, "compaction", item.createdAt))(state);
+  return setTimelineEntry(itemEntry(item, "compaction", item.createdAt))(state);
 }

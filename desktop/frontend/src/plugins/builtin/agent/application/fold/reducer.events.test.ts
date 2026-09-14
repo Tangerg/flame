@@ -426,7 +426,7 @@ describe("reducer — item fold", () => {
       ),
     );
     expect(s.toolCalls.t1).toMatchObject({ status: "denied" });
-    expect(s.timeline.findLast((e) => e.kind === "tool-end")).toMatchObject({ status: "declined" });
+    expect(s.timeline.findLast((e) => e.kind === "tool")).toMatchObject({ status: "declined" });
   });
 });
 

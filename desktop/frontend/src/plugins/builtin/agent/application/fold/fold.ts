@@ -383,7 +383,7 @@ export function foldCompaction(
 }
 
 // Returns the resolved ToolCall as well as the state: the caller stamps the matching
-// tool-start / tool-end timeline entry from it.
+// tool timeline record from it.
 export function writeToolCall(
   state: AgentSessionView,
   item: ItemOf<"toolCall">,

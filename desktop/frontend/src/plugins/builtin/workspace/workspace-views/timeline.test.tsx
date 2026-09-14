@@ -93,8 +93,15 @@ describe("Timeline runtime actions", () => {
       },
     };
     projection.timeline = [
-      { id: "measured-end", runId: running.id, refId: "measured", kind: "tool-end", ts: 1 },
-      { id: "unknown-end", runId: running.id, refId: "unknown", kind: "tool-end", ts: 2 },
+      {
+        id: "measured-end",
+        runId: running.id,
+        refId: "measured",
+        kind: "tool",
+        status: "ok",
+        ts: 1,
+      },
+      { id: "unknown-end", runId: running.id, refId: "unknown", kind: "tool", status: "ok", ts: 2 },
       { id: "compact", runId: running.id, refId: "item_compact", kind: "compaction", ts: 3 },
     ];
     render(<TimelineTab />);
@@ -126,12 +133,11 @@ describe("Timeline runtime actions", () => {
       },
     };
     projection.timeline = [
-      { id: "failed-start", runId: running.id, refId: "failed", kind: "tool-start", ts: 1 },
       {
         id: "failed-end",
         runId: running.id,
         refId: "failed",
-        kind: "tool-end",
+        kind: "tool",
         ts: 2,
         status: "err",
       },
@@ -139,7 +145,7 @@ describe("Timeline runtime actions", () => {
         id: "no-match-end",
         runId: running.id,
         refId: "noMatch",
-        kind: "tool-end",
+        kind: "tool",
         ts: 3,
         status: "ok",
       },

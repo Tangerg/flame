@@ -1,7 +1,7 @@
 import type { AgentInterrupt } from "@/plugins/sdk";
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
-import { appendTimelineEntry } from "@/plugins/sdk";
+import { setTimelineEntry } from "@/plugins/sdk";
 import { commandString, editableArgs, mapQuestion, toolLabel } from "./projections";
 import { appendToTurn, markToolRequiresAction, patchRunBlock } from "./fold";
 import type { AgentFoldSource } from "./source";
@@ -57,7 +57,7 @@ export function materializeInterrupt(
       block,
       source.timestamp,
     );
-    return appendTimelineEntry({
+    return setTimelineEntry({
       id: `timeline:${source.eventId}:approval-request:${interrupt.itemId}`,
       ts: sourceTimestamp(source),
       kind: "approval-request",

@@ -22,7 +22,7 @@ const source = {
 };
 
 describe("durable item trajectory", () => {
-  it("reconstructs the same tool boundaries from a terminal snapshot as from live events", () => {
+  it("updates one stable tool record and reconstructs it from a terminal snapshot", () => {
     const started = onItemStarted(
       EMPTY_AGENT_SESSION_VIEW,
       { ...tool, status: "running", finishedAt: undefined, durationMillis: undefined },
@@ -31,10 +31,13 @@ describe("durable item trajectory", () => {
     const live = onItemCompleted(started, tool, { ...source, eventId: "evt_completed" });
     const restored = reduceDurableItem(EMPTY_AGENT_SESSION_VIEW, tool);
     expect(restored.timeline).toEqual(live.timeline);
-    expect(restored.timeline.map(({ kind, ts }) => ({ kind, ts }))).toEqual([
-      { kind: "tool-start", ts: Date.parse(tool.startedAt) },
-      { kind: "tool-end", ts: Date.parse(tool.finishedAt!) },
-    ]);
+    expect(restored.timeline).toHaveLength(1);
+    expect(restored.timeline[0]).toMatchObject({
+      id: started.timeline[0]?.id,
+      kind: "tool",
+      ts: Date.parse(tool.startedAt),
+      status: "ok",
+    });
     expect(reduceDurableItem(live, tool).timeline).toEqual(live.timeline);
     expect(restored.toolCalls[tool.id]?.durationMillis).toBe(230);
   });
@@ -46,7 +49,7 @@ describe("durable item trajectory", () => {
       finishedAt: undefined,
       durationMillis: undefined,
     });
-    expect(restored.timeline.map((entry) => entry.kind)).toEqual(["tool-start"]);
+    expect(restored.timeline.map((entry) => entry.kind)).toEqual(["tool"]);
   });
 
   it("retains compaction in both live and restored trajectories without duplicating its summary", () => {

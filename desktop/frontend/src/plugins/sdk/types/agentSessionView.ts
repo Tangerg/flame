@@ -168,13 +168,13 @@ export interface AgentRunView {
   finishedAt: string | null;
 }
 
-/** Recent Run observations for the timeline. Durable history remains owned by Runtime. */
+/** Recent Run observations for the timeline. Each tool Item occupies one row,
+ * ordered by its start time and updated on settlement. Durable history remains owned by Runtime. */
 export type TimelineEntryKind =
   | "run-start"
   | "run-end"
   | "run-error"
-  | "tool-start"
-  | "tool-end"
+  | "tool"
   | "approval-request"
   | "compaction"
   | "approval-result";

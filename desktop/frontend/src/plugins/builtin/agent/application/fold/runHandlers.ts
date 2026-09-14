@@ -7,7 +7,7 @@ import type {
   AgentSessionView,
   PendingInterrupt,
 } from "@/plugins/sdk/types/agentSessionView";
-import { appendTimelineEntry } from "@/plugins/sdk";
+import { setTimelineEntry } from "@/plugins/sdk";
 import { settleRunPendingInterrupts } from "./fold";
 import { materializeInterrupt } from "./interruptMaterialization";
 import type { AgentFoldSource } from "./source";
@@ -134,7 +134,7 @@ export function onRunStarted(
       [run.id]: started,
     },
   };
-  return appendTimelineEntry(timelineEntry(source, "run-start"))(next);
+  return setTimelineEntry(timelineEntry(source, "run-start"))(next);
 }
 
 export function onRunProgress(
@@ -234,7 +234,7 @@ export function onRunFinished(
   const projectedOutcome = projectTerminalSegmentOutcome(outcome);
   if (isAgentRunFailure(projectedOutcome)) {
     const problem = projectedOutcome.error;
-    return appendTimelineEntry(
+    return setTimelineEntry(
       timelineEntry(source, "run-error", {
         status: "err",
         summary: problem.message ?? problem.code,
@@ -242,7 +242,7 @@ export function onRunFinished(
     )(next);
   }
 
-  return appendTimelineEntry(
+  return setTimelineEntry(
     timelineEntry(source, "run-end", {
       status: outcome.type === "completed" ? "ok" : undefined,
       summary: terminalOutcomeSummary(projectedOutcome),

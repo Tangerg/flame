@@ -272,7 +272,7 @@ describe("reducer — source-owned Run tree", () => {
       command: "pwd",
     });
     expect(
-      view.timeline.find((entry) => entry.kind === "tool-start" && entry.refId === "root_tool"),
+      view.timeline.find((entry) => entry.kind === "tool" && entry.refId === "root_tool"),
     ).toMatchObject({ runId: "root", refId: "root_tool" });
   });
 

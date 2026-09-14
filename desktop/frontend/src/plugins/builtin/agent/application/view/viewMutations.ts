@@ -2,7 +2,7 @@ import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
 import type { PendingInterruptKind } from "@/plugins/sdk/types/agentSessionView";
 import type { ApprovalDecision } from "../../domain/hitl";
 import type { AgentProblem, AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
-import { appendTimelineEntry } from "@/plugins/sdk/types/agentTimeline";
+import { setTimelineEntry } from "@/plugins/sdk/types/agentTimeline";
 import { selectCurrentRootRun } from "./runTree";
 import { isAgentRunFailure } from "./runOutcome";
 
@@ -158,7 +158,7 @@ export function resolveInterrupt(
     const requested = next.timeline.find(
       (entry) => entry.kind === "approval-request" && entry.refId === itemId,
     );
-    next = appendTimelineEntry({
+    next = setTimelineEntry({
       id: `timeline:local:approval-result:${itemId}:${settled.decision}`,
       ts: resolvedAt,
       kind: "approval-result",
