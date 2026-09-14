@@ -77,7 +77,7 @@ export function PluginsPane() {
     else errorsByPlugin.set(err.plugin, [err]);
   }
 
-  const rows = [...installed].sort((a, b) => {
+  const rows = [...new Set([...installed, ...errorsByPlugin.keys()])].sort((a, b) => {
     const ea = errorsByPlugin.get(a)?.length ?? 0;
     const eb = errorsByPlugin.get(b)?.length ?? 0;
     if (ea !== eb) return eb - ea;
