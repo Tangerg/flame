@@ -2,7 +2,8 @@ import { useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { useModelInvocations, type ModelInvocation } from "@/plugins/builtin/agent/public/run";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
-import { useT, activeLocale } from "@/lib/i18n";
+import { useT } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/i18n/relativeTime";
 import { fmtDuration, fmtTokens } from "@/lib/format";
 import { Badge, Button, DataView, IconButton, vocab } from "@/ui";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
@@ -65,7 +66,7 @@ export function ModelInvocationHistory({ run }: { run: AgentRunView }) {
                   {call.callId}
                 </div>
                 <div title={call.segmentId} {...stylex.props(vocab.faint, typeStep.uiXs)}>
-                  {new Date(call.startedAt).toLocaleString(activeLocale())}
+                  {formatDateTime(call.startedAt)}
                 </div>
                 <div {...stylex.props(vs.titleLine, vocab.faint, face.mono, typeStep.uiXs)}>
                   <span title={call.usage?.inputTokens.toString()}>
