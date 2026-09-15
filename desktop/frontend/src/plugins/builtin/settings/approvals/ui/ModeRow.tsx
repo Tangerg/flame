@@ -17,7 +17,7 @@ import {
   type as typeStep,
   weight,
 } from "@/styles/tokens.stylex";
-import { settingStyles as ss } from "../../kit/settingStyles";
+import { SettingRow } from "../../kit";
 
 type ApprovalModeIntent = {
   mode: ApprovalMode;
@@ -29,12 +29,10 @@ const MODE_VALUES = APPROVAL_MODES.map((option) => option.value);
 const m = stylex.create({
   // Holds the list's measure while the modes load, so the pane does not jump when they land.
   placeholder: {
-    marginTop: space.s3,
     height: "184px",
     borderRadius: radius.lg,
     backgroundColor: surface.sunken,
   },
-  list: { marginTop: space.s3 },
   body: { display: "flex", minWidth: 0, flex: 1, flexDirection: "column", gap: space.s0_5 },
   name: { color: color.fg, fontWeight: weight.medium },
   desc: { color: color.fgMuted, lineHeight: leading.body },
@@ -66,52 +64,51 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
     }
   };
   return (
-    <div>
-      <div id={labelId} {...stylex.props(ss.label, typeStep.uiMd)}>
-        {t("approvals.mode")}
-      </div>
-      <div {...stylex.props(ss.hintSpaced, typeStep.uiMd)}>{t("approvals.mode.sub")}</div>
+    <SettingRow
+      label={t("approvals.mode")}
+      labelId={labelId}
+      sub={t("approvals.mode.sub")}
+      align="stacked"
+    >
       {mode === undefined ? (
         <div {...stylex.props(m.placeholder)} aria-hidden />
       ) : (
-        <div {...stylex.props(m.list)}>
-          <ChoiceList
-            multiple={false}
-            value={shown === undefined ? [] : [shown]}
-            values={MODE_VALUES}
-            labelledBy={labelId}
-            pending={activeIntent !== null}
-            onValueChange={([next]) => {
-              if (next !== undefined) void onChange(next as ApprovalMode);
-            }}
-          >
-            {APPROVAL_MODES.map((o) => (
-              <ChoiceOption
-                key={o.value}
-                multiple={false}
-                value={o.value}
-                selected={o.value === shown}
-                label={t(o.labelKey)}
-                description={t(o.descKey)}
-                pending={activeIntent !== null}
-                busy={o.value === activeIntent?.mode}
-              >
-                <span {...stylex.props(m.body)}>
-                  <span {...stylex.props(m.name, typeStep.uiMd)}>{t(o.labelKey)}</span>
-                  <span {...stylex.props(m.desc, typeStep.uiMd)}>{t(o.descKey)}</span>
-                </span>
-                {o.value === activeIntent?.mode && (
-                  <Icon
-                    name="loop"
-                    size="sm"
-                    className={stylex.props(vocab.hold, m.spin, vocab.accent).className}
-                  />
-                )}
-              </ChoiceOption>
-            ))}
-          </ChoiceList>
-        </div>
+        <ChoiceList
+          multiple={false}
+          value={shown === undefined ? [] : [shown]}
+          values={MODE_VALUES}
+          labelledBy={labelId}
+          pending={activeIntent !== null}
+          onValueChange={([next]) => {
+            if (next !== undefined) void onChange(next as ApprovalMode);
+          }}
+        >
+          {APPROVAL_MODES.map((o) => (
+            <ChoiceOption
+              key={o.value}
+              multiple={false}
+              value={o.value}
+              selected={o.value === shown}
+              label={t(o.labelKey)}
+              description={t(o.descKey)}
+              pending={activeIntent !== null}
+              busy={o.value === activeIntent?.mode}
+            >
+              <span {...stylex.props(m.body)}>
+                <span {...stylex.props(m.name, typeStep.uiMd)}>{t(o.labelKey)}</span>
+                <span {...stylex.props(m.desc, typeStep.uiMd)}>{t(o.descKey)}</span>
+              </span>
+              {o.value === activeIntent?.mode && (
+                <Icon
+                  name="loop"
+                  size="sm"
+                  className={stylex.props(vocab.hold, m.spin, vocab.accent).className}
+                />
+              )}
+            </ChoiceOption>
+          ))}
+        </ChoiceList>
       )}
-    </div>
+    </SettingRow>
   );
 }

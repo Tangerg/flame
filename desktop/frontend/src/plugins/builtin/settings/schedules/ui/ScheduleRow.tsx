@@ -16,7 +16,6 @@ import {
   color,
   face,
   leading,
-  radius,
   space,
   surface,
   type as typeStep,
@@ -58,16 +57,20 @@ function ScheduleActionButton({
 }
 
 const sr = stylex.create({
+  shell: {
+    borderTopWidth: { default: "var(--control-edge-width)", ":first-child": 0 },
+    borderTopStyle: "solid",
+    borderTopColor: surface.field,
+    backgroundColor: { default: null, ":hover": surface.hover },
+    transitionProperty: "background-color",
+  },
   row: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) auto",
     alignItems: "flex-start",
     gap: space.s3,
-    borderRadius: radius.card,
-    backgroundColor: { default: null, ":hover": surface.hover },
-    paddingInline: space.s3,
-    paddingBlock: space.s2_5,
-    transitionProperty: "background-color",
+    paddingInline: space.s4,
+    paddingBlock: space.s3,
   },
   title: { fontWeight: weight.medium },
   titleOn: { color: color.fg },
@@ -79,7 +82,7 @@ const sr = stylex.create({
     columnGap: space.s3,
     color: color.fgFaint,
   },
-  editor: { marginTop: space.s2_5 },
+  editor: { paddingInline: space.s4, paddingBottom: space.s3 },
 });
 
 export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
@@ -93,7 +96,7 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
   });
 
   return (
-    <div>
+    <div {...stylex.props(sr.shell)}>
       <div {...stylex.props(sr.row)}>
         {/* Only what the row SAYS steps back, never what it offers. `opacity-60` on the whole
             row put its run, edit and delete controls BELOW the opacity the app draws a

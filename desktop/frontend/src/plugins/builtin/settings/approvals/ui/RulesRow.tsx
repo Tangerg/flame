@@ -21,6 +21,7 @@ import {
   type as typeStep,
   weight,
 } from "@/styles/tokens.stylex";
+import { SettingRow } from "../../kit";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 // What the scope MEANS. `Tone`'s own contract says the application layer emits the
@@ -33,7 +34,6 @@ const SCOPE_TONE: Record<ApprovalRuleSummary["scope"], Tone> = {
 };
 
 const r = stylex.create({
-  body: { marginTop: space.s3 },
   list: { display: "flex", flexDirection: "column", gap: space.s0_5 },
   rule: {
     display: "flex",
@@ -60,77 +60,73 @@ export function RulesRow() {
   });
 
   return (
-    <div>
-      <div {...stylex.props(ss.label, typeStep.uiMd)}>{t("approvals.rules")}</div>
-      <div {...stylex.props(ss.hintSpaced, typeStep.uiMd)}>{t("approvals.rules.sub")}</div>
-      <div {...stylex.props(r.body)}>
-        <DataView
-          items={data}
-          isLoading={isLoading}
-          isError={isError}
-          onRetry={refetch}
-          unsupported={
-            isUnsupportedMethod(error)
-              ? {
-                  icon: "shield",
-                  title: t("runtime.unsupported.title"),
-                  sub: t("runtime.unsupported.sub"),
-                }
-              : undefined
-          }
-          empty={{
-            icon: "check",
-            title: t("approvals.rules.empty"),
-            sub: t("approvals.rules.emptySub"),
-          }}
-        >
-          {(rows) => (
-            <div {...stylex.props(r.list)}>
-              <div {...stylex.props(ss.end)}>
-                <TextButton pending={busy} onClick={() => run(() => forgetApprovalRules(rows))}>
-                  {t("approvals.clearAll")}
-                </TextButton>
-              </div>
-              {rows.map((rule) => (
-                <div key={rule.id} {...stylex.props(r.rule)}>
-                  <Badge tone={SCOPE_TONE[rule.scope]} face="mono">
-                    {t(`approvals.scope.${rule.scope}`)}
-                  </Badge>
-                  <span
-                    {...stylex.props(
-                      r.verdict,
-                      rule.decision === "deny" ? vocab.negative : r.allow,
-                      typeStep.uiSm,
-                    )}
-                  >
-                    {rule.decision === "deny" ? t("approvals.deny") : t("approvals.allow")}
-                  </span>
-                  <span
-                    {...stylex.props(vocab.fill, vocab.truncate, r.tool, typeStep.uiMd, face.mono)}
-                  >
-                    {rule.tool}
-                    {rule.subject ? (
-                      <span {...stylex.props(vocab.muted)}> · {rule.subject}</span>
-                    ) : null}
-                    {rule.dir ? <span {...stylex.props(vocab.faint)}> — {rule.dir}</span> : null}
-                  </span>
-                  <IconButton
-                    icon="x"
-                    iconSize="sm"
-                    size="xs"
-                    quiet
-                    className={stylex.props(vocab.hold).className}
-                    aria-label={t("approvals.forget", { tool: rule.tool })}
-                    aria-busy={busy}
-                    pending={busy}
-                    onClick={() => run(() => forgetApprovalRule(rule.id))}
-                  />
-                </div>
-              ))}
+    <SettingRow label={t("approvals.rules")} sub={t("approvals.rules.sub")} align="stacked">
+      <DataView
+        items={data}
+        isLoading={isLoading}
+        isError={isError}
+        onRetry={refetch}
+        unsupported={
+          isUnsupportedMethod(error)
+            ? {
+                icon: "shield",
+                title: t("runtime.unsupported.title"),
+                sub: t("runtime.unsupported.sub"),
+              }
+            : undefined
+        }
+        empty={{
+          icon: "check",
+          title: t("approvals.rules.empty"),
+          sub: t("approvals.rules.emptySub"),
+        }}
+      >
+        {(rows) => (
+          <div {...stylex.props(r.list)}>
+            <div {...stylex.props(ss.end)}>
+              <TextButton pending={busy} onClick={() => run(() => forgetApprovalRules(rows))}>
+                {t("approvals.clearAll")}
+              </TextButton>
             </div>
-          )}
-        </DataView>
-      </div>
-    </div>
+            {rows.map((rule) => (
+              <div key={rule.id} {...stylex.props(r.rule)}>
+                <Badge tone={SCOPE_TONE[rule.scope]} face="mono">
+                  {t(`approvals.scope.${rule.scope}`)}
+                </Badge>
+                <span
+                  {...stylex.props(
+                    r.verdict,
+                    rule.decision === "deny" ? vocab.negative : r.allow,
+                    typeStep.uiSm,
+                  )}
+                >
+                  {rule.decision === "deny" ? t("approvals.deny") : t("approvals.allow")}
+                </span>
+                <span
+                  {...stylex.props(vocab.fill, vocab.truncate, r.tool, typeStep.uiMd, face.mono)}
+                >
+                  {rule.tool}
+                  {rule.subject ? (
+                    <span {...stylex.props(vocab.muted)}> · {rule.subject}</span>
+                  ) : null}
+                  {rule.dir ? <span {...stylex.props(vocab.faint)}> — {rule.dir}</span> : null}
+                </span>
+                <IconButton
+                  icon="x"
+                  iconSize="sm"
+                  size="xs"
+                  quiet
+                  className={stylex.props(vocab.hold).className}
+                  aria-label={t("approvals.forget", { tool: rule.tool })}
+                  aria-busy={busy}
+                  pending={busy}
+                  onClick={() => run(() => forgetApprovalRule(rule.id))}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </DataView>
+    </SettingRow>
   );
 }

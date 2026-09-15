@@ -1,7 +1,7 @@
-import * as stylex from "@stylexjs/stylex";
-import { EmptyState, gap, vocab } from "@/ui";
+import { EmptyState } from "@/ui";
 import { useApprovalModeConfig } from "../application/approvalConfig";
 import { useT } from "@/lib/i18n";
+import { SettingsGroup } from "../../kit";
 import { ModeRow } from "./ModeRow";
 import { RulesRow } from "./RulesRow";
 
@@ -18,9 +18,9 @@ export function ApprovalsPane() {
     );
   }
   return (
-    <div {...stylex.props(vocab.column, gap.s6)}>
+    <SettingsGroup>
       <ModeRow mode={mode} />
       <RulesRow />
-    </div>
+    </SettingsGroup>
   );
 }

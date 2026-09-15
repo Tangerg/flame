@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { DataView, EmptyState, gap, Icon, PillButton, vocab } from "@/ui";
+import { DataView, EmptyState, Icon, PillButton } from "@/ui";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { useT } from "@/lib/i18n";
@@ -8,6 +8,7 @@ import { useScheduleConfigs } from "../application/scheduleCommands";
 import { ScheduleForm } from "./ScheduleForm";
 import { ScheduleRow } from "./ScheduleRow";
 import { type as typeStep } from "@/styles/tokens.stylex";
+import { SettingsGroup } from "../../kit";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 export function SchedulesPane() {
@@ -65,11 +66,11 @@ function EnabledSchedulesPane() {
         empty={{ icon: "command", title: t("schedules.empty"), sub: t("schedules.empty.sub") }}
       >
         {(rows) => (
-          <div {...stylex.props(vocab.column, gap.s2)}>
+          <SettingsGroup>
             {rows.map((schedule) => (
               <ScheduleRow key={schedule.id} schedule={schedule} />
             ))}
-          </div>
+          </SettingsGroup>
         )}
       </DataView>
     </div>

@@ -8,7 +8,6 @@ const styles = stylex.create({
   // The seam between two rows, drawn by the row BELOW so the group's own top edge stays clean.
   row: {
     display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr) auto",
     gap: space.s6,
     borderTopWidth: { default: "var(--control-edge-width)", ":first-child": 0 },
     borderTopStyle: "solid",
@@ -16,6 +15,8 @@ const styles = stylex.create({
     paddingInline: space.s4,
     paddingBlock: space.s3,
   },
+  split: { gridTemplateColumns: "minmax(0, 1fr) auto" },
+  stacked: { gap: space.s3 },
   top: { alignItems: "flex-start" },
   centre: { alignItems: "center" },
   name: { color: color.fg },
@@ -24,22 +25,35 @@ const styles = stylex.create({
 
 export function SettingRow({
   label,
+  labelId,
   sub,
   align = "center",
   children,
 }: {
   label: string;
+  labelId?: string;
   sub: string;
-  align?: "start" | "center";
+  align?: "start" | "center" | "stacked";
   children: ReactNode;
 }) {
+  const stacked = align === "stacked";
   return (
-    <div {...stylex.props(styles.row, align === "start" ? styles.top : styles.centre)}>
+    <div
+      {...stylex.props(
+        styles.row,
+        !stacked && styles.split,
+        align === "center" && styles.centre,
+        align === "start" && styles.top,
+        stacked && styles.stacked,
+      )}
+    >
       <div>
-        <div {...stylex.props(styles.name, typeStep.uiMd)}>{label}</div>
+        <div id={labelId} {...stylex.props(styles.name, typeStep.uiMd)}>
+          {label}
+        </div>
         <div {...stylex.props(ss.hintSpaced, typeStep.uiMd)}>{sub}</div>
       </div>
-      <div {...stylex.props(styles.control)}>{children}</div>
+      <div {...stylex.props(!stacked && styles.control)}>{children}</div>
     </div>
   );
 }
