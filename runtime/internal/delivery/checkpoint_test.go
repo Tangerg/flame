@@ -403,10 +403,12 @@ func TestRollbackCannotDisplaceUnfinishedRecoveryIntent(t *testing.T) {
 	}
 }
 
-// TestRollbackFilesReportsSurvivingWaitingRun: a files-only rollback drops no
-// Run, so the Session it returns must report the parked Run a later read also
-// reports.
-func TestRollbackFilesReportsSurvivingWaitingRun(t *testing.T) {
+// TestRollbackFilesRefusesToRestoreUnderAContinuation: a file restore rewrites
+// the tree a parked Run would resume into and destroys the isolated copy its
+// executor is scoped to, while disposing of exactly the Runs its boundary drops
+// — and a files-only rollback drops none. It refuses instead, before touching
+// anything.
+func TestRollbackFilesRefusesToRestoreUnderAContinuation(t *testing.T) {
 	s, rt, cp, sid, cwd := checkpointHarness(t)
 	ctx := t.Context()
 
@@ -418,16 +420,47 @@ func TestRollbackFilesReportsSurvivingWaitingRun(t *testing.T) {
 	writeCheckpointFile(t, cwd, "v2")
 	putWaitingRun(t, rt, sid, "run2", 2)
 
-	resp, err := s.RollbackSession(ctx, protocol.RollbackSessionRequest{
+	_, err := s.RollbackSession(ctx, protocol.RollbackSessionRequest{
 		SessionID: sid, ToRunID: "run1", RestoreType: protocol.RestoreFiles,
 	})
+	if !errors.Is(err, protocol.ErrSessionBusy) {
+		t.Fatalf("rollback files under a continuation = %v, want session_busy", err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(cwd, "a.txt")); string(got) != "v2" {
+		t.Fatalf("a.txt = %q, want the tree untouched", got)
+	}
+	if pending, _ := rt.muts.ListPending(ctx); len(pending) != 0 {
+		t.Fatalf("pending intents = %+v, want none from a refused rollback", pending)
+	}
+	if len(rt.stoppedTrees) != 0 || len(rt.discardedSandboxes) != 0 {
+		t.Fatalf("refused rollback retired resources: trees=%v sandboxes=%v",
+			rt.stoppedTrees, rt.discardedSandboxes)
+	}
+}
+
+// TestRollbackHistoryReportsSurvivingWaitingRun: a boundary that keeps a parked
+// Run leaves it parked, so the Session the rollback returns must report what a
+// later read reports.
+func TestRollbackHistoryReportsSurvivingWaitingRun(t *testing.T) {
+	s, rt := rollbackHarness(t)
+	ctx := t.Context()
+	ses, err := insertSessionFixture(ctx, rt.sess, "waiting boundary", t.TempDir())
 	if err != nil {
-		t.Fatalf("rollback files: %v", err)
+		t.Fatalf("create session: %v", err)
+	}
+	putRun(t, rt, ses.ID(), "run1", 1, 1)
+	putWaitingRun(t, rt, ses.ID(), "run2", 2)
+
+	resp, err := s.RollbackSession(ctx, protocol.RollbackSessionRequest{
+		SessionID: ses.ID(), ToRunID: "run2", RestoreType: protocol.RestoreHistory,
+	})
+	if err != nil {
+		t.Fatalf("rollback history: %v", err)
 	}
 	if resp.Session.Status != protocol.SessionStatusWaiting {
 		t.Fatalf("rollback session status = %q, want waiting", resp.Session.Status)
 	}
-	reread, err := s.GetSession(ctx, sid)
+	reread, err := s.GetSession(ctx, ses.ID())
 	if err != nil {
 		t.Fatalf("get session: %v", err)
 	}

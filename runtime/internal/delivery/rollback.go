@@ -16,7 +16,8 @@ import (
 // dropped Runs' durable items and records, clears dangling interrupts, and
 // stops detached processes whose handles belonged to the discarded Session
 // context. ToRunID is inclusive-keep (omit = clear to empty). Rejected with
-// session_busy while a Run is in flight.
+// session_busy while a Run is in flight, and — for a file restore — while the
+// boundary keeps a Run that would resume into the rewritten tree.
 //
 // The whole guarded operation — single-writer + working-tree admission, working
 // tree restore, and durable truncation — belongs to the session use case. This

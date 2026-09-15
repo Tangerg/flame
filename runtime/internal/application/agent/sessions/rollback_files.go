@@ -92,6 +92,11 @@ type RollbackResult struct {
 // An earlier rollback whose intent is still logged keeps recovery ownership of
 // that tree: re-requesting it re-drives that intent, any other rollback on the
 // Session or tree is refused as [ErrWorkspaceMutationPending].
+//
+// A file restore additionally refuses a boundary that keeps a non-terminal Run.
+// The mutation slot admits open interrupts because its caller owns their
+// disposition; this one disposes of exactly what its boundary drops, so a
+// continuation it would leave behind has to be settled by its own owner first.
 func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (RollbackResult, error) {
 	if err := spec.validate(); err != nil {
 		return RollbackResult{}, err
@@ -135,6 +140,12 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 		result.Dropped = resolvedBoundary.droppedRuns
 	}
 	if restoreFiles {
+		if surviving, found := resolvedBoundary.survivingContinuation(restoreHistory); found {
+			return result, fmt.Errorf(
+				"%w: Run %q is %s and this boundary keeps it; settle it before restoring files under it",
+				ErrSessionBusy, surviving.ID(), surviving.State().Status(),
+			)
+		}
 		if err := c.quiesceRollbackWorkspace(spec.SessionID, cwd); err != nil {
 			return result, err
 		}
@@ -193,7 +204,33 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 
 type resolvedRollbackBoundary struct {
 	timeline    transcript.Boundary
+	sessionRuns []run.Run
 	droppedRuns []DroppedRun
+}
+
+// survivingContinuation names a non-terminal Run this rollback keeps. A file
+// restore rewrites the working tree such a Run would resume into and destroys
+// the isolated copy its executor is still scoped to, while disposing of exactly
+// the Runs its boundary drops — and a files-only rollback drops none. A
+// continuation it cannot settle must therefore be settled by its own owner
+// first, rather than resumed into a tree that no longer matches what it did.
+func (r resolvedRollbackBoundary) survivingContinuation(restoreHistory bool) (run.Run, bool) {
+	dropped := make(map[string]struct{})
+	if restoreHistory {
+		for _, node := range r.timeline.Dropped {
+			dropped[node.ID] = struct{}{}
+		}
+	}
+	for _, value := range r.sessionRuns {
+		if value.State().IsTerminal() {
+			continue
+		}
+		if _, cut := dropped[value.ID()]; cut {
+			continue
+		}
+		return value, true
+	}
+	return run.Run{}, false
 }
 
 func (c *Coordinator) resolveRollbackBoundary(
@@ -215,6 +252,7 @@ func (c *Coordinator) resolveRollbackBoundary(
 	}
 	return resolvedRollbackBoundary{
 		timeline:    boundary,
+		sessionRuns: runs,
 		droppedRuns: projectDroppedRuns(boundary, runs, transcript.OpeningUserMessagesByRun(items)),
 	}, nil
 }
