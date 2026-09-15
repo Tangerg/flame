@@ -844,9 +844,9 @@ html[data-pointer] :focus-visible {
   outline: none;
 }
 html:not([data-pointer])
-  [data-focus-inset]:focus-visible:not([data-chrome-focus]):not(input):not(textarea):not(
-    [contenteditable]
-  ) {
+  :is([data-focus-inset]:focus-visible, [data-focus-inset] :focus-visible):not(
+    [data-chrome-focus]
+  ):not(input):not(textarea):not([contenteditable]) {
   outline-offset: -2px;
 }
 input:focus-visible,

@@ -43,7 +43,7 @@ export function Collapsible({ open, children }: Props) {
         if (open) setRevealed(true);
       }}
     >
-      <div inert={!open} {...stylex.props(styles.well)}>
+      <div inert={!open} data-focus-inset="" {...stylex.props(styles.well)}>
         {(open || revealed) && children}
       </div>
     </div>

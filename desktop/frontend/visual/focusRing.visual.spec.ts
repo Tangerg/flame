@@ -1,13 +1,13 @@
 import { expect, test } from "./test";
+import { VISUAL_AGENT_STATES } from "./agentSessionSnapshots";
 import { FOCUSABLE } from "./controls";
 import { eachTabStop } from "./tabWalk";
 
+// Every agent state, because the ring this found cut was in `answer-opening` — a state the
+// old list of five did not name. The workspace and shell routes stay a sample: their chrome
+// is the same on every one.
 const ROUTES = [
-  "fixture=agent&state=waiting",
-  "fixture=agent&state=running",
-  "fixture=agent&state=narrative",
-  "fixture=agent&state=tool-shells",
-  "fixture=agent&state=long-content",
+  ...VISUAL_AGENT_STATES.map((state) => `fixture=agent&state=${state}`),
   "fixture=shell&state=populated",
   "fixture=workspace&state=dock-light",
   "fixture=workspace&state=settings",
@@ -30,7 +30,7 @@ test("no focus ring is cut off by something that clips", async ({ page }) => {
       const out: string[] = [];
       for (const element of document.querySelectorAll(FOCUSABLE)) {
         if (element.hasAttribute("data-chrome-focus")) continue;
-        if (element.hasAttribute("data-focus-inset")) continue;
+        if (element.closest("[data-focus-inset]")) continue;
         const tag = element.tagName.toLowerCase();
         if (tag === "input" || tag === "textarea" || (element as HTMLElement).isContentEditable) {
           continue;
