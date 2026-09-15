@@ -101,10 +101,15 @@ func (f *fakeRunSessions) setActive(value *run.Run) {
 	f.active = value
 }
 
-func (f *fakeRunSessions) Create(_ context.Context, title, cwd string) (session.Session, error) {
+func (f *fakeRunSessions) PrepareFresh(
+	title, cwd string,
+	selection modelref.Selection,
+) (session.Session, *session.Session, error) {
 	f.createdTitle = title
-	f.sess = testsupport.MustRestoreSession(session.Snapshot{ID: "ses_created", Workspace: testsupport.MustWorkspace(cwd)})
-	return f.sess, nil
+	f.sess = testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_created", Title: title, Workspace: testsupport.MustWorkspace(cwd), Selection: selection,
+	})
+	return f.sess, &f.sess, nil
 }
 
 func (f *fakeRunSessions) PrepareScheduled(
@@ -160,6 +165,7 @@ type fakeExecutionPorts struct {
 	validated         RootExecutionStart
 	started           RootExecutionStart
 	startRef          ExecutorRef
+	stageErr          error
 	prepared          ExecutorRef
 	prepareErr        error
 	rehydrated        ExecutorRef
@@ -216,6 +222,9 @@ func (f *fakeExecutionPorts) ValidateRootStart(req RootExecutionStart) error {
 
 func (f *fakeExecutionPorts) StageRoot(_ context.Context, req RootExecutionStart) (ExecutorRef, error) {
 	f.started = req
+	if f.stageErr != nil {
+		return ExecutorRef{}, f.stageErr
+	}
 	return f.startRef, nil
 }
 
@@ -764,6 +773,96 @@ func TestScheduledStartCarriesExactInitialSessionInOpening(t *testing.T) {
 		initial.Selection() != mustUseCaseSelection("provider", "model") || initial.Revision() != 1 {
 		t.Fatalf("opening initial Session = %+v", initial.Snapshot())
 	}
+}
+
+// TestImplicitSessionExistsOnlyWhenItsRunOpens: a Session a Run start creates on
+// the caller's behalf is written by the opening write-set, so a start that fails
+// before that commit leaves nothing durable behind.
+func TestImplicitSessionExistsOnlyWhenItsRunOpens(t *testing.T) {
+	effects := &fakeEffects{}
+	sessions := new(fakeRunSessions)
+	control := &fakeExecutionPorts{
+		startRef: ExecutorRef{SessionID: "ses_created", ExecutorID: "turn_1"},
+		stageErr: errors.New("executor staging failed"),
+	}
+	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
+	command := StartCommand{
+		NewSessionTitle: "Implicit", DefaultWorkspacePath: "/work",
+		Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
+	}
+
+	if _, err := coordinator.Start(t.Context(), command); !errors.Is(err, control.stageErr) {
+		t.Fatalf("Start under staging failure = %v, want the staging cause", err)
+	}
+	if openings := effects.openingSnapshot(); len(openings) != 0 {
+		t.Fatalf("failed start committed %d openings, want none", len(openings))
+	}
+
+	control.stageErr = nil
+	result, err := coordinator.Start(t.Context(), command)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	consumeEvents(result.Events)
+	opening := effects.opening()
+	initial, initialized := opening.InitialSession()
+	if !initialized || initial.ID() != result.SessionID || initial.Title() != "Implicit" ||
+		initial.Workspace().Path() != "/work" {
+		t.Fatalf("opening initial Session = (%+v, %t), want the started Session", initial.Snapshot(), initialized)
+	}
+}
+
+// TestStartStagesTheSessionItsAdmissionHolds: the Run admission reserves a
+// working tree by the Session's path, so a relocation committed between the
+// preparation read and the claim must not execute under the superseded policy.
+func TestStartStagesTheSessionItsAdmissionHolds(t *testing.T) {
+	effects := &fakeEffects{}
+	relocated := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_1", Workspace: testsupport.MustWorkspace("/relocated"),
+		Selection: mustUseCaseSelection("test-provider", "test-model"), Revision: 2,
+	})
+	sessions := &relocatingSessions{
+		fakeRunSessions: &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{
+			ID: "ses_1", Workspace: testsupport.MustWorkspace("/work"),
+			Selection: mustUseCaseSelection("test-provider", "test-model"), Revision: 1,
+		})},
+		after: relocated,
+	}
+	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
+	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
+
+	result, err := coordinator.Start(t.Context(), StartCommand{
+		SessionID: "ses_1",
+		Input:     []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
+	})
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	consumeEvents(result.Events)
+	if control.started.CWD != "/relocated" || control.started.WorkspaceCWD != "/relocated" {
+		t.Fatalf("staged cwd = %q/%q, want the relocated workspace",
+			control.started.CWD, control.started.WorkspaceCWD)
+	}
+}
+
+// relocatingSessions commits a Session relocation the moment the Run start has
+// read the Session it is preparing from.
+type relocatingSessions struct {
+	*fakeRunSessions
+	after     session.Session
+	relocated bool
+}
+
+func (r *relocatingSessions) Get(ctx context.Context, id string) (session.Session, error) {
+	value, err := r.fakeRunSessions.Get(ctx, id)
+	if err != nil {
+		return session.Session{}, err
+	}
+	if !r.relocated {
+		r.relocated = true
+		r.fakeRunSessions.sess = r.after
+	}
+	return value, nil
 }
 
 func TestManualScheduleStartCarriesRunFactInOpening(t *testing.T) {

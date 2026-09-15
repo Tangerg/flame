@@ -206,9 +206,13 @@ type GoalMutationGuard interface {
 // independently (not joined to any rollback
 // transaction) — the log is precisely the marker that the two resources change
 // out of transaction.
+//
+// A logged intent owns recovery for its working tree until it completes, so
+// Record reports [ErrWorkspaceMutationPending] for any other operation on that
+// Session or tree and Complete clears only the operation it is given.
 type WorkspaceMutations interface {
 	Record(ctx context.Context, m WorkspaceMutation) error
-	Complete(ctx context.Context, sessionID string) error
+	Complete(ctx context.Context, m WorkspaceMutation) error
 	ListPending(ctx context.Context) ([]WorkspaceMutation, error)
 }
 

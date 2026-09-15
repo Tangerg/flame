@@ -88,6 +88,10 @@ type RollbackResult struct {
 // writes a working tree a sibling session sharing the cwd would race, and that
 // sibling's tool writes never take the checkpoint lock, so the mutation must see
 // any in-flight run on the tree, not just this session's.
+//
+// An earlier rollback whose intent is still logged keeps recovery ownership of
+// that tree: re-requesting it re-drives that intent, any other rollback on the
+// Session or tree is refused as [ErrWorkspaceMutationPending].
 func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (RollbackResult, error) {
 	if err := spec.validate(); err != nil {
 		return RollbackResult{}, err
@@ -135,7 +139,7 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 	// updates multiple paths and can fail after changing only some of them, so
 	// even files-only rollback needs boot recovery. RestoreHistory distinguishes
 	// that operation from the cross-resource files+history variant.
-	mutationRecorded, err := c.recordRollbackMutation(ctx, spec, cwd)
+	mutation, recorded, err := c.recordRollbackMutation(ctx, spec, cwd)
 	if err != nil {
 		return result, err
 	}
@@ -143,7 +147,7 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 	// Errors before reset begins leave the tree unchanged, so their intent can be
 	// cleared. ErrCheckpointRestoreIncomplete is different: reset may have
 	// changed only part of the tree, and its intent must survive for recovery.
-	if restoreRollbackFilesErr := c.restoreRollbackFiles(ctx, spec, cwd, mutationRecorded); restoreRollbackFilesErr != nil {
+	if restoreRollbackFilesErr := c.restoreRollbackFiles(ctx, spec, cwd, mutation, recorded); restoreRollbackFilesErr != nil {
 		if restoreFiles && errors.Is(restoreRollbackFilesErr, ErrCheckpointRestoreIncomplete) {
 			c.transientState.ForgetWorkspace(cwd)
 		}
@@ -164,12 +168,19 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 		}
 	}
 
-	if mutationRecorded {
-		if completeMutationDetachedErr := c.completeMutationDetached(ctx, spec.SessionID); completeMutationDetachedErr != nil {
+	if recorded {
+		if completeMutationDetachedErr := c.completeMutationDetached(ctx, mutation); completeMutationDetachedErr != nil {
 			return result, completeMutationDetachedErr
 		}
 	}
-	result.Session, err = c.view(currentSession, ActivityIdle)
+	// A files-only restore drops no Run and a history cut can keep a waiting
+	// boundary Run, so activity stays derived from the durable Run projection
+	// rather than asserted by the rollback.
+	activities, err := c.Activities(ctx, []string{spec.SessionID})
+	if err != nil {
+		return result, err
+	}
+	result.Session, err = c.view(currentSession, activities[spec.SessionID])
 	if err != nil {
 		return result, err
 	}
@@ -217,15 +228,22 @@ func (c *Coordinator) quiesceRollbackWorkspace(sessionID, cwd string) error {
 	return nil
 }
 
-func (c *Coordinator) recordRollbackMutation(ctx context.Context, spec RollbackSpec, cwd string) (bool, error) {
+func (c *Coordinator) recordRollbackMutation(
+	ctx context.Context,
+	spec RollbackSpec,
+	cwd string,
+) (WorkspaceMutation, bool, error) {
 	if !spec.Scope.RestoresFiles() {
-		return false, nil
+		return WorkspaceMutation{}, false, nil
 	}
-	err := c.mutations.Record(ctx, WorkspaceMutation{
+	mutation := WorkspaceMutation{
 		SessionID: spec.SessionID, CWD: cwd, ToRunID: spec.ToRunID,
 		RestoreHistory: spec.Scope.RestoresHistory(),
-	})
-	return err == nil, err
+	}
+	if err := c.mutations.Record(ctx, mutation); err != nil {
+		return WorkspaceMutation{}, false, err
+	}
+	return mutation, true, nil
 }
 
 func (c *Coordinator) retireRestoredWorkspace(sessionID, cwd string) error {
@@ -245,16 +263,17 @@ func (c *Coordinator) restoreRollbackFiles(
 	ctx context.Context,
 	spec RollbackSpec,
 	cwd string,
-	mutationRecorded bool,
+	mutation WorkspaceMutation,
+	recorded bool,
 ) error {
 	if !spec.Scope.RestoresFiles() {
 		return nil
 	}
 	err := c.restore(ctx, spec.SessionID, cwd, spec.ToRunID)
-	if err == nil || !mutationRecorded || errors.Is(err, ErrCheckpointRestoreIncomplete) {
+	if err == nil || !recorded || errors.Is(err, ErrCheckpointRestoreIncomplete) {
 		return err
 	}
-	cleanupErr := c.completeMutationDetached(ctx, spec.SessionID)
+	cleanupErr := c.completeMutationDetached(ctx, mutation)
 	if cleanupErr == nil {
 		return err
 	}
@@ -323,17 +342,17 @@ func (c *Coordinator) recoverRollback(ctx context.Context, m WorkspaceMutation) 
 			return err
 		}
 	}
-	return c.completeMutation(ctx, m.SessionID)
+	return c.completeMutation(ctx, m)
 }
 
-func (c *Coordinator) completeMutation(ctx context.Context, sessionID string) error {
-	return c.mutations.Complete(ctx, sessionID)
+func (c *Coordinator) completeMutation(ctx context.Context, m WorkspaceMutation) error {
+	return c.mutations.Complete(ctx, m)
 }
 
-func (c *Coordinator) completeMutationDetached(ctx context.Context, sessionID string) error {
+func (c *Coordinator) completeMutationDetached(ctx context.Context, m WorkspaceMutation) error {
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), mutationCleanupTimeout)
 	defer cancel()
-	return c.completeMutation(cleanupCtx, sessionID)
+	return c.completeMutation(cleanupCtx, m)
 }
 
 // restore drives the checkpoint store, mapping a nil store (file checkpoints

@@ -53,7 +53,7 @@ func TestMutationCompletionDetachesFromCallerCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	if err := coordinator.completeMutationDetached(ctx, "ses_1"); err != nil {
+	if err := coordinator.completeMutationDetached(ctx, WorkspaceMutation{SessionID: "ses_1"}); err != nil {
 		t.Fatalf("completeMutationDetached: %v", err)
 	}
 	if mutations.canceled {
@@ -71,7 +71,7 @@ type observingMutations struct {
 
 func (*observingMutations) Record(context.Context, WorkspaceMutation) error { return nil }
 
-func (o *observingMutations) Complete(ctx context.Context, _ string) error {
+func (o *observingMutations) Complete(ctx context.Context, _ WorkspaceMutation) error {
 	o.canceled = ctx.Err() != nil
 	_, o.bounded = ctx.Deadline()
 	return nil

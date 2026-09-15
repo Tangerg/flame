@@ -160,12 +160,12 @@ func (d *delegateSessionStore) Get(_ context.Context, id string) (session.Sessio
 	return d.value, nil
 }
 
-func (d *delegateSessionStore) Create(
-	context.Context,
+func (d *delegateSessionStore) PrepareFresh(
 	string,
 	string,
-) (session.Session, error) {
-	return d.value, nil
+	modelref.Selection,
+) (session.Session, *session.Session, error) {
+	return d.value, nil, nil
 }
 
 func (d *delegateSessionStore) PrepareScheduled(

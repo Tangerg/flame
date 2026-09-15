@@ -27,16 +27,12 @@ type rootStartPreparation struct {
 
 // Start validates and resolves the Session, claims the Session and working
 // tree, stages execution, and commits the Run opening. That durable opening is
-// the command's acceptance point; executor activation continues behind the
-// package's lifecycle supervisor and cannot retain the accepted response.
+// the command's acceptance point: a Session this command creates is inserted by
+// the same write-set, and executor activation continues behind the package's
+// lifecycle supervisor and cannot retain the accepted response.
 func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result StartResult, err error) {
 	cmd = cmd.clone()
-	preparation, err := c.prepareRootStart(ctx, cmd)
-	if err != nil {
-		return StartResult{}, err
-	}
-
-	runAdmission, err := c.claimFreshRun(ctx, preparation.session)
+	runAdmission, preparation, err := c.admitRootStart(ctx, cmd)
 	if err != nil {
 		return StartResult{}, err
 	}
@@ -139,6 +135,40 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 		RunID: runID, SegmentID: segmentID, SessionID: preparation.session.ID(),
 		UserItemID: userItemID, Events: events,
 	}, nil
+}
+
+// admitRootStart prepares the opening and claims its Run admission. The claim
+// reserves the working tree by the Session's path and blocks further Session
+// edits, so an edit committed between the read and the claim would otherwise
+// stage the Segment under a policy no admission covers: the preparation is
+// re-derived and the claim retaken until the admitted Session is the prepared
+// one. A Session that is not durable yet has no other writer.
+func (c *Coordinator) admitRootStart(
+	ctx context.Context,
+	cmd StartCommand,
+) (ownership.RunAdmission, rootStartPreparation, error) {
+	for {
+		preparation, err := c.prepareRootStart(ctx, cmd)
+		if err != nil {
+			return ownership.RunAdmission{}, rootStartPreparation{}, err
+		}
+		runAdmission, err := c.claimFreshRun(ctx, preparation.session)
+		if err != nil {
+			return ownership.RunAdmission{}, rootStartPreparation{}, err
+		}
+		if preparation.initialSession != nil {
+			return runAdmission, preparation, nil
+		}
+		committed, err := c.sessionReader.Get(ctx, preparation.session.ID())
+		if err != nil {
+			runAdmission.Release()
+			return ownership.RunAdmission{}, rootStartPreparation{}, err
+		}
+		if committed.Revision() == preparation.session.Revision() {
+			return runAdmission, preparation, nil
+		}
+		runAdmission.Release()
+	}
 }
 
 func (c *Coordinator) prepareRootStart(
@@ -273,8 +303,7 @@ func (c *Coordinator) resolveSession(
 		return c.sessionCreator.PrepareScheduled(ctx, newID, title, defaultWorkspacePath, selection)
 	}
 	if id == "" {
-		sess, err := c.sessionCreator.Create(ctx, title, defaultWorkspacePath)
-		return sess, nil, err
+		return c.sessionCreator.PrepareFresh(title, defaultWorkspacePath, selection)
 	}
 	sess, err := c.sessionReader.Get(ctx, id)
 	return sess, nil, err

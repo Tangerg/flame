@@ -1410,7 +1410,9 @@ type inertWorkspaceMutations struct{}
 
 func (inertWorkspaceMutations) Record(context.Context, sessions.WorkspaceMutation) error { return nil }
 
-func (inertWorkspaceMutations) Complete(context.Context, string) error { return nil }
+func (inertWorkspaceMutations) Complete(context.Context, sessions.WorkspaceMutation) error {
+	return nil
+}
 
 func (inertWorkspaceMutations) ListPending(context.Context) ([]sessions.WorkspaceMutation, error) {
 	return nil, nil

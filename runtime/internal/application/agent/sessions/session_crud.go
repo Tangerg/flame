@@ -91,14 +91,7 @@ func (c *Coordinator) InspectWorkspace(cwd string) (workspaceapp.Resolved, error
 
 // Create starts and persists a fresh root Session in an admitted workspace.
 func (c *Coordinator) Create(ctx context.Context, title, cwd string) (session.Session, error) {
-	workspace, err := c.resolveSessionWorkspace(cwd)
-	if err != nil {
-		return session.Session{}, err
-	}
-	created, err := session.New(session.Draft{
-		ID: c.newID(), Title: title, Workspace: workspace,
-		Selection: c.defaultModelSelection, CreatedAt: c.now(),
-	})
+	created, _, err := c.PrepareFresh(title, cwd, modelref.Selection{})
 	if err != nil {
 		return session.Session{}, err
 	}
@@ -107,6 +100,16 @@ func (c *Coordinator) Create(ctx context.Context, title, cwd string) (session.Se
 	}
 	c.publishSessionMoved(created.ID())
 	return created, nil
+}
+
+// PrepareFresh resolves a Session a Run start creates implicitly, under a fresh
+// identity and without writing it. The Run opening write-set inserts it with the
+// Run, so a later staging or admission failure leaves no Session nobody started.
+func (c *Coordinator) PrepareFresh(
+	title, cwd string,
+	selection modelref.Selection,
+) (current session.Session, initial *session.Session, err error) {
+	return c.prepareInitial(c.newID(), title, cwd, selection)
 }
 
 // PrepareScheduled resolves a schedule-owned Session without writing it. When
@@ -126,6 +129,13 @@ func (c *Coordinator) PrepareScheduled(
 	if !errors.Is(err, session.ErrNotFound) {
 		return session.Session{}, nil, err
 	}
+	return c.prepareInitial(id, title, cwd, selection)
+}
+
+func (c *Coordinator) prepareInitial(
+	id, title, cwd string,
+	selection modelref.Selection,
+) (session.Session, *session.Session, error) {
 	workspace, err := c.resolveSessionWorkspace(cwd)
 	if err != nil {
 		return session.Session{}, nil, err
@@ -134,10 +144,10 @@ func (c *Coordinator) PrepareScheduled(
 		selection = c.defaultModelSelection
 	}
 	if validateErr := selection.ValidateExact(); validateErr != nil {
-		return session.Session{}, nil, fmt.Errorf("sessions: scheduled model selection: %w", validateErr)
+		return session.Session{}, nil, fmt.Errorf("sessions: initial model selection: %w", validateErr)
 	}
 	if admitErr := c.models.AdmitSelection(selection); admitErr != nil {
-		return session.Session{}, nil, fmt.Errorf("sessions: scheduled model selection is not admitted: %w", admitErr)
+		return session.Session{}, nil, fmt.Errorf("sessions: initial model selection is not admitted: %w", admitErr)
 	}
 	created, err := session.New(session.Draft{
 		ID: id, Title: title, Workspace: workspace, Selection: selection, CreatedAt: c.now(),

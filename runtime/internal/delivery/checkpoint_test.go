@@ -8,9 +8,15 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -354,6 +360,112 @@ func TestRecoverRollbacks_FilesOnly(t *testing.T) {
 	}
 	if pending, _ := rt.muts.ListPending(ctx); len(pending) != 0 {
 		t.Fatalf("pending after files-only recovery = %+v, want none", pending)
+	}
+}
+
+// TestRollbackCannotDisplaceUnfinishedRecoveryIntent: the intent an incomplete
+// restore leaves behind is the only record that the tree may be half-reset, so
+// a rollback to a different boundary is refused rather than allowed to overwrite
+// or clear it.
+func TestRollbackCannotDisplaceUnfinishedRecoveryIntent(t *testing.T) {
+	s, rt := rollbackHarness(t)
+	ctx := t.Context()
+	ses, err := insertSessionFixture(ctx, rt.sess, "restore failure", t.TempDir())
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	putRun(t, rt, ses.ID(), "run1", 1, 1)
+	putRun(t, rt, ses.ID(), "run2", 2, 2)
+	putRun(t, rt, ses.ID(), "run3", 3, 3)
+	s.sessions = rt.sessionsCoordinatorWithRestorer(incompleteCheckpointRestorer{})
+
+	if _, err := s.RollbackSession(ctx, protocol.RollbackSessionRequest{
+		SessionID: ses.ID(), ToRunID: "run2", RestoreType: protocol.RestoreBoth,
+	}); !errors.Is(err, sessions.ErrCheckpointRestoreIncomplete) {
+		t.Fatalf("first rollback error = %v, want incomplete-restore sentinel", err)
+	}
+
+	_, err = s.RollbackSession(ctx, protocol.RollbackSessionRequest{
+		SessionID: ses.ID(), ToRunID: "run1", RestoreType: protocol.RestoreFiles,
+	})
+	if !errors.Is(err, protocol.ErrSessionBusy) {
+		t.Fatalf("second rollback error = %v, want session_busy", err)
+	}
+	pending, listErr := rt.muts.ListPending(ctx)
+	if listErr != nil {
+		t.Fatalf("list pending: %v", listErr)
+	}
+	want := sessions.WorkspaceMutation{
+		SessionID: ses.ID(), CWD: ses.Workspace().Path(), ToRunID: "run2", RestoreHistory: true,
+	}
+	if len(pending) != 1 || pending[0] != want {
+		t.Fatalf("pending = %+v, want only the unfinished %+v", pending, want)
+	}
+}
+
+// TestRollbackFilesReportsSurvivingWaitingRun: a files-only rollback drops no
+// Run, so the Session it returns must report the parked Run a later read also
+// reports.
+func TestRollbackFilesReportsSurvivingWaitingRun(t *testing.T) {
+	s, rt, cp, sid, cwd := checkpointHarness(t)
+	ctx := t.Context()
+
+	writeCheckpointFile(t, cwd, "v1")
+	if err := cp.Snapshot(ctx, sid, cwd, "run1"); err != nil {
+		t.Fatalf("snapshot run1: %v", err)
+	}
+	putRun(t, rt, sid, "run1", 1, 1)
+	writeCheckpointFile(t, cwd, "v2")
+	putWaitingRun(t, rt, sid, "run2", 2)
+
+	resp, err := s.RollbackSession(ctx, protocol.RollbackSessionRequest{
+		SessionID: sid, ToRunID: "run1", RestoreType: protocol.RestoreFiles,
+	})
+	if err != nil {
+		t.Fatalf("rollback files: %v", err)
+	}
+	if resp.Session.Status != protocol.SessionStatusWaiting {
+		t.Fatalf("rollback session status = %q, want waiting", resp.Session.Status)
+	}
+	reread, err := s.GetSession(ctx, sid)
+	if err != nil {
+		t.Fatalf("get session: %v", err)
+	}
+	if reread.Status != resp.Session.Status {
+		t.Fatalf("re-read status = %q, rollback reported %q", reread.Status, resp.Session.Status)
+	}
+}
+
+func putWaitingRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUnix int64) {
+	t.Helper()
+	ctx := t.Context()
+	at := time.Unix(atUnix, 0).UTC()
+	segmentID := "seg_" + runID
+	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	if err := rt.runs.Admit(ctx, testsupport.RunDraft(run.Draft{
+		RunID: runID, SessionID: sessionID, SegmentID: segmentID,
+		Capabilities: capabilities, CreatedAt: at,
+	})); err != nil {
+		t.Fatalf("admit %s: %v", runID, err)
+	}
+	if err := rt.runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{
+		SessionID: sessionID, ID: runID, State: run.Waiting, Capabilities: capabilities,
+		CreatedAt: at, MessageMark: run.UnknownMessageMark,
+	}), segmentID, runtimeidentity.CommitID{}); err != nil {
+		t.Fatalf("park %s: %v", runID, err)
+	}
+	if err := rt.hist.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
+		ID: "item_" + runID, RunID: runID, SessionID: sessionID,
+		Kind: transcript.QuestionItem, OccurredAt: at,
+		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+	})); err != nil {
+		t.Fatalf("open interrupt item for %s: %v", runID, err)
+	}
+	if err := rt.interrupts.Open(ctx, serverPending(runID, sessionID, "", "", []transcript.Interrupt{{
+		ItemID: "item_" + runID, Kind: interrupt.Question,
+		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+	}}, at)); err != nil {
+		t.Fatalf("open interrupt for %s: %v", runID, err)
 	}
 }
 

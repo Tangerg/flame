@@ -325,7 +325,9 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// spans Git and SQLite. The intent is logged before the tree is touched and
 		// cleared after every requested effect commits. A surviving row is re-driven
 		// at boot. session_id keys it — the mutation slot admits at most one
-		// in-flight rollback per session. Its restrictive owners preserve boot
+		// in-flight rollback per session — and a row owns recovery for its cwd
+		// until it completes, so a later rollback on that tree is refused rather
+		// than allowed to displace it. Its restrictive owners preserve boot
 		// recovery inputs, while Run admission treats its Session and cwd as busy.
 		// created_at is operational metadata only.
 		`CREATE TABLE IF NOT EXISTS pending_workspace_mutations (

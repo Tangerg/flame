@@ -69,11 +69,14 @@ func TestWorkspaceMutationLogRoundTrip(t *testing.T) {
 		t.Fatalf("pending[0] = %+v, want the ses_1 intent verbatim", pending[0])
 	}
 
-	if err := store.Complete(ctx, "ses_1"); err != nil {
+	completed := WorkspaceMutationRecord{
+		SessionID: "ses_1", CWD: "/repo", ToRunID: "run_1", RestoreHistory: true,
+	}
+	if err := store.Complete(ctx, completed); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 	// Completing an already-cleared row is a no-op (boot recovery may re-complete).
-	if err := store.Complete(ctx, "ses_1"); err != nil {
+	if err := store.Complete(ctx, completed); err != nil {
 		t.Fatalf("re-complete: %v", err)
 	}
 
@@ -83,9 +86,10 @@ func TestWorkspaceMutationLogRoundTrip(t *testing.T) {
 	}
 }
 
-// TestWorkspaceMutationReRecordReplaces: re-recording for the same session
-// overwrites rather than duplicating (the mutation slot admits one per session).
-func TestWorkspaceMutationReRecordReplaces(t *testing.T) {
+// TestUnfinishedWorkspaceMutationKeepsRecoveryOwnership: an intent left pending
+// by an incomplete reset cannot be displaced or cleared by another rollback, so
+// boot recovery still has the evidence that tree was partially reset.
+func TestUnfinishedWorkspaceMutationKeepsRecoveryOwnership(t *testing.T) {
 	db, err := Open(t.Context(), ":memory:")
 	if err != nil {
 		t.Fatalf("open: %v", err)
@@ -96,17 +100,42 @@ func TestWorkspaceMutationReRecordReplaces(t *testing.T) {
 	seedWorkspaceMutationSession(t, db, "ses_1", "/a")
 	seedWorkspaceMutationRun(t, db, "ses_1", "run_1")
 	seedWorkspaceMutationRun(t, db, "ses_1", "run_2")
+	seedWorkspaceMutationSession(t, db, "ses_sibling", "/a")
+	seedWorkspaceMutationRun(t, db, "ses_sibling", "run_sibling")
 
-	if err := store.Record(ctx, WorkspaceMutationRecord{SessionID: "ses_1", CWD: "/a", ToRunID: "run_1"}); err != nil {
+	unfinished := WorkspaceMutationRecord{SessionID: "ses_1", CWD: "/a", ToRunID: "run_1"}
+	if err := store.Record(ctx, unfinished); err != nil {
 		t.Fatalf("record first intent: %v", err)
 	}
-	if err := store.Record(ctx, WorkspaceMutationRecord{SessionID: "ses_1", CWD: "/a", ToRunID: "run_2"}); err != nil {
-		t.Fatalf("replace intent: %v", err)
+	if err := store.Record(ctx, unfinished); err != nil {
+		t.Fatalf("re-record own intent: %v", err)
+	}
+
+	displacing := []WorkspaceMutationRecord{
+		{SessionID: "ses_1", CWD: "/a", ToRunID: "run_2"},
+		{SessionID: "ses_1", CWD: "/a", ToRunID: "run_1", RestoreHistory: true},
+		{SessionID: "ses_sibling", CWD: "/a", ToRunID: "run_sibling"},
+	}
+	for _, m := range displacing {
+		if err := store.Record(ctx, m); !errors.Is(err, ErrWorkspaceMutationPending) {
+			t.Fatalf("record %+v = %v, want ErrWorkspaceMutationPending", m, err)
+		}
+	}
+	for _, m := range displacing {
+		if err := store.Complete(ctx, m); err != nil {
+			t.Fatalf("complete %+v: %v", m, err)
+		}
 	}
 
 	pending, _ := store.ListPending(ctx)
-	if len(pending) != 1 || pending[0].CWD != "/a" || pending[0].ToRunID != "run_2" {
-		t.Fatalf("pending = %+v, want one ses_1 row with the latest intent", pending)
+	if len(pending) != 1 || pending[0] != unfinished {
+		t.Fatalf("pending = %+v, want only the unfinished ses_1 intent", pending)
+	}
+	if err := store.Complete(ctx, unfinished); err != nil {
+		t.Fatalf("complete own intent: %v", err)
+	}
+	if pending, _ = store.ListPending(ctx); len(pending) != 0 {
+		t.Fatalf("pending after owner completed = %+v, want none", pending)
 	}
 }
 
@@ -144,7 +173,9 @@ func TestPendingWorkspaceMutationFencesItsRecoveryInputs(t *testing.T) {
 		t.Fatal("deleted Session while its workspace mutation was pending")
 	}
 
-	if err := mutations.Complete(ctx, "ses_owner"); err != nil {
+	if err := mutations.Complete(ctx, WorkspaceMutationRecord{
+		SessionID: "ses_owner", CWD: "/repo", ToRunID: "run_target", RestoreHistory: true,
+	}); err != nil {
 		t.Fatalf("complete mutation: %v", err)
 	}
 	if err := runs.Admit(ctx, testsupport.RunDraft(run.Draft{

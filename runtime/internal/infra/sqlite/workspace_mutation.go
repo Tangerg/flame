@@ -7,6 +7,13 @@ import (
 	"fmt"
 )
 
+// ErrWorkspaceMutationPending reports that an unfinished rollback still owns the
+// Session or the working tree a new rollback addresses.
+var ErrWorkspaceMutationPending = errors.New("sqlite: workspace mutation is pending")
+
+// WorkspaceMutationRecord is the whole identity of one recoverable file
+// rollback: recovery re-drives exactly this operation, so every field
+// participates in the identity Complete matches.
 type WorkspaceMutationRecord struct {
 	SessionID      string
 	CWD            string
@@ -22,6 +29,11 @@ type WorkspaceMutationRecord struct {
 // requested effects commit. The row protects a non-atomic multi-path Git reset
 // and, when requested, the separate SQLite history transaction.
 //
+// A logged intent is the ONLY record that a reset may have changed part of a
+// tree, so it owns recovery for that tree until it completes: Record refuses to
+// displace a different pending operation and Complete clears only the operation
+// it is given.
+//
 // Safe for concurrent use; the *sql.DB serializes writes (MaxOpenConns 1, see
 // [Open]).
 type WorkspaceMutationStore struct {
@@ -35,9 +47,9 @@ func NewWorkspaceMutationStore(db *sql.DB) *WorkspaceMutationStore {
 }
 
 // Record logs a rollback's intent before the working tree is touched.
-// INSERT OR REPLACE is idempotent against a leftover row for the same session
-// (the mutation slot admits one in-flight rollback per session, so this is
-// effectively an insert). created_at is stamped by the DB default.
+// Re-logging the same operation is a no-op so an interrupted rollback can
+// re-drive its own intent; any other pending operation on this Session or tree
+// is [ErrWorkspaceMutationPending] rather than replaced.
 func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutationRecord) error {
 	if err := validateSessionResource("record workspace mutation", m.SessionID); err != nil {
 		return err
@@ -45,8 +57,21 @@ func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutation
 	if err := validateRunResource("record workspace mutation", m.ToRunID); err != nil {
 		return err
 	}
-	result, err := w.db.ExecContext(ctx,
-		`INSERT OR REPLACE INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history)
+	tx, err := w.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("sqlite: record workspace mutation: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	recorded, err := ownsPendingWorkspaceMutation(ctx, tx, m)
+	if err != nil {
+		return err
+	}
+	if recorded {
+		return nil
+	}
+	result, err := tx.ExecContext(ctx,
+		`INSERT INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history)
 		 SELECT sessions.id, sessions.workspace_path, runs.run_id, ?
 		   FROM sessions
 		   JOIN runs ON runs.run_id = ? AND runs.session_id = sessions.id
@@ -65,18 +90,56 @@ func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutation
 	if changed != 1 {
 		return errors.New("sqlite: workspace mutation has no matching Run boundary")
 	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("sqlite: commit workspace mutation record: %w", err)
+	}
 	return nil
 }
 
-// Complete clears a session's logged intent once the file restore and, when
-// requested, durable truncation have committed. Idempotent: deleting an absent
-// row is not an error, so re-completion is a no-op.
-func (w *WorkspaceMutationStore) Complete(ctx context.Context, sessionID string) error {
-	if err := validateSessionResource("complete workspace mutation", sessionID); err != nil {
+func ownsPendingWorkspaceMutation(ctx context.Context, tx *sql.Tx, m WorkspaceMutationRecord) (bool, error) {
+	rows, err := tx.QueryContext(ctx,
+		`SELECT session_id, cwd, to_run_id, restore_history
+		   FROM pending_workspace_mutations
+		  WHERE session_id = ? OR cwd = ?`,
+		m.SessionID,
+		m.CWD)
+	if err != nil {
+		return false, fmt.Errorf("sqlite: inspect pending workspace mutations: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	recorded := false
+	for rows.Next() {
+		var existing WorkspaceMutationRecord
+		if err := rows.Scan(&existing.SessionID, &existing.CWD, &existing.ToRunID, &existing.RestoreHistory); err != nil {
+			return false, fmt.Errorf("sqlite: scan pending workspace mutation: %w", err)
+		}
+		if existing != m {
+			return false, ErrWorkspaceMutationPending
+		}
+		recorded = true
+	}
+	if err := rows.Err(); err != nil {
+		return false, fmt.Errorf("sqlite: iterate pending workspace mutations: %w", err)
+	}
+	return recorded, nil
+}
+
+// Complete clears the logged intent of exactly the operation m names, once its
+// file restore and, when requested, durable truncation have committed. Matching
+// the whole identity keeps a later rollback from clearing a predecessor's
+// unfinished record. Idempotent: deleting an absent row is not an error.
+func (w *WorkspaceMutationStore) Complete(ctx context.Context, m WorkspaceMutationRecord) error {
+	if err := validateSessionResource("complete workspace mutation", m.SessionID); err != nil {
+		return err
+	}
+	if err := validateRunResource("complete workspace mutation", m.ToRunID); err != nil {
 		return err
 	}
 	_, err := w.db.ExecContext(ctx,
-		`DELETE FROM pending_workspace_mutations WHERE session_id = ?`, sessionID)
+		`DELETE FROM pending_workspace_mutations
+		  WHERE session_id = ? AND cwd = ? AND to_run_id = ? AND restore_history = ?`,
+		m.SessionID, m.CWD, m.ToRunID, m.RestoreHistory)
 	if err != nil {
 		return fmt.Errorf("sqlite: complete workspace mutation: %w", err)
 	}

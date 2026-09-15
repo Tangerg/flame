@@ -2,6 +2,8 @@ package persistence
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
@@ -19,16 +21,15 @@ func NewWorkspaceMutationStore(storage *sqlite.WorkspaceMutationStore) *Workspac
 }
 
 func (w *WorkspaceMutationStore) Record(ctx context.Context, mutation sessions.WorkspaceMutation) error {
-	return w.storage.Record(ctx, sqlite.WorkspaceMutationRecord{
-		SessionID:      mutation.SessionID,
-		CWD:            mutation.CWD,
-		ToRunID:        mutation.ToRunID,
-		RestoreHistory: mutation.RestoreHistory,
-	})
+	err := w.storage.Record(ctx, storedWorkspaceMutation(mutation))
+	if errors.Is(err, sqlite.ErrWorkspaceMutationPending) {
+		return fmt.Errorf("%w: %w", sessions.ErrWorkspaceMutationPending, err)
+	}
+	return err
 }
 
-func (w *WorkspaceMutationStore) Complete(ctx context.Context, sessionID string) error {
-	return w.storage.Complete(ctx, sessionID)
+func (w *WorkspaceMutationStore) Complete(ctx context.Context, mutation sessions.WorkspaceMutation) error {
+	return w.storage.Complete(ctx, storedWorkspaceMutation(mutation))
 }
 
 func (w *WorkspaceMutationStore) ListPending(ctx context.Context) ([]sessions.WorkspaceMutation, error) {
@@ -46,4 +47,13 @@ func (w *WorkspaceMutationStore) ListPending(ctx context.Context) ([]sessions.Wo
 		}
 	}
 	return mutations, nil
+}
+
+func storedWorkspaceMutation(mutation sessions.WorkspaceMutation) sqlite.WorkspaceMutationRecord {
+	return sqlite.WorkspaceMutationRecord{
+		SessionID:      mutation.SessionID,
+		CWD:            mutation.CWD,
+		ToRunID:        mutation.ToRunID,
+		RestoreHistory: mutation.RestoreHistory,
+	}
 }
