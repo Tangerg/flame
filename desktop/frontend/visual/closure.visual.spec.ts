@@ -1568,7 +1568,7 @@ test("the reasoning window fades the edge it actually clips", async ({ page }) =
       };
     });
 
-  const atTop = await readFade();
+  const atTail = await readFade();
   const aside = await page.evaluate(() => {
     const body = document.querySelector<HTMLElement>('[role="region"]');
     if (!body) return null;
@@ -1583,14 +1583,20 @@ test("the reasoning window fades the edge it actually clips", async ({ page }) =
   expect(aside?.leftInset).toBeGreaterThan(20);
   expect(aside?.hasFill).toBe(false);
 
-  expect(atTop.overflowing).toBe(true);
-  expect(atTop.masked).toBe(true);
-  expect(atTop.overlays).toBe(0);
-  expect(atTop.top).toBe("0px");
-  expect(atTop.bottom).toBe("24px");
+  expect(atTail.overflowing).toBe(true);
+  expect(atTail.masked).toBe(true);
+  expect(atTail.overlays).toBe(0);
+  expect(atTail.top, "a thought still being written is followed to its end").toBe("24px");
+  expect(atTail.bottom, "and nothing is hidden below the end").toBe("0px");
 
   await scroller.evaluate((el) => {
-    el.scrollTop = 20;
+    el.scrollTop = 0;
+  });
+  await expect.poll(async () => (await readFade()).top).toBe("0px");
+  expect((await readFade()).bottom).toBe("24px");
+
+  await scroller.evaluate((el) => {
+    el.scrollTop = Math.round((el.scrollHeight - el.clientHeight) / 2);
   });
   await expect.poll(async () => (await readFade()).top).toBe("24px");
   expect((await readFade()).bottom).toBe("24px");

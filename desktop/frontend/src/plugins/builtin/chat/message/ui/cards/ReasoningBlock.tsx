@@ -9,6 +9,7 @@ import { face, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { messageStyles as ms } from "../messageStyles";
 
 const FADE = "24px";
+const FOLLOW_SLACK = 24;
 
 const rb = stylex.create({
   note: { marginTop: space.s1 },
@@ -89,23 +90,27 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
     );
   }, []);
 
+  const followingRef = useRef(true);
+  const onScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (el) followingRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_SLACK;
+    measure();
+  }, [measure]);
+
   useEffect(() => {
-    if (!streaming) return;
+    if (!streaming || !isOpen) return;
     const scrollEl = scrollRef.current;
     const contentEl = contentRef.current;
     if (!scrollEl || !contentEl) return;
-    const pin = () => {
-      const distanceFromBottom = scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight;
-      if (distanceFromBottom < 4) {
-        scrollEl.scrollTop = scrollEl.scrollHeight;
-      }
+    const follow = () => {
+      if (followingRef.current) scrollEl.scrollTop = scrollEl.scrollHeight;
       measure();
     };
-    pin();
-    const ro = new ResizeObserver(pin);
+    follow();
+    const ro = new ResizeObserver(follow);
     ro.observe(contentEl);
     return () => ro.disconnect();
-  }, [streaming, measure]);
+  }, [streaming, isOpen, measure]);
 
   useEffect(() => {
     measure();
@@ -129,7 +134,7 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
         data-slot="reasoning-scroller"
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={isOpen && edges.overflowing ? 0 : undefined}
-        onScroll={measure}
+        onScroll={onScroll}
         style={
           {
             "--fade-top": showTopFade ? FADE : "0px",

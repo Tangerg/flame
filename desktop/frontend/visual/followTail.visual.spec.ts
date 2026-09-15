@@ -116,8 +116,6 @@ test("a running turn says so where the transcript cannot take it away", async ({
       return box.top >= 0 && box.bottom <= window.innerHeight;
     });
 
-  // Above the tail, because that is where a long turn's history is. Growing BELOW would
-  // push the tail down and leave it on screen at scrollTop 0 — measuring nothing.
   expect(await growAbove(page), "the insert has to find the content element").toBe(true);
   await page.waitForTimeout(700);
   expect(await onScreen(), "pinned to the tail, the run status is on screen").toBe(true);
@@ -134,4 +132,52 @@ test("a running turn says so where the transcript cannot take it away", async ({
   ).toBeGreaterThan(GROWTH_PX);
 
   expect(await onScreen(), "reading earlier in the transcript does not hide it").toBe(true);
+});
+
+test("a thought that is still being written follows its own tail", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/visual/?fixture=agent&state=answer-opening&theme=light");
+  await page.locator("html[data-visual-ready]").waitFor();
+  const scroller = page.locator('[data-slot="reasoning-scroller"]');
+  await scroller.waitFor();
+  await page.waitForTimeout(500);
+
+  const write = (lines: number) =>
+    scroller.evaluate(async (el, count) => {
+      const content = el.firstElementChild;
+      for (let i = 0; i < count; i += 1) {
+        const line = document.createElement("p");
+        line.textContent = "Streamed reasoning line: tracing the ownership boundary.";
+        line.style.cssText = "margin:0;height:20px";
+        content?.appendChild(line);
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      }
+      return {
+        scrollTop: Math.round(el.scrollTop),
+        fromBottom: Math.round(el.scrollHeight - el.scrollTop - el.clientHeight),
+      };
+    }, lines);
+
+  const following = await write(12);
+  expect(
+    following.fromBottom,
+    "reasoning arrives at the end, so the end is what a thinking block shows",
+  ).toBeLessThanOrEqual(2);
+  expect(following.scrollTop, "this proves nothing unless the box actually moved").toBeGreaterThan(
+    100,
+  );
+
+  await scroller.hover();
+  await page.mouse.wheel(0, -2000);
+  await page.waitForTimeout(300);
+  const parked = await write(6);
+  expect(parked.scrollTop, "a reader who went back must not be dragged forward again").toBe(0);
+  expect(parked.fromBottom, "and the text keeps arriving below them").toBeGreaterThan(100);
+
+  await page.mouse.wheel(0, 4000);
+  await page.waitForTimeout(300);
+  const resumed = await write(6);
+  expect(resumed.fromBottom, "returning to the end takes the follow back up").toBeLessThanOrEqual(
+    2,
+  );
 });

@@ -12,7 +12,6 @@ function scrollportOf(container: HTMLElement): HTMLElement {
   return scrollport!;
 }
 
-// jsdom lays nothing out, so both heights read 0 and every box looks like it fits.
 function stubScrollGeometry(scrollHeight: number, clientHeight: number): () => void {
   const scroll = vi
     .spyOn(HTMLElement.prototype, "scrollHeight", "get")
