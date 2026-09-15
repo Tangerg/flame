@@ -51,7 +51,7 @@ function BreakdownSection({
 }) {
   if (buckets.length === 0) return null;
   return (
-    <Surface>
+    <Surface variant="group">
       <div {...stylex.props(ss.caption, typeStep.uiMd)}>{title}</div>
       <div {...stylex.props(vocab.column)}>
         {buckets.map((b) => (
@@ -87,7 +87,7 @@ function UsageTotals({
 }) {
   const t = useT();
   return (
-    <Surface className={stylex.props(vocab.column, gap.s2).className}>
+    <Surface variant="group" className={stylex.props(vocab.column, gap.s2).className}>
       <div {...stylex.props(u.totalLine)}>
         <span {...stylex.props(ss.captionInline, typeStep.uiMd)}>{t("usage.total")}</span>
         <span {...stylex.props(u.total, vocab.figures)}>

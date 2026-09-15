@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import type { ReactNode } from "react";
-import { Button, DropdownMenu, Icon, ProviderIcon, Surface, vocab } from "@/ui";
+import { Button, DropdownMenu, Icon, ProviderIcon, vocab } from "@/ui";
 import {
   type ProviderConfiguration,
   setEmbeddingRole,
@@ -12,7 +12,7 @@ import {
 } from "../application/providerConfig";
 import { useT } from "@/lib/i18n";
 import { useAsyncFeedback } from "../../kit";
-import { face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const rs = stylex.create({
@@ -20,6 +20,16 @@ const rs = stylex.create({
   // A model id is long and the trigger is not: it truncates rather than widening the row.
   model: { maxWidth: "160px" },
   pickRow: { paddingInline: space.s2 },
+  row: {
+    display: "flex",
+    flexDirection: "column",
+    gap: space.s3,
+    borderTopWidth: { default: "var(--control-edge-width)", ":first-child": 0 },
+    borderTopStyle: "solid",
+    borderTopColor: surface.field,
+    paddingInline: space.s4,
+    paddingBlock: space.s3,
+  },
 });
 
 function RoleSectionShell({
@@ -36,7 +46,7 @@ function RoleSectionShell({
   children: ReactNode;
 }) {
   return (
-    <Surface className={stylex.props(ss.stack).className}>
+    <div {...stylex.props(rs.row)}>
       <div {...stylex.props(ss.split)}>
         <div {...stylex.props(rs.title)}>
           <span {...stylex.props(ss.label, typeStep.uiMd)}>{title}</span>
@@ -46,7 +56,7 @@ function RoleSectionShell({
       </div>
       {note}
       {error && <p {...stylex.props(ss.hint, vocab.negative, typeStep.uiMd)}>{error}</p>}
-    </Surface>
+    </div>
   );
 }
 

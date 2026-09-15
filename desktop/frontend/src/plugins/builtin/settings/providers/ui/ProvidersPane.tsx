@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n";
 import { useProviderConfigs } from "../application/providerConfig";
 import { ProviderRow } from "./ProviderRow";
 import { EmbeddingModelSection, UtilityModelSection } from "./RoleSections";
-import { settingStyles as ss } from "../../kit/settingStyles";
+import { SettingsGroup } from "../../kit";
 
 export function ProvidersPane() {
   const t = useT();
@@ -12,10 +12,10 @@ export function ProvidersPane() {
 
   return (
     <div {...stylex.props(vocab.column, gap.s6)}>
-      <div {...stylex.props(ss.stack)}>
+      <SettingsGroup>
         <UtilityModelSection />
         <EmbeddingModelSection />
-      </div>
+      </SettingsGroup>
       <DataView
         items={data}
         isLoading={isLoading}
@@ -29,7 +29,11 @@ export function ProvidersPane() {
         }}
       >
         {(rows) => (
-          <Surface inset="xs" className={stylex.props(vocab.column, gap.s1).className}>
+          <Surface
+            variant="group"
+            inset="xs"
+            className={stylex.props(vocab.column, gap.s1).className}
+          >
             {rows.map((p) => (
               <ProviderRow key={p.id} p={p} />
             ))}
