@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -81,7 +82,7 @@ func newWorker(deps workerDependencies) *worker {
 
 // Run starts the scheduled-run loop until ctx is canceled.
 func (w *worker) Run(ctx context.Context) {
-	w.fireDue(ctx, w.now())
+	w.firePass(ctx)
 	t := time.NewTicker(workerTick)
 	defer t.Stop()
 	for {
@@ -89,9 +90,23 @@ func (w *worker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			w.fireDue(ctx, w.now())
+			w.firePass(ctx)
 		}
 	}
+}
+
+// firePass bounds one scan. A defect in a pass is that pass's failure: the
+// worker's contract is already that a failed pass is reported and retried on the
+// next tick, while a panic leaving this goroutine would end the process and
+// every Session in it.
+func (w *worker) firePass(ctx context.Context) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			slog.ErrorContext(ctx, "schedule: due scan panicked",
+				"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+		}
+	}()
+	w.fireDue(ctx, w.now())
 }
 
 // Fire starts one schedule RunRequest through runner under the firing span. A

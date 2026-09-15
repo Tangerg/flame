@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"log/slog"
+	"runtime/debug"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -109,6 +110,17 @@ func (d *Driver) launchLocked(
 			close(drive.done)
 			if drive.err == nil {
 				d.mutations.forget(sessionID, drive)
+			}
+		}()
+		defer func() {
+			// A defect in one Goal's drive is that Goal's failure: it lands in the
+			// error the cleanup above already reads, which keeps the drive joinable
+			// instead of unwinding out of a goroutine nothing can recover.
+			if recovered := recover(); recovered != nil {
+				slog.ErrorContext(ctx, "goals: Goal drive panicked",
+					"session.id", sessionID, "panic", fmt.Sprint(recovered),
+					"stack", string(debug.Stack()))
+				drive.err = fmt.Errorf("goals: Goal drive for Session %q panicked: %v", sessionID, recovered)
 			}
 		}()
 		drive.err = d.drive(ctx, sessionID, incarnationID)

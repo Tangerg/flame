@@ -184,6 +184,50 @@ func TestWorkerDistinguishesShutdownCancellationFromStorageFailure(t *testing.T)
 	}
 }
 
+// TestWorkerKeepsSchedulingAfterAScanDefect: the worker's contract is that a
+// failed pass is reported and retried on the next tick. A defect is a failed
+// pass — not the end of the process and every Session in it, and not the end of
+// scheduling for the ones that survive.
+func TestWorkerKeepsSchedulingAfterAScanDefect(t *testing.T) {
+	output := captureWorkerDiagnostics(t)
+	now := time.Date(2026, 6, 30, 10, 0, 0, 0, time.UTC)
+	store := &panickingWorkerStore{
+		WorkerStore: &workerStore{due: []schedule.Schedule{dueSchedule(t, "sch_1", now)}},
+	}
+	runner := &recordingScheduledRunStarter{}
+	worker := newWorker(workerDependencies{
+		Store: store, RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID,
+	})
+	worker.now = func() time.Time { return now }
+
+	store.panics = true
+	worker.firePass(context.Background())
+	if got := output.String(); !strings.Contains(got, "due scan panicked") {
+		t.Fatalf("diagnostics = %q, want the defect reported", got)
+	}
+	if len(runner.startedScheduleIDs) != 0 {
+		t.Fatalf("started = %v, want none from the defective pass", runner.startedScheduleIDs)
+	}
+
+	store.panics = false
+	worker.firePass(context.Background())
+	if len(runner.startedScheduleIDs) != 1 || runner.startedScheduleIDs[0] != "sch_1" {
+		t.Fatalf("started = %v, want sch_1 on the pass after the defect", runner.startedScheduleIDs)
+	}
+}
+
+type panickingWorkerStore struct {
+	WorkerStore
+	panics bool
+}
+
+func (p *panickingWorkerStore) Pending(ctx context.Context, afterDueAt time.Time, afterID string, limit int) ([]schedule.Occurrence, error) {
+	if p.panics {
+		panic("pending scan invariant broken")
+	}
+	return p.WorkerStore.Pending(ctx, afterDueAt, afterID, limit)
+}
+
 type cancelingWorkerStore struct {
 	WorkerStore
 	cancel    context.CancelFunc

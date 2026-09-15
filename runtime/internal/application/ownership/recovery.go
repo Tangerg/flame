@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"log/slog"
+	"runtime/debug"
 	"time"
 )
 
@@ -88,7 +89,7 @@ func (c *RecoveryCoordinator) RunWorker(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			_, err := c.Reconcile(ctx)
+			err := c.sweep(ctx)
 			if err == nil {
 				failed = false
 			} else if !failed && ctx.Err() == nil {
@@ -99,6 +100,20 @@ func (c *RecoveryCoordinator) RunWorker(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// sweep bounds one reconciliation. A defect in a sweep is that sweep's failure,
+// carrying its stack so the worker's own outage reporting decides how loudly to
+// repeat it; a panic leaving this goroutine would end the process and every
+// Session in it.
+func (c *RecoveryCoordinator) sweep(ctx context.Context) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("ownership recovery: sweep panicked: %v\n%s", recovered, debug.Stack())
+		}
+	}()
+	_, err = c.Reconcile(ctx)
+	return err
 }
 
 func (c *RecoveryCoordinator) reconcileOwned(ctx context.Context, lease Lease) error {
