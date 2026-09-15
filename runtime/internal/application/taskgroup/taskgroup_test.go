@@ -202,3 +202,27 @@ func TestGroupWaitPrefersCompletedBoundaryAfterCallerCancellation(t *testing.T) 
 		t.Fatalf("Wait() = %v, want completed", err)
 	}
 }
+
+// TestDetachedTaskDefectEndsOnlyThatTask: the group owns the lifetime of work no
+// caller is waiting on, which makes it the only boundary that can stop a panic
+// there from ending the process and every other component with it.
+func TestDetachedTaskDefectEndsOnlyThatTask(t *testing.T) {
+	var group Group
+	panicked := make(chan struct{})
+	if !group.Start(t.Context(), func(context.Context) {
+		defer close(panicked)
+		panic("detached task invariant broken")
+	}) {
+		t.Fatal("Start refused a task")
+	}
+	<-panicked
+
+	ran := make(chan struct{})
+	if !group.Start(t.Context(), func(context.Context) { close(ran) }) {
+		t.Fatal("Start refused a task after a defect")
+	}
+	<-ran
+	if err := group.Close(context.Background()); err != nil {
+		t.Fatalf("Close after a defect: %v", err)
+	}
+}

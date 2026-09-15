@@ -7,7 +7,10 @@ package taskgroup
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log/slog"
 	"maps"
+	"runtime/debug"
 	"slices"
 	"sync"
 
@@ -46,9 +49,24 @@ func (g *Group) Start(parent context.Context, task func(context.Context)) bool {
 
 	go func() {
 		defer release()
-		task(ctx)
+		detach(ctx, task)
 	}()
 	return true
+}
+
+// detach runs task and keeps a defect inside it. The group owns the lifetime of
+// work no caller is waiting on, which makes it the only boundary that can stop a
+// panic there from ending the process and every other component with it. It
+// cannot decide what the failure means, so it reports the stack and leaves the
+// component's own state to say the rest.
+func detach(ctx context.Context, task func(context.Context)) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			slog.ErrorContext(ctx, "taskgroup: detached task panicked",
+				"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+		}
+	}()
+	task(ctx)
 }
 
 // StartLinked launches task under a context canceled by either parent or Close.
@@ -64,7 +82,7 @@ func (g *Group) StartLinked(parent context.Context, task func(context.Context)) 
 	}
 	go func() {
 		defer release()
-		task(ctx)
+		detach(ctx, task)
 	}()
 	return true
 }

@@ -3,7 +3,9 @@ package fileobservation
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"path/filepath"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -52,6 +54,7 @@ func (o *observerLifecycle) start(reconcile func(acceptance) error) {
 }
 
 func (o *observerLifecycle) run() {
+	defer recoverWatchDefect()
 	defer close(o.exited)
 	timer := time.NewTimer(debounce)
 	if !timer.Stop() {
@@ -167,4 +170,13 @@ func (o *observerLifecycle) Close() error {
 		_ = o.fsw.Close()
 	})
 	return nil
+}
+
+// recoverWatchDefect keeps a defect in this detached watch from ending the
+// process. The watch stops, which every consumer already treats as a watch that
+// is no longer reporting; the stack goes to the operator.
+func recoverWatchDefect() {
+	if recovered := recover(); recovered != nil {
+		slog.Error("fileobservation: observer panicked", "panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+	}
 }

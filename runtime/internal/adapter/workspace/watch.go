@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -195,6 +196,7 @@ type gitWatch struct {
 }
 
 func (g *gitWatch) run() {
+	defer recoverWatchDefect()
 	defer close(g.exited)
 	timer := time.NewTimer(gitWatchDebounce)
 	defer timer.Stop()
@@ -315,3 +317,12 @@ func closeFailedWatch(watcher *fsnotify.Watcher, cause error) error {
 type nopWatch struct{}
 
 func (nopWatch) Close() error { return nil }
+
+// recoverWatchDefect keeps a defect in this detached watch from ending the
+// process. The watch stops, which every consumer already treats as a watch that
+// is no longer reporting; the stack goes to the operator.
+func recoverWatchDefect() {
+	if recovered := recover(); recovered != nil {
+		slog.Error("workspace: git watch panicked", "panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+	}
+}

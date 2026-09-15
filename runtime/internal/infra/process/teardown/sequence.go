@@ -3,6 +3,8 @@ package teardown
 import (
 	"context"
 	"errors"
+	"fmt"
+	"runtime/debug"
 	"slices"
 	"sync"
 
@@ -57,14 +59,25 @@ func (s *Sequence) Shutdown(ctx context.Context) (settled bool, err error) {
 	return true, attempt.err
 }
 
+// runStep keeps one step's defect from abandoning the steps still owed. The
+// sequence exists to run every step and join what each reported; a panic is what
+// that step reported.
+func runStep(ctx context.Context, step *Step) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("teardown: step panicked: %v\n%s", recovered, debug.Stack())
+		}
+	}()
+	return step.run(ctx)
+}
+
 func (s *Sequence) run(ctx context.Context, attempt *sequenceAttempt) {
 	var diagnostics []error
 	for _, step := range slices.Backward(s.steps) {
 		if step == nil {
 			continue
 		}
-		err := step.run(ctx)
-		diagnostics = append(diagnostics, err)
+		diagnostics = append(diagnostics, runStep(ctx, step))
 	}
 
 	s.mu.Lock()
