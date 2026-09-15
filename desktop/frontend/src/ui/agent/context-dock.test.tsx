@@ -18,6 +18,8 @@ function tabs(activeId: string): AgentDockTab[] {
     id,
     title: id,
     active: id === activeId,
+    onClose: () => {},
+    closeLabel: `Close ${id}`,
   }));
 }
 
@@ -76,7 +78,9 @@ describe("AgentDockTabs", () => {
   it("leaves a single-tab strip undraggable", () => {
     const view = render(
       <AgentDockTabs
-        tabs={[{ id: "diff", title: "diff", active: true }]}
+        tabs={[
+          { id: "diff", title: "diff", active: true, onClose: () => {}, closeLabel: "Close diff" },
+        ]}
         ariaLabel="Workspace tabs"
         onReorder={vi.fn()}
       />,

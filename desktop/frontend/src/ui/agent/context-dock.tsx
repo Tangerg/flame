@@ -23,8 +23,11 @@ export interface AgentDockTab {
   badge?: ReactNode;
   active?: boolean;
   onSelect?: () => void;
-  onClose?: () => void;
-  closeLabel?: string;
+  /** Required: the strip already spends its close key, its × and a menu item on closing, so a
+   *  tab that cannot be closed would carry three affordances that do nothing and a context
+   *  menu with nothing in it. */
+  onClose: () => void;
+  closeLabel: string;
   onCloseOthers?: () => void;
   closeOthersLabel?: string;
   onCloseAll?: () => void;
@@ -78,7 +81,6 @@ const styles = stylex.create({
     color: "inherit",
   },
   labelClosable: { paddingLeft: space.s2, paddingRight: space.s1 },
-  labelPlain: { paddingInline: space.s2 },
   glyph: { flexShrink: 0, opacity: "var(--glyph-step)" },
   tabClose: { marginRight: space.s0_5 },
   title: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
@@ -204,7 +206,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                 ?.querySelectorAll<HTMLElement>('button, [tabindex]:not([tabindex="-1"])')
                 .values()
                 .find((candidate) => !candidate.closest('[role="tablist"]')) ?? null;
-            tab.onClose?.();
+            tab.onClose();
             requestAnimationFrame(() => {
               const remaining =
                 rootRef.current?.querySelector<HTMLElement>('[role="tab"][data-active]') ??
@@ -236,7 +238,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                 if (moved && moved !== tab.id) onReorder?.(moved, index);
               }}
               onAuxClick={(event) => {
-                if (event.button !== 1 || !tab.onClose) return;
+                if (event.button !== 1) return;
                 event.preventDefault();
                 close();
               }}
@@ -256,16 +258,11 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                 // focused tab is the ARIA practice for a closable tab and needs no extra stop
                 // in the tab order.
                 onKeyDown={(event) => {
-                  if (!tab.onClose) return;
                   if (event.key !== "Delete" && event.key !== "Backspace") return;
                   event.preventDefault();
                   close();
                 }}
-                {...stylex.props(
-                  styles.label,
-                  type.uiSm,
-                  tab.onClose ? styles.labelClosable : styles.labelPlain,
-                )}
+                {...stylex.props(styles.label, type.uiSm, styles.labelClosable)}
               >
                 {tab.icon && <Icon name={tab.icon} size="sm" {...stylex.props(styles.glyph)} />}
                 <span {...stylex.props(styles.title)}>{tab.title}</span>
@@ -273,31 +270,24 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                   <span {...stylex.props(styles.badge, type.ui2xs)}>{tab.badge}</span>
                 )}
               </TabsPrimitive.Tab>
-              {tab.onClose && (
-                <IconButton
-                  data-reveal="hover"
-                  icon="x"
-                  size="xs"
-                  quiet
-                  title={tab.closeLabel}
-                  onClick={close}
-                  className={stylex.props(styles.tabClose, reveal.pointerAffordance).className}
-                />
-              )}
+              <IconButton
+                data-reveal="hover"
+                icon="x"
+                size="xs"
+                quiet
+                title={tab.closeLabel}
+                onClick={close}
+                className={stylex.props(styles.tabClose, reveal.pointerAffordance).className}
+              />
             </div>
           );
-          if (!tab.onClose && !tab.onCloseOthers && !tab.onCloseAll) {
-            return <div key={tab.id}>{row}</div>;
-          }
           return (
             <ContextMenu.Root key={tab.id}>
               <ContextMenu.Trigger render={row} />
               <ContextMenu.Content>
-                {tab.onClose && (
-                  <ContextMenu.IconItem icon="x" onSelect={close}>
-                    {tab.closeLabel}
-                  </ContextMenu.IconItem>
-                )}
+                <ContextMenu.IconItem icon="x" onSelect={close}>
+                  {tab.closeLabel}
+                </ContextMenu.IconItem>
                 {tab.onCloseOthers && (
                   <ContextMenu.IconItem
                     icon="minimize"
