@@ -13,15 +13,16 @@ func TestStructuredDiffValidatesAndRendersEveryRow(t *testing.T) {
 		Change: Change{Path: "main.go", Status: protocol.FileStatusModified},
 		Rows: []protocol.DiffRow{
 			{Type: protocol.DiffRowHunk, Text: "@@ -1,2 +1,2 @@"},
-			{Type: protocol.DiffRowContext, LeftLine: 1, RightLine: 1, Code: "package main"},
-			{Type: protocol.DiffRowDeleted, LeftLine: 2, Code: "var old = true"},
-			{Type: protocol.DiffRowAdded, RightLine: 2, Code: "var current = true"},
+			{Type: protocol.DiffRowContext, LeftLine: 1, RightLine: 1, Code: new("package main")},
+			{Type: protocol.DiffRowDeleted, LeftLine: 2, Code: new("var old = true")},
+			{Type: protocol.DiffRowAdded, RightLine: 2, Code: new("var current = true")},
+			{Type: protocol.DiffRowAdded, RightLine: 3, Code: new("")},
 		},
 	}}}
 	if err := diff.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	want := "diff -- main.go (modified)\n@@ -1,2 +1,2 @@\n package main\n-var old = true\n+var current = true"
+	want := "diff -- main.go (modified)\n@@ -1,2 +1,2 @@\n package main\n-var old = true\n+var current = true\n+"
 	if got := diff.Text(); got != want {
 		t.Fatalf("Text = %q, want %q", got, want)
 	}

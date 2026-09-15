@@ -257,7 +257,7 @@ func ListFiles(ctx context.Context, dir, relPath string, maxFiles int) ([]string
 	}
 	args := []string{"ls-files", "--cached", "--others", "--exclude-standard", "-z"}
 	if relPath != "" && relPath != "." {
-		args = append(args, "--", relPath)
+		args = append(args, "--", ":(literal)"+relPath)
 	}
 	out, err := run(ctx, dir, args...)
 	if err != nil {

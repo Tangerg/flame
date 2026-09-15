@@ -92,6 +92,72 @@ func TestRuntimeGrepReportsExactTotalBeyondRetainedPrefix(t *testing.T) {
 	}
 }
 
+func TestRuntimeSearchAcceptsSelectedFile(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "mime"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"mimes.go", "other.go"} {
+		if err := os.WriteFile(filepath.Join(root, "mime", name), []byte("package mime\nfunc Match() {}\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, selected := range []string{"mime/mimes.go", filepath.Join(root, "mime", "mimes.go")} {
+		t.Run(selected, func(t *testing.T) {
+			args, err := json.Marshal(map[string]string{"path": selected, "pattern": "^func "})
+			if err != nil {
+				t.Fatal(err)
+			}
+			body, err := callTextTool(t.Context(), namedDirectTool(t, root, "grep"), string(args))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var result runtimeGrepResponse
+			if err := json.Unmarshal([]byte(body), &result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Total != 1 || len(result.Matches) != 1 || result.Matches[0].Path != "mime/mimes.go" || result.Matches[0].Line != 2 {
+				t.Fatalf("selected file grep = %+v", result)
+			}
+			args, err = json.Marshal(map[string]string{"path": selected, "pattern": "*.go"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			body, err = callTextTool(t.Context(), namedDirectTool(t, root, "glob"), string(args))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var paths runtimeGlobResponse
+			if err := json.Unmarshal([]byte(body), &paths); err != nil {
+				t.Fatal(err)
+			}
+			if paths.Total != 1 || len(paths.Paths) != 1 || paths.Paths[0] != "mime/mimes.go" {
+				t.Fatalf("selected file glob = %+v", paths)
+			}
+		})
+	}
+}
+
+func TestRuntimeSearchReturnsDefiniteFailureForInvalidRequests(t *testing.T) {
+	for _, test := range []struct{ name, args string }{
+		{"grep", `{"pattern":"["}`},
+		{"glob", `{"pattern":"["}`},
+		{"grep", `{"pattern":"x","path":"missing.go"}`},
+		{"glob", `{"pattern":"*.go","path":"missing.go"}`},
+	} {
+		t.Run(test.name+test.args, func(t *testing.T) {
+			_, err := callTextTool(t.Context(), namedDirectTool(t, t.TempDir(), test.name), test.args)
+			failure, known := errors.AsType[*toolcontract.Failure](err)
+			if !known || failure.Kind() != toolcontract.FailureKindFailed || failure.Validate() != nil {
+				t.Fatalf("search error = %v, want definite failed result", err)
+			}
+			if text, _ := failure.Output().Text(); text == "" {
+				t.Fatal("failed search has no model feedback")
+			}
+		})
+	}
+}
+
 func TestRuntimeGlobReportsExactTotalBeyondRetainedPrefix(t *testing.T) {
 	root := t.TempDir()
 	for _, name := range []string{"a.go", "b.go", "c.go"} {
@@ -208,7 +274,8 @@ func TestRuntimeSearchConfinesPathsAndPreservesCancellation(t *testing.T) {
 				arguments = `{"pattern":"secret","path":"../"}`
 			}
 			_, err := callTextTool(t.Context(), namedDirectTool(t, root, name), arguments)
-			if !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
+			failure, known := errors.AsType[*toolcontract.Failure](err)
+			if !known || !errors.Is(failure.Cause(), workspaceapp.ErrPathOutsideRoot) {
 				t.Fatalf("%s error = %v, want ErrPathOutsideRoot", name, err)
 			}
 		})
@@ -218,7 +285,8 @@ func TestRuntimeSearchConfinesPathsAndPreservesCancellation(t *testing.T) {
 				arguments = `{"pattern":"secret","path":"outside"}`
 			}
 			_, err := callTextTool(t.Context(), namedDirectTool(t, root, name), arguments)
-			if !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
+			failure, known := errors.AsType[*toolcontract.Failure](err)
+			if !known || !errors.Is(failure.Cause(), workspaceapp.ErrPathOutsideRoot) {
 				t.Fatalf("%s error = %v, want ErrPathOutsideRoot", name, err)
 			}
 		})
@@ -228,6 +296,18 @@ func TestRuntimeSearchConfinesPathsAndPreservesCancellation(t *testing.T) {
 			_, err := callTextTool(ctx, namedDirectTool(t, root, name), `{"pattern":"*"}`)
 			if !errors.Is(err, context.Canceled) {
 				t.Fatalf("%s error = %v, want context.Canceled", name, err)
+			}
+		})
+		t.Run(name+" cancellation cause", func(t *testing.T) {
+			ctx, cancel := context.WithCancelCause(t.Context())
+			cause := errors.New("execution owner stopped")
+			cancel(cause)
+			_, err := callTextTool(ctx, namedDirectTool(t, root, name), `{"pattern":"x"}`)
+			if !errors.Is(err, cause) {
+				t.Fatalf("search cancellation = %v, want original cause", err)
+			}
+			if _, known := errors.AsType[*toolcontract.Failure](err); known {
+				t.Fatal("cancellation became model feedback")
 			}
 		})
 	}

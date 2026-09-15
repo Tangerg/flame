@@ -3343,7 +3343,7 @@
             },
             {
               "name": "Code",
-              "type": "string",
+              "type": "*string",
               "tag": "json:\"code,omitempty\""
             }
           ],

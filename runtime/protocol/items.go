@@ -275,7 +275,8 @@ type ToolInvocation struct {
 }
 
 // DiffRow is one structured row of a unified diff. Code
-// is plain text — the client highlights.
+// is plain text — the client highlights. A code row requires Code even for
+// a blank line; nil denotes absence and is reserved for hunk rows.
 //
 //	hunk    → Text
 //	context → LeftLine, RightLine, Code
@@ -286,7 +287,7 @@ type DiffRow struct {
 	Text      string      `json:"text,omitempty"`
 	LeftLine  int         `json:"leftLine,omitempty"`
 	RightLine int         `json:"rightLine,omitempty"`
-	Code      string      `json:"code,omitempty"`
+	Code      *string     `json:"code,omitempty"`
 }
 
 // ModelUsage is one model's usage slice: provider-reported

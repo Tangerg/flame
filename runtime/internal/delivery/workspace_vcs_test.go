@@ -55,12 +55,12 @@ func TestWorkspaceGitWireMapping(t *testing.T) {
 		}
 	}
 	gitCmd("init", "-b", "main")
-	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a\nb\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a\n\nb\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	gitCmd("add", ".")
 	gitCmd("commit", "-m", "init")
-	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a\nB\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("a\n\nB\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -79,6 +79,18 @@ func TestWorkspaceGitWireMapping(t *testing.T) {
 	}
 	if len(diff.Files) != 1 || len(diff.Files[0].Rows) == 0 {
 		t.Fatalf("diff = %+v, want one file with rows", diff.Files)
+	}
+	if err := protocol.ValidateWireTree(diff); err != nil {
+		t.Fatalf("real Git diff violates the response contract: %v", err)
+	}
+	blank := false
+	for _, row := range diff.Files[0].Rows {
+		if row.Type == protocol.DiffRowContext && row.Code != nil && *row.Code == "" {
+			blank = true
+		}
+	}
+	if !blank {
+		t.Fatal("real Git diff lost its blank context line")
 	}
 
 	gitCmd("checkout", "-b", "feature")

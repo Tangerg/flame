@@ -94,6 +94,12 @@ func (w *workspaceBindingStub) GetWorkspaceDiff(context.Context, protocol.GetDif
 		value.Files[index].Added = cloneInt(value.Files[index].Added)
 		value.Files[index].Removed = cloneInt(value.Files[index].Removed)
 		value.Files[index].Rows = slices.Clone(value.Files[index].Rows)
+		for rowIndex := range value.Files[index].Rows {
+			row := &value.Files[index].Rows[rowIndex]
+			if row.Code != nil {
+				row.Code = new(*row.Code)
+			}
+		}
 	}
 	return &value, nil
 }
@@ -170,7 +176,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 		changes: protocol.NewPage([]protocol.WorkspaceFileChange{{Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed}}),
 		diff: &protocol.Diff{Files: []protocol.FileDiff{{
 			Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed,
-			Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: "package main"}},
+			Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: new("package main")}},
 		}}},
 		head:   &protocol.FileHead{Lines: []protocol.FileLine{{LineNumber: 1, Text: "package main"}}},
 		search: &protocol.GrepResult{Matches: []protocol.GrepMatch{{Path: "main.go", LineNumber: 1, Text: "package main"}}, Total: 1},
@@ -212,7 +218,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 	if err != nil || diff.Text() != "diff -- main.go (modified)\n+package main" {
 		t.Fatalf("Diff = (%+v, %v)", diff, err)
 	}
-	stub.diff.Files[0].Rows[0].Code = "mutated"
+	*stub.diff.Files[0].Rows[0].Code = "mutated"
 	if diff.Text() != "diff -- main.go (modified)\n+package main" {
 		t.Fatal("workspace diff projection aliases runtime row storage")
 	}

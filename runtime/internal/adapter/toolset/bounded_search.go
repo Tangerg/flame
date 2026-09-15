@@ -11,6 +11,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
@@ -87,7 +88,8 @@ func newRuntimeSearchTools(root string) runtimeSearchTools {
 				"Use grep to search file contents.",
 		},
 		func(ctx context.Context, request runtimeGlobRequest) (runtimePathSearchResponse, error) {
-			return runtimeGlob(ctx, root, request)
+			result, err := runtimeGlob(ctx, root, request)
+			return result, searchFailure(ctx, err)
 		},
 	)
 	grep := mustRuntimeSearchFunc(
@@ -97,13 +99,31 @@ func newRuntimeSearchTools(root string) runtimeSearchTools {
 				"Use glob to choose files and read to inspect surrounding lines.",
 		},
 		func(ctx context.Context, request runtimeGrepRequest) (runtimeSearchResponse, error) {
-			return runtimeGrep(ctx, root, request)
+			result, err := runtimeGrep(ctx, root, request)
+			return result, searchFailure(ctx, err)
 		},
 	)
 	return runtimeSearchTools{
 		glob: concurrentSearchTool{Tool: glob},
 		grep: concurrentSearchTool{Tool: grep},
 	}
+}
+
+// These local searches perform no mutations. A returned search error is a
+// definite failed query, not an unacknowledged external operation. Cancellation
+// still belongs to the execution owner and must not become model feedback.
+func searchFailure(ctx context.Context, cause error) error {
+	if cause == nil || ctx.Err() != nil || errors.Is(cause, context.Canceled) || errors.Is(cause, context.DeadlineExceeded) {
+		return cause
+	}
+	failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
+		Kind: toolcontract.FailureKindFailed, Cause: cause,
+		Output: chat.NewTextToolOutput(cause.Error()),
+	})
+	if err != nil {
+		return err
+	}
+	return failure
 }
 
 func mustRuntimeSearchFunc[Input, Output any](
@@ -132,9 +152,7 @@ func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (
 	if err != nil {
 		return runtimePathSearchResponse{}, err
 	}
-	entries, err := workspaceadapter.ListFiles(ctx, root, workspaceapp.FileListOptions{
-		Path: path, Glob: request.Pattern, Recursive: true,
-	})
+	entries, err := workspaceadapter.SearchFiles(ctx, root, path, request.Pattern)
 	if err != nil {
 		if errors.Is(err, workspaceadapter.ErrListingTooLarge) {
 			return runtimePathSearchResponse{}, errRuntimeSearchResultTooLarge

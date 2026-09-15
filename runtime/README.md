@@ -139,3 +139,13 @@ The Interaction snapshot shape changes with this contract. Waiting checkpoints f
 Waiting checkpoints declare the offloaded result IDs required by their continuation. SQLite saves these references atomically with the checkpoint, verifies Session ownership, and releases them when the checkpoint is replaced or consumed. Startup and failed-write cleanup delete only bodies held by neither a checkpoint nor an Item. Restoring an executor verifies that the declared references exactly match its pending result metadata; old checkpoints missing this ownership information are rejected under the existing recovery policy, without a compatibility reader.
 
 Unknown-effect observations retain the Effect IDs and the first available local failure diagnostic. The RunLost record preserves these details while keeping the outcome unknown; diagnostic text is never evidence that an external operation succeeded or failed.
+
+Unknown-effect termination closes every unfinished member in Run-tree postorder, retaining the same evidence on each lost Run. Completed members keep their outcomes. Each terminal commit settles open model attempts as unknown and abandons unfinished Tool Items without inventing model-visible results; the executor is released only after the terminal publication sequence.
+
+## Workspace search outcomes
+
+`grep` and `glob` select either one regular file or a directory's file corpus. Selection, physical containment, ignore rules, and resource limits belong to the workspace catalog. Selecting a file never searches its siblings. Glob patterns match paths relative to a selected directory, or the basename of a selected file; returned paths remain workspace-relative. Git selection treats path names literally, including glob metacharacters.
+
+The concrete local search tools return explicit failed Tool outcomes for unsuccessful queries, including invalid patterns and missing paths, so Scope commits their feedback before model continuation. Cancellation remains execution control. This guarantee applies to these non-mutating searches; the generic Tool observer still preserves unknown external outcomes and host or publication failures.
+
+Structured diff code rows always carry `code`, including `""` for a blank line; hunk rows omit it. The Go binding represents this presence with `DiffRow.Code *string`. Go consumers must migrate string construction and access; JSON consumers retain the existing required-string contract. Missing or null code remains invalid for code rows. No persisted-data migration is needed.

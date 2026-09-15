@@ -147,13 +147,13 @@ func (d Diff) Text() string {
 				output.WriteString(row.Text)
 			case protocol.DiffRowAdded:
 				output.WriteByte('+')
-				output.WriteString(row.Code)
+				output.WriteString(*row.Code)
 			case protocol.DiffRowDeleted:
 				output.WriteByte('-')
-				output.WriteString(row.Code)
+				output.WriteString(*row.Code)
 			case protocol.DiffRowContext:
 				output.WriteByte(' ')
-				output.WriteString(row.Code)
+				output.WriteString(*row.Code)
 			}
 			output.WriteByte('\n')
 		}

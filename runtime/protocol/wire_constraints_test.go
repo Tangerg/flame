@@ -2225,7 +2225,7 @@ func TestRuntimeOutputNumberBoundariesRemainRepresentable(t *testing.T) {
 		GrepMatch{Path: "main.go", LineNumber: 1},
 		FileDiff{Path: "main.go", Status: FileStatusModified, Added: &zero, Removed: &zero},
 		WorkspaceFileChange{Path: "main.go", Status: FileStatusModified, Added: &zero, Removed: &zero},
-		DiffRow{Type: DiffRowContext, LeftLine: 1, RightLine: 1, Code: "line"},
+		DiffRow{Type: DiffRowContext, LeftLine: 1, RightLine: 1, Code: new("line")},
 		UsageBucket{Key: "deepseek"},
 		UsageSummary{},
 		HookInfo{Event: HookEventPreToolUse, Command: "true", TimeoutMillis: hooks.MaxTimeoutMillis, Scope: HookScopeGlobal, Source: "/hooks.json"},

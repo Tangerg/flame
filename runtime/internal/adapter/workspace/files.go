@@ -32,8 +32,8 @@ var (
 	// ErrInvalidGlob distinguishes malformed match syntax from a valid pattern
 	// that simply has no matching files.
 	ErrInvalidGlob = errors.New("workspace: invalid file glob")
-	// errInvalidListPath reports a missing or non-directory selected listing
-	// root. Permission and I/O failures remain operational errors.
+	// errInvalidListPath reports an invalid selection for browsing or search.
+	// Permission and I/O failures remain operational errors.
 	errInvalidListPath = errors.New("workspace: invalid file listing path")
 )
 
@@ -58,14 +58,31 @@ var backstopExclude = map[string]bool{
 // immediate children (files + dirs) of opts.Path, for a lazy file tree.
 // The complete, deterministically ordered result is returned for use-case
 // pagination. Oversized trees fail explicitly with ErrListingTooLarge.
-func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptions) (_ []workspaceapp.FileEntry, err error) {
-	sub := path.Clean(filepath.ToSlash(opts.Path))
-	if sub == "." || sub == "/" {
-		sub = ""
-	}
-	scope, err := resolveListDirectory(root, sub)
+func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptions) ([]workspaceapp.FileEntry, error) {
+	scope, err := resolveFileSelection(root, opts.Path)
 	if err != nil {
 		return nil, err
+	}
+	if !scope.directory {
+		return nil, fmt.Errorf("%w: %q is not a directory", errInvalidListPath, opts.Path)
+	}
+	return scope.list(ctx, opts)
+}
+
+// SearchFiles selects a single file or a directory's complete file corpus.
+// Both forms use the same containment, ignore, inspection, and size rules.
+// A glob is relative to the directory, or matches the selected file's basename.
+func SearchFiles(ctx context.Context, root, selected, glob string) ([]workspaceapp.FileEntry, error) {
+	scope, err := resolveFileSelection(root, selected)
+	if err != nil {
+		return nil, err
+	}
+	return scope.list(ctx, workspaceapp.FileListOptions{Recursive: true, Glob: glob})
+}
+
+func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListOptions) (_ []workspaceapp.FileEntry, err error) {
+	if cause := context.Cause(ctx); cause != nil {
+		return nil, cause
 	}
 	rootHandle, err := os.OpenRoot(scope.root)
 	if err != nil {
@@ -78,6 +95,11 @@ func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptio
 	if opts.Glob != "" {
 		if _, err := matchGlob(opts.Glob, ""); err != nil {
 			return nil, fmt.Errorf("%w %q: %v", ErrInvalidGlob, opts.Glob, err)
+		}
+	}
+	for _, part := range strings.Split(scope.physical, "/") {
+		if part == ".git" {
+			return []workspaceapp.FileEntry{}, nil
 		}
 	}
 	repository := false
@@ -97,6 +119,17 @@ func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptio
 			return nil, err
 		}
 	}
+	if !repository && !opts.IncludeIgnored {
+		directory := scope.physical
+		if !scope.directory {
+			directory = path.Dir(directory)
+		}
+		for _, part := range strings.Split(directory, "/") {
+			if backstopExclude[part] {
+				return []workspaceapp.FileEntry{}, nil
+			}
+		}
+	}
 	// A non-recursive filesystem listing is genuinely one level. Walking the
 	// entire subtree first defeats lazy tree loading: a home-directory workspace
 	// can hit an unreadable descendant or the global safety limit before its
@@ -107,9 +140,13 @@ func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptio
 	}
 
 	if !repository {
-		files, err = walkFiles(ctx, scope, opts.IncludeIgnored, maxListEntries)
-		if err != nil {
-			return nil, err
+		if scope.directory {
+			files, err = walkFiles(ctx, scope, opts.IncludeIgnored, maxListEntries)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			files = []string{scope.logical}
 		}
 	}
 	if len(files) > maxListEntries {
@@ -122,82 +159,97 @@ func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptio
 	return levelEntries(scope, files)
 }
 
-type listDirectory struct {
-	root     string
-	logical  string
-	physical string
-	handle   *os.Root
+type fileSelection struct {
+	root      string
+	logical   string
+	physical  string
+	directory bool
+	handle    *os.Root
 }
 
-func resolveListDirectory(root, sub string) (listDirectory, error) {
+func resolveFileSelection(root, sub string) (fileSelection, error) {
+	sub = path.Clean(filepath.ToSlash(sub))
+	if sub == "." {
+		sub = ""
+	}
 	// Containment below is a physical decision that also settles symlink
 	// aliases; only "this is not a workspace-relative path at all" has to be
 	// answered before resolving.
 	if path.IsAbs(sub) {
-		return listDirectory{}, fmt.Errorf("%w: %q is not relative to the workspace", errInvalidListPath, sub)
+		return fileSelection{}, fmt.Errorf("%w: %q is not relative to the workspace", errInvalidListPath, sub)
 	}
 	physicalRoot, err := pathidentity.Resolve("", root)
 	if err != nil {
-		return listDirectory{}, fmt.Errorf("inspect listing root %q: %w", root, err)
+		return fileSelection{}, fmt.Errorf("inspect listing root %q: %w", root, err)
 	}
 	physicalPath, err := pathidentity.Resolve(physicalRoot, filepath.FromSlash(sub))
 	if err != nil {
-		return listDirectory{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
+		return fileSelection{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
 	}
 	inside, err := pathidentity.Contains(physicalRoot, physicalPath)
 	if err != nil {
-		return listDirectory{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
+		return fileSelection{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
 	}
 	if !inside {
-		return listDirectory{}, fmt.Errorf("%w: %q escapes the workspace", errInvalidListPath, sub)
+		return fileSelection{}, fmt.Errorf("%w: %q escapes the workspace", errInvalidListPath, sub)
 	}
 	info, err := os.Stat(physicalPath)
 	if errors.Is(err, os.ErrNotExist) {
-		return listDirectory{}, fmt.Errorf("%w: %q does not exist", errInvalidListPath, sub)
+		return fileSelection{}, fmt.Errorf("%w: %q does not exist", errInvalidListPath, sub)
 	}
 	if err != nil {
-		return listDirectory{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
+		return fileSelection{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
 	}
-	if !info.IsDir() {
-		return listDirectory{}, fmt.Errorf("%w: %q is not a directory", errInvalidListPath, sub)
+	if !info.IsDir() && !info.Mode().IsRegular() {
+		return fileSelection{}, fmt.Errorf("%w: %q is not a regular file or directory", errInvalidListPath, sub)
 	}
 	physical, err := filepath.Rel(physicalRoot, physicalPath)
 	if err != nil {
-		return listDirectory{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
+		return fileSelection{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
 	}
 	if physical == "." {
 		physical = ""
 	}
-	return listDirectory{
-		root: physicalRoot, logical: sub, physical: filepath.ToSlash(physical),
+	return fileSelection{
+		root: physicalRoot, logical: sub, physical: filepath.ToSlash(physical), directory: info.IsDir(),
 	}, nil
 }
 
-func (l listDirectory) project(files []string) []string {
-	if l.logical == l.physical {
+func (scope fileSelection) project(files []string) []string {
+	if !scope.directory {
+		if slices.Contains(files, scope.physical) {
+			return []string{scope.logical}
+		}
+		return nil
+	}
+	if scope.logical == scope.physical {
 		return files
 	}
 	projected := make([]string, 0, len(files))
 	for _, file := range files {
-		relative, ok := listingRelativePath(file, l.physical)
+		relative, ok := listingRelativePath(file, scope.physical)
 		if !ok {
 			continue
 		}
-		projected = append(projected, path.Join(l.logical, relative))
+		projected = append(projected, path.Join(scope.logical, relative))
 	}
 	return projected
 }
 
-func (l listDirectory) inspect(logical string) (workspaceapp.FileEntry, bool, error) {
+func (scope fileSelection) inspect(logical string) (workspaceapp.FileEntry, bool, error) {
 	physical := logical
-	if l.logical != l.physical {
-		relative, ok := listingRelativePath(logical, l.logical)
-		if !ok {
-			return workspaceapp.FileEntry{}, false, nil
+	if scope.logical != scope.physical {
+		if !scope.directory && logical == scope.logical {
+			physical = scope.physical
+		} else {
+			relative, ok := listingRelativePath(logical, scope.logical)
+			if !ok {
+				return workspaceapp.FileEntry{}, false, nil
+			}
+			physical = path.Join(scope.physical, relative)
 		}
-		physical = path.Join(l.physical, relative)
 	}
-	entry, exists, err := inspectEntry(l.handle, physical)
+	entry, exists, err := inspectEntry(scope.handle, physical)
 	if err != nil || !exists {
 		return entry, exists, err
 	}
@@ -206,7 +258,7 @@ func (l listDirectory) inspect(logical string) (workspaceapp.FileEntry, bool, er
 	return entry, true, nil
 }
 
-func levelFilesystemEntries(ctx context.Context, scope listDirectory, includeIgnored bool) ([]workspaceapp.FileEntry, error) {
+func levelFilesystemEntries(ctx context.Context, scope fileSelection, includeIgnored bool) ([]workspaceapp.FileEntry, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -274,7 +326,7 @@ func readDirectoryEntries(root *os.Root, directory string, limit int) (_ []fs.Di
 
 // walkFiles is the non-repo fallback: a filesystem walk under root/sub that
 // skips backstop directories and fails explicitly at the safety boundary.
-func walkFiles(ctx context.Context, scope listDirectory, includeIgnored bool, maximumEntries int) ([]string, error) {
+func walkFiles(ctx context.Context, scope fileSelection, includeIgnored bool, maximumEntries int) ([]string, error) {
 	var files []string
 	pendingDirectories := []string{scope.physical}
 	visitedEntries := 0
@@ -319,7 +371,7 @@ func walkFiles(ctx context.Context, scope listDirectory, includeIgnored bool, ma
 }
 
 // recursiveFiles turns flat candidate paths into inspected file entries.
-func recursiveFiles(scope listDirectory, files []string, glob string) ([]workspaceapp.FileEntry, error) {
+func recursiveFiles(scope fileSelection, files []string, glob string) ([]workspaceapp.FileEntry, error) {
 	out := make([]workspaceapp.FileEntry, 0, len(files))
 	for _, f := range files {
 		if glob != "" {
@@ -360,7 +412,7 @@ func listingRelativePath(file, sub string) (string, bool) {
 // levelEntries derives the immediate children of sub from the flat candidate
 // paths: direct files become file entries, and any deeper path contributes its
 // first path segment as a dir entry (deduped). Dirs sort before files.
-func levelEntries(scope listDirectory, files []string) ([]workspaceapp.FileEntry, error) {
+func levelEntries(scope fileSelection, files []string) ([]workspaceapp.FileEntry, error) {
 	prefix := ""
 	if scope.logical != "" {
 		prefix = scope.logical + "/"

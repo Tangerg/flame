@@ -3,7 +3,9 @@ package runs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"iter"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -190,6 +192,87 @@ func TestAuthoritativeProjectionFailurePreservesStartUntilAtomicRunLost(t *testi
 	}
 	if executor.releaseCount() != 1 {
 		t.Fatalf("executor releases = %d, want 1 after durable lost", executor.releaseCount())
+	}
+}
+
+func TestUnknownEffectsCloseUnfinishedTreeAsLostInPostorder(t *testing.T) {
+	root := ExecutorMember{MemberID: "member_root"}
+	child := ExecutorMember{MemberID: "member_child", ParentID: root.MemberID, SpawnCallID: "spawn_child"}
+	sibling := ExecutorMember{MemberID: "member_sibling", ParentID: root.MemberID, SpawnCallID: "spawn_sibling"}
+	completed := ExecutorMember{MemberID: "member_completed", ParentID: root.MemberID, SpawnCallID: "spawn_completed"}
+	childStart, childReceipt := newChildStartFixture(testSegment().CreatedAt)
+	siblingStart, siblingReceipt := newChildStartFixture(testSegment().CreatedAt)
+	completedStart, completedReceipt := newChildStartFixture(testSegment().CreatedAt)
+	executor := &fakeExecutor{executorEvents: []ExecutorEvent{
+		{Member: root, Payload: ToolCallStarted{CallID: "delegate_child", SourceCallID: child.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`}},
+		{Member: root, Payload: ToolCallStarted{CallID: "delegate_sibling", SourceCallID: sibling.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`}},
+		{Member: root, Payload: ToolCallStarted{CallID: "delegate_completed", SourceCallID: completed.SpawnCallID, ToolName: "delegate_task", Arguments: `{}`}},
+		{Member: child, Payload: childStart},
+		{Member: sibling, Payload: siblingStart},
+		{Member: completed, Payload: completedStart},
+		{Member: completed, Payload: NewSegmentEnded(run.OutcomeCompleted, nil, nil, 0)},
+		{Member: sibling, Payload: ModelCallStarted{CallID: "in_flight_model"}},
+		{Member: child, Payload: ToolCallStarted{CallID: "unknown_tool", SourceCallID: "provider_tool", ToolName: "write", Arguments: `{}`}},
+		{Member: root, Payload: NewUnknownEffectsDetected([]UnknownEffect{{ID: "effect:unknown_tool", Detail: "publication unavailable"}})},
+	}}
+	effects := &fakeEffects{}
+	coordinator := testCoordinator(executor, effects)
+	var nextRun, nextSegment int
+	coordinator.newRunID = func() string { nextRun++; return fmt.Sprintf("run_child_%d", nextRun) }
+	coordinator.newSegmentID = func() string { nextSegment++; return fmt.Sprintf("seg_child_%d", nextSegment) }
+	spec := testSegment()
+	spec.Capabilities.ChildRuns = true
+	stream, err := coordinator.openSegment(t.Context(), spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := collectEvents(stream)
+	childBinding, err := childReceipt.Await(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	siblingBinding, err := siblingReceipt.Await(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	completedBinding, err := completedReceipt.Await(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var terminalIDs []string
+	unknownModel := false
+	completedCommits := 0
+	for _, commit := range effects.commitSnapshot() {
+		if commit.State != StateTerminalize {
+			continue
+		}
+		if commit.RunID == completedBinding.RunID {
+			completedCommits++
+			if commit.Run == nil || !runHasOutcome(*commit.Run, run.OutcomeCompleted) {
+				t.Fatalf("completed sibling changed: %#v", commit)
+			}
+			continue
+		}
+		if commit.Run == nil || !runHasOutcome(*commit.Run, run.OutcomeLost) {
+			t.Fatalf("unknown tree terminal = %#v, want lost", commit)
+		}
+		failure, present := commit.Run.Failure()
+		if !present || failure.Kind != run.FailureLost || !strings.Contains(failure.Detail, "effect:unknown_tool: publication unavailable") {
+			t.Fatalf("lost diagnostic = %+v/%t", failure, present)
+		}
+		terminalIDs = append(terminalIDs, commit.Run.ID())
+		for _, invocation := range commit.ModelInvocations {
+			if invocation.CallID == "in_flight_model" && invocation.State == ModelInvocationUnknown {
+				unknownModel = true
+			}
+		}
+	}
+	if len(terminalIDs) != 3 || terminalIDs[2] != spec.RunID ||
+		!slices.Contains(terminalIDs[:2], childBinding.RunID) || !slices.Contains(terminalIDs[:2], siblingBinding.RunID) || !unknownModel || completedCommits != 1 {
+		t.Fatalf("terminal order = %v, model unknown = %t", terminalIDs, unknownModel)
+	}
+	if finished, ok := events[len(events)-1].Payload.(SegmentFinished); !ok || !runHasOutcome(finished.Run, run.OutcomeLost) {
+		t.Fatalf("last event = %#v", events[len(events)-1])
 	}
 }
 

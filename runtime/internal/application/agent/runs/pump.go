@@ -358,9 +358,19 @@ func (s *segmentPump) handleUnknownEffects(
 		details = append(details, detail)
 	}
 	failure := run.Failure{Kind: run.FailureLost, Detail: strings.Join(details, "\n")}
-	if activeChildren := s.routes.unfinishedCount() - 1; activeChildren > 0 {
-		return fmt.Errorf("runs: unknown Effects detected with %d active child Runs: %s", activeChildren, failure.Detail)
+	ordered, err := s.routes.unfinishedInPostorder()
+	if err != nil {
+		return fmt.Errorf("runs: order unknown Effect loss: %w", err)
 	}
+	for _, unfinished := range ordered {
+		if err := s.commitUnknownEffectLoss(unfinished, failure); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *segmentPump) commitUnknownEffectLoss(route *executorRoute, failure run.Failure) error {
 	batch, err := route.reducer.reduce(NewSegmentEnded(
 		run.OutcomeLost,
 		&failure,
@@ -375,8 +385,10 @@ func (s *segmentPump) handleUnknownEffects(
 		publication, publishErr := s.publisher.publishTerminalAtomically(s.ownerCtx, route, batch)
 		if publishErr == nil {
 			route.segmentFinished = publication.finished()
-			s.rootFinished = publication.finished()
-			s.rootParked = false
+			if route == s.routes.root {
+				s.rootFinished = publication.finished()
+				s.rootParked = false
+			}
 			return nil
 		}
 		trace.SpanFromContext(s.ctx).RecordError(fmt.Errorf("runs: retry unknown Effect loss: %w", publishErr))

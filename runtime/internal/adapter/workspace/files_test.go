@@ -112,7 +112,7 @@ func TestLevelFilesystemEntriesRejectsEscapingDirectoryReplacement(t *testing.T)
 	if err := os.Mkdir(selected, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	scope, err := resolveListDirectory(root, "selected")
+	scope, err := resolveFileSelection(root, "selected")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestWalkFilesCountsDirectoriesAgainstTheSafetyLimit(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	scope, err := resolveListDirectory(root, "")
+	scope, err := resolveFileSelection(root, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,6 +210,49 @@ func TestFileBrowserRejectsMissingAndNonDirectoryListPaths(t *testing.T) {
 		if !errors.Is(err, workspaceapp.ErrInvalidFileListPath) {
 			t.Errorf("List(%q) error = %v, want ErrInvalidFileListPath", selected, err)
 		}
+	}
+}
+
+func TestSearchFilesUsesOneSelectionAndIgnorePolicy(t *testing.T) {
+	for _, repository := range []bool{false, true} {
+		t.Run(map[bool]string{false: "filesystem", true: "git"}[repository], func(t *testing.T) {
+			root := t.TempDir()
+			if repository {
+				if output, err := exec.CommandContext(t.Context(), "git", "-C", root, "init", "-q").CombinedOutput(); err != nil {
+					t.Fatalf("git init: %v: %s", err, output)
+				}
+			}
+			for _, name := range []string{"src/a[1].go", "src/a1.go", "node_modules/ignored.go", ".git/hidden"} {
+				if err := os.MkdirAll(filepath.Dir(filepath.Join(root, name)), 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(root, name), []byte("needle\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.WriteFile(filepath.Join(root, ".gitignore"), []byte("node_modules/\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink("src/a[1].go", filepath.Join(root, "alias.go")); err != nil {
+				t.Fatal(err)
+			}
+			for _, selected := range []string{"src/a[1].go", "alias.go"} {
+				entries, err := SearchFiles(t.Context(), root, selected, "*.go")
+				if err != nil || !slices.Equal(paths(entries), []string{selected}) {
+					t.Fatalf("SearchFiles(%q) = %v, %v", selected, paths(entries), err)
+				}
+				entries, err = SearchFiles(t.Context(), root, selected, "*.txt")
+				if err != nil || len(entries) != 0 {
+					t.Fatalf("nonmatching file = %v, %v", entries, err)
+				}
+			}
+			for _, selected := range []string{"node_modules/ignored.go", "node_modules", ".git/hidden", ".git"} {
+				entries, err := SearchFiles(t.Context(), root, selected, "")
+				if err != nil || len(entries) != 0 {
+					t.Fatalf("ignored selection %q = %v, %v", selected, entries, err)
+				}
+			}
+		})
 	}
 }
 
@@ -377,12 +420,12 @@ func TestResolveListDirectoryNamesTheDefectItRejects(t *testing.T) {
 		{name: "below the parent directory", sub: "../elsewhere", want: "escapes the workspace"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := resolveListDirectory(root, test.sub)
+			_, err := resolveFileSelection(root, test.sub)
 			if err == nil {
-				t.Fatalf("resolveListDirectory(%q) was accepted", test.sub)
+				t.Fatalf("resolveFileSelection(%q) was accepted", test.sub)
 			}
 			if !errors.Is(err, errInvalidListPath) || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("resolveListDirectory(%q) error = %v, want %q", test.sub, err, test.want)
+				t.Fatalf("resolveFileSelection(%q) error = %v, want %q", test.sub, err, test.want)
 			}
 		})
 	}
