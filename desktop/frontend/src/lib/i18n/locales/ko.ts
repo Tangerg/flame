@@ -490,7 +490,6 @@ export const ko: Record<string, string> = {
   "timeline.noEvents": "이 실행에는 타임라인 이벤트가 없습니다.",
   "timeline.summary.runs_other": "실행 {{count}}회",
   "timeline.summary.events_other": "이벤트 {{count}}개",
-  "timeline.jumpToChat": "채팅으로 이동",
   "timeline.empty.title": "아직 활동 없음",
   "timeline.empty.sub": "agent가 실행되면 모든 도구 호출, 승인, 실행 경계가 여기에 표시됩니다.",
   "timeline.firstOutput": "첫 출력",

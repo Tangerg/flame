@@ -12,6 +12,7 @@ import { type as typeStep } from "@/styles/tokens.stylex";
 
 const STATE_LABELS: Record<VisualAgentState, string> = {
   empty: "Empty",
+  "runtime-down": "Runtime down",
   idle: "Idle",
   running: "Running",
   "answer-opening": "Answer opening",

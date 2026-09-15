@@ -491,7 +491,6 @@ export const ja: Record<string, string> = {
   "timeline.noEvents": "この実行にはタイムラインイベントがありません。",
   "timeline.summary.runs_other": "{{count}} 回の実行",
   "timeline.summary.events_other": "{{count}} 件のイベント",
-  "timeline.jumpToChat": "チャットへ移動",
   "timeline.empty.title": "まだアクティビティがありません",
   "timeline.empty.sub":
     "agent が実行されると、すべてのツール呼び出し、承認、実行境界がここに表示されます。",

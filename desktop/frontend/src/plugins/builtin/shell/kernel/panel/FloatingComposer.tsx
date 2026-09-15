@@ -29,7 +29,7 @@ const fc = stylex.create({
   floor: { paddingBottom: { default: space.s3, "@media (min-width: 640px)": space.s4 } },
 });
 
-export function RuntimeConnectionNotice() {
+function RuntimeConnectionNotice() {
   const t = useT();
   const service = useRuntimeServiceStatus();
   const visible = service.phase === "reconnecting" || service.phase === "unavailable";
@@ -69,8 +69,26 @@ export function RuntimeConnectionNotice() {
   );
 }
 
-export function ComposerOverlayTop() {
+function ComposerOverlayTop() {
   return <Slot name="composer.overlay.top" wrapper className={stylex.props(fc.tray).className} />;
+}
+
+/**
+ * What stands above the composer, in the only order that works.
+ *
+ * The overlay tray tucks its last 22px behind the composer's top edge, so whatever renders
+ * between them is painted over — a runtime notice sat in that gap with more than half its
+ * height covered. Both composers used to spell this order out, and one of them spelled it
+ * wrong; there is nowhere left to put it wrong now.
+ */
+export function ComposerStack({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <RuntimeConnectionNotice />
+      <ComposerOverlayTop />
+      {children}
+    </>
+  );
 }
 
 export function FloatingComposer({
@@ -85,9 +103,7 @@ export function FloatingComposer({
       <div {...stylex.props(rc.gutter, fc.floor)}>
         <div {...stylex.props(fc.holder)}>
           <JumpToBottomButton />
-          <ComposerOverlayTop />
-          <RuntimeConnectionNotice />
-          {children}
+          <ComposerStack>{children}</ComposerStack>
         </div>
       </div>
     </div>

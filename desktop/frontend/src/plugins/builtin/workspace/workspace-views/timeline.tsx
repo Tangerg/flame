@@ -23,7 +23,6 @@ import {
 import {
   locateWorkspaceTool,
   openWorkspaceSubagentRun,
-  selectWorkspaceChat,
 } from "@/plugins/builtin/workspace/public/navigation";
 import {
   timelineGroupKey,
@@ -256,14 +255,6 @@ export function TimelineTab() {
         timeline.length === TIMELINE_WINDOW_SIZE
           ? t("timeline.recentWindow", { count: TIMELINE_WINDOW_SIZE })
           : timelineSubtext(t, view)
-      }
-      actions={
-        <IconButton
-          icon="chat"
-          iconSize="sm"
-          title={t("timeline.jumpToChat")}
-          onClick={selectWorkspaceChat}
-        />
       }
     >
       {view.groups.length === 0 ? (

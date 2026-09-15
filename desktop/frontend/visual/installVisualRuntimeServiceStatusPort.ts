@@ -3,9 +3,11 @@ import {
   type RuntimeServiceSnapshot,
 } from "@/plugins/builtin/runtime/application/ports/serviceStatus";
 
-export function installVisualRuntimeServiceStatusPort(): void {
+export function installVisualRuntimeServiceStatusPort(
+  phase: RuntimeServiceSnapshot["phase"] = "ready",
+): void {
   const snapshot = {
-    phase: "ready",
+    phase,
     observation: {
       server: { name: "flame-runtime", version: "0.0.0-visual" },
       protocolVersion: "2",
@@ -13,7 +15,7 @@ export function installVisualRuntimeServiceStatusPort(): void {
       checks: {},
     },
     failure: null,
-  } as const satisfies RuntimeServiceSnapshot;
+  } satisfies RuntimeServiceSnapshot;
 
   configureRuntimeServiceStatusPort({
     useSnapshot: () => snapshot,

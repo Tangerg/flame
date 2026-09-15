@@ -510,7 +510,6 @@ export const de: Record<string, string> = {
   "timeline.summary.runs_other": "{{count}} Läufe",
   "timeline.summary.events_one": "{{count}} Ereignis",
   "timeline.summary.events_other": "{{count}} Ereignisse",
-  "timeline.jumpToChat": "Zum Chat springen",
   "timeline.empty.title": "Noch keine Aktivität",
   "timeline.empty.sub":
     "Wenn der Agent läuft, erscheinen hier alle Tool-Aufrufe, Freigaben und Lauf-Grenzen.",

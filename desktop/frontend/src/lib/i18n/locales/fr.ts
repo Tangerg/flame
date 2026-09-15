@@ -521,7 +521,6 @@ export const fr: Record<string, string> = {
   "timeline.summary.events_one": "{{count}} évènement",
   "timeline.summary.events_many": "{{count}} d’évènements",
   "timeline.summary.events_other": "{{count}} évènements",
-  "timeline.jumpToChat": "Aller au chat",
   "timeline.empty.title": "Aucune activité pour l'instant",
   "timeline.empty.sub":
     "Lorsque l'agent s'exécute, chaque appel d'outil, approbation et limite d'exécution apparaît ici.",

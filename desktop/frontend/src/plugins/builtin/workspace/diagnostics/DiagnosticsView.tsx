@@ -32,16 +32,26 @@ const d = stylex.create({
     paddingInline: "var(--density-column-gutter-wide)",
     paddingBlock: space.s3,
   },
+  // Prose and a control cluster cannot share one row in a dock: the controls refuse to shrink
+  // and the description has no floor, so it collapsed to two characters a line. Below the width
+  // the navigator already calls narrow, they stack instead.
   masthead: {
     display: "flex",
-    alignItems: "center",
+    flexDirection: { default: "row", "@container workspace-view (width < 720px)": "column" },
+    alignItems: { default: "center", "@container workspace-view (width < 720px)": "stretch" },
     justifyContent: "space-between",
     gap: space.s3,
   },
   copy: { minWidth: 0 },
   title: { color: color.fg, fontWeight: weight.semibold },
   subtitle: { marginTop: space.s0_5, color: color.fgMuted },
-  controls: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s2 },
+  controls: {
+    display: "flex",
+    flexShrink: 0,
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: space.s2,
+  },
   logRow: { minHeight: "calc(var(--spacing) * 7)" },
   mono: { fontFamily: "var(--font-mono)" },
   metricsScroller: {

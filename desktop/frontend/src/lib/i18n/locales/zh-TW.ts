@@ -491,7 +491,6 @@ export const zhTW: Record<string, string> = {
   "timeline.noEvents": "此次執行沒有時間軸事件。",
   "timeline.summary.runs_other": "{{count}} 次執行",
   "timeline.summary.events_other": "{{count}} 個事件",
-  "timeline.jumpToChat": "前往聊天",
   "timeline.empty.title": "尚無活動",
   "timeline.empty.sub": "agent 執行時，每次工具呼叫、核准和執行邊界都會顯示在這裡。",
   "timeline.firstOutput": "首次輸出",

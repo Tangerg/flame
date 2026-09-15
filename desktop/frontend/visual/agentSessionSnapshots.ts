@@ -12,6 +12,7 @@ import { VISUAL_CONTEXT_TOKENS } from "./agentFixtureFacts";
 
 export const VISUAL_AGENT_STATES = [
   "empty",
+  "runtime-down",
   "idle",
   "running",
   "answer-opening",
@@ -1024,6 +1025,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
   Record<VisualAgentState, RuntimeAgentSessionSnapshot>
 > = {
   empty: BASE,
+  "runtime-down": BASE,
   idle: {
     runs: [
       run("finished", {
@@ -1610,6 +1612,7 @@ export const AGENT_SESSION_SNAPSHOTS: Readonly<Record<VisualAgentState, AgentSes
 
 export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState, TailFrame[]>> = {
   empty: [],
+  "runtime-down": [],
   idle: [],
   running: [
     tail(1, { type: "item.started", item: RUNNING_REASONING }),

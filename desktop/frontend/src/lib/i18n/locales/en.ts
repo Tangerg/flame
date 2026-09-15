@@ -663,7 +663,6 @@ export const en: Record<string, string> = {
   "timeline.summary.runs_other": "{{count}} runs",
   "timeline.summary.events_one": "{{count}} event",
   "timeline.summary.events_other": "{{count}} events",
-  "timeline.jumpToChat": "Jump to chat",
   "timeline.empty.title": "No activity yet",
   "timeline.empty.sub":
     "As the agent runs, every tool call, approval, and run boundary lands here.",

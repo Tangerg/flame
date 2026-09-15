@@ -260,7 +260,7 @@ export async function installVisualAgentFixture(
   state: VisualAgentState,
   commandOutput?: string,
 ): Promise<AgentSessionView> {
-  const projectless = state === "empty";
+  const projectless = state === "empty" || state === "runtime-down";
   queryClient.clear();
   installRuntimeCapabilityPort();
   useRuntimeConnectionStore.setState({
@@ -277,7 +277,7 @@ export async function installVisualAgentFixture(
       },
     },
   });
-  installVisualRuntimeServiceStatusPort();
+  installVisualRuntimeServiceStatusPort(state === "runtime-down" ? "unavailable" : "ready");
   installAgentStatePorts();
   installWorkspaceNavigationPort();
   configureAgentRuntimeGateway(visualAgentRuntimeGateway(state));

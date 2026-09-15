@@ -7,6 +7,7 @@ import { fmtTokens } from "@/lib/format";
 
 const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
   empty: "idle",
+  "runtime-down": "idle",
   idle: "finished",
   running: "running",
   "answer-opening": "running",

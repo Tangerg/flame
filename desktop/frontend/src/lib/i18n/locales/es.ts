@@ -518,7 +518,6 @@ export const es: Record<string, string> = {
   "timeline.summary.events_one": "{{count}} evento",
   "timeline.summary.events_many": "{{count}} de eventos",
   "timeline.summary.events_other": "{{count}} eventos",
-  "timeline.jumpToChat": "Ir al chat",
   "timeline.empty.title": "Sin actividad aún",
   "timeline.empty.sub":
     "Cuando el agent se ejecuta, cada llamada a herramienta, aprobación y límite de ejecución aparece aquí.",

@@ -12,7 +12,7 @@ import {
 import { useStreamRevealStore } from "@/plugins/builtin/chat/message/public/streamReveal";
 import { ChatErrorBoundary } from "./ChatErrorBoundary";
 import { ComposerSurface } from "./ComposerSurface";
-import { ComposerOverlayTop, FloatingComposer, RuntimeConnectionNotice } from "./FloatingComposer";
+import { ComposerStack, FloatingComposer } from "./FloatingComposer";
 import { COMPOSER_OVERLAY_PROPERTY, readingColumn as rc } from "./readingColumn";
 import { CwdMissingBanner } from "./CwdMissingBanner";
 import { MessageStream, type MessageStreamController } from "./MessageStream";
@@ -157,9 +157,7 @@ export function ChatStream({ onSend }: Props) {
             </h2>
           </div>
           <div {...stylex.props(rc.box, rc.gutter)}>
-            <ComposerOverlayTop />
-            <RuntimeConnectionNotice />
-            {composer}
+            <ComposerStack>{composer}</ComposerStack>
           </div>
           <div
             {...readingBox}

@@ -627,7 +627,6 @@ export const zh: Record<string, string> = {
   "timeline.noEvents": "此次运行暂无时间线事件。",
   "timeline.summary.runs_other": "{{count}} 次运行",
   "timeline.summary.events_other": "{{count}} 个事件",
-  "timeline.jumpToChat": "转到聊天",
   "timeline.empty.title": "暂无活动",
   "timeline.empty.sub": "agent 运行时，每次工具调用、审批和运行边界都会显示在这里。",
   "timeline.firstOutput": "首次输出",
