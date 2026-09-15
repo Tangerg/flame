@@ -24,14 +24,14 @@ func (alreadyTerminalRuns) Cancel(context.Context, runs.CancelCommand) (runs.Can
 
 func TestSessionCommandLocksDoNotCoupleUnrelatedSessions(t *testing.T) {
 	mutations := NewSessionMutations()
-	releaseFirst := mutations.acquire("ses_1")
+	releaseFirst := mustAcquireSessionCommand(t, t.Context(), mutations, "ses_1")
 
 	unrelatedAcquired := make(chan struct{})
 	releaseUnrelated := make(chan struct{})
 	unrelatedDone := make(chan struct{})
 	go func() {
 		defer close(unrelatedDone)
-		release := mutations.acquire("ses_2")
+		release := mustAcquireSessionCommand(t, t.Context(), mutations, "ses_2")
 		close(unrelatedAcquired)
 		<-releaseUnrelated
 		release()
@@ -47,7 +47,7 @@ func TestSessionCommandLocksDoNotCoupleUnrelatedSessions(t *testing.T) {
 	sameDone := make(chan struct{})
 	go func() {
 		defer close(sameDone)
-		release := mutations.acquire("ses_1")
+		release := mustAcquireSessionCommand(t, t.Context(), mutations, "ses_1")
 		close(sameAcquired)
 		<-releaseSame
 		release()
@@ -70,6 +70,51 @@ func TestSessionCommandLocksDoNotCoupleUnrelatedSessions(t *testing.T) {
 	<-unrelatedDone
 }
 
+func mustAcquireSessionCommand(
+	t *testing.T,
+	ctx context.Context,
+	mutations *SessionMutations,
+	sessionID string,
+) func() {
+	t.Helper()
+	release, err := mutations.acquire(ctx, sessionID)
+	if err != nil {
+		t.Fatalf("acquire %s: %v", sessionID, err)
+	}
+	return release
+}
+
+// TestSessionCommandWaitEndsWithItsOwnRequest: the holder owns a whole durable
+// write-set, so a command queued behind it leaves when its own request does
+// instead of outliving it inside an uninterruptible wait.
+func TestSessionCommandWaitEndsWithItsOwnRequest(t *testing.T) {
+	mutations := NewSessionMutations()
+	release := mustAcquireSessionCommand(t, t.Context(), mutations, "ses_1")
+	defer release()
+
+	waiting, cancelWaiting := context.WithCancel(t.Context())
+	queued := make(chan error, 1)
+	go func() {
+		_, err := mutations.acquire(waiting, "ses_1")
+		queued <- err
+	}()
+	select {
+	case err := <-queued:
+		t.Fatalf("queued command crossed a held session lock: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	cancelWaiting()
+	select {
+	case err := <-queued:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("queued command error = %v, want context canceled", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("queued command outlived its own request")
+	}
+}
+
 func TestSessionMutationQuiescesEveryGoalBeforeJoining(t *testing.T) {
 	firstErr := errors.New("first goal cleanup failed")
 	first := completedGoalDrive(firstErr)
@@ -83,14 +128,16 @@ func TestSessionMutationQuiescesEveryGoalBeforeJoining(t *testing.T) {
 	mutations.drives["ses_1"] = first
 	mutations.drives["ses_2"] = second
 
+	// The commit succeeded, so a drive that will not quiesce settles: reporting it
+	// would tell the caller a mutation that happened did not.
 	err := mutations.WithSessionMutation(
 		t.Context(),
 		[]string{"ses_1", "ses_2"},
 		func(context.Context) error { return nil },
 		func(context.Context) error { return nil },
 	)
-	if !errors.Is(err, firstErr) {
-		t.Fatalf("WithSessionMutation error = %v, want first cleanup failure", err)
+	if err != nil {
+		t.Fatalf("WithSessionMutation reported settlement as a failed commit: %v", err)
 	}
 	if !firstCanceled.Load() || !secondCanceled.Load() {
 		t.Fatalf("quiesced goals = first:%v second:%v, want both", firstCanceled.Load(), secondCanceled.Load())

@@ -189,6 +189,9 @@ type SandboxDiscarder interface {
 // GoalMutationGuard serializes a session write-set with Goal lifecycle
 // commands. It owns the complete commit boundary: afterCommit runs exactly
 // once after commit succeeds, even when quiescing an affected Goal fails.
+// A returned error is always the commit's — settlement after a successful
+// commit is recorded rather than returned, so a caller cannot project a
+// committed mutation as one that never happened.
 type GoalMutationGuard interface {
 	WithSessionMutation(
 		ctx context.Context,

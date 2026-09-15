@@ -102,6 +102,9 @@ func TestDeleteSessionDoesNotQuiesceGoalWhenDurableCommitFails(t *testing.T) {
 	}
 }
 
+// TestDeleteSessionCleansUpAfterGoalQuiesceFailure: the Session is gone as of
+// the commit, so a Goal that would not quiesce cannot turn the delete into a
+// failure — it settles, and the remaining cleanup still runs.
 func TestDeleteSessionCleansUpAfterGoalQuiesceFailure(t *testing.T) {
 	quiesceErr := errors.New("goal quiesce failed")
 	stores := newMutationStores("")
@@ -111,13 +114,15 @@ func TestDeleteSessionCleansUpAfterGoalQuiesceFailure(t *testing.T) {
 		Goals:             mutationGoalGuard{operations: &stores.operations, quiesceErr: quiesceErr},
 	}))
 
-	err := coordinator.DeleteSession(t.Context(), "ses_1")
-	if !errors.Is(err, quiesceErr) {
-		t.Fatalf("DeleteSession error = %v, want quiesce failure", err)
+	if err := coordinator.DeleteSession(t.Context(), "ses_1"); err != nil {
+		t.Fatalf("DeleteSession reported a committed delete as failed: %v", err)
 	}
 	want := []string{"goal.mutation", "interrupt.read", "session.quiesce", "apply.delete", "goal.quiesce", "executor.release", "session.forget"}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want post-commit cleanup despite quiesce failure", stores.operations)
+	}
+	if len(stores.deleted) != 1 {
+		t.Fatalf("deleted = %v, want the Session gone", stores.deleted)
 	}
 }
 
@@ -125,9 +130,16 @@ func TestDeleteSessionDetachesExecutorReleaseFromCallerCancellation(t *testing.T
 	stores := newMutationStores("")
 	executions := new(observingExecutions)
 	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
+	deps := testDependencies(stores, Dependencies{
+		ExecutionReleaser: executions,
+		Paths:             testWorkspaceResolver{},
+	})
+	// The caller gives up while the write-set is already committing: the durable
+	// delete is past the point where abandoning it is an option, so the executor
+	// teardown it owes must not inherit that cancellation.
+	deps.TransientState = cancelingTransientState{stores: stores, cancel: cancel}
 
-	if err := newCoordinator(stores, executions).DeleteSession(ctx, "ses_1"); err != nil {
+	if err := mustNewCoordinator(deps).DeleteSession(ctx, "ses_1"); err != nil {
 		t.Fatalf("DeleteSession: %v", err)
 	}
 	if executions.calls != 1 {
@@ -141,22 +153,81 @@ func TestDeleteSessionDetachesExecutorReleaseFromCallerCancellation(t *testing.T
 	}
 }
 
-func TestDeleteSessionReportsEveryPostCommitCleanupFailure(t *testing.T) {
-	executionErr := errors.New("execution release failed")
-	checkpointErr := errors.New("checkpoint cleanup failed")
+// TestDeleteSessionKeepsTheSessionWhenItsOwnedStateCannotBeRetired: the Session
+// is the only name for its checkpoint history and scratch tree, so a refusal to
+// destroy either must leave the aggregate that still names them.
+func TestDeleteSessionKeepsTheSessionWhenItsOwnedStateCannotBeRetired(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		deps       func(stores *mutationStores) Dependencies
+		wantErr    error
+		operations []string
+	}{
+		{
+			name:    "checkpoints",
+			wantErr: errors.New("checkpoint cleanup failed"),
+			operations: []string{
+				"interrupt.read", "session.quiesce", "checkpoint.drop:ses_1",
+			},
+		},
+		{
+			name:    "sandbox",
+			wantErr: errors.New("sandbox discard failed"),
+			operations: []string{
+				"interrupt.read", "session.quiesce", "checkpoint.drop:ses_1", "sandbox.discard:ses_1",
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			stores := newMutationStores("")
+			checkpoints := &mutationCheckpoints{operations: &stores.operations}
+			sandbox := &mutationSandbox{operations: &stores.operations}
+			if test.name == "checkpoints" {
+				checkpoints.err = test.wantErr
+			} else {
+				sandbox.err = test.wantErr
+			}
+			coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
+				ExecutionReleaser: mutationExecutions{operations: &stores.operations},
+				Paths:             testWorkspaceResolver{},
+				Checkpoints:       checkpoints,
+				Sandbox:           sandbox,
+			}))
+
+			err := coordinator.DeleteSession(t.Context(), "ses_1")
+			if !errors.Is(err, test.wantErr) {
+				t.Fatalf("DeleteSession error = %v, want %v", err, test.wantErr)
+			}
+			if !slices.Equal(stores.operations, test.operations) {
+				t.Fatalf("operations = %v, want %v", stores.operations, test.operations)
+			}
+			if len(stores.deleted) != 0 {
+				t.Fatalf("deleted = %v, want the Session kept beside the state it names", stores.deleted)
+			}
+		})
+	}
+}
+
+// TestDeleteSessionCommitsDespiteExecutorReleaseFailure: an executor that will
+// not release is process-local and outlives nothing, so it settles rather than
+// telling the caller the Session is still there.
+func TestDeleteSessionCommitsDespiteExecutorReleaseFailure(t *testing.T) {
 	stores := newMutationStores("")
-	checkpoints := &mutationCheckpoints{operations: &stores.operations, err: checkpointErr}
 	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
-		ExecutionReleaser: mutationExecutions{operations: &stores.operations, err: executionErr},
-		Paths:             testWorkspaceResolver{},
-		Checkpoints:       checkpoints,
+		ExecutionReleaser: mutationExecutions{
+			operations: &stores.operations, err: errors.New("execution release failed"),
+		},
+		Paths:       testWorkspaceResolver{},
+		Checkpoints: &mutationCheckpoints{operations: &stores.operations},
 	}))
 
-	err := coordinator.DeleteSession(t.Context(), "ses_1")
-	if !errors.Is(err, executionErr) || !errors.Is(err, checkpointErr) {
-		t.Fatalf("DeleteSession error = %v, want execution and checkpoint cleanup failures", err)
+	if err := coordinator.DeleteSession(t.Context(), "ses_1"); err != nil {
+		t.Fatalf("DeleteSession reported a committed delete as failed: %v", err)
 	}
-	want := []string{"interrupt.read", "session.quiesce", "apply.delete", "executor.release", "session.forget", "checkpoint.drop:ses_1"}
+	want := []string{
+		"interrupt.read", "session.quiesce", "checkpoint.drop:ses_1",
+		"apply.delete", "executor.release", "session.forget",
+	}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want %v", stores.operations, want)
 	}
@@ -165,44 +236,23 @@ func TestDeleteSessionReportsEveryPostCommitCleanupFailure(t *testing.T) {
 	}
 }
 
-func TestDeleteSessionDiscardsIsolatedSandboxCopyPostCommit(t *testing.T) {
-	sandboxErr := errors.New("sandbox discard failed")
+// TestRollbackCommitsDespiteParkedExecutorReleaseFailure: the truncation is
+// durable as of the commit, so an executor that refuses to release cannot make
+// the rollback look unapplied — which used to strand its recovery intent and
+// refuse every later Run on that Session and working tree.
+func TestRollbackCommitsDespiteParkedExecutorReleaseFailure(t *testing.T) {
 	stores := newMutationStores("")
 	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
-		ExecutionReleaser: mutationExecutions{operations: &stores.operations},
-		Paths:             testWorkspaceResolver{},
-		Checkpoints:       &mutationCheckpoints{operations: &stores.operations},
-		Sandbox:           &mutationSandbox{operations: &stores.operations, err: sandboxErr},
-	}))
-
-	err := coordinator.DeleteSession(t.Context(), "ses_1")
-	if !errors.Is(err, sandboxErr) {
-		t.Fatalf("DeleteSession error = %v, want sandbox discard failure surfaced", err)
-	}
-	// The sandbox copy is discarded post-commit, after the durable delete and the
-	// checkpoint drop — never inside the write-set.
-	want := []string{"interrupt.read", "session.quiesce", "apply.delete", "executor.release", "session.forget", "checkpoint.drop:ses_1", "sandbox.discard:ses_1"}
-	if !slices.Equal(stores.operations, want) {
-		t.Fatalf("operations = %v, want %v", stores.operations, want)
-	}
-	if len(stores.deleted) != 1 || stores.deleted[0] != "ses_1" {
-		t.Fatal("sandbox cleanup failure prevented durable session deletion")
-	}
-}
-
-func TestRollbackReportsParkedExecutorReleaseFailure(t *testing.T) {
-	executionErr := errors.New("execution release failed")
-	stores := newMutationStores("")
-	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
-		ExecutionReleaser: mutationExecutions{operations: &stores.operations, err: executionErr},
-		Paths:             testWorkspaceResolver{},
-		Sandbox:           &mutationSandbox{operations: &stores.operations},
+		ExecutionReleaser: mutationExecutions{
+			operations: &stores.operations, err: errors.New("execution release failed"),
+		},
+		Paths:   testWorkspaceResolver{},
+		Sandbox: &mutationSandbox{operations: &stores.operations},
 	}))
 	boundary := transcript.Boundary{Dropped: []transcript.RunNode{{ID: "run_1"}}}
 
-	err := coordinator.applyRollback(t.Context(), "ses_1", boundary)
-	if !errors.Is(err, executionErr) {
-		t.Fatalf("applyRollback error = %v, want execution release failure", err)
+	if err := coordinator.applyRollback(t.Context(), "ses_1", boundary); err != nil {
+		t.Fatalf("applyRollback reported a committed truncation as failed: %v", err)
 	}
 	want := []string{
 		"session.quiesce",
@@ -343,8 +393,11 @@ var errMutationStage = errors.New("mutation stage failed")
 type mutationGoalGuard struct {
 	operations *[]string
 	quiesceErr error
+	settlement error
 }
 
+// WithSessionMutation mirrors the real guard's contract: a failed commit is the
+// command's failure, and everything after it settles without changing it.
 func (m mutationGoalGuard) WithSessionMutation(
 	ctx context.Context,
 	_ []string,
@@ -356,7 +409,8 @@ func (m mutationGoalGuard) WithSessionMutation(
 		return err
 	}
 	*m.operations = append(*m.operations, "goal.quiesce")
-	return errors.Join(m.quiesceErr, afterCommit(ctx))
+	m.settlement = errors.Join(m.quiesceErr, afterCommit(ctx))
+	return nil
 }
 
 // mutationStores supplies the coordinator's named persistence ports for mutation write-sets: it
@@ -521,3 +575,26 @@ func (m *mutationSandbox) Discard(sessionID string) error {
 	*m.operations = append(*m.operations, "sandbox.discard:"+sessionID)
 	return m.err
 }
+
+// cancelingTransientState abandons the caller's request at the moment the
+// write-set starts, so the settlement that follows a committed delete is the
+// one under test.
+type cancelingTransientState struct {
+	stores *mutationStores
+	cancel context.CancelFunc
+}
+
+func (c cancelingTransientState) QuiesceSession(sessionID string) error {
+	err := c.stores.QuiesceSession(sessionID)
+	c.cancel()
+	return err
+}
+
+func (c cancelingTransientState) QuiesceWorkspace(root string) error {
+	return c.stores.QuiesceWorkspace(root)
+}
+func (c cancelingTransientState) ForgetSession(sessionID string) { c.stores.ForgetSession(sessionID) }
+func (c cancelingTransientState) ForgetSessionContext(sessionID string) {
+	c.stores.ForgetSessionContext(sessionID)
+}
+func (c cancelingTransientState) ForgetWorkspace(root string) { c.stores.ForgetWorkspace(root) }

@@ -9,12 +9,16 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// DeleteSession first quiesces detached processes while the Session mutation
-// admission is held, atomically removes all durable state, then tears down
-// parked executions and non-failing process-local markers. The open interrupts
-// are read up front so abandoned executions can be canceled after the durable
-// state is gone. Checkpoint and sandbox cleanup run last; all post-commit
-// cleanup failures are returned together.
+// DeleteSession retires everything the Session owns while its mutation
+// admission is held, removes all durable state atomically, then tears down
+// parked executions and process-local markers. The open interrupts are read up
+// front so abandoned executions can be canceled after the durable state is gone.
+//
+// Checkpoint history and the scratch tree are retired BEFORE the aggregate is
+// deleted: the Session is their only name, so retiring them afterwards would
+// leave state nothing in the catalog could reach whenever the filesystem
+// refuses. Inside the commit, a returned error means exactly one thing — the
+// Session still exists.
 func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error {
 	deletion, err := NewDeletePlan(sessionID)
 	if err != nil {
@@ -40,12 +44,15 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 			if err := c.transientState.QuiesceSession(sessionID); err != nil {
 				return fmt.Errorf("sessions: quiesce process-local Session state before delete: %w", err)
 			}
+			if err := c.retireSessionResources(sessionID); err != nil {
+				return err
+			}
 			return c.writes.ApplyDelete(commitCtx, deletion)
 		},
 		func(ctx context.Context) error {
-			// The durable cascade is gone as of here, so the signal cannot outrun it —
-			// and it goes out before the process-local cleanup, whose failures are the
-			// caller's to report but change nothing a client can read.
+			// The durable cascade is gone as of here, so the signal cannot outrun it.
+			// What remains is process-local: an executor that refuses to release
+			// leaks nothing a restart would keep.
 			c.publishAggregateMoved([]string{sessionID}, nil)
 			var cleanupErrs []error
 			for _, item := range pending {
@@ -57,36 +64,37 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 					cleanupErrs = append(cleanupErrs, err)
 				}
 			}
-			cleanupErrs = append(cleanupErrs, c.dropSessionResources([]string{sessionID}, "deleted")...)
+			c.transientState.ForgetSession(sessionID)
 			return errors.Join(cleanupErrs...)
 		},
 	)
 }
 
-// dropSessionResources removes process-local resources after a durable Session
-// delete. The action preserves useful error context for the operator.
-func (c *Coordinator) dropSessionResources(sessionIDs []string, action string) []error {
-	var errs []error
-	for _, sessionID := range sessionIDs {
-		c.transientState.ForgetSession(sessionID)
-		if c.checkpoints != nil {
-			if err := c.checkpoints.DropSession(sessionID); err != nil {
-				errs = append(errs, fmt.Errorf("sessions: drop checkpoints for %s session %q: %w", action, sessionID, err))
-			}
-		}
-		if c.sandbox != nil {
-			if err := c.sandbox.Discard(sessionID); err != nil {
-				errs = append(errs, fmt.Errorf("sessions: discard sandbox copy for %s session %q: %w", action, sessionID, err))
-			}
+// retireSessionResources destroys the durable state a Session is the only name
+// for: its checkpoint history and its isolated scratch tree. It runs before the
+// aggregate is deleted, so a refusal aborts the delete instead of orphaning
+// state nothing left in the catalog could ever reach.
+// The first refusal stops the sequence: the delete is already going to fail, so
+// destroying anything further would only cost a surviving Session state it can
+// still use.
+func (c *Coordinator) retireSessionResources(sessionID string) error {
+	if c.checkpoints != nil {
+		if err := c.checkpoints.DropSession(sessionID); err != nil {
+			return fmt.Errorf("sessions: drop checkpoints for session %q: %w", sessionID, err)
 		}
 	}
-	return errs
+	if c.sandbox != nil {
+		if err := c.sandbox.Discard(sessionID); err != nil {
+			return fmt.Errorf("sessions: discard sandbox copy for session %q: %w", sessionID, err)
+		}
+	}
+	return nil
 }
 
 // restoreSession applies a canonical archive and, when requested, derives its
-// session view before releasing the mutation admission. A restoration must not
-// expose a separately-read view because another mutation could otherwise
-// interleave between the durable write and the returned result.
+// session view before releasing the mutation admission. The view projects the
+// value this command committed rather than a fresh read, so another mutation
+// cannot interleave between the durable write and the returned result.
 func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, present bool) (View, error) {
 	normalized, err := snapshot.NormalizeForRestore()
 	if err != nil {
@@ -120,7 +128,6 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 		return View{}, err
 	}
 	committedSession := sessionReplacement.State()
-	var view View
 	err = c.goals.WithSessionMutation(
 		ctx,
 		[]string{sessionID},
@@ -143,15 +150,16 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 			// from before the restore is stale.
 			c.transientState.ForgetSessionContext(sessionID)
 			c.publishAggregateMoved([]string{sessionID}, nil)
-			if !present {
-				return nil
-			}
-			var viewErr error
-			view, viewErr = c.view(committedSession, ActivityIdle)
-			return viewErr
+			return nil
 		},
 	)
-	return view, err
+	if err != nil || !present {
+		return View{}, err
+	}
+	// The view is the command's result, not settlement: it projects the value
+	// this command committed while the mutation admission is still held, so no
+	// other writer can move the Session between the write and the answer.
+	return c.view(committedSession, ActivityIdle)
 }
 
 func (c *Coordinator) prepareSessionRestore(

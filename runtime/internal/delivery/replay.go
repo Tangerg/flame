@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
+	"github.com/Tangerg/flame/runtime/internal/keylock"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -29,13 +30,11 @@ const (
 
 type replayStore struct {
 	store idempotency.Store
-	// inFlight serializes one key's execution and receipt. It is a signal per key
-	// rather than a shared mutex so a waiter can stop waiting when its request
-	// ends, and so an unrelated key never queues behind another key's command.
-	inFlightMu sync.Mutex
-	inFlight   map[string]chan struct{}
-	pendingMu  sync.Mutex
-	pending    map[string]idempotency.Record
+	// inFlight serializes one key's execution and receipt for as long as the
+	// caller's own request lasts.
+	inFlight  *keylock.Set
+	pendingMu sync.Mutex
+	pending   map[string]idempotency.Record
 }
 
 type storedOutcome struct {
@@ -47,7 +46,7 @@ type storedOutcome struct {
 func newReplayStore(store idempotency.Store) *replayStore {
 	return &replayStore{
 		store:    store,
-		inFlight: make(map[string]chan struct{}),
+		inFlight: keylock.NewSet(),
 		pending:  make(map[string]idempotency.Record),
 	}
 }
@@ -67,7 +66,7 @@ func (r *replayStore) invoke(
 	if err != nil {
 		return failed(ProjectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
 	}
-	release, err := r.acquire(ctx, key)
+	release, err := r.inFlight.Acquire(ctx, key)
 	if err != nil {
 		return failed(ProjectError(err))
 	}
@@ -308,7 +307,7 @@ func (r *replayStore) flushPending(ctx context.Context) error {
 	}
 	var errs []error
 	for _, key := range r.pendingKeys() {
-		release, err := r.acquire(ctx, key)
+		release, err := r.inFlight.Acquire(ctx, key)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("idempotency: flush pending outcome: %w", err))
 			continue
@@ -366,36 +365,6 @@ func (r *replayStore) pendingKeys() []string {
 	r.pendingMu.Unlock()
 	sort.Strings(keys)
 	return keys
-}
-
-// acquire reserves key until the returned release runs. A waiter observes the
-// holder's completion signal, so it leaves as soon as ctx ends instead of
-// outliving the request that is waiting for it.
-func (r *replayStore) acquire(ctx context.Context, key string) (func(), error) {
-	for {
-		r.inFlightMu.Lock()
-		held, busy := r.inFlight[key]
-		if !busy {
-			settled := make(chan struct{})
-			r.inFlight[key] = settled
-			r.inFlightMu.Unlock()
-			var once sync.Once
-			return func() {
-				once.Do(func() {
-					r.inFlightMu.Lock()
-					delete(r.inFlight, key)
-					r.inFlightMu.Unlock()
-					close(settled)
-				})
-			}, nil
-		}
-		r.inFlightMu.Unlock()
-		select {
-		case <-ctx.Done():
-			return nil, context.Cause(ctx)
-		case <-held:
-		}
-	}
 }
 
 func unattachable(err error) bool {

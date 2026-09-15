@@ -216,7 +216,10 @@ func (d *Driver) Start(
 	budget goal.Budget,
 	capabilities run.Capabilities,
 ) (goal.Goal, error) {
-	release := d.mutations.acquire(sessionID)
+	release, err := d.mutations.acquire(ctx, sessionID)
+	if err != nil {
+		return goal.Goal{}, err
+	}
 	defer release()
 	if d.closed.Load() {
 		return goal.Goal{}, ErrClosed
@@ -303,7 +306,10 @@ func (d *Driver) Start(
 // incarnation: a Run parked for HITL remains part of this Goal when it resumes,
 // while quiesceDrive is the process-local boundary between old and new drives.
 func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabilities) (goal.Goal, error) {
-	release := d.mutations.acquire(sessionID)
+	release, err := d.mutations.acquire(ctx, sessionID)
+	if err != nil {
+		return goal.Goal{}, err
+	}
 	defer release()
 	if d.closed.Load() {
 		return goal.Goal{}, ErrClosed
@@ -378,7 +384,10 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 // post-terminal snapshot. This ordering preserves terminal accounting and makes
 // the user stop the final lifecycle transition rather than racing it.
 func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) {
-	release := d.mutations.acquire(sessionID)
+	release, err := d.mutations.acquire(ctx, sessionID)
+	if err != nil {
+		return goal.Goal{}, err
+	}
 	defer release()
 	if d.closed.Load() {
 		return goal.Goal{}, ErrClosed
@@ -461,7 +470,10 @@ func (d *Driver) UpdateObjective(
 	sessionID, objective string,
 	caller run.Capabilities,
 ) (goal.Goal, error) {
-	release := d.mutations.acquire(sessionID)
+	release, err := d.mutations.acquire(ctx, sessionID)
+	if err != nil {
+		return goal.Goal{}, err
+	}
 	defer release()
 	if d.closed.Load() {
 		return goal.Goal{}, ErrClosed
@@ -565,7 +577,10 @@ func (d *Driver) quiesceObjectiveUpdate(
 // Goal aggregate. An already-absent Goal is a successful idempotent clear, which
 // lets a stale UI intent converge with automatic completion.
 func (d *Driver) Clear(ctx context.Context, sessionID string) error {
-	release := d.mutations.acquire(sessionID)
+	release, err := d.mutations.acquire(ctx, sessionID)
+	if err != nil {
+		return err
+	}
 	defer release()
 	if d.closed.Load() {
 		return ErrClosed
