@@ -60,17 +60,16 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		if returnedErr == nil {
 			return
 		}
-		if errors.Is(returnedErr, interaction.ErrHostFailure) {
-			o.session.effectFailures.record(invocation.EffectID(), returnedErr)
-			return
+		if !errors.Is(returnedErr, interaction.ErrHostFailure) {
+			if _, known := errors.AsType[*toolcontract.Failure](returnedErr); known {
+				return
+			}
+			if errors.Is(returnedErr, interaction.ErrToolInputRequired) &&
+				!errors.Is(returnedErr, context.Canceled) && !errors.Is(returnedErr, context.DeadlineExceeded) {
+				return
+			}
 		}
-		if errors.Is(returnedErr, interaction.ErrToolInputRequired) {
-			return
-		}
-		known, found := errors.AsType[*toolcontract.Failure](returnedErr)
-		if !found || known.Validate() != nil {
-			o.session.effectFailures.record(invocation.EffectID(), returnedErr)
-		}
+		o.session.effectFailures.record(invocation.EffectID(), returnedErr)
 	}()
 	call := invocation.ToolCall()
 	member, hasCaller := o.session.toolCallMember(invocation.Relation())
@@ -123,13 +122,6 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	}
 
 	if errors.Is(callErr, interaction.ErrHostFailure) {
-		return corechat.ToolOutput{}, callErr
-	}
-	if errors.Is(callErr, interaction.ErrToolInputRequired) {
-		// Tool input is an Interaction control boundary, not a failed external
-		// call. The started fact remains open so the Run barrier can carry it as
-		// a drained Tool; the restored invocation will commit the sole final fact
-		// after consuming the semantic response Signal.
 		return corechat.ToolOutput{}, callErr
 	}
 	var failure *toolcontract.Failure
