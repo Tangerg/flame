@@ -1071,13 +1071,60 @@ func TestDeliveryDoesNotImplementQuerySemantics(t *testing.T) {
 // TestDeliveryDoesNotDeriveSessionActivity keeps precedence between active
 // admission and durable interrupt state in the sessions read model. Delivery
 // maps the resulting enum but cannot duplicate the precedence rule.
+//
+// The rule is where the vocabulary may be spoken rather than which helper names
+// are banned: a re-derivation has to name a session status to publish one, and
+// naming one anywhere but the single projection is the violation no rename can
+// hide.
 func TestDeliveryDoesNotDeriveSessionActivity(t *testing.T) {
+	confineQualifiedVocabulary(t,
+		filepath.Join(moduleRoot(t), "internal", "delivery"),
+		"protocol", "SessionStatus", "presentSessionStatus",
+		"session activity is an application read model; Delivery only projects it",
+	)
+}
+
+// confineQualifiedVocabulary rejects every production mention of a
+// package-qualified name prefix outside the one function allowed to speak it.
+// It identifies the owner by declaration, so the rule survives any renaming of
+// the code that would otherwise duplicate the owner's decision.
+func confineQualifiedVocabulary(t *testing.T, dir, pkg, prefix, owner, reason string) {
+	t.Helper()
 	root := moduleRoot(t)
-	forbidTopLevelNames(t, filepath.Join(root, "internal", "delivery"), map[string]string{
-		"liveStatus":        "session activity is an application read model",
-		"runningSessionSet": "active-run lookup is an application read model",
-		"waitingSessionSet": "interrupt lookup is an application read model",
+	owned := false
+	walkErr := walkProductionGoFiles(dir, func(path string, file *ast.File) error {
+		for _, declaration := range file.Decls {
+			function, isFunction := declaration.(*ast.FuncDecl)
+			within := isFunction && function.Name.Name == owner && function.Recv == nil
+			if within {
+				owned = true
+			}
+			ast.Inspect(declaration, func(node ast.Node) bool {
+				selector, ok := node.(*ast.SelectorExpr)
+				if !ok {
+					return true
+				}
+				qualifier, ok := selector.X.(*ast.Ident)
+				if !ok || qualifier.Name != pkg || !strings.HasPrefix(selector.Sel.Name, prefix) {
+					return true
+				}
+				if within {
+					return true
+				}
+				relative, _ := filepath.Rel(root, path)
+				t.Errorf("%s: %s.%s is spoken outside %s; %s",
+					relative, pkg, selector.Sel.Name, owner, reason)
+				return true
+			})
+		}
+		return nil
 	})
+	if walkErr != nil {
+		t.Fatalf("walk %s: %v", dir, walkErr)
+	}
+	if !owned {
+		t.Fatalf("%s no longer declares %s, so nothing owns %s.%s", dir, owner, pkg, prefix)
+	}
 }
 
 // TestDeliveryHandlerMatchesRegisteredOperationCapabilities keeps each wire
