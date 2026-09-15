@@ -428,6 +428,50 @@ const LOCALE_ROUTES: FixtureRoute[] = [
   { fixture: "workspace", state: "settings", pane: "providers" },
 ];
 
+const DOCK_LOCALE_STATES = [
+  "dock-inbox",
+  "dock-knowledge",
+  "dock-files",
+  "dock-search",
+  "dock-runs",
+  "dock-timeline",
+  "dock-subagents",
+  "dock-agent-memory",
+  "dock-skills",
+  "dock-agent-docs",
+  "dock-diagnostics",
+] as const;
+
+// German for the wide pass: the shipped language whose compounds run longest, over the panes
+// and dock views `LOCALE_ROUTES` leaves out. One locale, because seven cost 5.6 minutes and
+// this found nothing in 448 renders — the point is to notice a NEW surface that clips.
+const WIDE_LOCALE_ROUTES: FixtureRoute[] = [
+  ...VISUAL_SETTINGS_PANES.map((pane) => ({
+    fixture: "workspace" as const,
+    state: "settings",
+    pane,
+  })),
+  ...DOCK_LOCALE_STATES.map((state) => ({ fixture: "workspace" as const, state })),
+];
+
+test("text survives its longest language in every pane and dock view", async ({ page }) => {
+  test.setTimeout(240_000);
+  const clipped: string[] = [];
+  for (const route of WIDE_LOCALE_ROUTES) {
+    await page.setViewportSize({ width: 1120, height: 720 });
+    await openFixture(page, { ...route, locale: "de", fontSize: 18 });
+    const where = `${route.pane ?? route.state}`;
+    const rendered = await page.evaluate(() => document.body.innerText.trim().length);
+    expect(rendered, `${where} rendered nothing, so it clips nothing`).toBeGreaterThan(200);
+    clipped.push(
+      ...(await horizontallyClippedText(page)).map((hit) => `${where} \u2192: ${hit}`),
+      ...(await verticallyClippedText(page)).map((hit) => `${where} \u2193: ${hit}`),
+    );
+  }
+
+  expect(clipped).toEqual([]);
+});
+
 for (const locale of SHIPPED_LOCALES) {
   test(`text survives its own language — ${locale}`, async ({ page }) => {
     const clipped: string[] = [];
