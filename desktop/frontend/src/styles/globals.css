@@ -792,7 +792,7 @@ body {
     text-align: left;
   }
 
-  [data-control="button"]:disabled {
+  [data-control="button"]:is(:disabled, [aria-disabled="true"]) {
     cursor: not-allowed;
     opacity: var(--control-disabled-opacity);
   }

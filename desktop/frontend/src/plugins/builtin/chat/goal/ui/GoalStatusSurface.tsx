@@ -62,8 +62,8 @@ const gs = stylex.create({
     minHeight: space.s6,
     textDecorationLine: "underline",
     textDecorationColor: { default: "transparent", ":is(:enabled):hover": "currentColor" },
-    cursor: { ":disabled": "default" },
-    opacity: { ":disabled": 1 },
+    cursor: { ':is(:disabled, [aria-disabled="true"])': "default" },
+    opacity: { ':is(:disabled, [aria-disabled="true"])': 1 },
   },
   objective: { marginInlineStart: space.s1 },
   // WCAG 2.5.8 lets a target under 24px pass on SPACING, which is how the 22px control step
