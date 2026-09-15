@@ -67,6 +67,8 @@ Continuation state retains only unfinished Tool identities. A canceled child's s
 
 Accepting an approval settles its verdict; its Tool Item remains open until execution settles or the Run ends. Reported and synthesized terminal outcomes share the same Tool cleanup. Definite Runtime preparation failures and rejected argument edits use ordinary Tool settlement to commit their exact model-visible results before the executor advances. Input waits, cancellation, and uncertain effects retain their framework control semantics; restart and later Runs retain committed failures.
 
+Runtime policy and pre-Tool hooks own their public refusal reasons. The execution adapter returns each refusal as Scope's explicit rejected Tool outcome; product failure metadata projects that same output. Refusal does not invoke the operation or its post-execution hooks. Policy callback errors are host failures, including errors containing another invocation's result; they cannot become public Tool feedback. Scope owns the generic outcome contract and does not interpret Plan mode, approval answers, or hook policy.
+
 Result publication callbacks first ask the Segment owner for a durable receipt, ordered with commits on its event stream. The receipt binds the Scope Effect and digest to the Session, Run, and active Segment. Only an unpublished batch needs pending product metadata and reducer mutation. Direct Tool completion uses these same committed results without synthesizing an assistant answer.
 
 Unknown external effects fail closed. Runtime does not guess whether an unconfirmed model or tool effect succeeded and does not silently replay it.

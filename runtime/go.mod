@@ -5,9 +5,9 @@ go 1.27.0
 require (
 	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260912094153-1dc998bda962
 	github.com/Tangerg/scope/a2a v0.22.0
-	github.com/Tangerg/scope/agent v0.24.0
-	github.com/Tangerg/scope/core v0.22.0
-	github.com/Tangerg/scope/mcp v0.22.0
+	github.com/Tangerg/scope/agent v0.25.0
+	github.com/Tangerg/scope/core v0.23.0
+	github.com/Tangerg/scope/mcp v0.23.0
 	github.com/Tangerg/scope/models/alibaba v0.22.0
 	github.com/Tangerg/scope/models/anthropic v0.22.0
 	github.com/Tangerg/scope/models/azureopenai v0.22.0
@@ -23,13 +23,14 @@ require (
 	github.com/Tangerg/scope/models/openai v0.22.0
 	github.com/Tangerg/scope/models/openrouter v0.22.0
 	github.com/Tangerg/scope/models/perplexity v0.22.0
+	github.com/Tangerg/scope/models/protocol/openai v0.22.0
 	github.com/Tangerg/scope/models/together v0.22.0
 	github.com/Tangerg/scope/models/xai v0.22.0
 	github.com/Tangerg/scope/models/xiaomi v0.22.0
 	github.com/Tangerg/scope/models/zhipu v0.22.0
 	github.com/Tangerg/scope/otel v0.22.0
 	github.com/Tangerg/scope/skills v0.22.0
-	github.com/Tangerg/scope/tools v0.22.0
+	github.com/Tangerg/scope/tools v0.23.0
 	github.com/Tangerg/sse v0.0.6
 	github.com/bluekeyes/go-gitdiff v0.9.0
 	github.com/fsnotify/fsnotify v1.10.1
@@ -62,7 +63,6 @@ require (
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Tangerg/scope/models/protocol/anthropic v0.22.0 // indirect
-	github.com/Tangerg/scope/models/protocol/openai v0.22.0 // indirect
 	github.com/a2aproject/a2a-go/v2 v2.5.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect
 	github.com/anthropics/anthropic-sdk-go v1.72.0 // indirect

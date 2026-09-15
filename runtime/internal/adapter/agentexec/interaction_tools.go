@@ -117,6 +117,8 @@ func toolDenialReason(reason string) string {
 // optional durable human response. It plans but never owns the wait lifecycle:
 // interactioninput remains the sole Agent Framework ACL. Implementations must be safe
 // for concurrent calls from one Tool batch.
+// Errors report a host policy failure and cannot supply a Tool result or input
+// request. Only a successful decision can deny or request approval.
 type InteractionToolAuthorizer interface {
 	AuthorizeTool(ctx context.Context, request ToolAuthorizationRequest) (ToolAuthorizationDecision, error)
 	ResolveToolApproval(

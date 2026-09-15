@@ -3,6 +3,7 @@ package agentexec
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"sync/atomic"
 	"testing"
@@ -14,18 +15,28 @@ import (
 )
 
 func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
-	partial, err := toolcontract.NewFailure(errors.New("partial write"), chat.NewTextToolOutput("one file written"))
+	partial, err := toolcontract.NewFailure(toolcontract.FailureConfig{
+		Kind: toolcontract.FailureKindFailed, Cause: errors.New("partial write"),
+		Output: chat.NewTextToolOutput("one file written"),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, cause := range map[string]error{
+	denied, err := toolcontract.NewFailure(toolcontract.FailureConfig{
+		Kind: toolcontract.FailureKindRejected, Cause: context.DeadlineExceeded,
+		Output: chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "write is not permitted"}}, Details: []byte(`{"permitted":false}`)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, failure := range map[string]*toolcontract.Failure{
 		"partial": partial,
-		"denied":  toolcontract.ErrAuthorizationDenied,
+		"denied":  denied,
 	} {
 		t.Run(name, func(t *testing.T) {
 			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
 				Name: "write", Description: "Write the requested output.",
-			}, func(context.Context, struct{}) (string, error) { return "", cause })
+			}, func(context.Context, struct{}) (string, error) { return "", fmt.Errorf("tool boundary: %w", failure) })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -55,6 +66,9 @@ func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
 			})
 			if committed == nil || !committed.IsError || len(payloadsOf[runs.AssistantMessageCompleted](events)) != 1 {
 				t.Fatalf("failed Tool feedback did not continue after commit: result=%+v events=%#v", committed, events)
+			}
+			if !reflect.DeepEqual(committed.Output, failure.Output()) {
+				t.Fatalf("public failure output changed: got %#v, want %#v", committed.Output, failure.Output())
 			}
 		})
 	}

@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -16,6 +18,7 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 	for _, test := range []struct {
 		name, tool, arguments string
 		finish                chat.FinishReason
+		planMode              bool
 	}{
 		{name: "schema", tool: "read", arguments: `{"shell":"bash"}`},
 		{name: "malformed JSON", tool: "read", arguments: `{"path":`},
@@ -23,6 +26,7 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 		{name: "unknown", tool: "unavailable", arguments: `{}`},
 		{name: "truncated", tool: "read", arguments: `{"path":"unused"}`, finish: chat.FinishReasonLength},
 		{name: "delegate input", tool: "delegate_task", arguments: `{"unexpected":true}`},
+		{name: "Plan refusal", tool: "shell", arguments: `{"command":"printf denied > denied.txt","description":"Write denied file"}`, planMode: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			calls := 0
@@ -48,6 +52,12 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 					}
 					if committed == nil || !committed.IsError {
 						return nil, fmt.Errorf("rejection missing from durable history")
+					}
+					if test.planMode {
+						want := "plan mode is active (read-only): shell is not permitted. Continue investigating with read-only tools or request Plan approval before making changes."
+						if !reflect.DeepEqual(committed.Output, chat.NewTextToolOutput(want)) {
+							return nil, fmt.Errorf("Plan refusal lost its recovery instructions: %+v", committed.Output)
+						}
 					}
 					matches := 0
 					for _, message := range request.Messages {
@@ -87,6 +97,11 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
+			if test.planMode {
+				if err := stores.PermissionModes.PutMode(ctx, session.ID, approval.SessionMode{Mode: approval.ModePlan, RestoreMode: approval.ModeBalanced}); err != nil {
+					t.Fatal(err)
+				}
+			}
 			readHistory = func(ctx context.Context) ([]chat.Message, error) { return stores.ChatHistory.Read(ctx, session.ID) }
 			for range 2 {
 				started, events, err := api.StartRun(ctx, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "continue"}}})
@@ -109,12 +124,26 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 			found := false
 			for _, item := range items {
 				invocation, ok := item.ToolInvocation()
-				if ok && invocation.Name == test.tool && invocation.ArgumentsText == test.arguments {
+				if !ok || invocation.Name != test.tool {
+					continue
+				}
+				if test.planMode {
+					arguments, err := tool.ParseArguments(test.arguments)
+					if err != nil {
+						t.Fatal(err)
+					}
+					found = invocation.ArgumentsText == "" && invocation.Arguments.Equal(arguments)
+				} else if invocation.ArgumentsText == test.arguments {
 					found = true
 				}
 			}
 			if !found {
 				t.Fatal("rejected arguments were not preserved in durable transcript")
+			}
+			if test.planMode {
+				if _, err := os.Stat(filepath.Join(home, "denied.txt")); !os.IsNotExist(err) {
+					t.Fatalf("Plan refusal executed the write: %v", err)
+				}
 			}
 		})
 	}
