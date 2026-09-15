@@ -1,4 +1,5 @@
 import { ChatPanel } from "./panel";
+import { useWarmMarkdownRenderer } from "@/plugins/builtin/chat/message/public/rendering";
 import { SettingsPage } from "./SettingsPage";
 import { SidebarPanel } from "@/plugins/builtin/sidebar/public/SidebarPanel";
 import { useSendComposerInput } from "@/plugins/builtin/chat/composer/public/sendToAgent";
@@ -13,6 +14,7 @@ import { useDefaultChatSession } from "@/plugins/builtin/agent/public/defaultSes
 import { ComposerProjectTray } from "./panel/ProjectSelector";
 
 function KernelChat() {
+  useWarmMarkdownRenderer();
   useReconcilePersistedAgentSessions();
   useDefaultChatSession();
   const send = useSendComposerInput();

@@ -1,147 +1,32 @@
-import { memo, useDeferredValue, useEffect, useMemo, useRef } from "react";
-
-import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
-import rehypeKatex from "rehype-katex";
-import rehypeRaw from "rehype-raw";
-import remarkBreaks from "remark-breaks";
-import remarkCjkFriendly from "remark-cjk-friendly";
-import remarkGfm from "remark-gfm";
-import remarkAlert from "remark-github-blockquote-alert";
-import remarkMath from "remark-math";
-import remend from "remend";
-import { splitStreamingBlocks } from "./splitStreamingBlocks";
-import { createMarkdownComponents } from "./markdownComponents";
-import { isInlineMarkdownImage } from "./MarkdownImage";
-import { handleMarkdownCopy } from "./markdownSelectionCopy";
-import { ensureKatexCss } from "./katexCss";
-import { rehypeFadeIn } from "./rehypeFadeIn";
-import { rehypeFileRefs } from "./rehypeFileRefs";
-import { rehypeStreamCaret } from "./rehypeStreamCaret";
-import { normalizeMarkdownMath } from "./preprocess";
-import { remarkLiteralUnknownHtml } from "./remarkLiteralUnknownHtml";
-import { useCommitThrottle, useStreamReveal, type MarkdownReveal } from "./streamReveal";
+import { lazy, Suspense, useEffect } from "react";
+import type { MarkdownMessageProps } from "./MarkdownRenderer";
 import { useVisibleTextMaterial } from "../messageVisibleMaterial";
-import "remark-github-blockquote-alert/alert.css";
 
-const PARSE_COMMIT_MS = 33;
+const loadRenderer = () => import("./MarkdownRenderer");
 
-type Props = {
-  text: string;
-} & (
-  | {
-      reveal: "instant";
-      streaming?: false;
-    }
-  | {
-      reveal: Exclude<MarkdownReveal, "instant">;
-      streaming?: boolean;
-    }
-);
+const MarkdownRenderer = lazy(() => loadRenderer().then((m) => ({ default: m.MarkdownRenderer })));
 
-interface MarkdownBlockProps {
-  text: string;
-  streaming: boolean;
-  reveal: MarkdownReveal;
-}
-
-const remarkPlugins = [
-  remarkGfm,
-  remarkBreaks,
-  remarkCjkFriendly,
-  remarkMath,
-  remarkAlert,
-  remarkLiteralUnknownHtml,
-];
-
-const DENIED_HTML_TAGS = new Set(["script", "iframe", "object", "embed", "form"]);
-const allowElement = (el: { tagName: string }) => !DENIED_HTML_TAGS.has(el.tagName);
-
-const markdownUrlTransform: NonNullable<
-  React.ComponentProps<typeof ReactMarkdown>["urlTransform"]
-> = (value, _key, node) =>
-  node.tagName === "img" && isInlineMarkdownImage(value) ? value : defaultUrlTransform(value);
-
-export function MarkdownMessage(props: Props) {
-  const { text, reveal } = props;
-  // The props union already narrows `streaming` to false wherever `reveal` is "instant";
-  // re-deriving it here only hid that the type had settled it.
-  const streaming = props.streaming ?? false;
-  const instant = reveal === "instant";
-  const rootRef = useRef<HTMLDivElement>(null);
-  const display = useStreamReveal(text, streaming, reveal);
-
-  const committed = useCommitThrottle(display, streaming ? PARSE_COMMIT_MS : 0);
-
-  const deferred = useDeferredValue(committed);
-  const source = instant ? committed : deferred;
-  useVisibleTextMaterial(source === text);
-
-  const normalized = useMemo(() => normalizeMarkdownMath(source), [source]);
-
-  const repaired = useMemo(() => {
-    if (instant) return normalized;
-    return remend(normalized);
-  }, [instant, normalized]);
-
-  const blocks = useMemo(() => splitStreamingBlocks(repaired), [repaired]);
-  const lastIdx = blocks.length - 1;
-
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    const ownerDocument = root.ownerDocument;
-    const onCopy = (event: ClipboardEvent) => {
-      handleMarkdownCopy(root, event);
-    };
-    ownerDocument.addEventListener("copy", onCopy, true);
-    return () => ownerDocument.removeEventListener("copy", onCopy, true);
-  }, []);
-
+// Text that has not been laid out yet has not drained, and the actions a turn ends with wait
+// on that fact. Without this the fallback reports nothing and they materialise early.
+function PendingMarkdown({ text }: { text: string }) {
+  useVisibleTextMaterial(false);
   return (
-    <div ref={rootRef} className="md" dir="auto">
-      {blocks.map((block, i) => (
-        <MarkdownBlock
-          key={i}
-          text={block}
-          streaming={streaming && i === lastIdx}
-          reveal={reveal}
-        />
-      ))}
+    <div data-surface-pending="" className="md" dir="auto">
+      {text}
     </div>
   );
 }
 
-const MarkdownBlock = memo(function MarkdownBlock({ text, streaming, reveal }: MarkdownBlockProps) {
-  const hasMath = text.includes("$");
-  useEffect(() => {
-    if (hasMath) ensureKatexCss();
-  }, [hasMath]);
-
-  // A reveal is a property of the STREAM. Once the text has arrived every mode renders the
-  // same tree, so the settled case is one branch rather than three — `instant` cannot reach
-  // the others at all, because the props union narrows `streaming` to false beside it.
-  //
-  // It matters more than tidiness: a fade needs a wrapper per word, and those were kept
-  // after the fade was over. One long transcript carried 158 of them around text that never
-  // streamed in this session, which is markup for an animation that is not happening, and
-  // it lays a paragraph out as twenty independently positioned inline boxes instead of one
-  // text run.
-  const rehypePlugins = useMemo(() => {
-    if (!streaming) return [rehypeRaw, rehypeFileRefs, rehypeKatex];
-    if (reveal === "typewriter") return [rehypeRaw, rehypeKatex, rehypeStreamCaret];
-    return [rehypeRaw, rehypeFadeIn, rehypeKatex];
-  }, [reveal, streaming]);
-  const components = useMemo(() => createMarkdownComponents(text), [text]);
-
+export function MarkdownMessage(props: MarkdownMessageProps) {
   return (
-    <ReactMarkdown
-      remarkPlugins={remarkPlugins}
-      rehypePlugins={rehypePlugins}
-      components={components}
-      allowElement={allowElement}
-      urlTransform={markdownUrlTransform}
-    >
-      {text}
-    </ReactMarkdown>
+    <Suspense fallback={<PendingMarkdown text={props.text} />}>
+      <MarkdownRenderer {...props} />
+    </Suspense>
   );
-});
+}
+
+export function useWarmMarkdownRenderer(): void {
+  useEffect(() => {
+    void loadRenderer();
+  }, []);
+}

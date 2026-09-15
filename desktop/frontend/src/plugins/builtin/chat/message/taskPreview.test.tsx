@@ -23,7 +23,7 @@ afterEach(async () => {
 });
 
 describe("delegated reply preview", () => {
-  it("renders the full reply as prose, including material after the ninth line", () => {
+  it("renders the full reply as prose, including material after the ninth line", async () => {
     const paragraphs = Array.from({ length: 20 }, (_, index) => `Finding ${index + 1}.`);
     render(
       <ToolCard
@@ -33,7 +33,7 @@ describe("delegated reply preview", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Audit reply" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Audit reply" })).toBeTruthy();
     expect(screen.getByText("Finding 20.")).toBeTruthy();
     expect(screen.getByRole("region", { name: tool.fn }).tabIndex).toBe(0);
     expect(screen.queryByRole("button", { name: "View full reply" })).toBeNull();

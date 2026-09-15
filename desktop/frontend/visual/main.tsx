@@ -214,7 +214,7 @@ function shellArrived(deadlineMs: number): Promise<void> {
   return new Promise((resolve) => {
     const expiry = performance.now() + deadlineMs;
     const check = () => {
-      const pending = rootElement.querySelector("[data-workspace-view-pending]");
+      const pending = rootElement.querySelector("[data-surface-pending]");
       if (!pending || performance.now() > expiry) resolve();
       else requestAnimationFrame(check);
     };

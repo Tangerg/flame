@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MESSAGE_CONTENT_CLASS } from "../messageContent";
-import { MarkdownMessage } from "../markdown/MarkdownMessage";
+import { MarkdownRenderer } from "../markdown/MarkdownRenderer";
 import { ImageBlock } from "./ImageBlock";
 
 const mocks = vi.hoisted(() => ({
@@ -68,7 +68,10 @@ describe("ImageBlock", () => {
     render(
       <div className={MESSAGE_CONTENT_CLASS}>
         <ImageBlock mime="image/png" data={FIRST_PNG} />
-        <MarkdownMessage text={`![Inline](data:image/gif;base64,${SECOND_GIF})`} reveal="instant" />
+        <MarkdownRenderer
+          text={`![Inline](data:image/gif;base64,${SECOND_GIF})`}
+          reveal="instant"
+        />
       </div>,
     );
 

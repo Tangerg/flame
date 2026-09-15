@@ -1,7 +1,7 @@
 import { act, render } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { getHighlighter } from "@/lib/highlight/shiki";
-import { MarkdownMessage } from "./MarkdownMessage";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 const CASES: readonly [name: string, markdown: string][] = [
   ["plain text", "Hello world here"],
@@ -37,7 +37,7 @@ describe("rehypeStreamCaret", () => {
     const trailing: string[] = [];
     for (const [name, markdown] of CASES) {
       const { container, unmount } = render(
-        <MarkdownMessage text={markdown} streaming reveal="typewriter" />,
+        <MarkdownRenderer text={markdown} streaming reveal="typewriter" />,
       );
       for (let frame = 0; frame < FRAMES; frame += 1) {
         act(() => void vi.advanceTimersByTime(16));

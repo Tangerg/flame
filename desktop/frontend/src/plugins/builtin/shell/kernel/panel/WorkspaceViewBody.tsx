@@ -28,7 +28,7 @@ export function WorkspaceViewBody({ viewId }: Props) {
           measure a skeleton as a missing surface. */}
       <Suspense
         fallback={
-          <div data-workspace-view-pending="">
+          <div data-surface-pending="">
             <SkeletonList count={6} label={t("common.loading")} />
           </div>
         }

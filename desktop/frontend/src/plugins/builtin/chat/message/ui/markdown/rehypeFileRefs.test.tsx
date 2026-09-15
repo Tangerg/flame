@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { beforeAll, describe, expect, it } from "vitest";
 import { getHighlighter } from "@/lib/highlight/shiki";
-import { MarkdownMessage } from "./MarkdownMessage";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 const CASES: readonly [name: string, markdown: string, linked: boolean][] = [
   ["a bare path", "Edited src/foo.ts:12 today", true],
@@ -23,7 +23,7 @@ describe("rehypeFileRefs", () => {
     let controls = 0;
 
     for (const [name, markdown, linked] of CASES) {
-      const { container, unmount } = render(<MarkdownMessage text={markdown} reveal="instant" />);
+      const { container, unmount } = render(<MarkdownRenderer text={markdown} reveal="instant" />);
 
       const own = container.querySelectorAll("button").length;
       controls += own;
