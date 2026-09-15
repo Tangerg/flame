@@ -8,13 +8,12 @@ import { projectGlobPreview } from "@/plugins/builtin/chat/tools/application/spe
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
 import { previewStyles as pv } from "./previewStyles";
-import { TEXT_PREVIEW } from "./previewChrome";
-import { vocab } from "@/ui";
+import { TextPreview, vocab } from "@/ui";
 
 function GlobPreview({ tool, onOpenView }: ToolPreviewProps) {
   const { paths } = projectGlobPreview(tool.result);
   return (
-    <div {...stylex.props(TEXT_PREVIEW)}>
+    <TextPreview>
       {paths.length === 0 && (
         <PreviewPlaceholder
           status={tool.status}
@@ -32,7 +31,7 @@ function GlobPreview({ tool, onOpenView }: ToolPreviewProps) {
       ))}
       <PreviewOverflow count={paths.length - INLINE_PREVIEW_ROW_LIMIT} />
       <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
-    </div>
+    </TextPreview>
   );
 }
 

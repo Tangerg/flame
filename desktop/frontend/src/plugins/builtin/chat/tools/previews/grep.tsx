@@ -11,8 +11,7 @@ import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
 
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { previewStyles as pv } from "./previewStyles";
-import { TEXT_PREVIEW } from "./previewChrome";
-import { gap, vocab } from "@/ui";
+import { gap, TextPreview, vocab } from "@/ui";
 
 const gp = stylex.create({
   head: { display: "flex", alignItems: "baseline", gap: space.s2 },
@@ -37,7 +36,7 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
   const t = useT();
   const { shown, overflow } = useGrepToolPreview(tool, MAX_GREP_MATCHES);
   return (
-    <div {...stylex.props(TEXT_PREVIEW)}>
+    <TextPreview>
       <div {...stylex.props(vocab.column, gap.s1_5)}>
         {groupByFile(shown).map((group) => (
           <div key={group.file}>
@@ -70,7 +69,7 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
         )}
       </div>
       <PreviewFoot label="tools.preview.viewMatches" onClick={onOpenView} />
-    </div>
+    </TextPreview>
   );
 }
 

@@ -12,8 +12,7 @@ import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPrevi
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
 import { space } from "@/styles/tokens.stylex";
 import { previewStyles as pv } from "./previewStyles";
-import { TEXT_PREVIEW } from "./previewChrome";
-import { vocab } from "@/ui";
+import { TextPreview, vocab } from "@/ui";
 
 const rc = stylex.create({
   memory: { display: "flex", gap: space.s2_5 },
@@ -26,17 +25,17 @@ function MemoryRecallPreview({ tool }: ToolPreviewProps) {
   const memories = projectRecalledMemories(tool.result);
   if (memories.length === 0) {
     return (
-      <div {...stylex.props(TEXT_PREVIEW)}>
+      <TextPreview>
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.recalling"
           idle="tools.preview.idle.noMemories"
         />
-      </div>
+      </TextPreview>
     );
   }
   return (
-    <div {...stylex.props(TEXT_PREVIEW)}>
+    <TextPreview>
       {memories.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((memory, i) => (
         <div key={i} className={stylex.props(rc.memory, pv.row, pv.rowPad).className}>
           <span {...stylex.props(vocab.hold, vocab.figures, vocab.faint)}>{i + 1}</span>
@@ -44,7 +43,7 @@ function MemoryRecallPreview({ tool }: ToolPreviewProps) {
         </div>
       ))}
       <PreviewOverflow count={memories.length - INLINE_PREVIEW_ROW_LIMIT} />
-    </div>
+    </TextPreview>
   );
 }
 
@@ -52,17 +51,17 @@ function ConversationRecallPreview({ tool }: ToolPreviewProps) {
   const hits = projectConversationHits(tool.result);
   if (hits.length === 0) {
     return (
-      <div {...stylex.props(TEXT_PREVIEW)}>
+      <TextPreview>
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.recalling"
           idle="tools.preview.idle.noConversations"
         />
-      </div>
+      </TextPreview>
     );
   }
   return (
-    <div {...stylex.props(TEXT_PREVIEW)}>
+    <TextPreview>
       {hits.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((hit, i) => (
         <div key={i} className={stylex.props(rc.hit, pv.row, pv.rowPad).className}>
           {/* The pair used to truncate as one string, and what it cut was the DAY —
@@ -81,7 +80,7 @@ function ConversationRecallPreview({ tool }: ToolPreviewProps) {
         </div>
       ))}
       <PreviewOverflow count={hits.length - INLINE_PREVIEW_ROW_LIMIT} />
-    </div>
+    </TextPreview>
   );
 }
 

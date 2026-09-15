@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { TextPreview } from "@/ui";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -10,7 +11,6 @@ import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPrevi
 import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
 import { PreviewOverflow } from "./previewChrome";
 import { previewStyles as pv } from "./previewStyles";
-import { TEXT_PREVIEW } from "./previewChrome";
 
 const MAX_WEB_RESULTS = 8;
 
@@ -18,13 +18,13 @@ function WebSearchPreview({ tool, onOpenView }: ToolPreviewProps) {
   const results = projectWebSearchPreview(tool.result);
   if (results.length === 0) {
     return (
-      <div {...stylex.props(TEXT_PREVIEW)}>
+      <TextPreview>
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.searching"
           idle="tools.preview.idle.noResults"
         />
-      </div>
+      </TextPreview>
     );
   }
   return (

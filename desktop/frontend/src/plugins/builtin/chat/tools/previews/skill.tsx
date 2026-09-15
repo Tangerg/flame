@@ -8,10 +8,9 @@ import { projectSkillPreview } from "@/plugins/builtin/chat/tools/application/sp
 import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResultParsing";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
-import { Tag, vocab } from "@/ui";
+import { Tag, TextPreview, vocab } from "@/ui";
 import { space, type as typeStep } from "@/styles/tokens.stylex";
 import { previewStyles as pv } from "./previewStyles";
-import { TEXT_PREVIEW } from "./previewChrome";
 
 const sk = stylex.create({
   row: { display: "flex", alignItems: "baseline", gap: space.s2 },
@@ -21,17 +20,17 @@ function SkillCatalogPreview({ tool, onOpenView }: ToolPreviewProps) {
   const entries = projectSkillPreview(tool.result);
   if (entries.length === 0) {
     return (
-      <div {...stylex.props(TEXT_PREVIEW)}>
+      <TextPreview>
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.loadingTools"
           idle="tools.preview.idle.noTools"
         />
-      </div>
+      </TextPreview>
     );
   }
   return (
-    <div {...stylex.props(TEXT_PREVIEW)}>
+    <TextPreview>
       {entries.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((s) => (
         <div key={s.name} className={stylex.props(sk.row, pv.row, pv.rowPad).className}>
           <Tag size="sm">{s.name}</Tag>
@@ -40,14 +39,14 @@ function SkillCatalogPreview({ tool, onOpenView }: ToolPreviewProps) {
       ))}
       <PreviewOverflow count={entries.length - INLINE_PREVIEW_ROW_LIMIT} />
       <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
-    </div>
+    </TextPreview>
   );
 }
 
 function SkillTextPreview({ tool, onOpenView }: ToolPreviewProps) {
   const lines = resultLines(tool.result);
   return (
-    <div {...stylex.props(TEXT_PREVIEW)}>
+    <TextPreview>
       {lines.length > 0 ? (
         <div {...stylex.props(pv.wrapWords, vocab.soft)}>
           {lines.slice(0, INLINE_PREVIEW_ROW_LIMIT).join("\n")}
@@ -61,7 +60,7 @@ function SkillTextPreview({ tool, onOpenView }: ToolPreviewProps) {
       )}
       <PreviewOverflow count={lines.length - INLINE_PREVIEW_ROW_LIMIT} />
       <PreviewFoot label="tools.preview.viewText" onClick={onOpenView} />
-    </div>
+    </TextPreview>
   );
 }
 

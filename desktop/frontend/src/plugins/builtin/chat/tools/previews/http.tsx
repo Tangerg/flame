@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import type { Tone } from "@/lib/tone";
-import { Badge, vocab, Well } from "@/ui";
+import { Badge, TextPreview, vocab, Well } from "@/ui";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { ToolOutputPanel } from "@/plugins/builtin/chat/tools/public/previews/ToolOutputPanel";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -13,7 +13,6 @@ import {
   projectHttpPreview,
 } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { TEXT_PREVIEW } from "./previewChrome";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { previewStyles as pv } from "./previewStyles";
 
@@ -36,13 +35,13 @@ function HttpRequestPreview({ tool, onOpenView }: ToolPreviewProps) {
   const response = projectHttpPreview(tool.result);
   if (!response) {
     return (
-      <div {...stylex.props(TEXT_PREVIEW)}>
+      <TextPreview>
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.requesting"
           idle="tools.preview.idle.noResponse"
         />
-      </div>
+      </TextPreview>
     );
   }
   return (
@@ -76,13 +75,13 @@ function WebFetchPreview({ tool, onOpenView }: ToolPreviewProps) {
   const page = projectFetchedPage(tool.result);
   if (!page) {
     return (
-      <div {...stylex.props(TEXT_PREVIEW)}>
+      <TextPreview>
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.fetching"
           idle="tools.preview.idle.noPage"
         />
-      </div>
+      </TextPreview>
     );
   }
   return (

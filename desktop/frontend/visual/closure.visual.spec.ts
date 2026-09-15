@@ -1385,6 +1385,32 @@ for (const route of ACCESSIBILITY_ROUTES.filter((candidate) => candidate.theme =
   });
 }
 
+const TRANSCRIPT_CLIPPED_TARGET: readonly WcagException[] = (
+  ["target-size", "target-offset"] as const
+).map((rule) => ({
+  rule,
+  within: ".msg-scroll-viewport",
+  because:
+    "a 33px disclosure trigger half-scrolled past the top of its own scrollport measures as a 16px target; the control is full size and a scroll brings it back",
+}));
+
+for (const state of ["waves", "tool-shells", "tool-search", "tool-tail"] as const) {
+  test(`WCAG audit agent ${state} with every disclosure open at the largest UI size`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1120, height: 720 });
+    await openFixture(page, { fixture: "agent", state, fontSize: 18 });
+
+    for (let round = 0; round < 4; round += 1) {
+      const shut = await page.locator('[aria-expanded="false"]:visible').all();
+      if (shut.length === 0) break;
+      for (const toggle of shut) await toggle.click({ timeout: 2_000 }).catch(() => undefined);
+    }
+
+    await expectNoWcagViolations(page, TRANSCRIPT_CLIPPED_TARGET);
+  });
+}
+
 for (const state of ["narrative", "long-content", "tool-shells"] as const) {
   test(`nothing shows through the composer in ${state}`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });

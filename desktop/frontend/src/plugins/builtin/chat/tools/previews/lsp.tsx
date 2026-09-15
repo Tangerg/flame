@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { Tone } from "@/lib/tone";
-import { toneInk, vocab } from "@/ui";
+import { TextPreview, toneInk, vocab } from "@/ui";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -11,7 +11,6 @@ import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPrevi
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
 import { space, type as typeStep } from "@/styles/tokens.stylex";
 import { previewStyles as pv } from "./previewStyles";
-import { TEXT_PREVIEW } from "./previewChrome";
 
 const ls = stylex.create({
   pair: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: space.s3 },
@@ -20,7 +19,7 @@ const ls = stylex.create({
 function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
   const rows = resultLines(tool.result);
   return (
-    <div {...stylex.props(TEXT_PREVIEW)}>
+    <TextPreview>
       {rows.length === 0 && (
         <PreviewPlaceholder
           status={tool.status}
@@ -51,14 +50,14 @@ function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
       })}
       <PreviewOverflow count={rows.length - INLINE_PREVIEW_ROW_LIMIT} />
       <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
-    </div>
+    </TextPreview>
   );
 }
 
 function LspHoverPreview({ tool, onOpenView }: ToolPreviewProps) {
   const text = tool.result?.trim();
   return (
-    <div {...stylex.props(TEXT_PREVIEW, pv.wrapWords, vocab.soft)}>
+    <TextPreview wrap="words" ink="soft">
       {text || (
         <PreviewPlaceholder
           status={tool.status}
@@ -67,7 +66,7 @@ function LspHoverPreview({ tool, onOpenView }: ToolPreviewProps) {
         />
       )}
       <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
-    </div>
+    </TextPreview>
   );
 }
 
@@ -82,7 +81,7 @@ const SEVERITY_TONE = new Map<string, Tone>([
 function LspDiagnosticsPreview({ tool, onOpenView }: ToolPreviewProps) {
   const rows = resultLines(tool.result);
   return (
-    <div {...stylex.props(TEXT_PREVIEW)}>
+    <TextPreview>
       {rows.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((row, i) => {
         const space = row.indexOf(" ");
         const severity = space === -1 ? "" : row.slice(0, space);
@@ -103,7 +102,7 @@ function LspDiagnosticsPreview({ tool, onOpenView }: ToolPreviewProps) {
       })}
       <PreviewOverflow count={rows.length - INLINE_PREVIEW_ROW_LIMIT} />
       <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
-    </div>
+    </TextPreview>
   );
 }
 

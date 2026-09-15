@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
-import { Badge, vocab } from "@/ui";
+import { Badge, TextPreview, vocab } from "@/ui";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
@@ -9,7 +9,6 @@ import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPrevi
 
 import { space, type as typeStep } from "@/styles/tokens.stylex";
 import { previewStyles as pv } from "./previewStyles";
-import { TEXT_PREVIEW } from "./previewChrome";
 
 const ts = stylex.create({
   // A tool search can return dozens: the list scrolls rather than pushing the transcript.
@@ -24,13 +23,13 @@ function ToolSearchPreview({ tool }: ToolPreviewProps) {
   const groups = projectToolSearchGroups(tool.result);
   if (groups.length === 0) {
     return (
-      <div {...stylex.props(TEXT_PREVIEW)}>
+      <TextPreview>
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.loadingTools"
           idle="tools.preview.idle.noTools"
         />
-      </div>
+      </TextPreview>
     );
   }
   return (

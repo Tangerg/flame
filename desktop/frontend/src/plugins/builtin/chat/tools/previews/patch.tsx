@@ -9,9 +9,8 @@ import { projectPatchChanges, type PatchChange } from "@/plugins/builtin/agent/p
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
 import type { ToolFileChange } from "@/plugins/sdk/types/agentSessionView";
-import { DiffStat, FilePath, vocab } from "@/ui";
+import { DiffStat, FilePath, TextPreview, vocab } from "@/ui";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
-import { TEXT_PREVIEW } from "./previewChrome";
 import { color, leading, space, type as typeStep } from "@/styles/tokens.stylex";
 
 const pt = stylex.create({
@@ -90,7 +89,7 @@ export function ApplyPatchPreview({ tool, onOpenView }: ToolPreviewProps) {
   const proposed = tool.status === "running" ? (tool.changes ?? []) : [];
   const rows = changes.length > 0 ? changes.length : proposed.length;
   return (
-    <div {...stylex.props(TEXT_PREVIEW)}>
+    <TextPreview>
       {rows === 0 && (
         <PreviewPlaceholder
           status={tool.status}
@@ -116,7 +115,7 @@ export function ApplyPatchPreview({ tool, onOpenView }: ToolPreviewProps) {
       ))}
       <PreviewOverflow count={rows - INLINE_PREVIEW_ROW_LIMIT} />
       <PreviewFoot label="tools.preview.openDiff" onClick={onOpenView} />
-    </div>
+    </TextPreview>
   );
 }
 

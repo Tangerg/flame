@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { color, leading, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { useScrollReach } from "./use-scroll-reach";
 
 // A recessed block of text the system produced verbatim: a tool's output, a command awaiting
 // approval, a JSON schema, a stack trace.
@@ -69,5 +70,12 @@ export function Well({
     styles[wrap],
     CAP[cap],
   );
-  return <Element {...props} {...styled} className={cn(styled.className, className)} />;
+  return (
+    <Element
+      {...props}
+      {...useScrollReach()}
+      {...styled}
+      className={cn(styled.className, className)}
+    />
+  );
 }

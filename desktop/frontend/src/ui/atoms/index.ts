@@ -44,6 +44,7 @@ export { SystemMessage } from "./system-message";
 export { Tag } from "./tag";
 export { TextArea, TextField } from "./text-field";
 export { TextEditorDialog } from "./text-editor-dialog";
+export { TextPreview } from "./text-preview";
 export { TextButton } from "./text-button";
 export { Slider } from "./slider";
 export { AnsiText } from "./ansi-text";

@@ -6,15 +6,13 @@ import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectAskUserAnswer } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 
-import { TEXT_PREVIEW } from "./previewChrome";
-import { previewStyles as pv } from "./previewStyles";
-import { vocab } from "@/ui";
+import { TextPreview, vocab } from "@/ui";
 
 function AskUserPreview({ tool }: ToolPreviewProps) {
   const t = useT();
   const answer = projectAskUserAnswer(tool.result);
   return (
-    <div {...stylex.props(TEXT_PREVIEW, pv.wrapWords)}>
+    <TextPreview wrap="words">
       {answer ? (
         <>
           <span {...stylex.props(vocab.faint)}>{t("tool.askUser.answerPrefix")}</span>
@@ -23,7 +21,7 @@ function AskUserPreview({ tool }: ToolPreviewProps) {
       ) : (
         <span {...stylex.props(vocab.faint)}>{t("tool.askUser.waiting")}</span>
       )}
-    </div>
+    </TextPreview>
   );
 }
 
