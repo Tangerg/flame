@@ -388,10 +388,16 @@
      preference is named for surface separation, and the surfaces are what it should flatten;
      at its lowest setting it was also taking the only signal a session row has for "this is
      the one that is open" down to a 1.04 contrast ratio — 4 levels out of 255 in light, which
-     is at the edge of being visible at all. The ladder still walks the whole range. */
+     is at the edge of being visible at all. The ladder still walks the whole range.
+
+     The two multipliers below are read off the products this one is measured against. Codex
+     lays 10% of its foreground over a ghost control on hover and 20% on press; zcode ships
+     `#0d0d0d0d` for hover and `#0a0a0a1a` for selected — 5.1% and 10.2%. They disagree on the
+     level and agree exactly on the SHAPE: selected is twice hover. This design had 0.75 and 1,
+     a ratio of 1.33, which is why a hovered row and the open one were hard to tell apart. */
   --wash-step: max(3%, var(--depth-step));
-  --wash-hover: color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 0.75), transparent);
-  --wash-selected: color-mix(in srgb, var(--color-text) var(--wash-step), transparent);
+  --wash-hover: color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 1.25), transparent);
+  --wash-selected: color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 2.5), transparent);
 
   /* An ink wash is ink laid OVER what is there, and `background-color` holds one value — so a
      wash written into it REPLACES the resting fill rather than compositing with it. Measured
@@ -403,12 +409,12 @@
      two washes composite to, not a chosen strength. */
   --wash-selected-hover: color-mix(
     in srgb,
-    var(--color-text) calc(var(--wash-step) * 1.75),
+    var(--color-text) calc(var(--wash-step) * 3.75),
     transparent
   );
   --color-sunken-hover: color-mix(
     in oklab,
-    var(--color-text) calc(var(--wash-step) * 0.75),
+    var(--color-text) calc(var(--wash-step) * 1.25),
     var(--color-sunken)
   );
 
@@ -697,7 +703,7 @@
      hover audit did not see it. */
   --dock-tab-active-hover-surface: color-mix(
     in oklab,
-    var(--color-text) calc(var(--wash-step) * 0.75),
+    var(--color-text) calc(var(--wash-step) * 1.25),
     var(--dock-tab-active-surface)
   );
   --app-card-surface: var(--color-elevated);
@@ -905,6 +911,13 @@ html.theme-dark body {
   background: var(--color-bg);
 }
 html.theme-dark {
+  /* The surface ladder doubles in dark, because a step of white on a dark plane separates
+     less than the same step of black on a light one. Interaction ink does not: it is laid
+     over whatever is there rather than building a plane, and doubling it made a hovered row
+     in dark twice the ink of the same row in light. zcode ships one alpha for both schemes —
+     `#0d0d0d0d` and `#ffffff0d` — and that is the right reading. */
+  --wash-step: max(3%, calc(var(--depth-step) / 2));
+
   --color-accent: #3574f0;
   --color-accent-border: #115beb;
   --color-accent-press: #0f4cc5;
@@ -930,10 +943,14 @@ html.theme-dark {
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
     #aaaeb5
   );
+  /* Measured against the brightest plane it lands on, which is a SELECTED row and not the
+     canvas: 10% of the ink over `--color-bg` is #313337, and #95999f reads 4.42 there. The
+     ladder's own tracking only starts contributing above the default contrast, so the default
+     is where a step has to have its own margin. */
   --color-text-faint: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
-    #95999f
+    #9da1a7
   );
   --color-text-on-accent: #ffffff;
   --color-text-on-warning: #000000;

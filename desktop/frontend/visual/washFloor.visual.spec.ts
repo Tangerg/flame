@@ -4,9 +4,15 @@ import { expect, test } from "./test";
 const CONTRAST = [0, 12, 25, 50, 100] as const;
 
 // Measured in 8-bit channels against the surface the row sits on. Around 4 is where a flat
-// fill of this size stops being visible at all; the floor buys the low end 4.9 and 6.5.
-const MIN_HOVER = 4.5;
-const MIN_SELECTED = 6;
+// fill of this size stops being visible at all; the floor holds the low end at 8.1 and 16.2.
+const MIN_HOVER = 6;
+const MIN_SELECTED = 12;
+
+// Codex lays 10% of its foreground over a ghost control on hover and 20% on press; zcode ships
+// 5.1% for hover and 10.2% for selected. They disagree on the level and agree exactly on this:
+// the open row is twice the ink of the one under the pointer. Anything nearer than 1.7 and the
+// two states stop being two states.
+const MIN_RATIO = 1.7;
 
 const READ = `() => {
   // A fresh element per token, painted through cssText: re-assigning \`style.backgroundColor\`
@@ -45,6 +51,10 @@ for (const theme of ["light", "dark"] as const) {
       }
       if (measured.selected < MIN_SELECTED) {
         faint.push(`${theme} contrast=${contrast} selected ${measured.selected.toFixed(1)}/255`);
+      }
+      const ratio = measured.selected / measured.hover;
+      if (ratio < MIN_RATIO) {
+        faint.push(`${theme} contrast=${contrast} selected is only ${ratio.toFixed(2)}x hover`);
       }
     }
 
