@@ -8,15 +8,6 @@ export interface LoaderProps {
   text?: string;
 }
 
-/**
- * Waiting, said one way.
- *
- * No live region of its own: `RunAnnouncer` is the one owner of "what is the run doing", and a
- * region a reader first meets already carrying a message announces nothing.
- *
- * A caller that needs to reach in takes `styles?: StyleXArray<…>` like every other atom, which
- * composes inside one `stylex.props()` call instead of racing it on bundle order.
- */
 const styles = stylex.create({
   root: {
     display: "inline-block",
@@ -26,11 +17,8 @@ const styles = stylex.create({
     backgroundSize: "200% 100%",
     backgroundClip: "text",
     color: "transparent",
-    animation: motion.shimmer,
-  },
-  // Not `animation: none`: the token carries a duration that already tracks `--motion-scale`,
-  // and the reduced-motion answer is to stop moving, not to unset what is playing.
-  still: {
+    // Not `animation: none`: the token carries a duration that already tracks `--motion-scale`,
+    // and the reduced-motion answer is to stop moving, not to unset what is playing.
     animation: {
       default: motion.shimmer,
       "@media (prefers-reduced-motion: reduce)": "none",
@@ -40,9 +28,15 @@ const styles = stylex.create({
 
 const SIZE = { sm: type.uiXs, md: type.uiSm, lg: type.uiMd } as const;
 
+/**
+ * Waiting, said one way.
+ *
+ * No live region of its own: `RunAnnouncer` is the one owner of "what is the run doing", and a
+ * region a reader first meets already carrying a message announces nothing.
+ */
 export function Loader({ size = "md", text: label = "Thinking" }: LoaderProps) {
   return (
-    <span data-slot="loader" {...stylex.props(styles.root, styles.still, SIZE[size])}>
+    <span data-slot="loader" {...stylex.props(styles.root, SIZE[size])}>
       {label}
     </span>
   );

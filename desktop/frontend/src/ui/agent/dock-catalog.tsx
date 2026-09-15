@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { color, space, type, weight } from "@/styles/tokens.stylex";
 import type { CatalogPickerGroup } from "@/ui/atoms";
+import { HoverTrack } from "@/ui/atoms/hover-track";
 import { AgentRow } from "./navigation-row";
 
 const styles = stylex.create({
@@ -42,22 +43,24 @@ export function AgentDockCatalog({
   return (
     <div {...stylex.props(styles.port)}>
       <div {...stylex.props(styles.title, type.uiXs)}>{title}</div>
-      {groups.map((group) => (
-        <section key={group.id} {...stylex.props(styles.group)}>
-          <div {...stylex.props(styles.groupLabel, type.ui2xs)}>{group.label}</div>
-          {group.items.map((item) => (
-            <AgentRow
-              key={item.id}
-              icon={item.icon}
-              detail={typeof item.description === "string" ? item.description : undefined}
-              active={item.active}
-              onClick={() => onSelect(item.id)}
-            >
-              {item.label}
-            </AgentRow>
-          ))}
-        </section>
-      ))}
+      <HoverTrack>
+        {groups.map((group) => (
+          <section key={group.id} {...stylex.props(styles.group)}>
+            <div {...stylex.props(styles.groupLabel, type.ui2xs)}>{group.label}</div>
+            {group.items.map((item) => (
+              <AgentRow
+                key={item.id}
+                icon={item.icon}
+                detail={typeof item.description === "string" ? item.description : undefined}
+                active={item.active}
+                onClick={() => onSelect(item.id)}
+              >
+                {item.label}
+              </AgentRow>
+            ))}
+          </section>
+        ))}
+      </HoverTrack>
     </div>
   );
 }

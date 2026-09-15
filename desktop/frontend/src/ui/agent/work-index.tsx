@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
+import { HoverTrack } from "@/ui/atoms/hover-track";
 import { ScrollArea } from "@/ui/atoms/scroll-area";
 
 const styles = stylex.create({
@@ -33,7 +34,7 @@ export function AgentWorkIndexBody({ children }: { children: ReactNode }) {
       hideScrollbar
       className={cn("agent-index-scroll", stylex.props(styles.scroll).className)}
     >
-      <div {...stylex.props(styles.sections)}>{children}</div>
+      <HoverTrack styles={styles.sections}>{children}</HoverTrack>
     </ScrollArea>
   );
 }

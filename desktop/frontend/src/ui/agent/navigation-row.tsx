@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { Button, Icon, reveal, type ButtonProps, type IconName } from "@/ui";
+import { HoverHighlight, useHoverTrackItem } from "@/ui/atoms/hover-track";
 import { Tooltip } from "@/ui/atoms/tooltip";
 import { color, leading, motion, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { AgentOverflowLabel } from "./overflow-label";
@@ -24,6 +25,17 @@ const rowStyles = stylex.create({
     },
     transitionProperty: "background-color, color",
     transitionDuration: "var(--dur-color)",
+  },
+  tracked: {
+    backgroundColor: {
+      default: "transparent",
+      ":hover": "transparent",
+      ":focus-visible": surface.hover,
+      ":is([data-active])": surface.selected,
+      ":is([data-active]):is(:hover, :focus-visible)": surface.selected,
+    },
+    position: "relative",
+    isolation: "isolate",
   },
   stacked: {
     height: "auto",
@@ -104,6 +116,8 @@ export function AgentRow({
   type = "button",
   ...props
 }: AgentRowProps) {
+  const trackItem = useHoverTrackItem();
+  const track = look === "search" ? null : trackItem;
   const overflowText = revealOverflow && typeof children === "string" ? children : undefined;
   // `truncate-fade` is the mask, and it has to SURVIVE: spreading `stylex.props` after a
   // `className` replaces it, which drops the clip and lets the label push the row wide.
@@ -117,6 +131,10 @@ export function AgentRow({
       size="sm"
       shape="row"
       active={active}
+      onPointerEnter={(event) => {
+        props.onPointerEnter?.(event);
+        track?.onPointerEnter();
+      }}
       styles={[
         rowStyles.base,
         typeStep.uiMd,
@@ -125,10 +143,12 @@ export function AgentRow({
         action ? rowStyles.actioned : null,
         look !== "row" && rowStyles.quiet,
         look === "search" && rowStyles.search,
+        track ? rowStyles.tracked : null,
         callerStyles,
       ]}
       className={cn("agent-row", className)}
     >
+      {track?.hovered && <HoverHighlight item={track} />}
       {icon && (
         <Icon
           name={icon}

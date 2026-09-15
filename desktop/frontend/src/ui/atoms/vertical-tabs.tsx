@@ -13,6 +13,7 @@ import {
 } from "@/styles/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 import { TabsPrimitive } from "@/ui/primitives";
+import { HoverHighlight, HoverTrack, useHoverTrackItem } from "./hover-track";
 import { SectionLabel } from "./section-label";
 
 interface VerticalTabItem {
@@ -63,11 +64,13 @@ const styles = stylex.create({
     gap: "var(--density-row-gap)",
     borderRadius: radius.button,
     borderWidth: 0,
+    position: "relative",
+    isolation: "isolate",
     backgroundColor: {
       default: "transparent",
-      ":hover": surface.hover,
+      ":hover": "transparent",
       ":is([data-active])": surface.selected,
-      ":is([data-active]):hover": surface.selectedHover,
+      ":is([data-active]):hover": surface.selected,
     },
     paddingInline: space.s2,
     textAlign: "left",
@@ -79,6 +82,7 @@ const styles = stylex.create({
     transitionDuration: motion.color,
     transitionTimingFunction: "var(--ease-out)",
   },
+  highlight: { borderRadius: radius.button },
   glyph: { flexShrink: 0 },
   label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   page: { minHeight: 0, minWidth: 0, overflowY: "auto", backgroundColor: surface.canvas },
@@ -90,6 +94,21 @@ const styles = stylex.create({
   },
   heading: { paddingInline: space.s2, paddingBottom: space.s1, paddingTop: space.s4 },
 });
+
+function RailTab({ item }: { item: VerticalTabItem }) {
+  const track = useHoverTrackItem();
+  return (
+    <TabsPrimitive.Tab
+      value={item.id}
+      onPointerEnter={track?.onPointerEnter}
+      {...stylex.props(styles.tab, type.uiMd)}
+    >
+      {track?.hovered && <HoverHighlight item={track} styles={styles.highlight} />}
+      {item.icon && <Icon name={item.icon} size="md" {...stylex.props(styles.glyph)} />}
+      <span {...stylex.props(styles.label)}>{item.label}</span>
+    </TabsPrimitive.Tab>
+  );
+}
 
 export function VerticalTabs({
   ariaLabel,
@@ -119,21 +138,16 @@ export function VerticalTabs({
       <div data-split-side="end" {...rail} className={cn(rail.className, "pane-split")}>
         {railHeader}
         <TabsPrimitive.List {...stylex.props(styles.list)} aria-label={ariaLabel} activateOnFocus>
-          {groups.map((group) => (
-            <div key={group.id} {...stylex.props(styles.group)}>
-              <SectionLabel {...stylex.props(styles.heading)}>{group.label}</SectionLabel>
-              {group.items.map((item) => (
-                <TabsPrimitive.Tab
-                  key={item.id}
-                  value={item.id}
-                  {...stylex.props(styles.tab, type.uiMd)}
-                >
-                  {item.icon && <Icon name={item.icon} size="md" {...stylex.props(styles.glyph)} />}
-                  <span {...stylex.props(styles.label)}>{item.label}</span>
-                </TabsPrimitive.Tab>
-              ))}
-            </div>
-          ))}
+          <HoverTrack>
+            {groups.map((group) => (
+              <div key={group.id} {...stylex.props(styles.group)}>
+                <SectionLabel {...stylex.props(styles.heading)}>{group.label}</SectionLabel>
+                {group.items.map((item) => (
+                  <RailTab key={item.id} item={item} />
+                ))}
+              </div>
+            ))}
+          </HoverTrack>
         </TabsPrimitive.List>
       </div>
       <div {...stylex.props(styles.page)}>
