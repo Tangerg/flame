@@ -536,7 +536,9 @@ func TestInteractionTerminationMappingIsComplete(t *testing.T) {
 		{name: "host cancellation", status: "canceled", cause: "host_cancellation", reason: "host canceled", wantOutcome: run.OutcomeCanceled},
 		{name: "model call limit", status: "failed", cause: "execution_failure", reason: "model call limit", failureKind: "execution", failureCode: "interaction.limit.model_calls", wantOutcome: run.OutcomeMaxSteps},
 		{name: "strategy failure", status: "failed", cause: "execution_failure", reason: "strategy failed", failureKind: "execution", failureCode: "execution.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureAgentStuck, hasFailure: true},
-		{name: "external failure", status: "failed", cause: "external_failure", reason: "provider unavailable", failureKind: "external", failureCode: "provider.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderUnavailable, hasFailure: true},
+		{name: "external failure", status: "failed", cause: "external_failure", reason: "provider unavailable", failureKind: "external", failureCode: "interaction.model.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderUnavailable, hasFailure: true},
+		{name: "unknown external failure", status: "failed", cause: "external_failure", reason: "external failure", failureKind: "external", failureCode: "new.external.failure", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
+		{name: "unresolved delegate", status: "failed", cause: "external_failure", reason: "unresolved external work", failureKind: "external", failureCode: "interaction.delegate.unresolved_effects", wantOutcome: run.OutcomeLost, wantFailure: run.FailureLost, hasFailure: true},
 		{name: "host projection failure", status: "failed", cause: "external_failure", reason: "journal unavailable", failureKind: "external", failureCode: "interaction.host.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
 		{name: "contract failure", status: "failed", cause: "contract_failure", reason: "contract failed", failureKind: "contract", failureCode: "contract.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
 		{name: "panic", status: "failed", cause: "panic", reason: "execution panicked", failureKind: "panic", failureCode: "execution.panic", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
@@ -642,6 +644,10 @@ func runInteractionHarness(
 	go func() {
 		var events []runs.ExecutorEvent
 		for event := range sequence {
+			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
+				lookup.Complete(false, nil)
+				continue
+			}
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
 				event.Payload = commit.Fact()

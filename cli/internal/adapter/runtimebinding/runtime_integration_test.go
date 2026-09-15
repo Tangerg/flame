@@ -560,13 +560,14 @@ func requireRuntimeCatalogs(t *testing.T, runtime *Connection, sessionID, worksp
 		http.Error(w, "discovery unavailable", http.StatusServiceUnavailable)
 	}))
 	t.Cleanup(endpoint.Close)
+	apiKey := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "test-key"}
 	baseURL := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: endpoint.URL}
-	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "ollama", BaseURL: &baseURL}); err != nil {
+	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "openai-compatible", BaseURL: &baseURL, APIKey: &apiKey}); err != nil {
 		t.Fatal(err)
 	}
 	models, err := runtime.ListModels(t.Context())
-	if err == nil || !strings.Contains(err.Error(), "ollama:") {
-		t.Fatalf("ListModels discovery failure = %v, want ollama failure", err)
+	if err == nil || !strings.Contains(err.Error(), "openai-compatible:") {
+		t.Fatalf("ListModels discovery failure = %v, want openai-compatible failure", err)
 	}
 	if len(models) == 0 {
 		t.Fatal("ListModels returned no provider-qualified models")
@@ -589,8 +590,8 @@ func requireRuntimeCatalogs(t *testing.T, runtime *Connection, sessionID, worksp
 		}
 	}
 	refreshedModels, err := runtime.ListModels(t.Context())
-	if err == nil || !strings.Contains(err.Error(), "ollama:") {
-		t.Fatalf("repeated model discovery failure = %v, want ollama failure", err)
+	if err == nil || !strings.Contains(err.Error(), "openai-compatible:") {
+		t.Fatalf("repeated model discovery failure = %v, want openai-compatible failure", err)
 	}
 	gotModels, err := json.Marshal(refreshedModels)
 	if err != nil {

@@ -51,7 +51,7 @@ type interactionSession struct {
 
 // interactionState owns the one lock domain whose facts must move atomically:
 // the live Process, its observation/waiting boundary, exact pending steers,
-// Delegate topology, and cancellation plane. Accounting, repetition detection,
+// and Delegate topology. Accounting, repetition detection,
 // committed replies, and Segment timing have independent invariants and do not
 // belong under this lock.
 type interactionState struct {
@@ -63,6 +63,7 @@ type interactionState struct {
 	admittedProcessID          agent.ProcessID
 	observerWasAttached        bool
 	begun                      bool
+	workersStarted             bool
 	finished                   bool
 	boundary                   interactionBoundary
 	dispatchReady              chan struct{}
@@ -73,15 +74,7 @@ type interactionState struct {
 	deployments                *interactionDeploymentSet
 	delegateCalls              map[delegateCallIdentity]*managedDelegateCall
 	delegateChildren           map[agent.ProcessID]*managedDelegateCall
-	activeDispatches           map[interactionDispatchIdentity]activeInteractionDispatch
-	canceledSubtreeRoots       map[agent.ProcessID]struct{}
-	rootCancellationRequested  bool
 	durableContextWasCompacted bool
-}
-
-type activeInteractionDispatch struct {
-	processID agent.ProcessID
-	cancel    context.CancelCauseFunc
 }
 
 type pendingInteractionSteer struct {
@@ -122,11 +115,9 @@ func newInteractionSession(
 	return &interactionSession{
 		ref: ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
 		state: interactionState{
-			pendingSteers:        make(map[agent.SignalID]pendingInteractionSteer),
-			delegateCalls:        make(map[delegateCallIdentity]*managedDelegateCall),
-			delegateChildren:     make(map[agent.ProcessID]*managedDelegateCall),
-			activeDispatches:     make(map[interactionDispatchIdentity]activeInteractionDispatch),
-			canceledSubtreeRoots: make(map[agent.ProcessID]struct{}),
+			pendingSteers:    make(map[agent.SignalID]pendingInteractionSteer),
+			delegateCalls:    make(map[delegateCallIdentity]*managedDelegateCall),
+			delegateChildren: make(map[agent.ProcessID]*managedDelegateCall),
 		},
 		committedReplies: newInteractionCommittedReplies(),
 		modelFailures:    newInteractionModelFailures(),
@@ -216,6 +207,14 @@ func (i *interactionState) processHandle() *agent.Process {
 }
 
 func (i *interactionSession) startWorkers() {
+	i.state.mu.Lock()
+	defer i.state.mu.Unlock()
+	select {
+	case <-i.lifetime.releasing:
+		return
+	default:
+	}
+	i.state.workersStarted = true
 	i.lifetime.start(i.await, i.reconcileUnknownEffects, i.reconcileExecutionState)
 }
 
@@ -565,21 +564,22 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 		if err != nil {
 			return fmt.Errorf("decode Interaction output: %w", err)
 		}
-		if output.Source != interaction.CompletionSourceModelResponse || output.ModelResponse == nil {
+		switch output.Source {
+		case interaction.CompletionSourceDirectToolResults:
+			// ResultCommitter has already published these exact ordered results.
+		case interaction.CompletionSourceModelResponse:
+			if output.ModelResponse == nil || output.ModelResponse.Output == nil || output.ModelResponse.Output.Message == nil {
+				return errors.New("agentexec: Interaction output has no assistant message")
+			}
+			completion, err := runs.NewAssistantMessageCompleted(*output.ModelResponse.Output.Message)
+			if err != nil {
+				return err
+			}
+			if !i.lifetime.send(runs.ExecutorEvent{Member: member, Payload: completion}) {
+				return nil
+			}
+		default:
 			return fmt.Errorf("unsupported Interaction completion source %q", output.Source)
-		}
-		modelOutput := output.ModelResponse.Output
-		if modelOutput == nil || modelOutput.Message == nil {
-			return errors.New("agentexec: Interaction output has no assistant message")
-		}
-		completion, err := runs.NewAssistantMessageCompleted(*modelOutput.Message)
-		if err != nil {
-			return err
-		}
-		if !i.lifetime.send(runs.ExecutorEvent{
-			Member: member, Payload: completion,
-		}) {
-			return nil
 		}
 		i.maintainCompletedRoot()
 	}
@@ -629,47 +629,47 @@ func (i *interactionSession) release(ctx context.Context) error {
 	}
 	i.state.mu.Lock()
 	process := i.state.process
-	begun := i.state.begun
-	finished := i.state.finished
+	workersStarted := i.state.workersStarted
 	i.state.mu.Unlock()
-	if !begun {
-		i.failStart()
-		return i.engine.Close(ctx)
-	}
-	if process != nil && !finished {
+	if process != nil {
 		if err := process.Kill(ctx, interactionReleaseReason); err != nil && !errors.Is(err, agent.ErrProcessFinished) {
 			return fmt.Errorf("agentexec: kill Interaction execution: %w", err)
 		}
 	}
-	select {
-	case <-i.lifetime.done:
-		i.lifetime.workers.Wait()
-		return i.engine.Close(ctx)
-	case <-ctx.Done():
-		return ctx.Err()
+	if workersStarted {
+		select {
+		case <-i.lifetime.done:
+			i.lifetime.workers.Wait()
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
+	// Projection may have failed before await joined the tree. Its completion
+	// cannot stand in for Scope's proof that descendants have stopped.
+	if process != nil {
+		if err := process.Join(ctx); err != nil {
+			return fmt.Errorf("agentexec: join Interaction execution: %w", err)
+		}
+	}
+	if !workersStarted {
+		i.finish()
+	}
+	return i.engine.Close(ctx)
 }
 
 func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded, error) {
 	termination := result.Termination()
 	duration := i.segmentClock.duration(result.StartedAt(), result.FinishedAt())
-	i.state.mu.Lock()
-	canceled := i.state.rootCancellationRequested || i.inCanceledSubtreeLocked(result.ProcessID())
-	i.state.mu.Unlock()
-	ownerCause := i.lifetime.ownerCause()
-	var end segmentEndDraft
-	if (termination.Cause() == agent.TerminationCauseHostCancellation || termination.Cause() == agent.TerminationCauseExternalFailure) &&
-		(ownerCause != nil || canceled) {
-		end = segmentEndFromOwnerCause(ownerCause, duration)
-	} else if stop := i.allowance.denial(result.ProcessID()); stop != interactionAllowanceOpen {
-		end = segmentEndFromAllowance(stop, duration)
-	} else {
-		end = segmentEndFromTermination(termination, duration)
-		if termination.Cause() == agent.TerminationCauseHostCancellation {
-			if classified, found := i.modelFailures.lookup(result.ProcessID()); found {
-				end.reason = run.OutcomeFailed
-				end.failure = &classified
-			}
+	end := segmentEndFromTermination(termination, duration)
+	if failure, failed := termination.Failure(); failed && failure.Code() == "interaction.host.failed" {
+		if stop := i.allowance.denial(result.ProcessID()); stop != interactionAllowanceOpen {
+			end = segmentEndFromAllowance(stop, duration)
+		}
+	}
+	if termination.Cause() == agent.TerminationCauseHostCancellation && termination.Reason() == modelProcessStopReason {
+		if classified, found := i.modelFailures.lookup(result.ProcessID()); found {
+			end.reason = run.OutcomeFailed
+			end.failure = &classified
 		}
 	}
 	usage, err := i.accounting.segmentUsage(result.ProcessID())
@@ -700,18 +700,6 @@ func segmentEndFromAllowance(stop interactionAllowanceStop, duration time.Durati
 		}
 	default:
 		panic("agentexec: impossible allowance stop")
-	}
-	return end
-}
-
-func segmentEndFromOwnerCause(cause error, duration time.Duration) segmentEndDraft {
-	end := segmentEndDraft{reason: run.OutcomeCanceled, duration: duration}
-	if errors.Is(cause, context.DeadlineExceeded) {
-		end.reason = run.OutcomeTimedOut
-		end.failure = &run.Failure{
-			Kind:   run.FailureTimeout,
-			Detail: "executor deadline reached",
-		}
 	}
 	return end
 }
@@ -747,21 +735,18 @@ func segmentEndFromTermination(termination agent.Termination, duration time.Dura
 	case agent.TerminationCauseExternalFailure:
 		end.reason = run.OutcomeFailed
 		failure, _ := termination.Failure()
-		if failure.Code() == "interaction.host.failed" {
-			problem := run.Failure{
-				Kind:   run.FailureInternal,
-				Detail: executorDiagnostic(errors.New(failure.Message())),
-			}
-			end.failure = &problem
-			break
-		}
-		detail := executorDiagnostic(errors.New(failure.Message()))
-		if detail == "" {
-			detail = "model provider failed"
-		}
 		problem := run.Failure{
-			Kind:   run.FailureProviderUnavailable,
-			Detail: detail,
+			Kind:   run.FailureInternal,
+			Detail: executorDiagnostic(errors.New(failure.Message())),
+		}
+		switch failure.Code() {
+		case "interaction.model.failed":
+			problem.Kind = run.FailureProviderUnavailable
+		case "interaction.model.tool_calls_not_completed":
+			problem.Kind = run.FailureProviderRejected
+		case "interaction.delegate.unresolved_effects":
+			end.reason = run.OutcomeLost
+			problem.Kind = run.FailureLost
 		}
 		end.failure = &problem
 	case agent.TerminationCauseContractFailure, agent.TerminationCausePanic:

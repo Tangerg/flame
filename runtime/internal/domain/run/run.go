@@ -181,9 +181,10 @@ func cloneFailure(failure *Failure) *Failure {
 	return &copy
 }
 
-// Validate reports whether all lifecycle, identity, accounting, and terminal
-// facts agree.
 func (r Run) validate() error {
+	if !r.state.Valid() {
+		return fmt.Errorf("run: invalid state %q", r.state)
+	}
 	if err := resourceid.ValidateRun(r.id); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}

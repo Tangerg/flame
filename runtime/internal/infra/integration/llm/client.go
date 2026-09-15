@@ -169,7 +169,7 @@ func (s ClientSpec) WithBaseURL(baseURL string) (ClientSpec, error) {
 }
 
 func (s ClientSpec) validate() error {
-	profile, found := providers.lookup(s.provider)
+	_, found := providers.lookup(s.provider)
 	if !found {
 		return fmt.Errorf("llm: unsupported provider %q", s.provider)
 	}
@@ -179,7 +179,7 @@ func (s ClientSpec) validate() error {
 	if err := s.credential.validate(); err != nil {
 		return fmt.Errorf("llm: credential: %w", err)
 	}
-	if profile.credential.required() && !s.credential.configured() {
+	if !s.credential.configured() {
 		return fmt.Errorf("llm: provider %q requires an API key", s.provider)
 	}
 	if err := s.endpoint.validate(); err != nil {
@@ -261,11 +261,6 @@ var providers = mustProviderCatalog(
 	bundledProvider(ProviderZhipu, zhipu.ModelGLM52, "ZHIPU_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return zhipu.NewChat(ctx, zhipu.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 	}).withEmbedding(bundledModels(zhipu.ModelEmbedding3), buildZhipuEmbeddingModel),
-
-	// Local daemon (base URL defaults to localhost; model id is user-pulled —
-	// dynamic discovery probes the daemon's /v1/models for what is installed).
-	optionalCredentialEndpointProvider(ProviderOllama, catalogEndpoint(defaultOllamaOpenAIBaseURL), "OLLAMA_API_KEY", buildOllamaChatModel).
-		withEmbedding(bundledModels(defaultOllamaEmbeddingModel), buildOllamaEmbeddingModel),
 
 	// Azure: the base URL is the complete per-resource /openai/v1 endpoint;
 	// the model id is a deployment name. Both are user-supplied.

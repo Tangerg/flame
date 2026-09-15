@@ -73,7 +73,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			if err := effects.CommitEvent(ctx, commit); err == nil {
 				t.Fatal("rolled-back publication succeeded")
 			}
-			if found, err := state.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, draft.SegmentID, commit.ResultPublication.ID, commit.ResultPublication.Digest); err != nil || found {
+			if found, err := effects.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, draft.SegmentID, *commit.ResultPublication); err != nil || found {
 				t.Fatalf("rolled-back receipt = %t, %v", found, err)
 			}
 			if count, err := messages.Count(ctx, draft.SessionID); err != nil || count != 0 {
@@ -88,6 +88,9 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			}
 			if transactions != 2 {
 				t.Fatalf("ambiguous commit retried writes: %d", transactions)
+			}
+			if found, err := effects.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, draft.SegmentID, *commit.ResultPublication); err != nil || !found {
+				t.Fatalf("stored receipt = %t, %v", found, err)
 			}
 			// A new product write attempt still denotes the same Scope publication.
 			commit.CommitID = testCommitID("run_commit_result_duplicate")
@@ -105,6 +108,9 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			conflict := commit
 			conflict.ResultPublication = new(*commit.ResultPublication)
 			conflict.ResultPublication.Digest = "sha256:" + strings.Repeat("b", 64)
+			if found, err := effects.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, draft.SegmentID, *conflict.ResultPublication); err == nil || found {
+				t.Fatalf("conflicting receipt = %t, %v", found, err)
+			}
 			if err := effects.CommitEvent(ctx, conflict); err == nil {
 				t.Fatal("same identity with different content succeeded")
 			}
@@ -122,10 +128,13 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			if err := state.Resume(ctx, draft.SessionID, run.ResumeDraft{RunID: draft.RunID, SegmentID: "seg_next"}, started.Add(3*time.Second)); err != nil {
 				t.Fatal(err)
 			}
+			if found, err := effects.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, draft.SegmentID, *commit.ResultPublication); err == nil || found {
+				t.Fatalf("stale Segment receipt = %t, %v", found, err)
+			}
 			if err := effects.CommitEvent(ctx, commit); err == nil {
 				t.Fatal("stale Segment used a stored receipt to publish")
 			}
-			if found, err := state.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, "seg_next", commit.ResultPublication.ID, commit.ResultPublication.Digest); err == nil || found {
+			if found, err := effects.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, "seg_next", *commit.ResultPublication); err == nil || found {
 				t.Fatalf("foreign Segment reused receipt: %t, %v", found, err)
 			}
 		})

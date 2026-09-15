@@ -90,21 +90,15 @@ type endpointKind uint8
 
 const (
 	endpointOwnedByAdapter endpointKind = iota + 1
-	endpointHasCatalogDefault
 	endpointMustBeConfigured
 )
 
 type endpointPolicy struct {
-	kind       endpointKind
-	defaultURL string
+	kind endpointKind
 }
 
 func adapterEndpoint() endpointPolicy {
 	return endpointPolicy{kind: endpointOwnedByAdapter}
-}
-
-func catalogEndpoint(defaultURL string) endpointPolicy {
-	return endpointPolicy{kind: endpointHasCatalogDefault, defaultURL: defaultURL}
 }
 
 func configuredEndpoint() endpointPolicy {
@@ -114,13 +108,6 @@ func configuredEndpoint() endpointPolicy {
 func (p endpointPolicy) validate() error {
 	switch p.kind {
 	case endpointOwnedByAdapter, endpointMustBeConfigured:
-		if p.defaultURL != "" {
-			return fmt.Errorf("endpoint policy %d cannot carry a default URL", p.kind)
-		}
-	case endpointHasCatalogDefault:
-		if err := validateCatalogBaseURL(p.defaultURL); err != nil {
-			return fmt.Errorf("catalog default endpoint: %w", err)
-		}
 	default:
 		return fmt.Errorf("unknown endpoint policy %d", p.kind)
 	}
@@ -131,13 +118,6 @@ func (p endpointPolicy) requiresConfiguration() bool {
 	return p.kind == endpointMustBeConfigured
 }
 
-func (p endpointPolicy) defaultValue() (string, bool) {
-	if p.kind != endpointHasCatalogDefault {
-		return "", false
-	}
-	return p.defaultURL, true
-}
-
 func (p endpointPolicy) resolve(configured clientEndpoint) (clientEndpoint, error) {
 	if configured.configured() {
 		return configured, nil
@@ -145,8 +125,6 @@ func (p endpointPolicy) resolve(configured clientEndpoint) (clientEndpoint, erro
 	switch p.kind {
 	case endpointOwnedByAdapter:
 		return noClientEndpoint(), nil
-	case endpointHasCatalogDefault:
-		return configuredClientEndpoint(p.defaultURL)
 	case endpointMustBeConfigured:
 		return clientEndpoint{}, fmt.Errorf("a base URL must be configured")
 	default:
@@ -171,30 +149,15 @@ func validateCatalogBaseURL(raw string) error {
 	return nil
 }
 
-type credentialRequirement uint8
-
-const (
-	credentialRequired credentialRequirement = iota + 1
-	credentialOptional
-)
-
 type credentialPolicy struct {
-	requirement credentialRequirement
 	environment string
 }
 
 func requiredCredential(environment string) credentialPolicy {
-	return credentialPolicy{requirement: credentialRequired, environment: environment}
-}
-
-func optionalCredential(environment string) credentialPolicy {
-	return credentialPolicy{requirement: credentialOptional, environment: environment}
+	return credentialPolicy{environment: environment}
 }
 
 func (p credentialPolicy) validate() error {
-	if p.requirement != credentialRequired && p.requirement != credentialOptional {
-		return fmt.Errorf("unknown credential requirement %d", p.requirement)
-	}
 	if p.environment == "" {
 		return fmt.Errorf("credential environment variable is empty")
 	}
@@ -206,8 +169,6 @@ func (p credentialPolicy) validate() error {
 	}
 	return nil
 }
-
-func (p credentialPolicy) required() bool { return p.requirement == credentialRequired }
 
 type providerProfile struct {
 	id          Provider
@@ -230,12 +191,6 @@ func endpointProvider(id Provider, endpoint endpointPolicy, credentialEnvironmen
 		id: id, credential: requiredCredential(credentialEnvironmentName), endpoint: endpoint,
 		chatModels: openAIEndpointModels(), chatBuilder: builder,
 	}
-}
-
-func optionalCredentialEndpointProvider(id Provider, endpoint endpointPolicy, credentialEnvironmentName string, builder buildFunc) providerProfile {
-	profile := endpointProvider(id, endpoint, credentialEnvironmentName, builder)
-	profile.credential = optionalCredential(credentialEnvironmentName)
-	return profile
 }
 
 func (p providerProfile) withEmbedding(models modelPolicy, builder embeddingBuildFunc) providerProfile {

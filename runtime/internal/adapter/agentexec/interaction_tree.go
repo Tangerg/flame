@@ -54,7 +54,6 @@ func (i *InteractionExecutor) CancelRunningSubtree(
 	); err != nil {
 		return fmt.Errorf("agentexec: cancel running Interaction member %s: %w", processID, err)
 	}
-	session.cancelSubtreeDispatches(processID)
 	return nil
 }
 
@@ -239,10 +238,7 @@ func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.Effe
 			continue
 		}
 		processID := member.Snapshot.ProcessID()
-		i.state.mu.Lock()
-		canceled := i.state.rootCancellationRequested || i.inCanceledSubtreeLocked(processID)
-		i.state.mu.Unlock()
-		if canceled || i.allowance.denial(processID) != interactionAllowanceOpen || i.modelFailures.has(processID) {
+		if i.allowance.denial(processID) != interactionAllowanceOpen || i.modelFailures.has(processID) {
 			continue
 		}
 		ids = append(ids, member.Snapshot.UnknownEffectIDs()...)

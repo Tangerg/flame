@@ -14,10 +14,7 @@ import (
 	"github.com/Tangerg/scope/models/zhipu"
 )
 
-const (
-	defaultOpenAIEmbeddingModel = "text-embedding-3-small"
-	defaultOllamaEmbeddingModel = "nomic-embed-text"
-)
+const defaultOpenAIEmbeddingModel = "text-embedding-3-small"
 
 // embeddingBuildFunc constructs an embedding adapter for one (key, model, baseURL).
 type embeddingBuildFunc func(ctx context.Context, spec ClientSpec, opts embedding.Options) (embedding.Model, error)

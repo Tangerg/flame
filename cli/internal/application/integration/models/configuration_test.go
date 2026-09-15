@@ -40,17 +40,17 @@ func TestRoleAndProviderChangesHaveExplicitSemantics(t *testing.T) {
 }
 
 func TestProviderConfiguredStateIsNotCredentialPresence(t *testing.T) {
-	ollama, err := NewProvider(ProviderSpec{
-		ID: "ollama", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyOptional,
+	optionalProvider, err := NewProvider(ProviderSpec{
+		ID: "test-endpoint", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyOptional,
 		EmbeddingCapable: true,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !ollama.Configured() || ollama.RequiresAPIKey() {
+	if !optionalProvider.Configured() || optionalProvider.RequiresAPIKey() {
 		t.Fatal("optional API-key provider was not restored as configured")
 	}
-	if _, present := ollama.Credential(); present {
+	if _, present := optionalProvider.Credential(); present {
 		t.Fatal("optional provider invented a credential")
 	}
 
@@ -75,7 +75,7 @@ func TestProviderConfiguredStateIsNotCredentialPresence(t *testing.T) {
 		t.Fatal("ready provider was accepted as not configured")
 	}
 	if _, err := NewProvider(ProviderSpec{
-		ID: "ollama", Configured: false, CredentialRequirement: protocol.ProviderAPIKeyOptional,
+		ID: "test-endpoint", Configured: false, CredentialRequirement: protocol.ProviderAPIKeyOptional,
 	}); err == nil {
 		t.Fatal("keyless provider with a built-in endpoint was accepted as not configured")
 	}

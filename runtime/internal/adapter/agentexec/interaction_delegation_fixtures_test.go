@@ -220,6 +220,7 @@ func (*delegateSessionStore) ApplyClaimedRunLost(
 }
 
 type delegateProjection struct {
+	publications []runs.EventCommit
 	mu           sync.Mutex
 	openings     []runs.OpeningCommit
 	barriers     []runs.TreeBarrierCommit
@@ -308,6 +309,25 @@ func (d *delegateProjection) AbortChildRunStart(
 	}
 	d.outcomes[memberID] = runs.ChildRunStartAborted
 	return nil
+}
+
+func (d *delegateProjection) ResultPublicationCommitted(_ context.Context, sessionID, runID, segmentID string, publication runs.ResultPublication) (bool, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	value, found := d.runs[runID]
+	if !found || value.SessionID() != sessionID || value.ActiveSegmentID() != segmentID {
+		return false, errors.New("result publication has no active Segment")
+	}
+	for _, commit := range d.publications {
+		if commit.ResultPublication.ID != publication.ID {
+			continue
+		}
+		if commit.SessionID != sessionID || commit.RunID != runID || commit.SegmentID != segmentID || *commit.ResultPublication != publication {
+			return false, errors.New("result publication conflicts with stored content or owner")
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 func (d *delegateProjection) CommitEvent(
@@ -419,6 +439,9 @@ func (d *delegateProjection) applyOpening(opening runs.OpeningCommit) {
 }
 
 func (d *delegateProjection) applyCommit(commit runs.EventCommit) {
+	if commit.ResultPublication != nil {
+		d.publications = append(d.publications, commit)
+	}
 	for _, message := range commit.ConversationMessages {
 		d.conversation = append(d.conversation, message.Clone())
 	}

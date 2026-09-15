@@ -29,7 +29,6 @@ func releasedDuringProjection(err error) bool {
 // canceling that maintenance. Release and finish remain one-shot transitions
 // joined through the worker groups.
 type interactionLifetime struct {
-	owner           context.Context
 	execution       context.Context
 	stopExecution   context.CancelFunc
 	reconciling     context.Context
@@ -49,7 +48,6 @@ func newInteractionLifetime(parent context.Context) interactionLifetime {
 	lifetime, stop := context.WithCancel(parent)
 	reconciling, stopReconciling := context.WithCancel(lifetime)
 	return interactionLifetime{
-		owner:           parent,
 		execution:       lifetime,
 		stopExecution:   stop,
 		reconciling:     reconciling,
@@ -86,8 +84,6 @@ func (i *interactionLifetime) start(
 		await()
 	}()
 }
-
-func (i *interactionLifetime) ownerCause() error { return context.Cause(i.owner) }
 
 func (i *interactionLifetime) beginRelease() {
 	i.releaseOnce.Do(func() {

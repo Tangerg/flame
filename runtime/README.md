@@ -53,6 +53,15 @@ go generate ./...
 
 The default suite is offline. Module rules live in [Module instructions](#module-instructions) below; current boundaries live in [`doc/ARCHITECTURE.md`](doc/ARCHITECTURE.md).
 
+`make run` builds and runs the development server in the foreground. Use Ctrl-C
+and wait for it to return before starting a replacement. For a fresh database,
+run `FLAME_HOME="$(mktemp -d)" make run`; the new product root is isolated and is
+retained after shutdown. `FLAME_HOME` is exported consistently to the server.
+The former `start`, `stop`, `restart`, `status`, `logs`, `reset-db`, and `fresh`
+targets are removed. Runtime processes can share a data directory, so a pidfile
+or port owner cannot authorize deleting its database. `make clean` removes only
+the compiled binary; data cleanup remains an explicit offline operation.
+
 ## Module instructions
 
 Flame Runtime is the product backend and sole owner of durable agent semantics. It exposes one in-process Go binding and one Runtime Protocol for CLI, Desktop, and other hosts.
@@ -107,13 +116,19 @@ Knowledge reads and accepted writes return the Runtime-resolved absolute `path` 
 
 ## Scope execution settlement
 
+Scope alone propagates root, subtree, and owner cancellation to execution contexts. Runtime submits cancellation intent and projects Scope’s immutable termination; a late cancellation or owner deadline cannot replace an already settled failure. Provider diagnostics enrich only the model-failure stop acknowledged by Scope.
+
 Model allowance admission runs during request preparation, before a provider call, and its serialized turn belongs to the entire Effect attempt. A rejected admission therefore has a definite failed settlement and retains the Run's `maxSteps` or `maxBudget` outcome. The turn is released even if later request preparation fails.
 
-Canceling a delegated Run still cancels that child. If its in-flight model attempt returns no definite result, Scope retains the unknown Effect and fails the parent instead of delivering a normal delegate result. Runtime preserves that failure diagnostic; it does not manufacture a settlement or retry the attempt. This intentionally replaces the earlier behavior that allowed the parent to continue despite the child's unresolved Effect. Cancellation before external dispatch and terminal children with definite results remain distinct cases.
+Canceling a delegated Run still cancels that child. If its in-flight model attempt returns no definite result, Scope retains the unknown Effect and fails the parent instead of delivering a normal delegate result. Runtime projects that parent outcome as `lost`, preserving the unresolved-effect diagnostic; it does not manufacture a settlement or retry the attempt. This intentionally replaces the earlier behavior that allowed the parent to continue despite the child's unresolved Effect. Cancellation before external dispatch and terminal children with definite results remain distinct cases.
 
-Every known Tool and Delegate result, including rejected calls, uses Scope's `ResultCommitter` boundary. Only the Interaction dispatcher binds the session committer. Scope retains a complete model round in call order and publishes it through a separate Effect before model continuation or direct completion. Runtime atomically stores the exact model-visible results, product Items, invocation journal, and a receipt binding the Effect ID to its content digest. Repeating the same publication is idempotent; changed content conflicts, and a replaced Segment cannot use an old receipt. An ambiguous COMMIT response is reconciled against that exact receipt without replaying tools or conversation writes.
+Every known Tool and Delegate result, including rejected calls, uses Scope's `ResultCommitter` boundary. Only the Interaction dispatcher binds the session committer. Scope retains a complete model round in call order and publishes it through a separate Effect before model continuation or direct completion. Runtime atomically stores the exact model-visible results, product Items, invocation journal, and a receipt binding the Effect ID to its content digest. Repeating the same publication is idempotent; changed content conflicts, and a replaced Segment cannot use an old receipt. Each callback first verifies the durable receipt through the ordered Segment event stream, before accessing pending product metadata. An existing exact receipt completes a repeated callback even after the metadata is retired or the projection host is replaced. An ambiguous COMMIT response is reconciled against that same receipt without replaying tools or conversation writes.
 
 Plain executor errors, lost responses, cancellation, and host failures do not prove a business outcome. They remain unknown and cannot produce normal model feedback. A concrete executor may return an explicit Scope Tool failure with its known output, including partial success; validation and authorization owners may reject calls they have not executed. Runtime's generic Tool observer never converts arbitrary errors into known failures. Product cancellation closes abandoned Items without inventing Tool results.
+
+A direct Tool completion ends the Run after its ordered results commit. It adds no assistant answer and makes no further model call; a delegated direct completion supplies those same results to its parent.
+
+Tool concurrency declarations describe the effective executable boundary. Wrappers that can change arguments through hooks, authorization, or approval continuation declare exclusive execution, because an inner resource key computed from the original arguments is no longer safe. Immutable invocation paths preserve the inner declaration; Scope remains the scheduler.
 
 Scope owns the model-visible payload. Runtime derives presentation from that payload and never reconstructs it from UI text or independently formats Delegate diagnostics. Pending product metadata, including effective arguments, mutation paths, and offload references, accompanies the Scope checkpoint until its complete model round is published. Delegate admission retains its invocation metadata independently of the currently active child batch, so an earlier Delegate result survives when a later batch waits for input. Resuming that tree preserves the completed work.
 

@@ -305,7 +305,7 @@ func TestProviderUpdateAcceptsClearWithEnvironmentFallback(t *testing.T) {
 
 func TestProjectProviderPreservesConfiguredOptionalCredentialState(t *testing.T) {
 	provider, err := projectProvider(protocol.Provider{
-		ID: "ollama", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyOptional,
+		ID: "test-endpoint", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyOptional,
 		EmbeddingCapable: true,
 	})
 	if err != nil {

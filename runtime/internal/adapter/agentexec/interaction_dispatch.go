@@ -26,8 +26,9 @@ func (i *interactionDispatcher) Dispatch(
 	emit agent.DeltaEmitter,
 ) (settlement agent.Settlement, err error) {
 	defer func() { i.session.effectFailures.record(request.ID(), err) }()
-	ctx, finishDispatch := i.session.beginDispatch(ctx, interactionDispatchKey(request))
-	defer finishDispatch()
+	if err := i.session.awaitDispatchSegment(ctx); err != nil {
+		return agent.Settlement{}, err
+	}
 	attempt := newDispatchAttempt(ctx, request.ID())
 	defer attempt.close()
 	settlement, err = i.inner.Dispatch(withDispatchAttempt(ctx, attempt), request, emit)

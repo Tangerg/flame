@@ -18,6 +18,30 @@ type lifetimeService struct {
 
 type nilDiscoverService struct{}
 
+type panickingDiscoverService struct{}
+
+func (*panickingDiscoverService) Discover(context.Context) (*protocol.DiscoverResponse, error) {
+	panic("handler failed")
+}
+
+func TestEndpointReleasesInvocationWhenHandlerPanics(t *testing.T) {
+	endpoint := mustNewEndpoint(t, &panickingDiscoverService{}, EndpointConfig{})
+	func() {
+		defer func() {
+			if got := recover(); got != "handler failed" {
+				t.Fatalf("panic = %v, want handler panic", got)
+			}
+		}()
+		endpoint.Invoke(t.Context(), RuntimeDiscover, struct{}{}, Options{})
+	}()
+	endpoint.BeginShutdown()
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	if err := endpoint.AwaitShutdown(ctx); err != nil {
+		t.Fatalf("handler panic left invocation registered: %v", err)
+	}
+}
+
 type invalidRequestService struct{ calls int }
 
 func (s *invalidRequestService) SetHookTrust(context.Context, protocol.SetHookTrustRequest) error {

@@ -21,6 +21,25 @@ func mustRunSelection(t testing.TB) modelref.Selection {
 	return selection
 }
 
+func TestRestoreRejectsInvalidState(t *testing.T) {
+	snapshot := Snapshot{
+		SessionID: "session_1", ID: "run_1", ModelSelection: mustRunSelection(t),
+		State: Waiting, CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0),
+		MessageMark: UnknownMessageMark,
+	}
+	if _, err := Restore(snapshot); err != nil {
+		t.Fatalf("valid waiting Run: %v", err)
+	}
+	for _, state := range []State{"", "unknown"} {
+		t.Run(string(state), func(t *testing.T) {
+			snapshot.State = state
+			if _, err := Restore(snapshot); err == nil {
+				t.Fatalf("Restore accepted state %q", state)
+			}
+		})
+	}
+}
+
 func TestRunAdmissionRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T) {
 	valid := Draft{
 		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",

@@ -32,7 +32,6 @@ const (
 	ProviderHuggingface Provider = "huggingface"
 	ProviderMinimax     Provider = "minimax"
 	ProviderMistral     Provider = "mistral"
-	ProviderOllama      Provider = "ollama" // local
 	ProviderOpenRouter  Provider = "openrouter"
 	ProviderPerplexity  Provider = "perplexity"
 	ProviderTogether    Provider = "together"
@@ -85,16 +84,8 @@ func (p ProviderProfile) DefaultChatModel() (string, bool) {
 
 func (p ProviderProfile) CredentialEnvironment() string { return p.value.credential.environment }
 
-func (p ProviderProfile) RequiresAPIKey() bool { return p.value.credential.required() }
-
 func (p ProviderProfile) RequiresConfiguredEndpoint() bool {
 	return p.value.endpoint.requiresConfiguration()
-}
-
-// DefaultEndpoint returns the catalog-owned endpoint when one exists. Adapter-
-// owned and caller-required endpoints are distinct policies, not empty values.
-func (p ProviderProfile) DefaultEndpoint() (string, bool) {
-	return p.value.endpoint.defaultValue()
 }
 
 func (p ProviderProfile) DiscoversModelsAtEndpoint() bool {

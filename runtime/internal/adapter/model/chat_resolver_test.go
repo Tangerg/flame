@@ -56,25 +56,6 @@ func TestChatResolverRejectsUnconfigured(t *testing.T) {
 	}
 }
 
-func TestChatResolverBuildsOptionalCredentialProviderWithoutRegistryRow(t *testing.T) {
-	db, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	selection, err := modelref.New("ollama", "local-model")
-	if err != nil {
-		t.Fatal(err)
-	}
-	resolver, err := NewChatResolver(sqlitestore.NewProviderStore(db))
-	if err != nil {
-		t.Fatal(err)
-	}
-	resolved, err := resolver.ResolveChat(t.Context(), selection)
-	if err != nil || dependency.Missing(resolved.Model()) {
-		t.Fatalf("ResolveChat optional credential provider = %v, %v", resolved.Model(), err)
-	}
-}
-
 func testDeepSeekSelection(t testing.TB, model string) modelref.Selection {
 	t.Helper()
 	selection, err := modelref.New("deepseek", model)

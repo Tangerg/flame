@@ -256,7 +256,7 @@ func TestOptionalAPIKeyProviderIsConfiguredWithoutRegistryRow(t *testing.T) {
 	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{},
 		Catalog: testCatalog{metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(
-			t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, EmbeddingCapabilityWithoutDefault(),
+			t, "test-endpoint", ProviderEndpointOptional, ProviderModelsEndpoint, EmbeddingCapabilityWithoutDefault(),
 		)}},
 		Prober: prober,
 	})
@@ -268,10 +268,10 @@ func TestOptionalAPIKeyProviderIsConfiguredWithoutRegistryRow(t *testing.T) {
 	if len(providers) != 1 || !providers[0].Configured || providers[0].RequiresAPIKey || providers[0].Credential != nil {
 		t.Fatalf("optional provider summary = %+v", providers)
 	}
-	if outcome, err := c.TestProvider(t.Context(), "ollama"); err != nil || outcome != ProviderTestSucceeded {
+	if outcome, err := c.TestProvider(t.Context(), "test-endpoint"); err != nil || outcome != ProviderTestSucceeded {
 		t.Fatalf("TestProvider = %q, %v", outcome, err)
 	}
-	if prober.got.ID() != "ollama" {
+	if prober.got.ID() != "test-endpoint" {
 		t.Fatalf("probed provider = %q", prober.got.ID())
 	}
 }
@@ -281,12 +281,12 @@ func TestProviderProbePreservesCallerCancellation(t *testing.T) {
 	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{},
 		Catalog: testCatalog{metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(
-			t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability(),
+			t, "test-endpoint", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability(),
 		)}},
 		Prober: &fakeProber{onProbe: cancel},
 	})
 
-	outcome, err := c.TestProvider(ctx, "ollama")
+	outcome, err := c.TestProvider(ctx, "test-endpoint")
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("TestProvider error = %v, want caller cancellation", err)
 	}
@@ -301,13 +301,13 @@ func TestProviderProbeOwnsASettlementDeadline(t *testing.T) {
 	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{},
 		Catalog: testCatalog{metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(
-			t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability(),
+			t, "test-endpoint", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability(),
 		)}},
 		Prober:       waitingProber{},
 		ProbeTimeout: 10 * time.Millisecond,
 	})
 
-	outcome, err := c.TestProvider(ctx, "ollama")
+	outcome, err := c.TestProvider(ctx, "test-endpoint")
 	if err != nil {
 		t.Fatalf("TestProvider returned deadline as a command error: %v", err)
 	}
@@ -324,12 +324,12 @@ func TestProviderProbePreservesRegistryFailure(t *testing.T) {
 	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{getErr: sentinel},
 		Catalog: testCatalog{metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(
-			t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability(),
+			t, "test-endpoint", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability(),
 		)}},
 		Prober: &fakeProber{},
 	})
 
-	outcome, err := c.TestProvider(t.Context(), "ollama")
+	outcome, err := c.TestProvider(t.Context(), "test-endpoint")
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("TestProvider error = %v, want registry failure", err)
 	}
@@ -348,16 +348,16 @@ func (f *fakeProber) Probe(_ context.Context, entry provider.Provider) error {
 
 func TestListModelsPrefersRemoteModelsAndEnrichesKnownEntries(t *testing.T) {
 	registry := &testProviderRegistry{entries: map[string]provider.Provider{
-		"ollama": modelProvider(t, "ollama", "k", "http://host:1234/v1"),
+		"test-endpoint": modelProvider(t, "test-endpoint", "k", "http://host:1234/v1"),
 	}}
 	catalog := testCatalog{
-		metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())},
-		models:   map[string][]Model{"ollama": {catalogModelFixture(t, "ollama", "known", &Details{DisplayName: "Known"})}},
+		metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(t, "test-endpoint", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())},
+		models:   map[string][]Model{"test-endpoint": {catalogModelFixture(t, "test-endpoint", "known", &Details{DisplayName: "Known"})}},
 	}
 	lister := &fakeLister{ids: []string{"local", "known"}}
 	c := newTestCoordinator(Config{Providers: registry, Catalog: catalog, Lister: lister})
 
-	got, err := c.ListModels(t.Context(), "ollama")
+	got, err := c.ListModels(t.Context(), "test-endpoint")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -373,8 +373,8 @@ func TestListModelsPrefersRemoteModelsAndEnrichesKnownEntries(t *testing.T) {
 
 func TestListModelsPreservesEndpointOutcome(t *testing.T) {
 	catalog := testCatalog{
-		metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())},
-		models:   map[string][]Model{"ollama": {catalogModelFixture(t, "ollama", "catalog-only", &Details{})}},
+		metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(t, "test-endpoint", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())},
+		models:   map[string][]Model{"test-endpoint": {catalogModelFixture(t, "test-endpoint", "catalog-only", &Details{})}},
 	}
 	offline := errors.New("offline")
 	for _, tt := range []struct {
@@ -390,7 +390,7 @@ func TestListModelsPreservesEndpointOutcome(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			c := newTestCoordinator(Config{Providers: &testProviderRegistry{}, Catalog: catalog, Lister: tt.lister})
-			got, err := c.ListModels(t.Context(), "ollama")
+			got, err := c.ListModels(t.Context(), "test-endpoint")
 			if (err != nil) != tt.wantErr || len(got) != 0 {
 				t.Fatalf("ListModels = (%+v, %v), want empty result, error=%v", got, err, tt.wantErr)
 			}

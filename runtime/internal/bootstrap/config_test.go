@@ -12,13 +12,13 @@ import (
 )
 
 func TestResolveProviderConfigAllowsCredentialConfigurationAfterStartup(t *testing.T) {
-	t.Setenv("OLLAMA_API_KEY", "")
+	t.Setenv("OPENAI_COMPATIBLE_API_KEY", "")
 	t.Setenv("OPENAI_API_KEY", "")
-	settings, err := resolveProviderConfig(config.Settings{Provider: "ollama", Model: "local-model"})
+	settings, err := resolveProviderConfig(config.Settings{Provider: "openai-compatible", Model: "local-model"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if settings.APIKey.Present() || settings.Provider != "ollama" || settings.Model != "local-model" {
+	if settings.APIKey.Present() || settings.Provider != "openai-compatible" || settings.Model != "local-model" {
 		t.Fatalf("settings = %+v", settings)
 	}
 	settings, err = resolveProviderConfig(config.Settings{Provider: "openai", Model: "gpt-5.6-sol"})
@@ -133,25 +133,25 @@ func TestSeedConfiguredProviderDoesNotUndoAnExplicitDurableClear(t *testing.T) {
 	}
 }
 
-func TestSeedConfiguredProviderDoesNotManufactureOptionalCredential(t *testing.T) {
+func TestSeedConfiguredProviderDoesNotManufactureMissingCredential(t *testing.T) {
 	registry := &providerRegistry{stored: map[string]provider.Provider{}}
-	if err := SeedConfiguredProvider(t.Context(), registry, config.Settings{Provider: "ollama"}); err != nil {
+	if err := SeedConfiguredProvider(t.Context(), registry, config.Settings{Provider: "openai-compatible"}); err != nil {
 		t.Fatal(err)
 	}
 	if len(registry.stored) != 0 {
-		t.Fatalf("optional provider seed wrote %+v", registry.stored)
+		t.Fatalf("unconfigured provider seed wrote %+v", registry.stored)
 	}
 
-	settings := config.Settings{Provider: "ollama", BaseURL: "http://127.0.0.1:22434"}
+	settings := config.Settings{Provider: "openai-compatible", BaseURL: "http://127.0.0.1:22434"}
 	if err := SeedConfiguredProvider(t.Context(), registry, settings); err != nil {
 		t.Fatal(err)
 	}
-	stored, found := registry.stored["ollama"]
+	stored, found := registry.stored["openai-compatible"]
 	if !found {
 		t.Fatal("explicit endpoint was not persisted")
 	}
 	if _, configured := stored.Credential(); configured {
-		t.Fatal("optional provider seed invented a credential")
+		t.Fatal("unconfigured provider seed invented a credential")
 	}
 }
 

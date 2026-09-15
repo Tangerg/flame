@@ -17,7 +17,12 @@ import (
 func (i *InteractionExecutor) CanResumeWaitingExecution(
 	ctx context.Context,
 	continuation runs.WaitingContinuation,
-) (bool, error) {
+) (resumable bool, err error) {
+	finishAssembly, err := i.sessions.beginAssembly()
+	if err != nil {
+		return false, err
+	}
+	defer finishAssembly()
 	continuation = continuation.Clone()
 	if err := continuation.Validate(); err != nil {
 		return false, nil
@@ -59,12 +64,17 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	if err != nil {
 		return false, fmt.Errorf("agentexec: assemble Interaction checkpoint probe: %w", err)
 	}
+	defer func() {
+		if cleanupErr := i.discardInteraction(assembled); cleanupErr != nil {
+			resumable = false
+			err = errors.Join(err, cleanupErr)
+		}
+	}()
 	process, err := assembled.engine.RestoreTree(ctx, assembled.deployment, state.tree)
 	if err != nil {
-		_ = assembled.engine.Close(ctx)
 		return false, nil
 	}
-	defer discardRestoredInteraction(assembled, process)
+	assembled.state.setProcess(process)
 	if initializeRestoredContinuationErr := assembled.initializeRestoredContinuation(
 		process,
 		continuation,

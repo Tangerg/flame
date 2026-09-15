@@ -3,29 +3,55 @@ package agentexec
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"sync/atomic"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
-	partial, err := toolcontract.NewFailure(errors.New("partial write"), chat.NewTextToolOutput("one file written"))
+	partial, err := toolcontract.NewFailure(toolcontract.FailureConfig{
+		Kind: toolcontract.FailureKindFailed, Cause: errors.New("partial write"),
+		Output: chat.NewTextToolOutput("one file written"),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, cause := range map[string]error{
-		"partial": partial,
-		"denied":  toolcontract.ErrAuthorizationDenied,
+	denied, err := toolcontract.NewFailure(toolcontract.FailureConfig{
+		Kind: toolcontract.FailureKindRejected, Cause: context.DeadlineExceeded,
+		Output: chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "write is not permitted"}}, Details: []byte(`{"permitted":false}`)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	inputRequired := interaction.RequireToolInput([]byte(`{"question":"continue?"}`), []byte(`{"type":"boolean"}`), []byte(`{}`))
+	if !errors.Is(inputRequired, interaction.ErrToolInputRequired) {
+		t.Fatal(inputRequired)
+	}
+	for _, test := range []struct {
+		name    string
+		failure *toolcontract.Failure
+		joined  error
+	}{
+		{name: "partial", failure: partial},
+		{name: "denied", failure: denied},
+		{name: "partial joined with input", failure: partial, joined: inputRequired},
+		{name: "denied joined with input", failure: denied, joined: inputRequired},
+		{name: "partial joined with cancellation", failure: partial, joined: context.Canceled},
 	} {
-		t.Run(name, func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
 				Name: "write", Description: "Write the requested output.",
-			}, func(context.Context, struct{}) (string, error) { return "", cause })
+			}, func(context.Context, struct{}) (string, error) {
+				return "", errors.Join(fmt.Errorf("tool boundary: %w", test.failure), test.joined)
+			})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -55,6 +81,17 @@ func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
 			})
 			if committed == nil || !committed.IsError || len(payloadsOf[runs.AssistantMessageCompleted](events)) != 1 {
 				t.Fatalf("failed Tool feedback did not continue after commit: result=%+v events=%#v", committed, events)
+			}
+			if !reflect.DeepEqual(committed.Output, test.failure.Output()) {
+				t.Fatalf("public failure output changed: got %#v, want %#v", committed.Output, test.failure.Output())
+			}
+			kind := domaintool.FailureExecution
+			if test.failure.Kind() == toolcontract.FailureKindRejected {
+				kind = domaintool.FailureDenied
+			}
+			finished := payloadsOf[runs.ToolCallFinished](events)
+			if len(finished) != 1 || finished[0].Failure == nil || finished[0].Failure.Kind != kind {
+				t.Fatalf("public outcome changed product category: %#v", finished)
 			}
 		})
 	}
