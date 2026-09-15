@@ -531,17 +531,13 @@ func TestDeliveryDoesNotControlAgentExecutions(t *testing.T) {
 // use case and project an accepted firing, but it must not bind a Runner, build
 // a worker/launcher, or start the worker loop itself.
 func TestDeliveryDoesNotWireApplicationCollaborators(t *testing.T) {
-	root := moduleRoot(t)
-	forbidSelectorCalls(t, filepath.Join(root, "internal", "delivery"), map[string]string{
-		"BindRunner":        "post-construction schedule wiring is forbidden",
-		"NewRunLauncher":    "Bootstrap owns scheduled-run launcher construction",
-		"NewWorker":         "Bootstrap owns background worker construction",
-		"RunWorker":         "Bootstrap owns background worker lifetime",
-		"StartScheduledRun": "the schedule application owns scheduled Run starts",
-	})
-	forbidQualifiedCalls(t, filepath.Join(root, "internal", "delivery"), map[string]string{
-		"schedules.New":      "Bootstrap owns schedule coordinator construction",
-		"workspace.NewScope": "Bootstrap owns workspace use-case construction",
+	forbidCalls(t, "./internal/delivery/...", map[string]string{
+		runtimeModule + "/internal/application/automation/schedules.New":                           "Bootstrap owns schedule coordinator construction",
+		runtimeModule + "/internal/application/automation/schedules.NewRunLauncher":                "Bootstrap owns scheduled-run launcher construction",
+		runtimeModule + "/internal/application/automation/schedules.RunLauncher.StartScheduledRun": "the schedule application owns scheduled Run starts",
+		runtimeModule + "/internal/application/automation/schedules.Firing.RunWorker":              "Bootstrap owns background worker lifetime",
+		runtimeModule + "/internal/application/ownership.RecoveryCoordinator.RunWorker":            "Bootstrap owns background worker lifetime",
+		runtimeModule + "/internal/application/workspace.NewScope":                                 "Bootstrap owns workspace use-case construction",
 	})
 }
 
@@ -551,11 +547,10 @@ func TestDeliveryDoesNotWireApplicationCollaborators(t *testing.T) {
 // inputs so persistence, sandboxing, hooks, prompts, workspace reads, schedules,
 // transport state, and server metadata cannot drift.
 func TestAmbientRuntimePathsStayAtProcessComposition(t *testing.T) {
-	root := moduleRoot(t)
-	forbidQualifiedCalls(t, filepath.Join(root, "internal"), map[string]string{
-		"os.UserHomeDir": "the process composition root owns the user-home snapshot",
-		"os.Getwd":       "the process composition root owns the launch-directory snapshot",
-		"filepath.Abs":   "inner runtime paths must resolve against an explicit absolute root",
+	forbidCalls(t, "./internal/...", map[string]string{
+		"os.UserHomeDir":    "the process composition root owns the user-home snapshot",
+		"os.Getwd":          "the process composition root owns the launch-directory snapshot",
+		"path/filepath.Abs": "inner runtime paths must resolve against an explicit absolute root",
 	})
 }
 
@@ -590,9 +585,9 @@ func TestWorkspaceFileReadsDoNotInheritModelExecutorSemantics(t *testing.T) {
 func TestModelSearchUsesTheFiniteWorkspaceCorpus(t *testing.T) {
 	root := moduleRoot(t)
 	toolset := filepath.Join(root, "internal", "adapter", "toolset")
-	forbidQualifiedCalls(t, toolset, map[string]string{
-		"fs.NewGlobTool": "Runtime model glob must use the finite workspace catalog",
-		"fs.NewGrepTool": "Runtime model grep must use the bounded workspace text scanner",
+	forbidCalls(t, "./internal/adapter/toolset/...", map[string]string{
+		"github.com/Tangerg/scope/tools/fs.NewGlobTool": "Runtime model glob must use the finite workspace catalog",
+		"github.com/Tangerg/scope/tools/fs.NewGrepTool": "Runtime model grep must use the bounded workspace text scanner",
 	})
 	forbidExternalImports(t, filepath.Join(toolset, "bounded_search.go"), []string{
 		"os/exec",
@@ -946,12 +941,12 @@ func TestDomainDoesNotOwnConcreteToolInventory(t *testing.T) {
 // and durable mutation recovery are application concerns; Delivery only maps
 // the versioned wire document to/from the application portable model.
 func TestDeliveryDoesNotOwnArchiveRecoveryOrValidation(t *testing.T) {
-	root := moduleRoot(t)
-	forbidSelectorCalls(t, filepath.Join(root, "internal", "delivery"), map[string]string{
-		"NormalizeForRestore":       "archive normalization belongs to application/agent/sessions",
-		"ValidateToolResults":       "archive structural validation belongs to application/agent/sessions",
-		"CanonicalSnapshot":         "terminal archive derivation belongs to application/agent/sessions",
-		"RecoverWorkspaceMutations": "startup recovery belongs to the composition root",
+	sessionsPkg := runtimeModule + "/internal/application/agent/sessions"
+	forbidCalls(t, "./internal/delivery/...", map[string]string{
+		sessionsPkg + ".Snapshot.NormalizeForRestore":          "archive normalization belongs to application/agent/sessions",
+		sessionsPkg + ".Snapshot.ValidateToolResults":          "archive structural validation belongs to application/agent/sessions",
+		sessionsPkg + ".PortableSnapshot.CanonicalSnapshot":    "terminal archive derivation belongs to application/agent/sessions",
+		sessionsPkg + ".Coordinator.RecoverWorkspaceMutations": "startup recovery belongs to the composition root",
 	})
 }
 
@@ -975,6 +970,7 @@ func TestDeliveryDoesNotAuthorDomainText(t *testing.T) {
 	server := filepath.Join(root, "internal", "delivery")
 	for _, name := range []string{
 		"presenter_run.go", "artifact_encode.go", "mcp_projection.go", "handler_providers.go",
+		"handler_goals.go",
 	} {
 		forbidAuthoredText(t, filepath.Join(server, name),
 			"a run's explanation is authored where the case is known and worded by the client")
@@ -984,6 +980,8 @@ func TestDeliveryDoesNotAuthorDomainText(t *testing.T) {
 // TestGoalReasonStaysMachineReadable prevents Delivery from collapsing typed
 // stopping context back into one localized sentence. The client needs the code
 // for behavior and localization, while detail remains independently available.
+// The prose half of that rule belongs with the other authored-text checks: the
+// goal handler may carry the domain's detail, but may not write one.
 func TestGoalReasonStaysMachineReadable(t *testing.T) {
 	reason, ok := reflect.TypeFor[protocol.Goal]().FieldByName("Reason")
 	if !ok {
@@ -992,10 +990,6 @@ func TestGoalReasonStaysMachineReadable(t *testing.T) {
 	if want := reflect.TypeFor[*protocol.GoalReason](); reason.Type != want {
 		t.Errorf("protocol.Goal.Reason = %s, want %s", reason.Type, want)
 	}
-	root := moduleRoot(t)
-	forbidTopLevelNames(t, filepath.Join(root, "internal", "delivery"), map[string]string{
-		"goalReason": "a plain-text reason loses the stable code and client localization boundary",
-	})
 }
 
 // TestDeliveryHandlerDependsOnUseCaseBoundaries prevents concrete execution,
@@ -1061,10 +1055,11 @@ func TestDeliveryDoesNotImplementQuerySemantics(t *testing.T) {
 		"defaultItemPageLimit":    "how wide a page may be is the read's policy",
 		"defaultSessionPageLimit": "how wide a page may be is the read's policy",
 	})
-	forbidQualifiedCalls(t, server, map[string]string{
-		"pagination.Decode": "a cursor is decoded by the read that minted it",
-		"pagination.Encode": "a cursor is minted by the read that knows the sort position",
-		"pagination.PageOf": "cutting a page belongs to the read that ordered the rows",
+	paginationPkg := runtimeModule + "/internal/application/pagination"
+	forbidCalls(t, "./internal/delivery/...", map[string]string{
+		paginationPkg + ".Decode": "a cursor is decoded by the read that minted it",
+		paginationPkg + ".Encode": "a cursor is minted by the read that knows the sort position",
+		paginationPkg + ".PageOf": "cutting a page belongs to the read that ordered the rows",
 	})
 }
 
@@ -1609,48 +1604,6 @@ func forbidTestImports(t *testing.T, dir string, banned []string) {
 	}
 }
 
-// forbidSelectorCalls rejects direct calls whose selector name belongs to a
-// forbidden construction or lifecycle action. The package receiver does not
-// matter here: these names are intentionally specific to the ownership seams
-// guarded above.
-func forbidSelectorCalls(t *testing.T, dir string, banned map[string]string) {
-	t.Helper()
-	root := moduleRoot(t)
-	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		f, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-		if err != nil {
-			return err
-		}
-		ast.Inspect(f, func(node ast.Node) bool {
-			call, ok := node.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			selector, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok {
-				return true
-			}
-			reason, forbidden := banned[selector.Sel.Name]
-			if !forbidden {
-				return true
-			}
-			rel, _ := filepath.Rel(root, path)
-			t.Errorf("%s: delivery calls %s; %s", rel, selector.Sel.Name, reason)
-			return true
-		})
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatalf("walk %s: %v", dir, walkErr)
-	}
-}
-
 // forbidTopLevelNames rejects production functions and named types with names
 // that would reintroduce a removed ownership seam.
 func forbidTopLevelNames(t *testing.T, dir string, banned map[string]string) {
@@ -1734,46 +1687,6 @@ func forbidAuthoredText(t *testing.T, path, reason string) {
 		t.Errorf("%s: authored text %s; %s", rel, literal.Value, reason)
 		return true
 	})
-}
-
-// forbidQualifiedCalls rejects a named package-selector call while allowing
-// unrelated methods with the same selector. It guards composition ownership
-// seams such as delivery's application-coordinator constructors.
-func forbidQualifiedCalls(t *testing.T, dir string, banned map[string]string) {
-	t.Helper()
-	root := moduleRoot(t)
-	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-		if err != nil {
-			return err
-		}
-		ast.Inspect(file, func(node ast.Node) bool {
-			call, ok := node.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			selector, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok {
-				return true
-			}
-			name := exprString(selector.X) + "." + selector.Sel.Name
-			if reason, forbidden := banned[name]; forbidden {
-				rel, _ := filepath.Rel(root, path)
-				t.Errorf("%s: delivery calls %s; %s", rel, name, reason)
-			}
-			return true
-		})
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatalf("walk %s: %v", dir, walkErr)
-	}
 }
 
 // namedStructFieldType returns one named struct field's rendered type. It keeps

@@ -66,8 +66,8 @@ func TestProductionDirectoryReadsAreFinite(t *testing.T) {
 func TestCheckpointGitUsesBoundedProcessOwner(t *testing.T) {
 	file := filepath.Join(moduleRoot(t), "internal", "infra", "git", "checkpoint", "git.go")
 	forbidExternalImports(t, file, []string{"bytes"})
-	forbidSelectorCalls(t, file, map[string]string{
-		"CommandContext": "checkpoint Git commands must use process.Run's bounded process lifecycle",
+	forbidCalls(t, "./internal/infra/git/checkpoint", map[string]string{
+		"os/exec.CommandContext": "checkpoint Git commands must use process.Run's bounded process lifecycle",
 	})
 }
 
