@@ -175,7 +175,7 @@ func (c *Coordinator) prepareRootStart(
 	ctx context.Context,
 	cmd StartCommand,
 ) (rootStartPreparation, error) {
-	if err := cmd.ValidateScheduledIdentity(); err != nil {
+	if err := cmd.ValidateSessionOrigin(); err != nil {
 		return rootStartPreparation{}, err
 	}
 	requestedSelection := cmd.ModelSelection
@@ -301,9 +301,6 @@ func (c *Coordinator) resolveSession(
 ) (session.Session, *session.Session, error) {
 	if newID != "" {
 		return c.sessionCreator.PrepareScheduled(ctx, newID, title, defaultWorkspacePath, selection)
-	}
-	if id == "" {
-		return c.sessionCreator.PrepareFresh(title, defaultWorkspacePath, selection)
 	}
 	sess, err := c.sessionReader.Get(ctx, id)
 	return sess, nil, err

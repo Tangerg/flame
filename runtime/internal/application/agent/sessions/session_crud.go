@@ -91,7 +91,7 @@ func (c *Coordinator) InspectWorkspace(cwd string) (workspaceapp.Resolved, error
 
 // Create starts and persists a fresh root Session in an admitted workspace.
 func (c *Coordinator) Create(ctx context.Context, title, cwd string) (session.Session, error) {
-	created, _, err := c.PrepareFresh(title, cwd, modelref.Selection{})
+	created, _, err := c.prepareInitial(c.newID(), title, cwd, modelref.Selection{})
 	if err != nil {
 		return session.Session{}, err
 	}
@@ -100,16 +100,6 @@ func (c *Coordinator) Create(ctx context.Context, title, cwd string) (session.Se
 	}
 	c.publishSessionMoved(created.ID())
 	return created, nil
-}
-
-// PrepareFresh resolves a Session a Run start creates implicitly, under a fresh
-// identity and without writing it. The Run opening write-set inserts it with the
-// Run, so a later staging or admission failure leaves no Session nobody started.
-func (c *Coordinator) PrepareFresh(
-	title, cwd string,
-	selection modelref.Selection,
-) (current session.Session, initial *session.Session, err error) {
-	return c.prepareInitial(c.newID(), title, cwd, selection)
 }
 
 // PrepareScheduled resolves a schedule-owned Session without writing it. When

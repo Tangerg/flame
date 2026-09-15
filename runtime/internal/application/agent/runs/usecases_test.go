@@ -101,17 +101,6 @@ func (f *fakeRunSessions) setActive(value *run.Run) {
 	f.active = value
 }
 
-func (f *fakeRunSessions) PrepareFresh(
-	title, cwd string,
-	selection modelref.Selection,
-) (session.Session, *session.Session, error) {
-	f.createdTitle = title
-	f.sess = testsupport.MustRestoreSession(session.Snapshot{
-		ID: "ses_created", Title: title, Workspace: testsupport.MustWorkspace(cwd), Selection: selection,
-	})
-	return f.sess, &f.sess, nil
-}
-
 func (f *fakeRunSessions) PrepareScheduled(
 	_ context.Context,
 	id, title, cwd string,
@@ -775,20 +764,22 @@ func TestScheduledStartCarriesExactInitialSessionInOpening(t *testing.T) {
 	}
 }
 
-// TestImplicitSessionExistsOnlyWhenItsRunOpens: a Session a Run start creates on
-// the caller's behalf is written by the opening write-set, so a start that fails
-// before that commit leaves nothing durable behind.
-func TestImplicitSessionExistsOnlyWhenItsRunOpens(t *testing.T) {
+// TestScheduledSessionExistsOnlyWhenItsRunOpens: the Session a schedule
+// occurrence creates is written by the opening write-set, so an occurrence that
+// fails before that commit leaves nothing durable behind.
+func TestScheduledSessionExistsOnlyWhenItsRunOpens(t *testing.T) {
 	effects := &fakeEffects{}
 	sessions := new(fakeRunSessions)
 	control := &fakeExecutionPorts{
-		startRef: ExecutorRef{SessionID: "ses_created", ExecutorID: "turn_1"},
+		startRef: ExecutorRef{SessionID: "ses_scheduled", ExecutorID: "turn_1"},
 		stageErr: errors.New("executor staging failed"),
 	}
 	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
 	command := StartCommand{
-		NewSessionTitle: "Implicit", DefaultWorkspacePath: "/work",
-		Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
+		RunID: "run_new", NewSessionID: "ses_scheduled", ScheduleFiring: "sch_test:1000",
+		NewSessionTitle: "Scheduled", DefaultWorkspacePath: "/work",
+		ModelSelection: mustUseCaseSelection("provider", "model"),
+		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 	}
 
 	if _, err := coordinator.Start(t.Context(), command); !errors.Is(err, control.stageErr) {
@@ -804,11 +795,29 @@ func TestImplicitSessionExistsOnlyWhenItsRunOpens(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 	consumeEvents(result.Events)
-	opening := effects.opening()
-	initial, initialized := opening.InitialSession()
-	if !initialized || initial.ID() != result.SessionID || initial.Title() != "Implicit" ||
-		initial.Workspace().Path() != "/work" {
+	initial, initialized := effects.opening().InitialSession()
+	if !initialized || initial.ID() != result.SessionID {
 		t.Fatalf("opening initial Session = (%+v, %t), want the started Session", initial.Snapshot(), initialized)
+	}
+}
+
+// TestStartRefusesACommandWithNoSessionOrigin: a Run never invents a Session, so
+// a command that names neither an existing Session nor a schedule origin is
+// refused at the command boundary.
+func TestStartRefusesACommandWithNoSessionOrigin(t *testing.T) {
+	effects := &fakeEffects{}
+	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
+	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, new(fakeRunSessions), effects)
+
+	_, err := coordinator.Start(t.Context(), StartCommand{
+		DefaultWorkspacePath: "/work",
+		Input:                []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
+	})
+	if !errors.Is(err, ErrInvalidScheduledStart) {
+		t.Fatalf("Start without a Session origin = %v, want ErrInvalidScheduledStart", err)
+	}
+	if openings := effects.openingSnapshot(); len(openings) != 0 {
+		t.Fatalf("refused start committed %d openings, want none", len(openings))
 	}
 }
 
@@ -2695,16 +2704,16 @@ func TestStartRevalidatesComposedHistoryAgainstSelectedModelBeforeStaging(t *tes
 	}
 }
 
-func TestStartRejectsInvalidInputBeforeSessionCreation(t *testing.T) {
-	sessions := &fakeRunSessions{}
-	c := newUseCaseCoordinator(&fakeExecutor{}, &fakeExecutionPorts{}, sessions, &fakeEffects{})
+func TestStartRejectsInvalidInputBeforeStaging(t *testing.T) {
+	control := &fakeExecutionPorts{}
+	c := newUseCaseCoordinator(&fakeExecutor{}, control, &fakeRunSessions{}, &fakeEffects{})
 
-	_, err := c.Start(context.Background(), StartCommand{})
+	_, err := c.Start(context.Background(), StartCommand{SessionID: "ses_1"})
 	if !errors.Is(err, ErrInputRequired) {
 		t.Fatalf("err = %v, want ErrInputRequired", err)
 	}
-	if sessions.sess.ID() != "" {
-		t.Fatalf("invalid input created session %+v", sessions.sess)
+	if control.started.ModelSelection.Configured() {
+		t.Fatalf("invalid input reached staging: %+v", control.started)
 	}
 }
 

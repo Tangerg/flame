@@ -202,13 +202,12 @@ type SessionReader interface {
 	Get(ctx context.Context, id string) (session.Session, error)
 }
 
-// SessionCreator owns the two Session creation paths consumed by Run start.
-// Both return the resolved Session and, when it is not durable yet, the initial
-// aggregate the opening write-set inserts with the Run: a Session a Run start
-// creates exists only if that Run was accepted. PrepareScheduled resolves a
-// caller-supplied identity, so a retried occurrence reuses its Session.
+// SessionCreator owns the one Session creation path consumed by Run start: a
+// schedule occurrence whose Session may not exist yet. It returns the resolved
+// Session and, when that Session is not durable, the initial aggregate the
+// opening write-set inserts with the Run, so a retried occurrence reuses its
+// Session and an unaccepted one leaves none.
 type SessionCreator interface {
-	PrepareFresh(title, cwd string, selection modelref.Selection) (session.Session, *session.Session, error)
 	PrepareScheduled(
 		ctx context.Context,
 		id, title, cwd string,

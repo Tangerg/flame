@@ -46,13 +46,12 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 		return nil, nil, err
 	}
 	result, err := s.runs.Start(ctx, runs.StartCommand{
-		SessionID:            in.SessionID,
-		DefaultWorkspacePath: s.serverInfo.DefaultWorkspace.Path,
-		ModelSelection:       selection,
-		Limits:               limits,
-		Options:              options,
-		Capabilities:         capabilities,
-		Input:                input,
+		SessionID:      in.SessionID,
+		ModelSelection: selection,
+		Limits:         limits,
+		Options:        options,
+		Capabilities:   capabilities,
+		Input:          input,
 	})
 	if err != nil {
 		return nil, nil, wireRunStartErr(err)

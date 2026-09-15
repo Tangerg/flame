@@ -136,17 +136,21 @@ func (s StartCommand) clone() StartCommand {
 	return s
 }
 
-// ValidateScheduledIdentity ensures a schedule origin is exactly one durable
-// occurrence or one aggregate-owned manual Run fact. Ordinary starts carry
-// neither. Keeping this at the command boundary prevents callers from mixing
-// schedule ownership with an unrelated Session or partial retry identities.
-func (s StartCommand) ValidateScheduledIdentity() error {
+// ValidateSessionOrigin ensures the command names exactly one Session origin:
+// an existing Session, one durable schedule occurrence, or one aggregate-owned
+// manual Run fact. Keeping this at the command boundary prevents callers from
+// mixing schedule ownership with an unrelated Session, from carrying partial
+// retry identities, and from asking the Run to invent a Session.
+func (s StartCommand) ValidateSessionOrigin() error {
 	if s.SessionID != "" {
 		if err := resourceid.ValidateSession(s.SessionID); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
 		}
 	}
 	scheduled := s.RunID != "" || s.NewSessionID != "" || s.ScheduleFiring != ""
+	if !scheduled && s.ManualScheduleRun == nil && s.SessionID == "" {
+		return fmt.Errorf("%w: a start names an existing Session or a schedule origin", ErrInvalidScheduledStart)
+	}
 	if s.ManualScheduleRun != nil {
 		if err := s.ManualScheduleRun.Validate(); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
