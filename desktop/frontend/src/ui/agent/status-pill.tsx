@@ -32,7 +32,7 @@ export function AgentStatusPill({
   tone?: DotTone;
 }) {
   return (
-    <span {...stylex.props(styles.pill, corner.pill, type.uiSm)}>
+    <span data-slot="agent-status" {...stylex.props(styles.pill, corner.pill, type.uiSm)}>
       <StatusDot tone={tone} />
       {children}
     </span>

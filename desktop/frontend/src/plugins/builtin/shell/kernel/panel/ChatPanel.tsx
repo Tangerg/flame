@@ -12,7 +12,6 @@ import {
   type AgentDockTab,
   AgentDockTabs,
   AgentDockToggle,
-  AgentStatusPill,
   AgentSurfaceHeader,
 } from "@/ui/agent";
 import {
@@ -20,7 +19,6 @@ import {
   useActiveSessionId,
   useAgentSessions,
 } from "@/plugins/builtin/agent/public/session";
-import { useIsCurrentRootRunning } from "@/plugins/builtin/agent/public/run";
 import {
   closeAllWorkspaceDockViews,
   closeOtherWorkspaceDockViews,
@@ -44,6 +42,7 @@ import { Slot } from "@/plugins/host/Slot";
 import { WORKSPACE_DOCK_CATALOG } from "@/plugins/builtin/workspace/public/navigation";
 import { ChatStream } from "./ChatStream";
 import { RunAnnouncer } from "./RunAnnouncer";
+import { RunStatusPill } from "./RunStatusPill";
 import { SessionIdentity } from "./SessionIdentity";
 import { DockResizer } from "./DockResizer";
 import { HeaderDiffStat } from "./HeaderDiffStat";
@@ -154,7 +153,6 @@ export function ChatPanel({ onSend }: Props) {
   const { isLoading } = useAgentSessions();
   const activeSession = useActiveSession();
   const activeSessionId = useActiveSessionId();
-  const running = useIsCurrentRootRunning();
   const t = useT();
   const [dockAvailable, setDockAvailable] = useState(true);
 
@@ -263,9 +261,7 @@ export function ChatPanel({ onSend }: Props) {
                 title={activeSession?.title.trim() || t("sidebar.action.newSession")}
                 workspacePath={activeSession?.workspace.path}
               />
-              {running && (
-                <AgentStatusPill tone="running">{t("session.status.running")}</AgentStatusPill>
-              )}
+              <RunStatusPill />
               <span {...stylex.props(sh.spacer)} />
               <Slot name="chat.header.meta" />
               <HeaderDiffStat />

@@ -478,7 +478,6 @@ export const ko: Record<string, string> = {
   "agent.runOutcome.maxSteps": "최대 단계 수에 도달함",
   "agent.runOutcome.maxBudget": "예산 한도에 도달함",
   "agent.steps_other": "{{count}}단계",
-  "agent.working": "처리 중",
   "agent.runTree.action.cancel": "이 실행 취소",
   "agent.runTree.material.empty": "아직 내러티브 내용이 없습니다.",
 

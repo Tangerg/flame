@@ -24,6 +24,18 @@ async function grow(page: Page): Promise<boolean> {
   }, GROWTH_PX);
 }
 
+async function growAbove(page: Page): Promise<boolean> {
+  return page.evaluate((height) => {
+    const content = document.querySelector(".msg-scroll-viewport")?.firstElementChild;
+    if (!content) return false;
+    const block = document.createElement("div");
+    block.style.height = `${height}px`;
+    block.dataset.grownByTest = "";
+    content.prepend(block);
+    return true;
+  }, GROWTH_PX * 3);
+}
+
 async function read(page: Page) {
   const reading = await page.evaluate(() => {
     const v = document.querySelector(".msg-scroll-viewport") as HTMLElement | null;
@@ -85,4 +97,41 @@ test("a growing transcript follows the tail, but only from the bottom", async ({
   await expect
     .poll(async () => (await read(page)).fromBottom, { timeout: 5_000 })
     .toBeLessThanOrEqual(2);
+});
+
+test("a running turn says so where the transcript cannot take it away", async ({ page }) => {
+  await page.setViewportSize({ width: 1120, height: 720 });
+  await page.goto("/visual/?fixture=agent&state=waves&theme=light");
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.locator(".msg-scroll-viewport").waitFor();
+  await page.waitForTimeout(500);
+
+  const status = page.locator('[data-slot="agent-status"]');
+  await expect(status, "the run is running, so exactly one thing says so").toHaveCount(1);
+  await expect(status, "and says how long the wait has been").toHaveText(/\d/);
+
+  const onScreen = () =>
+    status.evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      return box.top >= 0 && box.bottom <= window.innerHeight;
+    });
+
+  // Above the tail, because that is where a long turn's history is. Growing BELOW would
+  // push the tail down and leave it on screen at scrollTop 0 — measuring nothing.
+  expect(await growAbove(page), "the insert has to find the content element").toBe(true);
+  await page.waitForTimeout(700);
+  expect(await onScreen(), "pinned to the tail, the run status is on screen").toBe(true);
+
+  await page.locator(".msg-scroll-viewport").evaluate((viewport) => {
+    viewport.scrollTop = 0;
+  });
+  await page.waitForTimeout(400);
+  const parked = await read(page);
+  expect(parked.top, "the reader has left the tail").toBe(0);
+  expect(
+    parked.fromBottom,
+    "this proves nothing unless the tail is far enough away to be off screen",
+  ).toBeGreaterThan(GROWTH_PX);
+
+  expect(await onScreen(), "reading earlier in the transcript does not hide it").toBe(true);
 });

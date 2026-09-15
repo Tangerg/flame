@@ -649,7 +649,6 @@ export const en: Record<string, string> = {
   "agent.runOutcome.maxBudget": "Budget limit reached",
   "agent.steps_one": "{{count}} step",
   "agent.steps_other": "{{count}} steps",
-  "agent.working": "Working",
   "agent.runTree.action.cancel": "Cancel this run",
   "agent.runTree.material.empty": "No narrative material yet.",
 

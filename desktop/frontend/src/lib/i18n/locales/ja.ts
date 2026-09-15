@@ -479,7 +479,6 @@ export const ja: Record<string, string> = {
   "agent.runOutcome.maxSteps": "最大ステップ数に到達",
   "agent.runOutcome.maxBudget": "予算上限に到達",
   "agent.steps_other": "{{count}} ステップ",
-  "agent.working": "処理中",
   "agent.runTree.action.cancel": "この実行をキャンセル",
   "agent.runTree.material.empty": "ナラティブはまだありません。",
 

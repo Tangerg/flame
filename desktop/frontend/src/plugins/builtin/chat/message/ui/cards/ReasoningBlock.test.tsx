@@ -6,6 +6,26 @@ function renderReasoning(status: "running" | "complete", text: string) {
   return render(<ReasoningBlock text={text} status={status} />);
 }
 
+function scrollportOf(container: HTMLElement): HTMLElement {
+  const scrollport = container.querySelector<HTMLElement>('[data-slot="reasoning-scroller"]');
+  expect(scrollport).not.toBeNull();
+  return scrollport!;
+}
+
+// jsdom lays nothing out, so both heights read 0 and every box looks like it fits.
+function stubScrollGeometry(scrollHeight: number, clientHeight: number): () => void {
+  const scroll = vi
+    .spyOn(HTMLElement.prototype, "scrollHeight", "get")
+    .mockReturnValue(scrollHeight);
+  const client = vi
+    .spyOn(HTMLElement.prototype, "clientHeight", "get")
+    .mockReturnValue(clientHeight);
+  return () => {
+    scroll.mockRestore();
+    client.mockRestore();
+  };
+}
+
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -53,12 +73,20 @@ describe("ReasoningBlock disclosure policy", () => {
     expect(trigger.querySelector(".animate-pulse-dot")).toBeNull();
   });
 
-  it("keeps the bounded streaming rationale keyboard-scrollable", () => {
+  it("keeps an overflowing rationale keyboard-scrollable", () => {
+    const overflow = stubScrollGeometry(400, 192);
+    try {
+      const { container } = renderReasoning("running", "Inspect the protocol boundary");
+      expect(scrollportOf(container).tabIndex).toBe(0);
+    } finally {
+      overflow();
+    }
+  });
+
+  it("leaves a rationale that fits out of the tab order", () => {
     const { container } = renderReasoning("running", "Inspect the protocol boundary");
 
-    const scrollport = container.querySelector<HTMLElement>('[data-slot="reasoning-scroller"]');
-    expect(scrollport).not.toBeNull();
-    expect(scrollport!.tabIndex).toBe(0);
+    expect(scrollportOf(container).tabIndex).toBe(-1);
   });
 
   it("does not disguise Run cancellation as an Answer now activity action", () => {

@@ -1039,6 +1039,38 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
+test("a finished thought opens into a box that is still bounded", async ({ page }) => {
+  await page.goto("/visual/?fixture=agent&theme=light&state=narrative");
+  await page.locator("html[data-visual-ready]").waitFor();
+
+  await page
+    .getByRole("button", { name: /read · 1 search · 1 write/ })
+    .first()
+    .click();
+  const thought = page.getByRole("button", { name: "Thought", exact: true });
+  await expect(thought).toHaveAttribute("aria-expanded", "false");
+  await thought.click();
+  await expect(thought).toHaveAttribute("aria-expanded", "true");
+
+  const box = await page.locator('[data-slot="reasoning-scroller"]').evaluate((node) => {
+    const style = getComputedStyle(node);
+    return {
+      maxHeight: style.maxHeight,
+      overflowY: style.overflowY,
+      focusable: node.getAttribute("tabindex"),
+      overflowing: node.scrollHeight > node.clientHeight + 1,
+    };
+  });
+  expect(
+    box.maxHeight,
+    "reasoning is evidence whether or not it is still arriving, and evidence takes a window",
+  ).not.toBe("none");
+  expect(box.overflowY).toBe("auto");
+  expect(box.focusable, "a box with nothing to scroll must not take a place in the tab order").toBe(
+    box.overflowing ? "0" : null,
+  );
+});
+
 test("context compaction uses the Codex activity row without divider chrome", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=narrative");
   await page.locator("html[data-visual-ready]").waitFor();

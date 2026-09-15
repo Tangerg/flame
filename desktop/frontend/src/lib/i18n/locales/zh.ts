@@ -615,7 +615,6 @@ export const zh: Record<string, string> = {
   "agent.runOutcome.maxSteps": "已达到最大步骤数",
   "agent.runOutcome.maxBudget": "已达到预算上限",
   "agent.steps_other": "{{count}} 步",
-  "agent.working": "正在处理",
   "agent.runTree.action.cancel": "取消此次运行",
   "agent.runTree.material.empty": "暂无叙事内容。",
 

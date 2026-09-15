@@ -112,7 +112,7 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
   }, [text, isOpen, measure]);
 
   const showTopFade = isOpen && edges.scrolled;
-  const showBottomFade = isOpen && streaming && edges.overflowing && !edges.atBottom;
+  const showBottomFade = isOpen && edges.overflowing && !edges.atBottom;
 
   return (
     <AgentActivityDisclosure
@@ -128,7 +128,7 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
         ref={scrollRef}
         data-slot="reasoning-scroller"
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-        tabIndex={streaming && isOpen ? 0 : undefined}
+        tabIndex={isOpen && edges.overflowing ? 0 : undefined}
         onScroll={measure}
         style={
           {
@@ -136,7 +136,7 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
             "--fade-bottom": showBottomFade ? FADE : "0px",
           } as CSSProperties
         }
-        {...stylex.props(rb.scroller, rb.fade, streaming && isOpen && rb.windowed)}
+        {...stylex.props(rb.scroller, rb.fade, isOpen && rb.windowed)}
       >
         <div ref={contentRef} className={stylex.props(ms.quote, typeStep.uiSm).className}>
           <MarkdownMessage text={text} streaming={streaming} reveal="smooth" />

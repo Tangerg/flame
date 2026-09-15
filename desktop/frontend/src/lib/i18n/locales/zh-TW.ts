@@ -479,7 +479,6 @@ export const zhTW: Record<string, string> = {
   "agent.runOutcome.maxSteps": "已達最大步驟數",
   "agent.runOutcome.maxBudget": "已達預算上限",
   "agent.steps_other": "{{count}} 步",
-  "agent.working": "正在處理",
   "agent.runTree.action.cancel": "取消此次執行",
   "agent.runTree.material.empty": "尚無敘事內容。",
 

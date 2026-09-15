@@ -505,7 +505,6 @@ export const fr: Record<string, string> = {
   "agent.steps_one": "{{count}} étape",
   "agent.steps_many": "{{count}} d’étapes",
   "agent.steps_other": "{{count}} étapes",
-  "agent.working": "En cours",
   "agent.runTree.action.cancel": "Annuler cette exécution",
   "agent.runTree.material.empty": "Aucun contenu narratif pour le moment.",
 

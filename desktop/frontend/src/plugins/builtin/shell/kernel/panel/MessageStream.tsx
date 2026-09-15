@@ -14,7 +14,7 @@ import { enterUp } from "@/lib/motion";
 import { cn } from "@/lib/classNames";
 import { dayKey, formatDay } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n";
-import { Divider, Loader } from "@/ui";
+import { Divider } from "@/ui";
 import { readingColumn as rc } from "./readingColumn";
 import {
   useCurrentRootMaterial,
@@ -26,8 +26,6 @@ import {
   RootRunOutcome,
 } from "@/plugins/builtin/chat/message/public/rendering";
 import { transcriptTurnContentVisibility } from "./transcriptTurnContentVisibility";
-import { durationText } from "@/lib/format";
-import { useElapsedMillis } from "./useElapsedMillis";
 import { space } from "@/styles/tokens.stylex";
 
 const ms = stylex.create({
@@ -36,7 +34,6 @@ const ms = stylex.create({
   viewport: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
   dayPad: { paddingBlock: space.s1 },
   content: { position: "relative", display: "flex", flexDirection: "column", paddingTop: space.s8 },
-  working: { marginTop: space.s4, display: "flex" },
   afterBlock: { marginTop: space.s4 },
   scroller: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
 });
@@ -250,33 +247,8 @@ export function MessageStream({ rows, ctx, sessionId, controllerRef }: Props) {
             );
           })}
         </AnimatePresence>
-        {running && <WorkingLine startedAt={currentRoot.startedAt} />}
       </StickToBottom.Content>
       <ControlsRelay />
     </StickToBottom>
-  );
-}
-
-/**
- * That the turn is still going, and how long it has been going for.
- *
- * Wall clock on purpose: this is the wait as lived, including approval pauses that a
- * runtime-measured step duration deliberately excludes.
- */
-function WorkingLine({ startedAt }: { startedAt: number | null }) {
-  const t = useT();
-  const elapsed = useElapsedMillis(startedAt);
-  const label = t("agent.working");
-  return (
-    <div {...stylex.props(rc.gutter, ms.working)} data-slot="agent-working">
-      <Loader
-        size="sm"
-        text={
-          startedAt === null
-            ? label
-            : `${label} · ${durationText(t, startedAt, startedAt + elapsed)}`
-        }
-      />
-    </div>
   );
 }
