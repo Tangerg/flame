@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useMemo, useState } from "react";
 import { ScrollArea, SearchField, vocab } from "@/ui";
+import { AgentWorkspaceView } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { IconMap, rawToc } from "./iconMap";
 import {
@@ -23,7 +24,6 @@ const GROUP_TITLE_KEYS: Record<GroupKey, string> = {
 };
 
 const ig = stylex.create({
-  page: { display: "flex", height: "100%", minHeight: 0, flexDirection: "column" },
   masthead: {
     display: "flex",
     alignItems: "center",
@@ -84,7 +84,7 @@ export function IconGallery() {
   }, [items]);
 
   return (
-    <div {...stylex.props(ig.page)}>
+    <AgentWorkspaceView>
       <div {...stylex.props(ig.masthead)}>
         <div>
           <div {...stylex.props(ig.title, typeStep.displaySm)}>@lobehub/icons</div>
@@ -127,7 +127,7 @@ export function IconGallery() {
           </div>
         )}
       </ScrollArea>
-    </div>
+    </AgentWorkspaceView>
   );
 }
 
