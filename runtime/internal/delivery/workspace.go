@@ -18,7 +18,7 @@ const (
 )
 
 func registerWorkspace(registry *Registry) {
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:   WorkspacesResolve,
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
 	}, func(service interface {
@@ -27,7 +27,7 @@ func registerWorkspace(registry *Registry) {
 		return service.ResolveWorkspace(ctx, request)
 	})
 
-	registry.Query(MethodMeta{Name: WorkspacesList},
+	registry.query(MethodMeta{Name: WorkspacesList},
 		func(service interface {
 			ListWorkspaces(context.Context) (*protocol.Page[protocol.WorkspaceSummary], error)
 		}, ctx context.Context, _ struct{}) (*protocol.Page[protocol.WorkspaceSummary], error) {
@@ -36,7 +36,7 @@ func registerWorkspace(registry *Registry) {
 
 	// Git reads require the advertised capability. Once negotiated, a path that is
 	// not a repository is the distinct vcs_unavailable domain answer.
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: WorkspaceChangesList,
 		Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(),
@@ -49,7 +49,7 @@ func registerWorkspace(registry *Registry) {
 		return service.ListWorkspaceFileChanges(ctx, request)
 	})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: WorkspaceDiffGet,
 		Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(),
@@ -63,7 +63,7 @@ func registerWorkspace(registry *Registry) {
 		return service.GetWorkspaceDiff(ctx, request)
 	})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: WorkspaceFilesHead,
 		Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(),
@@ -76,7 +76,7 @@ func registerWorkspace(registry *Registry) {
 		return service.GetWorkspaceFileHead(ctx, request)
 	})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: WorkspaceFilesSearch,
 		Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(),
@@ -88,7 +88,7 @@ func registerWorkspace(registry *Registry) {
 		return service.GrepWorkspace(ctx, request)
 	})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: WorkspaceFilesList,
 		Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(),
@@ -100,7 +100,7 @@ func registerWorkspace(registry *Registry) {
 		return service.ListWorkspaceFiles(ctx, request)
 	})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: WorkspaceFilesRead,
 		Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(),

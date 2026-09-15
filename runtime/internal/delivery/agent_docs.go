@@ -9,7 +9,7 @@ import (
 const AgentDocsList Name = "agentDocs.list"
 
 func registerAgentDocs(registry *Registry) {
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:   AgentDocsList,
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
 	}, func(service interface {

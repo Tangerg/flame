@@ -12,14 +12,14 @@ const (
 )
 
 func registerTools(registry *Registry) {
-	registry.Query(MethodMeta{Name: ToolsList},
+	registry.query(MethodMeta{Name: ToolsList},
 		func(service interface {
 			ListTools(context.Context) (*protocol.Page[protocol.ToolSpec], error)
 		}, ctx context.Context, _ struct{}) (*protocol.Page[protocol.ToolSpec], error) {
 			return service.ListTools(ctx)
 		})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name: ToolsInvoke,
 		Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(),

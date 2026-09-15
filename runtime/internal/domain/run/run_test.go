@@ -282,6 +282,15 @@ func TestProgressRefusesANegativePromptFootprintInsteadOfIgnoringIt(t *testing.T
 	}
 }
 
+// TestAdvanceProgressRefusesAValueOutsideTheStateMachine: Go's zero value is a
+// construction path the aggregate cannot forbid, so the transition itself has to
+// refuse a state no Run ever reached.
+func TestAdvanceProgressRefusesAValueOutsideTheStateMachine(t *testing.T) {
+	if _, err := (Run{}).AdvanceProgress(Metrics{}, 0, time.Unix(1, 0).UTC()); err == nil {
+		t.Fatal("AdvanceProgress advanced a zero-value Run")
+	}
+}
+
 func TestCancelWaitingRefusesARunThatIsNotWaiting(t *testing.T) {
 	createdAt := time.Unix(4, 0).UTC()
 	value, err := Admit(Draft{

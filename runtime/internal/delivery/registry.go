@@ -98,9 +98,9 @@ func (r *Registry) StreamMethods() []string {
 	return out
 }
 
-// Query registers one unary read operation and derives its complete method
+// query registers one unary read operation and derives its complete method
 // semantics from the typed handler.
-func (r *Registry) Query[Capability, Params, Response any](
+func (r *Registry) query[Capability, Params, Response any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Response, error),
 ) {
@@ -111,8 +111,8 @@ func (r *Registry) Query[Capability, Params, Response any](
 	r.registerUnary(meta, call)
 }
 
-// Command registers one unary mutation with response replay semantics.
-func (r *Registry) Command[Capability, Params, Response any](
+// command registers one unary mutation with response replay semantics.
+func (r *Registry) command[Capability, Params, Response any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Response, error),
 ) {
@@ -148,8 +148,8 @@ func (r *Registry) registerUnary[Capability, Params, Response any](
 	})
 }
 
-// CommandAck registers one unary mutation whose success carries no data.
-func (r *Registry) CommandAck[Capability, Params any](
+// commandAck registers one unary mutation whose success carries no data.
+func (r *Registry) commandAck[Capability, Params any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) error,
 ) {
@@ -172,8 +172,8 @@ func (r *Registry) CommandAck[Capability, Params any](
 	})
 }
 
-// Subscription registers one live stream that starts from current state.
-func (r *Registry) Subscription[Capability, Params, Ack, Event any](
+// subscription registers one live stream that starts from current state.
+func (r *Registry) subscription[Capability, Params, Ack, Event any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
 ) {
@@ -191,10 +191,10 @@ func (r *Registry) registerSubscription[Capability, Params, Ack, Event any](
 	r.registerStream(meta, call)
 }
 
-// RunSubscription registers a stream that may replay retained Run events from
-// an opaque cursor. Runtime-wide invalidation subscriptions use Subscription:
+// runSubscription registers a stream that may replay retained Run events from
+// an opaque cursor. Runtime-wide invalidation subscriptions use subscription:
 // reconnecting those streams deliberately resyncs instead of replaying history.
-func (r *Registry) RunSubscription[Capability, Params, Ack, Event any](
+func (r *Registry) runSubscription[Capability, Params, Ack, Event any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
 ) {
@@ -202,9 +202,9 @@ func (r *Registry) RunSubscription[Capability, Params, Ack, Event any](
 	r.registerSubscription(meta, call)
 }
 
-// RunStreamCommand registers one replay-protected Run mutation and its event
+// runStreamCommand registers one replay-protected Run mutation and its event
 // stream as a single operation.
-func (r *Registry) RunStreamCommand[Capability, Params, Ack, Event any](
+func (r *Registry) runStreamCommand[Capability, Params, Ack, Event any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
 ) {
@@ -305,5 +305,6 @@ func paginationOf(params, result reflect.Type) (PaginationKind, error) {
 	return PaginationCursor, nil
 }
 
-// Contract returns the immutable Runtime operation catalog.
+// Contract returns the Runtime operation catalog. Registration is package-local
+// and runs once at init, so a consumer of this value can only read it.
 func Contract() *Registry { return contract }

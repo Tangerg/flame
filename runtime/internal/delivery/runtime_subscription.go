@@ -17,7 +17,7 @@ func registerRuntimeSubscription(registry *Registry) {
 	//
 	// A topic this build does not advertise is refused with capability_not_negotiated
 	// by the handler, which is the only place that knows the composition's answer.
-	registry.Subscription(MethodMeta{
+	registry.subscription(MethodMeta{
 		Name: RuntimeSubscribe,
 		CapabilityRules: []CapabilityRule{{
 			When:     []FieldCondition{{Field: "watches", Operator: OperatorPresent}},

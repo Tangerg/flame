@@ -28,10 +28,14 @@ const (
 )
 
 type replayStore struct {
-	store     idempotency.Store
-	locks     [64]sync.Mutex
-	pendingMu sync.Mutex
-	pending   map[string]idempotency.Record
+	store idempotency.Store
+	// inFlight serializes one key's execution and receipt. It is a signal per key
+	// rather than a shared mutex so a waiter can stop waiting when its request
+	// ends, and so an unrelated key never queues behind another key's command.
+	inFlightMu sync.Mutex
+	inFlight   map[string]chan struct{}
+	pendingMu  sync.Mutex
+	pending    map[string]idempotency.Record
 }
 
 type storedOutcome struct {
@@ -41,7 +45,11 @@ type storedOutcome struct {
 }
 
 func newReplayStore(store idempotency.Store) *replayStore {
-	return &replayStore{store: store, pending: make(map[string]idempotency.Record)}
+	return &replayStore{
+		store:    store,
+		inFlight: make(map[string]chan struct{}),
+		pending:  make(map[string]idempotency.Record),
+	}
 }
 
 func (r *replayStore) invoke(
@@ -59,9 +67,11 @@ func (r *replayStore) invoke(
 	if err != nil {
 		return failed(ProjectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
 	}
-	lock := r.lock(key)
-	lock.Lock()
-	defer lock.Unlock()
+	release, err := r.acquire(ctx, key)
+	if err != nil {
+		return failed(ProjectError(err))
+	}
+	defer release()
 
 	if pending, ok := r.pendingCompletion(key); ok {
 		if pending.Fingerprint != fingerprint {
@@ -298,8 +308,11 @@ func (r *replayStore) flushPending(ctx context.Context) error {
 	}
 	var errs []error
 	for _, key := range r.pendingKeys() {
-		lock := r.lock(key)
-		lock.Lock()
+		release, err := r.acquire(ctx, key)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("idempotency: flush pending outcome: %w", err))
+			continue
+		}
 		pending, ok := r.pendingCompletion(key)
 		if ok {
 			_, err := r.settlePendingCompletionWithin(ctx, pending)
@@ -309,7 +322,7 @@ func (r *replayStore) flushPending(ctx context.Context) error {
 				errs = append(errs, fmt.Errorf("idempotency: flush pending outcome: %w", err))
 			}
 		}
-		lock.Unlock()
+		release()
 	}
 	return errors.Join(errs...)
 }
@@ -355,9 +368,34 @@ func (r *replayStore) pendingKeys() []string {
 	return keys
 }
 
-func (r *replayStore) lock(key string) *sync.Mutex {
-	sum := sha256.Sum256([]byte(key))
-	return &r.locks[int(sum[0])%len(r.locks)]
+// acquire reserves key until the returned release runs. A waiter observes the
+// holder's completion signal, so it leaves as soon as ctx ends instead of
+// outliving the request that is waiting for it.
+func (r *replayStore) acquire(ctx context.Context, key string) (func(), error) {
+	for {
+		r.inFlightMu.Lock()
+		held, busy := r.inFlight[key]
+		if !busy {
+			settled := make(chan struct{})
+			r.inFlight[key] = settled
+			r.inFlightMu.Unlock()
+			var once sync.Once
+			return func() {
+				once.Do(func() {
+					r.inFlightMu.Lock()
+					delete(r.inFlight, key)
+					r.inFlightMu.Unlock()
+					close(settled)
+				})
+			}, nil
+		}
+		r.inFlightMu.Unlock()
+		select {
+		case <-ctx.Done():
+			return nil, context.Cause(ctx)
+		case <-held:
+		}
+	}
 }
 
 func unattachable(err error) bool {

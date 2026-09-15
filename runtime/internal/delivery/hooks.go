@@ -12,7 +12,7 @@ const (
 )
 
 func registerHooks(registry *Registry) {
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:   HooksList,
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
 	}, func(service interface {
@@ -21,7 +21,7 @@ func registerHooks(registry *Registry) {
 		return service.ListHooks(ctx, request)
 	})
 
-	registry.CommandAck(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name: HooksSetTrust,
 	}, func(service interface {
 		SetHookTrust(context.Context, protocol.SetHookTrustRequest) error

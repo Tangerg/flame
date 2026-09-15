@@ -9,7 +9,7 @@ import (
 const RecipesList Name = "recipes.list"
 
 func registerRecipes(registry *Registry) {
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:   RecipesList,
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
 	}, func(service interface {

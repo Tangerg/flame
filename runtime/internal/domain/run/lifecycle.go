@@ -63,6 +63,13 @@ func (s State) Resume() (State, bool) {
 	return s, false
 }
 
+// AdvanceProgress reports whether a model-response boundary may be committed
+// against s. Both open positions accumulate work; a terminal Run and any value
+// outside the machine do not.
+func (s State) AdvanceProgress() bool {
+	return s == Running || s == Waiting
+}
+
 // Terminate ends a run with outcome o, returning the resulting terminal state.
 // It is legal from Running for any outcome, and from Waiting only for
 // [OutcomeCanceled] — a parked run can be canceled outright, but reaching any

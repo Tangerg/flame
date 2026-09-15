@@ -13,7 +13,7 @@ func registerItems(registry *Registry) {
 	// differs — find the session, or find the run — so both refusals are declared.
 	// Asking a run scope for its subtree needs features.subagents; the scope itself
 	// does not, since a root run is a run.
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: ItemsList,
 		Errors: []string{
 			protocol.ErrSessionNotFound.Error(),

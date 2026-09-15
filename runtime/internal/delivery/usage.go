@@ -12,7 +12,7 @@ const (
 )
 
 func registerUsage(registry *Registry) {
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: UsageSession, Errors: []string{protocol.ErrSessionNotFound.Error()},
 	}, func(service interface {
 		SessionUsage(context.Context, string) (*protocol.Usage, error)
@@ -20,7 +20,7 @@ func registerUsage(registry *Registry) {
 		return service.SessionUsage(ctx, request.SessionID)
 	})
 
-	registry.Query(MethodMeta{Name: UsageSummary},
+	registry.query(MethodMeta{Name: UsageSummary},
 		func(service interface {
 			UsageSummary(context.Context, protocol.UsageSummaryRequest) (*protocol.UsageSummary, error)
 		}, ctx context.Context, request protocol.UsageSummaryRequest) (*protocol.UsageSummary, error) {

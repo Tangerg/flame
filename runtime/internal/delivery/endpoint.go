@@ -132,6 +132,13 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 
 	ctx = WithRequestMeta(ctx, options.RequestMeta)
 	ctx = withAfterEventID(ctx, options.AfterEventID)
+	// Capability admission belongs to this request, not to the operation's stored
+	// outcome: a replay must not serve a result the caller could not have asked
+	// for, and a request refused for a missing declaration must not occupy the
+	// key a complete one retries with.
+	if failure := e.enforceCapabilities(ctx, method.Meta, parameters); failure != nil {
+		return failed(failure)
+	}
 	execute := func() Result { return e.execute(ctx, method, parameters) }
 	var result Result
 	if options.IdempotencyKey == "" || !method.Meta.Idempotency.Replays() {
@@ -148,9 +155,6 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 }
 
 func (e *Endpoint) execute(ctx context.Context, method *Method, parameters any) Result {
-	if err := e.enforceCapabilities(ctx, method.Meta, parameters); err != nil {
-		return failed(err)
-	}
 	raw := method.invoke(e.target, ctx, parameters)
 	if raw.err != nil {
 		return failed(ProjectError(raw.err))

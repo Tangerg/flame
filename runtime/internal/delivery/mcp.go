@@ -19,7 +19,7 @@ const (
 )
 
 func registerMCP(registry *Registry) {
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:            MCPServersList,
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
@@ -28,7 +28,7 @@ func registerMCP(registry *Registry) {
 		return service.ListMCPServers(ctx)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name:            MCPServersCreate,
 		Errors:          []string{protocol.ErrMCPServerAlreadyExists.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
@@ -38,7 +38,7 @@ func registerMCP(registry *Registry) {
 		return service.CreateMCPServer(ctx, request)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name:            MCPServersUpdate,
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
@@ -48,7 +48,7 @@ func registerMCP(registry *Registry) {
 		return service.UpdateMCPServer(ctx, request)
 	})
 
-	registry.CommandAck(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name:            MCPServersDelete,
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
@@ -59,7 +59,7 @@ func registerMCP(registry *Registry) {
 	})
 
 	// A connection probe persists nothing, so a retry is not a replay concern.
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:            MCPServersTest,
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
@@ -68,7 +68,7 @@ func registerMCP(registry *Registry) {
 		return service.TestMCPServer(ctx, request)
 	})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:            MCPToolsList,
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
@@ -77,7 +77,7 @@ func registerMCP(registry *Registry) {
 		return service.ListMCPTools(ctx, request)
 	})
 
-	registry.CommandAck(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name:            MCPServersReconnect,
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPServerDisabled.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
@@ -87,7 +87,7 @@ func registerMCP(registry *Registry) {
 		return service.ReconnectMCPServer(ctx, request.Server)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name:            MCPAuthorizationAttemptsCreate,
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPServerDisabled.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
@@ -97,7 +97,7 @@ func registerMCP(registry *Registry) {
 		return service.CreateMCPAuthorizationAttempt(ctx, request.Server)
 	})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:            MCPAuthorizationAttemptsGet,
 		Errors:          []string{protocol.ErrMCPAuthorizationAttemptNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),

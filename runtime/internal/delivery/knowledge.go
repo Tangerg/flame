@@ -13,7 +13,7 @@ const (
 )
 
 func registerKnowledge(registry *Registry) {
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: KnowledgeList, Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrPathOutsideRoot.Error(),
 		},
@@ -24,7 +24,7 @@ func registerKnowledge(registry *Registry) {
 		return service.ListKnowledge(ctx, request)
 	})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: KnowledgeGet, Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrPathOutsideRoot.Error(),
 		},
@@ -35,7 +35,7 @@ func registerKnowledge(registry *Registry) {
 		return service.GetKnowledge(ctx, request)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name: KnowledgeUpdate, Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrPathOutsideRoot.Error(),
 			protocol.ErrRevisionConflict.Error(),

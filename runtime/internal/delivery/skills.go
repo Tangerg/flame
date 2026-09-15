@@ -17,7 +17,7 @@ const (
 )
 
 func registerSkills(registry *Registry) {
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:            SkillsDiscoveredList,
 		Errors:          []string{protocol.ErrWorkspaceUnavailable.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
@@ -27,7 +27,7 @@ func registerSkills(registry *Registry) {
 		return service.ListDiscoveredSkills(ctx, request)
 	})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:            SkillsLibraryList,
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
@@ -36,7 +36,7 @@ func registerSkills(registry *Registry) {
 		return service.ListManagedSkills(ctx)
 	})
 
-	registry.CommandAck(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name:            SkillsLibraryArchive,
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
@@ -45,7 +45,7 @@ func registerSkills(registry *Registry) {
 		return service.ArchiveSkill(ctx, request)
 	})
 
-	registry.CommandAck(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name:            SkillsLibraryRestore,
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
@@ -54,7 +54,7 @@ func registerSkills(registry *Registry) {
 		return service.RestoreSkill(ctx, request)
 	})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:            SkillsProposalsList,
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
@@ -63,7 +63,7 @@ func registerSkills(registry *Registry) {
 		return service.ListSkillProposals(ctx, request)
 	})
 
-	registry.CommandAck(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name:            SkillsProposalsApprove,
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
@@ -72,7 +72,7 @@ func registerSkills(registry *Registry) {
 		return service.ApproveSkillProposal(ctx, request)
 	})
 
-	registry.CommandAck(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name:            SkillsProposalsReject,
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {

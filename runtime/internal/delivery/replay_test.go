@@ -555,3 +555,160 @@ func TestAcknowledgementReplaysWithoutReExecuting(t *testing.T) {
 		t.Fatalf("SteerRun calls = %d, want 1", calls)
 	}
 }
+
+// relocatingSessionService advertises the feature sessions.update needs only
+// once enabled is set, so a refusal and a later admission share one key.
+type relocatingSessionService struct {
+	enabled atomic.Bool
+	calls   atomic.Int64
+}
+
+func (r *relocatingSessionService) Discover(context.Context) (*protocol.DiscoverResponse, error) {
+	return &protocol.DiscoverResponse{Capabilities: protocol.ServerCapabilities{
+		Features: map[string]protocol.FeatureCapability{
+			protocol.FeatureRelocate: {Enabled: r.enabled.Load()},
+		},
+	}}, nil
+}
+
+func (r *relocatingSessionService) UpdateSession(
+	_ context.Context,
+	request protocol.UpdateSessionRequest,
+) (*protocol.Session, error) {
+	r.calls.Add(1)
+	at := time.Date(2026, 8, 11, 1, 0, 0, 0, time.UTC)
+	return &protocol.Session{
+		ID: request.SessionID, Title: "relocated", Status: protocol.SessionStatusIdle,
+		Provider: "mock", Model: "balanced",
+		Workspace: protocol.WorkspaceInfo{
+			Ref: protocol.WorkspaceRef{Path: "/next"}, ProjectRoot: "/next",
+			Availability: protocol.WorkspaceAvailable,
+		},
+		CreatedAt: at, UpdatedAt: at, Revision: 2,
+	}, nil
+}
+
+// TestCapabilityRefusalDoesNotClaimTheIdempotencyKey: capability admission is
+// this request's contract, so a refused request must leave the key free for the
+// retry that can satisfy it instead of caching the refusal as the operation's
+// outcome.
+func TestCapabilityRefusalDoesNotClaimTheIdempotencyKey(t *testing.T) {
+	service := &relocatingSessionService{}
+	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: newMemoryIdempotencyStore()})
+	options := Options{IdempotencyKey: "relocate-once"}
+	request := protocol.UpdateSessionRequest{
+		SessionID: "ses_1", ExpectedRevision: 1, Workspace: &protocol.WorkspaceRef{Path: "/next"},
+	}
+
+	_, err := endpoint.Call[protocol.UpdateSessionRequest, *protocol.Session](
+		t.Context(), SessionsUpdate, request, options,
+	)
+	var gap *CapabilityGapError
+	if !errors.As(err, &gap) {
+		t.Fatalf("refused update = %v, want a capability gap", err)
+	}
+
+	service.enabled.Store(true)
+	updated, err := endpoint.Call[protocol.UpdateSessionRequest, *protocol.Session](
+		t.Context(), SessionsUpdate, request, options,
+	)
+	if err != nil {
+		t.Fatalf("retry under an admitted capability: %v", err)
+	}
+	if updated == nil || updated.ID != "ses_1" {
+		t.Fatalf("retry result = %+v, want the updated Session", updated)
+	}
+	if calls := service.calls.Load(); calls != 1 {
+		t.Fatalf("UpdateSession calls = %d, want 1", calls)
+	}
+}
+
+// TestReplayServesOnlyARequestThisCapabilitySetAdmits: a stored outcome answers
+// the operation, not the caller's admission, so a replay is still refused when
+// this request cannot ask for it.
+func TestReplayServesOnlyARequestThisCapabilitySetAdmits(t *testing.T) {
+	service := &relocatingSessionService{}
+	service.enabled.Store(true)
+	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: newMemoryIdempotencyStore()})
+	options := Options{IdempotencyKey: "relocate-once"}
+	request := protocol.UpdateSessionRequest{
+		SessionID: "ses_1", ExpectedRevision: 1, Workspace: &protocol.WorkspaceRef{Path: "/next"},
+	}
+
+	if _, err := endpoint.Call[protocol.UpdateSessionRequest, *protocol.Session](
+		t.Context(), SessionsUpdate, request, options,
+	); err != nil {
+		t.Fatalf("first update: %v", err)
+	}
+
+	service.enabled.Store(false)
+	_, err := endpoint.Call[protocol.UpdateSessionRequest, *protocol.Session](
+		t.Context(), SessionsUpdate, request, options,
+	)
+	var gap *CapabilityGapError
+	if !errors.As(err, &gap) {
+		t.Fatalf("replay without the capability = %v, want a capability gap", err)
+	}
+	if calls := service.calls.Load(); calls != 1 {
+		t.Fatalf("UpdateSession calls = %d, want 1", calls)
+	}
+}
+
+type blockingSteerService struct {
+	entered chan struct{}
+	release chan struct{}
+	once    sync.Once
+	calls   atomic.Int64
+}
+
+func (b *blockingSteerService) SteerRun(context.Context, protocol.SteerRunRequest) error {
+	b.calls.Add(1)
+	b.once.Do(func() {
+		close(b.entered)
+		<-b.release
+	})
+	return nil
+}
+
+// TestKeyWaitEndsWithItsOwnRequest: the second caller for a key in flight waits
+// on the holder, so its wait belongs to its own request lifetime rather than to
+// the command it is queued behind.
+func TestKeyWaitEndsWithItsOwnRequest(t *testing.T) {
+	service := &blockingSteerService{entered: make(chan struct{}), release: make(chan struct{})}
+	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: newMemoryIdempotencyStore()})
+	options := Options{IdempotencyKey: "steer-blocked"}
+	request := protocol.SteerRunRequest{
+		RunID: "run_1", ExpectedSegmentID: "seg_1",
+		Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "wait"}},
+	}
+	first := make(chan error, 1)
+	go func() {
+		_, err := endpoint.Call[protocol.SteerRunRequest, struct{}](t.Context(), RunsSteer, request, options)
+		first <- err
+	}()
+	<-service.entered
+
+	waiting, cancelWaiting := context.WithTimeout(t.Context(), 500*time.Millisecond)
+	defer cancelWaiting()
+	second := make(chan error, 1)
+	go func() {
+		_, err := endpoint.Call[protocol.SteerRunRequest, struct{}](waiting, RunsSteer, request, options)
+		second <- err
+	}()
+	select {
+	case err := <-second:
+		if err == nil {
+			t.Fatal("the queued call answered while the key was still in flight")
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("the queued call outlived its own request")
+	}
+
+	close(service.release)
+	if err := <-first; err != nil {
+		t.Fatalf("first steer: %v", err)
+	}
+	if calls := service.calls.Load(); calls != 1 {
+		t.Fatalf("SteerRun calls = %d, want 1", calls)
+	}
+}

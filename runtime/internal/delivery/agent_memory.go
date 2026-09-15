@@ -15,7 +15,7 @@ const (
 )
 
 func registerAgentMemory(registry *Registry) {
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: AgentMemoryList, CapabilityRules: requires(protocol.FeatureAgentMemory),
 	}, func(service interface {
 		ListAgentMemory(context.Context, protocol.AgentMemoryListRequest) (*protocol.AgentMemoryList, error)
@@ -23,7 +23,7 @@ func registerAgentMemory(registry *Registry) {
 		return service.ListAgentMemory(ctx, request)
 	})
 
-	registry.CommandAck(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name: AgentMemoryReview, CapabilityRules: requires(protocol.FeatureAgentMemory),
 	}, func(service interface {
 		ReviewAgentMemory(context.Context, protocol.AgentMemoryReviewRequest) error
@@ -31,7 +31,7 @@ func registerAgentMemory(registry *Registry) {
 		return service.ReviewAgentMemory(ctx, request)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name: AgentMemoryUpdate, CapabilityRules: requires(protocol.FeatureAgentMemory),
 	}, func(service interface {
 		UpdateAgentMemory(context.Context, protocol.AgentMemoryUpdateRequest) (*protocol.AgentMemoryItem, error)
@@ -39,7 +39,7 @@ func registerAgentMemory(registry *Registry) {
 		return service.UpdateAgentMemory(ctx, request)
 	})
 
-	registry.CommandAck(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name: AgentMemoryDelete, CapabilityRules: requires(protocol.FeatureAgentMemory),
 	}, func(service interface {
 		DeleteAgentMemory(context.Context, protocol.AgentMemoryItemRequest) error
@@ -47,7 +47,7 @@ func registerAgentMemory(registry *Registry) {
 		return service.DeleteAgentMemory(ctx, request)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name: AgentMemoryAdd, CapabilityRules: requires(protocol.FeatureAgentMemory),
 	}, func(service interface {
 		AddAgentMemory(context.Context, protocol.AgentMemoryAddRequest) (*protocol.AgentMemoryItem, error)

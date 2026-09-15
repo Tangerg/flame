@@ -20,14 +20,14 @@ const (
 )
 
 func registerSessions(registry *Registry) {
-	registry.Query(MethodMeta{Name: SessionsList},
+	registry.query(MethodMeta{Name: SessionsList},
 		func(service interface {
 			ListSessions(context.Context, protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error)
 		}, ctx context.Context, request protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
 			return service.ListSessions(ctx, request)
 		})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:   SessionsGet,
 		Errors: []string{protocol.ErrSessionNotFound.Error()},
 	}, func(service interface {
@@ -36,7 +36,7 @@ func registerSessions(registry *Registry) {
 		return service.GetSession(ctx, request.SessionID)
 	})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:         SessionsSnapshot,
 		Errors:       []string{protocol.ErrSessionNotFound.Error()},
 		Materializes: []Name{ItemsList, RunsList, InterruptsList, PlanGet, GoalsGet},
@@ -50,7 +50,7 @@ func registerSessions(registry *Registry) {
 		return service.GetSessionSnapshot(ctx, request)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name:   SessionsCreate,
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
 	}, func(service interface {
@@ -62,7 +62,7 @@ func registerSessions(registry *Registry) {
 	// Setting workspace is a relocate, which is its own capability — hence a
 	// conditional rule: the rest of sessions.update stays available when relocate
 	// is off, instead of the whole method disappearing.
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name: SessionsUpdate,
 		Errors: []string{
 			protocol.ErrSessionNotFound.Error(),
@@ -79,7 +79,7 @@ func registerSessions(registry *Registry) {
 		return service.UpdateSession(ctx, request)
 	})
 
-	registry.CommandAck(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name:   SessionsDelete,
 		Errors: []string{protocol.ErrSessionNotFound.Error()},
 	}, func(service interface {
@@ -88,7 +88,7 @@ func registerSessions(registry *Registry) {
 		return service.DeleteSession(ctx, request.SessionID)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name: SessionsFork,
 		Errors: []string{
 			protocol.ErrSessionNotFound.Error(),
@@ -104,7 +104,7 @@ func registerSessions(registry *Registry) {
 	// which needs features.checkpoints; the default history rollback needs nothing
 	// Two rules rather than one because the contract states the
 	// requirement per value, and a generated schema reads them as two if/then.
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name: SessionsRollback,
 		Errors: []string{
 			protocol.ErrSessionNotFound.Error(),
@@ -128,7 +128,7 @@ func registerSessions(registry *Registry) {
 		return service.RollbackSession(ctx, request)
 	})
 
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name:            SessionsExport,
 		Errors:          []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureSessionExport),
@@ -138,7 +138,7 @@ func registerSessions(registry *Registry) {
 		return service.ExportSession(ctx, request)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name:            SessionsImport,
 		CapabilityRules: requires(protocol.FeatureSessionExport),
 	}, func(service interface {

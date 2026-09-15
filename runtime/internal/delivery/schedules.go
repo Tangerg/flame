@@ -15,7 +15,7 @@ const (
 )
 
 func registerSchedules(registry *Registry) {
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: SchedulesList, CapabilityRules: requires(protocol.FeatureSchedules),
 	}, func(service interface {
 		ListSchedules(context.Context, protocol.PageQuery) (*protocol.Page[protocol.Schedule], error)
@@ -23,7 +23,7 @@ func registerSchedules(registry *Registry) {
 		return service.ListSchedules(ctx, request)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name: SchedulesCreate, CapabilityRules: requires(protocol.FeatureSchedules),
 	}, func(service interface {
 		CreateSchedule(context.Context, protocol.CreateScheduleRequest) (*protocol.Schedule, error)
@@ -31,7 +31,7 @@ func registerSchedules(registry *Registry) {
 		return service.CreateSchedule(ctx, request)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name: SchedulesUpdate, Errors: []string{protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureSchedules),
 	}, func(service interface {
@@ -40,7 +40,7 @@ func registerSchedules(registry *Registry) {
 		return service.UpdateSchedule(ctx, request)
 	})
 
-	registry.CommandAck(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name: SchedulesDelete, CapabilityRules: requires(protocol.FeatureSchedules),
 	}, func(service interface {
 		DeleteSchedule(context.Context, protocol.DeleteScheduleRequest) error
@@ -48,7 +48,7 @@ func registerSchedules(registry *Registry) {
 		return service.DeleteSchedule(ctx, request)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name: SchedulesRunNow, CapabilityRules: requires(protocol.FeatureSchedules),
 	}, func(service interface {
 		RunScheduleNow(context.Context, protocol.RunScheduleNowRequest) (*protocol.RunScheduleNowResponse, error)

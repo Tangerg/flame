@@ -312,8 +312,8 @@ func (r Run) validateTerminal() error {
 // point-in-time prompt footprint and may decrease after compaction; zero means
 // the provider supplied no authoritative footprint, so the prior value remains.
 func (r Run) AdvanceProgress(metrics Metrics, contextTokens int64, updatedAt time.Time) (Run, error) {
-	if r.state.IsTerminal() {
-		return Run{}, errors.New("run: terminal Run cannot advance progress")
+	if !r.state.AdvanceProgress() {
+		return Run{}, fmt.Errorf("run: cannot advance progress from state %q", r.state)
 	}
 	if err := metrics.ValidateAdvanceFrom(r.metrics); err != nil {
 		return Run{}, err

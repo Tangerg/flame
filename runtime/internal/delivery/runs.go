@@ -19,7 +19,7 @@ const (
 )
 
 func registerRuns(registry *Registry) {
-	registry.Query(MethodMeta{Name: ModelInvocationsList, Errors: []string{protocol.ErrRunNotFound.Error(), protocol.ErrCapabilityNotNeg.Error()}}, func(service interface {
+	registry.query(MethodMeta{Name: ModelInvocationsList, Errors: []string{protocol.ErrRunNotFound.Error(), protocol.ErrCapabilityNotNeg.Error()}}, func(service interface {
 		ListModelInvocations(context.Context, protocol.ListModelInvocationsRequest) (*protocol.Page[protocol.ModelInvocation], error)
 	}, ctx context.Context, request protocol.ListModelInvocationsRequest) (*protocol.Page[protocol.ModelInvocation], error) {
 		return service.ListModelInvocations(ctx, request)
@@ -28,7 +28,7 @@ func registerRuns(registry *Registry) {
 	// runs.start and runs.resume open a run. A same-key retry must land back on
 	// THAT run — replaying the cached ack alone would give the client a runId with
 	// no stream behind it.
-	registry.RunStreamCommand(MethodMeta{
+	registry.runStreamCommand(MethodMeta{
 		Name: RunsStart,
 		Errors: []string{
 			protocol.ErrSessionNotFound.Error(),
@@ -44,7 +44,7 @@ func registerRuns(registry *Registry) {
 		return service.StartRun(ctx, request)
 	})
 
-	registry.RunStreamCommand(MethodMeta{
+	registry.runStreamCommand(MethodMeta{
 		Name: RunsResume,
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
@@ -65,7 +65,7 @@ func registerRuns(registry *Registry) {
 	// cannot be served. Each is declared because each sends the client somewhere
 	// different — rootRunId, interrupt.list, items.list, runs.get, or a cursorless
 	// reattach — and one collapsed run_not_found would send it nowhere.
-	registry.RunSubscription(MethodMeta{
+	registry.runSubscription(MethodMeta{
 		Name: RunsSubscribe,
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
@@ -84,7 +84,7 @@ func registerRuns(registry *Registry) {
 		return service.SubscribeRun(ctx, request)
 	})
 
-	registry.Command(MethodMeta{
+	registry.command(MethodMeta{
 		Name: RunsCancel,
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
@@ -104,7 +104,7 @@ func registerRuns(registry *Registry) {
 	// that has parked, finished or moved to another segment says so, and the client
 	// asks the user again rather than delivering an instruction to work they never
 	// saw.
-	registry.CommandAck(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name: RunsSteer,
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
@@ -122,7 +122,7 @@ func registerRuns(registry *Registry) {
 
 	// runs.get answers "what is this run" for a runId a client already holds — from
 	// an event, a page, or a link — without it having to know the session first.
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: RunsGet,
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
@@ -140,7 +140,7 @@ func registerRuns(registry *Registry) {
 	// `includeDescendants: false` as "not asking", so an explicit false and an
 	// absent field behave alike — while an explicit true is refused rather than
 	// read as false, which would hand back a page that looks complete and is not.
-	registry.Query(MethodMeta{
+	registry.query(MethodMeta{
 		Name: RunsList,
 		CapabilityRules: []CapabilityRule{{
 			When:     []FieldCondition{{Field: "includeDescendants", Operator: OperatorPresent}},
