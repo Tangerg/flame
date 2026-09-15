@@ -24,8 +24,8 @@ const (
 	anthropicMaximumModelPageSize  = 1000
 )
 
-// remoteModelList is the OpenAI GET /v1/models response shape, which Ollama /
-// LM Studio / vLLM / OpenRouter and Anthropic's list endpoint all emit. Only the
+// remoteModelList is the shared model-list response shape emitted by OpenAI-compatible
+// gateways and Anthropic's list endpoint. Only the
 // ids matter here; capability/pricing are enriched from the static catalog by
 // the caller when the id is known.
 type remoteModelList struct {

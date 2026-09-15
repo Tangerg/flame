@@ -51,10 +51,9 @@ func (i *interactionSession) initializeRestoredContinuation(
 	i.accounting.restore(usageByProcess, carriedUsage, checkpoint.contextByProcess)
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
-	if i.state.begun || i.state.finished || i.state.process != nil {
+	if i.state.begun || i.state.finished || i.state.process != root {
 		return runs.ErrExecutionClaimed
 	}
-	i.state.process = root
 	i.state.admittedProcessID = root.ID()
 	i.state.begun = true
 	i.state.boundary = boundary

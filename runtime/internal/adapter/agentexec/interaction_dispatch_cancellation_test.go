@@ -3,63 +3,16 @@ package agentexec
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
-	"time"
+	"testing/synctest"
+
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/scope/core/chat"
 
 	agent "github.com/Tangerg/scope/agent"
 )
-
-func TestInteractionSessionSubtreeCancellationIsScopedAndCoversLateDescendants(t *testing.T) {
-	rootID := mustInteractionProcessID(t, "root")
-	targetID := mustInteractionProcessID(t, "target")
-	descendantID := mustInteractionProcessID(t, "descendant")
-	siblingID := mustInteractionProcessID(t, "sibling")
-
-	targetCtx, cancelTarget := context.WithCancelCause(t.Context())
-	descendantCtx, cancelDescendant := context.WithCancelCause(t.Context())
-	siblingCtx, cancelSibling := context.WithCancelCause(t.Context())
-	rootCtx, cancelRoot := context.WithCancelCause(t.Context())
-	t.Cleanup(func() {
-		cancelTarget(nil)
-		cancelDescendant(nil)
-		cancelSibling(nil)
-		cancelRoot(nil)
-	})
-
-	session := &interactionSession{
-		state: interactionState{
-			delegateChildren: map[agent.ProcessID]*managedDelegateCall{
-				targetID:     {identity: delegateCallIdentity{parentID: rootID}},
-				descendantID: {identity: delegateCallIdentity{parentID: targetID}},
-				siblingID:    {identity: delegateCallIdentity{parentID: rootID}},
-			},
-			activeDispatches: map[interactionDispatchIdentity]activeInteractionDispatch{
-				{processID: rootID, effectID: mustInteractionEffectID(t, "root")}:             {processID: rootID, cancel: cancelRoot},
-				{processID: targetID, effectID: mustInteractionEffectID(t, "target")}:         {processID: targetID, cancel: cancelTarget},
-				{processID: descendantID, effectID: mustInteractionEffectID(t, "descendant")}: {processID: descendantID, cancel: cancelDescendant},
-				{processID: siblingID, effectID: mustInteractionEffectID(t, "sibling")}:       {processID: siblingID, cancel: cancelSibling},
-			},
-			canceledSubtreeRoots: make(map[agent.ProcessID]struct{}),
-		},
-	}
-
-	session.cancelSubtreeDispatches(targetID)
-	assertInteractionDispatchCanceled(t, targetCtx, "target")
-	assertInteractionDispatchCanceled(t, descendantCtx, "descendant")
-	assertInteractionDispatchRunning(t, rootCtx, "root")
-	assertInteractionDispatchRunning(t, siblingCtx, "sibling")
-
-	lateDescendantID := mustInteractionProcessID(t, "late-descendant")
-	session.state.mu.Lock()
-	session.state.delegateChildren[lateDescendantID] = &managedDelegateCall{
-		identity: delegateCallIdentity{parentID: descendantID},
-	}
-	canceled := session.inCanceledSubtreeLocked(lateDescendantID)
-	session.state.mu.Unlock()
-	if !canceled {
-		t.Fatal("late descendant did not inherit its ancestor's cancellation scope")
-	}
-}
 
 func mustInteractionProcessID(t *testing.T, value string) agent.ProcessID {
 	t.Helper()
@@ -79,51 +32,80 @@ func mustInteractionEffectID(t *testing.T, value string) agent.EffectID {
 	return id
 }
 
-func assertInteractionDispatchCanceled(t *testing.T, ctx context.Context, name string) {
-	t.Helper()
-	select {
-	case <-ctx.Done():
-		if cause := context.Cause(ctx); cause != errInteractionRunCanceled {
-			t.Fatalf("%s cancellation cause = %v", name, cause)
-		}
-	default:
-		t.Fatalf("%s dispatch remains active", name)
+func TestInteractionDispatchWaitsForSegment(t *testing.T) {
+	for _, action := range []string{"activate", "cancel", "release"} {
+		t.Run(action, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				session := &interactionSession{
+					lifetime: newInteractionLifetime(t.Context()),
+					state:    interactionState{dispatchReady: make(chan struct{})},
+				}
+				defer session.lifetime.beginRelease()
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				stopped := make(chan error, 1)
+				go func() { stopped <- session.awaitDispatchSegment(ctx) }()
+				synctest.Wait()
+				select {
+				case err := <-stopped:
+					t.Fatalf("dispatch crossed the unopened Segment: %v", err)
+				default:
+				}
+				var want error
+				switch action {
+				case "activate":
+					session.state.mu.Lock()
+					close(session.state.dispatchReady)
+					session.state.dispatchReady = nil
+					session.state.mu.Unlock()
+				case "cancel":
+					cancel()
+					want = context.Canceled
+				case "release":
+					session.lifetime.beginRelease()
+					want = errInteractionReleased
+				}
+				if err := <-stopped; !errors.Is(err, want) {
+					t.Fatalf("dispatch = %v, want %v", err, want)
+				}
+			})
+		})
 	}
 }
 
-func assertInteractionDispatchRunning(t *testing.T, ctx context.Context, name string) {
-	t.Helper()
-	select {
-	case <-ctx.Done():
-		t.Fatalf("%s dispatch was canceled: %v", name, context.Cause(ctx))
-	default:
-	}
-}
-
-func TestInteractionDispatchWaitingForContinuationReleasesWithLifetime(t *testing.T) {
-	session := &interactionSession{
-		lifetime: newInteractionLifetime(t.Context()),
-		state:    interactionState{dispatchReady: make(chan struct{}), activeDispatches: make(map[interactionDispatchIdentity]activeInteractionDispatch)},
-	}
-	defer session.lifetime.beginRelease()
-	stopped := make(chan error, 1)
-	go func() {
-		ctx, finish := session.beginDispatch(t.Context(), interactionDispatchIdentity{processID: mustInteractionProcessID(t, "root"), effectID: mustInteractionEffectID(t, "model")})
-		defer finish()
-		stopped <- ctx.Err()
-	}()
-	select {
-	case err := <-stopped:
-		t.Fatalf("dispatch crossed the unopened Segment: %v", err)
-	case <-time.After(20 * time.Millisecond):
-	}
-	session.lifetime.beginRelease()
-	select {
-	case err := <-stopped:
-		if !errors.Is(err, context.Canceled) {
-			t.Fatalf("released dispatch = %v", err)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("released session retained a dispatch waiting for continuation")
+func TestLateCancellationPreservesScopeFailure(t *testing.T) {
+	for _, late := range []string{"root request", "owner deadline"} {
+		t.Run(late, func(t *testing.T) {
+			owner, cancel := context.WithCancelCause(t.Context())
+			defer cancel(nil)
+			model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+				response := interactionToolResponse(chat.ToolCall{ID: "unexecuted", Name: "read", Arguments: `{}`}, 1, 1)
+				response.Output.FinishReason = chat.FinishReasonStop
+				return response, nil
+			})
+			executor := newTestInteractionExecutorWithLifetime(t, owner, model)
+			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+			ends := payloadsOf[runs.SegmentEnded](events)
+			if len(ends) != 1 || ends[0].Reason != run.OutcomeFailed {
+				t.Fatalf("initial failure = %+v", ends)
+			}
+			for _, session := range executor.sessions.snapshot() {
+				result, err := session.state.process.Await(t.Context())
+				if err != nil || result.Termination().Cause() != agent.TerminationCauseExternalFailure {
+					t.Fatalf("Scope failure = %+v, %v", result.Termination(), err)
+				}
+				if late == "root request" {
+					if err := executor.RequestRootCancellation(t.Context(), session.ref, "late cancellation"); err != nil {
+						t.Fatal(err)
+					}
+				} else {
+					cancel(context.DeadlineExceeded)
+				}
+				end, err := session.segmentEnd(result)
+				if err != nil || !reflect.DeepEqual(end, ends[0]) {
+					t.Fatalf("late cancellation changed immutable result: before=%+v after=%+v error=%v", ends[0], end, err)
+				}
+			}
+		})
 	}
 }

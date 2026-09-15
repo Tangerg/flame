@@ -51,9 +51,8 @@ type ProviderProber interface {
 }
 
 // ProviderModelLister discovers a provider's available model identities by
-// probing its live endpoint — used for local / bring-your-own-endpoint providers
-// whose model set is not in the static catalog (dynamic discovery from an Ollama
-// daemon or a compatible passthrough). Endpoint results are authoritative;
+// probing a caller-configured endpoint whose model set is not in the static
+// catalog. Endpoint results are authoritative;
 // the coordinator validates identity and owns public order for every result.
 type ProviderModelLister interface {
 	ListModels(ctx context.Context, entry provider.Provider) ([]string, error)

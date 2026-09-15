@@ -82,11 +82,11 @@ func TestProviderCatalogRejectsContradictoryProfiles(t *testing.T) {
 		{name: "invalid bundled default", profiles: []providerProfile{bundledProvider("broken", "model\x00shadow", "BROKEN_API_KEY", buildOpenAIResponsesModel)}, want: "model identity"},
 		{name: "non-canonical environment", profiles: []providerProfile{bundledProvider("broken", "model", "broken_api_key", buildOpenAIResponsesModel)}, want: "not canonical"},
 		{name: "endpoint discovery without endpoint", profiles: []providerProfile{endpointProvider("broken", adapterEndpoint(), "BROKEN_API_KEY", buildOpenAIResponsesModel)}, want: "resolvable endpoint"},
-		{name: "required endpoint carrying default", profiles: []providerProfile{{
+		{name: "missing endpoint policy", profiles: []providerProfile{{
 			id: "broken", credential: requiredCredential("BROKEN_API_KEY"),
-			endpoint:   endpointPolicy{kind: endpointMustBeConfigured, defaultURL: "https://example.test"},
+			endpoint:   endpointPolicy{},
 			chatModels: openAIEndpointModels(), chatBuilder: buildOpenAIResponsesModel,
-		}}, want: "cannot carry a default URL"},
+		}}, want: "unknown endpoint policy"},
 		{name: "embedding without model policy", profiles: []providerProfile{valid.withEmbedding(modelPolicy{}, buildOpenAIEmbeddingModel)}, want: "embedding"},
 	}
 	for _, test := range cases {
@@ -227,9 +227,6 @@ func findWireAssistant(t *testing.T, messages []map[string]any) map[string]any {
 
 // TestQueries covers the table-reader API providers.list / config.Load lean on.
 func TestQueries(t *testing.T) {
-	if got := len(SupportedProviders()); got != 21 {
-		t.Errorf("SupportedProviders = %d, want 21", got)
-	}
 	if _, found := LookupProvider(ProviderGroq); !found {
 		t.Error("groq should be supported")
 	}
@@ -316,28 +313,6 @@ func TestClientSpecRejectsPrimitiveSentinelsAndPartialState(t *testing.T) {
 	}
 	if _, _, err := BuildChat(t.Context(), ClientSpec{}); err == nil {
 		t.Fatal("zero ClientSpec was accepted")
-	}
-}
-
-func TestProviderEndpointPolicyResolvesCatalogDefaultOnce(t *testing.T) {
-	ollama, found := providers.lookup(ProviderOllama)
-	if !found {
-		t.Fatal("ollama profile is missing")
-	}
-	endpoint, err := ollama.endpoint.resolve(noClientEndpoint())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if endpoint.sdkBaseURL() != defaultOllamaOpenAIBaseURL {
-		t.Fatalf("resolved endpoint = %q, want %q", endpoint.sdkBaseURL(), defaultOllamaOpenAIBaseURL)
-	}
-	if _, _, err := BuildChat(t.Context(), mustClientSpec(t, ProviderOllama, "local-model", "", "")); err != nil {
-		t.Fatalf("catalog-default Ollama client: %v", err)
-	}
-	ollamaProfile, _ := LookupProvider(ProviderOllama)
-	openAIProfile, _ := LookupProvider(ProviderOpenAI)
-	if ollamaProfile.RequiresAPIKey() || !openAIProfile.RequiresAPIKey() {
-		t.Fatal("provider credential requirements are inverted")
 	}
 }
 
@@ -434,5 +409,23 @@ func TestDirectOpenAIUsesResponsesCountingWhileCompatibleRemainsChatCompletions(
 	}
 	if counter != nil {
 		t.Fatal("OpenAI-compatible client advertised the native Responses count endpoint")
+	}
+}
+
+func TestRemovedProviderCannotBeSelected(t *testing.T) {
+	for _, profile := range SupportedProviders() {
+		if profile.ID() == Provider("ollama") {
+			t.Fatal("removed provider is advertised")
+		}
+	}
+	if _, found := LookupProvider(Provider("ollama")); found {
+		t.Fatal("removed provider can be resolved")
+	}
+	key, err := NewAPIKeyCredential("test-key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClientSpec(Provider("ollama"), "local-model", key); err == nil {
+		t.Fatal("removed provider can construct a client")
 	}
 }

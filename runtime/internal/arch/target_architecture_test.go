@@ -76,31 +76,34 @@ func TestTargetHasNoCompatibilityPackages(t *testing.T) {
 	}
 }
 
-// TestDeliveryPhasePackagesStayCollapsed prevents the binding-neutral API from
-// being split again by processing stage. Endpoint, catalog, Handler, and
-// presenters share one semantic owner; only dispatch and transport have an
-// independent mechanism that justifies a child package.
-//
-// The rule is the closed set, not two names a past split happened to use: a
-// stage carved out as "phases" or "handlers" is the same mistake, and naming
-// the survivors also states what the delivery ring is allowed to contain.
-func TestDeliveryPhasePackagesStayCollapsed(t *testing.T) {
-	root := moduleRoot(t)
-	allowed := map[string]struct{}{"dispatch": {}, "transport": {}}
-	entries, err := os.ReadDir(filepath.Join(root, "internal", "delivery"))
-	if err != nil {
-		t.Fatalf("read delivery ring: %v", err)
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		if _, ok := allowed[entry.Name()]; !ok {
-			t.Errorf(
-				"delivery child package %q is forbidden; endpoint, catalog, Handler and presenters share one owner",
-				entry.Name(),
-			)
-		}
+func TestDeliveryDependencyRuleAllowsIndependentMechanisms(t *testing.T) {
+	for _, test := range []struct {
+		name           string
+		dependency     string
+		wantViolations int
+	}{
+		{name: "inward", dependency: "internal/application/agent/runs"},
+		{name: "adapter", dependency: "internal/adapter/agentexec", wantViolations: 1},
+		{name: "bootstrap", dependency: "internal/bootstrap", wantViolations: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			directory := filepath.Join(t.TempDir(), "internal", "delivery", "newmechanism")
+			if err := os.MkdirAll(directory, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(directory, "mechanism.go")
+			source := "package newmechanism\nimport _ \"" + runtimeModulePath + "/" + test.dependency + "\"\n"
+			if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			violations, err := dependencyViolationsInFile(path, layerOf("internal/delivery/newmechanism/mechanism.go"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(violations) != test.wantViolations {
+				t.Fatalf("dependency violations = %v, want %d", violations, test.wantViolations)
+			}
+		})
 	}
 }
 

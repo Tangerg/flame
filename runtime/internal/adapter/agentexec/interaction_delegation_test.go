@@ -391,7 +391,8 @@ func assertRunningDelegateCancellationEvents(t *testing.T, events []runs.Event) 
 		}
 		if event.RunID == "run_root" {
 			failure, failed := finished.Run.Failure()
-			rootFinished = finished.Run.State() == run.Failed && failed && strings.Contains(failure.Detail, "unresolved Effects")
+			rootFinished = runHasOutcome(finished.Run, run.OutcomeLost) && failed &&
+				failure.Kind == run.FailureLost && strings.Contains(failure.Detail, "unresolved Effects")
 		}
 	}
 	if !childFinished || !rootFinished {

@@ -139,37 +139,6 @@ func TestProbeRejectsProviderWithoutCatalogOrAdvertisedModels(t *testing.T) {
 	}
 }
 
-func TestProbeUsesCatalogEndpointWithoutInventingOllamaCredential(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		if authorization := request.Header.Get("Authorization"); authorization != "" {
-			t.Errorf("authorization = %q, want absent", authorization)
-		}
-		response.Header().Set("Content-Type", "application/json")
-		_, _ = response.Write([]byte(`{"data":[{"id":"local-model"}]}`))
-	}))
-	t.Cleanup(server.Close)
-	entry, err := provider.New("ollama")
-	if err != nil {
-		t.Fatal(err)
-	}
-	profile, found := llm.LookupProvider(llm.ProviderOllama)
-	if !found || profile.RequiresAPIKey() {
-		t.Fatal("ollama profile does not publish optional authentication")
-	}
-	baseURL, err := provider.NewBaseURL(server.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	entry, err = entry.Apply(provider.Patch{BaseURL: provider.Set(baseURL)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	models, err := (Capabilities{}).ListModels(t.Context(), entry)
-	if err != nil || len(models) != 1 || models[0] != "local-model" {
-		t.Fatalf("remote models = %v, %v", models, err)
-	}
-}
-
 func catalogProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provider {
 	t.Helper()
 	entry, err := provider.New(id)

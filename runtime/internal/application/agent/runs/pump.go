@@ -89,6 +89,11 @@ func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 		s.fail(err)
 		return false
 	}
+	if lookup, checking := event.Payload.(ResultPublicationLookup); checking {
+		committed, err := s.lookupResultPublication(event.Member, lookup)
+		lookup.Complete(committed, err)
+		return true
+	}
 	if commit, authoritative := event.Payload.(ExecutionFactCommit); authoritative {
 		if err := commit.validate(); err != nil {
 			commit.Complete(err)
@@ -285,6 +290,19 @@ func (s *segmentPump) abortPreparedChildStart(prepared *preparedChildStart) {
 		recordRunCleanupError(ctx, s.coordinator.childStarts.AbortChildRunStart(ctx, prepared.reservation))
 	}
 	prepared.releaseBinding(s.owner)
+}
+
+func (s *segmentPump) lookupResultPublication(member ExecutorMember, lookup ResultPublicationLookup) (bool, error) {
+	if err := lookup.validate(); err != nil {
+		return false, err
+	}
+	route, err := s.routes.resolve(member)
+	if err != nil {
+		return false, err
+	}
+	return s.coordinator.publications.events.ResultPublicationCommitted(
+		s.ownerCtx, s.spec.SessionID, route.runID, route.segmentID, lookup.Publication(),
+	)
 }
 
 func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact ExecutionFact) error {

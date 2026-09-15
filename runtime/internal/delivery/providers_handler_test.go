@@ -159,7 +159,7 @@ func TestListProvidersPublishesConfiguredOptionalCredentialProvider(t *testing.T
 	s := handlerWithProviders(&providerFake{
 		entries: map[string]provider.Provider{},
 		supported: []models.ProviderMetadata{serverOptionalAPIKeyProviderMetadata(
-			"ollama", models.ProviderEndpointOptional, models.ProviderModelsEndpoint, models.EmbeddingCapabilityWithoutDefault(),
+			"test-endpoint", models.ProviderEndpointOptional, models.ProviderModelsEndpoint, models.EmbeddingCapabilityWithoutDefault(),
 		)},
 	})
 

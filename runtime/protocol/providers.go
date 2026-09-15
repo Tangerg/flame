@@ -27,8 +27,8 @@ type Provider struct {
 }
 
 // ProviderCredentialRequirement distinguishes API-key vendors from endpoints
-// such as a local Ollama daemon that are usable without authentication. An
-// optional provider may still carry a stored or environment credential.
+// that are usable without authentication. An optional provider may still carry
+// a stored or environment credential.
 type ProviderCredentialRequirement string
 
 const (

@@ -98,36 +98,35 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	if !admitted {
 		return failed(ProjectError(context.Canceled))
 	}
+	defer func() {
+		if release != nil {
+			release()
+		}
+	}()
 	method, ok := contract.lookup(name)
 	if !ok {
-		release()
 		return failed(NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", name)))
 	}
 	if err := validateOptions(method.Meta, options); err != nil {
-		release()
 		return failed(err)
 	}
 	if options.IdempotencyKey != "" && options.IdempotencyNamespace != "" &&
 		options.IdempotencyNamespace != e.idempotencyNamespace.String() {
-		release()
 		return failed(NewFailure(
 			protocol.ErrIdempotencyStoreMismatch,
 			"idempotency namespace does not identify this Runtime store",
 		))
 	}
 	if reflect.TypeOf(parameters) != method.Meta.Params {
-		release()
 		return failed(NewFailure(
 			protocol.ErrInvalidParams,
 			fmt.Sprintf("%s parameters have type %T, want %s", name, parameters, method.Meta.Params),
 		))
 	}
 	if err := protocol.ValidateWireTree(parameters); err != nil {
-		release()
 		return failed(InvalidParameters(err))
 	}
 	if err := ctx.Err(); err != nil {
-		release()
 		return failed(ProjectError(err))
 	}
 
@@ -141,10 +140,10 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 		result = e.idempotency.invoke(ctx, method, parameters, options.IdempotencyKey, execute, e.target)
 	}
 	if result.Events == nil {
-		release()
 		return result
 	}
 	result.Events = ownStream(ctx, result.Events, release)
+	release = nil
 	return result
 }
 

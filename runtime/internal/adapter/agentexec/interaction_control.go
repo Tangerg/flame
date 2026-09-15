@@ -14,73 +14,25 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-var errInteractionRunCanceled = errors.New("agentexec: Interaction Run cancellation requested")
+const modelProcessStopReason = "model call cannot continue"
 
-type interactionDispatchIdentity struct {
-	processID agent.ProcessID
-	effectID  agent.EffectID
-}
-
-func interactionDispatchKey(request agent.EffectRequest) interactionDispatchIdentity {
-	return interactionDispatchIdentity{
-		processID: request.ProcessID(),
-		effectID:  request.ID(),
-	}
-}
-
-// toolCallDispatchKey addresses one Tool call on the product cancellation plane
-// under the member that requested it. A Tool call owns its own Effect in its own
-// child Process, but that child is not a member, so a subtree cancellation can
-// only reach the call through the caller that product lineage knows.
-func toolCallDispatchKey(
-	invocation interaction.ToolInvocation,
-) (interactionDispatchIdentity, bool) {
-	callerID, child := invocation.Relation().ParentID()
-	if !child {
-		return interactionDispatchIdentity{}, false
-	}
-	return interactionDispatchIdentity{processID: callerID, effectID: invocation.EffectID()}, true
-}
-
-// beginDispatch binds one Agent-owned Effect attempt to the product Run's
-// explicit cancellation plane. Agent Framework deliberately lets an in-flight
-// Effect settle before applying a cancellation intent; this adapter-owned
-// context gives cooperative model and Tool implementations a chance to produce
-// that settlement promptly without changing Framework lifecycle semantics.
-func (i *interactionSession) beginDispatch(
-	ctx context.Context,
-	key interactionDispatchIdentity,
-) (context.Context, func()) {
-	bound, cancel := context.WithCancelCause(ctx)
-	stopLifetimeBinding := context.AfterFunc(i.lifetime.execution, func() {
-		cancel(context.Cause(i.lifetime.execution))
-	})
+// awaitDispatchSegment keeps Scope-owned work behind the product transaction
+// that opens its next Segment. Scope owns cancellation of the supplied context;
+// session release can also unblock the gate without creating another tree owner.
+func (i *interactionSession) awaitDispatchSegment(ctx context.Context) error {
 	i.state.mu.Lock()
-	if i.state.rootCancellationRequested || i.inCanceledSubtreeLocked(key.processID) {
-		cancel(errInteractionRunCanceled)
-	} else {
-		i.state.activeDispatches[key] = activeInteractionDispatch{
-			processID: key.processID,
-			cancel:    cancel,
-		}
-	}
 	ready := i.state.dispatchReady
 	i.state.mu.Unlock()
-	// A child cancellation can wake its waiting parent before Application opens
-	// the next Segment. Keep that Effect off the model/Tool boundary until then.
 	if ready != nil {
 		select {
 		case <-ready:
-		case <-bound.Done():
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		case <-i.lifetime.releasing:
+			return errInteractionReleased
 		}
 	}
-	return bound, func() {
-		i.state.mu.Lock()
-		delete(i.state.activeDispatches, key)
-		i.state.mu.Unlock()
-		stopLifetimeBinding()
-		cancel(nil)
-	}
+	return context.Cause(ctx)
 }
 
 // stopModelProcess ends only the member whose model call cannot continue.
@@ -93,64 +45,10 @@ func (i *interactionSession) stopModelProcess(ctx context.Context, processID age
 	}
 	controlCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
 	defer cancel()
-	if err := process.RequestCancellation(controlCtx, "model call cannot continue"); err != nil && !errors.Is(err, agent.ErrProcessFinished) {
+	if err := process.RequestCancellation(controlCtx, modelProcessStopReason); err != nil && !errors.Is(err, agent.ErrProcessFinished) {
 		return fmt.Errorf("agentexec: stop model process: %w", err)
 	}
 	return nil
-}
-
-func (i *interactionSession) cancelAllDispatches() {
-	i.state.mu.Lock()
-	i.state.rootCancellationRequested = true
-	cancels := make([]context.CancelCauseFunc, 0, len(i.state.activeDispatches))
-	for _, dispatch := range i.state.activeDispatches {
-		cancels = append(cancels, dispatch.cancel)
-	}
-	i.state.mu.Unlock()
-	for _, cancel := range cancels {
-		cancel(errInteractionRunCanceled)
-	}
-}
-
-func (i *interactionSession) cancelSubtreeDispatches(rootID agent.ProcessID) {
-	i.state.mu.Lock()
-	i.state.canceledSubtreeRoots[rootID] = struct{}{}
-	cancels := make([]context.CancelCauseFunc, 0, len(i.state.activeDispatches))
-	for _, dispatch := range i.state.activeDispatches {
-		if i.inSubtreeLocked(dispatch.processID, rootID) {
-			cancels = append(cancels, dispatch.cancel)
-		}
-	}
-	i.state.mu.Unlock()
-	for _, cancel := range cancels {
-		cancel(errInteractionRunCanceled)
-	}
-}
-
-func (i *interactionSession) inCanceledSubtreeLocked(processID agent.ProcessID) bool {
-	for rootID := range i.state.canceledSubtreeRoots {
-		if i.inSubtreeLocked(processID, rootID) {
-			return true
-		}
-	}
-	return false
-}
-
-func (i *interactionSession) inSubtreeLocked(
-	processID agent.ProcessID,
-	rootID agent.ProcessID,
-) bool {
-	for range len(i.state.delegateChildren) + 1 {
-		if processID == rootID {
-			return true
-		}
-		managed := i.state.delegateChildren[processID]
-		if managed == nil {
-			return false
-		}
-		processID = managed.identity.parentID
-	}
-	return false
 }
 
 func (i *interactionSession) submitSteer(

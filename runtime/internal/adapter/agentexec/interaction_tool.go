@@ -33,6 +33,7 @@ type observedInteractionTool struct {
 	offloader     toolResultOffloader
 	offloadPolicy toolResultOffloadPolicy
 	start         runs.RootExecutionStart
+	concurrent    interaction.ConcurrentTool
 }
 
 func (o *observedInteractionTool) Definition() corechat.ToolDefinition {
@@ -41,34 +42,45 @@ func (o *observedInteractionTool) Definition() corechat.ToolDefinition {
 
 func (o *observedInteractionTool) Unwrap() toolcontract.Tool { return o.inner }
 
+// Arguments rewritten after admission cannot retain an inner resource key.
+// Scope schedules these calls exclusively; immutable calls keep the declaration.
+func (o *observedInteractionTool) ConcurrencyPolicy() func(toolcontract.Invocation) (string, bool) {
+	if o.concurrent == nil {
+		return nil
+	}
+	return o.concurrent.ConcurrencyPolicy()
+}
+
 func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.Invocation) (returned corechat.ToolOutput, returnedErr error) {
 	invocation, arguments, callID, err := o.attributedInvocation(ctx, bound)
 	if err != nil {
 		return corechat.ToolOutput{}, err
 	}
 	defer func() {
-		var known *toolcontract.Failure
-		if returnedErr != nil && !errors.Is(returnedErr, interaction.ErrToolInputRequired) && !errors.Is(returnedErr, toolcontract.ErrAuthorizationDenied) && !errors.As(returnedErr, &known) {
-			o.session.effectFailures.record(invocation.EffectID(), returnedErr)
+		if returnedErr == nil {
+			return
 		}
+		if !errors.Is(returnedErr, interaction.ErrHostFailure) {
+			if _, known := errors.AsType[*toolcontract.Failure](returnedErr); known {
+				return
+			}
+			if errors.Is(returnedErr, interaction.ErrToolInputRequired) &&
+				!errors.Is(returnedErr, context.Canceled) && !errors.Is(returnedErr, context.DeadlineExceeded) {
+				return
+			}
+		}
+		o.session.effectFailures.record(invocation.EffectID(), returnedErr)
 	}()
 	call := invocation.ToolCall()
 	member, hasCaller := o.session.toolCallMember(invocation.Relation())
 	if !hasCaller {
 		return corechat.ToolOutput{}, errors.New("agentexec: Tool call has no calling Interaction member")
 	}
-	dispatchKey, addressable := toolCallDispatchKey(invocation)
-	if !addressable {
-		return corechat.ToolOutput{}, errors.New("agentexec: Tool call has no calling Interaction member")
-	}
-	// A Tool call runs in its own child Process, so it inherits neither the
-	// Interaction's execution context nor the product cancellation plane bound to
-	// the caller's own Effects. Both belong to the Run that made the call, which
-	// this binding already knows.
 	ctx = runExecutionContext(ctx, o.session.scope, o.start)
 	ctx = interactioninput.WithCapabilities(ctx, o.start.InterruptKinds)
-	ctx, finishDispatch := o.session.beginDispatch(ctx, dispatchKey)
-	defer finishDispatch()
+	if err := o.session.awaitDispatchSegment(ctx); err != nil {
+		return corechat.ToolOutput{}, err
+	}
 	effectiveArguments, denied, denialReason, prepareErr := o.prepare(ctx, callID, call.Name, arguments)
 	if prepareErr != nil {
 		return corechat.ToolOutput{}, prepareErr
@@ -86,37 +98,40 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		return corechat.ToolOutput{}, o.projectionFailure(fmt.Errorf("agentexec: commit Tool call start: %w", err))
 	}
 	o.session.accounting.recordToolCall()
-	if denied {
-		metadata := toolResultMetadata{MemberID: member.MemberID, Start: start, Arguments: arguments.Canonical(), Failure: &tool.Failure{Kind: tool.FailureDenied, Detail: denialReason}}
-		if err := o.session.rememberToolMetadata(metadata); err != nil {
-			return corechat.ToolOutput{}, o.projectionFailure(err)
-		}
-		return corechat.ToolOutput{}, toolcontract.ErrAuthorizationDenied
-	}
-	ctx = toolset.WithToolAdvertiser(ctx, func(names ...string) error {
-		return interaction.AdvertiseTools(ctx, names...)
-	})
-	var mutatedPaths []string
-	ctx = toolset.WithMutationRecorder(ctx, func(paths []string) {
-		mutatedPaths = append(mutatedPaths, paths...)
-	})
 	var output corechat.ToolOutput
-	output, callErr := o.invoke(ctx, corechat.ToolCall{
-		ID: call.ID, Name: call.Name, Arguments: rawArguments,
-	})
+	var callErr error
+	var mutatedPaths []string
+	if denied {
+		failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
+			Kind: toolcontract.FailureKindRejected, Output: corechat.NewTextToolOutput(denialReason),
+		})
+		if err != nil {
+			return corechat.ToolOutput{}, err
+		}
+		callErr = failure
+	} else {
+		ctx = toolset.WithToolAdvertiser(ctx, func(names ...string) error {
+			return interaction.AdvertiseTools(ctx, names...)
+		})
+		ctx = toolset.WithMutationRecorder(ctx, func(paths []string) {
+			mutatedPaths = append(mutatedPaths, paths...)
+		})
+		output, callErr = o.invoke(ctx, corechat.ToolCall{
+			ID: call.ID, Name: call.Name, Arguments: rawArguments,
+		})
+	}
 
-	if errors.Is(callErr, interaction.ErrToolInputRequired) {
-		// Tool input is an Interaction control boundary, not a failed external
-		// call. The started fact remains open so the Run barrier can carry it as
-		// a drained Tool; the restored invocation will commit the sole final fact
-		// after consuming the semantic response Signal.
+	if errors.Is(callErr, interaction.ErrHostFailure) {
 		return corechat.ToolOutput{}, callErr
 	}
 	var failure *toolcontract.Failure
-	if callErr != nil && !errors.As(callErr, &failure) && !errors.Is(callErr, toolcontract.ErrAuthorizationDenied) {
-		return corechat.ToolOutput{}, callErr
-	}
-	if failure != nil {
+	if callErr != nil {
+		if !errors.As(callErr, &failure) {
+			return corechat.ToolOutput{}, callErr
+		}
+		if err := failure.Validate(); err != nil {
+			return corechat.ToolOutput{}, err
+		}
 		output = failure.Output()
 	}
 	modelOutput, offload := o.offload(ctx, call.Name, output, callErr)
@@ -130,18 +145,21 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		}
 		metadata.Result = &parsed
 	}
-	if callErr != nil {
+	if failure != nil {
 		metadata.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: executorDiagnostic(callErr)}
-		if errors.Is(callErr, toolcontract.ErrAuthorizationDenied) {
-			metadata.Failure = &tool.Failure{Kind: tool.FailureDenied}
+		if failure.Kind() == toolcontract.FailureKindRejected {
+			detail, _ := output.Text()
+			metadata.Failure = &tool.Failure{Kind: tool.FailureDenied, Detail: detail}
 		}
 	}
 	if err := o.session.rememberToolMetadata(metadata); err != nil {
 		return corechat.ToolOutput{}, o.projectionFailure(err)
 	}
-	o.session.toolOutcomes.record(call.Name, arguments, modelOutput, callErr)
-	o.projectToolOutcome(context.WithoutCancel(ctx), member, call.Name, callErr == nil)
-	o.runAfterToolUseHook(ctx, callID, call.Name, arguments, modelOutput, callErr)
+	if failure == nil || failure.Kind() != toolcontract.FailureKindRejected {
+		o.session.toolOutcomes.record(call.Name, arguments, modelOutput, callErr)
+		o.projectToolOutcome(context.WithoutCancel(ctx), member, call.Name, callErr == nil)
+		o.runAfterToolUseHook(ctx, callID, call.Name, arguments, modelOutput, callErr)
+	}
 	return modelOutput, callErr
 }
 
@@ -154,7 +172,10 @@ func (o *observedInteractionTool) invoke(
 	bound, err := o.binding.Contract().Prepare(call)
 	if err != nil {
 		cause := fmt.Errorf("agentexec: prepare Tool %q invocation: %w", call.Name, err)
-		failure, failureErr := toolcontract.NewFailure(cause, corechat.NewTextToolOutput("invalid effective arguments: "+executorDiagnostic(cause)))
+		failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{
+			Kind: toolcontract.FailureKindFailed, Cause: cause,
+			Output: corechat.NewTextToolOutput("invalid effective arguments: " + executorDiagnostic(cause)),
+		})
 		if failureErr != nil {
 			return corechat.ToolOutput{}, failureErr
 		}
@@ -263,7 +284,7 @@ func (o *observedInteractionTool) prepare(
 			CallID: callID, ToolName: name, Arguments: arguments,
 		})
 		if beforeToolUseErr != nil {
-			return tool.Arguments{}, false, "", fmt.Errorf("agentexec: run pre-Tool hook: %w", beforeToolUseErr)
+			return tool.Arguments{}, false, "", interaction.HostFailure(fmt.Errorf("agentexec: run pre-Tool hook: %w", beforeToolUseErr))
 		}
 		if rewritten, ok := decision.EffectiveArguments(); ok {
 			arguments = rewritten
@@ -285,7 +306,7 @@ func (o *observedInteractionTool) prepare(
 	}
 	decision, err := o.authorizer.AuthorizeTool(ctx, request)
 	if err != nil {
-		return tool.Arguments{}, false, "", fmt.Errorf("agentexec: authorize Tool %q: %w", name, err)
+		return tool.Arguments{}, false, "", interaction.HostFailure(fmt.Errorf("agentexec: authorize Tool %q: %w", name, err))
 	}
 	if rewritten, ok := decision.EffectiveArguments(); ok {
 		arguments = rewritten
@@ -336,7 +357,7 @@ func (o *observedInteractionTool) authorizationRequest(
 ) (ToolAuthorizationRequest, error) {
 	subject, err := o.interpreter.ApprovalSubject(name, arguments)
 	if err != nil {
-		return ToolAuthorizationRequest{}, fmt.Errorf("agentexec: derive Tool %q approval subject: %w", name, err)
+		return ToolAuthorizationRequest{}, interaction.HostFailure(fmt.Errorf("agentexec: derive Tool %q approval subject: %w", name, err))
 	}
 	autoApproved := false
 	if o.session.mcpToolAutoApproved != nil {
@@ -426,7 +447,7 @@ func (o *observedInteractionTool) resolveToolApproval(
 ) (tool.Arguments, bool, string, error) {
 	decision, err := o.authorizer.ResolveToolApproval(ctx, request, prompt, resolution)
 	if err != nil {
-		return tool.Arguments{}, false, "", fmt.Errorf("agentexec: resolve Tool %q approval: %w", request.ToolName, err)
+		return tool.Arguments{}, false, "", interaction.HostFailure(fmt.Errorf("agentexec: resolve Tool %q approval: %w", request.ToolName, err))
 	}
 	arguments := request.Arguments
 	if rewritten, ok := decision.EffectiveArguments(); ok {
@@ -529,13 +550,22 @@ func wrapInteractionTools(
 			if bindErr != nil {
 				return nil, fmt.Errorf("agentexec: bind Interaction Tool %q: %w", executable.Definition().Name, bindErr)
 			}
-			wrapped[index] = &observedInteractionTool{
+			observed := &observedInteractionTool{
 				inner: executable, binding: binding, session: session, interpreter: config.ToolInterpreter,
 				presenter: config.ToolPresenter, authorizer: config.ToolAuthorizer,
 				hooks: config.ToolHooks, offloader: config.ToolResultStore,
 				offloadPolicy: offloadPolicy,
 				start:         start,
 			}
+			if config.ToolHooks == nil && !config.ToolInterpreter.UsesStandardPolicy(executable.Definition().Name) &&
+				!slices.Contains(start.InterruptKinds, interrupt.Approval) {
+				concurrent, _, err := toolcontract.Capability[interaction.ConcurrentTool](executable)
+				if err != nil {
+					return nil, fmt.Errorf("agentexec: resolve Tool concurrency: %w", err)
+				}
+				observed.concurrent = concurrent
+			}
+			wrapped[index] = observed
 		}
 		return wrapped, nil
 	}

@@ -232,9 +232,6 @@ func (i *interactionSession) commitSubtreeApplication(
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
 	i.state.waitingCheckpoint = change.checkpoint.Clone()
-	for _, processID := range change.canceled {
-		i.state.canceledSubtreeRoots[processID] = struct{}{}
-	}
 }
 
 func (i *interactionSession) finishSubtreeApplication(

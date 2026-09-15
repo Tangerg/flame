@@ -221,7 +221,12 @@ func validateModelOutputReservation(
 func (i *InteractionExecutor) StageRoot(
 	ctx context.Context,
 	start runs.RootExecutionStart,
-) (runs.ExecutorRef, error) {
+) (_ runs.ExecutorRef, err error) {
+	finishAssembly, err := i.sessions.beginAssembly()
+	if err != nil {
+		return runs.ExecutorRef{}, err
+	}
+	defer finishAssembly()
 	start = start.Clone()
 	if err := resourceid.ValidateSession(start.SessionID); err != nil {
 		return runs.ExecutorRef{}, fmt.Errorf("agentexec: Interaction: %w", err)
@@ -234,16 +239,19 @@ func (i *InteractionExecutor) StageRoot(
 	if err != nil {
 		return runs.ExecutorRef{}, err
 	}
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, i.discardInteraction(session))
+		}
+	}()
 	input, err := agent.EncodeInput(interaction.Input{
 		Messages: cloneChatMessages(start.WorkingContext), Options: executionOptions(start.ModelSelection, start.Options),
 	})
 	if err != nil {
-		_ = session.engine.Close(ctx)
 		return runs.ExecutorRef{}, fmt.Errorf("agentexec: encode Interaction input: %w", err)
 	}
 	session.input = input
 	if err := i.sessions.register(session); err != nil {
-		_ = session.engine.Close(ctx)
 		return runs.ExecutorRef{}, err
 	}
 	return ref, nil
@@ -253,7 +261,7 @@ func (i *InteractionExecutor) assembleInteraction(
 	ctx context.Context,
 	ref runs.ExecutorRef,
 	start runs.RootExecutionStart,
-) (*interactionSession, error) {
+) (_ *interactionSession, err error) {
 	resolved, err := i.resolveChat(ctx, start.ModelSelection)
 	if err != nil {
 		return nil, err
@@ -270,6 +278,12 @@ func (i *InteractionExecutor) assembleInteraction(
 		return nil, err
 	}
 	session := newInteractionSession(i.lifetime, ref, start, i.config, i.buildID, i.policy)
+	i.sessions.own(session)
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, i.discardInteraction(session))
+		}
+	}()
 	session.allowance = allowance
 	observed, err := newObservedInteractionModel(model, streamer, session)
 	if err != nil {
@@ -375,21 +389,22 @@ func (i *InteractionExecutor) interactionConfiguration(
 	return configuration, nil
 }
 
-// BeginShutdown atomically rejects future roots. The remaining live set can
-// only shrink; resource release is joined by AwaitShutdown under its caller's
-// deadline so an interrupted close remains retryable.
+// BeginShutdown rejects new assembly and publication. AwaitShutdown joins
+// admitted assembly and releases its resources under the caller's deadline.
 func (i *InteractionExecutor) BeginShutdown() {
 	i.sessions.closeAdmission()
 }
 
-// AwaitShutdown releases every root frozen by BeginShutdown. Successful
-// targets are removed immediately; failed or timed-out targets stay owned for a
-// later attempt.
+// AwaitShutdown releases published roots, probes, and failed assemblies.
+// Successful targets are removed; failed or timed-out targets stay owned.
 func (i *InteractionExecutor) AwaitShutdown(ctx context.Context) error {
 	if ctx == nil {
 		return errors.New("agentexec: Interaction shutdown context is required")
 	}
 	i.BeginShutdown()
+	if err := i.sessions.awaitAssembly(ctx); err != nil {
+		return err
+	}
 	targets := i.sessions.snapshot()
 	var failures []error
 	for _, session := range targets {
@@ -570,7 +585,12 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	ref runs.ExecutorRef,
 	continuation runs.WaitingContinuation,
 	boundary interactionBoundary,
-) error {
+) (err error) {
+	finishAssembly, err := i.sessions.beginAssembly()
+	if err != nil {
+		return err
+	}
+	defer finishAssembly()
 	if err := i.validateRestoreScope(ctx, continuation.Checkpoint.Scope); err != nil {
 		return err
 	}
@@ -600,38 +620,38 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, i.discardInteraction(session))
+		}
+	}()
 	process, err := session.engine.RestoreTree(
 		runExecutionContext(session.lifetime.execution, session.scope, session.start),
 		session.deployment,
 		checkpoint.tree,
 	)
 	if err != nil {
-		_ = session.engine.Close(ctx)
 		return fmt.Errorf("%w: restore exact Interaction tree: %w", runs.ErrExecutorStateLost, err)
 	}
+	session.state.setProcess(process)
 	if initializeRestoredContinuationErr := session.initializeRestoredContinuation(process, continuation, checkpoint, boundary); initializeRestoredContinuationErr != nil {
-		discardRestoredInteraction(session, process)
 		return initializeRestoredContinuationErr
 	}
 	unknown, readable := session.unknownEffectIDs(ctx)
 	if !readable {
-		discardRestoredInteraction(session, process)
 		return fmt.Errorf("%w: restored Interaction tree cannot be inspected", runs.ErrExecutorStateLost)
 	}
 	if len(unknown) > 0 {
-		discardRestoredInteraction(session, process)
 		return fmt.Errorf("%w: restored Interaction has unresolved effects", runs.ErrExecutorStateLost)
 	}
 	interruptions, err := session.pendingInterruptions(checkpoint.tree)
 	if err != nil || len(interruptions) == 0 {
-		discardRestoredInteraction(session, process)
 		if err != nil {
-			return fmt.Errorf("%w: inspect restored Interaction input: %v", runs.ErrExecutorStateLost, err)
+			return fmt.Errorf("%w: inspect restored Interaction input: %w", runs.ErrExecutorStateLost, err)
 		}
 		return fmt.Errorf("%w: restored Interaction tree has no pending input", runs.ErrExecutorStateLost)
 	}
 	if err := i.sessions.register(session); err != nil {
-		discardRestoredInteraction(session, process)
 		return err
 	}
 	session.startWorkers()
@@ -663,15 +683,17 @@ func (i *InteractionExecutor) validateRestoreScope(
 	return nil
 }
 
-func discardRestoredInteraction(session *interactionSession, process *agent.Process) {
+func (i *InteractionExecutor) discardInteraction(session *interactionSession) error {
 	cleanupCtx, cancel := context.WithTimeout(
 		context.WithoutCancel(session.lifetime.execution),
 		authoritativeProjectionTimeout,
 	)
 	defer cancel()
-	_ = process.Kill(cleanupCtx, interactionReleaseReason)
-	_, _ = process.Await(cleanupCtx)
-	_ = session.engine.Close(cleanupCtx)
+	if err := session.release(cleanupCtx); err != nil {
+		return fmt.Errorf("agentexec: discard Interaction %q: %w", session.ref.ExecutorID, err)
+	}
+	i.sessions.remove(session)
+	return nil
 }
 
 func rootExecutionScope(start runs.RootExecutionStart) runs.ExecutionScope {
@@ -718,10 +740,8 @@ func (i *InteractionExecutor) Release(ctx context.Context, ref runs.ExecutorRef)
 
 // RequestRootCancellation submits the Application's accepted cancellation to
 // Agent Framework without deciding the product outcome or releasing the tree.
-// Success means the request entered Engine's queue. The adapter then cancels
-// its cooperative in-flight model/Tool dispatches so they can settle promptly;
-// Agent Framework remains the sole lifecycle owner and applies the accepted
-// intent only after that safe settlement boundary.
+// Success acknowledges submission only; Scope owns cancellation propagation and
+// the immutable result reports whether cancellation became the terminal cause.
 func (i *InteractionExecutor) RequestRootCancellation(
 	ctx context.Context,
 	ref runs.ExecutorRef,
@@ -739,7 +759,6 @@ func (i *InteractionExecutor) RequestRootCancellation(
 		!errors.Is(err, agent.ErrProcessFinished) {
 		return fmt.Errorf("agentexec: submit Interaction cancellation intent: %w", err)
 	}
-	session.cancelAllDispatches()
 	return nil
 }
 

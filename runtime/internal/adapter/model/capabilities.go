@@ -143,11 +143,7 @@ func providerMetadata(value llm.ProviderProfile) modelsapp.ProviderMetadata {
 			embedding = modelsapp.EmbeddingCapabilityWithoutDefault()
 		}
 	}
-	authentication := modelsapp.ProviderAPIKeyOptional
-	if value.RequiresAPIKey() {
-		authentication = modelsapp.ProviderAPIKeyRequired
-	}
-	metadata, err := modelsapp.NewProviderMetadata(string(value.ID()), authentication, endpoint, modelSource, embedding)
+	metadata, err := modelsapp.NewProviderMetadata(string(value.ID()), modelsapp.ProviderAPIKeyRequired, endpoint, modelSource, embedding)
 	if err != nil {
 		panic(fmt.Sprintf("model: invalid provider metadata for %q: %v", value.ID(), err))
 	}

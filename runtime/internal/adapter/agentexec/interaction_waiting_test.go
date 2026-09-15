@@ -801,6 +801,10 @@ func TestInteractionExecutorCheckpointsWithoutReplayingUnknownEffect(t *testing.
 	unknownReady := make(chan struct{})
 	go func() {
 		for event := range sequence {
+			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
+				lookup.Complete(false, nil)
+				continue
+			}
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				var commitErr error
 				if _, completed := commit.Fact().(runs.ModelCallCompleted); completed {
@@ -910,6 +914,10 @@ func TestInteractionExecutorDoesNotCallNextModelWhenAppliedSteerCommitFails(t *t
 	go func() {
 		var events []runs.ExecutorEvent
 		for event := range sequence {
+			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
+				lookup.Complete(false, nil)
+				continue
+			}
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commitErr := error(nil)
 				if _, applied := commit.Fact().(runs.SteerMessagesApplied); applied {
@@ -1049,6 +1057,10 @@ func observeInteractionUntilWaiting(
 	go func() {
 		var value result
 		sequence(func(event runs.ExecutorEvent) bool {
+			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
+				lookup.Complete(false, nil)
+				return true
+			}
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
 				event.Payload = commit.Fact()
@@ -1077,6 +1089,10 @@ func collectInteractionEvents(sequence func(func(runs.ExecutorEvent) bool)) <-ch
 	go func() {
 		var events []runs.ExecutorEvent
 		sequence(func(event runs.ExecutorEvent) bool {
+			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
+				lookup.Complete(false, nil)
+				return true
+			}
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
 				event.Payload = commit.Fact()

@@ -29,16 +29,15 @@ func resolveProviderClientInputs(expectedID string, entry provider.Provider) (pr
 }
 
 func (i providerClientInputs) clientSpec(model string) (llm.ClientSpec, error) {
-	credential := llm.NoClientCredential()
-	if apiKey, configured := i.entry.APIKey(); configured {
-		var err error
-		credential, err = llm.NewAPIKeyCredential(apiKey.Reveal())
-		if err != nil {
-			return llm.ClientSpec{}, err
-		}
-	} else if i.profile.RequiresAPIKey() {
+	apiKey, configured := i.entry.APIKey()
+	if !configured {
 		return llm.ClientSpec{}, ErrCredentialUnavailable
 	}
+	credential, err := llm.NewAPIKeyCredential(apiKey.Reveal())
+	if err != nil {
+		return llm.ClientSpec{}, err
+	}
+
 	spec, err := llm.NewClientSpec(i.profile.ID(), model, credential)
 	if err != nil {
 		return llm.ClientSpec{}, err
@@ -54,7 +53,7 @@ func (i providerClientInputs) endpoint() (string, bool) {
 	if baseURL, configured := i.entry.BaseURL(); configured {
 		return baseURL.String(), true
 	}
-	return i.profile.DefaultEndpoint()
+	return "", false
 }
 
 func (i providerClientInputs) apiKey() string {
