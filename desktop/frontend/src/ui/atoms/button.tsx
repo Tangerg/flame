@@ -224,8 +224,6 @@ const styles = stylex.create({
   quietSuccess: { color: { default: color.fgFaint, ":hover": color.success } },
   quietWarning: { color: { default: color.fgFaint, ":hover": color.warning } },
 
-  faded: { opacity: { default: null, ':is(:disabled, [aria-disabled="true"])': 0.25 } },
-
   fill: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
 
   // Declared after the variants so it outranks whichever fill they gave.
@@ -309,7 +307,6 @@ export interface ButtonVariants {
   round?: boolean;
   chip?: boolean;
   quiet?: boolean;
-  off?: "normal" | "faded";
   shape?: "control" | "row";
   active?: boolean;
   flex?: "none" | "fill";
@@ -332,7 +329,6 @@ export function dress({
   round,
   chip,
   quiet,
-  off,
   shape,
   active,
   flex,
@@ -356,7 +352,6 @@ export function dress({
     chipStep && [CHIP_INSET[chipStep], type.uiSm],
     quiet && styles.quiet,
     quiet && tone && QUIET_TONE[tone],
-    off === "faded" && styles.faded,
     active && styles.active,
     shape === "row" && styles.row,
     flex === "fill" && styles.fill,
@@ -389,7 +384,6 @@ export function Button({
   round,
   chip,
   quiet,
-  off,
   shape,
   active,
   flex,
@@ -410,7 +404,6 @@ export function Button({
       round,
       chip,
       quiet,
-      off,
       shape,
       active,
       flex,
