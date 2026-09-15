@@ -303,6 +303,8 @@ export const de: Record<string, string> = {
   "providers.models.error": "Modelle konnten nicht geladen werden",
   "providers.empty": "Keine Anbieter",
   "providers.empty.sub": "Die Runtime meldet keine unterstützten LLM-Anbieter.",
+  "plugins.hero":
+    "Jedes Plugin, das dieser Build lädt. Ein fehlgeschlagenes behält seinen Platz samt ausgelöstem Fehler, damit ein defekter Beitrag sichtbar bleibt statt einfach zu fehlen.",
   "plugins.errorDetail.show": "Fehlerdetails anzeigen",
   "plugins.errorDetail.hide": "Fehlerdetails ausblenden",
   "plugins.errors_one": "{{count}} Fehler",

@@ -294,6 +294,8 @@ export const ja: Record<string, string> = {
   "providers.models.error": "モデルを読み込めませんでした",
   "providers.empty": "プロバイダーがありません",
   "providers.empty.sub": "ランタイムはサポートされている LLM プロバイダーを報告していません。",
+  "plugins.hero":
+    "このビルドが読み込むすべてのプラグイン。失敗したものは発生したエラーとともに一覧に残るため、壊れた拡張は消えるのではなく見える形になります。",
   "plugins.errorDetail.show": "エラー詳細を表示",
   "plugins.errorDetail.hide": "エラー詳細を非表示",
   "plugins.errors_other": "{{count}} 件のエラー",

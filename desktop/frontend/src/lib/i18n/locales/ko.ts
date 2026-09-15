@@ -293,6 +293,8 @@ export const ko: Record<string, string> = {
   "providers.models.error": "모델을 불러올 수 없습니다",
   "providers.empty": "공급자 없음",
   "providers.empty.sub": "런타임이 지원되는 LLM 공급자를 보고하지 않습니다.",
+  "plugins.hero":
+    "이 빌드가 로드하는 모든 플러그인. 실패한 플러그인은 발생한 오류와 함께 목록에 남아, 손상된 기여가 사라지지 않고 드러납니다.",
   "plugins.errorDetail.show": "오류 세부 정보 표시",
   "plugins.errorDetail.hide": "오류 세부 정보 숨기기",
   "plugins.errors_other": "오류 {{count}}건",

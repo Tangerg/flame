@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { PluginError, PluginErrorSource } from "@/plugins/sdk";
 import { formatClock } from "@/lib/i18n/relativeTime";
 import { useState } from "react";
-import { Badge, gap, Icon, IconButton, PillButton, TextButton, vocab } from "@/ui";
+import { Badge, Icon, IconButton, PillButton, TextButton, vocab } from "@/ui";
 import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { useInstalledPlugins, usePluginErrorStore } from "@/plugins/sdk";
@@ -15,11 +15,14 @@ import {
   surface,
   type as typeStep,
 } from "@/styles/tokens.stylex";
+import { SettingsGroup } from "../../kit";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const pp = stylex.create({
   plugin: {
-    borderRadius: radius.card,
+    borderTopWidth: { default: "var(--control-edge-width)", ":first-child": 0 },
+    borderTopStyle: "solid",
+    borderTopColor: surface.field,
     backgroundColor: { default: null, ":hover": surface.hover },
     transitionProperty: "background-color",
   },
@@ -28,14 +31,14 @@ const pp = stylex.create({
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) auto",
     gap: space.s2_5,
-    paddingInline: space.s3,
-    paddingBlock: space.s2_5,
+    paddingInline: space.s4,
+    paddingBlock: space.s3,
   },
   errors: {
     display: "flex",
     flexDirection: "column",
     gap: space.s1_5,
-    paddingInline: space.s3,
+    paddingInline: space.s4,
     paddingBottom: space.s3,
   },
   errorCard: {
@@ -92,50 +95,48 @@ export function PluginsPane() {
     });
 
   return (
-    <div>
-      <div {...stylex.props(vocab.column, gap.s2)}>
-        {rows.map((name) => {
-          const errors = errorsByPlugin.get(name) ?? [];
-          const errCount = errors.length;
-          const open = expanded.has(name);
-          return (
-            <div key={name} {...stylex.props(pp.plugin, errCount > 0 && pp.faulted)}>
-              <div {...stylex.props(pp.head)}>
-                <div>
-                  <div {...stylex.props(ss.label, typeStep.uiMd)}>{name}</div>
-                  {errCount > 0 && (
-                    <TextButton
-                      tone="negative"
-                      onClick={() => toggle(name)}
-                      title={open ? t("plugins.errorDetail.hide") : t("plugins.errorDetail.show")}
-                      {...stylex.props(vocab.afterLine)}
-                    >
-                      <Icon name="bug" size="xs" />
-                      {t("plugins.errors", { count: errCount })}
-                      <Icon name={open ? "chevron-up" : "chevron-down"} size="xs" />
-                    </TextButton>
-                  )}
-                </div>
-                <div {...stylex.props(vocab.lineTight)}>
-                  {errCount > 0 && (
-                    <PillButton variant="outlined" size="sm" onClick={() => clearFor(name)}>
-                      {t("plugins.clear")}
-                    </PillButton>
-                  )}
-                </div>
+    <SettingsGroup>
+      {rows.map((name) => {
+        const errors = errorsByPlugin.get(name) ?? [];
+        const errCount = errors.length;
+        const open = expanded.has(name);
+        return (
+          <div key={name} {...stylex.props(pp.plugin, errCount > 0 && pp.faulted)}>
+            <div {...stylex.props(pp.head)}>
+              <div>
+                <div {...stylex.props(ss.label, typeStep.uiMd)}>{name}</div>
+                {errCount > 0 && (
+                  <TextButton
+                    tone="negative"
+                    onClick={() => toggle(name)}
+                    title={open ? t("plugins.errorDetail.hide") : t("plugins.errorDetail.show")}
+                    {...stylex.props(vocab.afterLine)}
+                  >
+                    <Icon name="bug" size="xs" />
+                    {t("plugins.errors", { count: errCount })}
+                    <Icon name={open ? "chevron-up" : "chevron-down"} size="xs" />
+                  </TextButton>
+                )}
               </div>
-              {open && errCount > 0 && (
-                <div {...stylex.props(pp.errors)}>
-                  {errors.map((err) => (
-                    <ErrorEntry key={err.id} err={err} />
-                  ))}
-                </div>
-              )}
+              <div {...stylex.props(vocab.lineTight)}>
+                {errCount > 0 && (
+                  <PillButton variant="outlined" size="sm" onClick={() => clearFor(name)}>
+                    {t("plugins.clear")}
+                  </PillButton>
+                )}
+              </div>
             </div>
-          );
-        })}
-      </div>
-    </div>
+            {open && errCount > 0 && (
+              <div {...stylex.props(pp.errors)}>
+                {errors.map((err) => (
+                  <ErrorEntry key={err.id} err={err} />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </SettingsGroup>
   );
 }
 

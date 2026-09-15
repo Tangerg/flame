@@ -13,6 +13,7 @@ export default definePlugin({
     registerSettingsPane(ctx, {
       id: PLUGINS_PANE,
       label: "settings.pane.plugins",
+      description: "plugins.hero",
       group: "integrations",
       icon: "blocks",
       order: 99,

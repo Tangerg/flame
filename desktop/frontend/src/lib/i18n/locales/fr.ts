@@ -310,6 +310,8 @@ export const fr: Record<string, string> = {
   "providers.models.error": "Impossible de charger les modèles",
   "providers.empty": "Aucun fournisseur",
   "providers.empty.sub": "Le runtime ne signale aucun fournisseur LLM pris en charge.",
+  "plugins.hero":
+    "Chaque plugin chargé par cette version. Celui qui échoue garde sa place avec l'erreur qu'il a levée, pour qu'une contribution cassée reste visible au lieu de disparaître.",
   "plugins.errorDetail.show": "Afficher le détail de l'erreur",
   "plugins.errorDetail.hide": "Masquer le détail de l'erreur",
   "plugins.errors_one": "{{count}} erreur",

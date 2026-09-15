@@ -307,6 +307,8 @@ export const es: Record<string, string> = {
   "providers.models.error": "No se pudieron cargar los modelos",
   "providers.empty": "Sin proveedores",
   "providers.empty.sub": "El runtime no informa proveedores de LLM compatibles.",
+  "plugins.hero":
+    "Todos los complementos que carga esta compilación. El que falla conserva su lugar junto al error que provocó, para que una contribución rota se vea en lugar de faltar sin más.",
   "plugins.errorDetail.show": "Mostrar detalle del error",
   "plugins.errorDetail.hide": "Ocultar detalle del error",
   "plugins.errors_one": "{{count}} error",

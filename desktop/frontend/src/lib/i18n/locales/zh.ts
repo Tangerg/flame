@@ -429,6 +429,8 @@ export const zh: Record<string, string> = {
   "providers.embedding.none":
     "尚未配置支持 embedding 的 provider —— 先在上方添加一个(如 OpenAI 或 Ollama)。",
   "providers.embedding.error": "设置嵌入模型失败。",
+  "plugins.hero":
+    "此版本加载的全部插件。出错的插件仍留在列表中并附带它抛出的错误，这样损坏的贡献是可见的，而不是直接消失。",
   "plugins.errorDetail.show": "显示错误详情",
   "plugins.errorDetail.hide": "隐藏错误详情",
   "plugins.errors_other": "{{count}} 个错误",

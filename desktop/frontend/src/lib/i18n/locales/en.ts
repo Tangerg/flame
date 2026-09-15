@@ -455,6 +455,8 @@ export const en: Record<string, string> = {
   "mcp.error.toggle": "Couldn't change the server.",
   "mcp.error.signIn": "Sign-in failed.",
   "mcp.error.test": "Test failed",
+  "plugins.hero":
+    "Every plugin this build loads. One that fails keeps its place with the error it raised, so a broken contribution is visible rather than simply missing.",
   "plugins.errorDetail.show": "Show error detail",
   "plugins.errorDetail.hide": "Hide error detail",
   "plugins.errors_one": "{{count}} error",

@@ -293,6 +293,8 @@ export const zhTW: Record<string, string> = {
   "providers.models.error": "無法載入模型",
   "providers.empty": "尚無供應商",
   "providers.empty.sub": "執行時回報沒有受支援的 LLM 供應商。",
+  "plugins.hero":
+    "此版本載入的全部外掛。出錯的外掛仍留在清單中並附上它拋出的錯誤，這樣損壞的貢獻是可見的，而不是直接消失。",
   "plugins.errorDetail.show": "顯示錯誤詳情",
   "plugins.errorDetail.hide": "隱藏錯誤詳情",
   "plugins.errors_other": "{{count}} 個錯誤",
