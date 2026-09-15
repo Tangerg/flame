@@ -24,6 +24,7 @@ export function ModelInvocationHistory({ run }: { run: AgentRunView }) {
         <span {...stylex.props(typeStep.uiSm)}>{t("timeline.modelCalls")}</span>
         <IconButton
           icon="loop"
+          size="sm"
           title={t("timeline.refreshCalls")}
           onClick={() => {
             void refetch();

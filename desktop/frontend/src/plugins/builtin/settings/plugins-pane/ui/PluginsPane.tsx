@@ -167,7 +167,7 @@ function ErrorEntry({ err }: { err: PluginError }) {
         </span>
         <div {...stylex.props(vocab.lineTight)}>
           <span {...stylex.props(vocab.faint, typeStep.uiXs, face.mono)}>{time}</span>
-          <IconButton icon="copy" iconSize="xs" title={t("plugins.copyError")} onClick={copy} />
+          <IconButton icon="copy" size="xs" title={t("plugins.copyError")} onClick={copy} />
         </div>
       </div>
       {err.detail && <pre {...stylex.props(pp.stack, typeStep.uiSm)}>{err.detail}</pre>}

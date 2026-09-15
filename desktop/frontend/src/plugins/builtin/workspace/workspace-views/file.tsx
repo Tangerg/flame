@@ -96,7 +96,12 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
       title={viewer.path}
       dockIdentity={<FilePath path={viewer.path} />}
       actions={
-        <IconButton icon="arrow-left" title={t("file.backToFiles")} onClick={closeWorkspaceFile} />
+        <IconButton
+          icon="arrow-left"
+          size="sm"
+          title={t("file.backToFiles")}
+          onClick={closeWorkspaceFile}
+        />
       }
       sub={sub}
     >

@@ -202,6 +202,7 @@ function TimelineRunHeader({
         <span {...stylex.props(vocab.firstLine, typeStep.uiSm)}>
           <IconButton
             icon="bot"
+            size="sm"
             quiet
             title={t("timeline.modelCalls")}
             aria-expanded={showModels}
@@ -210,6 +211,7 @@ function TimelineRunHeader({
           {spawnedByItemId && (
             <IconButton
               icon="chat"
+              size="sm"
               quiet
               title={t("timeline.locateParent")}
               onClick={() => {
@@ -224,6 +226,7 @@ function TimelineRunHeader({
           {status.cancelable && (
             <IconButton
               icon="stop"
+              size="sm"
               quiet
               disabled={!runtimeAvailable}
               title={t("agent.runTree.action.cancel")}
