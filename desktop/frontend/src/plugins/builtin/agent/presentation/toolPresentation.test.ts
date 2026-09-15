@@ -28,21 +28,21 @@ describe("toolPresentation", () => {
         tool({ name: "read", fn: "read", args: JSON.stringify({ path: "src/App.tsx" }) }),
       ),
     ).toEqual({
-      label: { kind: "text", value: "Read" },
+      label: { kind: "prose", value: "Read" },
       detail: { kind: "path", value: "src/App.tsx" },
     });
   });
 
   it("drops a detail that repeats the label", () => {
     expect(toolIntent(t, tool({ name: "shell", fn: "pnpm test", command: "pnpm test" }))).toEqual({
-      label: { kind: "text", value: "Ran" },
-      detail: { kind: "text", value: "pnpm test" },
+      label: { kind: "prose", value: "Ran" },
+      detail: { kind: "machine", value: "pnpm test" },
     });
     expect(
       toolIntent(t, tool({ name: "shell", fn: "Run the unit tests", command: "pnpm test" })),
     ).toEqual({
-      label: { kind: "text", value: "Run the unit tests" },
-      detail: { kind: "text", value: "pnpm test" },
+      label: { kind: "prose", value: "Run the unit tests" },
+      detail: { kind: "machine", value: "pnpm test" },
     });
   });
 
@@ -50,16 +50,16 @@ describe("toolPresentation", () => {
     expect(
       toolIntent(t, tool({ name: "apply_patch", fn: "runtime/store.go", fnKind: "path" })),
     ).toEqual({
-      label: { kind: "text", value: "Applied patch" },
+      label: { kind: "prose", value: "Applied patch" },
       detail: { kind: "path", value: "runtime/store.go" },
     });
   });
 
-  it("marks a pattern as text, not as a path", () => {
+  it("marks a pattern as machine text, not as a path", () => {
     expect(
       toolIntent(t, tool({ name: "grep", fn: "grep", args: JSON.stringify({ pattern: "a/b" }) }))
         .detail,
-    ).toEqual({ kind: "text", value: "a/b" });
+    ).toEqual({ kind: "machine", value: "a/b" });
   });
 
   it("keeps a command verbatim even when it reads like a tool name", () => {
@@ -80,7 +80,7 @@ describe("toolPresentation", () => {
     (status) => {
       const call = tool({ name: "set_plan", fn: "set_plan", status });
       expect(toolIntent(t, call)).toEqual({
-        label: { kind: "text", value: "Update plan" },
+        label: { kind: "prose", value: "Update plan" },
         detail: undefined,
       });
     },
@@ -88,15 +88,15 @@ describe("toolPresentation", () => {
 
   it("gives a tool it has no verb for the generic one", () => {
     expect(toolIntent(t, tool({ name: "acme_docs", fn: "acme_docs" }))).toEqual({
-      label: { kind: "text", value: "Used tool" },
-      detail: { kind: "text", value: "acme_docs" },
+      label: { kind: "prose", value: "Used tool" },
+      detail: { kind: "machine", value: "acme_docs" },
     });
   });
 
   it("ignores malformed args while keeping the tool label", () => {
     expect(toolIntent(t, tool({ name: "acme_docs", fn: "acme_docs", args: "{" }))).toEqual({
-      label: { kind: "text", value: "Used tool" },
-      detail: { kind: "text", value: "acme_docs" },
+      label: { kind: "prose", value: "Used tool" },
+      detail: { kind: "machine", value: "acme_docs" },
     });
   });
 

@@ -5,7 +5,7 @@ import { useT } from "@/lib/i18n";
 import { headlineToolMetaItem, toolCardModel } from "../application/toolCardModel";
 import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
-import { ToolText } from "./ToolText";
+import { ToolText } from "@/ui/agent";
 import { color, face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { toolMetaInk } from "./toolMetaInk";
 
@@ -52,15 +52,9 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
           size="xs"
           className={stylex.props(vocab.hold, vocab.muted).className}
         />
-        <ToolText
-          value={model.intent.label}
-          className={stylex.props(vocab.hold, gm.inherit, typeStep.uiSm).className}
-        />
+        <ToolText value={model.intent.label} styles={[vocab.hold, gm.inherit, typeStep.uiSm]} />
         {model.detail && (
-          <ToolText
-            value={model.detail}
-            className={stylex.props(vocab.fill, vocab.faint, typeStep.uiSm, face.mono).className}
-          />
+          <ToolText value={model.detail} styles={[vocab.fill, vocab.faint, typeStep.uiSm]} />
         )}
         {model.diffStat && (
           <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />

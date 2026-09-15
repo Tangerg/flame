@@ -31,7 +31,7 @@ describe("toolCardModel", () => {
           args: '{"cmd":"rm"}',
         }),
       ),
-    ).toMatchObject({ detail: { kind: "text", value: "permission denied" } });
+    ).toMatchObject({ detail: { kind: "prose", value: "permission denied" } });
   });
 
   it("projects lifecycle flags and presentation data", () => {

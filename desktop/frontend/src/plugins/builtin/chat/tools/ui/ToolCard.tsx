@@ -15,7 +15,7 @@ import {
 import { toolCardActions, toolCardModel, toolCardViewOpener } from "../application/toolCardModel";
 import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
-import { ToolText } from "./ToolText";
+import { ToolText } from "@/ui/agent";
 import { face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 import { toolMetaInk } from "./toolMetaInk";
 
@@ -64,12 +64,8 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
       // back into a status card.
       shell="line"
       contentInset="rows"
-      label={<ToolText value={model.intent.label} className={stylex.props(tc.full).className} />}
-      detail={
-        model.detail ? (
-          <ToolText value={model.detail} className={stylex.props(tc.full, face.mono).className} />
-        ) : undefined
-      }
+      label={<ToolText value={model.intent.label} styles={tc.full} />}
+      detail={model.detail ? <ToolText value={model.detail} styles={tc.full} /> : undefined}
       trailing={
         <>
           {model.diffStat && (

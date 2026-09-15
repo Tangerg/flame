@@ -29,7 +29,7 @@ export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
     denied: tool.status === "denied",
     intent,
     // Always `text`: a failure is prose, never a path, so it must not be left-truncated.
-    detail: isError && tool.error ? { kind: "text", value: tool.error } : intent.detail,
+    detail: isError && tool.error ? { kind: "prose", value: tool.error } : intent.detail,
     diffStat,
     metaItems,
   };

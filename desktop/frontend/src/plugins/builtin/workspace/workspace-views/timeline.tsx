@@ -5,11 +5,12 @@ import type { Tone } from "@/lib/tone";
 import type { IconName } from "@/ui";
 import type { TimelineEntry, TimelineEntryKind } from "@/plugins/sdk/types/agentSessionView";
 import { Badge, EmptyState, Icon, IconButton, toneInk, vocab } from "@/ui";
+import { ToolText } from "@/ui/agent";
 import { activeLocale, useT, type Translate } from "@/lib/i18n";
 import { fmtDuration } from "@/lib/format";
 import { TIMELINE_WINDOW_SIZE } from "@/plugins/sdk/types/agentTimeline";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { toolIntent } from "@/plugins/builtin/agent/public/messagePresentation";
+import { toolIntent, type ToolDetail } from "@/plugins/builtin/agent/public/messagePresentation";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
@@ -66,11 +67,13 @@ const STATUS_MARK: Record<NonNullable<TimelineEntry["status"]>, { icon: IconName
   declined: { icon: "x", tone: "warning" },
 };
 
-function entrySubject(t: Translate, entry: TimelineEntry, tool: ToolCall | undefined): string {
-  if (!tool) return entry.summary ?? "";
-  if (entry.kind !== "tool" && entry.summary !== tool.name) return entry.summary ?? "";
+function entrySubject(t: Translate, entry: TimelineEntry, tool: ToolCall | undefined): ToolDetail {
+  if (!tool) return { kind: "prose", value: entry.summary ?? "" };
+  if (entry.kind !== "tool" && entry.summary !== tool.name) {
+    return { kind: "prose", value: entry.summary ?? "" };
+  }
   const intent = toolIntent(t, tool);
-  return intent.detail?.value ?? intent.label.value;
+  return intent.detail ?? intent.label;
 }
 
 function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | undefined }) {
@@ -89,15 +92,11 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
                 : KIND_I18N[entry.kind],
             )}
           </span>
-          {subject && (
+          {subject.value && (
             // Named because it is the one place a tool reaches the timeline by name, and a
             // closure test checks that the name is the transcript's rather than the wire's.
-            <span
-              data-timeline-subject=""
-              title={subject}
-              {...stylex.props(vocab.truncate, vocab.muted, typeStep.uiSm, face.mono)}
-            >
-              {subject}
+            <span data-timeline-subject="" {...stylex.props(vocab.min)}>
+              <ToolText value={subject} styles={[vocab.muted, typeStep.uiSm]} />
             </span>
           )}
         </div>

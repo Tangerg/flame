@@ -6,7 +6,7 @@ import { toolCategory } from "@/plugins/builtin/agent/domain/toolCategory";
 
 // Typed, not a bare string: a path truncates from the OTHER end, and a plain string leaves
 // the renderer guessing — every path then loses its filename to an ellipsis.
-export type ToolDetail = { kind: "path" | "text"; value: string };
+export type ToolDetail = { kind: "path" | "machine" | "prose"; value: string };
 
 export interface ToolIntent {
   /** For the file categories the projection puts the path HERE rather than in `detail`. */
@@ -38,9 +38,9 @@ const GENERIC_VERB_ID = "generic";
 // drift these apart silently.
 const TOOL_DETAIL_KEYS: ReadonlyArray<{ key: string; kind: ToolDetail["kind"] }> = [
   { key: "path", kind: "path" },
-  { key: "query", kind: "text" },
-  { key: "pattern", kind: "text" },
-  { key: "url", kind: "text" },
+  { key: "query", kind: "machine" },
+  { key: "pattern", kind: "machine" },
+  { key: "url", kind: "machine" },
 ];
 
 export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
@@ -49,7 +49,7 @@ export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
   // requested action without claiming that it happened or is still running.
   const tense = tool.status === "running" ? "doing" : tool.status === "ok" ? "done" : "action";
   const verb: ToolDetail = {
-    kind: "text",
+    kind: "prose",
     value: t(`tool.${tense}.${labelKey ?? GENERIC_VERB_ID}`),
   };
   const command = text(tool.command);
@@ -61,8 +61,8 @@ export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
   const argument: ToolDetail | undefined =
     tool.fn === tool.name && labelKey !== undefined
       ? undefined
-      : { kind: tool.fnKind ?? "text", value: tool.fn };
-  const label = described ? { kind: "text" as const, value: tool.fn } : verb;
+      : { kind: tool.fnKind ?? "machine", value: tool.fn };
+  const label = described ? { kind: "prose" as const, value: tool.fn } : verb;
   const parsed = parseToolArgs(tool.args);
   const detail =
     command ?? (described ? undefined : argument) ?? (parsed ? toolDetail(parsed) : undefined);
@@ -168,7 +168,7 @@ function parseToolArgs(args: string): Record<string, unknown> | null {
 }
 
 function text(value: string | undefined): ToolDetail | undefined {
-  return value === undefined || value === "" ? undefined : { kind: "text", value };
+  return value === undefined || value === "" ? undefined : { kind: "machine", value };
 }
 
 function toolDetail(args: Record<string, unknown>): ToolDetail | undefined {
