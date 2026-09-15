@@ -1,4 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
+import { motion } from "motion/react";
+import { stepEnter } from "@/lib/motion";
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
 import type { TranscriptRow, TurnFacts } from "@/plugins/builtin/agent/public/conversation";
 import type { MessageRenderUnit } from "@/plugins/builtin/agent/public/messagePresentation";
@@ -138,13 +140,16 @@ export function renderMessageBlocks(
   return units.map((unit, index) => {
     const anchor = renderUnitAnchor(message.id, unit);
     return (
-      <div
+      <motion.div
         key={anchor}
+        {...stepEnter}
         {...{ [BLOCK_ANCHOR_ATTR]: anchor }}
-        {...stylex.props(seamStep[unitSeam(units[index - 1], unit) ?? "none"])}
+        // The class only: `motion.div` animates through `style`, so spreading StyleX's whole
+        // result here hands the same attribute two owners.
+        className={stylex.props(seamStep[unitSeam(units[index - 1], unit) ?? "none"]).className}
       >
         {renderUnit(unit, facts, ctx)}
-      </div>
+      </motion.div>
     );
   });
 }

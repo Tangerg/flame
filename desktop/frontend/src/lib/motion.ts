@@ -64,6 +64,18 @@ export const chipPresence = {
   transition: selectionTransition,
 };
 
+/** A step arriving in a chain that is still being written.
+ *
+ *  Its own preset because a step is not a turn: a turn is a whole exchange entering the
+ *  transcript and travels 6px on the medium rung, a step is one line joining a chain the
+ *  reader is already watching and would read as a lurch at that distance. Presence only —
+ *  steps do not leave a turn, and `layout` would measure the holder on every streamed token. */
+export const stepEnter = {
+  initial: { opacity: 0, y: 4 },
+  animate: { opacity: 1, y: 0 },
+  transition: selectionTransition,
+};
+
 export const enterUp = {
   initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },

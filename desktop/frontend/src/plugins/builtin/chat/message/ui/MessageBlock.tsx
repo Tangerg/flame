@@ -16,6 +16,7 @@ import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { MESSAGE_CONTENT_CLASS } from "./messageContent";
 import { MessageContextMenu } from "./MessageContextMenu";
+import { AnimatePresence } from "motion/react";
 import { renderBlock, renderMessageBlocks } from "./BlockRenderer";
 import {
   MessageVisibleMaterialOwner,
@@ -131,7 +132,7 @@ function MessageBlockInner({
         ).className,
       )}
     >
-      {content}
+      <AnimatePresence initial={false}>{content}</AnimatePresence>
     </div>
   );
 
