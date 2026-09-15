@@ -16,7 +16,15 @@ import {
   initialScheduleDraft,
   scheduleInputFromDraft,
 } from "../application/scheduleDraft";
-import { color, corner, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import {
+  color,
+  corner,
+  motion,
+  space,
+  surface,
+  type as typeStep,
+  weight,
+} from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface ScheduleFormProps {
@@ -34,6 +42,7 @@ const sf = stylex.create({
     paddingBlock: space.s1,
     fontWeight: weight.medium,
     transitionProperty: "background-color, border-color, color",
+    transitionTimingFunction: motion.easeState,
   },
   presetOn: {
     borderColor: color.accent,

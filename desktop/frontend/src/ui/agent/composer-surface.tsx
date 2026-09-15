@@ -9,7 +9,7 @@ const styles = stylex.create({
     borderRadius: "var(--shape-composer)",
     transitionProperty: "box-shadow",
     transitionDuration: motion.med,
-    transitionTimingFunction: "var(--ease-out)",
+    transitionTimingFunction: motion.easeState,
   },
   footer: {
     display: "flex",

@@ -66,7 +66,7 @@ const styles = stylex.create({
     transitionProperty:
       "background-color, border-color, color, opacity, scale, translate, text-decoration-color",
     transitionDuration: motion.fast,
-    transitionTimingFunction: "var(--ease-out)",
+    transitionTimingFunction: motion.easeState,
   },
 
   xs: { height: "var(--control-height-xs)", borderRadius: radius.button, paddingInline: "7px" },

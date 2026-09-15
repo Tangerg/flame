@@ -29,6 +29,7 @@ const styles = stylex.create({
     backgroundColor: color.accent,
     transitionProperty: "width",
     transitionDuration: motion.fast,
+    transitionTimingFunction: motion.easeState,
   },
   bar: { height: space.s1_5 },
   row: { height: space.s1 },

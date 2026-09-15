@@ -16,6 +16,7 @@ import {
   color,
   face,
   leading,
+  motion,
   space,
   surface,
   type as typeStep,
@@ -63,6 +64,7 @@ const sr = stylex.create({
     borderTopColor: surface.field,
     backgroundColor: { default: null, ":hover": surface.hover },
     transitionProperty: "background-color",
+    transitionTimingFunction: motion.easeState,
   },
   row: {
     display: "grid",

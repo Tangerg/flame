@@ -30,7 +30,7 @@ const styles = stylex.create({
     minWidth: 0,
     transitionProperty: "color, background-color, border-color, outline-color",
     transitionDuration: motion.color,
-    transitionTimingFunction: "var(--ease-out)",
+    transitionTimingFunction: motion.easeState,
     "::placeholder": { color: color.fgFaint },
     cursor: { default: null, ':is(:disabled, [aria-disabled="true"])': "not-allowed" },
     opacity: {

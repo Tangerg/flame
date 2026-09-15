@@ -15,6 +15,7 @@ const styles = stylex.create({
     borderStyle: "solid",
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
     cursor: { default: null, ":disabled": "not-allowed" },
     opacity: { default: null, ":disabled": "var(--control-disabled-opacity)" },
   },
@@ -30,6 +31,7 @@ const styles = stylex.create({
     boxShadow: "var(--shadow-control)",
     transitionProperty: "translate",
     transitionDuration: motion.fast,
+    transitionTimingFunction: motion.easeState,
     translate: { default: space.s0_5, ":is([data-checked])": "14px" },
   },
 });

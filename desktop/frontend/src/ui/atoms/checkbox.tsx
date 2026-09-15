@@ -29,6 +29,7 @@ const styles = stylex.create({
     backgroundColor: { default: surface.canvas, ":is([data-checked])": color.accent },
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
   },
   mark: { color: color.onAccent },
 });

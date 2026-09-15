@@ -201,6 +201,27 @@ function* walk(dir) {
   }
 }
 
+// A curve is a decision, and until this ran nobody was making it: of fifty `transitionProperty`
+// declarations, five named `--ease-out`, one named `--ease-state`, and the other forty-four
+// named nothing and took the browser's `ease`. So the same hover ran on two different curves
+// depending on which component the pointer was over, and the five that had chosen were on the
+// ENTRANCE curve — 90% of a 120ms fade inside its first 30ms, which reads as a jump.
+//
+// A file pass rather than a line rule: the answer is not on the line that asks the question. A
+// transition is written as a run of three declarations, so the curve is "beside" the property.
+const CURVE_WINDOW = 7;
+
+function transitionsWithNoCurve(lines) {
+  const out = [];
+  lines.forEach((line, index) => {
+    if (!/^\s*transitionProperty:/.test(line)) return;
+    const window = lines.slice(index, index + CURVE_WINDOW).join("\n");
+    if (window.includes("transitionTimingFunction")) return;
+    out.push(index + 1);
+  });
+  return out;
+}
+
 const violations = [];
 let examined = 0;
 for (const path of walk(SRC)) {
@@ -208,6 +229,14 @@ for (const path of walk(SRC)) {
   examined += 1;
   const rel = relative(SRC, path);
   const lines = readFileSync(path, "utf8").split("\n");
+  if (extname(path) !== ".css") {
+    for (const line of transitionsWithNoCurve(lines)) {
+      violations.push(
+        `${rel}:${line}  transitionProperty  — no transitionTimingFunction beside it; ` +
+          "the browser's `ease` is not a decision this design made",
+      );
+    }
+  }
   // Which rule a CSS declaration belongs to, so an exemption can name a rule instead of a
   // file. Only the line carrying the brace is needed: a selector prettier has wrapped keeps
   // its most specific part there.

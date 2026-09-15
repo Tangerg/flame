@@ -6,7 +6,7 @@ import { useTelemetryStore } from "@/lib/observability/stores";
 import { Fragment, useCallback, useId, useMemo, useState } from "react";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n";
-import { color, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { color, motion, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { Icon, Pressable, Well, chevron, toneInk, vocab } from "@/ui";
 import { Cell, Empty, Row, VirtualList } from "./primitives";
 
@@ -67,6 +67,7 @@ const tr = stylex.create({
     fontFamily: "var(--font-mono)",
     color: color.fg,
     transitionProperty: "background-color",
+    transitionTimingFunction: motion.easeState,
   },
   chevronBox: { display: "flex", flexShrink: 0, justifyContent: "center" },
   start: { textAlign: "left" },

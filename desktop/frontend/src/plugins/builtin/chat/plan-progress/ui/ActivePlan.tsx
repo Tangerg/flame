@@ -6,7 +6,13 @@ import { useT } from "@/lib/i18n";
 import { type PlanStep, useSessionPlan } from "@/plugins/builtin/agent/public/plan";
 import { useIsCurrentRootRunning } from "@/plugins/builtin/agent/public/run";
 import { activePlanState, type ActivePlanState } from "../application/progress";
-import { color, radius, space, type as typeStep } from "@/styles/tokens.stylex";
+import {
+  color,
+  radius,
+  space,
+  type as typeStep,
+  motion as motionToken,
+} from "@/styles/tokens.stylex";
 
 const ap = stylex.create({
   pill: {
@@ -20,6 +26,7 @@ const ap = stylex.create({
     paddingBlock: space.s1_5,
     color: { default: color.fgMuted, ":hover": color.fg },
     transitionProperty: "color",
+    transitionTimingFunction: motionToken.easeState,
   },
   // The pill floats over the composer's top edge, so the row holds its own measure and the
   // pill docks to the bottom of it — the surface above must not resize as the plan advances.

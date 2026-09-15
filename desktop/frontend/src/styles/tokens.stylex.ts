@@ -38,6 +38,8 @@ export const motion = stylex.defineVars({
   riseIn: "var(--animate-rise-in)",
   color: "var(--dur-color)",
   easeOut: "var(--ease-out)",
+  /** A fill CHANGING, which is not a thing arriving. */
+  easeState: "var(--ease-state)",
   /** Whole `animation` shorthands, so each duration keeps tracking motion-scale. */
   shimmer: "var(--animate-shimmer)",
   sweep: "var(--animate-sweep)",

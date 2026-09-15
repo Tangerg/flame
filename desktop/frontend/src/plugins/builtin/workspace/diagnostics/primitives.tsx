@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useT } from "@/lib/i18n";
-import { color, space, surface, type } from "@/styles/tokens.stylex";
+import { color, motion, space, surface, type } from "@/styles/tokens.stylex";
 
 const styles = stylex.create({
   empty: { color: color.fgFaint },
@@ -19,6 +19,7 @@ const styles = stylex.create({
   body: {
     color: color.fg,
     transitionProperty: "background-color",
+    transitionTimingFunction: motion.easeState,
     backgroundColor: { default: null, ":hover": surface.hover },
   },
   cell: { minWidth: 0 },

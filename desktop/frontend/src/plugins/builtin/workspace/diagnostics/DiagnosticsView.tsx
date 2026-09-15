@@ -9,7 +9,7 @@ import { Cell, Empty, Row, VirtualList } from "./primitives";
 import { TracesPanel } from "./TracesPanel";
 import { fmtMetric } from "@/lib/format";
 import { useT } from "@/lib/i18n";
-import { color, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, motion, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
 
 type Signal = "traces" | "metrics" | "logs";
 
@@ -78,6 +78,7 @@ const d = stylex.create({
   numeric: { textAlign: "right", fontVariantNumeric: "tabular-nums", color: color.fg },
   metricRow: {
     transitionProperty: "background-color",
+    transitionTimingFunction: motion.easeState,
     backgroundColor: { default: null, ":hover": surface.hover },
   },
 });

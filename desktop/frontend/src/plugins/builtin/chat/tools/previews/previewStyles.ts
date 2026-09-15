@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, radius, space, surface } from "@/styles/tokens.stylex";
+import { color, leading, motion, radius, space, surface } from "@/styles/tokens.stylex";
 
 export const previewStyles = stylex.create({
   row: {
@@ -7,6 +7,7 @@ export const previewStyles = stylex.create({
     backgroundColor: { default: null, ":hover": surface.hover },
     paddingInline: space.s1,
     transitionProperty: "background-color",
+    transitionTimingFunction: motion.easeState,
   },
   rowPad: { paddingBlock: space.s0_5 },
   numbered: {

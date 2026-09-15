@@ -10,6 +10,7 @@ import {
   color,
   face,
   leading,
+  motion,
   radius,
   space,
   surface,
@@ -25,6 +26,7 @@ const pp = stylex.create({
     borderTopColor: surface.field,
     backgroundColor: { default: null, ":hover": surface.hover },
     transitionProperty: "background-color",
+    transitionTimingFunction: motion.easeState,
   },
   faulted: { backgroundColor: surface.negativeWash },
   head: {

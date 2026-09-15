@@ -36,6 +36,7 @@ export const viewStyles = stylex.create({
     color: color.fg,
     transitionProperty: "background-color",
     transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
   },
   treeRowSelected: {
     backgroundColor: { default: surface.selected, ":hover": surface.selectedHover },
@@ -57,6 +58,7 @@ export const viewStyles = stylex.create({
     color: { default: color.fgMuted, ":hover": color.fg },
     transitionProperty: "color",
     transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
   },
 
   pressRow: {
@@ -70,6 +72,7 @@ export const viewStyles = stylex.create({
   rowTop: { display: "flex", alignItems: "flex-start", gap: space.s2_5 },
   wash: {
     transitionProperty: "background-color",
+    transitionTimingFunction: motion.easeState,
     backgroundColor: { default: null, ":hover": surface.hover },
   },
   glyphTop: { marginTop: space.s0_5 },

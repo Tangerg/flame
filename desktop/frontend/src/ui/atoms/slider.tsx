@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
-import { color, corner, space, surface } from "@/styles/tokens.stylex";
+import { color, corner, motion, space, surface } from "@/styles/tokens.stylex";
 import { SliderPrimitive } from "@/ui/primitives";
 
 const styles = stylex.create({
@@ -29,6 +29,7 @@ const styles = stylex.create({
     backgroundColor: surface.canvas,
     boxShadow: "var(--shadow-control)",
     transitionProperty: "translate, scale",
+    transitionTimingFunction: motion.easeState,
   },
 });
 

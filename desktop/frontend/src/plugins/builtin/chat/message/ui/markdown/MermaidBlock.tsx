@@ -33,6 +33,7 @@ const mb = stylex.create({
     display: "flex",
     gap: space.s1,
     transitionProperty: "opacity",
+    transitionTimingFunction: motion.easeState,
   },
   /** Machine text kept for the copy action and for a reader who cannot see the drawing. */
   sourceText: { whiteSpace: "pre-wrap" },

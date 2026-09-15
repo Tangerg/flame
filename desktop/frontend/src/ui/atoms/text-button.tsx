@@ -28,6 +28,7 @@ const styles = stylex.create({
     gap: space.s1_5,
     transitionProperty: "color, background-color, text-decoration-color",
     transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
   },
   muted: { color: { default: color.fgMuted, ":hover": color.fg } },
   faint: { color: { default: color.fgFaint, ":hover": color.fg } },

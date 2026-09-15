@@ -112,6 +112,7 @@ const qc = stylex.create({
     paddingBlock: space.s1_5,
     transitionProperty: "background-color",
     transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
   },
   freeMark: {
     display: "grid",

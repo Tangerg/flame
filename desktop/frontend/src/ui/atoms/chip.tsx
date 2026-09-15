@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { color, corner, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { color, corner, motion, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { reveal } from "./reveal";
 import { Icon, type IconName } from "@/ui/icons";
 import { useT } from "@/lib/i18n";
@@ -48,6 +48,7 @@ const chipStyles = stylex.create({
     // across two declarations the later one wins and the others simply stop animating.
     transitionProperty: "opacity, scale, background-color, color",
     transitionDuration: "var(--dur-fast)",
+    transitionTimingFunction: motion.easeState,
   },
 });
 

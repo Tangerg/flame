@@ -80,7 +80,7 @@ const styles = stylex.create({
     color: color.fg,
     transitionProperty: "background-color",
     transitionDuration: motion.color,
-    transitionTimingFunction: "var(--ease-out)",
+    transitionTimingFunction: motion.easeState,
   },
   highlight: { borderRadius: radius.button },
   glyph: { flexShrink: 0 },

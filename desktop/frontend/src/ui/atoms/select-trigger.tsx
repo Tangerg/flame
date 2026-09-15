@@ -34,6 +34,7 @@ const styles = stylex.create({
     color: color.fg,
     transitionProperty: "background-color, border-color, color",
     transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
   },
   label: {
     minWidth: 0,

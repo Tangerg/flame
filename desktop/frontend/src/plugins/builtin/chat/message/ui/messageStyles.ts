@@ -110,6 +110,7 @@ export const messageStyles = stylex.create({
     flexShrink: 0,
     transitionProperty: "opacity, visibility",
     transitionDuration: motion.fast,
+    transitionTimingFunction: motion.easeState,
   },
   // A hidden action bar is out of the tab order too, not merely transparent: an action that is
   // not offered yet must not be reachable by keyboard either. `reveal.shown` is the third state

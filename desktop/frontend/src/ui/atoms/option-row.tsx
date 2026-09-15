@@ -36,7 +36,7 @@ export const floatingRowStyles = stylex.create({
     color: color.fg,
     transitionProperty: "color, background-color",
     transitionDuration: motion.color,
-    transitionTimingFunction: "var(--ease-out)",
+    transitionTimingFunction: motion.easeState,
   },
   grid: { display: "grid" },
   flex: { display: "flex" },

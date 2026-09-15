@@ -619,7 +619,16 @@
   --dur-med-base: 200ms;
   --dur-slow-base: 300ms;
   --dur-drawer-base: 500ms;
+  /* Arriving, and the one this design already had. It is Codex's `--ease-enter-snappy`
+     (.23, 1, .32, 1) to three decimal places, which is the right curve for a thing that
+     enters: almost all of the distance in the first quarter, then a settle. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  /* CHANGING, which is a different event. The curve above spends 90% of a 120ms colour fade
+     in its first 30ms, so a fill that is meant to fade reads as a jump and then a crawl. Five
+     components asked for it by name and eleven asked for nothing and got the browser's `ease`
+     — so the same hover ran on two curves depending on where the pointer was. Both products
+     this design is measured against ship exactly this one as their transition default. */
+  --ease-state: cubic-bezier(0.4, 0, 0.2, 1);
 
   --dur-instant: calc(var(--dur-instant-base) * var(--motion-scale));
   --press-scale: 0.98;

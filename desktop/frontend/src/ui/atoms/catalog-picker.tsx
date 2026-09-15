@@ -150,6 +150,7 @@ const styles = stylex.create({
     paddingInline: space.s2,
     transitionProperty: "color, background-color",
     transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
   },
   railRowOn: {
     backgroundColor: { default: surface.selected, ":hover": surface.selectedHover },

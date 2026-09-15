@@ -32,6 +32,7 @@ export const settingStyles = stylex.create({
     paddingInline: space.s3,
     paddingBlock: space.s2_5,
     transitionProperty: "background-color",
+    transitionTimingFunction: motion.easeState,
   },
   hoverRowTall: { paddingBlock: space.s3 },
   hoverRowTight: {
@@ -73,5 +74,6 @@ export const settingStyles = stylex.create({
     paddingInline: space.s3,
     paddingBlock: space.s1_5,
     transitionProperty: "background-color",
+    transitionTimingFunction: motion.easeState,
   },
 });

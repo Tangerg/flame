@@ -25,6 +25,7 @@ const rowStyles = stylex.create({
     },
     transitionProperty: "background-color, color",
     transitionDuration: "var(--dur-color)",
+    transitionTimingFunction: motion.easeState,
   },
   tracked: {
     backgroundColor: {

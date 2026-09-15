@@ -29,6 +29,7 @@ const sr = stylex.create({
     textDecoration: "none",
     transitionProperty: "background-color",
     transitionDuration: motion.fast,
+    transitionTimingFunction: motion.easeState,
   },
   domainLine: {
     display: "flex",

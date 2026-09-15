@@ -15,7 +15,7 @@ const styles = stylex.create({
     fontWeight: weight.medium,
     transitionProperty: "background-color, color, scale",
     transitionDuration: motion.fast,
-    transitionTimingFunction: "var(--ease-out)",
+    transitionTimingFunction: motion.easeState,
     // A disabled control does not answer a press.
     scale: {
       default: null,

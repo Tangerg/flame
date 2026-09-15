@@ -50,6 +50,7 @@ const styles = stylex.create({
     backgroundColor: { default: null, ":hover": surface.hover },
     transitionProperty: "color, background-color",
     transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
   },
   mark: { display: "grid", flexShrink: 0, placeItems: "center", height: space.s4 },
   markLine: { width: space.s4 },
@@ -133,6 +134,7 @@ const styles = stylex.create({
     color: color.fgFaint,
     transitionProperty: "rotate, opacity",
     transitionDuration: motion.fast,
+    transitionTimingFunction: motion.easeState,
     // A device with no pointer can never hover, so the mark it would have revealed is simply
     // shown. The `[data-reveal]` rule in `globals.css` said this for everyone and can no
     // longer outrank a generated one.

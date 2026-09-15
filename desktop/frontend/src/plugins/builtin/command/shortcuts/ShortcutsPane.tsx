@@ -4,7 +4,15 @@ import { Kbd, SearchField, vocab } from "@/ui";
 import { useKeymap } from "@/plugins/host/keymap";
 import { useT } from "@/lib/i18n";
 import { splitCombo } from "@/lib/combo";
-import { color, radius, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import {
+  color,
+  motion,
+  radius,
+  space,
+  surface,
+  type as typeStep,
+  weight,
+} from "@/styles/tokens.stylex";
 
 const sc = stylex.create({
   pane: { display: "flex", flexDirection: "column", gap: space.s3 },
@@ -40,6 +48,7 @@ const sc = stylex.create({
   row: {
     backgroundColor: { default: null, ":hover": surface.hover },
     transitionProperty: "background-color",
+    transitionTimingFunction: motion.easeState,
   },
   keys: { display: "inline-flex", alignItems: "center", gap: space.s1 },
 });

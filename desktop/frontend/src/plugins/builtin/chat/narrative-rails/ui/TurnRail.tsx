@@ -15,6 +15,7 @@ const tr = stylex.create({
     height: "2px",
     transitionProperty: "background-color, width",
     transitionDuration: motion.fast,
+    transitionTimingFunction: motion.easeState,
   },
   tickLead: { backgroundColor: color.fg },
   tickRest: { backgroundColor: "color-mix(in oklab, var(--color-text-faint) 55%, transparent)" },

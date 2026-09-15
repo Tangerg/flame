@@ -33,6 +33,7 @@ const styles = stylex.create({
     textAlign: "left",
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.fast,
+    transitionTimingFunction: motion.easeState,
     cursor: { default: null, ':is(:disabled, [aria-disabled="true"])': "not-allowed" },
     opacity: {
       default: null,

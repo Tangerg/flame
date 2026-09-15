@@ -64,7 +64,7 @@ const styles = stylex.create({
     opacity: { default: null, ":is([data-dragging])": 0.5 },
     transitionProperty: "background-color, color, opacity",
     transitionDuration: motion.color,
-    transitionTimingFunction: "var(--ease-out)",
+    transitionTimingFunction: motion.easeState,
   },
   label: {
     display: "inline-flex",

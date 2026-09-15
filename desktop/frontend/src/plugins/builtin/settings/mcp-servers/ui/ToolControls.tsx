@@ -2,7 +2,15 @@ import * as stylex from "@stylexjs/stylex";
 import { DataView, Switch, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useMCPTools } from "../application/mcpServerQueries";
-import { color, radius, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import {
+  color,
+  motion,
+  radius,
+  space,
+  surface,
+  type as typeStep,
+  weight,
+} from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface Props {
@@ -33,6 +41,7 @@ const tc = stylex.create({
     paddingInline: space.s1_5,
     paddingBlock: space.s1_5,
     transitionProperty: "background-color",
+    transitionTimingFunction: motion.easeState,
   },
   switchCol: { width: space.s12, textAlign: "center" },
   switchCell: { display: "flex", width: space.s12, justifyContent: "center" },

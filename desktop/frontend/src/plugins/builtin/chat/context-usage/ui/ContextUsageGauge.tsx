@@ -23,6 +23,7 @@ const cu = stylex.create({
     color: { default: color.fgMuted, ":hover": color.fg },
     transitionProperty: "background-color, color",
     transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
   },
   panel: { width: "calc(var(--spacing) * 38)" },
 });

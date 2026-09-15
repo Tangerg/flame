@@ -15,6 +15,7 @@ import { useT } from "@/lib/i18n";
 import {
   color,
   face,
+  motion,
   radius,
   space,
   surface,
@@ -44,6 +45,7 @@ const r = stylex.create({
     paddingInline: space.s2_5,
     paddingBlock: space.s2,
     transitionProperty: "background-color",
+    transitionTimingFunction: motion.easeState,
   },
   verdict: { flexShrink: 0, fontWeight: weight.medium },
   allow: { color: color.success },

@@ -44,7 +44,7 @@ const styles = stylex.create({
     fontWeight: weight.medium,
     transitionProperty: "color",
     transitionDuration: motion.color,
-    transitionTimingFunction: motion.easeOut,
+    transitionTimingFunction: motion.easeState,
     color: {
       default: color.fgMuted,
       ":hover": color.fg,
