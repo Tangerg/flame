@@ -34,7 +34,11 @@ export const settingStyles = stylex.create({
     transitionProperty: "background-color",
   },
   hoverRowTall: { paddingBlock: space.s3 },
-  hoverRowTight: { paddingInline: space.s2, paddingBlock: space.s2 },
+  hoverRowTight: {
+    marginInline: "calc(var(--spacing) * -2)",
+    paddingInline: space.s2,
+    paddingBlock: space.s2,
+  },
   /** A name that gives up its width, beside a control that keeps its own. */
   nameGrid: {
     display: "grid",
