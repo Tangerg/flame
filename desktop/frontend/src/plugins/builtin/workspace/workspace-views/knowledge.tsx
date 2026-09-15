@@ -134,13 +134,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
             ink="soft"
           />
           <div {...stylex.props(vocab.line, vocab.min)}>
-            <PillButton
-              size="sm"
-              variant="accent"
-              disabled={!dirty}
-              pending={saving}
-              onClick={save}
-            >
+            <PillButton size="sm" variant="solid" disabled={!dirty} pending={saving} onClick={save}>
               {saving ? t("knowledge.saving") : t("knowledge.save")}
             </PillButton>
             <PillButton

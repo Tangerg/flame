@@ -1,12 +1,17 @@
 import { expect, test } from "./test";
 import { CONTROL } from "./controls";
 
-const ROUTES = [
-  "fixture=agent&state=narrative",
-  "fixture=agent&state=tool-shells",
-  "fixture=shell&state=populated",
-  "fixture=workspace&state=dock-light",
-  "fixture=workspace&state=settings",
+// `reveal` opens a surface the route does not land on. A filled CTA lives inside a form
+// nothing shows until you ask for it, which is how a pill that answered nothing on hover sat
+// in four of them unnoticed.
+const ROUTES: ReadonlyArray<{ query: string; reveal?: RegExp }> = [
+  { query: "fixture=agent&state=narrative" },
+  { query: "fixture=agent&state=tool-shells" },
+  { query: "fixture=shell&state=populated" },
+  { query: "fixture=workspace&state=dock-light" },
+  { query: "fixture=workspace&state=settings" },
+  { query: "fixture=workspace&state=settings&pane=schedules", reveal: /New schedule/ },
+  { query: "fixture=workspace&state=settings&pane=mcp-servers", reveal: /Add server/ },
 ];
 
 const ROUTE_BUDGET_MS = 90_000;
@@ -42,10 +47,17 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
   const silent: string[] = [];
   let hovered = 0;
 
-  for (const route of ROUTES) {
+  for (const { query: route, reveal } of ROUTES) {
     await page.goto(`/visual/?${route}&theme=light`);
     await page.waitForSelector("html[data-visual-ready]");
     await page.waitForTimeout(250);
+
+    if (reveal) {
+      const opener = page.getByRole("button", { name: reveal }).first();
+      await expect(opener, `${route} has to offer ${reveal}`).toBeVisible();
+      await opener.click();
+      await page.waitForTimeout(400);
+    }
 
     for (let attempt = 0; attempt < 20; attempt += 1) {
       const count = await page.locator(CONTROL).count();

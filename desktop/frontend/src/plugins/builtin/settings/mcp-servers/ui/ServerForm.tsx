@@ -257,7 +257,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
 
       <div {...stylex.props(sf.actions)}>
         <PillButton
-          variant="accent"
+          variant="solid"
           size="sm"
           disabled={!valid}
           pending={saving}

@@ -35,7 +35,11 @@ const sf = stylex.create({
     fontWeight: weight.medium,
     transitionProperty: "background-color, border-color, color",
   },
-  presetOn: { borderColor: color.accent, backgroundColor: surface.selected, color: color.fg },
+  presetOn: {
+    borderColor: color.accent,
+    backgroundColor: { default: surface.selected, ":hover": surface.selectedHover },
+    color: color.fg,
+  },
   presetOff: {
     borderColor: "transparent",
     backgroundColor: { default: null, ":hover": surface.hover },
@@ -136,7 +140,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
       />
       <div {...stylex.props(vocab.line)}>
         <PillButton
-          variant="accent"
+          variant="solid"
           size="sm"
           disabled={!canSaveScheduleDraft(draft)}
           pending={busy}

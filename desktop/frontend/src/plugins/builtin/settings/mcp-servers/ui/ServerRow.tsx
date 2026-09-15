@@ -112,7 +112,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
           )}
           {(server.status === "needsAuth" || signingIn) && (
             <PillButton
-              variant="accent"
+              variant="solid"
               size="sm"
               pending={signingIn}
               onClick={() => void onSignIn()}

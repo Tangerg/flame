@@ -4,7 +4,7 @@ import { cn } from "@/lib/classNames";
 import { color, corner, motion, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
 
-type PillVariant = "outlined" | "solid" | "accent" | "danger";
+type PillVariant = "outlined" | "solid" | "danger";
 
 const styles = stylex.create({
   base: {
@@ -34,7 +34,6 @@ const styles = stylex.create({
     backgroundColor: { default: surface.ctaFill, ":hover": surface.ctaHover },
     color: color.ctaText,
   },
-  accent: { backgroundColor: surface.ctaFill, color: color.ctaText },
   danger: {
     backgroundColor: { default: "transparent", ":hover": surface.negativeWash },
     color: color.negative,
@@ -53,7 +52,6 @@ const styles = stylex.create({
 const VARIANT = {
   outlined: styles.outlined,
   solid: styles.solid,
-  accent: styles.accent,
   danger: styles.danger,
 } as const;
 

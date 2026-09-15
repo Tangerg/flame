@@ -79,7 +79,7 @@ export function JsonImport() {
       )}
       <div {...stylex.props(vocab.line)}>
         <PillButton
-          variant="accent"
+          variant="solid"
           size="sm"
           disabled={!text.trim()}
           pending={busy}

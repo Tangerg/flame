@@ -172,7 +172,7 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
       </div>
       {editing && (
         <div {...stylex.props(vs.formLine)}>
-          <PillButton size="sm" variant="accent" disabled={!dirty} pending={busy} onClick={save}>
+          <PillButton size="sm" variant="solid" disabled={!dirty} pending={busy} onClick={save}>
             {t("agentMemory.save")}
           </PillButton>
           <PillButton size="sm" pending={busy} onClick={() => setEditing(false)}>
@@ -227,7 +227,7 @@ function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
         ink="soft"
       />
       <div {...stylex.props(vocab.line, vocab.min)}>
-        <PillButton size="sm" variant="accent" disabled={!canSave} pending={busy} onClick={submit}>
+        <PillButton size="sm" variant="solid" disabled={!canSave} pending={busy} onClick={submit}>
           {t("agentMemory.save")}
         </PillButton>
         <PillButton
@@ -254,7 +254,7 @@ function ScopeToggle({ scope, onChange }: { scope: Scope; onChange: (s: Scope) =
         <PillButton
           key={s}
           size="sm"
-          variant={scope === s ? "accent" : "outlined"}
+          variant={scope === s ? "solid" : "outlined"}
           onClick={() => onChange(s)}
         >
           {s === "project" ? t("agentMemory.scope.project") : t("agentMemory.scope.user")}

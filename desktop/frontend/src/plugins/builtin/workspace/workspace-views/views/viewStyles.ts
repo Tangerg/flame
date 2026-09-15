@@ -37,7 +37,9 @@ export const viewStyles = stylex.create({
     transitionProperty: "background-color",
     transitionDuration: motion.color,
   },
-  treeRowSelected: { backgroundColor: surface.selected },
+  treeRowSelected: {
+    backgroundColor: { default: surface.selected, ":hover": surface.selectedHover },
+  },
   treeRowTall: { height: "calc(var(--spacing) * 7)", paddingRight: space.s2 },
   treeRowInset: { paddingInline: space.s1_5, paddingBlock: space.s1 },
 

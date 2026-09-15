@@ -151,7 +151,10 @@ const styles = stylex.create({
     transitionProperty: "color, background-color",
     transitionDuration: motion.color,
   },
-  railRowOn: { backgroundColor: surface.selected, color: color.fg },
+  railRowOn: {
+    backgroundColor: { default: surface.selected, ":hover": surface.selectedHover },
+    color: color.fg,
+  },
   railRowOff: {
     color: { default: color.fgMuted, ":hover": color.fg },
     backgroundColor: { default: null, ":hover": surface.hover },

@@ -130,6 +130,7 @@ const styles = stylex.create({
       ":is([data-chrome-focus]):focus-visible": surface.hover,
       // Base UI's own attribute on a trigger, so a button that has opened a popup says so here.
       ":is([data-popup-open])": surface.selected,
+      ":is([data-popup-open]):hover": surface.selectedHover,
     },
     color: { default: color.fgMuted, ":hover": color.fg, ":is([data-popup-open])": color.fg },
   },
@@ -227,7 +228,10 @@ const styles = stylex.create({
   fill: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
 
   // Declared after the variants so it outranks whichever fill they gave.
-  active: { backgroundColor: surface.selected, color: color.fg },
+  active: {
+    backgroundColor: { default: surface.selected, ":hover": surface.selectedHover },
+    color: color.fg,
+  },
 
   row: {
     width: "100%",
