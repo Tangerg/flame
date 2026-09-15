@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { SpanRow } from "@/lib/observability/stores";
 import { useTelemetryStore } from "@/lib/observability/stores";
 import { Fragment, useCallback, useId, useMemo, useState } from "react";
+import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { color, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { Icon, Pressable, Well, chevron, toneInk, vocab } from "@/ui";
@@ -123,7 +124,7 @@ function SpanRowItem({
         </span>
         <span {...stylex.props(spanColumns.name, vocab.truncate, tr.start)}>{span.name}</span>
         <span {...stylex.props(spanColumns.duration, vocab.hold, tr.numeric)}>
-          {span.durationMillis.toFixed(1)}ms
+          {fmtDuration(span.durationMillis, "tenths")}
         </span>
         <span {...stylex.props(spanColumns.status, vocab.hold, tr.start)}>
           <StatusTag status={span.status} />
@@ -150,7 +151,7 @@ function SpanDetail({ span }: { span: SpanRow }) {
     ["parent", span.parentSpanId ?? "—"],
     ["kind", span.kind],
     ["start", new Date(span.startMs).toISOString()],
-    ["dur", `${span.durationMillis.toFixed(1)}ms`],
+    ["dur", fmtDuration(span.durationMillis, "tenths")],
   ];
   const attrs = Object.entries(span.attrs);
   return (

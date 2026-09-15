@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { t } from "./i18n";
-import { durationText, fmtCost, fmtDuration, fmtTokens } from "./format";
+import { durationText, fmtCost, fmtDuration, fmtMetric, fmtTokens } from "./format";
 
 const locale = vi.hoisted(() => ({ current: "en" }));
 vi.mock("./i18n", async (importOriginal) => ({
@@ -35,6 +35,32 @@ describe("fmtDuration", () => {
     expect(fmtDuration(3_599_000)).toBe("59m 59s");
     expect(fmtDuration(3_600_000)).toBe("1h 00m");
     expect(fmtDuration(23_400_000)).toBe("6h 30m");
+  });
+
+  it("keeps the tenth a measurement was recorded to show", () => {
+    expect(fmtDuration(0.4, "tenths")).toBe("0.4ms");
+    expect(fmtDuration(12.34, "tenths")).toBe("12.3ms");
+    expect(fmtDuration(12.34)).toBe("12ms");
+  });
+
+  it("writes the separator the locale writes, at every precision", () => {
+    locale.current = "de";
+    try {
+      expect(fmtDuration(12.34, "tenths")).toBe("12,3ms");
+      expect(fmtDuration(9840)).toBe("9,8s");
+      expect(fmtMetric(1.25)).toBe("1,3");
+    } finally {
+      locale.current = "en";
+    }
+  });
+});
+
+describe("fmtMetric", () => {
+  it("keeps a tenth only while one still means something", () => {
+    expect(fmtMetric(1.25)).toBe("1.3");
+    expect(fmtMetric(9.94)).toBe("9.9");
+    expect(fmtMetric(10.4)).toBe("10");
+    expect(fmtMetric(1249.6)).toBe("1250");
   });
 });
 

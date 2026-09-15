@@ -7,6 +7,7 @@ import { Button, Segmented, toneInk, vocab } from "@/ui";
 import { AgentWorkspaceView } from "@/ui/agent";
 import { Cell, Empty, Row, VirtualList } from "./primitives";
 import { TracesPanel } from "./TracesPanel";
+import { fmtMetric } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { color, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
 
@@ -266,6 +267,5 @@ function formatAttrs(attrs: Record<string, string | number | boolean>): string {
 
 function fmt(n: number | undefined, unit: string): string {
   if (n === undefined) return "—";
-  const rounded = n < 10 ? n.toFixed(1) : Math.round(n).toString();
-  return unit ? `${rounded} ${unit}` : rounded;
+  return unit ? `${fmtMetric(n)} ${unit}` : fmtMetric(n);
 }

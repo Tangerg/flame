@@ -38,9 +38,30 @@ const NUMBERS = [
 const TEXT_FORMATTERS = [
   ["formatDateTime", formatDateTime],
   ["formatClock", formatClock],
+  [
+    "formatClock to the second",
+    (input: Parameters<typeof formatClock>[0]) => formatClock(input, "second"),
+  ],
   ["formatDay", formatDay],
   ["formatRelative", formatRelative],
 ] as const;
+
+describe("a clock reads to the precision the surface asks for", () => {
+  const at = new Date(2024, 0, 2, 15, 4, 5);
+
+  it("keeps the same hour and minute either way", () => {
+    const minute = formatClock(at);
+    const second = formatClock(at, "second");
+    expect(second.length).toBeGreaterThan(minute.length);
+    expect(second.replace(/(\d+:\d\d):\d\d/, "$1")).toBe(minute);
+  });
+
+  it("leaves 12- against 24-hour to the locale rather than to the caller", () => {
+    const twelveHour = new Intl.DateTimeFormat(bcp47(), { hour: "numeric" }).resolvedOptions()
+      .hour12;
+    expect(/\bPM\b|\u4e0b\u5348/.test(formatClock(at, "second"))).toBe(Boolean(twelveHour));
+  });
+});
 
 describe("timestamp formatting, over what the wire can carry", () => {
   it.each(TEXT_FORMATTERS.map(([name]) => name))("%s answers a string for anything", (name) => {

@@ -60,11 +60,24 @@ export function formatDateTime(input: string | number | Date | undefined | null)
   }).format(d);
 }
 
+/** How fine a clock reads. A log of events inside one run needs the second; a message stamp
+ *  does not, and showing it there would put a number on screen that changes nothing. */
+export type ClockPrecision = "minute" | "second";
+
 /** Clock time alone. Returns "" on unparseable input. */
-export function formatClock(input: string | number | Date | undefined | null): string {
+export function formatClock(
+  input: string | number | Date | undefined | null,
+  precision: ClockPrecision = "minute",
+): string {
   const d = parse(input);
   if (!d) return "";
-  return dateTimeFormat("hm", { hour: "numeric", minute: "2-digit" }).format(d);
+  return precision === "second"
+    ? dateTimeFormat("hms", {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+      }).format(d)
+    : dateTimeFormat("hm", { hour: "numeric", minute: "2-digit" }).format(d);
 }
 
 /** An identity for grouping, never shown. Formatted labels would tie grouping to the display

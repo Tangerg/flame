@@ -32,8 +32,12 @@ export function fmtCost(usd: number): string {
   return `$${decimal(usd, 2, true)}`;
 }
 
-export function fmtDuration(ms: number): string {
-  if (ms < 1000) return `${decimal(ms, 0)}ms`;
+/** How fine a duration reads. A trace span is a measurement and a tenth of a millisecond is
+ *  the difference it was recorded to show; a tool call's wall time is not. */
+export type DurationPrecision = "whole" | "tenths";
+
+export function fmtDuration(ms: number, precision: DurationPrecision = "whole"): string {
+  if (ms < 1000) return `${decimal(ms, precision === "tenths" ? 1 : 0)}ms`;
   const seconds = ms / 1000;
   if (seconds < 10) return `${decimal(Math.round(seconds * 10) / 10, 1)}s`;
   // Rounded BEFORE the minute test: 59.6s rounds to 60, and no clock reads "60s".
@@ -45,6 +49,12 @@ export function fmtDuration(ms: number): string {
   // half hours reads 6h 30m, not 390m 00s. Agent work is expected to run this long.
   const hours = Math.floor(minutes / 60);
   return `${hours}h ${String(minutes - hours * 60).padStart(2, "0")}m`;
+}
+
+/** A measured number in a table, which is not a duration and carries its unit beside it: a
+ *  tenth only while the number is small enough for one to mean anything. */
+export function fmtMetric(value: number): string {
+  return value < 10 ? decimal(value, 1) : decimal(Math.round(value), 0);
 }
 
 export function durationText(t: Translate, start: number, end: number | null): string {

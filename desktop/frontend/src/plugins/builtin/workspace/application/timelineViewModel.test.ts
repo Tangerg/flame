@@ -6,7 +6,6 @@ import {
   timelineGroupKey,
   timelineRunStatusView,
   timelineSubtext,
-  timelineTimeOfDay,
   timelineViewModel,
 } from "./timelineViewModel";
 
@@ -125,10 +124,5 @@ describe("timeline view helpers", () => {
     expect(timelineSubtext(t, { eventCount: 0, runCount: 0 })).toBe("0 events · 0 runs");
     expect(timelineSubtext(t, { eventCount: 3, runCount: 2 })).toBe("3 events · 2 runs");
     expect(timelineSubtext(t, { eventCount: 1, runCount: 1 })).toBe("1 event · 1 run");
-  });
-
-  it("formats timestamps as local time of day", () => {
-    const date = new Date(2024, 0, 2, 3, 4, 5);
-    expect(timelineTimeOfDay(date.getTime())).toBe("03:04:05");
   });
 });

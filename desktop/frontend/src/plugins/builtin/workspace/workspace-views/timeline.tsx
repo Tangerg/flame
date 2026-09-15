@@ -7,6 +7,7 @@ import type { TimelineEntry, TimelineEntryKind } from "@/plugins/sdk/types/agent
 import { Badge, EmptyState, Icon, IconButton, toneInk, vocab } from "@/ui";
 import { ToolText } from "@/ui/agent";
 import { activeLocale, useT, type Translate } from "@/lib/i18n";
+import { formatClock } from "@/lib/i18n/relativeTime";
 import { fmtDuration } from "@/lib/format";
 import { TIMELINE_WINDOW_SIZE } from "@/plugins/sdk/types/agentTimeline";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
@@ -29,7 +30,6 @@ import {
   type TimelineRunGroup,
   timelineRunStatusView,
   timelineSubtext,
-  timelineTimeOfDay,
   timelineViewModel,
 } from "@/plugins/builtin/workspace/application/timelineViewModel";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
@@ -130,7 +130,7 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
         title={`${t(KIND_I18N[entry.kind])}: ${new Date(entry.ts).toLocaleString(activeLocale())}`}
         {...stylex.props(ts.stamp, typeStep.uiXs)}
       >
-        {timelineTimeOfDay(entry.ts)}
+        {formatClock(entry.ts, "second")}
       </time>
     </div>
   );
