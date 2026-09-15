@@ -85,6 +85,7 @@ import {
   type VisualWorkspaceState,
   type VisualSettingsPane,
   type VisualWorkspaceTheme,
+  DOCK_VIEW_BY_STATE,
 } from "./workspaceFixtureStates";
 
 const ACTIVE_DIFF_FILE = "desktop/frontend/src/plugins/builtin/shell/kernel/panel/DockResizer.tsx";
@@ -504,24 +505,6 @@ const OPENED_BY_ITS_OWN_STATE = new Set([
 
 const FULL_VIEW_ID = "search";
 
-const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
-  "dock-light": "plan",
-  "dock-inbox": "inbox",
-  "dock-timeline": "timeline",
-  "dock-runs": "timeline",
-  "dock-subagents": "subagents",
-  "dock-diagnostics": "diagnostics",
-  "dock-files": "file",
-  "dock-search": "search",
-  "dock-agent-docs": "agent-docs",
-  "dock-skills": "skills",
-  "dock-knowledge": "knowledge",
-  "dock-agent-memory": "agent-memory",
-  "dock-feature-off": "skills",
-  "dock-file": "file",
-  "dock-catalog": WORKSPACE_DOCK_CATALOG,
-};
-
 export async function installVisualWorkspaceFixture(
   state: VisualWorkspaceState,
   theme: VisualWorkspaceTheme,
@@ -551,7 +534,8 @@ export async function installVisualWorkspaceFixture(
     refetchOnWindowFocus: false,
   });
 
-  const dockViewId = DOCK_VIEW_BY_STATE[state] ?? "diff";
+  const dockViewId =
+    state === "dock-catalog" ? WORKSPACE_DOCK_CATALOG : (DOCK_VIEW_BY_STATE[state] ?? "diff");
   useContextDockStore.setState({
     activeSessionScopeId: VISUAL_SESSION_ID,
     sessionScopes: new Map(),

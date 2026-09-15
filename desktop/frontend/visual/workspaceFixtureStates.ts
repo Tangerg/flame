@@ -57,3 +57,24 @@ export type VisualWorkspaceTheme = "light" | "dark";
 export function isVisualWorkspaceState(value: string | null): value is VisualWorkspaceState {
   return VISUAL_WORKSPACE_STATES.includes(value as VisualWorkspaceState);
 }
+
+export const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
+  "dock-light": "plan",
+  "dock-review": "diff",
+  "dock-empty": "diff",
+  "dock-loading": "diff",
+  "dock-error": "diff",
+  "dock-inbox": "inbox",
+  "dock-timeline": "timeline",
+  "dock-runs": "timeline",
+  "dock-subagents": "subagents",
+  "dock-diagnostics": "diagnostics",
+  "dock-files": "file",
+  "dock-search": "search",
+  "dock-agent-docs": "agent-docs",
+  "dock-skills": "skills",
+  "dock-knowledge": "knowledge",
+  "dock-agent-memory": "agent-memory",
+  "dock-feature-off": "skills",
+  "dock-file": "file",
+};

@@ -5,6 +5,7 @@ import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
 import { DOCK_MIN_WIDTH_PX, DOCK_SAFE_AREA_PX } from "@/lib/shellGeometry";
 import {
   VISUAL_DOCK_WIDTH_RATIO,
+  DOCK_VIEW_BY_STATE,
   VISUAL_REVIEW_VIEWPORT,
   VISUAL_SETTINGS_PANES,
   VISUAL_WORKSPACE_STATES,
@@ -814,6 +815,41 @@ test("choosing a subagent swaps the panel's name for the way back", async ({ pag
     gap,
     "a run's status reads with the run it names, not at the pane's far edge",
   ).toBeLessThan(40);
+});
+
+test("every dock view the app offers is a view some state opens", async ({ page }) => {
+  await openWorkspace(page, { state: "dock-catalog" });
+  await waitForWorkspaceState(page, "dock-catalog");
+
+  const offered = await page
+    .locator(".agent-context-dock")
+    .getByRole("button")
+    .evaluateAll((nodes) => nodes.map((node) => (node.textContent ?? "").trim()).filter(Boolean));
+  const opened = new Set(
+    Object.entries(DOCK_VIEW_BY_STATE)
+      .filter(([state]) => state !== "dock-catalog")
+      .map(([, id]) => id),
+  );
+
+  expect(
+    offered.length,
+    "a view the catalogue offers and no state opens is a view no screenshot has ever taken",
+  ).toBe(opened.size);
+});
+
+test("every dock state renders its view inside the frame that paints one", async ({ page }) => {
+  const unframed: string[] = [];
+  for (const [state] of Object.entries(DOCK_VIEW_BY_STATE)) {
+    if (state === "dock-catalog") continue;
+    await openWorkspace(page, { state: state as VisualWorkspaceState });
+    await waitForWorkspaceState(page, state as VisualWorkspaceState);
+    const framed = await page.locator(".agent-context-dock .agent-workspace-view").count();
+    if (framed === 0) unframed.push(state);
+  }
+  expect(
+    unframed,
+    "`.agent-workspace-view` names the container a view measures against and paints its canvas",
+  ).toEqual([]);
 });
 
 for (const answer of [
