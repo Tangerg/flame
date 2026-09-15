@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { AnimatePresence, motion } from "motion/react";
 import { Gauge, Pressable, RichTooltip, StepMark, vocab } from "@/ui";
-import { disclosureTransition } from "@/lib/motion";
+import { disclosureExitTransition, disclosureTransition } from "@/lib/motion";
 import { useT } from "@/lib/i18n";
 import { type PlanStep, useSessionPlan } from "@/plugins/builtin/agent/public/plan";
 import { useIsCurrentRootRunning } from "@/plugins/builtin/agent/public/run";
@@ -130,7 +130,7 @@ function PlanPill({
     <motion.div
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
+      exit={{ opacity: 0, y: -4, transition: disclosureExitTransition }}
       transition={disclosureTransition}
       data-slot="active-plan-surface"
       {...stylex.props(ap.host)}

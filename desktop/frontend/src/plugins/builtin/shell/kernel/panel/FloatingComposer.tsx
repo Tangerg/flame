@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { ReactNode, RefObject } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useT } from "@/lib/i18n";
-import { disclosureTransition } from "@/lib/motion";
+import { disclosureExitTransition, disclosureTransition } from "@/lib/motion";
 import { useRuntimeServiceStatus } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { CONNECTION_PANE } from "@/plugins/builtin/settings/kit/panes";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
@@ -42,7 +42,7 @@ function RuntimeConnectionNotice() {
           key="runtime-connection-notice"
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 2 }}
+          exit={{ opacity: 0, y: 2, transition: disclosureExitTransition }}
           transition={disclosureTransition}
           className={stylex.props(fc.notice).className}
         >

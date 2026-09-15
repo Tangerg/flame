@@ -15,7 +15,7 @@ import {
   useActiveSessionProblem,
 } from "@/plugins/builtin/agent/public/run";
 import { useT } from "@/lib/i18n";
-import { disclosureTransition } from "@/lib/motion";
+import { disclosureExitTransition, disclosureTransition } from "@/lib/motion";
 import { describeErrorType } from "@/lib/rpcErrors";
 import {
   openDiagnosticsView,
@@ -93,7 +93,7 @@ export function RunErrorBanner() {
           role="alert"
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
+          exit={{ opacity: 0, y: -6, transition: disclosureExitTransition }}
           transition={disclosureTransition}
           className={stylex.props(sh.banner, sh.bannerCard, reb.sans, vocab.ink).className}
         >

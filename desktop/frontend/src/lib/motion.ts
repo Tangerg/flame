@@ -23,6 +23,15 @@ function scaled(duration: "fastMs" | "mediumMs" | "slowMs"): Transition {
  *  cannot express and a reader cannot see. */
 export const disclosureTransition: Transition = scaled("mediumMs");
 
+/** Leaving, which is a rung faster than arriving.
+ *
+ *  Arriving is information: the reader has to notice the thing and read where it came from.
+ *  Leaving is not — it is the interface getting out of the way, and matching the entrance
+ *  makes the reader wait on an animation that has nothing left to say. The rung below is the
+ *  whole change; there is no new number here, because a duration the ladder cannot express is
+ *  one nobody can hold. */
+export const disclosureExitTransition: Transition = scaled("fastMs");
+
 /** A selection travelling BETWEEN elements — the one motion CSS cannot express, since a
  *  transition animates a property within one element. */
 export const selectionTransition: Transition = scaled("fastMs");
@@ -58,6 +67,6 @@ export const chipPresence = {
 export const enterUp = {
   initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
+  exit: { opacity: 0, y: -4, transition: disclosureExitTransition },
   transition: disclosureTransition,
 };
