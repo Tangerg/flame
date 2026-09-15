@@ -49,12 +49,19 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 					if committed == nil || !committed.IsError {
 						return nil, fmt.Errorf("rejection missing from durable history")
 					}
+					matches := 0
 					for _, message := range request.Messages {
 						for _, part := range message.Parts {
-							if part.ToolResult != nil && part.ToolResult.ID == "rejected" && !reflect.DeepEqual(part.ToolResult, committed) {
-								return nil, fmt.Errorf("rejection differs from durable history")
+							if part.ToolResult != nil && part.ToolResult.ID == "rejected" {
+								matches++
+								if !reflect.DeepEqual(part.ToolResult, committed) {
+									return nil, fmt.Errorf("rejection differs from durable history")
+								}
 							}
 						}
+					}
+					if matches != 1 {
+						return nil, fmt.Errorf("model request has %d rejected results, want exactly one", matches)
 					}
 				}
 				if calls >= 3 {

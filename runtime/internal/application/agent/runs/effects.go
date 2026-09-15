@@ -21,9 +21,11 @@ type ResumeClaimCommitter interface {
 	ClaimResume(ctx context.Context, claim ResumeClaimCommit) (ClaimedResume, error)
 }
 
-// EventCommitter persists one reduced executor fact before publication.
+// EventCommitter persists reduced facts and verifies their durable publication
+// receipts under the currently active Segment's ownership.
 type EventCommitter interface {
 	CommitEvent(ctx context.Context, commit EventCommit) error
+	ResultPublicationCommitted(ctx context.Context, sessionID, runID, segmentID string, publication ResultPublication) (bool, error)
 }
 
 // TreeBarrierCommitter atomically persists a complete waiting tree boundary.

@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260912094153-1dc998bda962
 	github.com/Tangerg/scope/a2a v0.22.0
-	github.com/Tangerg/scope/agent v0.23.0
+	github.com/Tangerg/scope/agent v0.24.0
 	github.com/Tangerg/scope/core v0.22.0
 	github.com/Tangerg/scope/mcp v0.22.0
 	github.com/Tangerg/scope/models/alibaba v0.22.0

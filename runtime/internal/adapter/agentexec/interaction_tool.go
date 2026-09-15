@@ -33,6 +33,7 @@ type observedInteractionTool struct {
 	offloader     toolResultOffloader
 	offloadPolicy toolResultOffloadPolicy
 	start         runs.RootExecutionStart
+	concurrent    interaction.ConcurrentTool
 }
 
 func (o *observedInteractionTool) Definition() corechat.ToolDefinition {
@@ -40,6 +41,15 @@ func (o *observedInteractionTool) Definition() corechat.ToolDefinition {
 }
 
 func (o *observedInteractionTool) Unwrap() toolcontract.Tool { return o.inner }
+
+// Arguments rewritten after admission cannot retain an inner resource key.
+// Scope schedules these calls exclusively; immutable calls keep the declaration.
+func (o *observedInteractionTool) ConcurrencyPolicy() func(toolcontract.Invocation) (string, bool) {
+	if o.concurrent == nil {
+		return nil
+	}
+	return o.concurrent.ConcurrencyPolicy()
+}
 
 func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.Invocation) (returned corechat.ToolOutput, returnedErr error) {
 	invocation, arguments, callID, err := o.attributedInvocation(ctx, bound)
@@ -57,18 +67,11 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	if !hasCaller {
 		return corechat.ToolOutput{}, errors.New("agentexec: Tool call has no calling Interaction member")
 	}
-	dispatchKey, addressable := toolCallDispatchKey(invocation)
-	if !addressable {
-		return corechat.ToolOutput{}, errors.New("agentexec: Tool call has no calling Interaction member")
-	}
-	// A Tool call runs in its own child Process, so it inherits neither the
-	// Interaction's execution context nor the product cancellation plane bound to
-	// the caller's own Effects. Both belong to the Run that made the call, which
-	// this binding already knows.
 	ctx = runExecutionContext(ctx, o.session.scope, o.start)
 	ctx = interactioninput.WithCapabilities(ctx, o.start.InterruptKinds)
-	ctx, finishDispatch := o.session.beginDispatch(ctx, dispatchKey)
-	defer finishDispatch()
+	if err := o.session.awaitDispatchSegment(ctx); err != nil {
+		return corechat.ToolOutput{}, err
+	}
 	effectiveArguments, denied, denialReason, prepareErr := o.prepare(ctx, callID, call.Name, arguments)
 	if prepareErr != nil {
 		return corechat.ToolOutput{}, prepareErr
@@ -529,13 +532,22 @@ func wrapInteractionTools(
 			if bindErr != nil {
 				return nil, fmt.Errorf("agentexec: bind Interaction Tool %q: %w", executable.Definition().Name, bindErr)
 			}
-			wrapped[index] = &observedInteractionTool{
+			observed := &observedInteractionTool{
 				inner: executable, binding: binding, session: session, interpreter: config.ToolInterpreter,
 				presenter: config.ToolPresenter, authorizer: config.ToolAuthorizer,
 				hooks: config.ToolHooks, offloader: config.ToolResultStore,
 				offloadPolicy: offloadPolicy,
 				start:         start,
 			}
+			if config.ToolHooks == nil && !config.ToolInterpreter.UsesStandardPolicy(executable.Definition().Name) &&
+				!slices.Contains(start.InterruptKinds, interrupt.Approval) {
+				concurrent, _, err := toolcontract.Capability[interaction.ConcurrentTool](executable)
+				if err != nil {
+					return nil, fmt.Errorf("agentexec: resolve Tool concurrency: %w", err)
+				}
+				observed.concurrent = concurrent
+			}
+			wrapped[index] = observed
 		}
 		return wrapped, nil
 	}

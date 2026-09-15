@@ -718,10 +718,8 @@ func (i *InteractionExecutor) Release(ctx context.Context, ref runs.ExecutorRef)
 
 // RequestRootCancellation submits the Application's accepted cancellation to
 // Agent Framework without deciding the product outcome or releasing the tree.
-// Success means the request entered Engine's queue. The adapter then cancels
-// its cooperative in-flight model/Tool dispatches so they can settle promptly;
-// Agent Framework remains the sole lifecycle owner and applies the accepted
-// intent only after that safe settlement boundary.
+// Success acknowledges submission only; Scope owns cancellation propagation and
+// the immutable result reports whether cancellation became the terminal cause.
 func (i *InteractionExecutor) RequestRootCancellation(
 	ctx context.Context,
 	ref runs.ExecutorRef,
@@ -739,7 +737,6 @@ func (i *InteractionExecutor) RequestRootCancellation(
 		!errors.Is(err, agent.ErrProcessFinished) {
 		return fmt.Errorf("agentexec: submit Interaction cancellation intent: %w", err)
 	}
-	session.cancelAllDispatches()
 	return nil
 }
 

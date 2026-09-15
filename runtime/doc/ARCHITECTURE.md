@@ -37,9 +37,9 @@ External SDK types do not cross their adapter. Protocol types do not enter Domai
 
 Scope's Agent Framework is the only process, strategy, child-tree, tool-loop, and checkpoint execution engine. Runtime does not copy its scheduler or interpret private framework state.
 
-`adapter/agentexec` is the anti-corruption boundary. It maps Runtime commands and values to public Scope contracts, observes framework outcomes, and maps them back to Runtime facts. Application owns product admission, transaction ordering, cancellation intent, durable waiting state, and terminal outcome selection.
+`adapter/agentexec` is the anti-corruption boundary. It maps Runtime commands and values to public Scope contracts, observes framework outcomes, and maps them back to Runtime facts. Application owns product admission, transaction ordering, cancellation intent, durable waiting state, and durable terminal publication. Scope owns execution cancellation and immutable termination; Runtime does not maintain a second dispatch cancellation tree or override a settled termination with later intent.
 
-A model error remains an unknown external outcome in Scope. After committing the failed-call fact, Runtime explicitly cancels that member and projects its provider failure; allowance denial stops the same member before another call begins. Interrupted Effects retained in terminal snapshots are evidence, not resumable work. A failed authoritative projection after external execution still follows the unknown-effect recovery path.
+A model error remains an unknown external outcome in Scope. After committing the failed-call fact, Runtime explicitly cancels that member and projects its provider failure only when Scope acknowledges that model-failure stop; allowance denial stops the same member before another call begins. Interrupted Effects retained in terminal snapshots are evidence, not resumable work. A failed authoritative projection after external execution still follows the unknown-effect recovery path.
 
 Framework observations are wake-ups, not durable commits. Runtime reconciles authoritative framework state into an Application write set before publishing durable product facts. A completed durable Item or snapshot wins over a missing or duplicated preview event.
 
@@ -49,9 +49,11 @@ Cold stream recovery uses `runs.subscribe` with `snapshot: true`. The tree owner
 
 Model-call allowances apply to cumulative usage across the execution tree. A limit denial belongs to the member whose next call was refused; it does not replace a sibling's completed, canceled, or failed outcome.
 
-A parked Interaction holds new Effect dispatch until the next product Segment activates. Canceling a waiting child can wake its parent in Scope before that activation; the execution adapter keeps that Effect behind the same continuation boundary. Activation releases it before reconciling the parent Tool results and reducing model context. Session cancellation and release also unblock the waiter through its owned context.
+A parked Interaction holds new Effect dispatch until the next product Segment activates. Canceling a waiting child can wake its parent in Scope before that activation; the execution adapter keeps that Effect behind the same continuation boundary. Activation releases it before reconciling the parent Tool results and reducing model context. Scope cancellation unblocks the waiter through the dispatch context; Runtime release also opens the local wait boundary.
 
 A Delegate retains its admitted child across a human-input barrier. Each continuation opens fresh Segments, so the executor observation reopens the parent Tool attempt before forwarding child results. Application reuses the durable Tool Item identity; continuation does not admit another child or repeat its completed work.
+
+Scope schedules the outer Tool contract. An argument-rewriting hook, authorizer, or approval path makes that contract exclusive; only immutable paths preserve an inner concurrency declaration.
 
 Tool continuation uses the executor's stable call identity. Edited approval arguments change the execution input while preserving that identity; a new call with the same name or arguments receives its own Item. One remaining-call index owns whether a suspended Item still needs to resume or settle.
 
@@ -64,6 +66,8 @@ Canceling the final waiting child also opens a continuation Segment. Its observe
 Continuation state retains only unfinished Tool identities. A canceled child's settled parent Item and model-context result remain in their durable owners; the executor retires that call when cancellation applies, so later continuations do not carry a separate result acknowledgment.
 
 Accepting an approval settles its verdict; its Tool Item remains open until execution settles or the Run ends. Reported and synthesized terminal outcomes share the same Tool cleanup. Definite Runtime preparation failures and rejected argument edits use ordinary Tool settlement to commit their exact model-visible results before the executor advances. Input waits, cancellation, and uncertain effects retain their framework control semantics; restart and later Runs retain committed failures.
+
+Result publication callbacks first ask the Segment owner for a durable receipt, ordered with commits on its event stream. The receipt binds the Scope Effect and digest to the Session, Run, and active Segment. Only an unpublished batch needs pending product metadata and reducer mutation. Direct Tool completion uses these same committed results without synthesizing an assistant answer.
 
 Unknown external effects fail closed. Runtime does not guess whether an unconfirmed model or tool effect succeeded and does not silently replay it.
 

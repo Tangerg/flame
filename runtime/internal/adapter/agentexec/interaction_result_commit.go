@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
@@ -96,31 +97,46 @@ func (i *interactionSession) CommitResults(ctx context.Context, batch interactio
 	if _, durable := batch.TreeIncarnationID(); durable {
 		return interaction.ResultReceipt{}, errors.New("agentexec: durable Scope writers require a TreeDurability integration")
 	}
-	// Child terminal facts precede their parent's result, but never synthesize it.
-	projectionCtx := context.WithoutCancel(ctx)
-	if _, err := i.reconcileCompletedDelegateChildren(projectionCtx); err != nil {
+	receipt := batch.Receipt()
+	if err := receipt.Validate(); err != nil {
 		return interaction.ResultReceipt{}, err
 	}
-	receipt := batch.Receipt()
-	fact := runs.ToolResultsCommitted{
-		Publication: runs.ResultPublication{ID: receipt.EffectID.String(), Digest: receipt.Digest.String()},
-	}
 	entries := batch.Entries()
-	var delegates []*managedDelegateCall
-	for _, entry := range entries {
+	identities := make([]runtimeidentity.EffectID, len(entries))
+	for index, entry := range entries {
 		identity, err := logicalToolCallID(batch.Relation().ProcessID(), batch.ModelCallSequence(), entry.ToolCallIndex, entry.Call.ID, entry.Call.Name)
 		if err != nil {
 			return interaction.ResultReceipt{}, err
 		}
+		identities[index] = identity
+	}
+	publication := runs.ResultPublication{ID: receipt.EffectID.String(), Digest: receipt.Digest.String()}
+	lookup, err := runs.NewResultPublicationLookup(publication)
+	if err != nil {
+		return interaction.ResultReceipt{}, err
+	}
+	projectionCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
+	defer cancel()
+	if err := i.lifetime.sendAuthoritative(projectionCtx, runs.ExecutorEvent{Member: member, Payload: lookup}); err != nil {
+		return interaction.ResultReceipt{}, err
+	}
+	committed, err := lookup.Await(projectionCtx)
+	if err != nil {
+		return interaction.ResultReceipt{}, fmt.Errorf("agentexec: verify result publication: %w", err)
+	}
+	if committed {
+		i.retirePublishedToolMetadata(identities)
+		return receipt, nil
+	}
+	// Child terminal facts precede their parent's first result publication.
+	if _, err := i.reconcileCompletedDelegateChildren(projectionCtx); err != nil {
+		return interaction.ResultReceipt{}, err
+	}
+	fact := runs.ToolResultsCommitted{Publication: publication}
+	for index, entry := range entries {
+		identity := identities[index]
 		i.state.mu.Lock()
 		metadata, prepared := i.state.toolMetadata[identity.String()]
-		var managed *managedDelegateCall
-		for _, candidate := range i.state.delegateCalls {
-			if candidate.callID == identity {
-				managed = candidate
-				break
-			}
-		}
 		i.state.mu.Unlock()
 		start := runs.ToolCallStarted{
 			CallID: identity.String(), SourceCallID: entry.Call.ID, ModelCallSequence: batch.ModelCallSequence(),
@@ -136,9 +152,6 @@ func (i *interactionSession) CommitResults(ctx context.Context, batch interactio
 			end.OutputText, end.MutatedPaths, end.Failure = metadata.OutputText, metadata.MutatedPaths, metadata.Failure
 		} else if entry.Disposition != interaction.ResultRejected {
 			return interaction.ResultReceipt{}, fmt.Errorf("agentexec: known Tool result %q lost its product metadata", entry.Call.ID)
-		}
-		if managed != nil {
-			delegates = append(delegates, managed)
 		}
 		if end.Result == nil {
 			if result, present := runtimeToolResult(entry.Result.Output); present {
@@ -156,9 +169,21 @@ func (i *interactionSession) CommitResults(ctx context.Context, batch interactio
 		i.lifetime.wakeUnknown()
 		return interaction.ResultReceipt{}, fmt.Errorf("agentexec: commit exact Tool results: %w", err)
 	}
+	i.retirePublishedToolMetadata(identities)
+	return receipt, nil
+}
+
+func (i *interactionSession) retirePublishedToolMetadata(identities []runtimeidentity.EffectID) {
 	i.state.mu.Lock()
-	for _, end := range fact.Results {
-		delete(i.state.toolMetadata, end.CallID)
+	var delegates []*managedDelegateCall
+	for _, identity := range identities {
+		delete(i.state.toolMetadata, identity.String())
+		for _, managed := range i.state.delegateCalls {
+			if managed.callID == identity {
+				delegates = append(delegates, managed)
+				break
+			}
+		}
 	}
 	i.state.mu.Unlock()
 	for _, managed := range delegates {
@@ -166,7 +191,6 @@ func (i *interactionSession) CommitResults(ctx context.Context, batch interactio
 		managed.parentToolFinished = true
 		managed.mu.Unlock()
 	}
-	return receipt, nil
 }
 
 func decodeToolMetadata(values []toolResultMetadata, processes map[agent.ProcessID]struct{}) (map[string]toolResultMetadata, error) {

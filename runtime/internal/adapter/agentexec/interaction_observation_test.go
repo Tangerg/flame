@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -320,6 +321,10 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 	go func() {
 		var events []runs.ExecutorEvent
 		for event := range sequence {
+			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
+				lookup.Complete(false, nil)
+				continue
+			}
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
 				event.Payload = commit.Fact()
@@ -387,6 +392,10 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightModel(t *testing
 			go func() {
 				var events []runs.ExecutorEvent
 				for event := range sequence {
+					if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
+						lookup.Complete(false, nil)
+						continue
+					}
 					if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 						commit.Complete(nil)
 						event.Payload = commit.Fact()
@@ -436,66 +445,73 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightModel(t *testing
 }
 
 func TestInteractionExecutorCancellationWinsWhileModelStartCommitIsSettling(t *testing.T) {
-	var modelCalls int
-	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
-		modelCalls++
-		return interactionUsageTextResponse("unexpected", 1, 1), nil
-	})
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
-	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if releaseErr := executor.Release(context.Background(), ref); releaseErr != nil {
-			t.Errorf("Release: %v", releaseErr)
+	synctest.Test(t, func(t *testing.T) {
+		var modelCalls int
+		model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+			modelCalls++
+			return interactionUsageTextResponse("unexpected", 1, 1), nil
+		})
+		executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
+		ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+		if err != nil {
+			t.Fatal(err)
 		}
-	})
-	sequence, err := executor.Observe(context.Background(), ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	startCommitSeen := make(chan struct{})
-	releaseCommit := make(chan struct{})
-	eventsReady := make(chan []runs.ExecutorEvent, 1)
-	go func() {
-		var events []runs.ExecutorEvent
-		for event := range sequence {
-			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
-				if _, starting := commit.Fact().(runs.ModelCallStarted); starting {
-					close(startCommitSeen)
-					<-releaseCommit
-				}
-				commit.Complete(nil)
-				event.Payload = commit.Fact()
+		t.Cleanup(func() {
+			if releaseErr := executor.Release(context.Background(), ref); releaseErr != nil {
+				t.Errorf("Release: %v", releaseErr)
 			}
-			events = append(events, event)
+		})
+		sequence, err := executor.Observe(context.Background(), ref)
+		if err != nil {
+			t.Fatal(err)
 		}
-		eventsReady <- events
-	}()
-	if err := executor.BeginRoot(t.Context(), ref); err != nil {
-		t.Fatal(err)
-	}
-	<-startCommitSeen
-	if err := executor.RequestRootCancellation(t.Context(), ref, "operator canceled before model admission"); err != nil {
-		t.Fatal(err)
-	}
-	// The authoritative consumer may settle after the dispatch context was
-	// canceled. The accepted cancellation must still own the product terminal.
-	close(releaseCommit)
-	var events []runs.ExecutorEvent
-	select {
-	case events = <-eventsReady:
-	case <-time.After(time.Second):
-		t.Fatal("canceled pre-model boundary did not settle")
-	}
-	if modelCalls != 0 {
-		t.Fatalf("model calls = %d, want 0 before a settled start boundary", modelCalls)
-	}
-	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
-		t.Fatalf("segment end = %#v, want canceled", ended)
-	}
+		startCommitSeen := make(chan struct{})
+		releaseCommit := make(chan struct{})
+		eventsReady := make(chan []runs.ExecutorEvent, 1)
+		go func() {
+			var events []runs.ExecutorEvent
+			for event := range sequence {
+				if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
+					lookup.Complete(false, nil)
+					continue
+				}
+				if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
+					if _, starting := commit.Fact().(runs.ModelCallStarted); starting {
+						close(startCommitSeen)
+						<-releaseCommit
+					}
+					commit.Complete(nil)
+					event.Payload = commit.Fact()
+				}
+				events = append(events, event)
+			}
+			eventsReady <- events
+		}()
+		if err := executor.BeginRoot(t.Context(), ref); err != nil {
+			t.Fatal(err)
+		}
+		<-startCommitSeen
+		if err := executor.RequestRootCancellation(t.Context(), ref, "operator canceled before model admission"); err != nil {
+			t.Fatal(err)
+		}
+		// Submission only queues the intent. Let Scope apply it while the start
+		// commit is still blocked before asserting that external admission is closed.
+		synctest.Wait()
+		close(releaseCommit)
+		var events []runs.ExecutorEvent
+		select {
+		case events = <-eventsReady:
+		case <-time.After(time.Second):
+			t.Fatal("canceled pre-model boundary did not settle")
+		}
+		if modelCalls != 0 {
+			t.Fatalf("model calls = %d, want 0 before a settled start boundary", modelCalls)
+		}
+		ended := payloadsOf[runs.SegmentEnded](events)
+		if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
+			t.Fatalf("segment end = %#v, want canceled", ended)
+		}
+	})
 }
 
 func TestInteractionExecutorBindsResolvedRunScopeToManifestAndToolCalls(t *testing.T) {
@@ -555,6 +571,10 @@ func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
 		var events []runs.ExecutorEvent
 		blocked := false
 		for event := range sequence {
+			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
+				lookup.Complete(false, nil)
+				continue
+			}
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
 				event.Payload = commit.Fact()
@@ -874,6 +894,10 @@ func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T
 	go func() {
 		var events []runs.ExecutorEvent
 		for event := range sequence {
+			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
+				lookup.Complete(false, nil)
+				continue
+			}
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				var commitErr error
 				if _, completion := commit.Fact().(runs.ModelCallCompleted); completion {
@@ -975,7 +999,7 @@ func TestInteractionExecutorPreservesConcurrentToolAttributionWhenCompletionIsOu
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
 		ToolResolver:           staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
-		ToolInterpreter:        testInteractionToolInterpreter{},
+		ToolInterpreter:        immutableToolInterpreter{},
 		ToolAuthorizer:         allowInteractionTools{},
 		MaxConcurrentToolCalls: intPointer(2),
 	})
@@ -1045,7 +1069,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenResultWriteFails(t *testi
 		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{
 			concurrentInteractionTool{Tool: inner},
 		}}},
-		ToolInterpreter:        testInteractionToolInterpreter{},
+		ToolInterpreter:        immutableToolInterpreter{},
 		ToolAuthorizer:         allowInteractionTools{},
 		MaxConcurrentToolCalls: intPointer(2),
 	})
@@ -1084,13 +1108,11 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 	if err != nil {
 		t.Fatal(err)
 	}
-	externalCallFinished := make(chan struct{})
 	var externalCalls int
 	externalInner, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "external_write", Description: "A concurrently safe external write.",
+		Name: "external_write", Description: "An external write before a policy denial.",
 	}, func(context.Context, struct{}) (string, error) {
 		externalCalls++
-		close(externalCallFinished)
 		return "written", nil
 	})
 	if err != nil {
@@ -1098,8 +1120,8 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolBatchResponse([]chat.ToolCall{
-			{ID: "provider_denied", Name: "denied_write", Arguments: `{}`},
 			{ID: "provider_external", Name: "external_write", Arguments: `{}`},
+			{ID: "provider_denied", Name: "denied_write", Arguments: `{}`},
 		}, 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
@@ -1109,7 +1131,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 		}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer: selectiveDenyInteractionTools{
-			name: "denied_write", reason: "blocked by policy", waitBeforeDenial: externalCallFinished,
+			name: "denied_write", reason: "blocked by policy",
 		},
 		MaxConcurrentToolCalls: intPointer(2),
 	})
@@ -1131,6 +1153,10 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 	go func() {
 		var events []runs.ExecutorEvent
 		for event := range sequence {
+			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
+				lookup.Complete(false, nil)
+				continue
+			}
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				if _, toolFinished := commit.Fact().(runs.ToolResultsCommitted); toolFinished {
 					commit.Complete(projectionFailure)
@@ -1154,7 +1180,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 	select {
 	case events = <-eventsReady:
 	case <-time.After(time.Second):
-		t.Fatal("concurrent Tool batch remained blocked on the sibling's canonical result receipt")
+		t.Fatal("Tool batch remained blocked on the sibling's canonical result receipt")
 	}
 	if externalCalls != 1 {
 		t.Fatalf("external Tool calls = %d, want 1", externalCalls)
@@ -1168,7 +1194,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 		t.Fatalf("publication lost diagnostic: %+v", evidence)
 	}
 	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 0 {
-		t.Fatalf("concurrent external Effect was projected as definite: %#v", ended)
+		t.Fatalf("external Effect was projected as definite: %#v", ended)
 	}
 }
 
@@ -1352,9 +1378,8 @@ func (d denyingInteractionTools) ResolveToolApproval(context.Context, ToolAuthor
 }
 
 type selectiveDenyInteractionTools struct {
-	name             string
-	reason           string
-	waitBeforeDenial <-chan struct{}
+	name   string
+	reason string
 }
 
 func (s selectiveDenyInteractionTools) AuthorizeTool(
@@ -1363,9 +1388,6 @@ func (s selectiveDenyInteractionTools) AuthorizeTool(
 ) (ToolAuthorizationDecision, error) {
 	if request.ToolName != s.name {
 		return AllowTool(), nil
-	}
-	if s.waitBeforeDenial != nil {
-		<-s.waitBeforeDenial
 	}
 	return DenyTool(s.reason), nil
 }
@@ -1586,6 +1608,10 @@ func runInteractionHarnessWithCommit(
 	go func() {
 		var events []runs.ExecutorEvent
 		for event := range sequence {
+			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
+				lookup.Complete(false, nil)
+				continue
+			}
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(commitFact(commit.Fact()))
 				event.Payload = commit.Fact()

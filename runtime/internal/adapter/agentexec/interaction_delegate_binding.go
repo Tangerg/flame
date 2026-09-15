@@ -265,10 +265,15 @@ func (i *interactionSession) toolCallMember(
 		return runs.ExecutorMember{}, false
 	}
 	i.state.mu.Lock()
-	retired := i.inCanceledSubtreeLocked(callerID)
+	managed := i.state.delegateChildren[callerID]
 	i.state.mu.Unlock()
-	if retired {
-		return runs.ExecutorMember{}, false
+	if managed != nil {
+		managed.mu.Lock()
+		retired := managed.segmentProjected
+		managed.mu.Unlock()
+		if retired {
+			return runs.ExecutorMember{}, false
+		}
 	}
 	return i.executorMemberByProcessID(callerID)
 }

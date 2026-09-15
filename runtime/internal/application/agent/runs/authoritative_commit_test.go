@@ -51,17 +51,34 @@ func (c *concurrentToolExecutor) Observe(
 			ToolCallFinished{CallID: "tool_first", ModelResult: &corechat.ToolResult{ID: "provider_first", Name: "first", Output: corechat.NewTextToolOutput("first-result")}, Result: toolStringResult("first-result")},
 			ToolCallFinished{CallID: "tool_second", ModelResult: &corechat.ToolResult{ID: "provider_second", Name: "second", Output: corechat.NewTextToolOutput("second-result")}, Result: toolStringResult("second-result")},
 		)
+		lookup, err := NewResultPublicationLookup(batch.Publication)
+		if err != nil || !yield(ExecutorEvent{Member: member, Payload: lookup}) {
+			return
+		}
+		if found, err := lookup.Await(ctx); err != nil || found {
+			c.failures <- errors.Join(err, errors.New("unpublished result already has a receipt"))
+			return
+		}
 		commit, receipt, err := NewExecutionFactCommit(batch)
 		if err != nil || !yield(ExecutorEvent{Member: member, Payload: commit}) {
 			return
 		}
 		commitErr := receipt.Await(ctx)
-		c.failures <- commitErr
 		if commitErr != nil {
+			c.failures <- commitErr
 			yield(ExecutorEvent{Member: member, Payload: NewUnknownEffectsDetected([]UnknownEffect{{ID: "effect:test", Detail: commitErr.Error()}})})
 			return
 		}
 
+		lookup, err = NewResultPublicationLookup(batch.Publication)
+		if err != nil || !yield(ExecutorEvent{Member: member, Payload: lookup}) {
+			return
+		}
+		if found, err := lookup.Await(ctx); err != nil || !found {
+			c.failures <- errors.Join(err, errors.New("committed result has no receipt"))
+			return
+		}
+		c.failures <- nil
 		yield(ExecutorEvent{Member: member, Payload: SegmentEnded{Reason: run.OutcomeCompleted}})
 	}, nil
 }
