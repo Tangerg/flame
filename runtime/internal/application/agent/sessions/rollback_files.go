@@ -98,10 +98,6 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 	}
 	restoreFiles := spec.Scope.RestoresFiles()
 	restoreHistory := spec.Scope.RestoresHistory()
-	currentSession, err := c.Get(ctx, spec.SessionID)
-	if err != nil {
-		return RollbackResult{}, err
-	}
 	result := RollbackResult{}
 
 	sessionMutation, err := c.ClaimSessionMutation(ctx, spec.SessionID)
@@ -109,6 +105,14 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 		return result, err
 	}
 	defer sessionMutation.Release()
+
+	// Read the Session under the claim. The claim is what stops a relocation from
+	// committing, so a read before it could hand this reset a working tree the
+	// Session no longer has — and the view it returns a workspace that moved.
+	currentSession, err := c.Get(ctx, spec.SessionID)
+	if err != nil {
+		return result, err
+	}
 
 	var cwd string
 	if restoreFiles {

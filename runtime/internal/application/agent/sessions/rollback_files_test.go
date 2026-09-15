@@ -3,6 +3,10 @@ package sessions
 import (
 	"context"
 	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestRollbackSpecOwnsClosedRestoreScope(t *testing.T) {
@@ -79,4 +83,56 @@ func (o *observingMutations) Complete(ctx context.Context, _ WorkspaceMutation) 
 
 func (*observingMutations) ListPending(context.Context) ([]WorkspaceMutation, error) {
 	return nil, nil
+}
+
+// TestRollbackReadsTheSessionItsClaimFroze: the claim is what stops a relocation
+// from committing, so a Session read before it can name a working tree the
+// Session no longer has — and answer with a workspace that moved.
+func TestRollbackReadsTheSessionItsClaimFroze(t *testing.T) {
+	stores := newMutationStores("")
+	before := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_1", Workspace: testsupport.MustWorkspace("/before"),
+		CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(1, 0).UTC(), Revision: 1,
+	})
+	after := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_1", Workspace: testsupport.MustWorkspace("/after"),
+		CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(2, 0).UTC(), Revision: 2,
+	})
+	stores.current = &before
+	deps := testDependencies(stores, Dependencies{
+		ExecutionReleaser: mutationExecutions{operations: &stores.operations},
+		Paths:             testWorkspaceResolver{},
+	})
+	// The relocation commits in the instant before this rollback owns the Session.
+	deps.Admissions = &relocatingClaimer{claimer: new(testClaimer), stores: stores, after: &after}
+
+	result, err := mustNewCoordinator(deps).Rollback(t.Context(), RollbackSpec{
+		SessionID: "ses_1", Scope: RestoreHistory,
+	})
+	if err != nil {
+		t.Fatalf("Rollback: %v", err)
+	}
+	if result.Session.Workspace.Path != "/after" || result.Session.Revision != 2 {
+		t.Fatalf("rollback Session = %+v, want the relocated workspace at revision 2", result.Session)
+	}
+}
+
+// relocatingClaimer commits a Session relocation at the moment the rollback
+// takes the claim that would have refused it.
+type relocatingClaimer struct {
+	claimer *testClaimer
+	stores  *mutationStores
+	after   *session.Session
+}
+
+func (r *relocatingClaimer) AcquireSession(ctx context.Context, sessionID string) (func(), bool, error) {
+	release, ok, err := r.claimer.AcquireSession(ctx, sessionID)
+	if ok {
+		r.stores.current = r.after
+	}
+	return release, ok, err
+}
+
+func (r *relocatingClaimer) AcquireWorkingTreeMutation(cwd string) (func(), bool, error) {
+	return r.claimer.AcquireWorkingTreeMutation(cwd)
 }

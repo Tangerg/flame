@@ -170,6 +170,9 @@ func (c *Coordinator) cancelWaitingChild(
 	cmd CancelCommand,
 	initial cancellationPlan,
 ) (result CancelResult, err error) {
+	// The open interrupt this cancellation settles refuses a relocation for as
+	// long as it exists, so the Session read before the claim still names the tree
+	// the claim reserves.
 	sess, err := c.sessionReader.Get(ctx, initial.pending.SessionID)
 	if err != nil {
 		return CancelResult{}, err

@@ -31,6 +31,11 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if err != nil {
 		return StartResult{}, err
 	}
+	// Reading the Session before the claim is safe only because the open interrupt
+	// this resume is answering refuses a relocation for as long as it exists
+	// ([sessions.Coordinator.ClaimIdleSession]), and it is consumed under the
+	// claim below. Without that, the tree reserved here could be one the Session
+	// no longer has.
 	sess, err := c.sessionReader.Get(ctx, pending.SessionID)
 	if err != nil {
 		return StartResult{}, err
