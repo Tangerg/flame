@@ -99,8 +99,8 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   // One device pixel on a 2x panel; at 1px the composer becomes the heaviest edge on screen.
   "composer-edge-width": "0.5px",
 
-  "wash-hover": "color-mix(in srgb, var(--color-text) calc(var(--depth-step) * 0.75), transparent)",
-  "wash-selected": "color-mix(in srgb, var(--color-text) var(--depth-step), transparent)",
+  "wash-hover": "color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 0.75), transparent)",
+  "wash-selected": "color-mix(in srgb, var(--color-text) var(--wash-step), transparent)",
 
   "app-drawer-surface": "var(--color-surface)",
   "app-content-surface": "var(--color-bg)",
