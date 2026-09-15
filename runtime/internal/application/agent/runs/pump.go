@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"log/slog"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -35,6 +37,11 @@ func (c *Coordinator) pump(
 		routes:      routes,
 	}
 	pump.publisher = treePublisher{publications: &c.publications, rootSpec: spec, owner: owner}
+	// The inner recovery turns a projection defect into this Run's failure; this
+	// one covers a defect in that failure path itself. Either way the process
+	// keeps every other Session, and the Run this pump abandoned is left for boot
+	// recovery, which already owns a Run whose owner disappeared.
+	defer pump.recoverAbandonedRun()
 	pump.run(initialErr)
 }
 
@@ -65,6 +72,7 @@ type managedChildStart struct {
 func (s *segmentPump) run(initialErr error) {
 	defer close(s.owner.done)
 	defer s.finish()
+	defer s.recoverProjectionDefect()
 	if initialErr != nil {
 		s.fail(initialErr)
 		return
@@ -508,6 +516,41 @@ func (s *segmentPump) classifyChildCancellationFact(
 	return fact
 }
 
+// recoverProjectionDefect keeps one Run's impossible state from ending every
+// other Run in the process. This pump already owns "the projection cannot
+// continue": aborting its routes lets the terminal synthesis that follows close
+// the tree as an internal failure, instead of unwinding out of a goroutine
+// nothing can recover from and taking every other Session with it.
+//
+// It must be deferred directly so recover() sees the panic. The stack cannot
+// travel in the Run's failure and is the only thing that fixes the defect, so it
+// goes to the operator here.
+func (s *segmentPump) recoverProjectionDefect() {
+	recovered := recover()
+	if recovered == nil {
+		return
+	}
+	slog.ErrorContext(s.ownerCtx, "runs: run projection panicked",
+		"session.id", s.spec.SessionID, "run.id", s.spec.RunID,
+		"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+	defect := fmt.Errorf("runs: Run %q projection panicked: %v", s.spec.RunID, recovered)
+	trace.SpanFromContext(s.ownerCtx).RecordError(defect)
+	s.fail(defect)
+}
+
+func (s *segmentPump) recoverAbandonedRun() {
+	recovered := recover()
+	if recovered == nil {
+		return
+	}
+	slog.ErrorContext(s.ownerCtx, "runs: run projection abandoned its Run",
+		"session.id", s.spec.SessionID, "run.id", s.spec.RunID,
+		"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+	trace.SpanFromContext(s.ownerCtx).RecordError(
+		fmt.Errorf("runs: Run %q projection abandoned its Run: %v", s.spec.RunID, recovered),
+	)
+}
+
 func (s *segmentPump) fail(err error) {
 	if s.ctx.Err() == nil && s.ownerCtx.Err() == nil {
 		trace.SpanFromContext(s.ctx).RecordError(err)
@@ -518,6 +561,13 @@ func (s *segmentPump) fail(err error) {
 func (s *segmentPump) finish() {
 	s.owner.observation.Lock()
 	defer s.owner.observation.Unlock()
+	// Closing the journal is what tells subscribers the Segment ended, and
+	// releasing the executor is what stops it working. Both are deferred so a
+	// terminal projection that cannot complete still ends the Segment for the
+	// clients waiting on it, instead of leaving a Run nobody can finish and a
+	// stream nobody can leave.
+	defer s.finishBoundary()
+	defer s.releaseExecutorTree()
 	for memberID, managed := range s.childStarts {
 		if !managed.outcome.Valid() {
 			s.abortPreparedChildStart(managed.prepared)
@@ -527,13 +577,15 @@ func (s *segmentPump) finish() {
 	if !s.rootFinished {
 		s.synthesizeUnfinished()
 	}
-	// Every non-waiting boundary releases the executor tree exactly once. The
-	// product outcome is already committed (or will be synthesized immediately
-	// above); Release is resource ownership, not a second cancellation decision.
+}
+
+// releaseExecutorTree ends the executor behind every non-waiting boundary
+// exactly once. The product outcome is already committed (or was synthesized);
+// Release is resource ownership, not a second cancellation decision.
+func (s *segmentPump) releaseExecutorTree() {
 	if !s.rootParked {
 		s.tearDownExecutor()
 	}
-	s.finishBoundary()
 }
 
 // synthesizeUnfinished establishes durable terminal boundaries before executor

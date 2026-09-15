@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"slices"
 	"sync"
 	"time"
@@ -215,7 +216,52 @@ func (i *interactionSession) startWorkers() {
 	default:
 	}
 	i.state.workersStarted = true
-	i.lifetime.start(i.await, i.reconcileUnknownEffects, i.reconcileExecutionState)
+	i.lifetime.start(i.awaitGuarded, i.reconcileUnknownEffectsGuarded, i.reconcileExecutionStateGuarded)
+}
+
+// The session already owns "this projection cannot continue", so a defect in one
+// execution fails that Run through the same boundary an unrecoverable projection
+// error uses instead of unwinding out of a goroutine nothing can recover from.
+// Only the awaiting worker may finish the session: a reconciler that tried would
+// join itself.
+func (i *interactionSession) awaitGuarded() {
+	defer i.finishOnExecutionDefect()
+	i.await()
+}
+
+func (i *interactionSession) reconcileUnknownEffectsGuarded() {
+	defer i.reportExecutionDefect()
+	i.reconcileUnknownEffects()
+}
+
+func (i *interactionSession) reconcileExecutionStateGuarded() {
+	defer i.reportExecutionDefect()
+	i.reconcileExecutionState()
+}
+
+// finishOnExecutionDefect and reportExecutionDefect must be deferred directly so
+// recover() sees the panic.
+func (i *interactionSession) finishOnExecutionDefect() {
+	if i.recordExecutionDefect(recover()) {
+		i.finish()
+	}
+}
+
+func (i *interactionSession) reportExecutionDefect() {
+	i.recordExecutionDefect(recover())
+}
+
+func (i *interactionSession) recordExecutionDefect(recovered any) bool {
+	if recovered == nil {
+		return false
+	}
+	// The stack cannot travel in the Run's failure and is the only thing that
+	// fixes the defect, so it goes to the operator here.
+	slog.ErrorContext(i.lifetime.execution, "agentexec: execution projection panicked",
+		"session.id", i.start.SessionID, "panic", fmt.Sprint(recovered),
+		"stack", string(debug.Stack()))
+	i.publishProjectionFailure(fmt.Errorf("agentexec: execution projection panicked: %v", recovered))
+	return true
 }
 
 func (i *interactionSession) failStart() {

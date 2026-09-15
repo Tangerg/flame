@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -388,32 +389,35 @@ func (f *fakeExecutor) releases() int {
 }
 
 type fakeEffects struct {
-	mu              sync.Mutex
-	commits         []EventCommit
-	openings        []OpeningCommit
-	barriers        []TreeBarrierCommit
-	waitingCancels  []WaitingSubtreeCancellationCommit
-	waitingResult   WaitingSubtreeCancellationResult
-	waitingErr      error
-	finishes        []Finish
-	nudges          int
-	openingErr      error
-	openingErrAt    int
-	commitErr       error
-	commitErrAt     int
-	commitErrCount  int
-	commitAttempts  int
-	rejectCanceled  bool
-	suspendStarted  chan<- struct{}
-	suspendCanceled chan<- struct{}
-	suspendRelease  <-chan struct{}
-	terminalStarted chan<- struct{}
-	terminalRelease <-chan struct{}
-	finishStarted   chan<- struct{}
-	finishRelease   <-chan struct{}
-	mutateClaim     func(*ClaimedResume)
-	childStarts     map[string]ChildRunStartReservation
-	childOutcomes   map[string]ChildRunStartOutcome
+	mu                 sync.Mutex
+	commits            []EventCommit
+	openings           []OpeningCommit
+	barriers           []TreeBarrierCommit
+	waitingCancels     []WaitingSubtreeCancellationCommit
+	waitingResult      WaitingSubtreeCancellationResult
+	waitingErr         error
+	finishes           []Finish
+	nudges             int
+	openingErr         error
+	openingErrAt       int
+	commitPanic        any
+	commitPanicked     atomic.Bool
+	commitAlwaysPanics any
+	commitErr          error
+	commitErrAt        int
+	commitErrCount     int
+	commitAttempts     int
+	rejectCanceled     bool
+	suspendStarted     chan<- struct{}
+	suspendCanceled    chan<- struct{}
+	suspendRelease     <-chan struct{}
+	terminalStarted    chan<- struct{}
+	terminalRelease    <-chan struct{}
+	finishStarted      chan<- struct{}
+	finishRelease      <-chan struct{}
+	mutateClaim        func(*ClaimedResume)
+	childStarts        map[string]ChildRunStartReservation
+	childOutcomes      map[string]ChildRunStartOutcome
 }
 
 func (f *fakeEffects) ReserveChildRunStart(
@@ -596,6 +600,12 @@ func (f *fakeEffects) ResultPublicationCommitted(_ context.Context, sessionID, r
 }
 
 func (f *fakeEffects) CommitEvent(ctx context.Context, commit EventCommit) error {
+	if f.commitAlwaysPanics != nil {
+		panic(f.commitAlwaysPanics)
+	}
+	if f.commitPanic != nil && !f.commitPanicked.Swap(true) {
+		panic(f.commitPanic)
+	}
 	if commit.State == StateTerminalize {
 		if f.terminalStarted != nil {
 			f.terminalStarted <- struct{}{}
@@ -952,6 +962,66 @@ func TestCoordinatorCommitsCanonicalOpeningAndTerminal(t *testing.T) {
 		if events[index-1].Sequence >= events[index].Sequence {
 			t.Fatalf("stream positions are not monotonic: %d then %d", events[index-1].Sequence, events[index].Sequence)
 		}
+	}
+}
+
+// TestRunProjectionDefectEndsOnlyItsOwnRun: an impossible state in one Run's
+// projection is that Run's failure. Unwinding out of the pump goroutine would
+// take the process — and every other Session's in-flight work — with it.
+func TestRunProjectionDefectEndsOnlyItsOwnRun(t *testing.T) {
+	executor := &fakeExecutor{events: []ExecutorPayload{
+		MessageDelta{Text: "hello"},
+		SegmentEnded{Reason: run.OutcomeCompleted},
+	}}
+	effects := &fakeEffects{commitPanic: "projection invariant broken"}
+	coordinator := testCoordinator(executor, effects)
+	spec := testSegment()
+	spec.Input = []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "question"}}
+	conversationInput := corechat.NewUserMessage(corechat.NewTextPart("question"))
+	spec.ConversationInput = &conversationInput
+
+	stream, err := coordinator.openSegment(t.Context(), spec)
+	if err != nil {
+		t.Fatalf("openSegment: %v", err)
+	}
+	events := collectEvents(stream)
+	if len(events) == 0 {
+		t.Fatal("a panicking projection published nothing for its own Run")
+	}
+	finished, ok := events[len(events)-1].Payload.(SegmentFinished)
+	if !ok {
+		t.Fatalf("last payload = %#v, want the Run's own terminal", events[len(events)-1].Payload)
+	}
+	if !runHasOutcome(finished.Run, run.OutcomeFailed) {
+		t.Fatalf("terminal outcome = %+v, want failed", finished.Run.Snapshot())
+	}
+	if failure, failed := finished.Run.Failure(); !failed || failure.Kind != run.FailureInternal {
+		t.Fatalf("terminal failure = %+v (%t), want an internal failure", failure, failed)
+	}
+}
+
+// TestRunProjectionDefectInTheFailurePathStillReleasesItsSubscribers: when the
+// path that fails a Run is itself broken, the process still keeps every other
+// Session and the abandoned Run's stream still ends, so no subscriber waits on a
+// Run nothing will finish. Boot recovery already owns a Run whose owner is gone.
+func TestRunProjectionDefectInTheFailurePathStillReleasesItsSubscribers(t *testing.T) {
+	executor := &fakeExecutor{events: []ExecutorPayload{SegmentEnded{Reason: run.OutcomeCompleted}}}
+	effects := &fakeEffects{commitAlwaysPanics: "projection invariant broken"}
+	coordinator := testCoordinator(executor, effects)
+
+	stream, err := coordinator.openSegment(t.Context(), testAdmittedSegment(t, coordinator, testSegment()))
+	if err != nil {
+		t.Fatalf("openSegment: %v", err)
+	}
+	drained := make(chan struct{})
+	go func() {
+		defer close(drained)
+		collectEvents(stream)
+	}()
+	select {
+	case <-drained:
+	case <-time.After(5 * time.Second):
+		t.Fatal("an abandoned Run left its subscribers waiting")
 	}
 }
 
