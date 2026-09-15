@@ -226,7 +226,7 @@ func createSessionWithInitialPlan(
 const (
 	goalAcrossCompactionObjective = "preserve the exact active Goal while replacing the Plan across compaction"
 	goalSettlementPollInterval    = 10 * time.Millisecond
-	goalSettlementTimeout         = 5 * time.Second
+	goalSettlementTimeout         = lifecycleWaitBudget
 	stalePlanText                 = "stale frozen Plan"
 	currentPlanText               = "current durable Plan"
 )

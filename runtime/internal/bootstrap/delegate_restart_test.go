@@ -137,7 +137,7 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 	case observed := <-initialDone:
 		diagnostic, _ := json.Marshal(observed[len(observed)-1].Event.Outcome)
 		t.Fatalf("tree stopped before sibling B completed after %d model calls: %s", calls.Load(), diagnostic)
-	case <-time.After(5 * time.Second):
+	case <-time.After(lifecycleWaitBudget):
 		t.Fatal("completed sibling B was held behind running sibling A")
 	}
 	close(releaseA)
@@ -339,7 +339,7 @@ func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
 	// The released sibling still has to take its own model turn before it can
 	// raise a question, so the barrier it forms is awaited rather than read.
 	var survivorRunID, survivorItemID string
-	deadline := time.Now().Add(5 * time.Second)
+	deadline := time.Now().Add(lifecycleWaitBudget)
 	for survivorRunID == "" {
 		released, listErr := api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: started.RunID})
 		if listErr != nil {
