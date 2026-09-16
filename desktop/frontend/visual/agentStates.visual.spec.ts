@@ -978,8 +978,12 @@ for (const theme of ["light", "dark"] as const) {
     await page.goto(`/visual/?fixture=agent&theme=${theme}&state=long-content`);
     await page.locator("html[data-visual-ready]").waitFor();
 
-    const blocked = page.getByRole("button", { name: "Tracking pixel" });
-    await expect(blocked).toBeDisabled();
+    const blocked = page.getByRole("img", { name: "Tracking pixel" });
+    await expect(blocked, "the reader is still told an image belongs here").toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Tracking pixel" }),
+      "and it is not offered as something to press, since there is nothing to open",
+    ).toHaveCount(0);
     await expect(page.locator('img[src^="https://tracker.example/"]')).toHaveCount(0);
     expect(remoteRequests).toBe(0);
 

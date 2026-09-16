@@ -94,11 +94,13 @@ describe("markdownMessage", () => {
     const { container } = render(<MarkdownRenderer text={src} reveal="instant" />);
 
     expect(container.querySelector('img[src^="https://tracker.example/"]')).toBeNull();
-    const unavailable = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Tracking pixel"]',
-    );
-    expect(unavailable).toBeTruthy();
-    expect(unavailable?.disabled).toBe(true);
+    const unavailable = container.querySelector('[aria-label="Tracking pixel"]');
+    expect(unavailable, "the reader is still told an image belongs here").toBeTruthy();
+    expect(unavailable?.getAttribute("role")).toBe("img");
+    expect(
+      container.querySelector('button[aria-label="Tracking pixel"]'),
+      "and it is not offered as something to press",
+    ).toBeNull();
   });
 
   it("opens safe inline Markdown images through an accessible preview trigger", () => {

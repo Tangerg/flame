@@ -83,31 +83,20 @@ export function MarkdownImage({
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const unavailable = !isInlineMarkdownImage(src) || failedSource === src;
 
+  // An image that did not load is worth saying, and saying it is all this can do: there is
+  // nothing to open. It was a disabled `Pressable` outside a link and this same span inside one,
+  // on the grounds that nested interactive content is a defect — which is true, and is not the
+  // only reason. A control that can never be enabled is not a control anywhere.
   if (unavailable) {
-    // A disabled button is still interactive content, so inside a link it is the same defect.
-    // The glyph stays: what it says is "this image did not load", which is still worth saying.
-    if (linked) {
-      return (
-        <span
-          role="img"
-          aria-label={alt || t("message.image.unavailable")}
-          title={title}
-          className={stylex.props(mi.missing).className}
-        >
-          <Icon name="image" size="md" />
-        </span>
-      );
-    }
     return (
-      <Pressable
-        type="button"
-        disabled
+      <span
+        role="img"
         aria-label={alt || t("message.image.unavailable")}
         title={title}
         className={stylex.props(mi.missing).className}
       >
         <Icon name="image" size="md" />
-      </Pressable>
+      </span>
     );
   }
 
