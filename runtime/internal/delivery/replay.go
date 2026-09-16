@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"log/slog"
 	"reflect"
 	"sort"
 	"sync"
@@ -78,6 +79,10 @@ func (r *replayStore) invoke(
 		}
 		payload, settlePendingCompletionErr := r.settlePendingCompletion(ctx, pending)
 		if settlePendingCompletionErr != nil {
+			// The caller learns only that the receipt is unsettled; the reason it
+			// could not be settled belongs to whoever has to fix the store.
+			slog.ErrorContext(ctx, "delivery: settle idempotency receipt",
+				"method", method.Meta.Name, "error", settlePendingCompletionErr)
 			return failed(r.persistenceFailure(settlePendingCompletionErr))
 		}
 		r.forgetPendingCompletion(key, fingerprint)
@@ -109,6 +114,12 @@ func (r *replayStore) invoke(
 			return failed(NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
 		}
 		r.rememberPendingCompletion(record)
+		// The command's effect is committed and only its receipt failed, so this
+		// record is the one thing standing between a retry of the same key and a
+		// second execution. It survives only until the shutdown flush, and a span
+		// carries the reason only where the host configured tracing.
+		slog.ErrorContext(ctx, "delivery: idempotency receipt is unpersisted after a committed operation",
+			"method", method.Meta.Name, "error", err)
 		trace.SpanFromContext(ctx).RecordError(fmt.Errorf("idempotency: store replay: %w", err))
 		return failed(NewFailure(protocol.ErrIdempotencyInProgress, "operation outcome persistence is pending"))
 	}

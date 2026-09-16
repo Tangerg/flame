@@ -1,11 +1,14 @@
 package delivery
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -710,5 +713,42 @@ func TestKeyWaitEndsWithItsOwnRequest(t *testing.T) {
 	}
 	if calls := service.calls.Load(); calls != 1 {
 		t.Fatalf("SteerRun calls = %d, want 1", calls)
+	}
+}
+
+// TestUnpersistedReceiptAfterACommittedOperationIsReported pins the diagnostic
+// for the one failure that can cost a caller a second execution. The command's
+// effect is committed and only its receipt failed, so the in-memory record is
+// all that stops a retry of the same key from running it again — and that
+// record lives only until the shutdown flush. A tracing span carries the reason
+// only where the host installed a TracerProvider.
+func TestUnpersistedReceiptAfterACommittedOperationIsReported(t *testing.T) {
+	var diagnostics bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	service := &countingCancelService{}
+	store := &flakyCompletionStore{Store: newMemoryIdempotencyStore()}
+	store.failures.Store(1)
+	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: store})
+
+	_, err := endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](
+		t.Context(), "runs.cancel",
+		protocol.CancelRunRequest{RunID: "run_1"},
+		Options{IdempotencyKey: "cancel-unpersisted"},
+	)
+	if !errors.Is(err, protocol.ErrIdempotencyInProgress) {
+		t.Fatalf("call error = %v, want idempotency_in_progress", err)
+	}
+	if calls := service.calls.Load(); calls != 1 {
+		t.Fatalf("CancelRun calls = %d, want the command to have run once", calls)
+	}
+	logged := diagnostics.String()
+	if !strings.Contains(logged, "unpersisted") {
+		t.Fatalf("diagnostics = %q, want the unpersisted receipt reported without tracing", logged)
+	}
+	if !strings.Contains(logged, "runs.cancel") {
+		t.Fatalf("diagnostics = %q, want the operation named", logged)
 	}
 }
