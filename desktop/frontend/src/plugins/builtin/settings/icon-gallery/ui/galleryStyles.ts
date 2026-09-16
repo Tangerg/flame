@@ -19,6 +19,7 @@ export const galleryStyles = stylex.create({
     backgroundColor: { default: surface.card, ":hover": surface.hover },
     transitionProperty: "background-color",
     transitionDuration: motion.fast,
+    transitionTimingFunction: motion.easeState,
   },
   cardLarge: { paddingInline: space.s2_5, paddingTop: space.s3_5, paddingBottom: space.s2_5 },
   cardSmall: { paddingInline: space.s2, paddingTop: space.s2_5, paddingBottom: space.s2 },
