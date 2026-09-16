@@ -58,7 +58,7 @@ func TestWatchObservesMissingParentsReplacementAndRemoval(t *testing.T) {
 	root := t.TempDir()
 	target := filepath.Join(root, "nested", ".flame", "hooks.json")
 	events := make(chan []string, 8)
-	watcher, err := Watch([]Target{{Key: "hooks", Path: target, MaxBytes: testMaxBytes}}, func(keys []string) { events <- keys }, nil)
+	watcher, err := Watch([]Target{{Key: "hooks", Path: target, MaxBytes: testMaxBytes}}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatalf("watch missing target: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestWatchObservesPhysicalSymlinkTargetAndCloseJoins(t *testing.T) {
 		Key: "knowledge", Path: alias, Boundary: root, MaxBytes: testMaxBytes,
 	}}, func(keys []string) {
 		events <- keys
-	}, nil)
+	}, discardOutage)
 	if err != nil {
 		t.Fatalf("watch symlink: %v", err)
 	}
@@ -184,7 +184,7 @@ func TestAcceptRefreshesOnlyTheExactIdentity(t *testing.T) {
 	watcher, err := Watch([]Target{
 		{Key: "knowledge", Path: first, Boundary: filepath.Dir(first), MaxBytes: testMaxBytes},
 		{Key: "knowledge", Path: second, Boundary: filepath.Dir(second), MaxBytes: testMaxBytes},
-	}, func(keys []string) { events <- keys }, nil)
+	}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +217,7 @@ func TestWatchSuppressesMetadataNoiseWithoutSemanticChange(t *testing.T) {
 		Key: "knowledge", Path: target, Boundary: root, MaxBytes: testMaxBytes,
 	}}, func(keys []string) {
 		events <- keys
-	}, nil)
+	}, discardOutage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func TestWatchBoundsOversizedContentFingerprints(t *testing.T) {
 	events := make(chan []string, 2)
 	watcher, err := Watch([]Target{{
 		Key: "knowledge", Path: target, Boundary: root, MaxBytes: 1,
-	}}, func(keys []string) { events <- keys }, nil)
+	}}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +345,7 @@ func TestAcceptedWriteStaysAcceptedOnTheNextPass(t *testing.T) {
 	watcher, err := Watch([]Target{
 		{Key: "accepted", Path: accepted, Boundary: root, MaxBytes: testMaxBytes},
 		{Key: "other", Path: other, Boundary: root, MaxBytes: testMaxBytes},
-	}, func(keys []string) { events <- keys }, nil)
+	}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -365,5 +365,33 @@ func TestAcceptedWriteStaysAcceptedOnTheNextPass(t *testing.T) {
 	case keys := <-events:
 		t.Fatalf("the accepted write was reported on a later pass: %v", keys)
 	case <-time.After(300 * time.Millisecond):
+	}
+}
+
+// discardOutage is the inert reporter a test that does not exercise outage
+// reporting supplies. An observer requires one, because the background loop is
+// the only place a reconciliation outage is observable.
+func discardOutage(error) {}
+
+// TestObserverRequiresItsOutageReporter pins the collaborator an observer
+// cannot watch without. A reconciliation outage is reported nowhere else, so an
+// observation built without a reporter would retry in silence for as long as
+// the failure lasts.
+func TestObserverRequiresItsOutageReporter(t *testing.T) {
+	root := t.TempDir()
+	if _, err := Watch(
+		[]Target{{Key: "knowledge", Path: root, MaxBytes: testMaxBytes}},
+		func([]string) {}, nil,
+	); err == nil {
+		t.Fatal("Watch accepted an observation with no outage reporter")
+	}
+	if _, err := WatchChildFiles(
+		[]ChildFileTarget{{
+			Key: "skills", Path: root, FileName: "SKILL.md",
+			MaxEntries: 4, MaxBytes: testMaxBytes,
+		}},
+		func([]string) {}, nil,
+	); err == nil {
+		t.Fatal("WatchChildFiles accepted an observation with no outage reporter")
 	}
 }

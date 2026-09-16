@@ -16,7 +16,7 @@ func TestWatchChildFilesObservesDynamicExactFiles(t *testing.T) {
 	watcher, err := WatchChildFiles([]ChildFileTarget{{
 		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md",
 		MaxEntries: 16, MaxBytes: testMaxBytes,
-	}}, func(keys []string) { events <- keys }, nil)
+	}}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func TestWatchChildFilesObservesDynamicExactFiles(t *testing.T) {
 func TestWatchChildFilesObservesDirectMarkdownAndAliases(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "recipes")
 	events := make(chan []string, 16)
-	watcher, err := WatchChildFiles([]ChildFileTarget{{Key: "recipes", Path: root, Extension: ".md", MaxEntries: 16, MaxBytes: testMaxBytes}}, func(keys []string) { events <- keys }, nil)
+	watcher, err := WatchChildFiles([]ChildFileTarget{{Key: "recipes", Path: root, Extension: ".md", MaxEntries: 16, MaxBytes: testMaxBytes}}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestWatchChildFilesAcceptsOnlyExactCommittedFiles(t *testing.T) {
 	watcher, err := WatchChildFiles([]ChildFileTarget{{
 		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md",
 		MaxEntries: 16, MaxBytes: testMaxBytes,
-	}}, func(keys []string) { events <- keys }, nil)
+	}}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestWatchChildFilesIgnoresNonProjectionFiles(t *testing.T) {
 	watcher, err := WatchChildFiles([]ChildFileTarget{{
 		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md",
 		MaxEntries: 16, MaxBytes: testMaxBytes,
-	}}, func(keys []string) { events <- keys }, nil)
+	}}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func TestWatchChildFilesDoesNotWedgeOnNonRegularProjectionPath(t *testing.T) {
 	watcher, err := WatchChildFiles([]ChildFileTarget{{
 		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md",
 		MaxEntries: 16, MaxBytes: testMaxBytes,
-	}}, func(keys []string) { events <- keys }, nil)
+	}}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,7 +374,7 @@ func TestWatchChildFilesObservesEntryLimitTransitions(t *testing.T) {
 	watcher, err := WatchChildFiles([]ChildFileTarget{{
 		Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md",
 		MaxEntries: 2, MaxBytes: testMaxBytes,
-	}}, func(keys []string) { events <- keys }, nil)
+	}}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatal(err)
 	}

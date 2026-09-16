@@ -35,6 +35,11 @@ type observerLifecycle struct {
 }
 
 func newObserverLifecycle(label string, report func(error)) (*observerLifecycle, error) {
+	// The background loop is the only place a reconciliation outage is
+	// observable at all, so an observer without a reporter watches silently.
+	if report == nil {
+		return nil, fmt.Errorf("%s: outage reporter is required", label)
+	}
 	fsw, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("%s: create watcher: %w", label, err)
@@ -92,7 +97,7 @@ func (o *observerLifecycle) run() {
 		case <-timer.C:
 			armed = false
 			if err := o.reconcile(acceptance{}); err != nil {
-				if !failed && o.report != nil {
+				if !failed {
 					o.report(err)
 				}
 				failed = true
