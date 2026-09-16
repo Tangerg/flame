@@ -9,19 +9,15 @@ import { AnsiText, Icon, IconButton, TextButton, Well, reveal } from "@/ui";
 import { LinkedText } from "@/plugins/builtin/chat/file-references/public/LinkedText";
 import { PreviewPlaceholder } from "./PreviewPlaceholder";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { color, leading, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { space } from "@/styles/tokens.stylex";
 
+// The surface is the `Well`'s, stated once there: this file used to restate its corner, fill,
+// padding, mono face and leading, which is why the empty case below could already be a `Well`
+// while the case with output was a hand-built copy of one.
 const op = stylex.create({
-  panel: { overflow: "hidden", borderRadius: radius.sm, backgroundColor: surface.sunken },
-  sheet: {
-    overflowX: "auto",
-    paddingInline: space.s3,
-    paddingBlock: space.s2_5,
-    fontFamily: "var(--font-mono)",
-    lineHeight: leading.relaxed,
-    color: color.fgSoft,
-    fontVariantLigatures: "none",
-  },
+  frame: { overflow: "hidden" },
+  // A shell prints `->` and `!=`; it did not ask for a glyph.
+  lines: { fontVariantLigatures: "none" },
   line: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
   anchor: { position: "relative" },
   fade: {
@@ -33,7 +29,7 @@ const op = stylex.create({
     backgroundImage: "linear-gradient(to top, var(--color-sunken), transparent)",
   },
   more: { justifyContent: "center", paddingBlock: space.s1_5 },
-  viewport: { height: "min(50vh, 20lh)", overflowY: "auto" },
+  viewport: { height: "min(50vh, 20lh)", overflowX: "auto", overflowY: "auto" },
   canvas: { position: "relative", width: "100%" },
   virtualLine: { position: "absolute", top: 0, left: 0, width: "100%" },
 });
@@ -67,7 +63,7 @@ function ScrollableOutput({ lines }: { lines: string[] }) {
       aria-label={t("tools.output.label")}
       // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The scroll region needs keyboard scrolling independently of the transcript.
       tabIndex={0}
-      {...stylex.props(op.sheet, op.viewport, typeStep.code)}
+      {...stylex.props(op.lines, op.viewport)}
     >
       <div {...stylex.props(op.canvas)} style={{ height: rows.getTotalSize() }}>
         {rows.getVirtualItems().map((row) => (
@@ -124,12 +120,12 @@ export function ToolOutputPanel({
   }
 
   return (
-    <div {...stylex.props(op.panel)}>
+    <Well as="div" className={stylex.props(op.frame).className}>
       <div className={cn(stylex.props(reveal.host).className, "relative")}>
         {expanded && lines.length > VIRTUALIZE_AFTER_LINES ? (
           <ScrollableOutput lines={lines} />
         ) : (
-          <div {...stylex.props(op.sheet, typeStep.code)}>
+          <div {...stylex.props(op.lines)}>
             {shown.map((line, index) => (
               <div key={index} data-output-line="" {...stylex.props(op.line)}>
                 <OutputLine text={line} />
@@ -162,6 +158,6 @@ export function ToolOutputPanel({
           </TextButton>
         </div>
       )}
-    </div>
+    </Well>
   );
 }

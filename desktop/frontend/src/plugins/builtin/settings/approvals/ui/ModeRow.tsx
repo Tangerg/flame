@@ -1,22 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { ChoiceList, ChoiceOption, Icon, vocab } from "@/ui";
+import { ChoiceList, ChoiceOption, Icon, SkeletonList, vocab } from "@/ui";
 import { setApprovalMode } from "@/plugins/builtin/agent/public/approvalPolicy";
 import { APPROVAL_MODES, type ApprovalMode } from "../application/approvalConfig";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { useId, useState } from "react";
-import {
-  color,
-  leading,
-  motion,
-  radius,
-  space,
-  surface,
-  type as typeStep,
-  weight,
-} from "@/styles/tokens.stylex";
+import { color, leading, motion, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 import { SettingRow } from "../../kit";
 
 type ApprovalModeIntent = {
@@ -27,12 +18,6 @@ type ApprovalModeIntent = {
 const MODE_VALUES = APPROVAL_MODES.map((option) => option.value);
 
 const m = stylex.create({
-  // Holds the list's measure while the modes load, so the pane does not jump when they land.
-  placeholder: {
-    height: "184px",
-    borderRadius: radius.lg,
-    backgroundColor: surface.sunken,
-  },
   body: { display: "flex", minWidth: 0, flex: 1, flexDirection: "column", gap: space.s0_5 },
   name: { color: color.fg, fontWeight: weight.medium },
   desc: { color: color.fgMuted, lineHeight: leading.body },
@@ -71,7 +56,10 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
       align="stacked"
     >
       {mode === undefined ? (
-        <div {...stylex.props(m.placeholder)} aria-hidden />
+        // The count comes from the list itself. It was a 184px slab, which is the same coupling
+        // this option table refuses at its other end — a number that has to be re-measured when
+        // a mode is added, a description wraps, or the reader picks a larger type size.
+        <SkeletonList count={APPROVAL_MODES.length} label={t("common.loading")} />
       ) : (
         <ChoiceList
           multiple={false}
