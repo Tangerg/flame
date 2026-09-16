@@ -718,6 +718,7 @@ export const de: Record<string, string> = {
   "diagnostics.signal.logs": "Logs",
   "reasoning.thinking": "Denkt nach",
   "reasoning.thought": "Gedacht",
+  "reasoning.thoughtFor": "{{duration}} nachgedacht",
   "reasoning.interrupted": "unterbrochen",
   "vcs.gitNotAvailable": "Git nicht verfügbar",
   "vcs.gitNotAvailableSub": "Diese Runtime hat kein git-Binary im PATH.",

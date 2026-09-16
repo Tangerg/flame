@@ -863,6 +863,7 @@ export const zh: Record<string, string> = {
   "diagnostics.signal.logs": "日志",
   "reasoning.thinking": "思考中",
   "reasoning.thought": "思考",
+  "reasoning.thoughtFor": "思考了 {{duration}}",
   "reasoning.interrupted": "已中断",
   "vcs.gitNotAvailable": "Git 不可用",
   "vcs.gitNotAvailableSub": "此运行时的 PATH 中没有 git 二进制文件。",

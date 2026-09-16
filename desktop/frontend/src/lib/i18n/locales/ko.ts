@@ -687,6 +687,7 @@ export const ko: Record<string, string> = {
   "diagnostics.signal.logs": "로그",
   "reasoning.thinking": "생각 중",
   "reasoning.thought": "생각",
+  "reasoning.thoughtFor": "{{duration}} 동안 생각",
   "reasoning.interrupted": "중단됨",
   "vcs.gitNotAvailable": "Git을 사용할 수 없음",
   "vcs.gitNotAvailableSub": "이 런타임의 PATH에 git 바이너리가 없습니다.",

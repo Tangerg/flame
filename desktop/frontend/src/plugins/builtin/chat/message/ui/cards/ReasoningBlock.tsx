@@ -3,7 +3,8 @@ import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { MarkdownMessage } from "../markdown/MarkdownMessage";
 import { Icon, Loader, vocab } from "@/ui";
-import { AgentActivityDisclosure } from "@/ui/agent";
+import { AgentActivityDisclosure, useActivityOpenState } from "@/ui/agent";
+import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { face, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { messageStyles as ms } from "../messageStyles";
@@ -61,14 +62,33 @@ interface Props {
 export function ReasoningBlock({ text, status, superseded = false }: Props) {
   const t = useT();
   const streaming = status === "running";
-  const [openOverride, setOpenOverride] = useState<boolean | null>(null);
-  const isOpen = openOverride ?? (streaming && !superseded);
+  // Superseded means an answer has started arriving underneath, so the thought behind it is
+  // no longer what you are watching even while its own stream runs on.
+  const { open: isOpen, toggle } = useActivityOpenState(streaming && !superseded);
 
-  const toggle = () => {
-    setOpenOverride(!isOpen);
-  };
+  // How long it thought, measured HERE because nobody else knows it: the Runtime publishes a
+  // reasoning stream, not a duration, and what this reports is the wait as it was lived on
+  // this screen. A session restored from disk never saw the run, so there is nothing to
+  // report and the bare word stands — which is the same pair Codex ships, `Thought for
+  // {elapsed}` beside a form for when the elapsed is not knowable.
+  const startedAt = useRef<number | null>(null);
+  const [thoughtMillis, setThoughtMillis] = useState<number | null>(null);
+  useEffect(() => {
+    if (streaming) {
+      startedAt.current ??= performance.now();
+      return;
+    }
+    const started = startedAt.current;
+    if (started === null) return;
+    startedAt.current = null;
+    setThoughtMillis(performance.now() - started);
+  }, [streaming]);
 
-  const label = streaming ? t("reasoning.thinking") : t("reasoning.thought");
+  const label = streaming
+    ? t("reasoning.thinking")
+    : thoughtMillis === null
+      ? t("reasoning.thought")
+      : t("reasoning.thoughtFor", { duration: fmtDuration(thoughtMillis) });
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);

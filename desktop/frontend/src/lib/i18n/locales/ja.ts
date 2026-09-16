@@ -692,6 +692,7 @@ export const ja: Record<string, string> = {
   "diagnostics.signal.logs": "ログ",
   "reasoning.thinking": "考えています",
   "reasoning.thought": "思考",
+  "reasoning.thoughtFor": "{{duration}} 思考",
   "reasoning.interrupted": "中断",
   "vcs.gitNotAvailable": "Git を利用できません",
   "vcs.gitNotAvailableSub": "このランタイムの PATH に git バイナリがありません。",

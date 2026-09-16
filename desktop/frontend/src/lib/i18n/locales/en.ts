@@ -976,6 +976,7 @@ export const en: Record<string, string> = {
 
   "reasoning.thinking": "Thinking",
   "reasoning.thought": "Thought",
+  "reasoning.thoughtFor": "Thought for {{duration}}",
   "reasoning.interrupted": "interrupted",
 
   "vcs.gitNotAvailable": "Git not available",

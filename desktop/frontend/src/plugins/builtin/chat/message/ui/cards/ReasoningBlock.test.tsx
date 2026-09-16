@@ -30,12 +30,57 @@ afterEach(() => {
 });
 
 describe("ReasoningBlock disclosure policy", () => {
+  it("reports the wait it actually watched, and says nothing when it watched none", () => {
+    vi.useFakeTimers();
+    const now = vi.spyOn(performance, "now");
+    now.mockReturnValue(0);
+    const view = render(<ReasoningBlock text="Hidden rationale" status="running" />);
+    expect(screen.getByRole("button", { name: /Thinking/ })).toBeTruthy();
+
+    now.mockReturnValue(8_400);
+    view.rerender(<ReasoningBlock text="Hidden rationale" status="complete" />);
+    expect(screen.getByRole("button", { name: /Thought for 8.4s/ })).toBeTruthy();
+
+    // A turn restored from disk mounts already settled: there was no wait to watch.
+    view.unmount();
+    render(<ReasoningBlock text="Hidden rationale" status="complete" />);
+    expect(screen.getByRole("button", { name: /^Thought$/ })).toBeTruthy();
+    now.mockRestore();
+  });
+
+  it("remembers being collapsed while it thought apart from being opened once it had", () => {
+    const view = render(<ReasoningBlock text="Hidden rationale" status="running" />);
+    const live = () => screen.getByRole("button", { name: /Thinking|Thought/ });
+
+    // A thought still arriving is open, because it is what you are watching.
+    expect(live().getAttribute("aria-expanded")).toBe("true");
+
+    fireEvent.click(live());
+    expect(live().getAttribute("aria-expanded")).toBe("false");
+
+    // Collapsing it while it ran said nothing about the settled row, which has its own default.
+    view.rerender(<ReasoningBlock text="Hidden rationale" status="complete" />);
+    expect(live().getAttribute("aria-expanded")).toBe("false");
+
+    fireEvent.click(live());
+    expect(live().getAttribute("aria-expanded")).toBe("true");
+
+    // Nor does opening the settled row decide anything about the next live one.
+    view.rerender(<ReasoningBlock text="Hidden rationale" status="running" />);
+    expect(
+      live().getAttribute("aria-expanded"),
+      "the collapse it was given while running is the one it kept",
+    ).toBe("false");
+  });
+
   it("turns the first user toggle into an explicit override of the automatic state", () => {
     renderReasoning("complete", "Hidden rationale");
     const trigger = screen.getByRole("button", { name: /Thought/ });
 
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
-    expect(screen.queryByRole("region")).toBeNull();
+    const shut = document.getElementById(trigger.getAttribute("aria-controls") ?? "");
+    expect(shut, "the region a shut trigger names has to exist").not.toBeNull();
+    expect(shut!.textContent).toBe("");
 
     fireEvent.click(trigger);
     expect(trigger.getAttribute("aria-expanded")).toBe("true");

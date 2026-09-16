@@ -4,7 +4,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { Children, useId } from "react";
 import { cn } from "@/lib/classNames";
 import { color, leading, motion, radius, space, surface, type } from "@/styles/tokens.stylex";
-import { Collapsible } from "@/ui/atoms/collapsible";
+import { Collapsible, useDisclosedContent } from "@/ui/atoms/collapsible";
 import { Pressable } from "@/ui/atoms/pressable";
 import { ProgressBar } from "@/ui/atoms/progress-bar";
 import { Icon, type IconName } from "@/ui/icons";
@@ -204,6 +204,7 @@ export function AgentActivityDisclosure({
   const triggerId = useId();
   const panelId = useId();
   const framed = shell !== "line" && icon !== undefined;
+  const disclosed = useDisclosedContent(open);
 
   return (
     <div
@@ -310,7 +311,7 @@ export function AgentActivityDisclosure({
             contentClassName,
           )}
         >
-          {children}
+          {disclosed && children}
         </div>
       </Collapsible>
     </div>
