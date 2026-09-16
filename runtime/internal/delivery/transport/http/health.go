@@ -2,7 +2,9 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -86,7 +88,13 @@ func (h *healthProbeRunner) invoke(
 	defer cancel()
 	result := HealthCheck{}
 	defer func() {
-		if recover() != nil {
+		if recovered := recover(); recovered != nil {
+			// Readiness answers a client that can only act on the status. The
+			// probe that panicked, what it panicked with and where, exist
+			// nowhere else once this frame unwinds.
+			slog.ErrorContext(ctx, "http: health probe panicked",
+				"probe", h.name, "panic", fmt.Sprint(recovered),
+				"stack", string(debug.Stack()))
 			result = HealthCheck{Status: HealthUnhealthy, Detail: "probe panic"}
 		}
 		invocation.check = result

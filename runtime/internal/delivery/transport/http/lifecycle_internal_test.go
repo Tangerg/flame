@@ -293,3 +293,32 @@ func TestUnhealthyProbeDetailReachesTheOperator(t *testing.T) {
 		}
 	}
 }
+
+// TestPanickingProbeReportsWhatPanicked pins the operator's half of a probe
+// defect. Readiness answers a caller that can act only on the status keyword,
+// and "probe panic" names neither the value nor the line; once the probe's
+// frame unwinds nothing else holds them.
+func TestPanickingProbeReportsWhatPanicked(t *testing.T) {
+	var diagnostics bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	runners := newHealthProbeRunners([]HealthProbe{
+		{Name: "storage", Probe: func(context.Context) HealthCheck {
+			panic("connection pool is closed")
+		}},
+	})
+
+	overall, checks := runHealthProbesWithBudget(t.Context(), runners, time.Second)
+	if overall != HealthUnhealthy || checks["storage"] != HealthUnhealthy {
+		t.Fatalf("overall/checks = %q/%v, want unhealthy", overall, checks)
+	}
+	output := diagnostics.String()
+	if !strings.Contains(output, "connection pool is closed") {
+		t.Fatalf("diagnostics lost the panic value: %s", output)
+	}
+	if !strings.Contains(output, "lifecycle_internal_test.go") {
+		t.Fatalf("diagnostics lost the stack naming the probe that panicked: %s", output)
+	}
+}

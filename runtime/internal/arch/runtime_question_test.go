@@ -307,3 +307,129 @@ func slicesCompact(values []string) []string {
 	}
 	return out
 }
+
+// TestRecoveredPanicsKeepTheirStack proves every contained panic in this module
+// either travels on — re-raised for an outer owner — or captures the stack
+// where it is absorbed.
+//
+// A recovered panic is the one failure whose cause exists nowhere but its own
+// frame: the value alone names neither the operation nor the line. Two in
+// delivery absorbed one without a stack, and a health probe discarded the value
+// too, so a panicking probe answered readiness with "probe panic" and left no
+// way to learn what panicked.
+func TestRecoveredPanicsKeepTheirStack(t *testing.T) {
+	root := moduleRoot(t)
+	loaded := loadModule(t)
+
+	// keepers name every function that captures a stack. A deferred recover may
+	// hand its value to one of these: debug.Stack still sees the panicking frames
+	// from anything the deferred call reaches. Re-raising does not delegate — it
+	// has to be visible in the frame that recovered.
+	keepers := map[string]bool{}
+	type site struct {
+		name     string
+		position string
+		callees  []string
+		keeps    bool
+	}
+	var sites []site
+
+	for _, pkg := range loaded {
+		if pkg.Fset == nil || pkg.TypesInfo == nil {
+			continue
+		}
+		for _, file := range pkg.Syntax {
+			filename := pkg.Fset.Position(file.Pos()).Filename
+			if !strings.HasPrefix(filename, root+"/") || strings.HasSuffix(filename, "_test.go") {
+				continue
+			}
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Body == nil {
+					continue
+				}
+				declared, isFunc := pkg.TypesInfo.Defs[fn.Name].(*types.Func)
+				if !isFunc {
+					continue
+				}
+				self := questionPackagePath(declared.Pkg().Path()) + "." + fn.Name.Name
+				recovers, keeps, stacks := 0, 0, 0
+				var callees []string
+				ast.Inspect(fn.Body, func(n ast.Node) bool {
+					call, isCall := n.(*ast.CallExpr)
+					if !isCall {
+						return true
+					}
+					switch callee := call.Fun.(type) {
+					case *ast.Ident:
+						switch callee.Name {
+						case "recover":
+							recovers++
+						case "panic":
+							keeps++
+						default:
+							if target, isTarget := pkg.TypesInfo.Uses[callee].(*types.Func); isTarget &&
+								target.Pkg() != nil {
+								callees = append(callees,
+									questionPackagePath(target.Pkg().Path())+"."+target.Name())
+							}
+						}
+					case *ast.SelectorExpr:
+						if callee.Sel.Name == "Stack" {
+							keeps++
+							stacks++
+							return true
+						}
+						if target, isTarget := pkg.TypesInfo.Uses[callee.Sel].(*types.Func); isTarget &&
+							target.Pkg() != nil {
+							callees = append(callees,
+								questionPackagePath(target.Pkg().Path())+"."+target.Name())
+						}
+					}
+					return true
+				})
+				if stacks > 0 {
+					keepers[self] = true
+				}
+				if recovers > 0 {
+					sites = append(sites, site{
+						name: fn.Name.Name,
+						position: strings.TrimPrefix(
+							pkg.Fset.Position(fn.Pos()).String(), root+"/"),
+						callees: callees,
+						keeps:   keeps > 0,
+					})
+				}
+			}
+		}
+	}
+
+	var bare []string
+	seen := map[string]bool{}
+	for _, found := range sites {
+		if found.keeps {
+			continue
+		}
+		delegated := false
+		for _, callee := range found.callees {
+			if keepers[callee] {
+				delegated = true
+				break
+			}
+		}
+		if delegated {
+			continue
+		}
+		line := found.position + "  " + found.name
+		if !seen[line] {
+			seen[line] = true
+			bare = append(bare, line)
+		}
+	}
+
+	if len(bare) > 0 {
+		sort.Strings(bare)
+		t.Fatalf("these absorb a panic without re-raising it or keeping its stack:\n%s",
+			strings.Join(bare, "\n"))
+	}
+}
