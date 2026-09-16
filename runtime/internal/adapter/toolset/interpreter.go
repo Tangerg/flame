@@ -2,6 +2,7 @@ package toolset
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -98,7 +99,7 @@ func (i Interpreter) ProjectOutcome(
 	}
 	state, committed := current.State()
 	if !committed {
-		return nil, fmt.Errorf("toolset: successful Plan replacement left no committed state")
+		return nil, errors.New("toolset: successful Plan replacement left no committed state")
 	}
 	return runs.PlanUpdated{State: state}, nil
 }

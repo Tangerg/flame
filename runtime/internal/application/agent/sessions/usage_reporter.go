@@ -216,7 +216,7 @@ func (u *usageAccumulator) addRun(usage accounting.Totals) error {
 		return err
 	}
 	if u.runs == math.MaxInt {
-		return fmt.Errorf("usage Run count overflows")
+		return errors.New("usage Run count overflows")
 	}
 	next := *u
 	fields := []struct {

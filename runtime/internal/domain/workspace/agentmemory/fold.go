@@ -1,6 +1,9 @@
 package agentmemory
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // FoldPlan is the decision [Fold] reaches for one curation pass: the curated
 // contents to add as new pending proposals, and the ids of stale pending
@@ -42,7 +45,7 @@ func Fold(existing []Item, contents []string) (FoldPlan, error) {
 			return FoldPlan{}, fmt.Errorf("agentmemory: invalid existing fold item content: %w", err)
 		}
 		if content != item.Content {
-			return FoldPlan{}, fmt.Errorf("agentmemory: existing fold item content is not canonical")
+			return FoldPlan{}, errors.New("agentmemory: existing fold item content is not canonical")
 		}
 		if err := item.Status.Validate(); err != nil {
 			return FoldPlan{}, fmt.Errorf("agentmemory: invalid existing fold item status: %w", err)

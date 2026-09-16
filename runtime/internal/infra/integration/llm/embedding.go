@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/scope/core/embedding"
@@ -29,7 +30,7 @@ func (p embeddingProviderProfile) validate() error {
 		return err
 	}
 	if p.build == nil {
-		return fmt.Errorf("builder is nil")
+		return errors.New("builder is nil")
 	}
 	return nil
 }

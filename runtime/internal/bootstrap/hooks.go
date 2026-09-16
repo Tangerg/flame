@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -18,7 +19,7 @@ type HookTrust interface {
 // user-home snapshot and the durable project trust policy.
 func NewHookResolver(userHome string, trust HookTrust) (*adapterhooks.Resolver, error) {
 	if dependency.Missing(trust) {
-		return nil, fmt.Errorf("hooks: trust store is required")
+		return nil, errors.New("hooks: trust store is required")
 	}
 	return adapterhooks.NewResolver(userHome,
 		func(ctx context.Context, projectRoot string) (bool, error) {

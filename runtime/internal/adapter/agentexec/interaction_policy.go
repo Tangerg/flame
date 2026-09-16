@@ -1,6 +1,7 @@
 package agentexec
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
@@ -86,7 +87,7 @@ func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactio
 		return interactionExecutionPolicy{}, err
 	}
 	if toolResultOffload.enabled && dependency.Missing(config.ToolResultStore) {
-		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: enabled Tool-result offload requires a store")
+		return interactionExecutionPolicy{}, errors.New("agentexec: enabled Tool-result offload requires a store")
 	}
 	return interactionExecutionPolicy{
 		defaultMaxModelCalls:      maxModelCalls,
@@ -117,7 +118,7 @@ func effectiveToolBudget(config InteractionExecutorConfig) (agent.Budget, error)
 	}
 	budget := agent.Budget{Steps: steps, Effects: effects, Signals: signals}
 	if !budget.Valid() {
-		return agent.Budget{}, fmt.Errorf("Tool budget is invalid")
+		return agent.Budget{}, errors.New("Tool budget is invalid")
 	}
 	return budget, nil
 }

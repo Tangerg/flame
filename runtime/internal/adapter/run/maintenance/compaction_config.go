@@ -1,6 +1,7 @@
 package maintenance
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -50,7 +51,7 @@ func newCompactionPolicy(values CompactionPolicyValues) (compactionPolicy, error
 	policy := compactionPolicy{}
 	if values.MaxTokens != nil {
 		if *values.MaxTokens <= 0 {
-			return compactionPolicy{}, fmt.Errorf("compaction policy: maximum tokens must be positive")
+			return compactionPolicy{}, errors.New("compaction policy: maximum tokens must be positive")
 		}
 		policy.maxTokens = *values.MaxTokens
 		policy.maxTokensExplicit = true

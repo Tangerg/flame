@@ -250,7 +250,7 @@ func validateRuntimeSearchText(value string, limit int, field string) error {
 
 func runtimeSearchPath(root, requested string) (string, error) {
 	if len(requested) > maxRuntimeSearchPathBytes || !utf8.ValidString(requested) || strings.ContainsRune(requested, 0) {
-		return "", fmt.Errorf("toolset: invalid search path")
+		return "", errors.New("toolset: invalid search path")
 	}
 	if root == "" || !filepath.IsAbs(root) {
 		return "", errors.New("toolset: search root must be absolute")

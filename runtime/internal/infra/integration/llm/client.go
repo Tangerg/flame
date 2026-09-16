@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -44,14 +45,14 @@ type ClientCredential struct {
 
 func NewAPIKeyCredential(apiKey string) (ClientCredential, error) {
 	if strings.TrimSpace(apiKey) == "" {
-		return ClientCredential{}, fmt.Errorf("llm: API key is blank")
+		return ClientCredential{}, errors.New("llm: API key is blank")
 	}
 	return ClientCredential{apiKey: apiKey}, nil
 }
 
 func (c ClientCredential) validate() error {
 	if strings.TrimSpace(c.apiKey) == "" {
-		return fmt.Errorf("API key is blank")
+		return errors.New("API key is blank")
 	}
 	return nil
 }
@@ -85,7 +86,7 @@ func (e clientEndpoint) validate() error {
 	switch e.kind {
 	case clientEndpointAbsent:
 		if e.baseURL != "" {
-			return fmt.Errorf("absent endpoint carries a base URL")
+			return errors.New("absent endpoint carries a base URL")
 		}
 	case clientEndpointConfigured:
 		if err := validateCatalogBaseURL(e.baseURL); err != nil {
@@ -156,7 +157,7 @@ func (s ClientSpec) validate() error {
 		return fmt.Errorf("llm: endpoint: %w", err)
 	}
 	if s.httpClient == nil || s.httpClient.Transport == nil {
-		return fmt.Errorf("llm: bounded HTTP client is required")
+		return errors.New("llm: bounded HTTP client is required")
 	}
 	return nil
 }

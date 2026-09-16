@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"slices"
@@ -47,20 +48,20 @@ func (p modelPolicy) validate() error {
 	switch p.source {
 	case modelSourceBundled:
 		if p.defaultModel == "" {
-			return fmt.Errorf("bundled model policy requires a default model")
+			return errors.New("bundled model policy requires a default model")
 		}
 		if p.listProtocol != 0 {
-			return fmt.Errorf("bundled model policy cannot carry a listing protocol")
+			return errors.New("bundled model policy cannot carry a listing protocol")
 		}
 		if _, err := modelref.NewModelIdentity(p.defaultModel); err != nil {
 			return fmt.Errorf("bundled model policy model identity: %w", err)
 		}
 	case modelSourceEndpoint:
 		if p.defaultModel != "" {
-			return fmt.Errorf("endpoint model policy cannot carry a bundled default")
+			return errors.New("endpoint model policy cannot carry a bundled default")
 		}
 		if p.listProtocol != modelListProtocolOpenAI && p.listProtocol != modelListProtocolAnthropic {
-			return fmt.Errorf("endpoint model policy requires a listing protocol")
+			return errors.New("endpoint model policy requires a listing protocol")
 		}
 	default:
 		return fmt.Errorf("unknown model source %d", p.source)
@@ -81,7 +82,7 @@ func (p modelPolicy) discoveredAtEndpoint() bool {
 
 func (p modelPolicy) list(ctx context.Context, baseURL, apiKey string) ([]string, error) {
 	if !p.discoveredAtEndpoint() {
-		return nil, fmt.Errorf("bundled model policy does not support remote listing")
+		return nil, errors.New("bundled model policy does not support remote listing")
 	}
 	return listRemoteModels(ctx, baseURL, apiKey, p.listProtocol)
 }
@@ -126,7 +127,7 @@ func (p endpointPolicy) resolve(configured clientEndpoint) (clientEndpoint, erro
 	case endpointOwnedByAdapter:
 		return noClientEndpoint(), nil
 	case endpointMustBeConfigured:
-		return clientEndpoint{}, fmt.Errorf("a base URL must be configured")
+		return clientEndpoint{}, errors.New("a base URL must be configured")
 	default:
 		return clientEndpoint{}, fmt.Errorf("unknown endpoint policy %d", p.kind)
 	}
@@ -134,17 +135,17 @@ func (p endpointPolicy) resolve(configured clientEndpoint) (clientEndpoint, erro
 
 func validateCatalogBaseURL(raw string) error {
 	if strings.TrimSpace(raw) == "" || raw != strings.TrimSpace(raw) {
-		return fmt.Errorf("URL must be non-blank and canonical")
+		return errors.New("URL must be non-blank and canonical")
 	}
 	parsed, err := url.Parse(raw)
 	if err != nil {
 		return err
 	}
 	if (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		return fmt.Errorf("URL must use http or https and include a host")
+		return errors.New("URL must use http or https and include a host")
 	}
 	if parsed.User != nil || parsed.Fragment != "" {
-		return fmt.Errorf("URL cannot contain user info or a fragment")
+		return errors.New("URL cannot contain user info or a fragment")
 	}
 	return nil
 }
@@ -159,7 +160,7 @@ func requiredCredential(environment string) credentialPolicy {
 
 func (p credentialPolicy) validate() error {
 	if p.environment == "" {
-		return fmt.Errorf("credential environment variable is empty")
+		return errors.New("credential environment variable is empty")
 	}
 	for index, character := range p.environment {
 		if character == '_' || unicode.IsUpper(character) || (index > 0 && unicode.IsDigit(character)) {
@@ -218,10 +219,10 @@ func (p providerProfile) validate() error {
 		return fmt.Errorf("chat models: %w", err)
 	}
 	if p.chatModels.discoveredAtEndpoint() && p.endpoint.kind == endpointOwnedByAdapter {
-		return fmt.Errorf("endpoint-discovered models require a resolvable endpoint policy")
+		return errors.New("endpoint-discovered models require a resolvable endpoint policy")
 	}
 	if p.chatBuilder == nil {
-		return fmt.Errorf("chat builder is nil")
+		return errors.New("chat builder is nil")
 	}
 	if p.embedding != nil {
 		if err := p.embedding.validate(); err != nil {

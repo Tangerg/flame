@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -47,7 +48,7 @@ func decodeModelInvocationUsage(encoded string) (*accounting.TokenUsage, error) 
 		return nil, fmt.Errorf("sqlite: decode model invocation usage: %w", err)
 	}
 	if row == nil || row.InputTokens == nil || row.OutputTokens == nil || row.CacheReadTokens == nil || row.CacheWriteTokens == nil || row.ReasoningTokens == nil {
-		return nil, fmt.Errorf("sqlite: model invocation usage requires all token counts")
+		return nil, errors.New("sqlite: model invocation usage requires all token counts")
 	}
 	usage := &accounting.TokenUsage{PromptTokens: *row.InputTokens, CompletionTokens: *row.OutputTokens, CacheReadTokens: *row.CacheReadTokens, CacheWriteTokens: *row.CacheWriteTokens, ReasoningTokens: *row.ReasoningTokens}
 	if err := usage.Validate(); err != nil {

@@ -94,13 +94,13 @@ func (e Entry) Validate() error {
 		return err
 	}
 	if strings.TrimSpace(e.Path) == "" {
-		return fmt.Errorf("knowledge: entry path is required")
+		return errors.New("knowledge: entry path is required")
 	}
 	if err := ValidateDocument(e.Content); err != nil {
 		return err
 	}
 	if strings.TrimSpace(e.Revision) == "" {
-		return fmt.Errorf("knowledge: entry revision is required")
+		return errors.New("knowledge: entry revision is required")
 	}
 	return nil
 }

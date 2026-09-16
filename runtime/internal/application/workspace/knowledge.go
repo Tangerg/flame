@@ -140,7 +140,7 @@ func (k *Knowledge) update(ctx context.Context, root string, replacement knowled
 		return knowledge.Entry{}, err
 	}
 	if entry.Content != replacement.Content() {
-		return knowledge.Entry{}, fmt.Errorf("workspace: knowledge update did not acknowledge its content")
+		return knowledge.Entry{}, errors.New("workspace: knowledge update did not acknowledge its content")
 	}
 	k.observations.Accept(AuthoredChange{
 		Resource: AuthoredKnowledge, Identities: []string{entry.Path},

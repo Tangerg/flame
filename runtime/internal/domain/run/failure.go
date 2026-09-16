@@ -64,10 +64,10 @@ func (f Failure) Validate() error {
 		return fmt.Errorf("run: unknown failure kind %q", f.Kind)
 	}
 	if f.RetryAfter < 0 {
-		return fmt.Errorf("run: failure retry delay must not be negative")
+		return errors.New("run: failure retry delay must not be negative")
 	}
 	if f.RetryAfter > MaximumRetryAfter {
-		return fmt.Errorf("run: failure retry delay exceeds the representable whole-second range")
+		return errors.New("run: failure retry delay exceeds the representable whole-second range")
 	}
 	if f.RetryAfter > 0 && !f.Kind.AllowsRetryAfter() {
 		return fmt.Errorf("run: failure kind %s cannot carry a retry delay", f.Kind)

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -234,7 +235,7 @@ func validateDetails(details *Details) error {
 		return nil
 	}
 	if !details.Reasoning && (len(details.ReasoningLevels) != 0 || details.ReasoningDefault != "") {
-		return fmt.Errorf("models: non-reasoning model carries reasoning identities")
+		return errors.New("models: non-reasoning model carries reasoning identities")
 	}
 	levels := make(map[string]struct{}, len(details.ReasoningLevels))
 	for _, level := range details.ReasoningLevels {

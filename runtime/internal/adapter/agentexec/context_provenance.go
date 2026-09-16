@@ -1,6 +1,7 @@
 package agentexec
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -79,14 +80,14 @@ func (c contextSources) replaceableSessionState() (contextSourceKind, bool, erro
 		return "", false, nil
 	}
 	if len(c) != 1 || c[0].Kind != stateKind {
-		return "", false, fmt.Errorf("agentexec: replaceable Session state must be an isolated source")
+		return "", false, errors.New("agentexec: replaceable Session state must be an isolated source")
 	}
 	return stateKind, true, nil
 }
 
 func (c contextSources) validate() error {
 	if len(c) == 0 {
-		return fmt.Errorf("agentexec: empty context source set")
+		return errors.New("agentexec: empty context source set")
 	}
 	for index, source := range c {
 		expectedPurpose := source.Kind.purpose()
