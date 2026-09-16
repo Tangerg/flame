@@ -62,7 +62,7 @@ const styles = stylex.create({
     height: "var(--density-row-height)",
     alignItems: "center",
     gap: "var(--density-row-gap)",
-    borderRadius: radius.button,
+    borderRadius: radius.row,
     borderWidth: 0,
     position: "relative",
     isolation: "isolate",
@@ -82,7 +82,7 @@ const styles = stylex.create({
     transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
   },
-  highlight: { borderRadius: radius.button },
+  highlight: { borderRadius: radius.row },
   glyph: { flexShrink: 0 },
   label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   page: { minHeight: 0, minWidth: 0, overflowY: "auto", backgroundColor: surface.canvas },
@@ -104,7 +104,7 @@ function RailTab({ item }: { item: VerticalTabItem }) {
       {...stylex.props(styles.tab, type.uiMd)}
     >
       {track?.hovered && <HoverHighlight item={track} styles={styles.highlight} />}
-      {item.icon && <Icon name={item.icon} size="md" {...stylex.props(styles.glyph)} />}
+      {item.icon && <Icon name={item.icon} size="sm" {...stylex.props(styles.glyph)} />}
       <span {...stylex.props(styles.label)}>{item.label}</span>
     </TabsPrimitive.Tab>
   );
