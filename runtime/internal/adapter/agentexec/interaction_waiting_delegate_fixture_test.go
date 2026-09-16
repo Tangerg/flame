@@ -116,7 +116,7 @@ func (w *waitingDelegateFixture) start(t *testing.T) runs.StartResult {
 
 func (w *waitingDelegateFixture) waitForBarrier(t *testing.T, timeout time.Duration) runs.TreeBarrierCommit {
 	t.Helper()
-	deadline := time.After(timeout)
+	deadline := time.After(waitBudget(timeout))
 	for {
 		w.projection.mu.Lock()
 		barriers := slices.Clone(w.projection.barriers)

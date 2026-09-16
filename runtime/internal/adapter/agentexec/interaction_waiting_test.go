@@ -367,7 +367,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 	}
 	select {
 	case <-toolStarted:
-	case <-time.After(time.Second):
+	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("approved Tool did not start")
 	}
 	if err := executor.RequestRootCancellation(t.Context(), ref, "operator canceled"); err != nil {
@@ -375,7 +375,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 	}
 	select {
 	case <-toolReturned:
-	case <-time.After(time.Second):
+	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("approved Tool context was not canceled")
 	}
 	observed := <-events
@@ -823,7 +823,7 @@ func TestInteractionExecutorCheckpointsWithoutReplayingUnknownEffect(t *testing.
 	}
 	select {
 	case <-unknownReady:
-	case <-time.After(time.Second):
+	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("unknown Effect was not observed")
 	}
 	process := session.state.processHandle()

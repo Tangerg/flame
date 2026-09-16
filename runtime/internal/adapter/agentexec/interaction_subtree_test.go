@@ -22,7 +22,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 		if len(events) == 0 {
 			t.Fatal("waiting Delegate produced no events")
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitBudget(3 * time.Second)):
 		t.Fatal("waiting Delegate did not park")
 	}
 	barrier := fixture.waitForBarrier(t, time.Second)
@@ -83,7 +83,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 	var observed []runs.ExecutorEvent
 	select {
 	case observed = <-resumedEvents:
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitBudget(3 * time.Second)):
 		t.Fatal("root did not finish after waiting Delegate cancellation")
 	}
 	assertCanceledDelegateIsNotReprojected(t, observed, targetMemberID)

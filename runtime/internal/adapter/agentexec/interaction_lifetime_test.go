@@ -28,7 +28,7 @@ func TestInteractionLifetimeRegistersReconcilersBeforeAwaiterRuns(t *testing.T) 
 
 	select {
 	case <-awaiterJoined:
-	case <-time.After(time.Second):
+	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("awaiter did not join the registered reconcilers")
 	}
 	for range 2 {

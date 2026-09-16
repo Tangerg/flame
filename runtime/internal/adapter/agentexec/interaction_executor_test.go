@@ -482,7 +482,7 @@ func TestInteractionExecutorBindsRunLifetimeToProcessOwner(t *testing.T) {
 		stopLifetime()
 		select {
 		case <-runContext.Done():
-		case <-time.After(time.Second):
+		case <-time.After(waitBudget(time.Second)):
 			t.Fatal("process lifetime cancellation did not reach the Run")
 		}
 	})

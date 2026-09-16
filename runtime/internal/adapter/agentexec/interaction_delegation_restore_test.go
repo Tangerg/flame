@@ -73,7 +73,7 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 	var observed []runs.ExecutorEvent
 	select {
 	case observed = <-eventsReady:
-	case <-time.After(2 * time.Second):
+	case <-time.After(waitBudget(2 * time.Second)):
 		t.Fatal("restored waiting Delegate did not finish")
 	}
 	if err := fixture.executor.Release(t.Context(), ref); err != nil {
@@ -94,7 +94,7 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 	fixture.shutdown(t)
 	select {
 	case <-initialEventsReady:
-	case <-time.After(time.Second):
+	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("initial waiting Delegate event stream did not close at shutdown")
 	}
 }

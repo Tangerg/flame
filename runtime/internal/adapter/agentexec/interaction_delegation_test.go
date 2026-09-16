@@ -303,7 +303,7 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 	go func() { eventsReady <- slices.Collect(started.Events) }()
 	select {
 	case <-model.childCallStarted:
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitBudget(3 * time.Second)):
 		t.Fatal("delegated child did not enter its model call")
 	}
 
@@ -320,12 +320,12 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 	}()
 	select {
 	case <-cancelAccepted:
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitBudget(3 * time.Second)):
 		t.Fatal("running Delegate cancellation was not accepted")
 	}
 	select {
 	case <-model.childCallReturned:
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitBudget(3 * time.Second)):
 		t.Fatal("running Delegate cancellation did not stop its in-flight model call")
 	}
 
@@ -337,7 +337,7 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 			t.Fatalf("Cancel running Delegate: %v", outcome.err)
 		}
 		canceledResult = outcome.value
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitBudget(3 * time.Second)):
 		t.Fatal("running Delegate cancellation did not settle")
 	}
 	assertRunningDelegateCancellationResult(t, canceledResult)
@@ -345,7 +345,7 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 	var events []runs.Event
 	select {
 	case events = <-eventsReady:
-	case <-time.After(3 * time.Second):
+	case <-time.After(waitBudget(3 * time.Second)):
 		t.Fatal("root did not settle after child cancellation")
 	}
 	select {

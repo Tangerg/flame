@@ -338,7 +338,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 	}
 	select {
 	case <-toolStarted:
-	case <-time.After(time.Second):
+	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("Tool did not start")
 	}
 	if err := executor.RequestRootCancellation(t.Context(), ref, "operator canceled"); err != nil {
@@ -346,13 +346,13 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 	}
 	select {
 	case <-toolReturned:
-	case <-time.After(time.Second):
+	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("Tool context was not canceled")
 	}
 	var events []runs.ExecutorEvent
 	select {
 	case events = <-eventsReady:
-	case <-time.After(time.Second):
+	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("canceled Interaction did not reach a terminal boundary")
 	}
 	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 0 {
@@ -409,7 +409,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightModel(t *testing
 			}
 			select {
 			case <-modelStarted:
-			case <-time.After(time.Second):
+			case <-time.After(waitBudget(time.Second)):
 				t.Fatal("model did not start")
 			}
 			if err := executor.RequestRootCancellation(t.Context(), ref, "operator canceled"); err != nil {
@@ -417,13 +417,13 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightModel(t *testing
 			}
 			select {
 			case <-modelReturned:
-			case <-time.After(time.Second):
+			case <-time.After(waitBudget(time.Second)):
 				t.Fatal("model context was not canceled")
 			}
 			var events []runs.ExecutorEvent
 			select {
 			case events = <-eventsReady:
-			case <-time.After(time.Second):
+			case <-time.After(waitBudget(time.Second)):
 				t.Fatal("canceled Interaction did not reach a terminal boundary")
 			}
 			if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 0 {
@@ -501,7 +501,7 @@ func TestInteractionExecutorCancellationWinsWhileModelStartCommitIsSettling(t *t
 		var events []runs.ExecutorEvent
 		select {
 		case events = <-eventsReady:
-		case <-time.After(time.Second):
+		case <-time.After(waitBudget(time.Second)):
 			t.Fatal("canceled pre-model boundary did not settle")
 		}
 		if modelCalls != 0 {
@@ -919,7 +919,7 @@ func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T
 	var events []runs.ExecutorEvent
 	select {
 	case events = <-eventsReady:
-	case <-time.After(time.Second):
+	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("periodic reconciliation did not report unknown Effect")
 	}
 	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
@@ -1179,7 +1179,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 	var events []runs.ExecutorEvent
 	select {
 	case events = <-eventsReady:
-	case <-time.After(time.Second):
+	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("Tool batch remained blocked on the sibling's canonical result receipt")
 	}
 	if externalCalls != 1 {
