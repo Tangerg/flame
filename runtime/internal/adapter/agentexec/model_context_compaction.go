@@ -98,118 +98,80 @@ type ModelContextCompaction struct {
 	preCompact    func(context.Context) (bool, error)
 }
 
+// ModelContextCompactionInput is the complete input one reduction request is
+// built from. It is a value rather than a parameter list because two of its
+// members are message slices of the same type that must not be transposable.
+type ModelContextCompactionInput struct {
+	SessionID    string
+	Selection    modelref.Selection
+	Instructions []corechat.Message
+	Candidate    []corechat.Message
+	Tools        []corechat.ToolDefinition
+	Options      corechat.Options
+	Calibration  ModelContextTokenCalibration
+	Counter      ModelContextInputTokenCounter
+	// ProtectedTail is how many trailing Candidate messages must survive verbatim.
+	ProtectedTail int
+	PreCompact    func(context.Context) (bool, error)
+}
+
 // NewDurableModelContextCompaction builds a request whose candidate begins
 // with the Runtime's current durable conversation. The concrete compactor must
 // prove that prefix against storage before it rewrites either representation.
-func NewDurableModelContextCompaction(
-	sessionID string,
-	selection modelref.Selection,
-	instructions []corechat.Message,
-	candidate []corechat.Message,
-	tools []corechat.ToolDefinition,
-	options corechat.Options,
-	calibration ModelContextTokenCalibration,
-	counter ModelContextInputTokenCounter,
-	protectedDurableTail int,
-	preCompact func(context.Context) (bool, error),
-) (ModelContextCompaction, error) {
-	return newModelContextCompaction(
-		modelContextDurable,
-		sessionID,
-		selection,
-		instructions,
-		candidate,
-		tools,
-		options,
-		calibration,
-		counter,
-		protectedDurableTail,
-		preCompact,
-	)
+func NewDurableModelContextCompaction(input ModelContextCompactionInput) (ModelContextCompaction, error) {
+	return newModelContextCompaction(modelContextDurable, input)
 }
 
 // NewTransientModelContextCompaction builds a request for an isolated child
 // Interaction whose complete candidate exists only in Strategy recovery state.
-func NewTransientModelContextCompaction(
-	sessionID string,
-	selection modelref.Selection,
-	instructions []corechat.Message,
-	candidate []corechat.Message,
-	tools []corechat.ToolDefinition,
-	options corechat.Options,
-	calibration ModelContextTokenCalibration,
-	counter ModelContextInputTokenCounter,
-	protectedTail int,
-	preCompact func(context.Context) (bool, error),
-) (ModelContextCompaction, error) {
-	return newModelContextCompaction(
-		modelContextTransient,
-		sessionID,
-		selection,
-		instructions,
-		candidate,
-		tools,
-		options,
-		calibration,
-		counter,
-		protectedTail,
-		preCompact,
-	)
+func NewTransientModelContextCompaction(input ModelContextCompactionInput) (ModelContextCompaction, error) {
+	return newModelContextCompaction(modelContextTransient, input)
 }
 
 func newModelContextCompaction(
 	persistence modelContextPersistence,
-	sessionID string,
-	selection modelref.Selection,
-	instructions []corechat.Message,
-	candidate []corechat.Message,
-	tools []corechat.ToolDefinition,
-	options corechat.Options,
-	calibration ModelContextTokenCalibration,
-	counter ModelContextInputTokenCounter,
-	protectedTail int,
-	preCompact func(context.Context) (bool, error),
+	input ModelContextCompactionInput,
 ) (ModelContextCompaction, error) {
 	if persistence != modelContextDurable && persistence != modelContextTransient {
 		return ModelContextCompaction{}, errInvalidModelContextCompaction
 	}
-	if err := resourceid.ValidateSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(input.SessionID); err != nil {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: owning %v",
 			errInvalidModelContextCompaction,
 			err,
 		)
 	}
-	if err := selection.ValidateExact(); err != nil {
+	if err := input.Selection.ValidateExact(); err != nil {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: %w",
 			errInvalidModelContextCompaction,
 			err,
 		)
 	}
-	if len(candidate) == 0 {
+	if len(input.Candidate) == 0 {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: candidate conversation is empty",
 			errInvalidModelContextCompaction,
 		)
 	}
-	if protectedTail < 0 || protectedTail > len(candidate) {
+	if input.ProtectedTail < 0 || input.ProtectedTail > len(input.Candidate) {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: protected tail %d is outside [0,%d]",
 			errInvalidModelContextCompaction,
-			protectedTail,
-			len(candidate),
+			input.ProtectedTail,
+			len(input.Candidate),
 		)
 	}
-	for index := range instructions {
-		if instructions[index].Role != corechat.RoleSystem {
+	for index := range input.Instructions {
+		if input.Instructions[index].Role != corechat.RoleSystem {
 			return ModelContextCompaction{}, fmt.Errorf(
 				"%w: instruction %d is not a System message",
 				errInvalidModelContextCompaction,
 				index,
 			)
 		}
-		if err := instructions[index].Validate(); err != nil {
+		if err := input.Instructions[index].Validate(); err != nil {
 			return ModelContextCompaction{}, fmt.Errorf(
 				"%w: instruction %d: %w",
 				errInvalidModelContextCompaction,
@@ -218,8 +180,8 @@ func newModelContextCompaction(
 			)
 		}
 	}
-	for index := range candidate {
-		if err := candidate[index].Validate(); err != nil {
+	for index := range input.Candidate {
+		if err := input.Candidate[index].Validate(); err != nil {
 			return ModelContextCompaction{}, fmt.Errorf(
 				"%w: candidate message %d: %w",
 				errInvalidModelContextCompaction,
@@ -228,8 +190,8 @@ func newModelContextCompaction(
 			)
 		}
 	}
-	for index := range tools {
-		if err := tools[index].Validate(); err != nil {
+	for index := range input.Tools {
+		if err := input.Tools[index].Validate(); err != nil {
 			return ModelContextCompaction{}, fmt.Errorf(
 				"%w: Tool definition %d: %w",
 				errInvalidModelContextCompaction,
@@ -238,45 +200,45 @@ func newModelContextCompaction(
 			)
 		}
 	}
-	if err := options.Validate(); err != nil {
+	if err := input.Options.Validate(); err != nil {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: model options: %w",
 			errInvalidModelContextCompaction,
 			err,
 		)
 	}
-	if err := validateModelOutputReservation(selection, &options); err != nil {
+	if err := validateModelOutputReservation(input.Selection, &input.Options); err != nil {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: model output reservation: %w",
 			errInvalidModelContextCompaction,
 			err,
 		)
 	}
-	if err := calibration.Validate(); err != nil {
+	if err := input.Calibration.Validate(); err != nil {
 		return ModelContextCompaction{}, err
 	}
-	if counter != nil && dependency.Missing(counter) {
+	if input.Counter != nil && dependency.Missing(input.Counter) {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: input token counter is nil",
 			errInvalidModelContextCompaction,
 		)
 	}
-	frozenTools := make([]corechat.ToolDefinition, len(tools))
-	for index := range tools {
-		frozenTools[index] = tools[index].Clone()
+	frozenTools := make([]corechat.ToolDefinition, len(input.Tools))
+	for index := range input.Tools {
+		frozenTools[index] = input.Tools[index].Clone()
 	}
 	return ModelContextCompaction{
 		persistence:   persistence,
-		sessionID:     sessionID,
-		selection:     selection,
-		instructions:  cloneChatMessages(instructions),
-		candidate:     cloneChatMessages(candidate),
+		sessionID:     input.SessionID,
+		selection:     input.Selection,
+		instructions:  cloneChatMessages(input.Instructions),
+		candidate:     cloneChatMessages(input.Candidate),
 		tools:         frozenTools,
-		options:       options.Clone(),
-		calibration:   calibration,
-		counter:       counter,
-		protectedTail: protectedTail,
-		preCompact:    preCompact,
+		options:       input.Options.Clone(),
+		calibration:   input.Calibration,
+		counter:       input.Counter,
+		protectedTail: input.ProtectedTail,
+		preCompact:    input.PreCompact,
 	}, nil
 }
 

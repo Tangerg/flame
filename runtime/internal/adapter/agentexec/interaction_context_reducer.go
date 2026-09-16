@@ -141,6 +141,17 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	}
 	calibration := i.session.accounting.modelContextCalibration(invocation)
 
+	input := ModelContextCompactionInput{
+		SessionID:    i.start.SessionID,
+		Selection:    i.start.ModelSelection,
+		Instructions: fixedContext,
+		Candidate:    candidate,
+		Tools:        request.Tools,
+		Options:      request.Options,
+		Calibration:  calibration,
+		Counter:      i.counter,
+		PreCompact:   preCompact,
+	}
 	var (
 		compaction ModelContextCompaction
 		buildErr   error
@@ -153,18 +164,8 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		if hasPendingContinuation {
 			protectedTail = max(protectedTail, trailingUserMessageCount(candidate))
 		}
-		compaction, buildErr = NewDurableModelContextCompaction(
-			i.start.SessionID,
-			i.start.ModelSelection,
-			fixedContext,
-			candidate,
-			request.Tools,
-			request.Options,
-			calibration,
-			i.counter,
-			protectedTail,
-			preCompact,
-		)
+		input.ProtectedTail = protectedTail
+		compaction, buildErr = NewDurableModelContextCompaction(input)
 	} else {
 		protectedTail := 0
 		if invocation.ModelCallSequence() == 1 {
@@ -179,18 +180,8 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 				)
 			}
 		}
-		compaction, buildErr = NewTransientModelContextCompaction(
-			i.start.SessionID,
-			i.start.ModelSelection,
-			fixedContext,
-			candidate,
-			request.Tools,
-			request.Options,
-			calibration,
-			i.counter,
-			protectedTail,
-			preCompact,
-		)
+		input.ProtectedTail = protectedTail
+		compaction, buildErr = NewTransientModelContextCompaction(input)
 	}
 	if buildErr != nil {
 		return nil, buildErr

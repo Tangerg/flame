@@ -224,21 +224,18 @@ func TestModelContextCompactionCountsMediaButDoesNotCompactBelowProviderThreshol
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := agentexec.NewDurableModelContextCompaction(
-		sessionID,
-		selection,
-		[]chat.Message{chat.NewSystemMessage("frozen instructions")},
-		history,
-		nil,
-		chat.Options{},
-		agentexec.ModelContextTokenCalibration{},
-		counter,
-		0,
-		func(context.Context) (bool, error) {
+	request, err := agentexec.NewDurableModelContextCompaction(agentexec.ModelContextCompactionInput{
+		SessionID:     sessionID,
+		Selection:     selection,
+		Instructions:  []chat.Message{chat.NewSystemMessage("frozen instructions")},
+		Candidate:     history,
+		Counter:       counter,
+		ProtectedTail: 0,
+		PreCompact: func(context.Context) (bool, error) {
 			t.Fatal("PreCompact ran below the provider threshold")
 			return false, nil
 		},
-	)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,21 +279,18 @@ func TestModelContextCompactionCountFailureLeavesDurableStateUntouched(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := agentexec.NewDurableModelContextCompaction(
-		sessionID,
-		selection,
-		[]chat.Message{chat.NewSystemMessage("frozen instructions")},
-		history,
-		nil,
-		chat.Options{},
-		agentexec.ModelContextTokenCalibration{},
-		counter,
-		0,
-		func(context.Context) (bool, error) {
+	request, err := agentexec.NewDurableModelContextCompaction(agentexec.ModelContextCompactionInput{
+		SessionID:     sessionID,
+		Selection:     selection,
+		Instructions:  []chat.Message{chat.NewSystemMessage("frozen instructions")},
+		Candidate:     history,
+		Counter:       counter,
+		ProtectedTail: 0,
+		PreCompact: func(context.Context) (bool, error) {
 			t.Fatal("PreCompact ran after provider count failure")
 			return false, nil
 		},
-	)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -347,18 +341,14 @@ func TestModelContextCompactionCompactsMediaOnlyAtProviderThreshold(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := agentexec.NewDurableModelContextCompaction(
-		sessionID,
-		selection,
-		[]chat.Message{chat.NewSystemMessage("frozen instructions")},
-		history,
-		nil,
-		chat.Options{},
-		agentexec.ModelContextTokenCalibration{},
-		counter,
-		0,
-		nil,
-	)
+	request, err := agentexec.NewDurableModelContextCompaction(agentexec.ModelContextCompactionInput{
+		SessionID:     sessionID,
+		Selection:     selection,
+		Instructions:  []chat.Message{chat.NewSystemMessage("frozen instructions")},
+		Candidate:     history,
+		Counter:       counter,
+		ProtectedTail: 0,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -524,18 +514,14 @@ func TestModelContextCompactionUsesSelectedModelHardInputLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := agentexec.NewDurableModelContextCompaction(
-		sessionID,
-		selection,
-		instructions,
-		history,
-		nil,
-		chat.Options{},
-		agentexec.ModelContextTokenCalibration{},
-		nil,
-		0,
-		nil,
-	)
+	request, err := agentexec.NewDurableModelContextCompaction(agentexec.ModelContextCompactionInput{
+		SessionID:     sessionID,
+		Selection:     selection,
+		Instructions:  instructions,
+		Candidate:     history,
+		Counter:       nil,
+		ProtectedTail: 0,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -615,18 +601,13 @@ func TestModelContextCompactionReservesExplicitOutputWindow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := agentexec.NewDurableModelContextCompaction(
-		sessionID,
-		selection,
-		instructions,
-		history,
-		nil,
-		options,
-		agentexec.ModelContextTokenCalibration{},
-		nil,
-		0,
-		nil,
-	)
+	request, err := agentexec.NewDurableModelContextCompaction(agentexec.ModelContextCompactionInput{
+		SessionID:    sessionID,
+		Selection:    selection,
+		Instructions: instructions,
+		Candidate:    history,
+		Options:      options,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -929,18 +910,15 @@ func durableContextRequestWithCalibration(
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := agentexec.NewDurableModelContextCompaction(
-		sessionID,
-		selection,
-		[]chat.Message{chat.NewSystemMessage("frozen instructions")},
-		candidate,
-		nil,
-		chat.Options{},
-		calibration,
-		nil,
-		protectedTail,
-		preCompact,
-	)
+	request, err := agentexec.NewDurableModelContextCompaction(agentexec.ModelContextCompactionInput{
+		SessionID:     sessionID,
+		Selection:     selection,
+		Instructions:  []chat.Message{chat.NewSystemMessage("frozen instructions")},
+		Candidate:     candidate,
+		Calibration:   calibration,
+		ProtectedTail: protectedTail,
+		PreCompact:    preCompact,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
