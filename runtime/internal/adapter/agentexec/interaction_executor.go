@@ -48,12 +48,6 @@ type InteractionChatResolver interface {
 	ResolveChat(ctx context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error)
 }
 
-// RestoreScopeValidator verifies the host facts a durable executor checkpoint
-// cannot prove for itself. It must not mutate or recreate the workspace.
-type RestoreScopeValidator interface {
-	ValidateRestoreScope(ctx context.Context, scope runs.ExecutionScope) error
-}
-
 // InteractionExecutorConfig freezes the host-owned inputs shared by
 // Interaction root executions. Identity strings must change whenever the
 // executable Interaction adapter or behavior-affecting dispatcher configuration
@@ -65,7 +59,6 @@ type InteractionExecutorConfig struct {
 	Lifetime                  context.Context
 	BuildID                   string
 	ChatResolver              InteractionChatResolver
-	RestoreScopeValidator     RestoreScopeValidator
 	ImplementationIdentity    string
 	ConfigurationIdentity     string
 	DefaultMaxModelCalls      *uint32
@@ -122,7 +115,6 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		value any
 	}{
 		{name: "chat resolver", value: config.ChatResolver},
-		{name: "restore-scope validator", value: config.RestoreScopeValidator},
 		{name: "Tool resolver", value: config.ToolResolver},
 		{name: "Tool interpreter", value: config.ToolInterpreter},
 		{name: "Tool presenter", value: config.ToolPresenter},
@@ -584,7 +576,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		return err
 	}
 	defer finishAssembly()
-	if err := i.validateRestoreScope(ctx, continuation.Checkpoint.Scope); err != nil {
+	if err := i.validateRestoreScope(continuation.Checkpoint.Scope); err != nil {
 		return err
 	}
 	checkpoint, err := decodeExecutorCheckpoint(continuation.Checkpoint)
@@ -651,18 +643,9 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	return nil
 }
 
-func (i *InteractionExecutor) validateRestoreScope(
-	ctx context.Context,
-	scope runs.ExecutionScope,
-) error {
+func (i *InteractionExecutor) validateRestoreScope(scope runs.ExecutionScope) error {
 	if scope.Isolated {
 		return fmt.Errorf("%w: isolated workspaces are not restorable after executor loss", runs.ErrExecutorStateLost)
-	}
-	if i.config.RestoreScopeValidator != nil {
-		if err := i.config.RestoreScopeValidator.ValidateRestoreScope(ctx, scope); err != nil {
-			return fmt.Errorf("%w: validate restore scope: %v", runs.ErrExecutorStateLost, err)
-		}
-		return nil
 	}
 	for _, path := range []string{scope.CWD, scope.WorkspaceCWD} {
 		if strings.TrimSpace(path) == "" {

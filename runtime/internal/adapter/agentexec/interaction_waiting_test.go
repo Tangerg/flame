@@ -723,25 +723,6 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 			t.Fatalf("StageContinuation error = %v, want ErrExecutorStateLost", err)
 		}
 	})
-	t.Run("isolated workspace cannot be overridden", func(t *testing.T) {
-		candidate := checkpoint.Clone()
-		candidate.Scope.Isolated = true
-		executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
-			return nil, errors.New("model must not be called while restoring")
-		}), InteractionExecutorConfig{
-			RestoreScopeValidator: restoreScopeValidatorFunc(func(context.Context, runs.ExecutionScope) error {
-				return nil
-			}),
-		})
-		_, err := executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
-			candidate,
-			"exec_restore",
-			run.Capabilities{},
-		))
-		if !errors.Is(err, runs.ErrExecutorStateLost) {
-			t.Fatalf("StageContinuation error = %v, want ErrExecutorStateLost", err)
-		}
-	})
 }
 
 func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *testing.T) {
@@ -961,15 +942,6 @@ type runtimeSteerModel struct {
 	calls   int
 	started chan struct{}
 	release chan struct{}
-}
-
-type restoreScopeValidatorFunc func(context.Context, runs.ExecutionScope) error
-
-func (r restoreScopeValidatorFunc) ValidateRestoreScope(
-	ctx context.Context,
-	scope runs.ExecutionScope,
-) error {
-	return r(ctx, scope)
 }
 
 func (r *runtimeSteerModel) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
