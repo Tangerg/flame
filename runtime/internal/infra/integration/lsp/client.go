@@ -28,9 +28,12 @@ type client struct {
 	closeOnce sync.Once
 	closeErr  error
 
-	mu    sync.Mutex
-	open  map[string]openDoc // uri → last synced version + content hash
-	diags map[string]diagSet // uri → latest pushed diagnostics
+	mu sync.Mutex
+	// synced counts syncs rather than time so eviction order cannot depend on a
+	// clock the runtime does not own.
+	synced uint64
+	open   map[string]openDoc // uri → last synced version + content hash
+	diags  map[string]diagSet // uri → latest pushed diagnostics
 	// diagnosticsErr carries the latest malformed publishDiagnostics
 	// notification until a valid notification proves the stream healthy again.
 	// The JSON-RPC handler cannot return notification errors to the server, so
@@ -44,6 +47,7 @@ type client struct {
 type openDoc struct {
 	version int
 	hash    [32]byte
+	synced  uint64
 }
 
 type diagSet struct {

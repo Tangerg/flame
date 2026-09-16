@@ -1,13 +1,19 @@
 package lsp
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/sourcegraph/jsonrpc2"
 )
 
 func TestEnsureOpenRejectsOversizedDocumentBeforeNotification(t *testing.T) {
@@ -67,5 +73,87 @@ func TestReadDocumentRejectsUnsupportedSources(t *testing.T) {
 		if _, err := readDocument(t.Context(), path); !errors.Is(err, ErrUnsupportedDocument) {
 			t.Fatalf("readDocument(%q) error = %v, want ErrUnsupportedDocument", path, err)
 		}
+	}
+}
+
+// TestEnsureOpenBoundsTheSynchronizedDocumentSet pins the resource limit on a
+// client that lives as long as the runtime: the least recently synced document
+// is closed rather than accumulated, and closing it releases the server's copy
+// too. Diagnostics for a document this client no longer synchronizes are
+// dropped, so the two maps stay bounded together.
+func TestEnsureOpenBoundsTheSynchronizedDocumentSet(t *testing.T) {
+	agent, server := net.Pipe()
+	t.Cleanup(func() { _ = agent.Close(); _ = server.Close() })
+
+	closed := make(chan string, maxOpenDocuments)
+	go func() {
+		reader := bufio.NewReader(server)
+		for {
+			var frame struct {
+				Method string `json:"method"`
+				Params struct {
+					TextDocument struct {
+						URI string `json:"uri"`
+					} `json:"textDocument"`
+				} `json:"params"`
+			}
+			if err := (lspObjectCodec{}).ReadObject(reader, &frame); err != nil {
+				return
+			}
+			if frame.Method == "textDocument/didClose" {
+				closed <- frame.Params.TextDocument.URI
+			}
+		}
+	}()
+
+	c := &client{
+		spec:    ServerSpec{LanguageID: "go"},
+		open:    map[string]openDoc{},
+		diags:   map[string]diagSet{},
+		updated: make(chan struct{}),
+	}
+	c.conn = jsonrpc2.NewConn(
+		t.Context(), jsonrpc2.NewBufferedStream(agent, lspObjectCodec{}), jsonrpc2.AsyncHandler(c),
+	)
+	t.Cleanup(func() { _ = c.conn.Close() })
+
+	directory := t.TempDir()
+	var first string
+	for index := range maxOpenDocuments + 1 {
+		path := filepath.Join(directory, fmt.Sprintf("file%03d.go", index))
+		if err := os.WriteFile(path, fmt.Appendf(nil, "package p // %d\n", index), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.ensureOpen(t.Context(), path); err != nil {
+			t.Fatalf("ensureOpen %s: %v", path, err)
+		}
+		if index == 0 {
+			first = pathToURI(path)
+		}
+	}
+
+	select {
+	case evicted := <-closed:
+		if evicted != first {
+			t.Fatalf("closed %q, want the least recently synced %q", evicted, first)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the synchronized set grew past its bound without closing anything")
+	}
+
+	c.mu.Lock()
+	open := len(c.open)
+	_, stillOpen := c.open[first]
+	c.mu.Unlock()
+	if open > maxOpenDocuments || stillOpen {
+		t.Fatalf("open documents = %d (evicted still present = %v)", open, stillOpen)
+	}
+
+	c.storeDiagnostics(publishDiagnosticsParams{URI: first})
+	c.mu.Lock()
+	_, kept := c.diags[first]
+	c.mu.Unlock()
+	if kept {
+		t.Fatal("kept diagnostics for a document the client no longer synchronizes")
 	}
 }

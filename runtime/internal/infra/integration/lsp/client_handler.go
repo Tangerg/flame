@@ -89,7 +89,13 @@ func replyInvalidParams(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 
 func (c *client) storeDiagnostics(p publishDiagnosticsParams) {
 	c.mu.Lock()
-	c.diags[p.URI] = diagSet{version: p.Version, diagnostics: slices.Clone(p.Diagnostics)}
+	// A server may publish for a document this client has closed, including the
+	// empty list that clears it. Retaining diagnostics for a document we no
+	// longer synchronize would keep a claim nothing can refresh, and would
+	// reintroduce the growth closing the document was meant to bound.
+	if _, isOpen := c.open[p.URI]; isOpen {
+		c.diags[p.URI] = diagSet{version: p.Version, diagnostics: slices.Clone(p.Diagnostics)}
+	}
 	c.diagnosticsErr = nil
 	c.signalDiagnosticsUpdateLocked()
 	c.mu.Unlock()

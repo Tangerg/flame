@@ -136,6 +136,10 @@ type contentChange struct {
 	Text string `json:"text"` // full-document sync (the only sync kind we use)
 }
 
+type didCloseParams struct {
+	TextDocument textDocumentIdentifier `json:"textDocument"`
+}
+
 type didChangeParams struct {
 	TextDocument   versionedTextDocumentIdentifier `json:"textDocument"`
 	ContentChanges []contentChange                 `json:"contentChanges"`

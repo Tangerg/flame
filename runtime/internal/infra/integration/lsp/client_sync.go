@@ -15,6 +15,13 @@ import (
 
 const maxDocumentBytes int64 = 8 << 20
 
+// maxOpenDocuments bounds the synchronized document set. A client is opened once
+// per language server and lives as long as the runtime, so without a bound both
+// this map and the server's own copy of every file the agent ever inspected grow
+// for the life of the process. Evicting the least recently synced document costs
+// one didOpen when it is next touched.
+const maxOpenDocuments = 128
+
 // ErrDocumentTooLarge reports a workspace document that cannot be admitted to
 // the in-memory language-server synchronization boundary.
 var ErrDocumentTooLarge = errors.New("lsp: document exceeds the 8 MiB limit")
@@ -67,8 +74,34 @@ func (c *client) ensureOpen(ctx context.Context, abs string) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("lsp: sync %s: %w", abs, err)
 	}
-	c.open[uri] = openDoc{version: version, hash: hash}
+	c.synced++
+	c.open[uri] = openDoc{version: version, hash: hash, synced: c.synced}
+	c.evictColdestDocumentLocked(ctx)
 	return version, nil
+}
+
+// evictColdestDocumentLocked keeps the synchronized set within
+// [maxOpenDocuments] by closing the least recently synced document. The didClose
+// releases the server's copy too, which is the larger of the two; a failed
+// notify leaves the document recorded so the next sync retries rather than
+// desynchronizing the two views.
+func (c *client) evictColdestDocumentLocked(ctx context.Context) {
+	if len(c.open) <= maxOpenDocuments {
+		return
+	}
+	coldest, coldestSynced := "", uint64(0)
+	for uri, doc := range c.open {
+		if coldest == "" || doc.synced < coldestSynced {
+			coldest, coldestSynced = uri, doc.synced
+		}
+	}
+	if err := c.conn.Notify(ctx, "textDocument/didClose", didCloseParams{
+		TextDocument: textDocumentIdentifier{URI: coldest},
+	}); err != nil {
+		return
+	}
+	delete(c.open, coldest)
+	delete(c.diags, coldest)
 }
 
 func readDocument(ctx context.Context, path string) (_ []byte, err error) {

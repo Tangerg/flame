@@ -57,7 +57,11 @@ func TestDecodeConfigurationItemCountRequiresTypedList(t *testing.T) {
 }
 
 func TestDiagnosticsProtocolErrorRemainsVisibleUntilValidPush(t *testing.T) {
-	client := &client{diags: make(map[string]diagSet), updated: make(chan struct{})}
+	client := &client{
+		open:    map[string]openDoc{"file:///main.go": {}},
+		diags:   make(map[string]diagSet),
+		updated: make(chan struct{}),
+	}
 	client.storeDiagnosticsError(errors.New("malformed notification"))
 
 	client.mu.Lock()
