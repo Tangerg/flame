@@ -36,6 +36,7 @@ const (
 	CreateSchedule      = "create_schedule"
 	DeleteSchedule      = "delete_schedule"
 	DelegateTask        = "delegate_task"
+	Edit                = "edit"
 	EnterPlanMode       = "enter_plan_mode"
 	ExitPlanMode        = "exit_plan_mode"
 	GetGoal             = "get_goal"

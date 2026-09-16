@@ -70,42 +70,58 @@ func TestPathLockUsesPhysicalIdentityForSymlinkAlias(t *testing.T) {
 	}
 }
 
-// TestAssembledFileToolStillReportsWhatItMutates pins the wrapping chain
+// TestAssembledMutationToolsStillReportWhatTheyMutate pins the wrapping chain
 // through the real stack. A guarded mutation tool is six wrappers deep, and
 // everything above it asks the OUTERMOST tool what the call will touch — the
 // approval gate renders that blast radius, and the tool-end event reports the
 // paths that changed. A layer that stops being a WrappingTool ends the chain and
 // silently answers "nothing", which reads as a safe tool rather than a broken
 // lookup.
-func TestAssembledFileToolStillReportsWhatItMutates(t *testing.T) {
+//
+// Both mutation tools are pinned because they learn the answer differently:
+// apply_patch declares it from the patch text, edit leaves it to the path
+// argument. The guards must not care which.
+func TestAssembledMutationToolsStillReportWhatTheyMutate(t *testing.T) {
 	cwd := t.TempDir()
 	target := filepath.Join(cwd, "real.txt")
 	if err := os.WriteFile(target, []byte("content"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	assembled := guardedMutation(
-		mustApplyPatchTool(t, mustLocalExecutor(t, cwd)),
-		nil,
-		newReadTracker(),
-		newPathLocker(),
-		cwd,
-	)
-
-	reporter, ok, err := toolcontract.Capability[FileMutationReporter](assembled)
-	if err != nil || !ok {
-		t.Fatal("the assembled mutation tool no longer reports its file mutations")
-	}
-	paths, err := reporter.MutationPaths(mustTestInvocation(
-		t,
-		assembled,
-		patchArguments(t, "real.txt", "content", "next"),
-	).Arguments())
+	// The composition the resolver exposes, not a hand-assembled stand-in.
+	tools, err := buildCWDTools(cwd, nil, newReadTracker(), newPathLocker())
 	if err != nil {
-		t.Fatalf("MutationPaths: %v", err)
+		t.Fatal(err)
 	}
-	if len(paths) != 1 || filepath.Base(paths[0]) != "real.txt" {
-		t.Fatalf("MutationPaths = %v, want the patched file", paths)
+
+	for _, testCase := range []struct {
+		name      string
+		mutation  toolcontract.Tool
+		arguments string
+	}{
+		{"apply_patch", tools.applyPatch, patchArguments(t, "real.txt", "content", "next")},
+		{"edit", tools.edit, editArguments(t, "real.txt", "content", "next")},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			paths, err := mutationPaths(testCase.mutation, mustTestInvocation(t, testCase.mutation, testCase.arguments))
+			if err != nil {
+				t.Fatalf("mutationPaths: %v", err)
+			}
+			if len(paths) != 1 || filepath.Base(paths[0]) != "real.txt" {
+				t.Fatalf("mutationPaths = %v, want the file the call changes", paths)
+			}
+		})
 	}
+}
+
+func editArguments(t *testing.T, path, oldString, newString string) string {
+	t.Helper()
+	encoded, err := json.Marshal(map[string]any{
+		"path": path, "old_string": oldString, "new_string": newString,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(encoded)
 }
 
 func readArguments(path string) string {

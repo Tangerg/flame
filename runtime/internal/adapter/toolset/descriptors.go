@@ -60,6 +60,7 @@ func descriptors() iter.Seq2[string, builtInDescriptor] {
 			{tool.GetGoal, builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Inspecting the autonomous Goal"}},
 			{tool.ReportGoalOutcome, builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reporting a Goal outcome"}},
 			{tool.ProposeSkill, builtInDescriptor{safety: tool.SafetyClassSafe, activity: proposeSkillActivity}},
+			{tool.Edit, builtInDescriptor{safety: tool.SafetyClassWrite, activityText: "Editing file"}},
 			{tool.ApplyPatch, builtInDescriptor{safety: tool.SafetyClassWrite, activityText: "Applying a patch", result: patchResultContract()}},
 			{tool.CreateSchedule, builtInDescriptor{safety: tool.SafetyClassWrite, activity: createScheduleActivity}},
 			{tool.DeleteSchedule, builtInDescriptor{safety: tool.SafetyClassWrite, activityText: "Deleting a schedule"}},

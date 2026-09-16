@@ -54,7 +54,7 @@ func (Interpreter) ApprovalSubject(name string, arguments tool.Arguments) (strin
 	switch name {
 	case tool.Shell:
 		field = "command"
-	case tool.Read:
+	case tool.Read, tool.Edit:
 		field = "path"
 	default:
 		return "", nil

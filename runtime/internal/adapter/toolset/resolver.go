@@ -319,6 +319,7 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (manifes
 	}
 	var tools manifestBuilder
 	tools.direct(localTools.readSearch...)
+	tools.direct(localTools.edit)
 	tools.direct(localTools.applyPatch)
 	tools.deferTools(r.online...)
 	mcpTools := r.mcpTools()

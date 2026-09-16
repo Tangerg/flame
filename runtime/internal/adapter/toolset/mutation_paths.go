@@ -79,6 +79,10 @@ func (m applyPatchTool) Definition() chat.ToolDefinition {
 	definition := m.Tool.Definition()
 	definition.Description += `
 
+Prefer edit when the change is in one place: it takes the text to replace and
+needs no line numbers and no counts. Reach for apply_patch when one call has to
+change several files or several places at once, or create or delete a file.
+
 The patch argument is plain Git unified diff text, without Markdown fences or
 *** Begin Patch / *** Update File markers. Paths are relative to the working
 directory. Every hunk needs @@ -oldStart,oldCount +newStart,newCount @@: count

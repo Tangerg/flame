@@ -16,6 +16,7 @@ import (
 // question it answers has to be asked of every tool the Runtime exposes.
 var rejectedArguments = map[string]string{
 	domaintool.ApplyPatch:        `{"patch":"this is not a unified diff"}`,
+	domaintool.Edit:              `{"path":"seed.txt","old_string":"absent from the file","new_string":"x"}`,
 	domaintool.Glob:              `{"pattern":"["}`,
 	domaintool.Grep:              `{"pattern":"("}`,
 	domaintool.LSP:               `{"operation":"definition"}`,

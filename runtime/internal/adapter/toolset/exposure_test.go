@@ -20,7 +20,11 @@ func newTestCodeIntel(t *testing.T) *codeintel.Analyzer {
 	return analyzer
 }
 
-func TestResolverRegistersExactlyOneMutationVocabulary(t *testing.T) {
+// The Runtime exposes two ways to change a file and no more. They are one
+// vocabulary: same guard stack, same read-before-write stamp, and a path the
+// guards can always name. edit carries that path as an argument; apply_patch
+// declares it from the patch text and batches several at once.
+func TestResolverRegistersTheMutationVocabulary(t *testing.T) {
 	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), DefaultCWD: t.TempDir(), UserHome: t.TempDir()})
 	if err != nil {
 		t.Fatalf("Build: %v", err)
@@ -31,8 +35,13 @@ func TestResolverRegistersExactlyOneMutationVocabulary(t *testing.T) {
 		t.Fatalf("Manifest: %v", err)
 	}
 	names := definitionNames(manifestTools(manifest))
-	if !names[domaintool.ApplyPatch] || names["edit"] || names["write"] {
-		t.Fatalf("mutation vocabulary = %v, want apply_patch only", names)
+	if !names[domaintool.Edit] || !names[domaintool.ApplyPatch] {
+		t.Fatalf("mutation vocabulary = %v, want edit and apply_patch", names)
+	}
+	// write stays out: apply_patch already creates and deletes files, so a third
+	// way to change one would be a second vocabulary for the same fact.
+	if names["write"] {
+		t.Fatalf("mutation vocabulary = %v, want no whole-file write", names)
 	}
 }
 
