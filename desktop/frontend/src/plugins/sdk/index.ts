@@ -119,8 +119,6 @@ export type {
   SlashCommandRunCtx,
   SlashCommandSpec,
   ColorThemeSpec,
-  NeutralStep,
-  ThemeNeutralSteps,
   AccentSpec,
   VisualStyleSpec,
   ToolActionSpec,

@@ -4,8 +4,6 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
 import type { Paired } from "@/lib/persistedStore";
 import {
-  ACCENT_TINTS,
-  DEFAULT_ACCENT_TINT,
   DEFAULT_CONTRAST,
   DEFAULT_UI_DENSITY,
   UI_DENSITY_MODES,
@@ -26,7 +24,6 @@ const appearancePersistSchema = z.object({
   accent: HEX_COLOUR,
   customTheme: z.object({ bg: HEX_COLOUR, fg: HEX_COLOUR }),
   contrast: z.number(),
-  accentTint: z.enum(ACCENT_TINTS),
   uiFont: z.string(),
   codeFont: z.string(),
   fontSize: z.number().nullable(),
@@ -48,7 +45,6 @@ export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>(
       accent: "#3574f0",
       customTheme: { bg: "#0f1117", fg: "#e6e8ee" },
       contrast: DEFAULT_CONTRAST,
-      accentTint: DEFAULT_ACCENT_TINT,
       uiFont: "",
       codeFont: "",
       fontSize: null,
@@ -62,7 +58,6 @@ export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>(
       setAccent: (accent) => set({ accent }),
       setCustomTheme: (patch) => set((s) => ({ customTheme: { ...s.customTheme, ...patch } })),
       setContrast: (contrast) => set({ contrast }),
-      setAccentTint: (accentTint) => set({ accentTint }),
       setUiFont: (uiFont) => set({ uiFont }),
       setCodeFont: (codeFont) => set({ codeFont }),
       setFontSize: (fontSize) => set({ fontSize }),

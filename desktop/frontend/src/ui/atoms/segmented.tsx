@@ -91,6 +91,7 @@ export function Segmented<T extends string | number>({
   const root = stylex.props(styles.root);
   return (
     <TabsPrimitive.Root
+      data-slot="segmented"
       value={String(value)}
       onValueChange={(v) => {
         const opt = options.find((o) => String(o.value) === v);

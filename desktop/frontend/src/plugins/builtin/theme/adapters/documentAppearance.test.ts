@@ -51,12 +51,7 @@ async function registerSchemePair(): Promise<void> {
   }, "test.schemes");
 }
 
-describe("neutral family following the live accent", () => {
-  function channelSpread(hex: string): number {
-    const channels = [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16));
-    return Math.max(...channels) - Math.min(...channels);
-  }
-
+describe("a theme's own neutrals are what paints", () => {
   const painted = (name: string) => document.documentElement.style.getPropertyValue(`--${name}`);
 
   function tinted(ctx: PluginContext) {
@@ -68,13 +63,6 @@ describe("neutral family following the live accent", () => {
         "color-accent": "#3574f0",
         "color-surface": "#2a2d32",
         "color-sunken": "#14181f",
-      },
-      neutralSteps: {
-        surface: { l: 29.6, c: 0.01 },
-        elevated: { l: 29.6, c: 0.01 },
-        sunken: { l: 20.9, c: 0.015 },
-        border: { l: 35.9, c: 0.0095 },
-        borderSoft: { l: 42.3, c: 0.0107 },
       },
     });
   }
@@ -89,26 +77,20 @@ describe("neutral family following the live accent", () => {
     expect(painted("color-sunken")).toBe("#14181f");
   });
 
-  it("goes grey for a grey accent instead of red", async () => {
-    await contributeForTest((ctx) => {
-      tinted(ctx);
-    });
-    useAppearanceStore.setState({ theme: "tinted", accent: "#000000" });
-
-    for (const name of ["color-surface", "color-sunken", "color-border"]) {
-      expect(channelSpread(painted(name))).toBeLessThanOrEqual(1);
-    }
-  });
-
-  it("turns the family when the accent changes", async () => {
+  it("holds them still through any accent", async () => {
     await contributeForTest((ctx) => {
       tinted(ctx);
     });
     useAppearanceStore.setState({ theme: "tinted", accent: "#3574f0" });
-    const blue = painted("color-sunken");
+    const declared = painted("color-sunken");
 
-    useAppearanceStore.setState({ accent: "#e8590c" });
-    expect(painted("color-sunken")).not.toBe(blue);
+    for (const accent of ["#e8590c", "#000000", "#7f52ff"]) {
+      useAppearanceStore.setState({ accent });
+      expect(
+        painted("color-sunken"),
+        "a surface is the theme's to state, not the accent's to move",
+      ).toBe(declared);
+    }
   });
 
   it("does not touch a palette theme that never opted in", async () => {
@@ -123,18 +105,6 @@ describe("neutral family following the live accent", () => {
     useAppearanceStore.setState({ theme: "palette", accent: "#7f52ff" });
 
     expect(painted("color-surface")).toBe("#eee8d5");
-  });
-
-  it("collapses the family to neutral at the `off` tint and restores it after", async () => {
-    await contributeForTest((ctx) => {
-      tinted(ctx);
-    });
-    useAppearanceStore.setState({ theme: "tinted", accent: "#7f52ff", accentTint: "off" });
-    const off = painted("color-sunken");
-    expect(channelSpread(off)).toBeLessThanOrEqual(1);
-
-    useAppearanceStore.setState({ accentTint: "standard" });
-    expect(painted("color-sunken")).not.toBe(off);
   });
 });
 

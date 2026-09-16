@@ -3,10 +3,14 @@ import { defineColorThemePlugin } from "../kit/defineColorThemePlugin";
 const c = {
   accent: "#2b5fd0",
 
+  // Achromatic on purpose. These carried a blue cast — they were authored as "the neutral
+  // family at the default blue accent", which is what the accent-tint derivation wanted. A
+  // surface is not a shade of the accent; Codex draws its whole grey ramp with the channels
+  // equal, and beside it ours read as a blue-grey panel where a near-white one belongs.
   canvas: "#ffffff",
-  card: "#f7faff",
-  surface1: "#f4f6fa",
-  sunken: "#eaf0fb",
+  card: "#ffffff",
+  surface1: "#f9f9f9",
+  sunken: "#ededed",
 
   inkBright: "#000000",
   ink: "#1e1f22",
@@ -14,8 +18,8 @@ const c = {
   inkMuted: "#5a5d63",
   inkFaint: "#63666d",
 
-  hairline: "#e9ecf2",
-  hairStrong: "#dee2eb",
+  hairline: "#ededed",
+  hairStrong: "#dfdfdf",
   hairTertiary: "rgb(0 0 0 / 0.05)",
 };
 
@@ -52,15 +56,6 @@ export default defineColorThemePlugin({
     warning: "#84610e",
     info: c.accent,
     success: "#2a713e",
-  },
-  // The hexes above are the same family at the default accent. Edit a step, regenerate the
-  // literal — they are one fact.
-  neutralSteps: {
-    surface: { l: 97.3, c: 0.006 },
-    elevated: { l: 98.4, c: 0.008 },
-    sunken: { l: 95.4, c: 0.016 },
-    border: { l: 94.3, c: 0.009 },
-    borderSoft: { l: 91.2, c: 0.013 },
   },
   cta: {
     cta: "var(--color-accent)",

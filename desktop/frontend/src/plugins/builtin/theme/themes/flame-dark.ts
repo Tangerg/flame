@@ -3,9 +3,11 @@ import { defineColorThemePlugin } from "../kit/defineColorThemePlugin";
 const c = {
   accent: "#3574f0",
 
-  canvas: "#1d1f23",
-  surface1: "#2a2d32",
-  sunken: "#14181f",
+  // Achromatic, at the lightness they already had: the blue came from being derived at the
+  // default accent, not from a decision about how dark each plane is.
+  canvas: "#1f1f1f",
+  surface1: "#2b2b2b",
+  sunken: "#181818",
 
   inkBright: "#ffffff",
   ink: "#e3e5e9",
@@ -14,8 +16,8 @@ const c = {
   // Clears AA on a selected row, which is the brightest plane it lands on.
   inkFaint: "#9da1a7",
 
-  hairline: "#2e3136",
-  hairStrong: "#3f4248",
+  hairline: "#303030",
+  hairStrong: "#414141",
   hairTertiary: "rgb(255 255 255 / 0.04)",
 };
 
@@ -53,15 +55,6 @@ export default defineColorThemePlugin({
     // Lifted 12 L, NOT `c.accent`: aliased to the brand fill a 12px label reads 3.23:1.
     info: "#6e9bf4",
     success: "#6db473",
-  },
-  // The hexes above are GENERATED from these steps at this theme's own accent. Edit a step,
-  // regenerate the literal — they are one fact.
-  neutralSteps: {
-    surface: { l: 29.6, c: 0.01 },
-    elevated: { l: 29.6, c: 0.01 },
-    sunken: { l: 20.9, c: 0.015 },
-    border: { l: 31.2, c: 0.0095 },
-    borderSoft: { l: 37.9, c: 0.0107 },
   },
   cta: {
     cta: "var(--color-accent-border)",

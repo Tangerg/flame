@@ -4,10 +4,6 @@
 export type ColorThemeId = string;
 export type VisualStyleId = string;
 
-export const ACCENT_TINTS = ["off", "soft", "standard"] as const;
-export type AccentTint = (typeof ACCENT_TINTS)[number];
-export const DEFAULT_ACCENT_TINT: AccentTint = "standard";
-
 export const UI_DENSITY_MODES = ["compact", "comfortable", "spacious"] as const;
 export type UiDensity = (typeof UI_DENSITY_MODES)[number];
 export const DEFAULT_UI_DENSITY: UiDensity = "comfortable";
@@ -30,7 +26,6 @@ export interface AppearancePreference {
   accent: string;
   customTheme: CustomTheme;
   contrast: number;
-  accentTint: AccentTint;
   uiFont: string;
   codeFont: string;
   fontSize: number | null;
@@ -46,7 +41,6 @@ export interface AppearanceEdit {
   setAccent: (accent: string) => void;
   setCustomTheme: (patch: Partial<CustomTheme>) => void;
   setContrast: (contrast: number) => void;
-  setAccentTint: (accentTint: AccentTint) => void;
   setUiFont: (font: string) => void;
   setCodeFont: (font: string) => void;
   setFontSize: (size: number | null) => void;

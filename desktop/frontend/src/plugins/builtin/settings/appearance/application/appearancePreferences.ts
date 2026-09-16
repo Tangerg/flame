@@ -33,13 +33,6 @@ export function useContrastPreference() {
   };
 }
 
-export function useAccentTintPreference() {
-  return {
-    accentTint: useAppearance((s) => s.accentTint),
-    setAccentTint: editAppearance().setAccentTint,
-  };
-}
-
 export function useFontPreferences() {
   const edit = editAppearance();
   return {

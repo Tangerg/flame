@@ -369,9 +369,9 @@
   --color-accent-press: #1d408c;
 
   --color-bg: #ffffff;
-  --color-surface: #f4f6fa;
-  --color-elevated: #f7faff;
-  --color-sunken: #eaf0fb;
+  --color-surface: #f9f9f9;
+  --color-elevated: #ffffff;
+  --color-sunken: #ededed;
   --depth-step: 4%;
   --color-surface-2: color-mix(
     in oklab,
@@ -431,8 +431,8 @@
   --color-text-on-accent: #ffffff;
   --color-text-on-warning: #000000;
 
-  --color-border: #e9ecf2;
-  --color-border-soft: #dee2eb;
+  --color-border: #ededed;
+  --color-border-soft: #dfdfdf;
   --color-divider: rgb(0 0 0 / 0.05);
   --color-scrim: #00000022;
   --gauge-track: color-mix(in oklab, currentColor 22%, transparent);
@@ -914,10 +914,10 @@ html.theme-dark {
   --color-accent-border: #115beb;
   --color-accent-press: #0f4cc5;
 
-  --color-bg: #1d1f23;
-  --color-surface: #2a2d32;
-  --color-elevated: #2a2d32;
-  --color-sunken: #14181f;
+  --color-bg: #1f1f1f;
+  --color-surface: #2b2b2b;
+  --color-elevated: #2b2b2b;
+  --color-sunken: #181818;
   --depth-step: 8%;
 
   --shadow-cast: rgb(0 0 0 / 0.55);
@@ -944,8 +944,8 @@ html.theme-dark {
   --color-text-on-accent: #ffffff;
   --color-text-on-warning: #000000;
 
-  --color-border: #2e3136;
-  --color-border-soft: #3f4248;
+  --color-border: #303030;
+  --color-border-soft: #414141;
   --color-divider: rgb(255 255 255 / 0.04);
   --color-scrim: #00000022;
 

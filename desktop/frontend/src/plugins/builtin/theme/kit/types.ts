@@ -1,4 +1,3 @@
-import type { ThemeNeutralSteps } from "@/plugins/sdk";
 import type { Scheme } from "@/lib/appearance";
 
 interface ThemeBrand {
@@ -74,10 +73,6 @@ export interface ColorThemePluginSpec {
   semantic: ThemeSemantic;
 
   cta?: Partial<ThemeCta>;
-
-  /** Opt in to the neutral family following the LIVE accent. A palette theme must NOT set
-   *  it: a palette theme's own surface is its own, not a tint of the selected accent. */
-  neutralSteps?: ThemeNeutralSteps;
 
   /** Keys are CSS-variable names WITHOUT the leading `--`. Geometry, elevation and motion
    *  belong to a visual-style contribution instead. */

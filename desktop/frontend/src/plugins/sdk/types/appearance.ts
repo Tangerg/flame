@@ -14,21 +14,6 @@ export interface ColorThemeSpec {
    * the default accent and is what a cold boot paints. A palette theme MUST leave this
    * undefined — a palette theme's own surface is its own, not a tint of the selected accent.
    */
-  neutralSteps?: ThemeNeutralSteps;
-}
-
-/** One neutral's place: OKLCH lightness (0-100) and chroma at the reference accent. */
-export interface NeutralStep {
-  l: number;
-  c: number;
-}
-
-export interface ThemeNeutralSteps {
-  surface: NeutralStep;
-  elevated: NeutralStep;
-  sunken: NeutralStep;
-  border: NeutralStep;
-  borderSoft: NeutralStep;
 }
 
 export interface AccentSpec {

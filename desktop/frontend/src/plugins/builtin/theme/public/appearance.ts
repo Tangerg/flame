@@ -13,4 +13,4 @@ export function editAppearance(): AppearanceEdit {
   return appearancePreferencePort().edit();
 }
 
-export { ACCENT_TINTS, UI_DENSITY_MODES, type AccentTint, type UiDensity } from "../kit/appearance";
+export { UI_DENSITY_MODES, type UiDensity } from "../kit/appearance";
