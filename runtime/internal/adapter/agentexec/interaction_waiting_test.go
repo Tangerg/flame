@@ -1,9 +1,12 @@
 package agentexec
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -1075,4 +1078,39 @@ func collectInteractionEvents(sequence func(func(runs.ExecutorEvent) bool)) <-ch
 		ready <- events
 	}()
 	return ready
+}
+
+// TestUnresumableWaitingExecutionReportsWhy pins the operator's half of a
+// refused probe. Refusing recovers the whole waiting tree as lost — the user
+// watches a parked Run disappear — and the conditions that produce it are not
+// equally expected: a checkpoint from another build is routine after an
+// upgrade, while state this build wrote and cannot read is a defect.
+func TestUnresumableWaitingExecutionReportsWhy(t *testing.T) {
+	var diagnostics bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	workspace := t.TempDir()
+	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
+	foreign := checkpoint.Clone()
+	foreign.BuildID = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+
+	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(
+		func(context.Context, *chat.Request) (*chat.Response, error) {
+			return nil, errors.New("model must not be called while probing")
+		}), InteractionExecutorConfig{})
+	continuation := rootInteractionWaitingContinuation(foreign, "exec_probe", run.Capabilities{})
+
+	resumable, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+	if err != nil || resumable {
+		t.Fatalf("CanResumeWaitingExecution = %t, %v, want false with no error", resumable, err)
+	}
+	logged := diagnostics.String()
+	if !strings.Contains(logged, "not resumable") {
+		t.Fatalf("diagnostics = %q, want the refusal reported", logged)
+	}
+	if !strings.Contains(logged, "another build") {
+		t.Fatalf("diagnostics = %q, want the reason that separates an upgrade from a defect", logged)
+	}
 }
