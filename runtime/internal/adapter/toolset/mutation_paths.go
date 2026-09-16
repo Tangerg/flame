@@ -14,18 +14,25 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
-type fileMutationReporter interface {
-	MutationPaths(invocation toolcontract.Invocation) ([]string, error)
+// FileMutationReporter is the optional Tool capability that names the paths one
+// invocation would mutate, read from that invocation's JSON arguments.
+//
+// It is matched by dynamic type assertion through the decorator chain, so a
+// consumer that declares its own copy of this method set keeps compiling and
+// silently stops matching the moment either copy changes. Every consumer,
+// inside this package or not, must compile against this declaration.
+type FileMutationReporter interface {
+	MutationPaths(arguments []byte) ([]string, error)
 }
 
 func mutationPaths(tool toolcontract.Tool, invocation toolcontract.Invocation) ([]string, error) {
 	var paths []string
-	reporter, ok, err := toolcontract.Capability[fileMutationReporter](tool)
+	reporter, ok, err := toolcontract.Capability[FileMutationReporter](tool)
 	if err != nil {
 		return nil, err
 	}
 	if ok {
-		reported, err := reporter.MutationPaths(invocation)
+		reported, err := reporter.MutationPaths(invocation.Arguments())
 		if err != nil {
 			return nil, err
 		}
@@ -106,9 +113,9 @@ func withApplyPatchMutationPaths(inner toolcontract.Tool) toolcontract.Tool {
 	return applyPatchTool{Tool: inner}
 }
 
-func (m applyPatchTool) MutationPaths(invocation toolcontract.Invocation) ([]string, error) {
+func (m applyPatchTool) MutationPaths(arguments []byte) ([]string, error) {
 	var request fs.ApplyPatchRequest
-	if err := json.Unmarshal(invocation.Arguments(), &request); err != nil {
+	if err := json.Unmarshal(arguments, &request); err != nil {
 		return nil, fmt.Errorf("decode apply_patch mutation paths: %w", err)
 	}
 	files, _, err := gitdiff.Parse(strings.NewReader(request.Patch))

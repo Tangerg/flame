@@ -27,7 +27,7 @@ func (p *patchPathStub) Call(context.Context, toolcontract.Invocation) (chat.Too
 	return chat.NewTextToolOutput("patched"), nil
 }
 
-func (p *patchPathStub) MutationPaths(toolcontract.Invocation) ([]string, error) {
+func (p *patchPathStub) MutationPaths([]byte) ([]string, error) {
 	return []string{"ok.txt", ".git/config"}, nil
 }
 
@@ -70,7 +70,7 @@ type failingMutationReporter struct {
 	err error
 }
 
-func (f failingMutationReporter) MutationPaths(toolcontract.Invocation) ([]string, error) {
+func (f failingMutationReporter) MutationPaths([]byte) ([]string, error) {
 	return nil, f.err
 }
 

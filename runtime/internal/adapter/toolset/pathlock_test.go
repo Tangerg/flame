@@ -91,7 +91,7 @@ func TestAssembledFileToolStillReportsWhatItMutates(t *testing.T) {
 		cwd,
 	)
 
-	reporter, ok, err := toolcontract.Capability[fileMutationReporter](assembled)
+	reporter, ok, err := toolcontract.Capability[FileMutationReporter](assembled)
 	if err != nil || !ok {
 		t.Fatal("the assembled mutation tool no longer reports its file mutations")
 	}
@@ -99,7 +99,7 @@ func TestAssembledFileToolStillReportsWhatItMutates(t *testing.T) {
 		t,
 		assembled,
 		patchArguments(t, "real.txt", "content", "next"),
-	))
+	).Arguments())
 	if err != nil {
 		t.Fatalf("MutationPaths: %v", err)
 	}

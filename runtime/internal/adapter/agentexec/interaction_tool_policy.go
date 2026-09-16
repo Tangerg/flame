@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -169,20 +170,16 @@ type interactionMCPToolIdentity interface {
 	MCPToolIdentity() (sourceName, remoteName string)
 }
 
-type interactionFileMutationReporter interface {
-	MutationPaths(arguments string) ([]string, error)
-}
-
 func fileMutationScope(
 	executable toolcontract.Tool,
 	arguments tool.Arguments,
 	cwd string,
 ) tool.FileMutationScope {
-	reporter, found, err := toolcontract.Capability[interactionFileMutationReporter](executable)
+	reporter, found, err := toolcontract.Capability[toolset.FileMutationReporter](executable)
 	if err != nil || !found || strings.TrimSpace(cwd) == "" {
 		return tool.FileMutationNone
 	}
-	paths, err := reporter.MutationPaths(arguments.Canonical())
+	paths, err := reporter.MutationPaths([]byte(arguments.Canonical()))
 	if err != nil {
 		return tool.FileMutationUnknown
 	}
