@@ -138,7 +138,7 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
     <AgentActivityDisclosure
       icon="sparkle"
       shell="line"
-      label={streaming ? <Loader size="sm" text={label} /> : label}
+      label={streaming ? <Loader text={label} /> : label}
       toggleLabel={label}
       open={isOpen}
       onToggle={toggle}

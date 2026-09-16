@@ -33,13 +33,20 @@ const styles = stylex.create({
   stuck: { position: "sticky", top: 0, zIndex: 1 },
   stuckLine: { backgroundColor: surface.canvas },
   stuckCard: { backgroundColor: surface.card },
-  trigger: { display: "flex", minWidth: 0, flex: 1, alignItems: "center", textAlign: "left" },
+  trigger: {
+    display: "flex",
+    minWidth: 0,
+    flex: 1,
+    alignItems: "center",
+    textAlign: "left",
+    lineHeight: leading.body,
+  },
   triggerLine: {
     gap: space.s1_5,
     paddingBlock: space.s0_5,
     paddingRight: 0,
     paddingLeft: 0,
-    minHeight: space.s5,
+    minHeight: "var(--control-height-sm)",
   },
   triggerCard: {
     gap: space.s3,
@@ -295,7 +302,11 @@ export function AgentActivityDisclosure({
             <Icon name="chevron-down" size="xs" />
           </span>
         </Pressable>
-        {Children.count(actions) > 0 && <div {...stylex.props(styles.actions)}>{actions}</div>}
+        {Children.count(actions) > 0 && (
+          <div data-focus-inset="" {...stylex.props(styles.actions)}>
+            {actions}
+          </div>
+        )}
       </div>
       {progress && <ProgressBar value={progress.value} label={progress.label} weight="seam" />}
       <Collapsible open={open}>
