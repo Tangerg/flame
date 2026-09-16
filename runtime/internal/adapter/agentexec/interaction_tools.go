@@ -134,7 +134,6 @@ type InteractionToolAuthorizer interface {
 type InteractionToolHookInput struct {
 	SessionID string
 	CWD       string
-	CallID    string
 	ToolName  string
 	Arguments tool.Arguments
 	Result    string

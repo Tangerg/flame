@@ -258,7 +258,7 @@ func (o *observedInteractionTool) runAfterToolUseHook(
 	}
 	hookCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
 	if err := o.hooks.AfterToolUse(hookCtx, InteractionToolHookInput{
-		SessionID: o.start.SessionID, CWD: o.start.CWD, CallID: callID,
+		SessionID: o.start.SessionID, CWD: o.start.CWD,
 		ToolName: name, Arguments: arguments, Result: hookToolOutput(output), CallError: callErr,
 	}); err != nil {
 		slog.ErrorContext(hookCtx, "agentexec: post-tool hook failed",
@@ -285,7 +285,7 @@ func (o *observedInteractionTool) prepare(
 	if o.hooks != nil {
 		decision, beforeToolUseErr := o.hooks.BeforeToolUse(ctx, InteractionToolHookInput{
 			SessionID: o.start.SessionID, CWD: o.start.CWD,
-			CallID: callID, ToolName: name, Arguments: arguments,
+			ToolName: name, Arguments: arguments,
 		})
 		if beforeToolUseErr != nil {
 			return tool.Arguments{}, false, "", interaction.HostFailure(fmt.Errorf("agentexec: run pre-Tool hook: %w", beforeToolUseErr))
