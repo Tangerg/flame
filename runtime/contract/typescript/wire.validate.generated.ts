@@ -3253,6 +3253,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     createdAt: text(),
     favorite: flag(),
     id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    isolated: flag(),
     model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
     reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3611,6 +3612,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       expectedRevision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
       favorite: flag(),
+      isolated: flag(),
       model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),

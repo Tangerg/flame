@@ -372,6 +372,12 @@
           }
         },
         {
+          "name": "isolated",
+          "schema": {
+            "type": "boolean"
+          }
+        },
+        {
           "name": "_meta",
           "schema": {
             "$ref": "schema.json#/$defs/RequestMeta"

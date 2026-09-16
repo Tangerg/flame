@@ -177,6 +177,7 @@ func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRe
 		},
 		WorkspacePath:    cwd,
 		Favorite:         in.Favorite,
+		Isolated:         in.Isolated,
 		ExpectedRevision: in.ExpectedRevision,
 	})
 	if err != nil {
@@ -230,6 +231,7 @@ func presentSession(view sessions.View) protocol.Session {
 		CreatedAt:       view.CreatedAt,
 		UpdatedAt:       view.UpdatedAt,
 		Favorite:        view.Favorite,
+		Isolated:        view.Isolated,
 		Revision:        view.Revision,
 	}
 }

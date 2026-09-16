@@ -1357,6 +1357,7 @@ export interface Session {
   createdAt: string;
   favorite?: boolean;
   id: string;
+  isolated?: boolean;
   model: string;
   provider: string;
   reasoningEffort?: string;
@@ -1561,6 +1562,7 @@ export interface UpdateScheduleRequest {
 export interface UpdateSessionRequest {
   expectedRevision: number;
   favorite?: boolean;
+  isolated?: boolean;
   model?: string;
   provider?: string;
   reasoningEffort?: string;

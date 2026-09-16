@@ -7342,6 +7342,11 @@
               "tag": "json:\"favorite,omitempty\""
             },
             {
+              "name": "Isolated",
+              "type": "bool",
+              "tag": "json:\"isolated,omitempty\""
+            },
+            {
               "name": "Revision",
               "type": "uint64",
               "tag": "json:\"revision\""
@@ -8259,6 +8264,11 @@
               "name": "Favorite",
               "type": "*bool",
               "tag": "json:\"favorite,omitempty\""
+            },
+            {
+              "name": "Isolated",
+              "type": "*bool",
+              "tag": "json:\"isolated,omitempty\""
             }
           ],
           "methods": [

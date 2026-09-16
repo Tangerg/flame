@@ -26,7 +26,11 @@ type Session struct {
 	CreatedAt       time.Time     `json:"createdAt,omitzero"`
 	UpdatedAt       time.Time     `json:"updatedAt,omitzero"`
 	Favorite        bool          `json:"favorite,omitempty"` // user-pinned; sorts ahead in the session list
-	Revision        uint64        `json:"revision"`
+	// Isolated runs this session's tools in a throwaway copy of the workspace.
+	// The project directory is left untouched, so this session publishes no
+	// workspace file-change events while it runs.
+	Isolated bool   `json:"isolated,omitempty"`
+	Revision uint64 `json:"revision"`
 }
 
 // ListSessionsRequest identifies one stable Session catalog collection.
@@ -87,6 +91,7 @@ type UpdateSessionRequest struct {
 	Model            *string       `json:"model,omitempty"`
 	ReasoningEffort  *string       `json:"reasoningEffort,omitempty"`
 	Favorite         *bool         `json:"favorite,omitempty"`
+	Isolated         *bool         `json:"isolated,omitempty"`
 }
 
 // ForkSessionRequest is the sessions.fork body. Omit fromRunId for a

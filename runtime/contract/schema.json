@@ -8931,6 +8931,9 @@
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
+        "isolated": {
+          "type": "boolean"
+        },
         "model": {
           "type": "string",
           "minLength": 1,
@@ -10132,6 +10135,9 @@
           "maximum": 9007199254740991
         },
         "favorite": {
+          "type": "boolean"
+        },
+        "isolated": {
           "type": "boolean"
         },
         "model": {

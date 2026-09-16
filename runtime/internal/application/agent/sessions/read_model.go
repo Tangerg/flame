@@ -44,6 +44,7 @@ type View struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	Favorite        bool
+	Isolated        bool
 	Revision        uint64
 }
 
@@ -255,6 +256,6 @@ func (c *Coordinator) view(value session.Session, activity Activity) (View, erro
 		ReasoningEffort: selection.ReasoningEffort(),
 		Activity:        activity,
 		CreatedAt:       value.CreatedAt(), UpdatedAt: value.UpdatedAt(),
-		Favorite: value.Favorite(), Revision: value.Revision(),
+		Favorite: value.Favorite(), Isolated: value.Isolated(), Revision: value.Revision(),
 	}, nil
 }
