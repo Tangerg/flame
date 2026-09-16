@@ -32,42 +32,68 @@ const NATIVE_INTERACTIVE_ROLES = new Set([
   "treeitem",
 ]);
 
-// A small raised token — a raised fill, a tag-scale corner, a hair of horizontal padding and
-// a UI type step — is `Tag` (a literal the reader may need to copy) or `Badge` (a state named
-// in the reader's language). Fourteen call sites had hand-rolled it in nine spellings, three
-// of which rendered the SAME field two different ways in two views, and one carried a second
-// tone palette beside the one Badge owns.
+// Three shapes an atom already owns, read off the STYLE OBJECTS people write.
 //
-// The bare `bg-surface-2` is what makes this a token rather than a state: `hover:bg-surface-2`
-// and `data-[highlighted]:bg-surface-2` are row feedback and are left alone. Read per line, so
-// a class list prettier split across several string literals can still slip through — every
-// form that existed was one line, and a guard that reads what people write beats one that
-// reads what they might.
-const TAG_SHAPE = [
-  /(?<![:\]-])\bbg-surface-2\b/,
-  /\brounded-(?:2xs|xs|sm)\b/,
-  /\bpx-[\d.]+\b/,
-  /\btext-ui-(?:xs|sm|md)\b/,
-];
-
-// The same defect wearing a colour. `Tone`'s own header says the application layer emits
-// what a state MEANS and the Badge picks the fill and the ink — so a tinted fill sitting
-// beside its own coloured ink is a call site painting a second palette. Six did, in two
-// conventions (`-wash` with coloured ink, `-badge` with coloured ink) against Badge's one,
-// and two of them kept a scope-to-classes table where a scope-to-Tone table belonged.
+// These were regexes over Tailwind class strings, and they had been dead since the codebase
+// left Tailwind: zero authored class lists matched them, so the check printed OK while
+// `ToolOutputPanel` restated the whole Well — corner, fill, inset, mono face and leading —
+// in StyleX, one ring below the atom that owns it. A guard that reads a syntax nobody writes
+// any more is worse than no guard, because it reports the rule as enforced.
 //
-// The fill has to be BARE and the ink has to match it: `hover:bg-warning-wash` is row
-// feedback, and a tint with no coloured ink is a panel or a row state, not a badge. Both
-// stay.
-const TONE_FAMILY = "accent|negative|warning|success|info";
-const TONED_BADGE = [
-  new RegExp(String.raw`(?<![:\]-])\bbg-(${TONE_FAMILY})-(?:wash|badge)\b`),
-  new RegExp(String.raw`(?<![:\]-])\btext-(${TONE_FAMILY})\b`),
-];
+// Each shape below carries its own floor, for the same reason the file already floors the
+// files read and the agent classes derived: the shapes are stated in the atoms themselves, so
+// an atom that stops matching its own shape means this vocabulary has drifted and the rule has
+// silently stopped matching everywhere else too.
+const TOKENS = readFileSync(new URL("../src/styles/tokens.stylex.ts", import.meta.url), "utf8");
 
-// A recessed block of verbatim machine text is `Well`. Nine call sites drew it in six
-// spellings before it had an atom; the mono is what separates it from a plain sunken panel.
-const WELL_SHAPE = [/(?<![:\]-])\bbg-sunken\b/, /\brounded-\S+/, /\bfont-mono\b/];
+// Derived, never listed: a tone whose fill is renamed must break the floor rather than quietly
+// leave the rule matching nothing.
+const TONE_FILLS = new Set(
+  [...TOKENS.matchAll(/^ {2}(\w+(?:Wash|Badge)):/gm)].map((match) => match[1]),
+);
+const TONE_INKS = new Set(
+  [...new Set([...TONE_FILLS].map((fill) => fill.replace(/(?:Wash|Badge)$/, "")))].filter((tone) =>
+    new RegExp(String.raw`^ {2}${tone}: "var\(--color-${tone}\)"`, "m").test(TOKENS),
+  ),
+);
+
+const REBUILT = [
+  {
+    // A recessed block of verbatim machine text is `Well`. Nine call sites drew it in six
+    // spellings before it had an atom; the mono is what separates it from a plain sunken panel.
+    id: "well",
+    owner: "ui/atoms/well.tsx",
+    message: 'hand-rolls a Well — use <Well>, or <TextArea variant="well"> to edit one',
+    test: (style) =>
+      style.get("backgroundColor") === "surface.sunken" &&
+      (style.get("borderRadius") ?? "").startsWith("radius.") &&
+      /--font-mono/.test(style.get("fontFamily") ?? ""),
+  },
+  {
+    // A small raised token — a raised fill, a tag-scale corner and a hair of horizontal padding
+    // — is `Tag` (a literal the reader may need to copy) or `Badge` (a state named in the
+    // reader's language). Fourteen call sites had hand-rolled it in nine spellings.
+    id: "tag",
+    owner: "ui/atoms/tag.tsx",
+    message: "hand-rolls a Tag/Badge — use <Tag> for a literal, <Badge> for a state",
+    test: (style) =>
+      style.get("backgroundColor") === "surface.surface2" &&
+      /^radius\.(?:step2xs|xs|sm)$/.test(style.get("borderRadius") ?? "") &&
+      (style.get("paddingInline") ?? "").startsWith("space."),
+  },
+  {
+    // The same defect wearing a colour. The application layer emits what a state MEANS and the
+    // Badge picks the fill and the ink, so a tinted fill sitting beside a coloured ink is a call
+    // site painting a second palette. Badge itself never does it — its tones all take
+    // `color.fgSoft` — which is why this one is floored on the token vocabulary instead.
+    id: "tone",
+    vocabulary: () => TONE_FILLS.size >= 5 && TONE_INKS.size >= 5,
+    message: "paints a tone itself — emit a `Tone` and let <Badge> pick fill and ink",
+    test: (style) =>
+      TONE_FILLS.has(/^surface\.(\w+)$/.exec(style.get("backgroundColor") ?? "")?.[1] ?? "") &&
+      TONE_INKS.has(/^color\.(\w+)$/.exec(style.get("color") ?? "")?.[1] ?? ""),
+  },
+];
 
 // An `agent-*` class is ui/agent's private vocabulary, and a class name is NOT an export: the
 // layer guard reads imports, so a consumer that spells one couples upward through a string no
@@ -98,6 +124,46 @@ function lineOf(sourceFile, node) {
   return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
 }
 
+// Every `stylex.create` entry in one file, as a property -> source-text map. The value is kept
+// verbatim (`surface.sunken`, `"var(--font-mono)"`) because that is what the shapes above are
+// written against, and because a token reference is the only spelling this codebase allows.
+function styleObjects(sourceFile) {
+  const found = [];
+  function visit(node) {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === "create" &&
+      node.expression.expression.getText(sourceFile) === "stylex" &&
+      node.arguments.length === 1 &&
+      ts.isObjectLiteralExpression(node.arguments[0])
+    ) {
+      for (const entry of node.arguments[0].properties) {
+        if (!ts.isPropertyAssignment(entry) || !ts.isObjectLiteralExpression(entry.initializer)) {
+          continue;
+        }
+        const style = new Map();
+        for (const property of entry.initializer.properties) {
+          if (!ts.isPropertyAssignment(property)) continue;
+          const key =
+            ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)
+              ? property.name.text
+              : undefined;
+          if (key) style.set(key, property.initializer.getText(sourceFile));
+        }
+        found.push({
+          name: ts.isIdentifier(entry.name) ? entry.name.text : "style",
+          line: lineOf(sourceFile, entry),
+          style,
+        });
+      }
+    }
+    node.forEachChild(visit);
+  }
+  visit(sourceFile);
+  return found;
+}
+
 function stringAttribute(node, name) {
   for (const property of node.attributes.properties) {
     if (!ts.isJsxAttribute(property) || property.name.text !== name) continue;
@@ -122,6 +188,7 @@ const project = snapshot.getProject(TSCONFIG);
 if (!project) throw new Error("TypeScript did not load tsconfig.json");
 
 let examined = 0;
+const shapesSeenAtOwner = new Set();
 for (const fileName of project.program.getSourceFileNames()) {
   const path = resolve(fileName);
   if (!path.startsWith(SRC) || isTestFile(path)) continue;
@@ -187,18 +254,11 @@ for (const fileName of project.program.getSourceFileNames()) {
     }
   }
 
-  if (!insideDesignSystem) {
-    const rebuilt = [
-      [TAG_SHAPE, "hand-rolls a Tag/Badge — use <Tag> for a literal, <Badge> for a state"],
-      [TONED_BADGE, "paints a tone itself — emit a `Tone` and let <Badge> pick fill and ink"],
-      [WELL_SHAPE, 'hand-rolls a Well — use <Well>, or <TextArea variant="well"> to edit one'],
-    ];
-    for (const [index, line] of lines.entries()) {
-      for (const [shape, message] of rebuilt) {
-        if (shape.every((fragment) => fragment.test(line))) {
-          violations.push(`${rel}:${index + 1} ${message}`);
-        }
-      }
+  for (const { name, line, style } of styleObjects(sourceFile)) {
+    for (const shape of REBUILT) {
+      if (!shape.test(style)) continue;
+      if (shape.owner === rel) shapesSeenAtOwner.add(shape.id);
+      if (!insideDesignSystem) violations.push(`${rel}:${line} \`${name}\` ${shape.message}`);
     }
   }
 }
@@ -216,6 +276,19 @@ const MIN_FILES_EXAMINED = 500;
 if (examined < MIN_FILES_EXAMINED) {
   console.error(
     `check-design-system-boundaries: only read ${examined} files (floor ${MIN_FILES_EXAMINED}) — the program is not loading src.`,
+  );
+  process.exit(2);
+}
+
+// A shape whose own atom no longer matches it has drifted, and a drifted shape matches nothing
+// anywhere else either — which is exactly how the Tailwind spellings these replaced went quiet.
+for (const shape of REBUILT) {
+  const alive = shape.owner ? shapesSeenAtOwner.has(shape.id) : shape.vocabulary();
+  if (alive) continue;
+  console.error(
+    shape.owner
+      ? `check-design-system-boundaries: \`${shape.id}\` no longer matches ${shape.owner}, which owns it — the shape has drifted and now matches nothing.`
+      : `check-design-system-boundaries: \`${shape.id}\` derived ${TONE_FILLS.size} fill(s) and ${TONE_INKS.size} ink(s) from tokens.stylex.ts — the tone vocabulary is not being read.`,
   );
   process.exit(2);
 }
