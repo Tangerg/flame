@@ -99,6 +99,23 @@ export const viewStyles = stylex.create({
   dismissed: { opacity: "var(--state-receded)" },
 
   lineBaseline: { display: "flex", alignItems: "baseline", gap: space.s2, minWidth: 0 },
+  /**
+   * The subject's own column, rather than a box the size of whatever is in it.
+   *
+   * The row is `[kind] [subject] [status] [duration] [clock]`, and the three on the right do not
+   * shrink — so the subject is the one that has to, and it only did when the branch inside it
+   * truncated for itself. `ToolText` does for prose and `FilePath` does for a path, which is why
+   * a subject that reached neither ran on under the duration and the clock and painted them over.
+   * The boundary belongs to the column — and it signs the cut, because a clip with no ellipsis
+   * is a line the reader cannot tell was shortened. One line, always: a timeline row is a row.
+   */
+  subject: {
+    minWidth: 0,
+    flex: 1,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
   lineTop: { display: "flex", alignItems: "flex-start", gap: space.s3, minWidth: 0 },
   splitLine: {
     display: "grid",

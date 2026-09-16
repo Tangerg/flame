@@ -94,7 +94,7 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
           {subject.value && (
             // Named because it is the one place a tool reaches the timeline by name, and a
             // closure test checks that the name is the transcript's rather than the wire's.
-            <span data-timeline-subject="" {...stylex.props(vocab.min)}>
+            <span data-timeline-subject="" {...stylex.props(vs.subject)}>
               <ToolText value={subject} styles={[vocab.muted, typeStep.uiSm]} />
             </span>
           )}
