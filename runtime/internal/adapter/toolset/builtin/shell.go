@@ -166,13 +166,20 @@ func (c *commandTools) run(ctx context.Context, a shellArgs) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if a.RunInBackground {
-		return backgroundedJSON(id)
-	}
-
 	sh, ok := c.shells.Get(id)
 	if !ok { // just launched — unreachable
 		return "", fmt.Errorf("shell: background shell %s vanished", id)
+	}
+	if a.RunInBackground {
+		// A command that failed to start is published already finished. Handing
+		// back a background handle for it would send the model to poll a shell
+		// that never ran, so a shell that is already done reports what it did.
+		select {
+		case <-sh.Done():
+			return c.completed(id, sh)
+		default:
+			return backgroundedJSON(id)
+		}
 	}
 	timer := time.NewTimer(autoBackgroundAfter)
 	defer timer.Stop()
@@ -189,8 +196,9 @@ func (c *commandTools) run(ctx context.Context, a shellArgs) (string, error) {
 func (c *commandTools) completed(id string, sh *exec.Shell) (string, error) {
 	out, dropped := sh.Read()
 	code, killed, dur, cleanupErr := sh.Outcome()
+	_, info := sh.Status()
 	c.shells.Remove(id)
-	result, resultErr := completedJSON(out, dropped, code, killed, dur)
+	result, resultErr := completedJSON(out, dropped, code, killed, dur, info)
 	return result, errors.Join(resultErr, cleanupErr)
 }
 
@@ -272,13 +280,25 @@ func (c *commandTools) kill(_ context.Context, a shellIDArgs) (string, error) {
 // completedJSON shapes a finished foreground command's result. The combined
 // stdout+stderr goes in "stdout" because the execution ring preserves their
 // combined arrival order. exit_code is always present for a finished command.
-func completedJSON(out string, dropped bool, code int, killed bool, dur time.Duration) (string, error) {
+func completedJSON(
+	out string,
+	dropped bool,
+	code int,
+	killed bool,
+	dur time.Duration,
+	info string,
+) (string, error) {
 	if dropped {
 		out = "[earlier output dropped — buffer overflowed]\n" + out
 	}
+	// A command with no exit status never reported one: it failed to start, or
+	// could not be waited on, and info carries the only account of why. An
+	// ordinary exit restates exit_code there, which is worth nothing here.
+	if code == exec.NoExitStatus && strings.TrimSpace(info) != "" {
+		out = strings.TrimLeft(info+"\n"+out, "\n")
+	}
 	b, err := json.Marshal(struct {
 		Stdout   string `json:"stdout"`
-		Stderr   string `json:"stderr"`
 		ExitCode int    `json:"exit_code"`
 		Killed   bool   `json:"killed,omitempty"`
 		Duration string `json:"duration"`

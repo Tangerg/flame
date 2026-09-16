@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -345,5 +346,55 @@ func TestReadShellOutput_UnknownShell(t *testing.T) {
 	miss, err := callTextTool(context.Background(), output, `{"shell_id":"bg_999"}`)
 	if err != nil || !strings.Contains(miss, "No background shell") {
 		t.Fatalf("read_shell_output(unknown) = %q err=%v", miss, err)
+	}
+}
+
+// TestShellReportsACommandThatNeverStarted pins both halves of one rule: a
+// command that failed to start did not start. Backgrounding it would send the
+// model to poll a shell that never ran, and reporting exit_code -1 with no
+// account of why leaves the only diagnostic the shell has unread.
+func TestShellReportsACommandThatNeverStarted(t *testing.T) {
+	for _, background := range []bool{false, true} {
+		name := map[bool]string{false: "foreground", true: "background"}[background]
+		t.Run(name, func(t *testing.T) {
+			shells := exec.NewShells(nil, false)
+			cleanupShells(t, shells)
+			tools, err := BuildShell(shells, filepath.Join(t.TempDir(), "never-created"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var shell toolcontract.Tool
+			for _, built := range tools {
+				if built.Definition().Name == "shell" {
+					shell = built
+				}
+			}
+
+			arguments := `{"command":"printf hello","description":"Print hello"}`
+			if background {
+				arguments = `{"command":"printf hello","description":"Print hello","run_in_background":true}`
+			}
+			out, err := callTextTool(t.Context(), shell, arguments)
+			if err != nil {
+				t.Fatalf("shell err = %v", err)
+			}
+
+			var result struct {
+				Stdout   string `json:"stdout"`
+				ExitCode int    `json:"exit_code"`
+			}
+			if err := json.Unmarshal([]byte(out), &result); err != nil {
+				t.Fatalf("decode %q: %v", out, err)
+			}
+			if strings.Contains(result.Stdout, "running in background") {
+				t.Fatalf("a command that never started was reported as backgrounded: %q", out)
+			}
+			if result.ExitCode != exec.NoExitStatus {
+				t.Fatalf("exit_code = %d, want %d", result.ExitCode, exec.NoExitStatus)
+			}
+			if !strings.Contains(result.Stdout, "start failed") {
+				t.Fatalf("result gives no account of the failure: %q", out)
+			}
+		})
 	}
 }

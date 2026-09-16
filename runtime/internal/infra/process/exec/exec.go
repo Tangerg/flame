@@ -174,6 +174,11 @@ type Shell struct {
 // rather than being severed by a bare context.Background(). An enabled timeout
 // hard-kills the command when it elapses; a disabled [Timeout] lets it run until
 // it exits or is killed.
+// NoExitStatus is the exit code of a command that never reported one: it failed
+// to start, or its wait failed. Its [Shell.Status] info is then the only account
+// of what happened.
+const NoExitStatus = -1
+
 func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, timeout Timeout, isolated bool) (string, error) {
 	if err := timeout.Validate(); err != nil {
 		return "", err
@@ -232,7 +237,7 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	startErr := cmd.Start()
 	if startErr != nil {
 		cancel()
-		sh.finish("start failed: "+startErr.Error(), -1, false, nil)
+		sh.finish("start failed: "+startErr.Error(), NoExitStatus, false, nil)
 		s.shells[id] = sh
 		s.mu.Unlock()
 		return id.String(), nil
@@ -256,7 +261,7 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 				code = exitErr.ExitCode()
 				info = "exit " + strconv.Itoa(code)
 			} else {
-				code, info = -1, err.Error()
+				code, info = NoExitStatus, err.Error()
 			}
 		}
 		sh.finish(info, code, killed, cleanupErr)

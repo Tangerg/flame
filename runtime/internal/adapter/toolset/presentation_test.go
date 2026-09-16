@@ -56,7 +56,7 @@ func TestPresenterCommandResult(t *testing.T) {
 	presented, outputText := Presenter{}.Present(
 		tool.Shell,
 		tool.Arguments{},
-		mustToolResult(t, map[string]any{"stdout": "out", "stderr": "err", "exit_code": 0}),
+		mustToolResult(t, map[string]any{"stdout": "out\nerr", "exit_code": 0}),
 	)
 	want := map[string]any{"output": "out\nerr", "exitCode": json.Number("0")}
 	if got := presented.Any(); !reflect.DeepEqual(got, want) {

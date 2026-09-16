@@ -215,9 +215,10 @@ func commandResultContract() resultProjectionContract {
 	return resultProjectionContract{project: presentCommand, resultType: reflect.TypeFor[CommandResult]()}
 }
 
+// commandExecutionResult is the shell tool's own result shape. The shell
+// captures one interleaved stream, so there is no separate stderr to carry.
 type commandExecutionResult struct {
 	Stdout   string `json:"stdout"`
-	Stderr   string `json:"stderr"`
 	ExitCode *int   `json:"exit_code"`
 }
 
@@ -231,19 +232,12 @@ func presentCommandResult(result tool.Result) (tool.Result, string) {
 	if existing, ok := decodeResult[CommandResult](result, "output"); ok {
 		return result, existing.Output
 	}
-	raw, ok := decodeResult[commandExecutionResult](result, "stdout", "stderr", "exit_code")
+	raw, ok := decodeResult[commandExecutionResult](result, "stdout", "exit_code")
 	if !ok {
 		return result, ""
 	}
-	output := raw.Stdout
-	switch {
-	case raw.Stdout == "":
-		output = raw.Stderr
-	case raw.Stderr != "":
-		output = raw.Stdout + "\n" + raw.Stderr
-	}
-	presentation := CommandResult{Output: output, ExitCode: raw.ExitCode}
-	return projectResult(result, presentation), output
+	presentation := CommandResult{Output: raw.Stdout, ExitCode: raw.ExitCode}
+	return projectResult(result, presentation), raw.Stdout
 }
 
 func searchResultContract() resultProjectionContract {
