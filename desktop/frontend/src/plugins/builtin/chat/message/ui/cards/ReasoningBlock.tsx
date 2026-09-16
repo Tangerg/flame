@@ -44,14 +44,20 @@ const rb = stylex.create({
     WebkitMaskImage: `linear-gradient(to right, transparent 0, #000 ${GLIMPSE_LEAD})`,
   },
   glimpseLine: { flexShrink: 0, whiteSpace: "nowrap" },
+  // Two alignments the row already decides, rather than none.
+  //
+  // The rail hangs from the centre of the 16px mark, and the prose lands where the LABEL starts
+  // — mark plus the trigger's own gap. It used to sit 20px in with 24px of padding, which put
+  // the rail two pixels left of the label (a near-miss reads as a mistake) and the prose
+  // twenty-three past it, aligned with nothing and spending that much of the reading measure.
   aside: {
-    marginLeft: space.s5,
+    marginLeft: space.s2,
     borderLeftWidth: "var(--control-edge-width)",
     borderLeftStyle: "solid",
     borderLeftColor: surface.field,
     paddingTop: space.s0_5,
     paddingBottom: space.s1_5,
-    paddingLeft: space.s6,
+    paddingLeft: space.s3_5,
   },
   // Both axes as LONGHANDS, because `windowed` below reopens one of them. `stylex.props()`
   // resolves precedence between styles that name the same KEY; `overflow` and `overflowY` are
