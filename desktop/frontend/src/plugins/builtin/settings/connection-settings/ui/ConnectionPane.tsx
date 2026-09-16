@@ -131,7 +131,6 @@ export function ConnectionPane() {
             <TextField
               id="runtime-base-url"
               type="text"
-              size="lg"
               invalid={error !== null}
               aria-label={t("settings.connection.url")}
               value={url}
@@ -153,7 +152,7 @@ export function ConnectionPane() {
             <Button
               type="button"
               variant="outline"
-              size="lg"
+              size="md"
               disabled={isDefault}
               onClick={reset}
               className={stylex.props(vocab.hold).className}
@@ -163,7 +162,7 @@ export function ConnectionPane() {
             <Button
               type="button"
               variant="primary"
-              size="lg"
+              size="md"
               disabled={!dirty}
               onClick={apply}
               className={stylex.props(vocab.hold).className}

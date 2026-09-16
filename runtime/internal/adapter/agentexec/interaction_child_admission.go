@@ -75,7 +75,6 @@ func (i *interactionSession) admitProcess(
 	}); err != nil {
 		return err
 	}
-	managed.toolStarted = true
 	member := runs.ExecutorMember{
 		MemberID: relation.ProcessID().String(), ParentID: parentID.String(),
 		SpawnCallID: managed.call.ID,

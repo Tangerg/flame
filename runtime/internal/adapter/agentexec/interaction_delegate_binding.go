@@ -39,7 +39,6 @@ type managedDelegateCall struct {
 	admission          agent.ProcessAdmission
 	binding            runs.ChildRunBinding
 	childProcessID     agent.ProcessID
-	toolStarted        bool
 	parentToolFinished bool
 	assistantProjected bool
 	segmentProjected   bool

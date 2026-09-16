@@ -23,65 +23,28 @@ const (
 	defaultDelegateSignals        = 2048
 )
 
-// InteractionDelegationPolicyValues bounds managed children independently of
-// model/token product limits. Nil fields inherit conservative named defaults;
-// present zero never doubles as absence. The values translate only into Agent
-// Framework structural limits and a minimum per-Process work allocation. A
-// delegated Process receives one allocation unit for itself and one for each
-// remaining recursion level, so the configured depth is reachable without
-// renewing or duplicating Framework budget.
-type InteractionDelegationPolicyValues struct {
-	MaxDepth          *uint32
-	MaxChildren       *uint32
-	MaxActiveChildren *uint32
-	MaxTreeProcesses  *uint32
-	ChildSteps        *uint64
-	ChildEffects      *uint64
-	ChildSignals      *uint64
-}
-
 type effectiveInteractionDelegation struct {
 	treeLimits    agent.TreeLimits
 	processBudget agent.Budget
 }
 
-func effectiveDelegation(values InteractionDelegationPolicyValues) (effectiveInteractionDelegation, error) {
-	maxDepth, err := positiveOrDefault(values.MaxDepth, defaultDelegateDepth, "maximum depth")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
-	maxChildren, err := positiveOrDefault(values.MaxChildren, defaultDelegateChildren, "maximum children")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
-	maxActiveChildren, err := positiveOrDefault(values.MaxActiveChildren, defaultActiveDelegateChildren, "maximum active children")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
-	maxTreeProcesses, err := positiveOrDefault(values.MaxTreeProcesses, defaultDelegateTreeProcesses, "maximum tree processes")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
-	childSteps, err := positiveOrDefault(values.ChildSteps, defaultDelegateSteps, "child steps")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
-	childEffects, err := positiveOrDefault(values.ChildEffects, defaultDelegateEffects, "child effects")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
-	childSignals, err := positiveOrDefault(values.ChildSignals, defaultDelegateSignals, "child signals")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
+// interactionDelegation bounds managed children independently of model/token
+// product limits. The values translate only into Agent Framework structural
+// limits and a minimum per-Process work allocation. A delegated Process
+// receives one allocation unit for itself and one for each remaining recursion
+// level, so the configured depth is reachable without renewing or duplicating
+// Framework budget.
+func interactionDelegation() (effectiveInteractionDelegation, error) {
 	treeLimits := agent.TreeLimits{
-		MaxDepth: maxDepth, MaxChildren: maxChildren,
-		MaxActiveChildren: maxActiveChildren, MaxTreeProcesses: maxTreeProcesses,
+		MaxDepth: defaultDelegateDepth, MaxChildren: defaultDelegateChildren,
+		MaxActiveChildren: defaultActiveDelegateChildren, MaxTreeProcesses: defaultDelegateTreeProcesses,
 	}
 	if !treeLimits.Valid() {
 		return effectiveInteractionDelegation{}, errors.New("agentexec: Interaction delegation tree limits are invalid")
 	}
-	budget := agent.Budget{Steps: childSteps, Effects: childEffects, Signals: childSignals}
+	budget := agent.Budget{
+		Steps: defaultDelegateSteps, Effects: defaultDelegateEffects, Signals: defaultDelegateSignals,
+	}
 	if !budget.Valid() {
 		return effectiveInteractionDelegation{}, errors.New("agentexec: Interaction delegation budget is invalid")
 	}

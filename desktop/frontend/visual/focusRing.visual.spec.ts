@@ -15,7 +15,10 @@ const ROUTES = [
   "fixture=shell&state=populated&overlay=commands",
 ];
 
+const ROUTE_BUDGET_MS = 120_000;
+
 test("no focus ring is cut off by something that clips", async ({ page }) => {
+  test.setTimeout(ROUTES.length * 4_000 + 20_000);
   const cut: string[] = [];
   let reached = 0;
 
@@ -83,8 +86,6 @@ test("no focus ring is cut off by something that clips", async ({ page }) => {
     "focus rings with nowhere to draw — mark the control `data-focus-inset`",
   ).toEqual([]);
 });
-
-const ROUTE_BUDGET_MS = 120_000;
 
 test("the ring the design promises is the ring that paints", async ({ page }) => {
   test.setTimeout(ROUTES.length * ROUTE_BUDGET_MS + 20_000);

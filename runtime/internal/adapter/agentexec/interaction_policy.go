@@ -68,19 +68,17 @@ func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactio
 	if err != nil {
 		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: Interaction policy: %w", err)
 	}
-	delegation, err := effectiveDelegation(config.Delegation)
+	delegation, err := interactionDelegation()
 	if err != nil {
 		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: Interaction delegation policy: %w", err)
 	}
-	toolBudget, err := effectiveToolBudget(config)
-	if err != nil {
-		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: Interaction Tool policy: %w", err)
+	toolBudget := agent.Budget{
+		Steps:   defaultInteractionToolSteps,
+		Effects: defaultInteractionToolEffects,
+		Signals: defaultInteractionToolSignals,
 	}
-	toolBatchCeiling, err := positiveOrDefault(
-		config.ToolBatchCeiling, defaultInteractionToolBatchCeiling, "Tool batch ceiling",
-	)
-	if err != nil {
-		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: Interaction Tool policy: %w", err)
+	if !toolBudget.Valid() {
+		return interactionExecutionPolicy{}, errors.New("agentexec: Interaction Tool budget is invalid")
 	}
 	toolResultOffload, err := newToolResultOffloadPolicy(config.ToolResultOffload)
 	if err != nil {
@@ -97,30 +95,9 @@ func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactio
 		statePollInterval:         statePoll,
 		delegation:                delegation,
 		toolBudget:                toolBudget,
-		toolBatchCeiling:          toolBatchCeiling,
+		toolBatchCeiling:          defaultInteractionToolBatchCeiling,
 		toolResultOffload:         toolResultOffload,
 	}, nil
-}
-
-// effectiveToolBudget resolves the allocation each ordinary Tool child receives.
-func effectiveToolBudget(config InteractionExecutorConfig) (agent.Budget, error) {
-	steps, err := positiveOrDefault(config.ToolSteps, defaultInteractionToolSteps, "Tool steps")
-	if err != nil {
-		return agent.Budget{}, err
-	}
-	effects, err := positiveOrDefault(config.ToolEffects, defaultInteractionToolEffects, "Tool effects")
-	if err != nil {
-		return agent.Budget{}, err
-	}
-	signals, err := positiveOrDefault(config.ToolSignals, defaultInteractionToolSignals, "Tool signals")
-	if err != nil {
-		return agent.Budget{}, err
-	}
-	budget := agent.Budget{Steps: steps, Effects: effects, Signals: signals}
-	if !budget.Valid() {
-		return agent.Budget{}, errors.New("Tool budget is invalid")
-	}
-	return budget, nil
 }
 
 // positiveNumber is every limit shape Interaction policy and delegation accept:

@@ -23,7 +23,6 @@ import (
 )
 
 func uint32Pointer(value uint32) *uint32 { return &value }
-func uint64Pointer(value uint64) *uint64 { return &value }
 func intPointer(value int) *int          { return &value }
 func durationPointer(value time.Duration) *time.Duration {
 	return &value
@@ -46,25 +45,21 @@ func TestDelegatedInteractionReplyPreservesRefusal(t *testing.T) {
 	}
 }
 
-func TestInteractionDelegationPolicyPreservesOptionalPresence(t *testing.T) {
-	defaults, err := effectiveDelegation(InteractionDelegationPolicyValues{})
+// TestInteractionDelegationPolicyIsAcceptedByTheFramework proves the named
+// structural limits Flame ships still satisfy the Agent Framework's own
+// validity rules, which is the only way these constants can become wrong.
+func TestInteractionDelegationPolicyIsAcceptedByTheFramework(t *testing.T) {
+	delegation, err := interactionDelegation()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if defaults.treeLimits != (agent.TreeLimits{
+	if delegation.treeLimits != (agent.TreeLimits{
 		MaxDepth: defaultDelegateDepth, MaxChildren: defaultDelegateChildren,
 		MaxActiveChildren: defaultActiveDelegateChildren, MaxTreeProcesses: defaultDelegateTreeProcesses,
-	}) || defaults.processBudget != (agent.Budget{
+	}) || delegation.processBudget != (agent.Budget{
 		Steps: defaultDelegateSteps, Effects: defaultDelegateEffects, Signals: defaultDelegateSignals,
 	}) {
-		t.Fatalf("default delegation policy = %+v", defaults)
-	}
-
-	if _, err := effectiveDelegation(InteractionDelegationPolicyValues{MaxDepth: uint32Pointer(0)}); err == nil {
-		t.Fatal("present zero tree limit was treated as omission")
-	}
-	if _, err := effectiveDelegation(InteractionDelegationPolicyValues{ChildSteps: uint64Pointer(0)}); err == nil {
-		t.Fatal("present zero child budget was treated as omission")
+		t.Fatalf("delegation policy = %+v", delegation)
 	}
 }
 

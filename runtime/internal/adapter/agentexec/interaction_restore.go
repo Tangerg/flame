@@ -236,7 +236,7 @@ func restoreManagedDelegateCall(
 		modelCallSequence: child.ModelCallSequence(),
 		toolCallIndex:     child.ToolCallIndex(),
 		callID:            callID,
-		binding:           binding, childProcessID: child.ProcessID(), toolStarted: true,
+		binding:           binding, childProcessID: child.ProcessID(),
 		parentToolFinished: !pending,
 		// Closed children have already published their product terminal. Scope
 		// retains their result until the waiting parent can commit its Tool batch.

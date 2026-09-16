@@ -62,22 +62,16 @@ type InteractionExecutorConfig struct {
 	// Lifetime is the process-owned root for every Interaction staged by this
 	// executor. Request contexts may bound staging and commands, but accepted
 	// execution must outlive the request that created it.
-	Lifetime               context.Context
-	BuildID                string
-	ChatResolver           InteractionChatResolver
-	RestoreScopeValidator  RestoreScopeValidator
-	ImplementationIdentity string
-	ConfigurationIdentity  string
-	DefaultMaxModelCalls   *uint32
-	StreamModelResponses   bool
-	DeltaBufferCapacity    *int
-	MaxConcurrentToolCalls *int
-	// ToolSteps, ToolEffects and ToolSignals bound one ordinary Tool child.
-	ToolSteps   *uint64
-	ToolEffects *uint64
-	ToolSignals *uint64
-	// ToolBatchCeiling bounds the Tool calls one model response may request.
-	ToolBatchCeiling          *uint32
+	Lifetime                  context.Context
+	BuildID                   string
+	ChatResolver              InteractionChatResolver
+	RestoreScopeValidator     RestoreScopeValidator
+	ImplementationIdentity    string
+	ConfigurationIdentity     string
+	DefaultMaxModelCalls      *uint32
+	StreamModelResponses      bool
+	DeltaBufferCapacity       *int
+	MaxConcurrentToolCalls    *int
 	ToolResolver              InteractionToolResolver
 	ToolInterpreter           InteractionToolInterpreter
 	ToolPresenter             InteractionToolPresenter
@@ -93,7 +87,6 @@ type InteractionExecutorConfig struct {
 	Pricing                   accounting.Pricing
 	UnknownEffectPollInterval *time.Duration
 	StatePollInterval         *time.Duration
-	Delegation                InteractionDelegationPolicyValues
 }
 
 // InteractionExecutor is the Agent Framework root execution adapter. Each staged
