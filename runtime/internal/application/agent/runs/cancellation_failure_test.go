@@ -32,7 +32,6 @@ func TestLiveChildCancellationReleasesClaimWhenExecutorTeardownFails(t *testing.
 	live := testRunTreeOwner(t, nil)
 
 	_, err := coordinator.cancelLiveChild(
-		t.Context(),
 		CancelCommand{
 			RunID:         plan.target.run.ID(),
 			Reason:        "stop child",

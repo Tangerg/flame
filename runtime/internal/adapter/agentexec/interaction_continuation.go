@@ -40,7 +40,7 @@ func (i *InteractionExecutor) BeginContinuation(
 	if err != nil {
 		return fmt.Errorf("agentexec: inspect paused Interaction members: %w", err)
 	}
-	prepared, err := session.prepareContinuationAnswers(ctx, answers)
+	prepared, err := session.prepareContinuationAnswers(answers)
 	if err != nil {
 		return err
 	}
@@ -72,8 +72,9 @@ type preparedCommittedInteractionInput struct {
 	content   []transcript.ContentBlock
 }
 
+// prepareContinuationAnswers matches answers to the staged pending inputs
+// entirely in memory, so it takes no context to abandon.
 func (i *interactionSession) prepareContinuationAnswers(
-	ctx context.Context,
 	answers []runs.InterruptAnswer,
 ) ([]preparedInteractionAnswer, error) {
 	i.state.mu.Lock()

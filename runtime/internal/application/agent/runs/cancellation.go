@@ -34,7 +34,7 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 					cmd.RunID,
 				)
 			}
-			return c.cancelLiveChild(ctx, cmd, plan, entry.owner)
+			return c.cancelLiveChild(cmd, plan, entry.owner)
 		case rundomain.Waiting:
 			return c.cancelWaitingChild(ctx, cmd, plan)
 		default:
@@ -103,8 +103,10 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 	return rootCancelResult(terminal)
 }
 
+// cancelLiveChild takes no context on purpose: a cancellation that has begun
+// runs to a committed outcome on the tree owner's cleanup context, so the
+// requester's own deadline cannot abandon it half-applied.
 func (c *Coordinator) cancelLiveChild(
-	ctx context.Context,
 	cmd CancelCommand,
 	plan cancellationPlan,
 	owner *runTreeOwner,
