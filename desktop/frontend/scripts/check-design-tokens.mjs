@@ -34,97 +34,46 @@ const NAMED_EDGE_WIDTHS = [
 
 const MARKUP_RULES = [
   {
-    // `bg-negative/12`, `bg-warning/[0.06]` — a semantic tint with a hand-picked
-    // alpha. Negative alone had reached five of them across the tree, so the same
-    // "this is an error" answered at five strengths depending on the card.
-    pattern: /(?<![\w-])(?:[a-z-]+:)*bg-(?:negative|warning|success|info|accent)\/\[?[\d.]+\]?/g,
-    message:
-      "hand-picked tone alpha — use `bg-<tone>-wash` (a tinted surface) or `bg-<tone>-badge` (a chip on one)",
+    // Every rule here reads a STYLE OBJECT, because that is what this codebase writes.
+    //
+    // Eleven of the rules this file used to carry were regexes over Tailwind class strings, and
+    // all eleven had matched nothing since the utilities left: `bg-<tone>/N`, `bg-fg/N`,
+    // `text-[Npx]`, `text-sm`, `shadow-[...]`, `border-fg/N`, `rounded-[Npx]`, `z-NN`,
+    // `leading-[N]` and the black/white and ambiguous-border-slot pair. A green check on a rule
+    // that cannot fire is worse than no rule, so the ones with a StyleX shape are written here
+    // and the ones that were Tailwind grammar are gone.
+    //
+    // `text-sm` and the ambiguous `border-[var(--…)]` slot were the latter: one names Tailwind's
+    // own size scale and the other exists because Tailwind cannot tell a length from a colour
+    // inside a bare `var()`. Neither means anything in a style object.
+    //
+    // `bg-<tone>/N`, `bg-fg/N` and `border-fg/N` were three spellings of one defect — a token
+    // tinted at a hand-picked alpha — and they are the `color-mix` rule at the end of this list.
+    pattern: /fontSize:\s*"[\d.]+(?:px|rem)"/g,
+    message: "arbitrary font size — compose a `type.*` step from `tokens.stylex.ts`",
   },
   {
-    // A fill mixed from full ink at a hand-picked alpha. Six callsites across three
-    // rings had one — 0.03 / 0.04 / 0.05 / 0.06 / 0.08 — for three separate ideas
-    // the system already names: a well (`bg-sunken`), a chip on chrome
-    // (`bg-surface-2`), and the rule beside a label (`bg-divider`). One file held
-    // two of them in adjacent functions answering the same question.
-    // `fg-faint/N` is NOT covered: that is an optical value on a 2px mark, where the
-    // ramp's nearest steps are a hairline token and a text token, and neither is a
-    // mark colour. Alpha on a FILL is the drift; alpha on ink is a tweak.
-    pattern: /(?<![\w-])(?:[a-z-]+:)*bg-fg\/\[?[\d.]+\]?/g,
-    message:
-      "ink-alpha fill — use `bg-sunken` (a well), `bg-surface-2` (a chip on chrome), `bg-divider` (a rule), or `bg-hover` / `bg-selected` (a state)",
+    // `1` is exempt, and was exempt before: it is the glyph box, which a mark or a badge asks
+    // for so its own height is the type's. It is not a step on the reading ladder.
+    pattern: /lineHeight:\s*(?!1\s*[,}])[\d.]+\s*[,}]/g,
+    message: "arbitrary line height — use a `leading.*` step",
   },
   {
-    // Tailwind's own black and white. A literal cannot follow a scheme, and these
-    // reached INTO the design-system ring: two dialogs spelled their scrim
-    // `bg-black/40` and `bg-black/60`, the command palette a third value, so the
-    // same "everything behind this is out of play" answered at three strengths.
-    // Content the theme does not own is the one exception and it has tokens:
-    // `bg-media-scrim` / `bg-media-canvas` / `text-on-media`.
-    pattern:
-      /(?<![\w-])(?:[a-z-]+:)*(?:bg|text|border|outline|ring|fill|stroke)-(?:black|white)(?:\/\[?[\d.]+\]?)?/g,
-    message:
-      "literal black/white — use `bg-scrim` (a modal), the `media-*` tokens (over content we don't own), or an ink/surface token",
-  },
-  {
-    pattern: /(?<![\w-])(?:[a-z-]+:)*text-\[[\d.]+px\]/g,
-    message: "arbitrary font size — use a `text-ui-*` / `text-display-*` step",
-  },
-  {
-    // Tailwind's OWN size names, which this rule set had never looked for. They are
-    // fixed rem values, so they do not move with the user's UI size preference — the one
-    // thing the ladder exists to guarantee — and they land off it besides (`text-sm` is
-    // 14px where `text-ui-sm` is 13). Four had slipped in, all inside the design system:
-    // the loader's three status sizes and the compact empty state's title.
-    pattern: /(?<![\w-])(?:[a-z-]+:)*text-(?:xs|sm|base|lg|xl|[2-9]xl)(?![\w-])/g,
-    message: "Tailwind's own font size — use a `text-ui-*` / `text-prose` / `text-display-*` step",
-  },
-  {
-    // A shadow spelled out at the call site. Depth is a material, and a material
-    // has to answer to the theme: six callsites had drawn their own, and one of
-    // them — a selected tab lifted by `inset 0 1px 0 rgba(255,255,255,0.03)` —
-    // was a value chosen for the dark theme, so in light the tab had no lift at
-    // all. Two others were the same accent glow written twice.
-    // A shadow utility that reads a named `--shadow-…` token stays legal:
-    // that is the ladder. Avoid spelling a wildcard-like Tailwind class in this
-    // source comment because Tailwind scans source text before JavaScript runs.
-    pattern: /(?<![\w-])shadow-\[(?!var\(--shadow-)[^\]]*\]/g,
+    // A cast written out cannot follow the visual style, which is what `--shadow-*` is for.
+    pattern: /boxShadow:\s*"(?!none"|var\()/g,
     message: "hardcoded shadow — define a `--shadow-*` token in globals.css and use it",
   },
   {
-    // An edge alpha mixed by hand where the field tokens exist. Same failure as
-    // the tone rule above: the segmented control had drawn its well at 7% and its
-    // selected chip at 5%, two hand-picked values for one idea, and neither
-    // followed the contrast preference (`--color-border` does).
-    pattern: /(?<![\w-])(?:[a-z-]+:)*border-fg\/\[?[\d.]+\]?/g,
-    message: "hand-picked edge alpha — use `border-field` / `border-field-strong`",
+    pattern: /borderRadius:\s*"[\d.]+(?:px|rem)"/g,
+    message: "arbitrary corner radius — use a `radius.*` step",
   },
   {
-    // A width token in the border utility's ambiguous slot. Tailwind cannot tell a
-    // length from a colour inside a bare `var()`, so it resolves the slot to
-    // colour — and thirteen controls silently lost their edge for a day, because
-    // an invalid `border-color` leaves the width at its default zero. The
-    // `length:` hint is the only thing that makes the intent decidable.
-    pattern: /(?<![\w-])(?:[a-z-]+:)*border(?:-[trbl]{1,2})?-\[var\(--(?!.*edge-color)/g,
-    message:
-      "ambiguous border utility — a width token needs the `length:` hint, or it compiles to border-color",
-  },
-  {
-    pattern: /(?<![\w-])(?:[a-z-]+:)*rounded(?:-[trbl]{1,2})?-\[[\d.]+(?:px|rem)\]/g,
-    message: "arbitrary corner radius — use a `rounded-*` step",
-  },
-  {
-    // A double-digit layer. Within one stacking context a handful of steps is all
-    // there is to order, so anything reaching past single digits is competing with
-    // the window — and that competition has exactly two rungs, both named. Seven
-    // spellings had accumulated across five files, which is how the session search
-    // panel came to sit at the same height as an open menu.
-    pattern: /(?<![\w-])(?:[a-z-]+:)*z-(?:\d\d+|\[(?!var\(--layer-)[^\]]*\])/g,
-    message: "unnamed window layer — use `z-[var(--layer-floating)]` / `z-[var(--layer-modal)]`",
-  },
-  {
-    pattern: /(?<![\w-])(?:[a-z-]+:)*leading-\[[\d.]+\]/g,
-    message: "arbitrary line height — use a `leading-*` step",
+    // A double-digit layer. Within one stacking context a handful of steps is all there is to
+    // order, so anything reaching past single digits is competing with the window — and that
+    // competition has exactly two rungs, both named. Seven spellings had accumulated across five
+    // files, which is how the session search panel came to sit at the same height as an open menu.
+    pattern: /zIndex:\s*(?:\d\d+|"(?!var\(--layer-)[^"]*")/g,
+    message: "a layer competing with the window — use `var(--layer-*)`",
   },
   {
     // One pixel is exempt: a hairline gap and a baseline nudge are not ladder steps.
@@ -181,9 +130,9 @@ const MARKUP_RULES = [
     // block had built two panels this way, out of four alphas of its own — which
     // also opted them out of the contrast preference, since `--depth-step` is
     // what moves the ladder.
-    pattern: /color-mix\([^)]*var\(--color-(?:text|accent)\)[^)]*\)/g,
+    pattern: /color-mix\([^)]*var\(--(?:color-(?:text|accent)|tone-\w+)\)[^)]*\)/g,
     message:
-      "hand-mixed token alpha — use a ladder step (`bg-surface*` / `border-field*` / `bg-<tone>-wash`)",
+      "hand-mixed token alpha — use a ladder step (`surface.*` / `surface.field*` / `surface.<tone>Wash`)",
     // The theme kit is where the ladder's values are authored — mixing is its job.
     appliesTo: (rel) => !rel.startsWith("plugins/builtin/theme/"),
   },
