@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -17,8 +18,10 @@ const (
 )
 
 // HealthCheck is one probe's result. Detail is optional human-readable
-// context for ops; it never lands in the response body — we only
-// surface the status keyword.
+// context for ops. It deliberately never lands in the response body — an
+// unauthenticated readiness caller learns the status keyword and nothing about
+// the inside of the process — so a probe that is not OK reports it to the
+// operator log instead, which is the only place it can be read.
 type HealthCheck struct {
 	Status HealthStatus
 	Detail string
@@ -126,7 +129,16 @@ func runHealthProbesWithBudget(
 		check HealthCheck
 	}
 	completed := make(chan probeResult, len(probes))
+	// A probe that never reports is a probe that outlived the budget. Seeding the
+	// result says so, instead of leaving an empty unhealthy that reads the same as
+	// a probe which answered without explaining itself.
 	results := make([]HealthCheck, len(probes))
+	for index := range results {
+		results[index] = HealthCheck{
+			Status: HealthUnhealthy,
+			Detail: "probe did not report within the health budget",
+		}
+	}
 	for i, p := range probes {
 		invocation := p.start(ctx, budget)
 		go func() {
@@ -153,6 +165,11 @@ aggregate:
 		status := normalizedHealth(r.Status)
 		checks[probes[i].name] = status
 		overall = worseHealth(overall, status)
+		if status != HealthOK {
+			slog.ErrorContext(ctx, "http: health probe is not ok",
+				"probe", probes[i].name, "status", string(status), "detail", r.Detail,
+			)
+		}
 	}
 	return overall, checks
 }

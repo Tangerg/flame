@@ -5,9 +5,11 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"log/slog"
 	stdhttp "net/http"
 	"net/http/httptest"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -249,5 +251,45 @@ func TestHealthProbeRejectsUnknownStatus(t *testing.T) {
 	overall, checks := runHealthProbesWithBudget(t.Context(), runners, time.Second)
 	if overall != HealthUnhealthy || checks["invalid"] != HealthUnhealthy {
 		t.Fatalf("overall/checks = %q/%v, want unhealthy", overall, checks)
+	}
+}
+
+// TestUnhealthyProbeDetailReachesTheOperator covers the only place a probe's
+// explanation can be read. The readiness body deliberately carries the status
+// keyword and nothing else, so a Detail that is not logged is a diagnostic the
+// probe wrote into a black hole — and an unreported probe has to say that it
+// outlived the budget rather than look like one that answered without a reason.
+func TestUnhealthyProbeDetailReachesTheOperator(t *testing.T) {
+	var diagnostics bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	blocked := make(chan struct{})
+	t.Cleanup(func() { close(blocked) })
+	runners := newHealthProbeRunners([]HealthProbe{
+		{Name: "storage", Probe: func(context.Context) HealthCheck {
+			return HealthCheck{Status: HealthUnhealthy, Detail: "database is read-only"}
+		}},
+		{Name: "blocked", Probe: func(context.Context) HealthCheck {
+			<-blocked
+			return HealthCheck{Status: HealthOK}
+		}},
+	})
+
+	overall, checks := runHealthProbesWithBudget(t.Context(), runners, 20*time.Millisecond)
+	if overall != HealthUnhealthy || checks["storage"] != HealthUnhealthy || checks["blocked"] != HealthUnhealthy {
+		t.Fatalf("overall/checks = %q/%v", overall, checks)
+	}
+	output := diagnostics.String()
+	for _, detail := range []string{
+		"database is read-only",
+		"probe did not report within the health budget",
+		"probe=storage",
+		"probe=blocked",
+	} {
+		if !strings.Contains(output, detail) {
+			t.Fatalf("probe diagnostics lost %q: %s", detail, output)
+		}
 	}
 }

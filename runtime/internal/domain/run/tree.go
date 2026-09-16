@@ -43,7 +43,6 @@ type runTreeBuilder struct {
 // postorder: descendants before ancestors, siblings ordered lexically by Run
 // ID, and the root last.
 type Tree struct {
-	rootRunID string
 	postorder []string
 	intervals map[string]runTreeInterval
 }
@@ -81,7 +80,6 @@ func newRunTreeBuilder(rootRunID string, size int) *runTreeBuilder {
 		children:  make(map[string][]string, size),
 		states:    make(map[string]uint8, size),
 		tree: Tree{
-			rootRunID: rootRunID,
 			postorder: make([]string, 0, size),
 			intervals: make(map[string]runTreeInterval, size),
 		},

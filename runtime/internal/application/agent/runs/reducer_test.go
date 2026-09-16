@@ -26,8 +26,7 @@ import (
 func testReducerConfig() reducerConfig {
 	now := time.Date(2026, 7, 13, 1, 2, 3, 0, time.UTC)
 	return reducerConfig{
-		RunID: "run_1", SegmentID: "seg_1", SessionID: "ses_1", WorkspaceCWD: "/work",
-		ExecutorID: "turn_1", ModelSelection: mustReducerSelection("anthropic", "claude"), CreatedAt: now,
+		RunID: "run_1", SegmentID: "seg_1", SessionID: "ses_1", WorkspaceCWD: "/work", ModelSelection: mustReducerSelection("anthropic", "claude"), CreatedAt: now,
 		Now: func() time.Time { return now },
 	}
 }
