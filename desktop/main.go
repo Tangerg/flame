@@ -56,7 +56,7 @@ func desktopWindowBackground() application.RGBA {
 	if !systemPrefersDarkAppearance() {
 		return application.NewRGB(255, 255, 255)
 	}
-	return application.NewRGB(29, 31, 35)
+	return application.NewRGB(31, 31, 31)
 }
 
 // A real titled window with a transparent, empty title bar and content running full height
