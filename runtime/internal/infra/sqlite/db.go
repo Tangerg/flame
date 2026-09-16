@@ -334,8 +334,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			session_id     TEXT    PRIMARY KEY REFERENCES sessions(id) ON DELETE RESTRICT,
 			cwd            TEXT    NOT NULL,
 			to_run_id      TEXT    NOT NULL REFERENCES runs(run_id) ON DELETE RESTRICT,
-			restore_history INTEGER NOT NULL,
-			created_at     INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+			restore_history INTEGER NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS history_items (
 			seq         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -664,8 +663,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			text       TEXT    NOT NULL DEFAULT '',
 			created_at INTEGER NOT NULL
 		)`,
-		`CREATE INDEX IF NOT EXISTS idx_feedback_entries_created
-			ON feedback_entries(created_at DESC)`,
 		// Append-only per-project fact ledger. day is the daily-ledger partition
 		// (YYYY-MM-DD); seq is both stable ordering and the curation watermark.
 		// A content digest deduplicates facts independently, so mixed old/new
@@ -749,6 +746,30 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 	for _, stmt := range stmts {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("sqlite: install current schema: %w", err)
+		}
+	}
+	// The feedback ledger has no reader inside Runtime, so an index on its
+	// timestamp only charged every insert for a query nobody makes; the pending
+	// rollback log took its observation time from SQLite, a second clock in a
+	// second unit that nothing in the Runtime could control or order reliably.
+	for _, retired := range []string{
+		"DROP INDEX IF EXISTS idx_feedback_entries_created",
+	} {
+		if _, err := tx.ExecContext(ctx, retired); err != nil {
+			return fmt.Errorf("sqlite: retire obsolete schema: %w", err)
+		}
+	}
+	var pendingMutationCreatedAt int
+	if err := tx.QueryRowContext(ctx,
+		"SELECT count(*) FROM pragma_table_info('pending_workspace_mutations') WHERE name = 'created_at'",
+	).Scan(&pendingMutationCreatedAt); err != nil {
+		return fmt.Errorf("sqlite: inspect pending workspace mutation schema: %w", err)
+	}
+	if pendingMutationCreatedAt == 1 {
+		if _, err := tx.ExecContext(ctx,
+			"ALTER TABLE pending_workspace_mutations DROP COLUMN created_at",
+		); err != nil {
+			return fmt.Errorf("sqlite: drop pending workspace mutation clock: %w", err)
 		}
 	}
 	var usageColumn int

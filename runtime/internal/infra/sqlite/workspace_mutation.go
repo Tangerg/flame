@@ -146,11 +146,13 @@ func (w *WorkspaceMutationStore) Complete(ctx context.Context, m WorkspaceMutati
 	return nil
 }
 
-// ListPending returns every rollback a crash left unfinished, oldest first, for
-// boot recovery to re-drive.
+// ListPending returns every rollback a crash left unfinished for boot recovery
+// to re-drive. Record admits at most one pending operation per Session and per
+// working tree, so no two rows here can touch the same tree and any total order
+// re-drives them correctly; Session identity supplies a stable one.
 func (w *WorkspaceMutationStore) ListPending(ctx context.Context) ([]WorkspaceMutationRecord, error) {
 	rows, err := w.db.QueryContext(ctx,
-		`SELECT session_id, cwd, to_run_id, restore_history FROM pending_workspace_mutations ORDER BY created_at`)
+		`SELECT session_id, cwd, to_run_id, restore_history FROM pending_workspace_mutations ORDER BY session_id`)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list workspace mutations: %w", err)
 	}
