@@ -187,9 +187,9 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	// destructive restore quiesces one. A caller spells a workspace the way its
 	// Session does, and two Sessions can spell one tree differently, so the
 	// identity is established here rather than assumed of every caller. The
-	// process still runs in the path it was given.
-	// An empty cwd inherits this process's directory and claims no tree, which
-	// is the state StopWorkspace already skips.
+	// process still runs in the path it was given, and an empty cwd inherits
+	// this process's directory while claiming no tree — the state
+	// StopWorkspace already skips.
 	treeIdentity := ""
 	if cwd != "" {
 		resolved, resolveErr := pathidentity.Resolve("", cwd)
