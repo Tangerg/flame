@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Browser, type Page } from "./test";
+import { expect, test, type Browser, type Locator, type Page } from "./test";
 import { DEFAULT_MOTION } from "@/lib/appearance";
 import { VISUAL_AGENT_STATES } from "./agentSessionSnapshots";
 import {
@@ -190,6 +190,52 @@ for (const pane of VISUAL_SETTINGS_PANES) {
   for (const theme of ["light", "dark"] as const) {
     test(`WCAG audit settings pane ${pane} ${theme}`, async ({ page }) => {
       await openFixture(page, { fixture: "workspace", state: "settings", theme, pane });
+
+      await expectNoWcagViolations(page);
+    });
+  }
+}
+
+// Surfaces that only exist once something is clicked. No fixture lands on one, so until this
+// ran nothing had ever audited a form in this product — only the pane holding the button that
+// opens it.
+const OPENED_SURFACES: ReadonlyArray<{
+  name: string;
+  route: FixtureRoute;
+  open: RegExp;
+  reached: (page: Page) => Locator;
+}> = [
+  {
+    name: "MCP server form",
+    route: { fixture: "workspace", state: "settings", pane: "mcp-servers" },
+    open: /Add server/,
+    reached: (page) => page.getByText("Streamable HTTP").first(),
+  },
+  {
+    name: "schedule form",
+    route: { fixture: "workspace", state: "settings", pane: "schedules" },
+    open: /New schedule/,
+    reached: (page) => page.getByPlaceholder(/Instructions to run/).first(),
+  },
+  {
+    name: "agent memory composer",
+    route: { fixture: "workspace", state: "dock-agent-memory" },
+    open: /Add memory/,
+    reached: (page) => page.getByPlaceholder(/durable fact/).first(),
+  },
+];
+
+for (const surface of OPENED_SURFACES) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`WCAG audit ${surface.name} ${theme}`, async ({ page }) => {
+      await openFixture(page, { ...surface.route, theme });
+      const trigger = page.getByRole("button", { name: surface.open }).first();
+      await expect(trigger, `${surface.name} has to offer ${surface.open}`).toBeVisible();
+      await trigger.click();
+      await expect(
+        surface.reached(page),
+        `the audit has to be looking at ${surface.name}, not at the pane behind it`,
+      ).toBeVisible();
 
       await expectNoWcagViolations(page);
     });
