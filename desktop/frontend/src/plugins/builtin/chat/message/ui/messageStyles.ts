@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, motion, radius, space, surface, weight } from "@/styles/tokens.stylex";
+import { color, leading, motion, space, weight } from "@/styles/tokens.stylex";
 
 /**
  * The four distances a seam between two render units can take.
@@ -89,13 +89,6 @@ export const messageStyles = stylex.create({
     backgroundColor: "var(--app-user-message-surface)",
     paddingInline: space.s3,
     paddingBlock: space.s2,
-  },
-  delegatedBubble: {
-    borderRadius: radius.card,
-    backgroundColor: surface.sunken,
-    paddingInline: space.s3,
-    paddingBlock: space.s2,
-    color: color.fg,
   },
   column: {
     position: "relative",

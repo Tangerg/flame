@@ -24,7 +24,7 @@ import {
 import { AgentWorkspaceView } from "@/ui/agent";
 import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { radius, space, type as typeStep } from "@/styles/tokens.stylex";
+import { corner, space, type as typeStep } from "@/styles/tokens.stylex";
 import { subagentEntries, type SubagentEntry } from "../application/subagents";
 import { delegatedRunSummary } from "../application/delegatedRunSummary";
 import { DelegatedRunLink } from "./DelegatedRunLink";
@@ -56,7 +56,6 @@ const styles = stylex.create({
   summary: { minWidth: 0 },
   statusAction: { marginInlineStart: "auto" },
   detail: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
-  user: { borderRadius: radius.lg, padding: space.s3 },
 });
 
 export function SubagentsPanel() {
@@ -165,25 +164,32 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
         {narrative.messages.length === 0 && (
           <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("agent.runTree.material.empty")}</p>
         )}
-        {narrative.messages.map((message) => (
-          <MessageContext.Provider
-            key={message.id}
-            value={{ sessionId: narrative.run.sessionId, message }}
-          >
-            <div
-              className={cn(
-                MESSAGE_CONTENT_CLASS,
-                stylex.props(
-                  typeStep.prose,
-                  message.role === "user" && ms.delegatedBubble,
-                  message.role === "user" && styles.user,
-                ).className,
-              )}
+        {narrative.messages.map((message) => {
+          const isUser = message.role === "user";
+          return (
+            <MessageContext.Provider
+              key={message.id}
+              value={{ sessionId: narrative.run.sessionId, message }}
             >
-              {renderMessageBlocks({ message, facts }, ctx)}
-            </div>
-          </MessageContext.Provider>
-        ))}
+              <div {...stylex.props(ms.column, isUser && ms.columnUser)}>
+                <div
+                  data-user-message-bubble={isUser ? "" : undefined}
+                  className={cn(
+                    MESSAGE_CONTENT_CLASS,
+                    stylex.props(
+                      ms.body,
+                      typeStep.prose,
+                      isUser && ms.bubble,
+                      isUser && corner.bubble,
+                    ).className,
+                  )}
+                >
+                  {renderMessageBlocks({ message, facts }, ctx)}
+                </div>
+              </div>
+            </MessageContext.Provider>
+          );
+        })}
       </div>
     </div>
   );

@@ -118,6 +118,29 @@ it("projects live child material, returns to the list, and never carries it into
   expect(navigator().get().subagent).toBeNull();
 });
 
+// The corner and fill audits find speech by this marker. A delegated user message went
+// unmarked and so wore a bubble nobody was comparing — a third radius and padding, stacked
+// over a second one, against the transcript's.
+it("marks a delegated user message as the same speech bubble the transcript draws", () => {
+  material.rows = rows();
+  material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages.unshift({
+    id: "child-task",
+    role: "user",
+    runId: "child",
+    blocks: [{ kind: "text", text: "Audit axios cancellation", status: "complete" }],
+  });
+  navigator().go({ session: "session" });
+  openWorkspaceSubagentRun("child");
+  const { container } = render(<SubagentsPanel />);
+
+  const bubbles = container.querySelectorAll("[data-user-message-bubble]");
+  expect(bubbles).toHaveLength(1);
+  expect(bubbles[0]!.textContent).toContain("Audit axios cancellation");
+  expect(
+    screen.getByText("Child streamed output").closest("[data-user-message-bubble]"),
+  ).toBeNull();
+});
+
 it("keeps the selected run failure visible when no narrative was produced", () => {
   material.rows = rows({
     ...child,
