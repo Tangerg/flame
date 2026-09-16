@@ -153,13 +153,18 @@ func runServer(ctx context.Context, errw io.Writer, httpServer runtimeHTTPServer
 	errs := make(chan error, 1)
 	go func() {
 		_, _ = fmt.Fprintf(errw, "%s http listening on %s\n", runtimeLogPrefix, addr)
-		// Printed from the transport's own registry: the routes an operator is
-		// told about are the routes that were registered, and which of them are
-		// ungated is a fact the registry already holds.
+		// The routes an operator is told about are the routes that were
+		// registered, but whether one is actually gated is this composition's
+		// fact, not the registry's: the registry declares the intent to gate and
+		// only a configured token supplies the gate. Reading the label off the
+		// declaration alone prints "token-gated" beside an open RPC endpoint.
 		for _, endpoint := range flamehttp.Contract().Endpoints {
 			gate := "token-gated"
-			if endpoint.Authentication == flamehttp.EndpointAuthenticationNone {
+			switch {
+			case endpoint.Authentication == flamehttp.EndpointAuthenticationNone:
 				gate = "no auth"
+			case token == nil:
+				gate = "UNGATED"
 			}
 			detail := ""
 			if endpoint.Kind == flamehttp.EndpointKindRPC {

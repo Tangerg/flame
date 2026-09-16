@@ -1,11 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"net/http"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/localruntime"
 )
 
 type scriptedHTTPServer struct {
@@ -115,5 +120,52 @@ func TestRunServerUsesGracefulShutdownAfterOwnerCancellation(t *testing.T) {
 	}
 	if shutdowns != 1 || closes != 0 {
 		t.Fatalf("transport cleanup = (%d shutdowns, %d closes), want (1, 0)", shutdowns, closes)
+	}
+}
+
+// TestBannerReportsTheGateThatActuallyExists pins the one line an operator
+// reads to learn whether the RPC surface is protected. The registry declares
+// that /v2/rpc intends to be token-gated; only a configured token supplies the
+// gate. Printing the declaration alone put "token-gated" beside an open
+// endpoint on a runtime started with server.noLocalToken.
+func TestBannerReportsTheGateThatActuallyExists(t *testing.T) {
+	banner := func(token *localruntime.Token) string {
+		t.Helper()
+		var printed bytes.Buffer
+		server := scriptedHTTPServer{
+			start:    func() error { return errors.New("stop after the banner") },
+			shutdown: func(context.Context) error { return nil },
+			close:    func() error { return nil },
+		}
+		_ = runServer(t.Context(), &printed, server, "127.0.0.1:0", token)
+		return printed.String()
+	}
+
+	open := banner(nil)
+	if !strings.Contains(open, "local-token gate disabled") {
+		t.Fatalf("banner = %q, want the disabled gate reported", open)
+	}
+	for _, line := range strings.Split(open, "\n") {
+		if strings.Contains(line, "/v2/rpc") && strings.Contains(line, "token-gated") {
+			t.Fatalf("an ungated RPC endpoint is printed as token-gated: %q", line)
+		}
+	}
+
+	token, err := localruntime.OpenToken(filepath.Join(t.TempDir(), "token"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gated := banner(token)
+	if !strings.Contains(gated, "local-token gate active") {
+		t.Fatalf("banner = %q, want the active gate reported", gated)
+	}
+	rpcGated := false
+	for _, line := range strings.Split(gated, "\n") {
+		if strings.Contains(line, "/v2/rpc") && strings.Contains(line, "token-gated") {
+			rpcGated = true
+		}
+	}
+	if !rpcGated {
+		t.Fatalf("banner = %q, want the gated RPC endpoint named token-gated", gated)
 	}
 }
