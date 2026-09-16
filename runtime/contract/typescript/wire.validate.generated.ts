@@ -1309,7 +1309,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     total: allOf([integer(), minimum(0)]),
   }, ["matches", "total"]),
   HealthStatus: enumOf(["ok", "degraded", "unhealthy"]),
-  HookEvent: enumOf(["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "SubagentStart", "SubagentStop", "PreCompact", "Stop", "Notification"]),
+  HookEvent: enumOf(["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "PreCompact", "Stop", "Notification"]),
   HookInfo: allOf([
     object({
       active: flag(),
@@ -1347,22 +1347,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ifThen(
       fields({
         event: literal("SessionStart"),
-      }, ["event"]),
-      fields({
-        matcher: absent(),
-      }, []),
-    ),
-    ifThen(
-      fields({
-        event: literal("SubagentStart"),
-      }, ["event"]),
-      fields({
-        matcher: absent(),
-      }, []),
-    ),
-    ifThen(
-      fields({
-        event: literal("SubagentStop"),
       }, ["event"]),
       fields({
         matcher: absent(),

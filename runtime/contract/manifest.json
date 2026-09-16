@@ -3754,30 +3754,6 @@
             {
               "field": "event",
               "operator": "equals",
-              "value": "SubagentStart"
-            }
-          ],
-          "forbidden": [
-            "matcher"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "event",
-              "operator": "equals",
-              "value": "SubagentStop"
-            }
-          ],
-          "forbidden": [
-            "matcher"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "event",
-              "operator": "equals",
               "value": "PreCompact"
             }
           ],

@@ -571,8 +571,6 @@ func registerObjectConstraints(s *Shapes) {
 	for _, event := range []protocol.HookEvent{
 		protocol.HookEventUserPromptSubmit,
 		protocol.HookEventSessionStart,
-		protocol.HookEventSubagentStart,
-		protocol.HookEventSubagentStop,
 		protocol.HookEventPreCompact,
 		protocol.HookEventStop,
 		protocol.HookEventNotification,

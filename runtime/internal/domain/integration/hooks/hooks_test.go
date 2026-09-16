@@ -107,13 +107,6 @@ func TestCommandProjectionBoundsDynamicMaterialWithoutMutatingInput(t *testing.T
 			Name: "shell", Arguments: `{"command":"go test ./..."}`,
 			Result: strings.Repeat("r", MaxResultBytes+1),
 		},
-		Subagent: &SubagentInput{
-			RunID: "run-child", ParentRunID: "run-root",
-			Description: strings.Repeat("d", MaxReasonBytes+1),
-			Prompt:      strings.Repeat("q", MaxPromptBytes+1),
-			Result:      strings.Repeat("s", MaxResultBytes+1),
-			Error:       strings.Repeat("x", MaxReasonBytes+1),
-		},
 	}
 
 	projected, err := input.CommandProjection()
@@ -132,18 +125,8 @@ func TestCommandProjectionBoundsDynamicMaterialWithoutMutatingInput(t *testing.T
 		projected.Tool.Arguments != input.Tool.Arguments {
 		t.Fatalf("projected tool = %+v", projected.Tool)
 	}
-	if projected.Subagent == input.Subagent ||
-		len(projected.Subagent.Description) != MaxReasonBytes ||
-		len(projected.Subagent.Prompt) != MaxPromptBytes ||
-		!projected.Subagent.PromptTruncated ||
-		len(projected.Subagent.Result) != MaxResultBytes ||
-		!projected.Subagent.ResultTruncated ||
-		len(projected.Subagent.Error) != MaxReasonBytes {
-		t.Fatalf("projected subagent = %+v", projected.Subagent)
-	}
 	if len(input.Prompt) != MaxPromptBytes+1 ||
-		len(input.Tool.Result) != MaxResultBytes+1 ||
-		len(input.Subagent.Prompt) != MaxPromptBytes+1 {
+		len(input.Tool.Result) != MaxResultBytes+1 {
 		t.Fatal("CommandProjection mutated its input")
 	}
 }
@@ -193,8 +176,6 @@ func TestValidateCommandMaterialRejectsCorruptResourceReferences(t *testing.T) {
 
 	for _, input := range []Input{
 		{Event: SessionStart, SessionID: "ses_ one"},
-		{Event: SubagentStart, Subagent: &SubagentInput{RunID: "run_\u200bhidden"}},
-		{Event: SubagentStart, Subagent: &SubagentInput{RunID: "run_child", ParentRunID: "run parent"}},
 	} {
 		if err := input.ValidateCommandMaterial(); !errors.Is(err, ErrInvalidCommandInput) {
 			t.Errorf("ValidateCommandMaterial(%+v) = %v, want ErrInvalidCommandInput", input, err)

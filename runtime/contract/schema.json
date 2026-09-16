@@ -3133,8 +3133,6 @@
         "PostToolUse",
         "UserPromptSubmit",
         "SessionStart",
-        "SubagentStart",
-        "SubagentStop",
         "PreCompact",
         "Stop",
         "Notification"
@@ -3240,40 +3238,6 @@
             "properties": {
               "event": {
                 "const": "SessionStart"
-              }
-            },
-            "required": [
-              "event"
-            ]
-          },
-          "then": {
-            "properties": {
-              "matcher": false
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "event": {
-                "const": "SubagentStart"
-              }
-            },
-            "required": [
-              "event"
-            ]
-          },
-          "then": {
-            "properties": {
-              "matcher": false
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "event": {
-                "const": "SubagentStop"
               }
             },
             "required": [

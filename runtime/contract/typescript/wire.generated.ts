@@ -539,7 +539,7 @@ export interface GrepResult {
 
 export type HealthStatus = "ok" | "degraded" | "unhealthy";
 
-export type HookEvent = "PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "SessionStart" | "SubagentStart" | "SubagentStop" | "PreCompact" | "Stop" | "Notification";
+export type HookEvent = "PreToolUse" | "PostToolUse" | "UserPromptSubmit" | "SessionStart" | "PreCompact" | "Stop" | "Notification";
 
 export interface HookInfo {
   active: boolean;
@@ -1684,7 +1684,7 @@ export const WIRE_ENUMS = {
   GoalReasonCode: ["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"],
   GoalStatus: ["active", "paused", "blocked", "completing"],
   HealthStatus: ["ok", "degraded", "unhealthy"],
-  HookEvent: ["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "SubagentStart", "SubagentStop", "PreCompact", "Stop", "Notification"],
+  HookEvent: ["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "PreCompact", "Stop", "Notification"],
   HookScope: ["global", "project"],
   InterruptResponseType: ["approval", "answer"],
   InterruptType: ["approval", "question"],

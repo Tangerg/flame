@@ -61,11 +61,6 @@ const (
 	// SessionStart fires on the first Run of a Session — a hook may inject
 	// session-scoped context.
 	SessionStart Event = "SessionStart"
-	// SubagentStart fires after a delegated sub-agent Run is durably admitted.
-	SubagentStart Event = "SubagentStart"
-	// SubagentStop fires when a delegated sub-agent Run reaches a terminal
-	// state.
-	SubagentStop Event = "SubagentStop"
 	// PreCompact fires before model-call or Run-boundary compaction — a hook may inject
 	// guidance or veto the compaction.
 	PreCompact Event = "PreCompact"
@@ -166,7 +161,7 @@ func ValidateHookCascade(count int) error {
 func (h Hook) Validate() error {
 	switch h.Event {
 	case PreToolUse, PostToolUse, UserPromptSubmit, SessionStart,
-		SubagentStart, SubagentStop, PreCompact, Stop, Notification:
+		PreCompact, Stop, Notification:
 	default:
 		return fmt.Errorf("%w: unsupported event %q", ErrInvalidHook, h.Event)
 	}
@@ -211,7 +206,6 @@ type Input struct {
 	SessionID       string
 	CWD             string
 	Tool            *ToolInput
-	Subagent        *SubagentInput
 	Prompt          string
 	PromptTruncated bool
 	// Reason carries a human-readable note for the observe-only events (the Stop
@@ -224,30 +218,6 @@ type ToolInput struct {
 	Name            string
 	Arguments       string // canonical JSON args (Pre/PostToolUse)
 	Result          string // tool output (PostToolUse)
-	ResultTruncated bool
-}
-
-// SubagentStatus is the stable terminal vocabulary exposed to lifecycle hooks.
-type SubagentStatus string
-
-const (
-	SubagentCompleted  SubagentStatus = "completed"
-	SubagentFailed     SubagentStatus = "failed"
-	SubagentKilled     SubagentStatus = "killed"
-	SubagentTerminated SubagentStatus = "terminated"
-	SubagentStuck      SubagentStatus = "stuck"
-)
-
-// SubagentInput is the sub-agent slice of an Input for SubagentStart/Stop.
-type SubagentInput struct {
-	RunID           string
-	ParentRunID     string
-	Description     string
-	Prompt          string
-	PromptTruncated bool
-	Status          SubagentStatus
-	Result          string
-	Error           string
 	ResultTruncated bool
 }
 
@@ -276,22 +246,6 @@ func (i Input) CommandProjection() (Input, error) {
 		)
 		out.Tool = &tool
 	}
-	if i.Subagent != nil {
-		subagent := *i.Subagent
-		subagent.Description, _ = boundedCommandText(i.Subagent.Description, MaxReasonBytes, false)
-		subagent.Prompt, subagent.PromptTruncated = boundedCommandText(
-			i.Subagent.Prompt,
-			MaxPromptBytes,
-			i.Subagent.PromptTruncated,
-		)
-		subagent.Result, subagent.ResultTruncated = boundedCommandText(
-			i.Subagent.Result,
-			MaxResultBytes,
-			i.Subagent.ResultTruncated,
-		)
-		subagent.Error, _ = boundedCommandText(i.Subagent.Error, MaxReasonBytes, false)
-		out.Subagent = &subagent
-	}
 	if err := out.ValidateCommandMaterial(); err != nil {
 		return Input{}, err
 	}
@@ -312,37 +266,9 @@ func (i Input) ValidateCommandMaterial() error {
 		}
 		values = append(values, i.Tool.Name, i.Tool.Arguments, i.Tool.Result)
 	}
-	if i.Subagent != nil {
-		if len(i.Subagent.Description) > MaxReasonBytes ||
-			len(i.Subagent.Prompt) > MaxPromptBytes ||
-			len(i.Subagent.Result) > MaxResultBytes ||
-			len(i.Subagent.Error) > MaxReasonBytes {
-			return ErrCommandInputTooLarge
-		}
-		values = append(
-			values,
-			i.Subagent.RunID,
-			i.Subagent.ParentRunID,
-			i.Subagent.Description,
-			i.Subagent.Prompt,
-			string(i.Subagent.Status),
-			i.Subagent.Result,
-			i.Subagent.Error,
-		)
-	}
 	if i.SessionID != "" {
 		if err := resourceid.ValidateSession(i.SessionID); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidCommandInput, err)
-		}
-	}
-	if i.Subagent != nil {
-		if err := resourceid.ValidateRun(i.Subagent.RunID); err != nil {
-			return fmt.Errorf("%w: subagent: %v", ErrInvalidCommandInput, err)
-		}
-		if i.Subagent.ParentRunID != "" {
-			if err := resourceid.ValidateRun(i.Subagent.ParentRunID); err != nil {
-				return fmt.Errorf("%w: subagent parent: %v", ErrInvalidCommandInput, err)
-			}
 		}
 	}
 	for _, value := range values {

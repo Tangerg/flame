@@ -93,7 +93,7 @@ func TestListHooksPreservesCompleteHookDefinition(t *testing.T) {
 	s := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Hooks: staticHookInspector{inspection: apphooks.Inspection{
 		ProjectRoot: projectRoot,
 		Hooks: []domainhooks.Hook{{
-			Event: domainhooks.SubagentStart, Command: "audit", TimeoutMillis: 2500,
+			Event: domainhooks.SessionStart, Command: "audit", TimeoutMillis: 2500,
 			Scope: domainhooks.ScopeGlobal, Source: "/home/user/.flame/hooks.json",
 		}},
 	}}})
@@ -106,8 +106,8 @@ func TestListHooksPreservesCompleteHookDefinition(t *testing.T) {
 		t.Fatalf("hooks = %+v, want one", result.Hooks)
 	}
 	hook := result.Hooks[0]
-	if hook.Event != protocol.HookEventSubagentStart || hook.TimeoutMillis != 2500 || !hook.Active {
-		t.Fatalf("hook = %+v, want complete active subagent hook", hook)
+	if hook.Event != protocol.HookEventSessionStart || hook.TimeoutMillis != 2500 || !hook.Active {
+		t.Fatalf("hook = %+v, want complete active hook", hook)
 	}
 }
 

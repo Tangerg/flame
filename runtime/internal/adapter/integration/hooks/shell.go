@@ -95,14 +95,13 @@ func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) ap
 }
 
 type hookInputWire struct {
-	Event           domainhooks.Event      `json:"event"`
-	SessionID       string                 `json:"sessionId,omitempty"`
-	CWD             string                 `json:"cwd,omitempty"`
-	Tool            *hookToolInputWire     `json:"tool,omitempty"`
-	Subagent        *hookSubagentInputWire `json:"subagent,omitempty"`
-	Prompt          string                 `json:"prompt,omitempty"`
-	PromptTruncated bool                   `json:"promptTruncated,omitempty"`
-	Reason          string                 `json:"reason,omitempty"`
+	Event           domainhooks.Event  `json:"event"`
+	SessionID       string             `json:"sessionId,omitempty"`
+	CWD             string             `json:"cwd,omitempty"`
+	Tool            *hookToolInputWire `json:"tool,omitempty"`
+	Prompt          string             `json:"prompt,omitempty"`
+	PromptTruncated bool               `json:"promptTruncated,omitempty"`
+	Reason          string             `json:"reason,omitempty"`
 }
 
 type hookToolInputWire struct {
@@ -110,18 +109,6 @@ type hookToolInputWire struct {
 	Arguments       string `json:"arguments,omitempty"`
 	Result          string `json:"result,omitempty"`
 	ResultTruncated bool   `json:"resultTruncated,omitempty"`
-}
-
-type hookSubagentInputWire struct {
-	RunID           string                     `json:"runId"`
-	ParentRunID     string                     `json:"parentRunId,omitempty"`
-	Description     string                     `json:"description,omitempty"`
-	Prompt          string                     `json:"prompt,omitempty"`
-	PromptTruncated bool                       `json:"promptTruncated,omitempty"`
-	Status          domainhooks.SubagentStatus `json:"status,omitempty"`
-	Result          string                     `json:"result,omitempty"`
-	Error           string                     `json:"error,omitempty"`
-	ResultTruncated bool                       `json:"resultTruncated,omitempty"`
 }
 
 func hookInputWireFrom(input domainhooks.Input) hookInputWire {
@@ -133,15 +120,6 @@ func hookInputWireFrom(input domainhooks.Input) hookInputWire {
 		out.Tool = &hookToolInputWire{
 			Name: input.Tool.Name, Arguments: input.Tool.Arguments,
 			Result: input.Tool.Result, ResultTruncated: input.Tool.ResultTruncated,
-		}
-	}
-	if input.Subagent != nil {
-		out.Subagent = &hookSubagentInputWire{
-			RunID: input.Subagent.RunID, ParentRunID: input.Subagent.ParentRunID,
-			Description: input.Subagent.Description, Prompt: input.Subagent.Prompt,
-			PromptTruncated: input.Subagent.PromptTruncated, Status: input.Subagent.Status,
-			Result: input.Subagent.Result, Error: input.Subagent.Error,
-			ResultTruncated: input.Subagent.ResultTruncated,
 		}
 	}
 	return out
@@ -173,16 +151,6 @@ func hookInputMaterialWithinLimit(input domainhooks.Input, limit int) bool {
 		(!consume(input.Tool.Name) ||
 			!consume(input.Tool.Arguments) ||
 			!consume(input.Tool.Result)) {
-		return false
-	}
-	if input.Subagent != nil &&
-		(!consume(input.Subagent.RunID) ||
-			!consume(input.Subagent.ParentRunID) ||
-			!consume(input.Subagent.Description) ||
-			!consume(input.Subagent.Prompt) ||
-			!consume(string(input.Subagent.Status)) ||
-			!consume(input.Subagent.Result) ||
-			!consume(input.Subagent.Error)) {
 		return false
 	}
 	return true

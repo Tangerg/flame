@@ -2,7 +2,6 @@ package hooks
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -36,27 +35,6 @@ func TestShell_EmptyOutputIsExplicitAllow(t *testing.T) {
 	}
 	if got.Decision.Verdict != apphooks.CommandAllow {
 		t.Fatalf("verdict = %q, want %q", got.Decision.Verdict, apphooks.CommandAllow)
-	}
-}
-
-func TestSubagentHookWireUsesApplicationRunIdentity(t *testing.T) {
-	encoded, err := json.Marshal(hookInputWireFrom(domainhooks.Input{
-		Event: domainhooks.SubagentStart,
-		Subagent: &domainhooks.SubagentInput{
-			RunID: "run-child", ParentRunID: "run-root", Description: "inspect auth",
-		},
-	}))
-	if err != nil {
-		t.Fatalf("marshal hook input: %v", err)
-	}
-	wire := string(encoded)
-	for _, required := range []string{`"runId":"run-child"`, `"parentRunId":"run-root"`} {
-		if !strings.Contains(wire, required) {
-			t.Fatalf("hook wire %s is missing %s", wire, required)
-		}
-	}
-	if strings.Contains(wire, "processId") || strings.Contains(wire, "parentProcessId") {
-		t.Fatalf("hook wire leaks Framework process identity: %s", wire)
 	}
 }
 
@@ -187,19 +165,6 @@ func TestHookInputWirePreservesBoundedProjectionMarkers(t *testing.T) {
 	})
 	if tool.Tool == nil || !tool.Tool.ResultTruncated {
 		t.Fatal("tool result truncation marker was dropped at the process boundary")
-	}
-	subagent := hookInputWireFrom(domainhooks.Input{
-		Event: domainhooks.SubagentStop,
-		Subagent: &domainhooks.SubagentInput{
-			RunID: "run-child", ParentRunID: "run-root",
-			Prompt: "prompt", PromptTruncated: true,
-			Result: "result", ResultTruncated: true,
-		},
-	})
-	if subagent.Subagent == nil ||
-		!subagent.Subagent.PromptTruncated ||
-		!subagent.Subagent.ResultTruncated {
-		t.Fatal("sub-agent truncation markers were dropped at the process boundary")
 	}
 }
 

@@ -19,8 +19,6 @@ const (
 	HookEventPostToolUse      HookEvent = "PostToolUse"
 	HookEventUserPromptSubmit HookEvent = "UserPromptSubmit"
 	HookEventSessionStart     HookEvent = "SessionStart"
-	HookEventSubagentStart    HookEvent = "SubagentStart"
-	HookEventSubagentStop     HookEvent = "SubagentStop"
 	HookEventPreCompact       HookEvent = "PreCompact"
 	HookEventStop             HookEvent = "Stop"
 	HookEventNotification     HookEvent = "Notification"

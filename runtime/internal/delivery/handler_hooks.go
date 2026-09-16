@@ -56,10 +56,6 @@ func presentHookEvent(event hooks.Event) (protocol.HookEvent, bool) {
 		return protocol.HookEventUserPromptSubmit, true
 	case hooks.SessionStart:
 		return protocol.HookEventSessionStart, true
-	case hooks.SubagentStart:
-		return protocol.HookEventSubagentStart, true
-	case hooks.SubagentStop:
-		return protocol.HookEventSubagentStop, true
 	case hooks.PreCompact:
 		return protocol.HookEventPreCompact, true
 	case hooks.Stop:

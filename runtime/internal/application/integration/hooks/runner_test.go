@@ -25,10 +25,6 @@ func (c *commandStub) RunHookCommand(_ context.Context, req CommandRequest) Comm
 		value := *req.Input.Tool
 		req.Input.Tool = &value
 	}
-	if req.Input.Subagent != nil {
-		value := *req.Input.Subagent
-		req.Input.Subagent = &value
-	}
 	c.requests = append(c.requests, req)
 	if len(c.results) == 0 {
 		return CommandResult{}

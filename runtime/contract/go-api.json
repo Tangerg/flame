@@ -1098,16 +1098,6 @@
           "value": "\"Stop\""
         },
         {
-          "name": "HookEventSubagentStart",
-          "type": "HookEvent",
-          "value": "\"SubagentStart\""
-        },
-        {
-          "name": "HookEventSubagentStop",
-          "type": "HookEvent",
-          "value": "\"SubagentStop\""
-        },
-        {
           "name": "HookEventUserPromptSubmit",
           "type": "HookEvent",
           "value": "\"UserPromptSubmit\""
