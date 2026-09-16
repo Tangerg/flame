@@ -246,7 +246,7 @@ func (c *Coordinator) resolveRollbackBoundary(
 	if err != nil {
 		return resolvedRollbackBoundary{}, err
 	}
-	boundary, err := transcript.TimelineFromRuns(runs).BoundaryAt(toRunID, true)
+	boundary, err := transcript.TimelineFromRuns(runs).BoundaryAt(toRunID)
 	if err != nil {
 		return resolvedRollbackBoundary{}, err
 	}
@@ -362,7 +362,7 @@ func (c *Coordinator) recoverRollback(ctx context.Context, m WorkspaceMutation) 
 		if err != nil {
 			return err
 		}
-		boundary, err = transcript.TimelineFromRuns(runs).BoundaryAt(m.ToRunID, true)
+		boundary, err = transcript.TimelineFromRuns(runs).BoundaryAt(m.ToRunID)
 		if err != nil {
 			return err
 		}

@@ -126,15 +126,16 @@ func (b Boundary) DroppedRunIDs() []string {
 
 // BoundaryAt computes the inclusive-keep split of this timeline at runID. It
 // orders a copy by CreatedAt and leaves the timeline untouched. runID==""
-// drops every run (KeepMessageMark 0 — clear to empty). requireRoot rejects a non-root
-// runID with [ErrNotRoot] (rollback addresses root runs only; fork passes
-// false). An unknown runID is [ErrRunNotFound].
-func (t Timeline) BoundaryAt(runID string, requireRoot bool) (Boundary, error) {
+// drops every run (KeepMessageMark 0 — clear to empty). A non-root runID is
+// [ErrNotRoot] and an unknown one is [ErrRunNotFound]: this is the rollback
+// split, and rollback addresses root Runs only. Fork cuts a portable prefix that
+// may name a child, which [Timeline.PortableBoundaryAt] owns.
+func (t Timeline) BoundaryAt(runID string) (Boundary, error) {
 	nodes, err := t.ordered()
 	if err != nil {
 		return Boundary{}, err
 	}
-	return boundaryAtOrdered(nodes, runID, requireRoot)
+	return boundaryAtOrdered(nodes, runID, true)
 }
 
 // PortableBoundaryAt resolves a forkable prefix. A root and its child Runs are

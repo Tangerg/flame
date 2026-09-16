@@ -31,8 +31,8 @@ func runIDs(ns []transcript.RunNode) []string {
 // TestBoundaryAt audits the inclusive-keep split: a kept root keeps its own
 // child Runs (so the watermark is the last kept node's, not the root's), the
 // drop set is everything from the next root on, drop-all keeps nothing, and a
-// non-root / unknown target errors under requireRoot. Input is given out of
-// order to also exercise the internal CreatedAt sort.
+// non-root / unknown target errors. Input is given out of order to also
+// exercise the internal CreatedAt sort.
 func TestBoundaryAt(t *testing.T) {
 	// Wall-clock order: R1 @1 mark2 → S1 (child of R1) @2 mark4 → R2 @3 mark6
 	// → R3 @4 mark9. Deliberately shuffled to prove BoundaryAt sorts.
@@ -46,7 +46,7 @@ func TestBoundaryAt(t *testing.T) {
 
 	// Keep through R1 inclusive → keep R1+S1 (watermark 4, the last kept node),
 	// drop R2+R3, boundary at R2's time.
-	b, err := timeline.BoundaryAt("R1", true)
+	b, err := timeline.BoundaryAt("R1")
 	if err != nil {
 		t.Fatalf("R1: %v", err)
 	}
@@ -58,31 +58,27 @@ func TestBoundaryAt(t *testing.T) {
 	}
 
 	// Keep through R2 → watermark 6, drop only R3.
-	if b, _ := timeline.BoundaryAt("R2", true); b.KeepMessageMark != 6 || len(b.Dropped) != 1 || b.Dropped[0].ID != "R3" {
+	if b, _ := timeline.BoundaryAt("R2"); b.KeepMessageMark != 6 || len(b.Dropped) != 1 || b.Dropped[0].ID != "R3" {
 		t.Fatalf("R2 split = keep%d drop%v, want keep6 [R3]", b.KeepMessageMark, runIDs(b.Dropped))
 	}
 
 	// Keep through the latest root → nothing to drop.
-	if b, _ := timeline.BoundaryAt("R3", true); len(b.Dropped) != 0 {
+	if b, _ := timeline.BoundaryAt("R3"); len(b.Dropped) != 0 {
 		t.Fatalf("R3 drop = %v, want none", runIDs(b.Dropped))
 	}
 
 	// Drop everything (empty target) → keep 0, drop all.
-	if b, _ := timeline.BoundaryAt("", true); b.KeepMessageMark != 0 || len(b.Dropped) != 4 || !b.BoundaryTime.IsZero() {
+	if b, _ := timeline.BoundaryAt(""); b.KeepMessageMark != 0 || len(b.Dropped) != 4 || !b.BoundaryTime.IsZero() {
 		t.Fatalf("drop-all = keep%d drop%d boundary%v, want keep0 drop4 zero", b.KeepMessageMark, len(b.Dropped), b.BoundaryTime)
 	}
 
-	// A child Run target is not a root → ErrNotRoot (rollback's requireRoot).
-	if _, err := timeline.BoundaryAt("S1", true); !errors.Is(err, transcript.ErrNotRoot) {
+	// A child Run target is not a root → ErrNotRoot.
+	if _, err := timeline.BoundaryAt("S1"); !errors.Is(err, transcript.ErrNotRoot) {
 		t.Fatalf("S1 err = %v, want ErrNotRoot", err)
 	}
 	// Unknown target → ErrRunNotFound.
-	if _, err := timeline.BoundaryAt("ghost", true); !errors.Is(err, transcript.ErrRunNotFound) {
+	if _, err := timeline.BoundaryAt("ghost"); !errors.Is(err, transcript.ErrRunNotFound) {
 		t.Fatalf("ghost err = %v, want ErrRunNotFound", err)
-	}
-	// Fork is lax: a child Run target is allowed (requireRoot=false).
-	if _, err := timeline.BoundaryAt("S1", false); err != nil {
-		t.Fatalf("S1 lax err = %v, want nil", err)
 	}
 
 	// BoundaryAt must not mutate the caller's slice order.
@@ -109,6 +105,15 @@ func TestPortableBoundaryAtKeepsOnlyCompleteRunTrees(t *testing.T) {
 	}
 	if _, err := nodes.PortableBoundaryAt("run_2_child"); !errors.Is(err, transcript.ErrRunNotFound) {
 		t.Fatalf("active-tree child error = %v, want ErrRunNotFound", err)
+	}
+	// A fork may cut at a child of a complete tree; only rollback requires a root.
+	child, err := nodes.PortableBoundaryAt("run_1_child")
+	if err != nil {
+		t.Fatalf("complete-tree child = %v, want a portable boundary", err)
+	}
+	if child.KeepMessageMark != 4 || child.KeepRunID != "run_1_child" ||
+		!slices.Equal(child.RunIDs, []string{"run_1", "run_1_child"}) {
+		t.Fatalf("complete-tree child boundary = %+v", child)
 	}
 }
 
