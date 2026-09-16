@@ -726,8 +726,15 @@ func engineEventEndsSegment(event ExecutionFact) bool {
 	}
 }
 
+// recordRunCleanupError reports a failure in work a finished Run still owed:
+// releasing its executor, closing its journal, aborting a reserved child start,
+// running post-Run maintenance. None of it can change the Run's settled outcome,
+// and a span carries it only where the host configured tracing, so the
+// operator's copy goes to the logging channel.
 func recordRunCleanupError(ctx context.Context, err error) {
-	if err != nil {
-		trace.SpanFromContext(ctx).RecordError(err)
+	if err == nil {
+		return
 	}
+	slog.ErrorContext(ctx, "runs: Run cleanup failed", "error", err)
+	trace.SpanFromContext(ctx).RecordError(err)
 }
