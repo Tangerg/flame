@@ -29,11 +29,11 @@ type skillArchivePolicy struct {
 }
 
 func newSkillArchivePolicy(values SkillArchivePolicyValues) (skillArchivePolicy, error) {
-	archiveAfter, err := positiveDurationOrDefault(values.ArchiveAfter, defaultSkillArchiveAfter, "archive after")
+	archiveAfter, err := positiveOrDefault(values.ArchiveAfter, defaultSkillArchiveAfter, "archive after")
 	if err != nil {
 		return skillArchivePolicy{}, err
 	}
-	checkInterval, err := positiveDurationOrDefault(values.CheckInterval, defaultSkillArchiveCheckInterval, "check interval")
+	checkInterval, err := positiveOrDefault(values.CheckInterval, defaultSkillArchiveCheckInterval, "check interval")
 	if err != nil {
 		return skillArchivePolicy{}, err
 	}

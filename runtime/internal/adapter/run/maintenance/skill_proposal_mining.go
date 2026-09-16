@@ -56,11 +56,11 @@ type skillMiningPolicy struct {
 }
 
 func newSkillMiningPolicy(values SkillMiningPolicyValues) (skillMiningPolicy, error) {
-	threshold, err := positiveIntOrDefault(values.ComplexityThreshold, defaultSkillMiningComplexityThreshold, "complexity threshold")
+	threshold, err := positiveOrDefault(values.ComplexityThreshold, defaultSkillMiningComplexityThreshold, "complexity threshold")
 	if err != nil {
 		return skillMiningPolicy{}, fmt.Errorf("skill mining policy: %w", err)
 	}
-	cadence, err := positiveIntOrDefault(values.Cadence, defaultSkillMiningCadence, "cadence")
+	cadence, err := positiveOrDefault(values.Cadence, defaultSkillMiningCadence, "cadence")
 	if err != nil {
 		return skillMiningPolicy{}, fmt.Errorf("skill mining policy: %w", err)
 	}

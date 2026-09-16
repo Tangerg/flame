@@ -114,9 +114,5 @@ func (r RestorePlan) Snapshot() Snapshot {
 
 // PlanReplacement returns an isolated copy of the restored Plan transition.
 func (r RestorePlan) PlanReplacement() *plan.Replacement {
-	if r.planReplacement == nil {
-		return nil
-	}
-	replacement := *r.planReplacement
-	return &replacement
+	return clonePlanReplacement(r.planReplacement)
 }

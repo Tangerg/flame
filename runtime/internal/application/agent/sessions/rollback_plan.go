@@ -154,9 +154,5 @@ func (r RollbackPlan) CheckpointRootIDs() []string {
 
 // PlanReplacement returns an isolated copy of the boundary Plan transition.
 func (r RollbackPlan) PlanReplacement() *plan.Replacement {
-	if r.planReplacement == nil {
-		return nil
-	}
-	replacement := *r.planReplacement
-	return &replacement
+	return clonePlanReplacement(r.planReplacement)
 }
