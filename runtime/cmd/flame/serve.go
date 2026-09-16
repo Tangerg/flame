@@ -97,7 +97,36 @@ func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, tokenValue
 		ProtocolVersion: protocol.ProtocolVersion,
 		LocalToken:      tokenValue,
 		CORSOrigins:     srv.CORSOrigins,
+		HealthProbes:    []flamehttp.HealthProbe{storageHealthProbe(instance.CheckStorage)},
 	})
+}
+
+// storageHealthProbe reports the one readiness fact the runtime owns beyond
+// being reachable: whether its durable storage still answers. The instance
+// opens and recovers storage before this server ever listens, so a probe that
+// loses the race for the single pooled connection means busy, not broken — only
+// a real failure is unhealthy.
+func storageHealthProbe(check func(context.Context) error) flamehttp.HealthProbe {
+	return flamehttp.HealthProbe{
+		Name: "storage",
+		Probe: func(ctx context.Context) flamehttp.HealthCheck {
+			err := check(ctx)
+			switch {
+			case err == nil:
+				return flamehttp.HealthCheck{Status: flamehttp.HealthOK}
+			case errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled):
+				return flamehttp.HealthCheck{
+					Status: flamehttp.HealthDegraded,
+					Detail: "storage did not answer within the health budget",
+				}
+			default:
+				return flamehttp.HealthCheck{
+					Status: flamehttp.HealthUnhealthy,
+					Detail: err.Error(),
+				}
+			}
+		},
+	}
 }
 
 // resolvedVersion keeps HTTP identity and telemetry resource metadata aligned:

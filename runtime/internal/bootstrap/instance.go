@@ -33,6 +33,7 @@ type Instance struct {
 	application *runtimeApplication
 	serverInfo  protocol.ServerInfo
 	lifetime    *runtimeLifetime
+	stores      *persistence.Bundle
 }
 
 // OpenInstance serializes canonical data-directory setup, opens persistence,
@@ -163,6 +164,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	workerJoins := host.application.startWorkers(runtimeContext)
 
 	host.serverInfo = serverInfo
+	host.stores = stores
 	host.lifetime.schedulerDone = workerJoins.scheduler
 	host.lifetime.databaseChangesDone = databaseChangesDone
 	host.lifetime.recoveryDone = workerJoins.recovery
@@ -212,3 +214,8 @@ func (i *Instance) Endpoint() *delivery.Endpoint {
 
 // ServerInfo returns the immutable identity advertised by every binding.
 func (i *Instance) ServerInfo() protocol.ServerInfo { return i.serverInfo }
+
+// CheckStorage reports whether durable storage can still answer. ctx's error is
+// returned unwrapped when the single-connection pool is busy, so a caller can
+// distinguish a saturated runtime from a broken one.
+func (i *Instance) CheckStorage(ctx context.Context) error { return i.stores.Ping(ctx) }

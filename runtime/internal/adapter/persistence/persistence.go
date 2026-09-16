@@ -186,6 +186,17 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 	}, nil
 }
 
+// Ping reports whether the shared SQLite handle can still serve a statement.
+// The pool serializes on one connection, so a bundle busy with live work
+// returns ctx's error rather than a storage failure; callers that report health
+// must keep the two apart.
+func (b *Bundle) Ping(ctx context.Context) error {
+	if b == nil || b.db == nil {
+		return errors.New("persistence: storage is closed")
+	}
+	return b.db.PingContext(ctx)
+}
+
 // Close releases the shared SQLite handle. It is safe to call repeatedly.
 func (b *Bundle) Close() error {
 	if b == nil {
