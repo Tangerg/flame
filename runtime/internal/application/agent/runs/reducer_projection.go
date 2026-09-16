@@ -254,7 +254,7 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 	case ItemCompleted:
 		commit.Items = []transcript.Item{e.Item}
 		if len(e.mutatedPaths) > 0 {
-			nudge = &Nudge{CWD: r.cfg.CWD, Paths: slices.Clone(e.mutatedPaths)}
+			nudge = &Nudge{WorkspaceCWD: r.cfg.WorkspaceCWD, Paths: slices.Clone(e.mutatedPaths)}
 		}
 	case SegmentFinished:
 		commit.Run = &e.Run

@@ -29,7 +29,7 @@ type reducerConfig struct {
 	SegmentID         string
 	SessionID         string
 	Lineage           run.Lineage
-	CWD               string
+	WorkspaceCWD      string
 	ExecutorID        string
 	GoalIncarnationID string
 	ModelSelection    modelref.Selection

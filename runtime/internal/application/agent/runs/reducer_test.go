@@ -26,7 +26,7 @@ import (
 func testReducerConfig() reducerConfig {
 	now := time.Date(2026, 7, 13, 1, 2, 3, 0, time.UTC)
 	return reducerConfig{
-		RunID: "run_1", SegmentID: "seg_1", SessionID: "ses_1", CWD: "/work",
+		RunID: "run_1", SegmentID: "seg_1", SessionID: "ses_1", WorkspaceCWD: "/work",
 		ExecutorID: "turn_1", ModelSelection: mustReducerSelection("anthropic", "claude"), CreatedAt: now,
 		Now: func() time.Time { return now },
 	}
@@ -766,7 +766,7 @@ func TestReducerPreservesRawToolResultsAndExplicitFileNudges(t *testing.T) {
 			nudge = reduction.Nudge
 		}
 	}
-	if nudge == nil || nudge.CWD != "/work" || len(nudge.Paths) != 1 || nudge.Paths[0] != "src/a.go" {
+	if nudge == nil || nudge.WorkspaceCWD != "/work" || len(nudge.Paths) != 1 || nudge.Paths[0] != "src/a.go" {
 		t.Fatalf("write nudge = %+v", nudge)
 	}
 

@@ -4,8 +4,8 @@ import "context"
 
 // Nudge is a non-durable live workspace change notification.
 type Nudge struct {
-	CWD   string
-	Paths []string
+	WorkspaceCWD string
+	Paths        []string
 }
 
 // OpeningCommitter persists one fresh admission or continuation before the
@@ -78,7 +78,7 @@ type ProjectionPorts struct {
 type Finish struct {
 	SessionID       string
 	RunID           string
-	CWD             string
+	WorkspaceCWD    string
 	Parked          bool
 	OpeningUserText string
 }

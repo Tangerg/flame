@@ -685,7 +685,7 @@ func TestFinishSeparatesCheckpointBoundaryFromTitleMaintenance(t *testing.T) {
 		Checkpoints: fakeCheckpoints{snapshotted: snapshotted},
 	})
 
-	if err := effects.Finish(t.Context(), runs.Finish{SessionID: "ses_1", RunID: "run_1", CWD: "/run-cwd", OpeningUserText: "hello"}); err != nil {
+	if err := effects.Finish(t.Context(), runs.Finish{SessionID: "ses_1", RunID: "run_1", WorkspaceCWD: "/run-cwd", OpeningUserText: "hello"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -705,7 +705,7 @@ func TestFinishSeparatesCheckpointBoundaryFromTitleMaintenance(t *testing.T) {
 		title: "Waiting conversation",
 	}, FinalizerConfig{Checkpoints: fakeCheckpoints{snapshotted: snapshotted}})
 	if err := parked.Finish(t.Context(), runs.Finish{
-		SessionID: "ses_2", RunID: "run_2", CWD: "/run-cwd", Parked: true, OpeningUserText: "ask me",
+		SessionID: "ses_2", RunID: "run_2", WorkspaceCWD: "/run-cwd", Parked: true, OpeningUserText: "ask me",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -767,7 +767,7 @@ func TestFinishOrdersCheckpointBeforeDetachedTitleMaintenance(t *testing.T) {
 	err := effects.Finish(t.Context(), runs.Finish{
 		SessionID:       "ses_1",
 		RunID:           "run_1",
-		CWD:             "/repo",
+		WorkspaceCWD:    "/repo",
 		OpeningUserText: "hello",
 	})
 	if !errors.Is(err, snapshotErr) || errors.Is(err, renameErr) {
@@ -787,7 +787,7 @@ func TestFinishWaitsForCheckpointBeforeReturning(t *testing.T) {
 	})
 	done := make(chan error, 1)
 	go func() {
-		done <- effects.Finish(t.Context(), runs.Finish{SessionID: "ses_1", RunID: "run_1", CWD: "/repo"})
+		done <- effects.Finish(t.Context(), runs.Finish{SessionID: "ses_1", RunID: "run_1", WorkspaceCWD: "/repo"})
 	}()
 
 	select {

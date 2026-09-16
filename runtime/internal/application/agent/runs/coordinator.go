@@ -353,7 +353,6 @@ func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Even
 		ID:             spec.RunID,
 		SegmentID:      spec.SegmentID,
 		SessionID:      spec.SessionID,
-		CWD:            spec.CWD,
 		CreatedAt:      spec.CreatedAt,
 		ExecutorID:     spec.ExecutorID,
 		ModelSelection: spec.ModelSelection,

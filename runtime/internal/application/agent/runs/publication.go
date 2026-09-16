@@ -559,7 +559,7 @@ func (t treePublisher) append(route *executorRoute, reduced reduction) error {
 		}
 	}
 	if reduced.Nudge != nil {
-		t.publications.nudge(reduced.Nudge.CWD, reduced.Nudge.Paths)
+		t.publications.nudge(reduced.Nudge.WorkspaceCWD, reduced.Nudge.Paths)
 	}
 	return nil
 }

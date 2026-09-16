@@ -13,7 +13,7 @@ func TestRegistryRemovesCompletedRun(t *testing.T) {
 	var r registry
 	started := time.Unix(42, 0).UTC()
 	owner := testRunTreeOwner(t, nil)
-	r.Open(Record{ID: "run_1", SessionID: "ses_1", CWD: "/repo", CreatedAt: started}, owner, func() error { return nil })
+	r.Open(Record{ID: "run_1", SessionID: "ses_1", CreatedAt: started}, owner, func() error { return nil })
 
 	e, ok := r.Get("run_1")
 	if !ok || e.record.CreatedAt != started || e.owner != owner {

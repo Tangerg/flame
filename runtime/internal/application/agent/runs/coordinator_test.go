@@ -857,7 +857,7 @@ func mustSelection(provider, model string) modelref.Selection {
 
 func testAdmittedSegment(t *testing.T, c *Coordinator, spec segmentSpec) segmentSpec {
 	t.Helper()
-	admission, ok, _ := c.admission.AcquireRun(t.Context(), spec.SessionID, spec.CWD)
+	admission, ok, _ := c.admission.AcquireRun(t.Context(), spec.SessionID, spec.WorkspaceCWD)
 	if !ok {
 		t.Fatal("acquire test run admission")
 	}

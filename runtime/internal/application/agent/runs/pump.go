@@ -697,7 +697,7 @@ func (s *segmentPump) finishBoundary() {
 		if err := s.coordinator.finalizer.Finish(ctx, Finish{
 			SessionID:       s.spec.SessionID,
 			RunID:           s.spec.RunID,
-			CWD:             s.spec.CWD,
+			WorkspaceCWD:    s.spec.WorkspaceCWD,
 			Parked:          s.rootParked,
 			OpeningUserText: s.spec.OpeningUserText,
 		}); err != nil {

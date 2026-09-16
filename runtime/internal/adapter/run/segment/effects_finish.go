@@ -97,7 +97,7 @@ func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
 // the checkpoint, but it can still title its Session from the immutable opening
 // user text so a waiting conversation remains discoverable after process exit.
 func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
-	needsSnapshot := !fin.Parked && f.checkpoints != nil && fin.CWD != ""
+	needsSnapshot := !fin.Parked && f.checkpoints != nil && fin.WorkspaceCWD != ""
 	needsTitle := f.sessionTitles != nil && strings.TrimSpace(fin.OpeningUserText) != ""
 	if !needsSnapshot && !needsTitle {
 		return nil
@@ -105,7 +105,7 @@ func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
 	var errs []error
 	if needsSnapshot {
 		if err := observeSegmentMaintenance(ctx, fin, "checkpoint", func(ctx context.Context) error {
-			return f.snapshot(ctx, fin.SessionID, fin.CWD, fin.RunID)
+			return f.snapshot(ctx, fin.SessionID, fin.WorkspaceCWD, fin.RunID)
 		}); err != nil {
 			errs = append(errs, err)
 		}

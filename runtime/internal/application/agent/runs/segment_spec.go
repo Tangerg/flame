@@ -18,9 +18,13 @@ type segmentSpec struct {
 	// RunID is stable across every resumed Segment of the same logical Run.
 	RunID string
 	// SegmentID changes for every start or resume and scopes replay.
-	SegmentID          string
-	SessionID          string
-	CWD                string
+	SegmentID string
+	SessionID string
+	// WorkspaceCWD is the Session's project directory, which is what the durable
+	// Run record and every product capability derived from it address. An
+	// isolated Run executes in a scratch copy instead; only the executor is given
+	// that path, through RootExecutionStart.CWD.
+	WorkspaceCWD       string
 	ExecutorID         string
 	ModelSelection     modelref.Selection
 	GoalIncarnationID  string
