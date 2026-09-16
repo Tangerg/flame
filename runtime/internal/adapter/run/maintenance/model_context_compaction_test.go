@@ -983,3 +983,87 @@ type failedCompactionStore struct {
 func (s failedCompactionStore) RewriteForCompaction(context.Context, string, int, int, int, ...chat.Message) error {
 	return s.cause
 }
+
+// TestDurableModelContextCompactionTrimsInPlaceWithoutSummarizing drives the
+// rung below the summary: an oversized OLD tool result is previewed in place,
+// that alone brings the request under budget, and no utility model is called.
+//
+// The durable half is the part no unit test can reach. A content-only trim
+// rewrites history through conversation.NewCompaction's cutoff==0 branch, which
+// accepts the replacement only when it has exactly as many messages as the
+// snapshot it replaces. Nothing else proves the ladder's deterministic rung is
+// count-preserving, and if it stops being so, the failure surfaces as a refused
+// model request rather than a refused compaction.
+func TestDurableModelContextCompactionTrimsInPlaceWithoutSummarizing(t *testing.T) {
+	const sessionID = "session:trim-rung"
+	oversized := strings.Repeat("b", 8_000)
+	history := []chat.Message{
+		chat.NewUserMessage(chat.NewTextPart("read the file")),
+		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
+			ID: "c1", Name: "read", Arguments: `{"path":"big.txt"}`,
+		})),
+		chat.NewToolMessage(chat.ToolResult{
+			ID: "c1", Name: "read", Output: chat.NewTextToolOutput(oversized),
+		}),
+		chat.NewUserMessage(chat.NewTextPart("now summarize it for me")),
+		chat.NewAssistantMessage(chat.NewTextPart("here is the summary")),
+	}
+	trimmed, changed := trimForBudgetBefore(history, 3)
+	if !changed {
+		t.Fatal("fixture does not reach the deterministic trim rung")
+	}
+	// Over budget before the trim, under it after: exactly the window in which
+	// the ladder stops without paying for a summary.
+	threshold := contextTokenEstimate(t, trimmed) + 1
+	if contextTokenEstimate(t, history) < threshold {
+		t.Fatal("fixture does not exceed the budget before trimming")
+	}
+
+	store := newCompactionTestStore()
+	if err := store.Write(t.Context(), sessionID, history...); err != nil {
+		t.Fatal(err)
+	}
+	contextState := new(recordingSessionContextInvalidator)
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil,
+		CompactionPolicyValues{MaxTokens: intPointer(threshold)}, contextState)
+
+	result, err := compactor.CompactModelContext(
+		t.Context(), durableContextRequest(t, sessionID, history, 0, nil),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Changed() || result.Summarized() || result.Summary() != "" {
+		t.Fatalf("result = changed:%t summarized:%t summary:%q",
+			result.Changed(), result.Summarized(), result.Summary())
+	}
+	before, after := result.MessageCounts()
+	if before != len(history) || after != len(history) {
+		t.Fatalf("message counts = %d before, %d after, want %d for a content-only trim",
+			before, after, len(history))
+	}
+
+	stored, err := store.Read(t.Context(), sessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if store.rewrites != 1 {
+		t.Fatalf("durable rewrites = %d, want one", store.rewrites)
+	}
+	if len(stored) != len(history) {
+		t.Fatalf("durable history length = %d, want %d unchanged", len(stored), len(history))
+	}
+	previewed := textToolOutput(t, stored[2].Parts[0].ToolResult.Output)
+	if len(previewed) >= len(oversized) || !strings.Contains(previewed, "trimmed on compaction") {
+		t.Fatalf("old Tool result was not previewed in durable history: %d bytes", len(previewed))
+	}
+	if stored[3].Text() != history[3].Text() || stored[4].Text() != history[4].Text() {
+		t.Fatalf("trim reached past the summary cutoff: %#v", stored[3:])
+	}
+	if !reflect.DeepEqual(result.Messages(), stored) {
+		t.Fatal("effective context and durable history disagree after a trim")
+	}
+	if !reflect.DeepEqual(contextState.sessions, []string{sessionID}) {
+		t.Fatalf("forgot Session contexts = %v, want [%s]", contextState.sessions, sessionID)
+	}
+}
