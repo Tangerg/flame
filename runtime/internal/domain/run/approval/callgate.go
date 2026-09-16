@@ -2,42 +2,36 @@ package approval
 
 import "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 
-// HookDecision is the approval-relevant part of a PreToolUse hook decision.
-type HookDecision struct {
-	Block            bool
-	Reason           string
-	Ask              bool
-	RewriteArguments string
-}
-
 // StandingDecision is a remembered approval rule matched for this call.
 type StandingDecision struct {
 	Decision Decision
 	Matched  bool
 }
 
-// ToolCallInput is the pure policy input for one tool call.
+// ToolCallInput is the pure policy input for one tool call. The arguments
+// themselves are not policy input: this gate decides from the call's safety
+// class, the scope of the file mutation it declares, and the shell command it
+// would run.
 type ToolCallInput struct {
-	Arguments    string
-	Mode         Mode
-	Hook         HookDecision
-	SafetyClass  tool.SafetyClass
-	FileMutation tool.FileMutationScope
-	ShellCommand string
+	Mode Mode
+	// RequireApproval is a PreToolUse hook's escalation: force a prompt for a
+	// call the mode would otherwise pass. The hook's own block and rewrite
+	// decisions are applied at the Tool boundary that runs it, not here.
+	RequireApproval bool
+	SafetyClass     tool.SafetyClass
+	FileMutation    tool.FileMutationScope
+	ShellCommand    string
 }
 
 // ToolCallPlan is the approval policy's verdict before any HITL interrupt is
-// executed. Action is pass/deny/prompt; Arguments is the effective call payload
-// after hook rewrite; ArgumentOverride is non-empty only when the engine should
-// replace the original tool arguments.
+// executed: pass, deny, or prompt. The call payload stays with the caller that
+// supplied it — this gate never rewrites arguments.
 type ToolCallPlan struct {
-	Action           GateAction
-	Arguments        string
-	ArgumentOverride string
-	Denial           Denial
-	SafetyClass      tool.SafetyClass
-	Risk             tool.RiskLevel
-	PromptCause      PromptCause
+	Action      GateAction
+	Denial      Denial
+	SafetyClass tool.SafetyClass
+	Risk        tool.RiskLevel
+	PromptCause PromptCause
 }
 
 // Denial identifies why the gate refused a call. Detail preserves hook-owned
@@ -52,7 +46,6 @@ type DenialCause string
 
 const (
 	DenialNone           DenialCause = ""
-	DenialHook           DenialCause = "hook"
 	DenialPlanMode       DenialCause = "planMode"
 	DenialRememberedRule DenialCause = "rememberedRule"
 )
@@ -76,23 +69,7 @@ const (
 // read remembered rules and it does not trigger HITL; callers only do those
 // side effects when the returned plan asks for [GatePrompt].
 func (t ToolCallInput) Plan() ToolCallPlan {
-	arguments := t.Arguments
-	override := ""
-	if t.Hook.RewriteArguments != "" {
-		arguments = t.Hook.RewriteArguments
-		override = t.Hook.RewriteArguments
-	}
-	plan := ToolCallPlan{
-		Action:           GatePass,
-		Arguments:        arguments,
-		ArgumentOverride: override,
-		SafetyClass:      t.SafetyClass,
-	}
-	if t.Hook.Block {
-		plan.Action = GateDeny
-		plan.Denial = Denial{Cause: DenialHook, Detail: t.Hook.Reason}
-		return plan
-	}
+	plan := ToolCallPlan{Action: GatePass, SafetyClass: t.SafetyClass}
 	action := GateFor(t.SafetyClass, t.Mode)
 	// Bypass-immune escalation: a call dangerous enough (a mutation escaping the
 	// workspace, or a high-confidence catastrophic shell command) is confirmed
@@ -102,7 +79,7 @@ func (t ToolCallInput) Plan() ToolCallPlan {
 	// tool/argument-driven and built in. A remembered approval still lets a repeat
 	// call through.
 	immunity := tool.BypassImmunityFor(t.FileMutation, t.ShellCommand)
-	if action == GatePass && (t.Hook.Ask || immunity != tool.BypassAllowed) {
+	if action == GatePass && (t.RequireApproval || immunity != tool.BypassAllowed) {
 		action = GatePrompt
 	}
 	plan.Action = action

@@ -49,12 +49,11 @@ func (t *ToolAuthorizer) AuthorizeTool(
 		return ToolAuthorizationDecision{}, fmt.Errorf("agentexec: read Tool approval mode: %w", err)
 	}
 	plan := (approval.ToolCallInput{
-		Arguments:    request.Arguments.Canonical(),
-		Mode:         mode,
-		Hook:         approval.HookDecision{Ask: request.RequireApproval},
-		SafetyClass:  request.SafetyClass,
-		FileMutation: request.FileMutation,
-		ShellCommand: request.ShellCommand,
+		Mode:            mode,
+		RequireApproval: request.RequireApproval,
+		SafetyClass:     request.SafetyClass,
+		FileMutation:    request.FileMutation,
+		ShellCommand:    request.ShellCommand,
 	}).Plan()
 	if plan.Action == approval.GatePrompt {
 		decision, matched, err := t.policy.Decide(ctx, approval.Query{
@@ -80,7 +79,7 @@ func (t *ToolAuthorizer) AuthorizeTool(
 		prompt := runs.ApprovalPrompt{
 			CallID:       request.CallID,
 			ToolName:     request.ToolName,
-			Arguments:    plan.Arguments,
+			Arguments:    request.Arguments.Canonical(),
 			SafetyClass:  plan.SafetyClass,
 			Risk:         plan.Risk,
 			Reason:       approvalPromptReason(plan.PromptCause),
@@ -212,11 +211,6 @@ func fileMutationScope(
 
 func approvalDenialMessage(denial approval.Denial, toolName string) string {
 	switch denial.Cause {
-	case approval.DenialHook:
-		if denial.Detail != "" {
-			return denial.Detail
-		}
-		return "denied by a PreToolUse hook"
 	case approval.DenialPlanMode:
 		return fmt.Sprintf("plan mode is active (read-only): %s is not permitted. Continue investigating with read-only tools or request Plan approval before making changes.", toolName)
 	case approval.DenialRememberedRule:
