@@ -98,7 +98,10 @@ func admitMutationPaths(ctx context.Context, tr *readTracker, cwd, sessionID str
 		if err != nil {
 			return "", fmt.Errorf("resolve mutation path: %w", err)
 		}
-		fingerprint, exists, err := fingerprintExistingFile(ctx, abs, 0)
+		fingerprint, exists, err := fingerprintExistingFile(ctx, abs)
+		if errors.Is(err, errRuntimeReadFileTooLarge) {
+			return unreadableMutationMessage(path), nil
+		}
 		if err != nil {
 			return "", fmt.Errorf("fingerprint mutation path %s: %w", path, err)
 		}
@@ -118,9 +121,15 @@ func refreshMutationPaths(ctx context.Context, tr *readTracker, cwd, sessionID s
 		if err != nil {
 			return fmt.Errorf("refresh mutation path: %w", err)
 		}
-		fingerprint, exists, err := fingerprintExistingFile(ctx, abs, 0)
+		fingerprint, exists, err := fingerprintExistingFile(ctx, abs)
 		if err != nil {
 			tr.forget(sessionID, abs)
+			// The mutation already happened. A file that grew past the readable
+			// limit has no stamp this tracker can hold, which the next mutation
+			// discovers on its own; reporting it would fail a call that succeeded.
+			if errors.Is(err, errRuntimeReadFileTooLarge) {
+				continue
+			}
 			return fmt.Errorf("refresh mutation path %s: %w", path, err)
 		}
 		if !exists {
@@ -143,8 +152,21 @@ func mutationGuardMessage(verdict guardVerdict, path string) string {
 	}
 }
 
-func fingerprintExistingFile(ctx context.Context, path string, maxBytes int64) (contentFingerprint, bool, error) {
-	observation, exists, err := observeFingerprintExistingFile(ctx, path, maxBytes)
+// unreadableMutationMessage answers the one case where "read it first" is not
+// an instruction the model can follow: the read tool refuses the same file.
+func unreadableMutationMessage(path string) string {
+	return fmt.Sprintf(
+		"%s is larger than the 8 MiB read limit, so its current contents cannot be confirmed before modifying it.",
+		path,
+	)
+}
+
+// fingerprintExistingFile stamps a mutation target under the same bound the
+// read tool enforces. A larger file can never hold a read stamp, so hashing it
+// without that bound would spend the whole file to produce a fingerprint
+// nothing can match.
+func fingerprintExistingFile(ctx context.Context, path string) (contentFingerprint, bool, error) {
+	observation, exists, err := observeFingerprintExistingFile(ctx, path, maxRuntimeReadFileBytes)
 	return observation.fingerprint, exists, err
 }
 

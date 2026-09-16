@@ -128,10 +128,14 @@ func scheduleIdentity(field string) []FieldConstraint {
 	})
 }
 
-func modelSelectionIdentities(providerField, modelField, reasoningEffortField string) []FieldConstraint {
-	constraints := boundedIdentity(providerField, protocol.MaximumProviderIdentityCharacters)
-	constraints = append(constraints, boundedIdentity(modelField, protocol.MaximumModelIdentityCharacters)...)
-	constraints = append(constraints, boundedIdentity(reasoningEffortField, protocol.MaximumReasoningEffortIdentityCharacters)...)
+// modelSelectionIdentities constrains the three fields every shape carrying a
+// model selection spells the same way. The wire names are the selection's, not
+// each shape's, so they are written once here.
+func modelSelectionIdentities() []FieldConstraint {
+	constraints := boundedIdentity("provider", protocol.MaximumProviderIdentityCharacters)
+	constraints = append(constraints, boundedIdentity("model", protocol.MaximumModelIdentityCharacters)...)
+	constraints = append(constraints,
+		boundedIdentity("reasoningEffort", protocol.MaximumReasoningEffortIdentityCharacters)...)
 	return constraints
 }
 
@@ -149,7 +153,7 @@ func registerSessionValues(s *Shapes) {
 			[]FieldConstraint{
 				{Field: "provider", Kind: ConstraintNonEmpty},
 				{Field: "model", Kind: ConstraintNonEmpty},
-			}...), modelSelectionIdentities("provider", "model", "reasoningEffort")...), exactPositiveInteger("revision")...),
+			}...), modelSelectionIdentities()...), exactPositiveInteger("revision")...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ListSessionsRequest](),
@@ -181,7 +185,7 @@ func registerSessionValues(s *Shapes) {
 			{Field: "expectedRevision", Kind: ConstraintMaximum, Limit: protocol.MaximumExactJSONInteger},
 			{Field: "provider", Kind: ConstraintNonEmpty},
 			{Field: "model", Kind: ConstraintNonEmpty},
-		}...), modelSelectionIdentities("provider", "model", "reasoningEffort")...),
+		}...), modelSelectionIdentities()...),
 	})
 }
 
@@ -191,7 +195,7 @@ func registerArtifactValues(s *Shapes) {
 		Constraints: append(append(requiredResourceIdentity("id"), []FieldConstraint{
 			{Field: "provider", Kind: ConstraintNonEmpty},
 			{Field: "model", Kind: ConstraintNonEmpty},
-		}...), modelSelectionIdentities("provider", "model", "reasoningEffort")...),
+		}...), modelSelectionIdentities()...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ArtifactRun](),
@@ -202,7 +206,7 @@ func registerArtifactValues(s *Shapes) {
 				{Field: "provider", Kind: ConstraintNonEmpty},
 				{Field: "model", Kind: ConstraintNonEmpty},
 			}...),
-			append(modelSelectionIdentities("provider", "model", "reasoningEffort"),
+			append(modelSelectionIdentities(),
 				FieldConstraint{Field: "messageMark", Kind: ConstraintNonNegative},
 				FieldConstraint{Field: "contextTokens", Kind: ConstraintNonNegative},
 			)...),
@@ -264,7 +268,7 @@ func registerRunValues(s *Shapes) {
 				{Field: "provider", Kind: ConstraintNonEmpty},
 				{Field: "model", Kind: ConstraintNonEmpty},
 			}...),
-			modelSelectionIdentities("provider", "model", "reasoningEffort")...),
+			modelSelectionIdentities()...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.RunEvent](),
@@ -320,7 +324,7 @@ func registerRunValues(s *Shapes) {
 		GoType: typeOf[protocol.StartRunRequest](),
 		Constraints: append(append(requiredResourceIdentity("sessionId"), []FieldConstraint{
 			{Field: "input", Kind: ConstraintNonEmptyItems},
-		}...), modelSelectionIdentities("provider", "model", "reasoningEffort")...),
+		}...), modelSelectionIdentities()...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.GenerationParams](),
@@ -835,7 +839,7 @@ func registerScheduleValues(s *Shapes) {
 		FieldConstraint{Field: "cron", Kind: ConstraintNonEmpty},
 	)
 	scheduleConstraints = append(scheduleConstraints,
-		modelSelectionIdentities("provider", "model", "reasoningEffort")...)
+		modelSelectionIdentities()...)
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.Schedule](),
 		Constraints: scheduleConstraints,
@@ -845,7 +849,7 @@ func registerScheduleValues(s *Shapes) {
 		Constraints: append([]FieldConstraint{
 			{Field: "instructions", Kind: ConstraintPattern, Value: nonBlankInstructions},
 			{Field: "cron", Kind: ConstraintNonEmpty},
-		}, modelSelectionIdentities("provider", "model", "reasoningEffort")...),
+		}, modelSelectionIdentities()...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.UpdateScheduleRequest](),
@@ -854,7 +858,7 @@ func registerScheduleValues(s *Shapes) {
 			{Field: "expectedRevision", Kind: ConstraintMaximum, Limit: protocol.MaximumExactJSONInteger},
 			{Field: "instructions", Kind: ConstraintPattern, Value: nonBlankInstructions},
 			{Field: "cron", Kind: ConstraintNonEmpty},
-		}...), modelSelectionIdentities("provider", "model", "reasoningEffort")...),
+		}...), modelSelectionIdentities()...),
 	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.DeleteScheduleRequest](), Constraints: requiredScheduleIdentity("id")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.RunScheduleNowRequest](), Constraints: requiredScheduleIdentity("id")})
@@ -872,14 +876,14 @@ func registerGoalValues(s *Shapes) {
 			{Field: "objective", Kind: ConstraintPattern, Value: nonBlankObjective},
 			{Field: "provider", Kind: ConstraintNonEmpty},
 			{Field: "model", Kind: ConstraintNonEmpty},
-		}...), modelSelectionIdentities("provider", "model", "reasoningEffort")...),
+		}...), modelSelectionIdentities()...),
 	})
 	nonNegative[protocol.GoalUsage](s, "runs", "costUsd", "steps")
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.StartGoalRequest](),
 		Constraints: append(append(requiredResourceIdentity("sessionId"), []FieldConstraint{
 			{Field: "objective", Kind: ConstraintPattern, Value: nonBlankObjective},
-		}...), modelSelectionIdentities("provider", "model", "reasoningEffort")...),
+		}...), modelSelectionIdentities()...),
 	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.GoalRequest](), Constraints: requiredResourceIdentity("sessionId")})
 	s.valueConstraint(FieldConstraintSpec{

@@ -302,7 +302,7 @@ func (o *observedInteractionTool) prepare(
 		if forceApproval {
 			return arguments, true, "a lifecycle hook requires approval, but approval is unavailable", nil
 		}
-		return o.applyDoomLoopBrake(ctx, callID, name, arguments, false, "")
+		return o.applyDoomLoopBrake(ctx, callID, name, arguments)
 	}
 	request, err := o.authorizationRequest(callID, name, arguments, forceApproval)
 	if err != nil {
@@ -321,7 +321,7 @@ func (o *observedInteractionTool) prepare(
 	if prompt, ok := decision.Approval(); ok {
 		return o.requestToolApproval(ctx, request, prompt)
 	}
-	return o.applyDoomLoopBrake(ctx, callID, name, arguments, false, "")
+	return o.applyDoomLoopBrake(ctx, callID, name, arguments)
 }
 
 func (o *observedInteractionTool) applyDoomLoopBrake(
@@ -329,14 +329,12 @@ func (o *observedInteractionTool) applyDoomLoopBrake(
 	callID string,
 	name string,
 	arguments tool.Arguments,
-	denied bool,
-	reason string,
 ) (tool.Arguments, bool, string, error) {
-	if denied || o.session.toolOutcomes.repeated(name, arguments) < interactionDoomLoopThreshold {
-		return arguments, denied, reason, nil
+	if o.session.toolOutcomes.repeated(name, arguments) < interactionDoomLoopThreshold {
+		return arguments, false, "", nil
 	}
 	o.session.toolOutcomes.reset()
-	reason = fmt.Sprintf(
+	reason := fmt.Sprintf(
 		"%q has been called with the same arguments and unchanged result %d times; approve to continue or deny so the agent changes approach",
 		name, interactionDoomLoopThreshold,
 	)

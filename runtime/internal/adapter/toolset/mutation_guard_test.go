@@ -244,7 +244,7 @@ func TestFingerprintExistingFilePreservesCancellation(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, _, err := fingerprintExistingFile(ctx, path, 0); !errors.Is(err, context.Canceled) {
+	if _, _, err := fingerprintExistingFile(ctx, path); !errors.Is(err, context.Canceled) {
 		t.Fatalf("fingerprintExistingFile error = %v, want context.Canceled", err)
 	}
 }
@@ -370,5 +370,37 @@ func TestReadStampAndSamePathMutationAreAtomic(t *testing.T) {
 	}
 	if got, err := os.ReadFile(path); err != nil || string(got) != "after\n" {
 		t.Fatalf("file = %q, %v", got, err)
+	}
+}
+
+// TestMutationGuardNamesTheLimitItCannotSee pins the one case where "read it
+// first" is not an instruction the model can follow. The read tool refuses a
+// file over 8 MiB, so that file can never hold a read stamp; the guard must
+// say why instead of demanding a read that fails the same way, and must not
+// hash the whole file to learn it.
+func TestMutationGuardNamesTheLimitItCannotSee(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "huge.bin")
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Truncate(maxRuntimeReadFileBytes + 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	tracker := newReadTracker()
+	blocked, err := admitMutationPaths(t.Context(), tracker, dir, "ses_1", []string{"huge.bin"})
+	if err != nil {
+		t.Fatalf("admitMutationPaths: %v", err)
+	}
+	if !strings.Contains(blocked, "larger than the 8 MiB read limit") {
+		t.Fatalf("refusal = %q, want the readable limit named", blocked)
+	}
+	if strings.Contains(blocked, "must read") {
+		t.Fatalf("refusal = %q, demands a read the read tool refuses", blocked)
 	}
 }
