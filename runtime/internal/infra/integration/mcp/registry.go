@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"slices"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -338,12 +339,25 @@ func (c *Connections) beginSessionCloseLocked(session *sdkmcp.ClientSession) *se
 	return attempt
 }
 
+// closeOwnedSession keeps a defect inside an external session's closer from
+// ending the process and stranding every Shutdown waiting on this attempt. A
+// close that fails already lands in the attempt's error; a close that panics is
+// one of those.
+func closeOwnedSession(owned *ownedSession) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("mcp: session close panicked: %v\n%s", recovered, debug.Stack())
+		}
+	}()
+	return owned.closeFn()
+}
+
 func (c *Connections) closeSessionAttempt(
 	session *sdkmcp.ClientSession,
 	owned *ownedSession,
 	attempt *sessionCloseAttempt,
 ) {
-	err := owned.closeFn()
+	err := closeOwnedSession(owned)
 	c.mu.Lock()
 	if current := c.sessions[session]; current == owned && current.close == attempt {
 		// sdkmcp.ClientSession.Close is one-shot: its underlying transport

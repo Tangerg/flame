@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"maps"
 	"path/filepath"
+	"runtime/debug"
 	"slices"
 	"sync"
 	"time"
@@ -144,6 +145,25 @@ func (s *Servers) clientFor(ctx context.Context, root string, spec ServerSpec) (
 	return awaitClientStart(ctx, pending)
 }
 
+// runClientLaunch keeps a defect inside an external server's handshake from
+// ending the process and stranding every caller waiting on this start. A launch
+// that fails already lands in the pending start's error; a launch that panics is
+// one of those.
+func runClientLaunch(
+	ctx context.Context,
+	launch clientLauncher,
+	spec ServerSpec,
+	root string,
+) (c *client, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			c = nil
+			err = fmt.Errorf("lsp: start %s panicked: %v\n%s", spec.Name, recovered, debug.Stack())
+		}
+	}()
+	return launch(ctx, spec, root)
+}
+
 func (s *Servers) launchClient(
 	ctx context.Context,
 	key serverClientKey,
@@ -153,7 +173,7 @@ func (s *Servers) launchClient(
 	launch clientLauncher,
 ) {
 	defer pending.cancel()
-	c, err := launch(ctx, spec, root)
+	c, err := runClientLaunch(ctx, launch, spec, root)
 	if err == nil && c == nil {
 		err = fmt.Errorf("lsp: start %s returned a nil client", spec.Name)
 	}
