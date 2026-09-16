@@ -326,6 +326,8 @@ func TestRecoveredPanicsKeepTheirStack(t *testing.T) {
 	// from anything the deferred call reaches. Re-raising does not delegate — it
 	// has to be visible in the frame that recovered.
 	keepers := map[string]bool{}
+	// Every function's outgoing calls, so delegation can be followed past one hop.
+	callGraph := map[string][]string{}
 	type site struct {
 		name     string
 		position string
@@ -388,6 +390,7 @@ func TestRecoveredPanicsKeepTheirStack(t *testing.T) {
 					}
 					return true
 				})
+				callGraph[self] = callees
 				if stacks > 0 {
 					keepers[self] = true
 				}
@@ -399,6 +402,26 @@ func TestRecoveredPanicsKeepTheirStack(t *testing.T) {
 						callees: callees,
 						keeps:   keeps > 0,
 					})
+				}
+			}
+		}
+	}
+
+	// Delegation is transitive: a recover may hand its value to a helper that
+	// hands it to the one taking the stack. Stopping at one hop would fail a
+	// correct site the moment someone extracted a shared reporter, and a guard
+	// that misfires is one somebody deletes.
+	for grown := true; grown; {
+		grown = false
+		for name, callees := range callGraph {
+			if keepers[name] {
+				continue
+			}
+			for _, callee := range callees {
+				if keepers[callee] {
+					keepers[name] = true
+					grown = true
+					break
 				}
 			}
 		}
