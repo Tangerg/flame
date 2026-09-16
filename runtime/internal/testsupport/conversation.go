@@ -82,6 +82,29 @@ func (s *ConversationStore) Replace(ctx context.Context, sessionID string, messa
 	return nil
 }
 
+// Truncate keeps sessionID's first keepN messages.
+func (s *ConversationStore) Truncate(ctx context.Context, sessionID string, keepN int) error {
+	id, err := conversationID(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+	if keepN < 0 {
+		return fmt.Errorf("conversation fixture: keep count %d is negative", keepN)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	stored := s.messages[id]
+	if keepN >= len(stored) {
+		return nil
+	}
+	if keepN == 0 {
+		delete(s.messages, id)
+		return nil
+	}
+	s.messages[id] = stored[:keepN]
+	return nil
+}
+
 // Count returns sessionID's message count.
 func (s *ConversationStore) Count(ctx context.Context, sessionID string) (int, error) {
 	id, err := conversationID(ctx, sessionID)

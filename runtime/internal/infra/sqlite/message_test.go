@@ -140,3 +140,68 @@ func TestMessageStore_ReplaceRollsBackAsOneStep(t *testing.T) {
 		t.Fatalf("history after an abandoned rewrite = %d messages, want the original 2", len(messages))
 	}
 }
+
+// TestMessageStoreTruncateKeepsAPrefixInPlace: retention removes the tail by
+// position. Reading the history back to re-install a prefix would rewrite every
+// kept message and would drop anything appended between the two halves, so the
+// deletion has to be the whole operation — and it must not reach another
+// conversation's rows.
+func TestMessageStoreTruncateKeepsAPrefixInPlace(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlite.NewMessageStore(db)
+	ctx := t.Context()
+
+	for _, text := range []string{"one", "two", "three"} {
+		if err := store.Write(ctx, "conv", chat.NewUserMessage(chat.NewTextPart(text))); err != nil {
+			t.Fatalf("Write %s: %v", text, err)
+		}
+	}
+	if err := store.Write(ctx, "other", chat.NewUserMessage(chat.NewTextPart("keep"))); err != nil {
+		t.Fatalf("Write other: %v", err)
+	}
+
+	if err := store.Truncate(ctx, "conv", 5); err != nil {
+		t.Fatalf("Truncate beyond the end: %v", err)
+	}
+	if count, _ := store.Count(ctx, "conv"); count != 3 {
+		t.Fatalf("count after keeping more than exist = %d, want 3", count)
+	}
+
+	if err := store.Truncate(ctx, "conv", 2); err != nil {
+		t.Fatalf("Truncate: %v", err)
+	}
+	kept, err := store.Read(ctx, "conv")
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+	if len(kept) != 2 || kept[0].Parts[0].Text != "one" || kept[1].Parts[0].Text != "two" {
+		t.Fatalf("kept = %+v, want the first two messages", kept)
+	}
+	if count, _ := store.Count(ctx, "other"); count != 1 {
+		t.Fatal("truncation reached another conversation")
+	}
+
+	// A later append continues after the kept prefix rather than reusing its
+	// coordinates, so a watermark taken now still means what it says.
+	if err := store.Write(ctx, "conv", chat.NewUserMessage(chat.NewTextPart("four"))); err != nil {
+		t.Fatalf("Write after truncation: %v", err)
+	}
+	after, _ := store.Read(ctx, "conv")
+	if len(after) != 3 || after[2].Parts[0].Text != "four" {
+		t.Fatalf("after append = %+v, want the prefix plus the new message", after)
+	}
+
+	if err := store.Truncate(ctx, "conv", 0); err != nil {
+		t.Fatalf("Truncate to empty: %v", err)
+	}
+	if count, _ := store.Count(ctx, "conv"); count != 0 {
+		t.Fatalf("count after truncating to zero = %d, want 0", count)
+	}
+	if err := store.Truncate(ctx, "conv", -1); err == nil {
+		t.Fatal("Truncate accepted a negative keep count")
+	}
+}

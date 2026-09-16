@@ -23,6 +23,10 @@ type ConversationStore interface {
 	Write(ctx context.Context, sessionID string, messages ...chat.Message) error
 	Count(ctx context.Context, sessionID string) (int, error)
 	Replace(ctx context.Context, sessionID string, messages ...chat.Message) error
+	// Truncate keeps the first keepN messages and removes the rest as one
+	// durable step, so retention neither reads the history back nor needs the
+	// caller to hold a transaction for the two halves to agree.
+	Truncate(ctx context.Context, sessionID string, keepN int) error
 }
 
 // ConversationCompactionStore is the exact persistence capability for coordinate-changing
@@ -172,17 +176,17 @@ func (m *ConversationHistory) RewriteForCompaction(
 	return nil
 }
 
-// Truncate atomically keeps the first keepN messages.
+// Truncate atomically keeps the first keepN messages. The store removes the
+// tail in place: reading the history back to re-install a prefix would decode
+// and rewrite every kept message, and would lose anything appended between the
+// two halves unless a caller happened to hold a transaction around them.
 func (m *ConversationHistory) Truncate(ctx context.Context, sessionID string, keepN int) error {
-	stored, err := m.Read(ctx, sessionID)
-	if err != nil {
+	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return err
 	}
-	if keepN >= len(stored) {
-		return nil
-	}
-	if err := m.store.Replace(ctx, sessionID, stored[:max(keepN, 0)]...); err != nil {
-		return fmt.Errorf("runs: truncate conversation for Session %q to %d messages: %w", sessionID, max(keepN, 0), err)
+	keep := max(keepN, 0)
+	if err := m.store.Truncate(ctx, sessionID, keep); err != nil {
+		return fmt.Errorf("runs: truncate conversation for Session %q to %d messages: %w", sessionID, keep, err)
 	}
 	return nil
 }

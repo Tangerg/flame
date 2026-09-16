@@ -112,6 +112,31 @@ func (m *MessageStore) Replace(ctx context.Context, conversationID string, messa
 	})
 }
 
+// Truncate keeps conversationID's first keepN messages and removes the rest in
+// one statement. It selects the rows to delete by position instead of reading
+// the history back, so retention on a long conversation neither decodes and
+// re-inserts every kept message nor depends on the caller holding a transaction
+// to stay atomic. Keeping at least as many as exist deletes nothing.
+func (m *MessageStore) Truncate(ctx context.Context, conversationID string, keepN int) error {
+	if err := history.ConversationID(conversationID).Validate(); err != nil {
+		return err
+	}
+	if keepN < 0 {
+		return fmt.Errorf("sqlite: truncate messages: keep count %d is negative", keepN)
+	}
+	if _, err := conn(ctx, m.db).ExecContext(ctx,
+		`DELETE FROM messages
+		  WHERE conversation_id = ?
+		    AND seq IN (
+		      SELECT seq FROM messages WHERE conversation_id = ? ORDER BY seq LIMIT -1 OFFSET ?
+		    )`,
+		conversationID, conversationID, keepN,
+	); err != nil {
+		return fmt.Errorf("sqlite: truncate messages: %w", err)
+	}
+	return nil
+}
+
 // Count returns conversationID's message count via a COUNT(*) query — the
 // conversation use case, so a rollback/fork watermark read
 // fork{fromRunId}) doesn't load and unmarshal the whole history just to take
