@@ -60,4 +60,13 @@ describe("ToolCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open in the context dock" }));
     expect(opened).toHaveBeenCalledOnce();
   });
+
+  it("offers no disclosure for a call that never ran", () => {
+    const { container } = card({ name: "apply_patch", safetyClass: "write", status: "denied" });
+
+    expect(container.querySelector("[aria-expanded]")).toBeNull();
+    expect(container.querySelector('[data-slot="agent-activity-chevron"]')).toBeNull();
+    expect(container.querySelector('[role="region"]')).toBeNull();
+    expect(screen.queryByText("No changes to show")).toBeNull();
+  });
 });

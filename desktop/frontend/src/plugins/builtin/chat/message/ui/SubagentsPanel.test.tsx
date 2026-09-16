@@ -109,7 +109,7 @@ it("projects live child material, returns to the list, and never carries it into
   const list = screen.getByRole("region", { name: "Subagents" });
   fireEvent.click(within(list).getAllByRole("button", { name: /Sub-agent/ })[1]!);
   expect(navigator().get().subagent).toBe("nested");
-  expect(screen.getByText("No narrative material yet.")).toBeTruthy();
+  expect(screen.getByText("No narrative material yet")).toBeTruthy();
 
   material.rows = [];
   act(() => navigator().go({ session: "other" }));

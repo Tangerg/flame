@@ -181,7 +181,8 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     toggleLabel?: string;
     tone?: ActivityTone;
     shell: ActivityShell;
-    children: ReactNode;
+    /** Absent when the row has nothing behind it, which makes it a row and not a disclosure. */
+    children?: ReactNode;
     /** The standing inset for a disclosure whose body is a list of rows. */
     contentInset?: "rows";
     contentClassName?: string;
@@ -240,23 +241,20 @@ export function AgentActivityDisclosure({
           ).className,
         )}
       >
-        <Pressable
+        <TriggerShell
+          disclosable={children != null}
           id={triggerId}
-          type="button"
-          aria-expanded={open}
-          aria-controls={panelId}
-          aria-label={toggleLabel}
-          // The trigger fills the disclosure, which clips, so an outward ring is cut on
-          // three sides.
-          data-focus-inset=""
-          onClick={onToggle}
-          className={cn(
+          panelId={panelId}
+          open={open}
+          onToggle={onToggle}
+          toggleLabel={toggleLabel}
+          className={
             stylex.props(
               styles.trigger,
               styles.triggerPublishes,
               line ? styles.triggerLine : styles.triggerCard,
-            ).className,
-          )}
+            ).className
+          }
         >
           <span
             aria-hidden
@@ -292,16 +290,18 @@ export function AgentActivityDisclosure({
           {trailing != null && (
             <span {...stylex.props(styles.trailing, type.ui2xs)}>{trailing}</span>
           )}
-          <span
-            aria-hidden
-            data-slot="agent-activity-chevron"
-            data-open={open ? "" : undefined}
-            data-reveal="hover"
-            {...stylex.props(styles.chevron, open ? styles.chevronOpen : chevron.shut)}
-          >
-            <Icon name="chevron-down" size="xs" />
-          </span>
-        </Pressable>
+          {children != null && (
+            <span
+              aria-hidden
+              data-slot="agent-activity-chevron"
+              data-open={open ? "" : undefined}
+              data-reveal="hover"
+              {...stylex.props(styles.chevron, open ? styles.chevronOpen : chevron.shut)}
+            >
+              <Icon name="chevron-down" size="xs" />
+            </span>
+          )}
+        </TriggerShell>
         {Children.count(actions) > 0 && (
           <div data-focus-inset="" {...stylex.props(styles.actions)}>
             {actions}
@@ -309,22 +309,73 @@ export function AgentActivityDisclosure({
         )}
       </div>
       {progress && <ProgressBar value={progress.value} label={progress.label} weight="seam" />}
-      <Collapsible open={open}>
-        <div
-          id={panelId}
-          role="region"
-          aria-labelledby={triggerId}
-          className={cn(
-            stylex.props(
-              line ? styles.bodyLine : styles.bodyCard,
-              contentInset === "rows" && styles.bodyRows,
-            ).className,
-            contentClassName,
-          )}
-        >
-          {disclosed && children}
-        </div>
-      </Collapsible>
+      {children != null && (
+        <Collapsible open={open}>
+          <div
+            id={panelId}
+            role="region"
+            aria-labelledby={triggerId}
+            className={cn(
+              stylex.props(
+                line ? styles.bodyLine : styles.bodyCard,
+                contentInset === "rows" && styles.bodyRows,
+              ).className,
+              contentClassName,
+            )}
+          >
+            {disclosed && children}
+          </div>
+        </Collapsible>
+      )}
     </div>
+  );
+}
+
+/**
+ * The row's own box, which is a button only when there is something behind it.
+ *
+ * A row with no panel still looks and hovers like the others, but it publishes no `aria-expanded`
+ * and carries no chevron: a control that opens nothing is a promise the row cannot keep.
+ */
+function TriggerShell({
+  disclosable,
+  id,
+  panelId,
+  open,
+  onToggle,
+  toggleLabel,
+  className,
+  children,
+}: {
+  disclosable: boolean;
+  id: string;
+  panelId: string;
+  open: boolean;
+  onToggle: () => void;
+  toggleLabel?: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  if (!disclosable) {
+    return (
+      <div id={id} className={className}>
+        {children}
+      </div>
+    );
+  }
+  return (
+    <Pressable
+      id={id}
+      type="button"
+      aria-expanded={open}
+      aria-controls={panelId}
+      aria-label={toggleLabel}
+      // The trigger fills the disclosure, which clips, so an outward ring is cut on three sides.
+      data-focus-inset=""
+      onClick={onToggle}
+      className={className}
+    >
+      {children}
+    </Pressable>
   );
 }

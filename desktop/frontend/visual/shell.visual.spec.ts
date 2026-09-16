@@ -38,7 +38,7 @@ async function waitForWorkIndexState(page: Page, state: VisualWorkIndexState): P
   } else if (state === "loading") {
     await expect(workIndex.locator("output[aria-busy=true]")).toBeVisible();
   } else {
-    await expect(workIndex.getByText("Couldn’t load projects", { exact: true })).toBeVisible();
+    await expect(workIndex.getByText("Couldn't load projects", { exact: true })).toBeVisible();
   }
 }
 
