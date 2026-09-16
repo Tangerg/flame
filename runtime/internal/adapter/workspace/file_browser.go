@@ -96,8 +96,9 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s grew while reading", workspaceapp.ErrFileReadTooLarge, input.Path)
 		case errors.Is(err, textread.ErrLineTooLarge):
 			return workspaceapp.FileReadResult{}, fmt.Errorf(
-				"%w: %s line %d exceeds the 8 MiB limit",
+				"%w: %s line %d exceeds the %d MiB limit",
 				workspaceapp.ErrFileReadTooLarge, input.Path, textread.LineNumber(err),
+				workspaceapp.MaxFileReadLineBytes>>20,
 			)
 		case errors.Is(err, textread.ErrInvalidText):
 			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s", workspaceapp.ErrUnsupportedFile, input.Path)

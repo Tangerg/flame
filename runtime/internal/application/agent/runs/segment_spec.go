@@ -29,8 +29,8 @@ type segmentSpec struct {
 	// WorkspaceCWD. Anything this layer reports against the workspace has to
 	// account for it: the project directory does not change while such a Run
 	// executes.
-	Isolated   bool
-	ExecutorID string
+	Isolated           bool
+	ExecutorID         string
 	ModelSelection     modelref.Selection
 	GoalIncarnationID  string
 	InitialSession     *session.Session

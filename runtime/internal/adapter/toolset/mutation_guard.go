@@ -156,8 +156,8 @@ func mutationGuardMessage(verdict guardVerdict, path string) string {
 // an instruction the model can follow: the read tool refuses the same file.
 func unreadableMutationMessage(path string) string {
 	return fmt.Sprintf(
-		"%s is larger than the 8 MiB read limit, so its current contents cannot be confirmed before modifying it.",
-		path,
+		"%s is larger than the %d MiB read limit, so its current contents cannot be confirmed before modifying it.",
+		path, maxRuntimeReadFileBytes>>20,
 	)
 }
 

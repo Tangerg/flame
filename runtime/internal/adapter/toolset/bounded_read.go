@@ -14,7 +14,10 @@ const (
 	maxRuntimeReadLineBytes         = 1 << 20
 )
 
-var errRuntimeReadFileTooLarge = errors.New("toolset: read file exceeds the 8 MiB limit")
+// The limit is spelled once, by the constant; the model reads this text and
+// acts on the number in it.
+var errRuntimeReadFileTooLarge = fmt.Errorf(
+	"toolset: read file exceeds the %d MiB limit", maxRuntimeReadFileBytes>>20)
 
 // runtimeReadExecutor declares Runtime's model-facing read envelope while the
 // filesystem reader remains the sole owner of path authority and bounded I/O.

@@ -57,7 +57,7 @@ func (c *Coordinator) openingRoutes(
 	rootReducer := newReducer(reducerConfig{
 		RunID: spec.RunID, SegmentID: spec.SegmentID, SessionID: spec.SessionID,
 		WorkspaceCWD: spec.WorkspaceCWD, Isolated: spec.Isolated,
-		ModelSelection: spec.ModelSelection,
+		ModelSelection:    spec.ModelSelection,
 		GoalIncarnationID: spec.GoalIncarnationID,
 		CreatedAt:         spec.CreatedAt, UserInput: spec.Input,
 		ConversationInput: spec.ConversationInput, ModelOnlyInput: spec.ModelOnlyInput,

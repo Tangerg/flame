@@ -27,7 +27,8 @@ const (
 	autoFormatProcessWaitDelay         = time.Second
 )
 
-var errAutoFormatFileTooLarge = errors.New("auto-format: file exceeds the 8 MiB limit")
+var errAutoFormatFileTooLarge = fmt.Errorf(
+	"auto-format: file exceeds the %d MiB limit", maxAutoFormatFileBytes>>20)
 
 func withAutoFormat(inner toolcontract.Tool, cwd string) toolcontract.Tool {
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
@@ -136,7 +137,7 @@ func runFormatter(ctx context.Context, input []byte, name string, args ...string
 		target = args[len(args)-1]
 	}
 	if stdout.overflow {
-		return nil, fmt.Errorf("%s: %s output exceeds 8 MiB", target, name)
+		return nil, fmt.Errorf("%s: %s output exceeds %d MiB", target, name, maxAutoFormatFileBytes>>20)
 	}
 	if runErr == nil && !stderr.overflow {
 		return bytes.Clone(stdout.Bytes()), nil

@@ -24,7 +24,8 @@ const maxOpenDocuments = 128
 
 // ErrDocumentTooLarge reports a workspace document that cannot be admitted to
 // the in-memory language-server synchronization boundary.
-var ErrDocumentTooLarge = errors.New("lsp: document exceeds the 8 MiB limit")
+var ErrDocumentTooLarge = fmt.Errorf(
+	"lsp: document exceeds the %d MiB limit", maxDocumentBytes>>20)
 
 // ErrUnsupportedDocument reports a source that cannot be represented as one
 // Language Server Protocol text document.
