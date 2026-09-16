@@ -278,11 +278,11 @@
    working to ignore. One pass every four seconds reads as a pulse instead. */
 @keyframes flame-shimmer {
   0% {
-    background-position: -200% 0;
+    background-position: -50% 0;
   }
   25%,
   100% {
-    background-position: 200% 0;
+    background-position: 150% 0;
   }
 }
 @keyframes flame-sweep {
