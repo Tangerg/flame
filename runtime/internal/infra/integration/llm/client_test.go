@@ -18,13 +18,9 @@ import (
 
 func mustClientSpec(t testing.TB, provider Provider, model, apiKey, baseURL string) ClientSpec {
 	t.Helper()
-	credential := NoClientCredential()
-	if apiKey != "" {
-		var err error
-		credential, err = NewAPIKeyCredential(apiKey)
-		if err != nil {
-			t.Fatal(err)
-		}
+	credential, err := NewAPIKeyCredential(apiKey)
+	if err != nil {
+		t.Fatal(err)
 	}
 	spec, err := NewClientSpec(provider, model, credential)
 	if err != nil {
@@ -253,7 +249,7 @@ func TestQueries(t *testing.T) {
 // until a call is made).
 func TestBuildChat(t *testing.T) {
 	// Unknown provider → error.
-	if _, err := NewClientSpec("nope", "x", NoClientCredential()); err == nil {
+	if _, err := NewClientSpec("nope", "x", ClientCredential{}); err == nil {
 		t.Error("unknown provider must error")
 	}
 	// A requiresBaseURL provider without a base URL → error naming the gap.
@@ -289,9 +285,6 @@ func TestClientSpecRejectsPrimitiveSentinelsAndPartialState(t *testing.T) {
 	}
 	if _, err := NewClientSpec(ProviderOpenAI, defaultOpenAIModel, ClientCredential{}); err == nil {
 		t.Fatal("zero credential state was accepted")
-	}
-	if _, err := NewClientSpec(ProviderOpenAI, defaultOpenAIModel, NoClientCredential()); err == nil {
-		t.Fatal("required API key absence was accepted")
 	}
 	if _, err := NewAPIKeyCredential("\t \n"); err == nil {
 		t.Fatal("blank API key was accepted")

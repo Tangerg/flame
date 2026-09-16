@@ -146,9 +146,8 @@ func (c ChildRunReservationReceipt) Await(
 type ChildRunStartOutcome string
 
 const (
-	childRunStartOutcomeInvalid ChildRunStartOutcome = ""
-	ChildRunStarted             ChildRunStartOutcome = "started"
-	ChildRunStartAborted        ChildRunStartOutcome = "aborted"
+	ChildRunStarted      ChildRunStartOutcome = "started"
+	ChildRunStartAborted ChildRunStartOutcome = "aborted"
 )
 
 // Valid reports whether c is one conclusive child initialization fact.

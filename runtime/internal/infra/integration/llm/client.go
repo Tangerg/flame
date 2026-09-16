@@ -35,55 +35,29 @@ const (
 	defaultOpenAIModel    = "gpt-5.6-sol"
 )
 
-type clientCredentialKind uint8
-
-const (
-	clientCredentialAbsent clientCredentialKind = iota + 1
-	clientCredentialAPIKey
-)
-
-// ClientCredential explicitly represents an unauthenticated endpoint or one
-// exact API key. Raw secret access remains inside the provider implementation.
+// ClientCredential is one exact API key. Every provider this Runtime serves
+// requires one, so an unauthenticated form would be a state no valid ClientSpec
+// could hold. The zero value is invalid; raw secret access remains inside the
+// provider implementation.
 type ClientCredential struct {
-	kind   clientCredentialKind
 	apiKey string
-}
-
-func NoClientCredential() ClientCredential {
-	return ClientCredential{kind: clientCredentialAbsent}
 }
 
 func NewAPIKeyCredential(apiKey string) (ClientCredential, error) {
 	if strings.TrimSpace(apiKey) == "" {
 		return ClientCredential{}, fmt.Errorf("llm: API key is blank")
 	}
-	return ClientCredential{kind: clientCredentialAPIKey, apiKey: apiKey}, nil
+	return ClientCredential{apiKey: apiKey}, nil
 }
 
 func (c ClientCredential) validate() error {
-	switch c.kind {
-	case clientCredentialAbsent:
-		if c.apiKey != "" {
-			return fmt.Errorf("unauthenticated credential carries an API key")
-		}
-	case clientCredentialAPIKey:
-		if strings.TrimSpace(c.apiKey) == "" {
-			return fmt.Errorf("API key credential is blank")
-		}
-	default:
-		return fmt.Errorf("unknown credential kind %d", c.kind)
+	if strings.TrimSpace(c.apiKey) == "" {
+		return fmt.Errorf("API key is blank")
 	}
 	return nil
 }
 
-func (c ClientCredential) sdkAPIKey() string {
-	if c.kind != clientCredentialAPIKey {
-		return ""
-	}
-	return c.apiKey
-}
-
-func (c ClientCredential) configured() bool { return c.kind == clientCredentialAPIKey }
+func (c ClientCredential) sdkAPIKey() string { return c.apiKey }
 
 type clientEndpointKind uint8
 
@@ -177,10 +151,7 @@ func (s ClientSpec) validate() error {
 		return fmt.Errorf("llm: model: %w", err)
 	}
 	if err := s.credential.validate(); err != nil {
-		return fmt.Errorf("llm: credential: %w", err)
-	}
-	if !s.credential.configured() {
-		return fmt.Errorf("llm: provider %q requires an API key", s.provider)
+		return fmt.Errorf("llm: provider %q credential: %w", s.provider, err)
 	}
 	if err := s.endpoint.validate(); err != nil {
 		return fmt.Errorf("llm: endpoint: %w", err)

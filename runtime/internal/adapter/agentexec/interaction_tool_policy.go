@@ -73,7 +73,7 @@ func (t *ToolAuthorizer) AuthorizeTool(
 	}
 	switch plan.Action {
 	case approval.GatePass:
-		return ToolAuthorizationDecision{}, nil
+		return AllowTool(), nil
 	case approval.GateDeny:
 		return DenyTool(approvalDenialMessage(plan.Denial, request.ToolName)), nil
 	case approval.GatePrompt:
@@ -129,7 +129,7 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 		return ToolAuthorizationDecision{}, fmt.Errorf("agentexec: parse approved Tool arguments: %w", err)
 	}
 	if arguments.Canonical() == request.Arguments.Canonical() {
-		return ToolAuthorizationDecision{}, nil
+		return AllowTool(), nil
 	}
 	return AllowToolWithArguments(arguments), nil
 }
