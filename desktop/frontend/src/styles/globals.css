@@ -517,7 +517,14 @@
   /* The absence of tracking, which is a decision where `--tracking-ui` is the default: mono
      glyphs and a placeholder are already spaced by something other than this ladder. */
   --tracking-none: 0em;
-  --tracking-ui: -0.011em;
+  /* Zero, because both products this design is measured against say zero. Codex and zcode
+     ship the same three-value ladder — tight -0.025em, normal 0, wide +0.025em — and spend
+     `tight` only on display copy, `normal` on everything a person reads at UI size, and
+     `wide` on the smallest steps. This design had the direction inverted: -0.011em on 12, 13
+     and 14px and zero on 11px, so the text that needed the most room was the only text that
+     got none of it. The display step keeps its own tightening, which is the `tight` both of
+     them do spend. */
+  --tracking-ui: 0em;
   --tracking-display: -0.02em;
 
   --style-shape-2xs: 2px;
