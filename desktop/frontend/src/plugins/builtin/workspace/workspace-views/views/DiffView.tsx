@@ -28,8 +28,20 @@ const ROW_STYLE = {
   { sign: string; tone: unknown; meta: unknown }
 >;
 
+/**
+ * The words that changed inside a line the row already tinted.
+ *
+ * An underline, and not a fill, because a fill is not available here: this theme's syntax red
+ * and purple clear AA by about half a point on the row tint alone, so any background strong
+ * enough to read as a mark puts them under it — measured at 4.20 against the 4.5 the audit
+ * holds, with the fill as low as 12%. The line is the channel that does not sit behind the text.
+ *
+ * What was wrong with it was the drawing, not the choice: 2px at `skip-ink: none` is a rule
+ * ACROSS the words, straight through every descender, which is why it read as something other
+ * than a diff. One pixel, skipping ink, clear of the baseline.
+ */
 const wordMark = (ink: string) =>
-  `text-decoration-line:underline;text-decoration-color:${ink};text-decoration-thickness:2px;text-underline-offset:2px;text-decoration-skip-ink:none`;
+  `text-decoration-line:underline;text-decoration-color:${ink};text-decoration-thickness:1px;text-underline-offset:3px`;
 const WD_DEL_STYLE = wordMark("var(--color-diff-deleted-meta)");
 const WD_ADD_STYLE = wordMark("var(--color-diff-added-meta)");
 

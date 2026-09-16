@@ -1,7 +1,11 @@
 import { test as base, expect } from "@playwright/test";
 
+// The fixture has no runtime of its own, and there are two ways for that to show: nothing is
+// listening on the port, or the developer's real app IS — in which case it refuses the fixture's
+// origin rather than the connection. Both are the same absence, and the suite has to read the
+// same whether or not the app happens to be running beside it.
 const EXPECTED_NOISE =
-  /RpcConnectionError|Failed to fetch|net::ERR_CONNECTION_REFUSED|Reduced Motion enabled on your device/;
+  /RpcConnectionError|Failed to fetch|net::ERR_CONNECTION_REFUSED|net::ERR_FAILED|blocked by CORS policy|Reduced Motion enabled on your device/;
 
 const ROUTES = [
   "fixture=agent&state=narrative",
