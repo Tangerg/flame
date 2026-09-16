@@ -2136,7 +2136,15 @@ func TestCoordinatorDrainedStreamClosesNestedChildrenBeforeAncestors(t *testing.
 	}
 }
 
-func TestCoordinatorClosesActiveChildrenBeforeRejectingRootTerminal(t *testing.T) {
+// TestRootBoundaryClosesAnUnreportedChildBeforeItself covers the tail of the
+// hold: the root's boundary arrives with a child live, and that child's own
+// terminal never follows because the executor stream ends first.
+//
+// Holding the root cannot mean holding it forever. The terminal synthesis in
+// finish() is the backstop, and it still owes the same order — the child closes
+// before the root, so the durable tree is never a closed root over a live
+// descendant row.
+func TestRootBoundaryClosesAnUnreportedChildBeforeItself(t *testing.T) {
 	request, confirmation := newChildStartFixture(time.Now())
 	rootMember := ExecutorMember{MemberID: "member_root"}
 	childMember := ExecutorMember{
@@ -2155,9 +2163,8 @@ func TestCoordinatorClosesActiveChildrenBeforeRejectingRootTerminal(t *testing.T
 			},
 		},
 		{Member: childMember, Payload: request},
-		// A correct executor publishes the child's terminal boundary first.
-		// This deliberately violates that ordering to prove the application
-		// closes the durable tree instead of leaving an active child orphan.
+		// The root's boundary, with the child still live and no terminal of its
+		// own ever arriving.
 		{Member: rootMember, Payload: SegmentEnded{Reason: run.OutcomeCompleted}},
 	}}
 	effects := &fakeEffects{}
@@ -2186,13 +2193,13 @@ func TestCoordinatorClosesActiveChildrenBeforeRejectingRootTerminal(t *testing.T
 		t.Fatalf("terminal event order = %+v, want child then root", terminalRuns)
 	}
 	for _, record := range terminalRuns {
-		if !runHasOutcome(record, run.OutcomeFailed) || !runHasFailureKind(record, run.FailureInternal) {
-			t.Fatalf("synthesized terminal = %+v, want internal error", record)
+		if _, terminal := record.Outcome(); !terminal {
+			t.Fatalf("synthesized terminal = %+v, want a settled outcome", record)
 		}
 	}
 	if !effects.terminalized("ses_1", "run_child") ||
 		!effects.terminalized("ses_1", "run_1") {
-		t.Fatal("root protocol violation left a non-terminal run in the durable tree")
+		t.Fatal("an unreported child left a non-terminal run in the durable tree")
 	}
 	if executor.releases() != 1 {
 		t.Fatalf("Release calls = %d, want 1", executor.releases())
@@ -2931,4 +2938,74 @@ func (f *fakeEffects) abortBoundedSnapshot() []bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return slices.Clone(f.abortBounded)
+}
+
+// TestRootBoundaryWaitsForEveryLiveChildBeforeItCommits scripts the arrival
+// order the executor actually produces when a tree is cancelled: it stops the
+// children's work and publishes the parent's terminal first, so the root's
+// boundary reaches this pump ahead of the children it just ended.
+//
+// Committing it on arrival would close the tree over live descendant rows. The
+// durable projection cannot represent that — its partial unique index only
+// keeps one non-terminal tree per Session — so publication order is the only
+// thing enforcing it, and the root must wait for the LAST child rather than the
+// first.
+func TestRootBoundaryWaitsForEveryLiveChildBeforeItCommits(t *testing.T) {
+	rootMember := ExecutorMember{MemberID: "member_root"}
+	childASource := ExecutorMember{
+		MemberID: "member_a", ParentID: "member_root", SpawnCallID: "spawn_a",
+	}
+	grandchildSource := ExecutorMember{
+		MemberID: "member_grandchild", ParentID: "member_a", SpawnCallID: "spawn_grandchild",
+	}
+	childBSource := ExecutorMember{
+		MemberID: "member_b", ParentID: "member_root", SpawnCallID: "spawn_b",
+	}
+	executor := &fakeExecutor{executorEvents: []ExecutorEvent{
+		{Member: rootMember, Payload: SegmentEnded{Reason: run.OutcomeCanceled}},
+		{Member: grandchildSource, Payload: SegmentEnded{Reason: run.OutcomeCanceled}},
+		{Member: childASource, Payload: SegmentEnded{Reason: run.OutcomeCanceled}},
+		{Member: childBSource, Payload: SegmentEnded{Reason: run.OutcomeCanceled}},
+	}}
+	effects := &fakeEffects{}
+	coordinator := testCoordinator(executor, effects)
+	childSegmentIDs := []string{"seg_grandchild", "seg_a", "seg_b"}
+	coordinator.newSegmentID = func() string {
+		next := childSegmentIDs[0]
+		childSegmentIDs = childSegmentIDs[1:]
+		return next
+	}
+	spec := testSegment()
+	spec.SegmentID = "seg_root_resumed"
+	pending := resumedTreePending(spec.CreatedAt)
+	spec.Continuation = mustTreeContinuation(t, pending)
+
+	stream, err := coordinator.openSegment(t.Context(), spec)
+	if err != nil {
+		t.Fatalf("openSegment: %v", err)
+	}
+	events := collectEvents(stream)
+
+	var finished []string
+	for _, event := range events {
+		if _, ok := event.Payload.(SegmentFinished); ok {
+			finished = append(finished, event.RunID)
+		}
+	}
+	// Arrival order was root-first; commit order is every child, then the root.
+	wantOrder := []string{"run_grandchild", "run_a", "run_b", "run_1"}
+	if !slices.Equal(finished, wantOrder) {
+		t.Fatalf("SegmentFinished order = %v, want %v", finished, wantOrder)
+	}
+	for _, event := range events {
+		payload, ok := event.Payload.(SegmentFinished)
+		if !ok {
+			continue
+		}
+		// The held fact is the root's own, so its outcome is the executor's and
+		// not a synthesized substitute.
+		if outcome, terminal := payload.Run.Outcome(); !terminal || outcome != run.OutcomeCanceled {
+			t.Fatalf("Run %q terminal = %v/%v, want canceled", event.RunID, outcome, terminal)
+		}
+	}
 }

@@ -61,6 +61,9 @@ type segmentPump struct {
 	rootFinished bool
 	rootParked   bool
 	childStarts  map[string]*managedChildStart
+	// deferredRootTerminal is the root's own segment boundary, withheld until
+	// every child run has terminalized. See resumeDeferredRootTerminal.
+	deferredRootTerminal ExecutionFact
 }
 
 type managedChildStart struct {
@@ -454,15 +457,25 @@ func (s *segmentPump) handleExecutionFact(member ExecutorMember, executionFact E
 		return false, errors.New("runs: executor emitted a per-Run interrupt instead of a tree barrier")
 	}
 	executionFact = s.classifyChildCancellationFact(route, executionFact)
-	if route == s.routes.root && engineEventEndsSegment(executionFact) {
-		if activeChildren := s.routes.unfinishedCount() - 1; activeChildren > 0 {
+	if route == s.routes.root {
+		if s.deferredRootTerminal != nil {
 			return false, fmt.Errorf(
-				"runs: root run %q reached a segment boundary with %d active child runs",
+				"runs: root run %q reported %T after its segment already ended",
 				route.runID,
-				activeChildren,
+				executionFact,
 			)
 		}
+		if engineEventEndsSegment(executionFact) && s.routes.unfinishedCount() > 1 {
+			s.deferredRootTerminal = executionFact
+			return true, nil
+		}
 	}
+	return s.projectFact(route, executionFact)
+}
+
+// projectFact commits one route's reduction and reports whether this pump may
+// keep consuming.
+func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionFact) (bool, error) {
 	projecting := route.reducer
 	terminalFact := engineEventEndsSegment(executionFact)
 	if terminalFact {
@@ -492,7 +505,7 @@ func (s *segmentPump) handleExecutionFact(member ExecutorMember, executionFact E
 	}
 	route.segmentFinished = publication.finished()
 	if route != s.routes.root {
-		return true, nil
+		return s.resumeDeferredRootTerminal()
 	}
 	s.rootFinished = s.rootFinished || publication.finished()
 	s.rootParked = s.rootParked || publication.parked()
@@ -500,6 +513,30 @@ func (s *segmentPump) handleExecutionFact(member ExecutorMember, executionFact E
 	// support. Leave a park alive for resume and never consume buffered events
 	// after a terminal transition.
 	return !s.rootParked && !s.rootFinished, nil
+}
+
+// resumeDeferredRootTerminal commits the root boundary held back while children
+// were still live, once the last of them has terminalized.
+//
+// The executor ends a canceled subtree by cancelling the children's work and
+// publishing the parent's terminal first, so a root cancellation routinely
+// arrives ahead of the children it ended. Committing it on arrival would close
+// the tree over live descendant rows, and the durable Run projection has no way
+// to represent that: the partial unique index only keeps one non-terminal tree
+// per Session, so publication order is the only thing enforcing it.
+//
+// Holding the root's own fact rather than stopping here is what lets the
+// children report their real terminals — a child cancelled inside a provider
+// call settles as canceled, where a synthesized close would have to call it
+// lost. When the executor stream ends before the children report, the terminal
+// synthesis in finish() remains the backstop and closes the tree itself.
+func (s *segmentPump) resumeDeferredRootTerminal() (bool, error) {
+	if s.deferredRootTerminal == nil || s.routes.unfinishedCount() != 1 {
+		return true, nil
+	}
+	held := s.deferredRootTerminal
+	s.deferredRootTerminal = nil
+	return s.projectFact(s.routes.root, held)
 }
 
 func (s *segmentPump) classifyChildCancellationFact(
