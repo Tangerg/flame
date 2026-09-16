@@ -43,6 +43,12 @@ type Confiner struct {
 	hiddenPaths   []string
 }
 
+// Available reports whether this host has a supported command-isolation
+// backend. It is the composition fact behind the isolation capability: a
+// Session cannot run isolated where its shells cannot be jailed, and an
+// isolated shell without a backend fails closed rather than running free.
+func Available() bool { return checkBackend() == nil }
+
 // NewConfiner builds a command confiner that re-opens readOnlyPaths for reads
 // below the hidden home (e.g. a language toolchain or dependency cache under
 // $HOME a build needs). It fails closed with [ErrUnavailable] when the host has

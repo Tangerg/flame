@@ -69,10 +69,19 @@ func registerSessions(registry *Registry) {
 			protocol.ErrRevisionConflict.Error(),
 			protocol.ErrWorkspaceUnavailable.Error(),
 		},
-		CapabilityRules: []CapabilityRule{{
-			When:     []FieldCondition{{Field: "workspace", Operator: OperatorPresent}},
-			Requires: []string{protocol.FeatureRelocate},
-		}},
+		CapabilityRules: []CapabilityRule{
+			{
+				When:     []FieldCondition{{Field: "workspace", Operator: OperatorPresent}},
+				Requires: []string{protocol.FeatureRelocate},
+			},
+			// Present means "true" for an optional bool, so releasing isolation
+			// stays available on a build that cannot grant it — a Session carried
+			// here from a host that could must remain editable.
+			{
+				When:     []FieldCondition{{Field: "isolated", Operator: OperatorPresent}},
+				Requires: []string{protocol.FeatureIsolation},
+			},
+		},
 	}, func(service interface {
 		UpdateSession(context.Context, protocol.UpdateSessionRequest) (*protocol.Session, error)
 	}, ctx context.Context, request protocol.UpdateSessionRequest) (*protocol.Session, error) {

@@ -28,7 +28,9 @@ type Session struct {
 	Favorite        bool          `json:"favorite,omitempty"` // user-pinned; sorts ahead in the session list
 	// Isolated runs this session's tools in a throwaway copy of the workspace.
 	// The project directory is left untouched, so this session publishes no
-	// workspace file-change events while it runs.
+	// workspace file-change events while it runs. Turning it on is gated on
+	// features.isolation: a host without a command-isolation backend cannot jail
+	// this session's shells and so cannot honor the policy.
 	Isolated bool   `json:"isolated,omitempty"`
 	Revision uint64 `json:"revision"`
 }

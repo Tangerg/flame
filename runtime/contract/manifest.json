@@ -17,6 +17,7 @@
     "lsp",
     "sessionExport",
     "relocate",
+    "isolation",
     "subagents"
   ],
   "methods": [
@@ -94,7 +95,8 @@
         "capability_not_negotiated"
       ],
       "features": [
-        "relocate"
+        "relocate",
+        "isolation"
       ]
     },
     {
@@ -1599,6 +1601,17 @@
           ],
           "requires": [
             "relocate"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "isolated",
+              "operator": "present"
+            }
+          ],
+          "requires": [
+            "isolation"
           ]
         }
       ]

@@ -16,7 +16,7 @@ Protocol `2026-08-30` · 87 methods
 | `sessions.get` | query | unary | none | none | none | — | — | `session_not_found` |
 | `sessions.snapshot` | query | unary | none | none | none | `items.list`, `runs.list`, `interrupts.list`, `plan.get`, `goals.get` | `subagents` | `session_not_found`, `capability_not_negotiated` |
 | `sessions.create` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable` |
-| `sessions.update` | command | unary | replayResponse | none | none | — | `relocate` | `session_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
+| `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `session_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
 | `sessions.delete` | command | unary | replayResponse | none | none | — | — | `session_not_found` |
 | `sessions.fork` | command | unary | replayResponse | none | none | — | — | `session_not_found`, `run_not_found` |
 | `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `checkpoint_unavailable`, `capability_not_negotiated` |
@@ -1037,6 +1037,7 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | --- | --- | --- |
 | `sessions.snapshot` | `includeDescendants` present | `subagents` |
 | `sessions.update` | `workspace` present | `relocate` |
+| `sessions.update` | `isolated` present | `isolation` |
 | `sessions.rollback` | `restoreType` == `files` | `checkpoints` |
 | `sessions.rollback` | `restoreType` == `both` | `checkpoints` |
 | `sessions.export` | always | `sessionExport` |

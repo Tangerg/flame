@@ -888,6 +888,11 @@
           "value": "\"goals\""
         },
         {
+          "name": "FeatureIsolation",
+          "type": "untyped string",
+          "value": "\"isolation\""
+        },
+        {
           "name": "FeatureKnowledge",
           "type": "untyped string",
           "value": "\"knowledge\""

@@ -148,6 +148,7 @@ const FEATURES = [
   "lsp",
   "sessionExport",
   "relocate",
+  "isolation",
   "subagents",
 ] as const;
 
@@ -1035,6 +1036,7 @@ export const WIRE_CAPABILITY_POLICY: {
   ],
   "sessions.update": [
     { when: [{ field: "workspace", operator: "present" }], requires: ["relocate"] },
+    { when: [{ field: "isolated", operator: "present" }], requires: ["isolation"] },
   ],
   "sessions.rollback": [
     { when: [{ field: "restoreType", operator: "equals", value: "files" }], requires: ["checkpoints"] },

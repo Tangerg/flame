@@ -414,7 +414,8 @@
       "x-flame-replayCursor": "none",
       "x-flame-pagination": "none",
       "x-flame-features": [
-        "relocate"
+        "relocate",
+        "isolation"
       ],
       "x-flame-capabilityRules": [
         {
@@ -426,6 +427,17 @@
           ],
           "requires": [
             "relocate"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "isolated",
+              "operator": "present"
+            }
+          ],
+          "requires": [
+            "isolation"
           ]
         }
       ],

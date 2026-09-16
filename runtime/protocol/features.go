@@ -30,6 +30,7 @@ const (
 	FeatureLSP           = "lsp"
 	FeatureSessionExport = "sessionExport"
 	FeatureRelocate      = "relocate"
+	FeatureIsolation     = "isolation"
 	FeatureSubagents     = "subagents"
 )
 
@@ -79,6 +80,7 @@ var features = mustFeatures([]Feature{
 	{Key: FeatureLSP},
 	{Key: FeatureSessionExport},
 	{Key: FeatureRelocate},
+	{Key: FeatureIsolation},
 	// Subagents is the one feature that reshapes a Run's authoritative stream:
 	// child runs, child lineage on every summary, and the `suspended` segment
 	// outcome only exist for a Run whose profile carries it. A subscriber that does

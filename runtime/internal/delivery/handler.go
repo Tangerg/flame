@@ -52,6 +52,9 @@ type HandlerConfig struct {
 	WorkspaceAuthoredWatch workspaceAuthoredWatchUseCases
 
 	GitAvailable bool
+	// IsolationAvailable reports whether this host can jail an isolated
+	// Session's shell commands.
+	IsolationAvailable bool
 }
 
 // Handler is the complete protocol-to-application translation target used by
@@ -100,7 +103,8 @@ type Handler struct {
 // shape both capability discovery and delivery gates. Construction derives it
 // once; handlers do not rediscover availability by attempting a call.
 type featureAvailability struct {
-	git bool
+	git       bool
+	isolation bool
 }
 
 // beginShutdown rejects new runtime subscriptions. Endpoint is its sole caller.
@@ -184,7 +188,8 @@ type contractFacts struct {
 func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 	facts := contractFacts{
 		features: featureAvailability{
-			git: cfg.GitAvailable,
+			git:       cfg.GitAvailable,
+			isolation: cfg.IsolationAvailable,
 		},
 		replay: replayLimitsFrom(cfg.Runs.ReplayRetention()),
 		mcpAuthorizationAttempts: protocol.MCPAuthorizationAttemptLimits{
@@ -335,6 +340,9 @@ func capabilitiesFor(
 			protocol.FeatureCheckpoints: features.git,
 			protocol.FeatureMultimodal:  true,
 			protocol.FeatureRelocate:    true,
+			// An isolated Session jails its shells; without a backend for that
+			// jail the policy cannot be honored, so the surface is not offered.
+			protocol.FeatureIsolation:   features.isolation,
 			protocol.FeaturePlan:        true,
 			protocol.FeatureCompaction:  true,
 			protocol.FeatureGoals:       true,

@@ -25,6 +25,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 )
 
 // assemble transfers acquired resources directly to the Runtime lifecycle.
@@ -419,6 +420,7 @@ func buildAssemblyCore(
 				Goals:                  goalDriver,
 				AgentMemory:            workspaceServices.agentMemory,
 				GitAvailable:           workspaceadapter.GitAvailable(),
+				IsolationAvailable:     sandbox.Available(),
 			},
 			sessions: sessionCoordinator,
 			workers: runtimeWorkers{
