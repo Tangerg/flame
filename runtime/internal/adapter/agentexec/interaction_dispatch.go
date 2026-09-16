@@ -29,7 +29,7 @@ func (i *interactionDispatcher) Dispatch(
 	if err := i.session.awaitDispatchSegment(ctx); err != nil {
 		return agent.Settlement{}, err
 	}
-	attempt := newDispatchAttempt(ctx, request.ID())
+	attempt := newDispatchAttempt(request.ID())
 	defer attempt.close()
 	settlement, err = i.inner.Dispatch(withDispatchAttempt(ctx, attempt), request, emit)
 	if projectionErr := attempt.indeterminateFailure(); projectionErr != nil {

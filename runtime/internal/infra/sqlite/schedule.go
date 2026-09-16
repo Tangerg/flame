@@ -329,24 +329,6 @@ func (s *ScheduleStore) advanceScheduleRunFact(ctx context.Context, id string, r
 	return updated != 0, nil
 }
 
-func (s *ScheduleStore) revisionAdvanceFailure(ctx context.Context, id string) error {
-	if err := schedule.ValidateID(id); err != nil {
-		return err
-	}
-	var revision uint64
-	err := conn(ctx, s.db).QueryRowContext(ctx, `SELECT revision FROM schedules WHERE id = ?`, id).Scan(&revision)
-	if errors.Is(err, sql.ErrNoRows) {
-		return schedule.ErrNotFound
-	}
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect schedule revision: %w", err)
-	}
-	if revision >= exactint.Maximum {
-		return schedule.ErrRevisionExhausted
-	}
-	return errors.New("sqlite: schedule revision did not advance")
-}
-
 func (s *ScheduleStore) Delete(ctx context.Context, id string) (bool, error) {
 	if err := schedule.ValidateID(id); err != nil {
 		return false, err

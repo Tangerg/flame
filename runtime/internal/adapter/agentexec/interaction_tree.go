@@ -200,31 +200,6 @@ func (i *interactionSession) pendingInterruptions(
 	return interruptions, nil
 }
 
-func (i *interactionSession) managedProcesses() ([]*agent.Process, error) {
-	i.state.mu.Lock()
-	root := i.state.process
-	children := make([]agent.ProcessID, 0, len(i.state.delegateChildren))
-	for processID := range i.state.delegateChildren {
-		children = append(children, processID)
-	}
-	i.state.mu.Unlock()
-	if root == nil {
-		return nil, runs.ErrExecutorNotLive
-	}
-	slices.SortFunc(children, func(left, right agent.ProcessID) int {
-		return strings.Compare(left.String(), right.String())
-	})
-	processes := make([]*agent.Process, 0, len(children)+1)
-	processes = append(processes, root)
-	for _, processID := range children {
-		process, found := i.engine.Process(processID)
-		if found {
-			processes = append(processes, process)
-		}
-	}
-	return processes, nil
-}
-
 func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.EffectID, bool) {
 	inspection, readable := i.inspectTree(ctx)
 	if !readable {

@@ -28,24 +28,17 @@ type ToolCallInput struct {
 // supplied it — this gate never rewrites arguments.
 type ToolCallPlan struct {
 	Action      GateAction
-	Denial      Denial
+	Denial      DenialCause
 	SafetyClass tool.SafetyClass
 	Risk        tool.RiskLevel
 	PromptCause PromptCause
 }
 
-// Denial identifies why the gate refused a call. Detail preserves hook-owned
-// text; generated wording belongs to the caller that presents the denial.
-type Denial struct {
-	Cause  DenialCause
-	Detail string
-}
-
-// DenialCause is the policy source of a refusal.
+// DenialCause is the policy source of a refusal. The wording a denied call
+// reports belongs to the caller that presents it.
 type DenialCause string
 
 const (
-	DenialNone           DenialCause = ""
 	DenialPlanMode       DenialCause = "planMode"
 	DenialRememberedRule DenialCause = "rememberedRule"
 )
@@ -85,7 +78,7 @@ func (t ToolCallInput) Plan() ToolCallPlan {
 	plan.Action = action
 	switch action {
 	case GateDeny:
-		plan.Denial = Denial{Cause: DenialPlanMode}
+		plan.Denial = DenialPlanMode
 	case GatePrompt:
 		plan.Risk = t.SafetyClass.Risk()
 		plan.PromptCause = promptCauseForSafetyClass(t.SafetyClass)
@@ -107,7 +100,7 @@ func (t ToolCallPlan) ResolvePromptShortcuts(standing StandingDecision, autoAppr
 	if standing.Matched {
 		if standing.Decision == Deny {
 			t.Action = GateDeny
-			t.Denial = Denial{Cause: DenialRememberedRule}
+			t.Denial = DenialRememberedRule
 			return t
 		}
 		t.Action = GatePass

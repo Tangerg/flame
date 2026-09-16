@@ -550,16 +550,6 @@ func (e *ExecutorCheckpointStore) sessionCheckpointRootIDs(
 	return rootIDs, nil
 }
 
-func (e *ExecutorCheckpointStore) deleteCheckpoint(ctx context.Context, rootMemberID string) error {
-	if _, err := conn(ctx, e.db).ExecContext(ctx,
-		`DELETE FROM executor_checkpoints WHERE root_member_id = ?`,
-		rootMemberID,
-	); err != nil {
-		return fmt.Errorf("sqlite: delete executor checkpoint %q: %w", rootMemberID, err)
-	}
-	return nil
-}
-
 func (e *ExecutorCheckpointStore) deleteOwnedCheckpoint(
 	ctx context.Context,
 	sessionID string,

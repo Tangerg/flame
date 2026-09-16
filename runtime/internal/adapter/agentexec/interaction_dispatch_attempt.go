@@ -18,17 +18,14 @@ type dispatchAttempt struct {
 	// The Effect owns the turn even if Scope rejects the prepared request before calling the model.
 	modelAllowance *interactionAllowanceTurn
 	effectID       agent.EffectID
-	failure        context.Context
-	fail           context.CancelCauseFunc
 
 	mu                      sync.Mutex
 	externalBoundaryCrossed bool
 	projectionErr           error
 }
 
-func newDispatchAttempt(parent context.Context, effectID agent.EffectID) *dispatchAttempt {
-	failure, fail := context.WithCancelCause(context.WithoutCancel(parent))
-	return &dispatchAttempt{effectID: effectID, failure: failure, fail: fail}
+func newDispatchAttempt(effectID agent.EffectID) *dispatchAttempt {
+	return &dispatchAttempt{effectID: effectID}
 }
 
 func withDispatchAttempt(ctx context.Context, attempt *dispatchAttempt) context.Context {
@@ -61,38 +58,17 @@ func (d *dispatchAttempt) recordProjectionFailure(err error) {
 		return
 	}
 	d.mu.Lock()
+	defer d.mu.Unlock()
 	if d.projectionErr == nil {
 		d.projectionErr = err
-	} else {
-		d.projectionErr = errors.Join(d.projectionErr, err)
+		return
 	}
-	fail := d.fail
-	d.mu.Unlock()
-	if fail != nil {
-		fail(err)
-	}
-}
-
-// projectionContext detaches a post-external projection from ordinary Effect
-// cancellation while still retiring it when another member of the same Effect
-// proves the aggregate outcome indeterminate.
-func (d *dispatchAttempt) projectionContext(parent context.Context) (context.Context, context.CancelFunc) {
-	bound, cancel := context.WithCancelCause(parent)
-	stop := context.AfterFunc(d.failure, func() {
-		cancel(context.Cause(d.failure))
-	})
-	return bound, func() {
-		stop()
-		cancel(nil)
-	}
+	d.projectionErr = errors.Join(d.projectionErr, err)
 }
 
 func (d *dispatchAttempt) close() {
 	if d.modelAllowance != nil {
 		d.modelAllowance.release()
-	}
-	if d.fail != nil {
-		d.fail(context.Canceled)
 	}
 }
 

@@ -63,7 +63,7 @@ func TestToolCallInputPlan_ModePlanDenyBeatsHookAsk(t *testing.T) {
 		SafetyClass:     tool.SafetyClassExec,
 		FileMutation:    tool.FileMutationNone,
 	}.Plan()
-	if plan.Action != GateDeny || plan.Denial.Cause != DenialPlanMode {
+	if plan.Action != GateDeny || plan.Denial != DenialPlanMode {
 		t.Fatalf("plan = %+v, want plan-mode deny", plan)
 	}
 }
@@ -75,7 +75,7 @@ func TestToolCallPlanResolvePromptShortcuts_RememberedRuleBeforeAutoApprove(t *t
 		FileMutation: tool.FileMutationNone,
 	}.Plan()
 	got := plan.ResolvePromptShortcuts(StandingDecision{Matched: true, Decision: Deny}, true)
-	if got.Action != GateDeny || got.Denial.Cause != DenialRememberedRule {
+	if got.Action != GateDeny || got.Denial != DenialRememberedRule {
 		t.Fatalf("remembered deny + auto approve = %+v, want deny", got)
 	}
 

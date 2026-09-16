@@ -206,8 +206,8 @@ func fileMutationScope(
 	return tool.FileMutationWithinWorkspace
 }
 
-func approvalDenialMessage(denial approval.Denial, toolName string) string {
-	switch denial.Cause {
+func approvalDenialMessage(denial approval.DenialCause, toolName string) string {
+	switch denial {
 	case approval.DenialPlanMode:
 		return fmt.Sprintf("plan mode is active (read-only): %s is not permitted. Continue investigating with read-only tools or request Plan approval before making changes.", toolName)
 	case approval.DenialRememberedRule:

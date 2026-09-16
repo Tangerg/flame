@@ -11,7 +11,7 @@ import (
 )
 
 func TestDispatchAttemptOwnsOneExternalBoundaryFact(t *testing.T) {
-	attempt := newDispatchAttempt(t.Context(), mustInteractionEffectID(t, "effect"))
+	attempt := newDispatchAttempt(mustInteractionEffectID(t, "effect"))
 	defer attempt.close()
 	if attempt.crossedExternalBoundary() {
 		t.Fatal("fresh attempt reported an external side effect")
@@ -41,7 +41,7 @@ func TestDispatchAttemptReleasesModelAdmissionWithoutAnExternalCall(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	attempt := newDispatchAttempt(t.Context(), mustInteractionEffectID(t, "rejected-preparation"))
+	attempt := newDispatchAttempt(mustInteractionEffectID(t, "rejected-preparation"))
 	attempt.modelAllowance, err = allowance.acquire(t.Context())
 	if err != nil {
 		t.Fatal(err)
