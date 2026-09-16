@@ -169,11 +169,11 @@ func (d *Discovery) Call(ctx context.Context, invocation toolcontract.Invocation
 func (d *Discovery) search(ctx context.Context, args discoveryArgs) (string, error) {
 	query := strings.TrimSpace(args.Query)
 	if query == "" {
-		return "", ErrEmptyQuery
+		return "", toolarg.Unusable(ErrEmptyQuery)
 	}
 	limit, err := toolarg.PositiveInt(args.Limit, discoveryDefaultLimit, discoveryMaxLimit, "limit")
 	if err != nil {
-		return "", err
+		return "", toolarg.Unusable(err)
 	}
 
 	var matches []discoverableTool

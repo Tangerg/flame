@@ -68,7 +68,7 @@ func conversationSearchDefinition() toolcontract.FuncConfig {
 func (c *conversationSearcher) run(ctx context.Context, req conversationSearchRequest) (string, error) {
 	query, limit, err := req.normalized()
 	if err != nil {
-		return "", fmt.Errorf("search_conversations: %w", err)
+		return "", toolarg.Unusable(fmt.Errorf("search_conversations: %w", err))
 	}
 	hits, err := c.search.SearchTranscript(ctx, query, limit)
 	if err != nil {

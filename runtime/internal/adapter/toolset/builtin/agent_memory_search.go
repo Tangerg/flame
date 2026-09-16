@@ -72,7 +72,7 @@ func agentMemorySearchDefinition() toolcontract.FuncConfig {
 func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequest) (string, error) {
 	query, limit, err := req.normalized()
 	if err != nil {
-		return "", fmt.Errorf("search_memory: %w", err)
+		return "", toolarg.Unusable(fmt.Errorf("search_memory: %w", err))
 	}
 	cwd := strings.TrimSpace(executionctx.WorkspaceCWD(ctx, ""))
 	if cwd == "" {

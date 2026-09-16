@@ -41,18 +41,26 @@ func TestShellArgumentRejectionFailsTheCallNotTheRun(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			_, err := callTextTool(t.Context(), shellTool(t, shells, testCase.tool), testCase.arguments)
-			if err == nil {
-				t.Fatalf("%s accepted %s", testCase.tool, testCase.arguments)
-			}
-			var failure *toolcontract.Failure
-			if !errors.As(err, &failure) {
-				t.Fatalf("%s returned an unclassified error (%v); the Host settles that as an "+
-					"operation of unknown outcome and loses the Run tree", testCase.tool, err)
-			}
-			if failure.Kind() != toolcontract.FailureKindFailed {
-				t.Fatalf("failure kind = %q, want %q: nothing was refused permission, the call did not happen",
-					failure.Kind(), toolcontract.FailureKindFailed)
-			}
+			requireDefiniteFailure(t, err, testCase.tool+" "+testCase.arguments)
 		})
+	}
+}
+
+// requireDefiniteFailure asserts a rejected call settled as a definite Tool
+// failure. The Host reads an unclassified Tool error as an operation whose
+// durable outcome it cannot prove and terminalizes the whole Run tree as lost,
+// so an argument the model can simply rewrite must never return one.
+func requireDefiniteFailure(t *testing.T, err error, what string) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("%s was accepted", what)
+	}
+	var failure *toolcontract.Failure
+	if !errors.As(err, &failure) {
+		t.Fatalf("%s returned an unclassified error (%v); the Host loses the Run tree on those", what, err)
+	}
+	if failure.Kind() != toolcontract.FailureKindFailed {
+		t.Fatalf("%s failure kind = %q, want %q: nothing was refused permission, the call did not happen",
+			what, failure.Kind(), toolcontract.FailureKindFailed)
 	}
 }

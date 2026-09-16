@@ -77,21 +77,21 @@ func TestLSPToolValidation(t *testing.T) {
 	ci := newTestAnalyzer(t)
 	lsp := lspTool(t, ci)
 
-	if _, err := callTextTool(context.Background(), lsp, `{"operation":"bogus"}`); err == nil {
+	// The operation enum is rejected by the argument schema, one layer above the
+	// handler: agentexec's own invoke settles a Prepare failure as a definite
+	// failure, which this helper does not model.
+	_, err := callTextTool(context.Background(), lsp, `{"operation":"bogus"}`)
+	if err == nil {
 		t.Error("unknown operation must error")
 	}
-	if _, err := callTextTool(context.Background(), lsp, `{"operation":"definition"}`); err == nil {
-		t.Error("definition without path must error")
-	}
-	if _, err := callTextTool(context.Background(), lsp, `{"operation":"definition","path":"notes.txt"}`); err == nil {
-		t.Error("position operation without line and character must error")
-	}
-	if _, err := callTextTool(context.Background(), lsp, `{"operation":"definition","path":"notes.txt","line":1}`); err == nil {
-		t.Error("position operation with an incomplete coordinate must error")
-	}
-	if _, err := callTextTool(context.Background(), lsp, `{"operation":"workspace_symbols"}`); err == nil {
-		t.Error("workspace_symbols without query must error")
-	}
+	_, err = callTextTool(context.Background(), lsp, `{"operation":"definition"}`)
+	requireDefiniteFailure(t, err, "definition without path")
+	_, err = callTextTool(context.Background(), lsp, `{"operation":"definition","path":"notes.txt"}`)
+	requireDefiniteFailure(t, err, "position operation without line and character")
+	_, err = callTextTool(context.Background(), lsp, `{"operation":"definition","path":"notes.txt","line":1}`)
+	requireDefiniteFailure(t, err, "position operation with an incomplete coordinate")
+	_, err = callTextTool(context.Background(), lsp, `{"operation":"workspace_symbols"}`)
+	requireDefiniteFailure(t, err, "workspace_symbols without query")
 	for _, op := range []string{"implementation", "incoming_calls", "outgoing_calls"} {
 		out, err := callTextTool(context.Background(), lsp, `{"operation":"`+op+`","path":"notes.txt","line":1,"character":1}`)
 		if err != nil {
