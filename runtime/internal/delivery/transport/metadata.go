@@ -7,8 +7,10 @@ import "context"
 // wire (the HTTP Last-Event-Id header) and carries it on the
 // context with WithLastEventID; the runtime's SubscribeRun reads it with
 // LastEventIDFrom to replay a run's retained, replayable backlog from that point.
-// Transports that don't carry it (or a fresh subscribe) leave it empty →
-// full replay.
+// Empty — a transport that does not carry it, or a fresh subscribe — attaches at
+// the current head and replays nothing. The run journal owns that rule: a stream
+// that also replayed its beginning is one a client folds on top of the
+// transcript reads it is already making, which applies those events twice.
 type lastEventIDKey struct{}
 
 type idempotencyKey struct{}
@@ -22,7 +24,7 @@ func WithLastEventID(ctx context.Context, id string) context.Context {
 	return context.WithValue(ctx, lastEventIDKey{}, id)
 }
 
-// LastEventIDFrom reads the reconnect cursor, "" when unset (full replay).
+// LastEventIDFrom reads the reconnect cursor, "" when unset (attach at head).
 func LastEventIDFrom(ctx context.Context) string {
 	id, _ := ctx.Value(lastEventIDKey{}).(string)
 	return id
