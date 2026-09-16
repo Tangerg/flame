@@ -507,10 +507,7 @@ func (e *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, 
 		return err
 	}
 	return RunInTx(ctx, e.db, func(ctx context.Context) error {
-		rootIDs, err := e.queryCheckpointRootIDs(ctx,
-			`SELECT root_member_id FROM executor_checkpoints WHERE session_id = ? ORDER BY root_member_id`,
-			sessionID,
-		)
+		rootIDs, err := e.sessionCheckpointRootIDs(ctx, sessionID)
 		if err != nil {
 			return fmt.Errorf("sqlite: list executor checkpoints for Session %q: %w", sessionID, err)
 		}
@@ -523,49 +520,14 @@ func (e *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, 
 	})
 }
 
-// DeleteUnownedCheckpoints removes checkpoint aggregates that are not in
-// keepRootIDs.
-// Boot reconciliation calls it after proving the exact set of waiting Run
-// trees that still own resumable continuations.
-func (e *ExecutorCheckpointStore) DeleteUnownedCheckpoints(ctx context.Context, keepRootIDs []string) error {
-	keep := make(map[string]struct{}, len(keepRootIDs))
-	for _, rootID := range keepRootIDs {
-		if err := runtimeidentity.ValidateMember(rootID); err != nil {
-			return fmt.Errorf("sqlite: delete unowned executor checkpoints: %w", err)
-		}
-		if _, duplicate := keep[rootID]; duplicate {
-			return fmt.Errorf("sqlite: delete unowned executor checkpoints: duplicate preserved root ID %q", rootID)
-		}
-		keep[rootID] = struct{}{}
-	}
-	return RunInTx(ctx, e.db, func(ctx context.Context) error {
-		rootIDs, err := e.queryCheckpointRootIDs(ctx,
-			`SELECT root_member_id FROM executor_checkpoints ORDER BY root_member_id`,
-		)
-		if err != nil {
-			return fmt.Errorf("sqlite: list executor checkpoint roots: %w", err)
-		}
-		var stale []string
-		for _, rootID := range rootIDs {
-			if _, preserved := keep[rootID]; !preserved {
-				stale = append(stale, rootID)
-			}
-		}
-		for _, rootID := range stale {
-			if err := e.deleteCheckpoint(ctx, rootID); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
-func (e *ExecutorCheckpointStore) queryCheckpointRootIDs(
+func (e *ExecutorCheckpointStore) sessionCheckpointRootIDs(
 	ctx context.Context,
-	query string,
-	args ...any,
+	sessionID string,
 ) ([]string, error) {
-	rows, err := conn(ctx, e.db).QueryContext(ctx, query, args...)
+	rows, err := conn(ctx, e.db).QueryContext(ctx,
+		`SELECT root_member_id FROM executor_checkpoints WHERE session_id = ? ORDER BY root_member_id`,
+		sessionID,
+	)
 	if err != nil {
 		return nil, err
 	}

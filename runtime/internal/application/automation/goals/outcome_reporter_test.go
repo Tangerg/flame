@@ -71,9 +71,9 @@ func TestOutcomeReporterOwnsTerminalGoalTransition(t *testing.T) {
 		}
 	}
 
-	active, err := reader.Active(t.Context(), "ses_1")
-	if err != nil || !active {
-		t.Fatalf("Active = %v, %v, want true, nil", active, err)
+	current, exists, err := reader.Current(t.Context(), "ses_1")
+	if err != nil || !exists || current.Status() != goal.StatusActive {
+		t.Fatalf("Current = %v, %v, %v, want an active Goal", current.Status(), exists, err)
 	}
 
 	result, err := reporter.Report(t.Context(), ReportCommand{

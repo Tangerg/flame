@@ -16,11 +16,6 @@ const (
 	GateDeny GateAction = "deny"
 )
 
-// Valid reports whether g belongs to the approval gate vocabulary.
-func (g GateAction) Valid() bool {
-	return g == GatePass || g == GatePrompt || g == GateDeny
-}
-
 // GateFor encodes the (tool-class, mode) → gate action. The rules mirror the
 // strictness gradient documented on [Mode]:
 //

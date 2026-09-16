@@ -81,10 +81,6 @@ func (e *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, 
 	return translateCheckpointStorageError(e.storage.DeleteSessionCheckpoints(ctx, sessionID))
 }
 
-func (e *ExecutorCheckpointStore) DeleteUnownedCheckpoints(ctx context.Context, keepRootIDs []string) error {
-	return translateCheckpointStorageError(e.storage.DeleteUnownedCheckpoints(ctx, keepRootIDs))
-}
-
 func translateCheckpointStorageError(err error) error {
 	switch {
 	case err == nil:

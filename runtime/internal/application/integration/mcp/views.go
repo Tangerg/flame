@@ -16,9 +16,6 @@ const (
 	SecretClear SecretChangeKind = "clear"
 )
 
-// Valid reports whether kind names one exact secret mutation.
-func (s SecretChangeKind) Valid() bool { return s == SecretSet || s == SecretClear }
-
 // AuthorizationChange is a write-only bearer-token mutation.
 type AuthorizationChange struct {
 	Kind  SecretChangeKind
@@ -120,17 +117,6 @@ const (
 	ServerFailed       ServerStateType = "failed"
 	ServerNeedsAuth    ServerStateType = "needsAuth"
 )
-
-// Valid reports whether s belongs to the complete MCP server lifecycle.
-func (s ServerStateType) Valid() bool {
-	switch s {
-	case ServerDisabled, ServerDisconnected, ServerConnecting, ServerConnected,
-		ServerFailed, ServerNeedsAuth:
-		return true
-	default:
-		return false
-	}
-}
 
 // ServerStatus is the application status notification read model. Known is
 // false after a removed server's final invalidation.

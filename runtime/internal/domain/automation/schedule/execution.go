@@ -68,4 +68,3 @@ func (e Execution) Title() string                      { return e.title }
 func (e Execution) Instructions() string               { return e.instructions }
 func (e Execution) CWD() string                        { return e.cwd }
 func (e Execution) ModelSelection() modelref.Selection { return e.modelSelection }
-func (e Execution) Cron() string                       { return e.cron }

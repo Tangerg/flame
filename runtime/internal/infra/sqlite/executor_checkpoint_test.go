@@ -399,7 +399,6 @@ func TestExecutorCheckpointStoreDeletesByApplicationOwnership(t *testing.T) {
 	for _, checkpoint := range []runs.ExecutorCheckpoint{
 		storedExecutorCheckpoint("keep", "session-a", `{"root":"keep"}`),
 		storedExecutorCheckpoint("drop-session", "session-b", `{"root":"drop-session"}`),
-		storedExecutorCheckpoint("drop-unowned", "session-c", `{"root":"drop-unowned"}`),
 	} {
 		if err := store.SaveCheckpoint(ctx, checkpoint); err != nil {
 			t.Fatalf("SaveCheckpoint(%s): %v", checkpoint.RootMemberID, err)
@@ -408,13 +407,8 @@ func TestExecutorCheckpointStoreDeletesByApplicationOwnership(t *testing.T) {
 	if err := store.DeleteSessionCheckpoints(ctx, "session-b"); err != nil {
 		t.Fatalf("DeleteSessionCheckpoints: %v", err)
 	}
-	if err := store.DeleteUnownedCheckpoints(ctx, []string{"keep"}); err != nil {
-		t.Fatalf("DeleteUnownedCheckpoints: %v", err)
-	}
-	for _, rootID := range []string{"drop-session", "drop-unowned"} {
-		if _, err := store.LoadCheckpoint(ctx, rootID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
-			t.Fatalf("stale checkpoint %q = %v", rootID, err)
-		}
+	if _, err := store.LoadCheckpoint(ctx, "drop-session"); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+		t.Fatalf("stale checkpoint = %v", err)
 	}
 	if got, err := store.LoadCheckpoint(ctx, "keep"); err != nil || got.RootMemberID != "keep" {
 		t.Fatalf("preserved checkpoint = (%+v, %v)", got, err)

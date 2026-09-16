@@ -116,9 +116,6 @@ const (
 	ImageContent ContentKind = "image"
 )
 
-// Valid reports whether kind names a supported content representation.
-func (c ContentKind) Valid() bool { return c == TextContent || c == ImageContent }
-
 type ContentBlock struct {
 	Kind      ContentKind
 	Text      string

@@ -18,29 +18,8 @@ import (
 )
 
 // NewRecoveryCommit constructs one complete, immutable boot-recovery write-set.
-func NewRecoveryCommit(
-	lostRuns []rundomain.Replacement,
-	itemReplacements []transcript.Replacement,
-	conversationTransitions []RecoveryConversationTransition,
-	modelInvocations []ModelInvocationRecovery,
-	toolInvocations []ToolInvocationRecovery,
-	goalRuns []goal.RunRecord,
-	deleteInterrupts []InterruptOwner,
-	preservedSessionIDs []string,
-	deleteCheckpointSessionIDs []string,
-) (RecoveryCommit, error) {
-	return newRecoveryCommit(recoveryCommitState{
-		LostRuns: lostRuns, ItemReplacements: itemReplacements,
-		ConversationTransitions: conversationTransitions,
-		ModelInvocations:        modelInvocations, ToolInvocations: toolInvocations,
-		GoalRuns: goalRuns, DeleteInterrupts: deleteInterrupts,
-		PreservedSessionIDs:        preservedSessionIDs,
-		DeleteCheckpointSessionIDs: deleteCheckpointSessionIDs,
-	})
-}
-
-func newRecoveryCommit(state recoveryCommitState) (RecoveryCommit, error) {
-	state = cloneRecoveryCommitState(state)
+func NewRecoveryCommit(input RecoveryCommitInput) (RecoveryCommit, error) {
+	state := cloneRecoveryCommitInput(input)
 	commit := RecoveryCommit{state: state}
 	if err := commit.Validate(); err != nil {
 		return RecoveryCommit{}, err
@@ -48,7 +27,7 @@ func newRecoveryCommit(state recoveryCommitState) (RecoveryCommit, error) {
 	return commit, nil
 }
 
-func cloneRecoveryCommitState(state recoveryCommitState) recoveryCommitState {
+func cloneRecoveryCommitInput(state RecoveryCommitInput) RecoveryCommitInput {
 	state.LostRuns = slices.Clone(state.LostRuns)
 	state.ItemReplacements = slices.Clone(state.ItemReplacements)
 	state.ConversationTransitions = cloneRecoveryConversationTransitions(state.ConversationTransitions)

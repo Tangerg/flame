@@ -34,23 +34,6 @@ func (c *Coordinator) Servers(ctx context.Context) ([]Server, error) {
 	return out, nil
 }
 
-// Server returns one unified server resource.
-func (c *Coordinator) Server(ctx context.Context, name mcpserver.ServerName) (Server, error) {
-	server, found, err := c.registry.Get(ctx, name)
-	if err != nil {
-		return Server{}, err
-	}
-	if !found {
-		return Server{}, ErrUnknownServer
-	}
-	statuses := c.statusesByName()
-	status, ok := statuses[name]
-	if ok {
-		return serverView(server, &status), nil
-	}
-	return serverView(server, nil), nil
-}
-
 func (c *Coordinator) statusesByName() map[mcpserver.ServerName]ServerStatus {
 	statuses := c.liveStatusesByName()
 	c.statusMu.Lock()

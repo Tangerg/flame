@@ -308,21 +308,16 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New failing persistence: %v", err)
 	}
-	commit, err := runs.NewRecoveryCommit(
-		[]run.Replacement{testsupport.MustRunReplacement(active, lost)},
-		nil,
-		[]runs.RecoveryConversationTransition{{
+	commit, err := runs.NewRecoveryCommit(runs.RecoveryCommitInput{
+		LostRuns: []run.Replacement{testsupport.MustRunReplacement(active, lost)},
+		ConversationTransitions: []runs.RecoveryConversationTransition{{
 			RootRunID: active.ID(), SessionID: active.SessionID(), ExpectedCount: 0,
 		}},
-		nil,
-		nil,
-		nil,
-		[]runs.InterruptOwner{{
+		DeleteInterrupts: []runs.InterruptOwner{{
 			SessionID: active.SessionID(), RootRunID: active.ID(),
 		}},
-		nil,
-		[]string{"session_abandoned"},
-	)
+		DeleteCheckpointSessionIDs: []string{"session_abandoned"},
+	})
 	if err != nil {
 		t.Fatalf("NewRecoveryCommit: %v", err)
 	}

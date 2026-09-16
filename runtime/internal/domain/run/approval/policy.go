@@ -60,15 +60,6 @@ const (
 	ModePlan Mode = "plan"
 )
 
-func (m Mode) Valid() bool {
-	switch m {
-	case ModeSafe, ModeBalanced, ModeYolo, ModePlan:
-		return true
-	default:
-		return false
-	}
-}
-
 // ValidDefault reports whether m may be configured as the runtime fallback.
 // Plan is session-scoped and therefore excluded.
 func (m Mode) ValidDefault() bool {

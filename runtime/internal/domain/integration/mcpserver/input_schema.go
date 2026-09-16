@@ -88,11 +88,6 @@ func ParseInputSchema(data []byte) (InputSchema, error) {
 	return InputSchema{object: string(normalized)}, nil
 }
 
-// JSON returns an ownership-isolated canonical representation.
-func (i InputSchema) JSON() []byte {
-	return []byte(i.String())
-}
-
 // String returns the canonical JSON schema.
 func (i InputSchema) String() string {
 	if i.object == "" {

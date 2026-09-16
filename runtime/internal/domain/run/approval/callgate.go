@@ -57,11 +57,6 @@ const (
 	DenialRememberedRule DenialCause = "rememberedRule"
 )
 
-// Valid reports whether d belongs to the denial taxonomy.
-func (d DenialCause) Valid() bool {
-	return d == DenialNone || d == DenialHook || d == DenialPlanMode || d == DenialRememberedRule
-}
-
 // PromptCause is the policy fact an approval surface explains to a user.
 type PromptCause string
 
@@ -76,13 +71,6 @@ const (
 	PromptCauseUnknownMutation     PromptCause = "unknownMutation"
 	PromptCauseCatastrophicCommand PromptCause = "catastrophicCommand"
 )
-
-// Valid reports whether p belongs to the approval prompt taxonomy.
-func (p PromptCause) Valid() bool {
-	return p == PromptCauseNone || p == PromptCauseNonMutating || p == PromptCauseWorkspaceWrite ||
-		p == PromptCauseWorkspaceCommand || p == PromptCauseNetworkAccess || p == PromptCauseUnknownSafety ||
-		p == PromptCauseOutsideWorkspace || p == PromptCauseUnknownMutation || p == PromptCauseCatastrophicCommand
-}
 
 // Plan applies hook and approval-mode policy to one tool call. It does not
 // read remembered rules and it does not trigger HITL; callers only do those

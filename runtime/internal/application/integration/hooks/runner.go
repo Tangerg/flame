@@ -215,9 +215,6 @@ func (b *Bound) Run(ctx context.Context, in domain.Input) domain.Decision {
 	return b.runner.Run(ctx, b.hooks, in)
 }
 
-// Empty reports whether the Bound has no hooks. Nil-safe.
-func (b *Bound) Empty() bool { return b == nil || len(b.hooks) == 0 }
-
 // Inspection is the read-only view of a cwd's hooks for a management surface
 // (hooks.list): every discovered hook (trusted or not), the project
 // root that gates the project-scope ones, and whether it's currently trusted.

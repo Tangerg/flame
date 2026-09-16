@@ -156,8 +156,6 @@ func (c Current) Goal() (Goal, bool) {
 	return c.goal.Clone(), true
 }
 
-func (c Current) SessionID() string { return c.sessionID }
-
 func (c Current) Version() Version {
 	if c.goal == nil {
 		return Version{sessionID: c.sessionID}

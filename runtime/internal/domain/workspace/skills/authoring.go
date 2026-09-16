@@ -249,11 +249,6 @@ const (
 	ProposalDangerousInstruction ProposalSafetyIssue = "dangerousInstruction"
 )
 
-// Valid reports whether p is a supported proposal safety classification.
-func (p ProposalSafetyIssue) Valid() bool {
-	return p == ProposalSafe || p == ProposalDangerousInstruction
-}
-
 // SafetyIssue reports whether proposal content contains a known destructive instruction.
 func (p Proposal) SafetyIssue() ProposalSafetyIssue {
 	content := p.Name + "\n" + p.Description + "\n" + p.Instructions

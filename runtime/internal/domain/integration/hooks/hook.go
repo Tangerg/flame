@@ -238,16 +238,6 @@ const (
 	SubagentStuck      SubagentStatus = "stuck"
 )
 
-// Valid reports whether s is a known sub-agent terminal status.
-func (s SubagentStatus) Valid() bool {
-	switch s {
-	case SubagentCompleted, SubagentFailed, SubagentKilled, SubagentTerminated, SubagentStuck:
-		return true
-	default:
-		return false
-	}
-}
-
 // SubagentInput is the sub-agent slice of an Input for SubagentStart/Stop.
 type SubagentInput struct {
 	RunID           string

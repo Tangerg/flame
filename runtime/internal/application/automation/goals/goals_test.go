@@ -769,9 +769,6 @@ func TestReaderRejectsInvalidOrMismatchedStoreValue(t *testing.T) {
 			if _, _, err := reader.Current(t.Context(), "requested-session"); err == nil {
 				t.Fatal("Current accepted an invalid persistence result")
 			}
-			if _, err := reader.Active(t.Context(), "requested-session"); err == nil {
-				t.Fatal("Active accepted an invalid persistence result")
-			}
 		})
 	}
 }

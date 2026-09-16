@@ -57,10 +57,13 @@ type RecoveryAdmissions interface {
 // child-before-parent replacement. Checkpoint and callback cleanup name only
 // Sessions whose writer lease was acquired.
 type RecoveryCommit struct {
-	state recoveryCommitState
+	state RecoveryCommitInput
 }
 
-type recoveryCommitState struct {
+// RecoveryCommitInput is the unvalidated material [NewRecoveryCommit] freezes.
+// It is a value rather than a parameter list because its two Session-identity
+// members carry opposite checkpoint authority and must not be transposable.
+type RecoveryCommitInput struct {
 	LostRuns                []rundomain.Replacement
 	ItemReplacements        []transcript.Replacement
 	ConversationTransitions []RecoveryConversationTransition
@@ -169,7 +172,7 @@ type recoveryPlanner struct {
 	sessions      map[string]session.Session
 	conversations map[string]recoveryConversationSnapshot
 	preserved     map[string]struct{}
-	commit        recoveryCommitState
+	commit        RecoveryCommitInput
 	finishedAt    time.Time
 	reconciled    int
 }
@@ -499,7 +502,7 @@ func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
 	slices.SortFunc(r.commit.ToolInvocations, compareToolInvocationRecoveries)
 	slices.Sort(r.commit.PreservedSessionIDs)
 	slices.Sort(r.commit.DeleteCheckpointSessionIDs)
-	commit, err := newRecoveryCommit(r.commit)
+	commit, err := NewRecoveryCommit(r.commit)
 	if err != nil {
 		return RecoveryCommit{}, 0, err
 	}

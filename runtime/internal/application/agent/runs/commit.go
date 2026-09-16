@@ -26,11 +26,6 @@ const (
 	StateTerminalize StateChange = "terminalize"
 )
 
-// Valid reports whether s is one supported lifecycle mutation.
-func (s StateChange) Valid() bool {
-	return s == StateUnchanged || s == StateSuspend || s == StateTerminalize
-}
-
 // ModelInvocationState records the durable application observation of one
 // provider call. It is deliberately smaller than a model response: semantic
 // output belongs to Transcript Items and accounting belongs to ProgressCommit.

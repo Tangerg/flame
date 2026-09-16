@@ -362,14 +362,6 @@ func (r *runTreeOwner) commitInterrupt(ctx context.Context, commit func(context.
 	return true, nil
 }
 
-// CancelReason returns the recorded human cancel reason. It is late-bound on
-// purpose because cancellation can arrive after the segment starts.
-func (r *runTreeOwner) CancelReason() string {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.cancelReason
-}
-
 // CancelReasonFor returns the reason owned by runID's winning cancellation
 // plan. A child operation applies its reason only to the target subtree; the
 // root reason remains independent for a later whole-tree cancellation.

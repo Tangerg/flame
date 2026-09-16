@@ -36,12 +36,6 @@ const (
 	BypassImmuneCatastrophicCommand BypassImmunity = "catastrophicCommand"
 )
 
-// Valid reports whether b is one supported auto-approval exception.
-func (b BypassImmunity) Valid() bool {
-	return b == BypassAllowed || b == BypassImmuneOutsideWorkspace ||
-		b == BypassImmuneUnknownMutation || b == BypassImmuneCatastrophicCommand
-}
-
 // BypassImmunityFor reports whether a tool call is dangerous enough to confirm
 // with a human EVEN under an auto-approve mode (Yolo, or Balanced for
 // file mutations).

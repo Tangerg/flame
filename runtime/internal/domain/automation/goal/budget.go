@@ -143,10 +143,6 @@ const (
 	BudgetLimitSteps BudgetLimit = "steps"
 )
 
-func (b BudgetLimit) Valid() bool {
-	return b == BudgetLimitRuns || b == BudgetLimitCost || b == BudgetLimitSteps
-}
-
 func (b Budget) exceeded(u Usage) (BudgetLimit, bool) {
 	cost, priced := u.Cost.USD()
 	switch {

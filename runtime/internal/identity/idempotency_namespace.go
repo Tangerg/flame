@@ -49,12 +49,3 @@ func ParseOptionalIdempotencyNamespace(text string) (IdempotencyNamespace, bool,
 }
 
 func (i IdempotencyNamespace) String() string { return i.text }
-
-// Validate proves that i was parsed. The canonical lowercase-hex spelling is
-// established there, so an unconstructed namespace is all this can reject.
-func (i IdempotencyNamespace) Validate() error {
-	if i.text == "" {
-		return errIdempotencyNamespaceForm
-	}
-	return nil
-}

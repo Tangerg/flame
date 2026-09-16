@@ -99,7 +99,7 @@ func TestCheckpointResultReplacementIsAtomicAndSessionScoped(t *testing.T) {
 }
 
 func TestDeletingCheckpointReleasesUnpublishedResults(t *testing.T) {
-	for _, mode := range []string{"consumed", "session deleted", "orphan checkpoint"} {
+	for _, mode := range []string{"consumed", "session deleted"} {
 		t.Run(mode, func(t *testing.T) {
 			db, checkpoints := newExecutorCheckpointStorage(t)
 			results := sqlite.NewToolResultStore(db)
@@ -115,8 +115,6 @@ func TestDeletingCheckpointReleasesUnpublishedResults(t *testing.T) {
 				err = checkpoints.DeleteCheckpoints(t.Context(), "session-1", []string{checkpoint.RootMemberID})
 			case "session deleted":
 				err = checkpoints.DeleteSessionCheckpoints(t.Context(), "session-1")
-			case "orphan checkpoint":
-				err = checkpoints.DeleteUnownedCheckpoints(t.Context(), nil)
 			}
 			if err != nil {
 				t.Fatal(err)
