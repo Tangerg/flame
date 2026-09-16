@@ -16,10 +16,7 @@ const styles = stylex.create({
   },
   open: { gridTemplateRows: "1fr" },
   shut: { gridTemplateRows: "0fr" },
-  // The track's height is the whole animation, and a track growing past text that is already
-  // at full ink reads as a reveal from behind an edge rather than as a thing opening. Codex
-  // animates `{ height, opacity }` as one change on its activity disclosure; this is the same
-  // change said in the two properties a grid track can carry.
+  // Height and opacity are one change, the way Codex animates its activity disclosure.
   well: {
     minHeight: 0,
     overflow: "clip",
@@ -33,23 +30,12 @@ const styles = stylex.create({
 
 interface Props {
   open: boolean;
-  /**
-   * The disclosed content. It is rendered on every open state, shut included: what a row this
-   * size can afford to defer is what a caller puts inside its own node, and the node itself
-   * has to survive being shut — a trigger naming it through `aria-controls` is otherwise
-   * pointing at an element that does not exist until the row is first opened. Fourteen rows
-   * across the fixtures were, which is a control announcing that it operates something nothing
-   * can find. `useDisclosedContent` below is the latch a caller defers WITH.
-   */
+  /** Rendered shut as well as open: the node a trigger names through `aria-controls` has to
+   *  exist. Defer its CONTENT with `useDisclosedContent`, never its identity. */
   children: ReactNode;
 }
 
-/**
- * Whether the disclosed content has ever been asked for.
- *
- * The latch belongs to the caller rather than to `Collapsible`, because only the caller knows
- * which of its nodes carries the region's identity and must therefore outlive being shut.
- */
+/** Whether the disclosed content has ever been asked for. */
 export function useDisclosedContent(open: boolean): boolean {
   const [revealed, setRevealed] = useState(open);
   if (open && !revealed) setRevealed(true);

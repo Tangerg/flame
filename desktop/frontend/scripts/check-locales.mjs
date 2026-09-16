@@ -529,13 +529,8 @@ for (const path of sourceFiles(SRC_DIR)) {
   // `Intl` with no locale silently falls back to the HOST, so an app set to Japanese on an
   // English Mac renders English dates and a 12-hour clock. lib/i18n owns the one answer and
   // caches its formatters; a call here also builds a fresh one on every render.
-  //
-  // Passing a tag does not make it right, which is why the gate is on the CALL and not on the
-  // empty argument list it used to require. `activeLocale()` returns i18next's raw language,
-  // and two call sites handed it one: `zh` without a region makes ICU pick the Traditional
-  // grammar for a Simplified reader, which is the whole reason `bcp47()` exists. A second
-  // spelling of a formatted date also drifts from the first — those two rendered
-  // "1/2/2024, 4:00:00 PM" beside the app's own "Jan 2, 4:00 PM".
+  // The gate is on the CALL: passing `activeLocale()` skips `bcp47()`, so `zh` reaches ICU
+  // without a region and picks the Traditional grammar.
   if (!relative.startsWith("lib/i18n/")) {
     for (const match of code.matchAll(HOST_LOCALE_CALL)) {
       failures.push(

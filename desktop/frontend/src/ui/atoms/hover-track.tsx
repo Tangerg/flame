@@ -15,15 +15,8 @@ const Ctx = createContext<HoverTrack | null>(null);
 
 const host = stylex.create({ boxless: { display: "contents" } });
 
-/**
- * A list where the pointer's highlight is ONE element that travels, rather than a background
- * each row fades in and out on its own.
- *
- * It is the only way to answer the gap between rows: a per-row `:hover` fill goes out as the
- * pointer crosses a 2px gutter and comes back on the next row, so a sweep down the list reads
- * as a flicker. The track holds the last row it was given until another row claims it, and
- * only lets go when the pointer leaves the list — the highlight is never nowhere.
- */
+/** One highlight travelling between rows, held until the pointer leaves the list — a per-row
+ *  fill flickers across the gutter between them. */
 export function HoverTrack({
   children,
   styles,
@@ -73,11 +66,8 @@ const highlight = stylex.create({
   },
 });
 
-/**
- * The travelling fill itself, rendered by whichever item currently holds the pointer. It sits
- * behind the item's own content, so the item has to open a stacking context and stop painting
- * a hover fill of its own.
- */
+/** The travelling fill. Sits behind its item's content, so the item opens a stacking context
+ *  and stops painting a hover fill of its own. */
 export function HoverHighlight({
   item,
   styles,

@@ -23,9 +23,7 @@ export interface AgentDockTab {
   badge?: ReactNode;
   active?: boolean;
   onSelect?: () => void;
-  /** Required: the strip already spends its close key, its × and a menu item on closing, so a
-   *  tab that cannot be closed would carry three affordances that do nothing and a context
-   *  menu with nothing in it. */
+  /** Required: the strip spends a key, an × and a menu item on closing. */
   onClose: () => void;
   closeLabel: string;
   onCloseOthers?: () => void;

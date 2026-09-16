@@ -60,8 +60,7 @@ export function formatDateTime(input: string | number | Date | undefined | null)
   }).format(d);
 }
 
-/** How fine a clock reads. A log of events inside one run needs the second; a message stamp
- *  does not, and showing it there would put a number on screen that changes nothing. */
+/** A log of events inside one run needs the second; a message stamp does not. */
 export type ClockPrecision = "minute" | "second";
 
 /** Clock time alone. Returns "" on unparseable input. */

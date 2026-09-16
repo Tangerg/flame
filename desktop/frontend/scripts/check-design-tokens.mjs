@@ -115,13 +115,7 @@ const MARKUP_RULES = [
     message: "arbitrary line height — use a `leading-*` step",
   },
   {
-    // A control's inset, frozen. `button.tsx` carried 7px, 9px, 11px and 13px beside a height
-    // and a radius that both named tokens — the answers to `step - var(--control-edge-width)`
-    // for a 1px edge, and right only for a 1px edge. `--control-edge-width` is a visual-style
-    // token and the composer already halves it, so the arithmetic has to stay arithmetic.
-    //
-    // One pixel is exempt: a hairline gap and a baseline nudge are not steps on the ladder and
-    // have nowhere else to come from.
+    // One pixel is exempt: a hairline gap and a baseline nudge are not ladder steps.
     pattern:
       /\b(?:padding|margin)(?:Block|Inline|Top|Right|Bottom|Left)?(?:Start|End)?:\s*"(?!1px)[\d.]+px"/g,
     message: "a spacing literal — name the `space` step, minus an edge if that is what it is",

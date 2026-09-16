@@ -32,8 +32,7 @@ export function fmtCost(usd: number): string {
   return `$${decimal(usd, 2, true)}`;
 }
 
-/** How fine a duration reads. A trace span is a measurement and a tenth of a millisecond is
- *  the difference it was recorded to show; a tool call's wall time is not. */
+/** A trace span was recorded to show tenths; a tool call's wall time was not. */
 export type DurationPrecision = "whole" | "tenths";
 
 export function fmtDuration(ms: number, precision: DurationPrecision = "whole"): string {
@@ -51,8 +50,7 @@ export function fmtDuration(ms: number, precision: DurationPrecision = "whole"):
   return `${hours}h ${String(minutes - hours * 60).padStart(2, "0")}m`;
 }
 
-/** A measured number in a table, which is not a duration and carries its unit beside it: a
- *  tenth only while the number is small enough for one to mean anything. */
+/** A measured number in a table — a tenth only while one still means something. */
 export function fmtMetric(value: number): string {
   return value < 10 ? decimal(value, 1) : decimal(Math.round(value), 0);
 }

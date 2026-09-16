@@ -75,11 +75,6 @@ const styles = stylex.create({
     transitionTimingFunction: motion.easeState,
   },
 
-  // The inset is the SPACE step minus the edge the control draws, so what a reader measures
-  // from the border to the label is the step itself. It used to be written as the answer —
-  // 7, 9, 11, 13 — which is right for a 1px edge and only for a 1px edge: `--control-edge-width`
-  // is a visual-style token, and the composer already ships a style that halves it. Every other
-  // dimension in this ladder names a token; this one had frozen its arithmetic.
   xs: { height: "var(--control-height-xs)", borderRadius: radius.button, paddingInline: INSET_XS },
   sm: { height: "var(--control-height-sm)", borderRadius: radius.button, paddingInline: INSET_SM },
   md: { height: "var(--control-height-md)", borderRadius: radius.button, paddingInline: INSET_MD },

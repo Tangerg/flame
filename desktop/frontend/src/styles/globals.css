@@ -384,17 +384,8 @@
     var(--color-surface)
   );
 
-  /* Interaction ink has a FLOOR, and the surface ladder above it does not. The contrast
-     preference is named for surface separation, and the surfaces are what it should flatten;
-     at its lowest setting it was also taking the only signal a session row has for "this is
-     the one that is open" down to a 1.04 contrast ratio — 4 levels out of 255 in light, which
-     is at the edge of being visible at all. The ladder still walks the whole range.
-
-     The two multipliers below are read off the products this one is measured against. Codex
-     lays 10% of its foreground over a ghost control on hover and 20% on press; zcode ships
-     `#0d0d0d0d` for hover and `#0a0a0a1a` for selected — 5.1% and 10.2%. They disagree on the
-     level and agree exactly on the SHAPE: selected is twice hover. This design had 0.75 and 1,
-     a ratio of 1.33, which is why a hovered row and the open one were hard to tell apart. */
+  /* Interaction ink, floored so the contrast slider flattens surfaces and not state.
+     Levels and the 1:2 hover-to-selected ratio are read off Codex and zcode. */
   --wash-step: max(3%, var(--depth-step));
   --wash-hover: color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 1.25), transparent);
   --wash-selected: color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 2.5), transparent);
@@ -517,13 +508,7 @@
   /* The absence of tracking, which is a decision where `--tracking-ui` is the default: mono
      glyphs and a placeholder are already spaced by something other than this ladder. */
   --tracking-none: 0em;
-  /* Zero, because both products this design is measured against say zero. Codex and zcode
-     ship the same three-value ladder — tight -0.025em, normal 0, wide +0.025em — and spend
-     `tight` only on display copy, `normal` on everything a person reads at UI size, and
-     `wide` on the smallest steps. This design had the direction inverted: -0.011em on 12, 13
-     and 14px and zero on 11px, so the text that needed the most room was the only text that
-     got none of it. The display step keeps its own tightening, which is the `tight` both of
-     them do spend. */
+  /* Zero at UI size, which is what Codex and zcode both call normal. */
   --tracking-ui: 0em;
   --tracking-display: -0.02em;
 
@@ -626,15 +611,9 @@
   --dur-med-base: 200ms;
   --dur-slow-base: 300ms;
   --dur-drawer-base: 500ms;
-  /* Arriving, and the one this design already had. It is Codex's `--ease-enter-snappy`
-     (.23, 1, .32, 1) to three decimal places, which is the right curve for a thing that
-     enters: almost all of the distance in the first quarter, then a settle. */
+  /* Arriving. Codex's `--ease-enter-snappy` to three decimals. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  /* CHANGING, which is a different event. The curve above spends 90% of a 120ms colour fade
-     in its first 30ms, so a fill that is meant to fade reads as a jump and then a crawl. Five
-     components asked for it by name and eleven asked for nothing and got the browser's `ease`
-     — so the same hover ran on two curves depending on where the pointer was. Both products
-     this design is measured against ship exactly this one as their transition default. */
+  /* Changing. The curve above front-loads, so a fill meant to fade reads as a jump. */
   --ease-state: cubic-bezier(0.4, 0, 0.2, 1);
 
   --dur-instant: calc(var(--dur-instant-base) * var(--motion-scale));
@@ -927,11 +906,7 @@ html.theme-dark body {
   background: var(--color-bg);
 }
 html.theme-dark {
-  /* The surface ladder doubles in dark, because a step of white on a dark plane separates
-     less than the same step of black on a light one. Interaction ink does not: it is laid
-     over whatever is there rather than building a plane, and doubling it made a hovered row
-     in dark twice the ink of the same row in light. zcode ships one alpha for both schemes —
-     `#0d0d0d0d` and `#ffffff0d` — and that is the right reading. */
+  /* The surface ladder doubles in dark; ink laid over a plane does not. */
   --wash-step: max(3%, calc(var(--depth-step) / 2));
 
   --color-accent: #3574f0;
@@ -959,10 +934,7 @@ html.theme-dark {
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
     #aaaeb5
   );
-  /* Measured against the brightest plane it lands on, which is a SELECTED row and not the
-     canvas: 10% of the ink over `--color-bg` is #313337, and #95999f reads 4.42 there. The
-     ladder's own tracking only starts contributing above the default contrast, so the default
-     is where a step has to have its own margin. */
+  /* Clears AA on a selected row, which is the brightest plane it lands on. */
   --color-text-faint: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),

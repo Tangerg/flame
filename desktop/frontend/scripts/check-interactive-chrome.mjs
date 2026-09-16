@@ -201,14 +201,8 @@ function* walk(dir) {
   }
 }
 
-// A curve is a decision, and until this ran nobody was making it: of fifty `transitionProperty`
-// declarations, five named `--ease-out`, one named `--ease-state`, and the other forty-four
-// named nothing and took the browser's `ease`. So the same hover ran on two different curves
-// depending on which component the pointer was over, and the five that had chosen were on the
-// ENTRANCE curve — 90% of a 120ms fade inside its first 30ms, which reads as a jump.
-//
-// A file pass rather than a line rule: the answer is not on the line that asks the question. A
-// transition is written as a run of three declarations, so the curve is "beside" the property.
+// A file pass rather than a line rule: a transition is a run of three declarations, so the
+// curve sits beside the property rather than on it.
 const CURVE_WINDOW = 7;
 
 function transitionsWithNoCurve(lines) {

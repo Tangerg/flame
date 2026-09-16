@@ -62,15 +62,10 @@ interface Props {
 export function ReasoningBlock({ text, status, superseded = false }: Props) {
   const t = useT();
   const streaming = status === "running";
-  // Superseded means an answer has started arriving underneath, so the thought behind it is
-  // no longer what you are watching even while its own stream runs on.
   const { open: isOpen, toggle } = useActivityOpenState(streaming && !superseded);
 
-  // How long it thought, measured HERE because nobody else knows it: the Runtime publishes a
-  // reasoning stream, not a duration, and what this reports is the wait as it was lived on
-  // this screen. A session restored from disk never saw the run, so there is nothing to
-  // report and the bare word stands — which is the same pair Codex ships, `Thought for
-  // {elapsed}` beside a form for when the elapsed is not knowable.
+  // The Runtime publishes a reasoning stream, not a duration; this is the wait as lived here.
+  // A restored session never saw the run, so the bare word stands.
   const startedAt = useRef<number | null>(null);
   const [thoughtMillis, setThoughtMillis] = useState<number | null>(null);
   useEffect(() => {

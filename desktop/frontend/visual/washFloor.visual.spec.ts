@@ -8,10 +8,7 @@ const CONTRAST = [0, 12, 25, 50, 100] as const;
 const MIN_HOVER = 6;
 const MIN_SELECTED = 12;
 
-// Codex lays 10% of its foreground over a ghost control on hover and 20% on press; zcode ships
-// 5.1% for hover and 10.2% for selected. They disagree on the level and agree exactly on this:
-// the open row is twice the ink of the one under the pointer. Anything nearer than 1.7 and the
-// two states stop being two states.
+// Codex and zcode both put the open row at twice the ink of the hovered one.
 const MIN_RATIO = 1.7;
 
 const READ = `() => {

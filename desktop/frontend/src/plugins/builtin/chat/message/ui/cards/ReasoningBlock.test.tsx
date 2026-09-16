@@ -41,7 +41,6 @@ describe("ReasoningBlock disclosure policy", () => {
     view.rerender(<ReasoningBlock text="Hidden rationale" status="complete" />);
     expect(screen.getByRole("button", { name: /Thought for 8.4s/ })).toBeTruthy();
 
-    // A turn restored from disk mounts already settled: there was no wait to watch.
     view.unmount();
     render(<ReasoningBlock text="Hidden rationale" status="complete" />);
     expect(screen.getByRole("button", { name: /^Thought$/ })).toBeTruthy();
@@ -52,20 +51,17 @@ describe("ReasoningBlock disclosure policy", () => {
     const view = render(<ReasoningBlock text="Hidden rationale" status="running" />);
     const live = () => screen.getByRole("button", { name: /Thinking|Thought/ });
 
-    // A thought still arriving is open, because it is what you are watching.
     expect(live().getAttribute("aria-expanded")).toBe("true");
 
     fireEvent.click(live());
     expect(live().getAttribute("aria-expanded")).toBe("false");
 
-    // Collapsing it while it ran said nothing about the settled row, which has its own default.
     view.rerender(<ReasoningBlock text="Hidden rationale" status="complete" />);
     expect(live().getAttribute("aria-expanded")).toBe("false");
 
     fireEvent.click(live());
     expect(live().getAttribute("aria-expanded")).toBe("true");
 
-    // Nor does opening the settled row decide anything about the next live one.
     view.rerender(<ReasoningBlock text="Hidden rationale" status="running" />);
     expect(
       live().getAttribute("aria-expanded"),

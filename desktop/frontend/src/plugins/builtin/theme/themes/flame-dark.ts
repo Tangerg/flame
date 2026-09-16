@@ -11,8 +11,7 @@ const c = {
   ink: "#e3e5e9",
   inkSoft: "#c6c9cf",
   inkMuted: "#aaaeb5",
-  // Measured against the brightest plane it lands on, which is a SELECTED row and not the
-  // canvas: 10% of the ink over the canvas is #313337, and #95999f reads 4.42 there.
+  // Clears AA on a selected row, which is the brightest plane it lands on.
   inkFaint: "#9da1a7",
 
   hairline: "#2e3136",

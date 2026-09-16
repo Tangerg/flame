@@ -21,9 +21,6 @@ describe("AgentActivityDisclosure", () => {
     const trigger = screen.getByRole("button", { name: /Search source/ });
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
 
-    // The region a shut trigger names has to EXIST — `aria-controls` pointing at nothing is a
-    // control claiming to operate something no reader can find. What is deferred is its
-    // content, not its identity.
     const shut = document.getElementById(trigger.getAttribute("aria-controls") ?? "");
     expect(shut).not.toBeNull();
     expect(shut!.getAttribute("role")).toBe("region");
