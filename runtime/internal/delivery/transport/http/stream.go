@@ -1,11 +1,16 @@
 package http
 
 import (
+	"context"
+	"fmt"
 	"iter"
+	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	"github.com/Tangerg/sse"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
@@ -68,6 +73,7 @@ func (s *Server) serveStream(w http.ResponseWriter, r *http.Request, resp *trans
 	frames := make(chan dispatch.StreamFrame)
 	go func() {
 		defer close(frames)
+		defer recoverStreamSourceDefect(ctx)
 		for frame := range events {
 			select {
 			case frames <- frame:
@@ -102,6 +108,23 @@ func (s *Server) serveStream(w http.ResponseWriter, r *http.Request, resp *trans
 			return // client disconnect — detach only
 		}
 	}
+}
+
+// recoverStreamSourceDefect keeps a defect in the frame source from ending the
+// process and every Session in it. The bridge goroutine is what drives the
+// source, so the handler's own recovery — which is on the request goroutine —
+// never sees a panic raised there. Closing frames then ends this stream exactly
+// the way the dispatch already ends one whose event it cannot deliver: no
+// terminal frame, and the client replays the gap with Last-Event-Id.
+func recoverStreamSourceDefect(ctx context.Context) {
+	recovered := recover()
+	if recovered == nil {
+		return
+	}
+	defect := fmt.Errorf("http: stream source panicked: %v", recovered)
+	slog.ErrorContext(ctx, "http: stream source panicked",
+		"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+	trace.SpanFromContext(ctx).RecordError(defect)
 }
 
 // writeSSEMessage encodes message as JSON and emits one SSE frame. eventID is
