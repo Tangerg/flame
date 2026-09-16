@@ -225,23 +225,33 @@ func (c *Coordinator) WaitSessionStartable(ctx context.Context, sessionID string
 		if err := c.admission.WaitRunStartable(ctx, sess.ID(), sess.Workspace().Path()); err != nil {
 			return err
 		}
-		changed, stopObserving := c.publications.changes.observe(sess.ID())
-		_, active, err := c.activeRuns.ActiveRun(ctx, sess.ID())
-		if err != nil {
-			stopObserving()
+		startable, err := c.awaitSessionRunSettled(ctx, sess.ID())
+		if err != nil || startable {
 			return err
 		}
-		if !active {
-			stopObserving()
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			stopObserving()
-			return context.Cause(ctx)
-		case <-changed:
-			stopObserving()
-		}
+	}
+}
+
+// awaitSessionRunSettled observes one durable Session Run transition. The
+// observation is registered before the read so a Run that settles between them
+// still wakes this caller, and it is given back on every way out of this
+// function — the gate's own wait cannot see the durable projection, so a lost
+// observer is a caller that waits for a change nobody will report again.
+func (c *Coordinator) awaitSessionRunSettled(ctx context.Context, sessionID string) (bool, error) {
+	changed, stopObserving := c.publications.changes.observe(sessionID)
+	defer stopObserving()
+	_, active, err := c.activeRuns.ActiveRun(ctx, sessionID)
+	if err != nil {
+		return false, err
+	}
+	if !active {
+		return true, nil
+	}
+	select {
+	case <-ctx.Done():
+		return false, context.Cause(ctx)
+	case <-changed:
+		return false, nil
 	}
 }
 
