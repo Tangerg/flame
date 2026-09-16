@@ -89,11 +89,19 @@ func TestWithPathGuardFailsClosedWhenMutationDiscoveryFails(t *testing.T) {
 		t.Context(), withPathGuard(failingMutationReporter{Tool: inner, err: cause}, t.TempDir()),
 		`{"path":"safe.txt"}`)
 
-	if !errors.Is(err, cause) {
-		t.Fatalf("Call error = %v, want mutation-discovery cause", err)
-	}
 	if called {
 		t.Fatal("path guard executed the tool without authoritative mutation paths")
+	}
+	// Failing closed costs this call, not the Run: an unclassified error here is
+	// an operation the Host cannot prove the outcome of, and it settles the whole
+	// Run tree as lost. Failure keeps its cause off errors.Is deliberately, so the
+	// diagnostic travels where it is acted on — the output the model reads.
+	var failure *toolcontract.Failure
+	if !errors.As(err, &failure) {
+		t.Fatalf("Call error = %v, want a definite Tool failure", err)
+	}
+	if told, _ := failure.Output().Text(); !strings.Contains(told, cause.Error()) {
+		t.Fatalf("model was told %q, want the mutation-discovery cause", told)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
@@ -34,7 +35,12 @@ func mutationPaths(tool toolcontract.Tool, invocation toolcontract.Invocation) (
 	if ok {
 		reported, err := reporter.MutationPaths(invocation.Arguments())
 		if err != nil {
-			return nil, err
+			// A reporter that cannot read this call's own arguments is describing
+			// what the model wrote, and every guard asks before the Tool runs, so
+			// nothing happened that could be in doubt. Left unclassified it would
+			// reach the Host as an operation of unknown outcome and settle the Run
+			// tree as lost, which is how one malformed patch ends a Session.
+			return nil, toolarg.Unusable(err)
 		}
 		paths = append(paths, reported...)
 	}
@@ -120,7 +126,18 @@ func (m applyPatchTool) MutationPaths(arguments []byte) ([]string, error) {
 	}
 	files, _, err := gitdiff.Parse(strings.NewReader(request.Patch))
 	if err != nil {
-		return nil, fmt.Errorf("parse apply_patch mutation paths: %w", err)
+		// The parse is how the guards learn which files this call would touch, so
+		// an unreadable patch cannot be applied at all. The counts are what models
+		// get wrong, and a parser that overruns one hunk body reports the next
+		// header as a stray line, so name the likely cause instead of only the
+		// line it stopped at.
+		return nil, fmt.Errorf(
+			"apply_patch: the patch could not be parsed, so the files it would change cannot be checked "+
+				"and nothing was applied: %w. In each header @@ -oldStart,oldCount +newStart,newCount @@, "+
+				"oldCount must equal the number of context and removed lines in that hunk and newCount the "+
+				"number of context and added lines. Recount every hunk and call the tool again",
+			err,
+		)
 	}
 	paths := make([]string, 0, len(files)*2)
 	for _, file := range files {
