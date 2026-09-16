@@ -47,6 +47,12 @@ type ButtonVariant =
 
 export type ButtonTone = "negative" | "warning" | "accent" | "success";
 
+const inset = (step: string) => `calc(${step} - var(--control-edge-width))`;
+const INSET_XS = inset(space.s2);
+const INSET_SM = inset(space.s2_5);
+const INSET_MD = inset(space.s3);
+const INSET_LG = inset(space.s3_5);
+
 const styles = stylex.create({
   base: {
     display: "inline-flex",
@@ -69,10 +75,15 @@ const styles = stylex.create({
     transitionTimingFunction: motion.easeState,
   },
 
-  xs: { height: "var(--control-height-xs)", borderRadius: radius.button, paddingInline: "7px" },
-  sm: { height: "var(--control-height-sm)", borderRadius: radius.button, paddingInline: "9px" },
-  md: { height: "var(--control-height-md)", borderRadius: radius.button, paddingInline: "11px" },
-  lg: { height: "var(--control-height-lg)", borderRadius: radius.button, paddingInline: "13px" },
+  // The inset is the SPACE step minus the edge the control draws, so what a reader measures
+  // from the border to the label is the step itself. It used to be written as the answer —
+  // 7, 9, 11, 13 — which is right for a 1px edge and only for a 1px edge: `--control-edge-width`
+  // is a visual-style token, and the composer already ships a style that halves it. Every other
+  // dimension in this ladder names a token; this one had frozen its arithmetic.
+  xs: { height: "var(--control-height-xs)", borderRadius: radius.button, paddingInline: INSET_XS },
+  sm: { height: "var(--control-height-sm)", borderRadius: radius.button, paddingInline: INSET_SM },
+  md: { height: "var(--control-height-md)", borderRadius: radius.button, paddingInline: INSET_MD },
+  lg: { height: "var(--control-height-lg)", borderRadius: radius.button, paddingInline: INSET_LG },
   iconXs: {
     height: "var(--control-height-xs)",
     width: "var(--control-height-xs)",
