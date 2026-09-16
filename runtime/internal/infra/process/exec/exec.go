@@ -146,7 +146,7 @@ type Shell struct {
 	started   time.Time
 	id        shellID       // the owner-map key, mirrored here for RetainedForSession
 	sessionID string        // session that launched it; scopes RetainedForSession
-	cwd       string        // canonical working-tree identity used by lifecycle cleanup
+	cwd       string        // physical working-tree identity, established by Launch
 	command   string        // the shell command, for a session's live-state readout
 	done      chan struct{} // closed once the process finishes
 
@@ -183,6 +183,21 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	if err := timeout.Validate(); err != nil {
 		return "", err
 	}
+	// The stored identity decides which tree this shell belongs to when a
+	// destructive restore quiesces one. A caller spells a workspace the way its
+	// Session does, and two Sessions can spell one tree differently, so the
+	// identity is established here rather than assumed of every caller. The
+	// process still runs in the path it was given.
+	// An empty cwd inherits this process's directory and claims no tree, which
+	// is the state StopWorkspace already skips.
+	treeIdentity := ""
+	if cwd != "" {
+		resolved, resolveErr := pathidentity.Resolve("", cwd)
+		if resolveErr != nil {
+			return "", fmt.Errorf("exec: resolve shell working tree %q: %w", cwd, resolveErr)
+		}
+		treeIdentity = resolved
+	}
 	base := context.WithoutCancel(ctx)
 	var (
 		runCtx context.Context
@@ -193,10 +208,10 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	} else {
 		runCtx, cancel = context.WithCancel(base)
 	}
-	name, args, env, err := s.command(cwd, command, isolated)
-	if err != nil {
+	name, args, env, commandErr := s.command(cwd, command, isolated)
+	if commandErr != nil {
 		cancel()
-		return "", err
+		return "", commandErr
 	}
 	cmd := exec.CommandContext(runCtx, name, args...)
 	cmd.Dir = cwd
@@ -210,7 +225,7 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	process := newShellProcessOwner(cmd)
 	sh := &Shell{
 		cancel: cancel, process: process, started: time.Now(),
-		sessionID: sessionID, cwd: cwd, command: command, done: make(chan struct{}),
+		sessionID: sessionID, cwd: treeIdentity, command: command, done: make(chan struct{}),
 	}
 	cmd.Stdout = sh
 	cmd.Stderr = sh
@@ -353,11 +368,18 @@ func (s *Shells) StopWorkspace(root string) error {
 	if root == "" {
 		return errors.New("exec: workspace root is required")
 	}
+	// Match on the same physical identity Launch stored: a Session restoring its
+	// tree names it the way that Session does, and a sibling Session's shell may
+	// hold the same tree through another spelling.
+	physicalRoot, err := pathidentity.Resolve("", root)
+	if err != nil {
+		return fmt.Errorf("exec: resolve workspace root %q: %w", root, err)
+	}
 	return s.stopMatching("for workspace "+strconv.Quote(root), func(sh *Shell) (bool, error) {
 		if sh.cwd == "" {
 			return false, nil
 		}
-		inside, err := pathidentity.Contains(root, sh.cwd)
+		inside, err := pathidentity.Contains(physicalRoot, sh.cwd)
 		if err != nil {
 			return false, fmt.Errorf("exec: compare shell %q workspace: %w", sh.id, err)
 		}

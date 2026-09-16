@@ -342,3 +342,37 @@ func waitForDone(t *testing.T, shells *Shells, id string) {
 		t.Fatalf("shell %q did not finish after kill", id)
 	}
 }
+
+// TestShellsStopEveryAliasOfTheRestoredTree pins the guarantee a destructive
+// working-tree restore depends on: no detached process below that tree survives
+// to rewrite the restored files. A sibling Session can hold the same tree
+// through a symlink, and comparing the two spellings as text answers that the
+// shell is somewhere else.
+func TestShellsStopEveryAliasOfTheRestoredTree(t *testing.T) {
+	shells := NewShells(nil, false)
+	t.Cleanup(func() { _ = shells.KillAll() })
+
+	tree := t.TempDir()
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(tree, alias); err != nil {
+		t.Fatal(err)
+	}
+
+	aliasID, err := shells.Launch(t.Context(), "sibling", alias, "sleep 30", Timeout{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliasShell := mustShell(t, shells, aliasID)
+
+	if err := shells.StopWorkspace(tree); err != nil {
+		t.Fatalf("StopWorkspace: %v", err)
+	}
+	if _, exists := shells.Get(aliasID); exists {
+		t.Fatal("a shell inside the restored tree survived because its cwd spells the tree through a symlink")
+	}
+	select {
+	case <-aliasShell.Done():
+	default:
+		t.Fatal("StopWorkspace returned before the aliased shell joined")
+	}
+}
