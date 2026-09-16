@@ -49,7 +49,7 @@ func buildCWDTools(cwd string, ci *codeintel.Analyzer, tracker *readTracker, loc
 
 	families := cwdTools{
 		readSearch: []toolcontract.Tool{
-			withPathLock(withReadTracking(readTool, tracker, cwd), locker, cwd),
+			withDefiniteOutcome(withPathLock(withReadTracking(readTool, tracker, cwd), locker, cwd)),
 			searchTools.glob,
 			searchTools.grep,
 		},

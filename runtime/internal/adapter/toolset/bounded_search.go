@@ -11,10 +11,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -113,17 +113,10 @@ func newRuntimeSearchTools(root string) runtimeSearchTools {
 // definite failed query, not an unacknowledged external operation. Cancellation
 // still belongs to the execution owner and must not become model feedback.
 func searchFailure(ctx context.Context, cause error) error {
-	if cause == nil || ctx.Err() != nil || errors.Is(cause, context.Canceled) || errors.Is(cause, context.DeadlineExceeded) {
+	if ctx.Err() != nil {
 		return cause
 	}
-	failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
-		Kind: toolcontract.FailureKindFailed, Cause: cause,
-		Output: chat.NewTextToolOutput(cause.Error()),
-	})
-	if err != nil {
-		return err
-	}
-	return failure
+	return toolfailure.Definite(cause)
 }
 
 func mustRuntimeSearchFunc[Input, Output any](

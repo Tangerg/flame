@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -57,8 +58,11 @@ func (e *exiter) exit(ctx context.Context, _ exitArgs) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// Calling this outside Plan mode, or with nothing planned, is the model
+	// mis-sequencing its own tools. Both messages are written for it, so they have
+	// to arrive as this call's outcome rather than end the Run.
 	if mode != approval.ModePlan {
-		return "", errors.New("exit_plan_mode: current session is not in Plan mode")
+		return "", toolfailure.Definite(errors.New("exit_plan_mode: current session is not in Plan mode"))
 	}
 	state, err := e.plan.State(ctx, sessionID)
 	if err != nil {
@@ -66,7 +70,7 @@ func (e *exiter) exit(ctx context.Context, _ exitArgs) (string, error) {
 	}
 	steps := state.Steps()
 	if len(steps) == 0 {
-		return "", errors.New("exit_plan_mode: current Plan is empty; call set_plan before requesting approval")
+		return "", toolfailure.Definite(errors.New("exit_plan_mode: current Plan is empty; call set_plan before requesting approval"))
 	}
 
 	arguments := `{}`

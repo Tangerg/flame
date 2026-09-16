@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 )
@@ -151,15 +152,15 @@ func BuildShell(shells *exec.Shells, defaultCWD string) ([]toolcontract.Tool, er
 
 func (c *commandTools) run(ctx context.Context, a shellArgs) (string, error) {
 	if err := a.validate(); err != nil {
-		return "", toolarg.Unusable(err)
+		return "", toolfailure.Definite(err)
 	}
 	timeout, err := a.timeout()
 	if err != nil {
-		return "", toolarg.Unusable(err)
+		return "", toolfailure.Definite(err)
 	}
 	autoBackgroundAfter, err := a.autoBackgroundAfter()
 	if err != nil {
-		return "", toolarg.Unusable(err)
+		return "", toolfailure.Definite(err)
 	}
 
 	id, err := c.shells.Launch(ctx, executionctx.SessionID(ctx), executionctx.CWD(ctx, c.defaultCWD), a.Command, timeout, executionctx.Isolated(ctx))
@@ -225,7 +226,7 @@ func (c *commandTools) cancelForeground(ctx context.Context, id string, sh *exec
 
 func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, error) {
 	if err := a.validate(); err != nil {
-		return "", toolarg.Unusable(err)
+		return "", toolfailure.Definite(err)
 	}
 	sh, ok := c.shells.Get(a.ShellID)
 	if !ok {
@@ -234,7 +235,7 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 	if a.Wait {
 		timeout, err := optionalShellTimeout(a.TimeoutMillis, time.Millisecond, "timeout_millis")
 		if err != nil {
-			return "", toolarg.Unusable(err)
+			return "", toolfailure.Definite(err)
 		}
 		if err := waitForShell(ctx, sh, timeout); err != nil {
 			return "", err
@@ -262,7 +263,7 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 
 func (c *commandTools) kill(_ context.Context, a shellIDArgs) (string, error) {
 	if err := a.validate(); err != nil {
-		return "", toolarg.Unusable(err)
+		return "", toolfailure.Definite(err)
 	}
 	running, err := c.shells.Kill(a.ShellID)
 	switch {

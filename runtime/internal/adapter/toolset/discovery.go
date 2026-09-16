@@ -22,6 +22,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -169,11 +170,11 @@ func (d *Discovery) Call(ctx context.Context, invocation toolcontract.Invocation
 func (d *Discovery) search(ctx context.Context, args discoveryArgs) (string, error) {
 	query := strings.TrimSpace(args.Query)
 	if query == "" {
-		return "", toolarg.Unusable(ErrEmptyQuery)
+		return "", toolfailure.Definite(ErrEmptyQuery)
 	}
 	limit, err := toolarg.PositiveInt(args.Limit, discoveryDefaultLimit, discoveryMaxLimit, "limit")
 	if err != nil {
-		return "", toolarg.Unusable(err)
+		return "", toolfailure.Definite(err)
 	}
 
 	var matches []discoverableTool

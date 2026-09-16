@@ -8,6 +8,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	scheduledomain "github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
@@ -127,7 +128,7 @@ func (s *scheduleManagementTools) list(ctx context.Context, in listScheduleArgs)
 func (s *scheduleManagementTools) create(ctx context.Context, in createScheduleArgs) (scheduleResponse, error) {
 	selection, err := modelref.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
-		return scheduleResponse{}, fmt.Errorf("create_schedule: %w", err)
+		return scheduleResponse{}, toolfailure.Definite(fmt.Errorf("create_schedule: %w", err))
 	}
 	created, err := s.coordinator.Create(ctx, scheduleapp.CreateCommand{
 		Title:          in.Title,

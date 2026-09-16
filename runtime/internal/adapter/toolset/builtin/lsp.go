@@ -11,7 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
@@ -154,7 +154,7 @@ func newQuery(ci *codeintel.Analyzer, defaultCWD string) (toolcontract.Tool, err
 func (l *lspRunner) query(ctx context.Context, in lspInput) (string, error) {
 	query, err := in.normalize()
 	if err != nil {
-		return "", toolarg.Unusable(err)
+		return "", toolfailure.Definite(err)
 	}
 	root := executionctx.CWD(ctx, l.defaultCWD)
 	switch query.operation {

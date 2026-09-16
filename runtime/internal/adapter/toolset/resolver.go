@@ -333,6 +333,11 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (manifes
 	if err != nil {
 		return manifestBuilder{}, fmt.Errorf("toolset: resolve skill tools: %w", err)
 	}
+	// Skill reads mutate nothing, so a Skill the model named wrongly is a failed
+	// call, not an operation whose outcome the Host cannot prove.
+	for index, skillTool := range skillTools {
+		skillTools[index] = withDefiniteOutcome(skillTool)
+	}
 	tools.deferTools(skillTools...)
 	// Built-once, session-keyed helpers (plan/result/memory/transcript search)
 	// are projected from the resolver's group and placement policy.

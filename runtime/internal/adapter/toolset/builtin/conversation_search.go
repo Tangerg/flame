@@ -11,6 +11,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -68,7 +69,7 @@ func conversationSearchDefinition() toolcontract.FuncConfig {
 func (c *conversationSearcher) run(ctx context.Context, req conversationSearchRequest) (string, error) {
 	query, limit, err := req.normalized()
 	if err != nil {
-		return "", toolarg.Unusable(fmt.Errorf("search_conversations: %w", err))
+		return "", toolfailure.Definite(fmt.Errorf("search_conversations: %w", err))
 	}
 	hits, err := c.search.SearchTranscript(ctx, query, limit)
 	if err != nil {

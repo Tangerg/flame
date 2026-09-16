@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
@@ -72,7 +73,7 @@ func agentMemorySearchDefinition() toolcontract.FuncConfig {
 func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequest) (string, error) {
 	query, limit, err := req.normalized()
 	if err != nil {
-		return "", toolarg.Unusable(fmt.Errorf("search_memory: %w", err))
+		return "", toolfailure.Definite(fmt.Errorf("search_memory: %w", err))
 	}
 	cwd := strings.TrimSpace(executionctx.WorkspaceCWD(ctx, ""))
 	if cwd == "" {

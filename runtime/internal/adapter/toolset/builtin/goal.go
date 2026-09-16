@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"strings"
 	"time"
@@ -187,7 +188,7 @@ func (c *creator) create(ctx context.Context, args createArgs) (goalResult, erro
 			MaxRuns: args.Budget.MaxRuns, MaxCostUSD: args.Budget.MaxCostUSD, MaxSteps: args.Budget.MaxSteps,
 		})
 		if err != nil {
-			return goalResult{}, fmt.Errorf("create_goal budget: %w", err)
+			return goalResult{}, toolfailure.Definite(fmt.Errorf("create_goal budget: %w", err))
 		}
 	}
 	capabilities, _ := executionctx.RunCapabilities(ctx)

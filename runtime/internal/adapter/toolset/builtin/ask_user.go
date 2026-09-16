@@ -10,7 +10,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -87,7 +87,7 @@ func NewAskUser(interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
 
 func (a *asker) ask(ctx context.Context, args askUserArgs) (string, error) {
 	if err := args.validate(); err != nil {
-		return "", toolarg.Unusable(fmt.Errorf("ask_user: %w", err))
+		return "", toolfailure.Definite(fmt.Errorf("ask_user: %w", err))
 	}
 	arguments, err := args.arguments()
 	if err != nil {

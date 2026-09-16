@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
@@ -40,7 +40,7 @@ func mutationPaths(tool toolcontract.Tool, invocation toolcontract.Invocation) (
 			// nothing happened that could be in doubt. Left unclassified it would
 			// reach the Host as an operation of unknown outcome and settle the Run
 			// tree as lost, which is how one malformed patch ends a Session.
-			return nil, toolarg.Unusable(err)
+			return nil, toolfailure.Definite(err)
 		}
 		paths = append(paths, reported...)
 	}

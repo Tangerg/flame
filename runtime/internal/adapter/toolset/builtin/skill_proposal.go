@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"strings"
 
@@ -78,7 +78,7 @@ func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult,
 		return proposalResult{}, errors.New("propose_skill: no active workspace")
 	}
 	if err := input.Scope.Validate(); err != nil {
-		return proposalResult{}, toolarg.Unusable(fmt.Errorf("propose_skill: scope must be project or user: %w", err))
+		return proposalResult{}, toolfailure.Definite(fmt.Errorf("propose_skill: scope must be project or user: %w", err))
 	}
 	proposal := skills.Proposal{
 		Scope:         input.Scope,
@@ -89,7 +89,7 @@ func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult,
 		SourceSession: sessionID,
 	}
 	if validateErr := proposal.Validate(); validateErr != nil {
-		return proposalResult{}, toolarg.Unusable(fmt.Errorf("propose_skill: invalid proposal: %w", validateErr))
+		return proposalResult{}, toolfailure.Definite(fmt.Errorf("propose_skill: invalid proposal: %w", validateErr))
 	}
 	ref, err := p.proposals.SubmitProposal(ctx, cwd, proposal)
 	if err != nil {
