@@ -58,7 +58,11 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 			}
 			// The scratch tree contains effects from the history being removed.
 			// Discard before commit so a successful rollback can never expose the
-			// old copy to a later Run.
+			// old copy to a later Run. Ordering it after the commit would trade that
+			// for the opposite failure: a discard that fails leaves the removed
+			// effects in place under a history that no longer records them. This way
+			// a failed commit costs the kept Runs' scratch files, which the next Run
+			// re-copies from the real workspace, and the rollback reports its error.
 			if c.sandbox != nil {
 				if err := c.sandbox.Discard(sessionID); err != nil {
 					return fmt.Errorf("sessions: discard sandbox copy before history rollback: %w", err)
