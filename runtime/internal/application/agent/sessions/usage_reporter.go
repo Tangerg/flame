@@ -15,12 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// UsageRunReader reads the durable Run history for one Session in admission
-// order.
-type UsageRunReader interface {
-	ListRuns(ctx context.Context, sessionID string) ([]run.Run, error)
-}
-
 // UsageSessionLister lists the user-facing sessions that contribute to aggregate
 // usage. Child sessions are excluded by the session use case, preventing
 // subtree-aggregated runs from being counted twice.
@@ -54,14 +48,14 @@ type UsageSummary struct {
 
 // UsageDependencies are the durable projections and model policy a UsageReporter needs.
 type UsageDependencies struct {
-	Runs     UsageRunReader
+	Runs     RunReader
 	Sessions UsageSessionLister
 	Now      func() time.Time
 }
 
 // UsageReporter folds durable terminal run records into read-only usage reports.
 type UsageReporter struct {
-	runs     UsageRunReader
+	runs     RunReader
 	sessions UsageSessionLister
 	now      func() time.Time
 }

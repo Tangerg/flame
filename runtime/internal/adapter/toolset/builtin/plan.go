@@ -22,10 +22,12 @@ type planReplacer interface {
 	Replace(ctx context.Context, sessionID string, steps []plandomain.Step) (plandomain.State, error)
 }
 
-// PlanUseCases is the Plan application surface consumed by this tool family.
+// PlanUseCases is the Plan application surface consumed by this tool family. It
+// is the union of what its tools consume, not a second declaration of their
+// signatures: each tool still takes only the half it uses.
 type PlanUseCases interface {
-	State(ctx context.Context, sessionID string) (plandomain.Current, error)
-	Replace(ctx context.Context, sessionID string, steps []plandomain.Step) (plandomain.State, error)
+	planStateReader
+	planReplacer
 }
 
 // planEnterPolicy narrows one session into Plan mode.
@@ -41,9 +43,8 @@ type planExitPolicy interface {
 
 // PlanModePolicy owns both transitions of the same session Plan-mode lifecycle.
 type PlanModePolicy interface {
-	EnterPlanMode(ctx context.Context, sessionID string) (changed bool, err error)
-	Mode(ctx context.Context, sessionID string) (approval.Mode, error)
-	ExitPlanMode(ctx context.Context, sessionID string) (restored approval.Mode, changed bool, err error)
+	planEnterPolicy
+	planExitPolicy
 }
 
 // PlanTools contains the three tools that implement one Plan lifecycle.
