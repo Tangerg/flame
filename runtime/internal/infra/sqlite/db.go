@@ -25,13 +25,23 @@ import (
 // A column added to an existing database and the same column in a fresh one are
 // one definition. Spelling it twice lets a later edit leave migrated databases
 // under a constraint fresh ones no longer carry, which nothing would report.
-const (
-	modelInvocationLatencyColumn = "first_output_latency_millis INTEGER CHECK " +
-		"(first_output_latency_millis IS NULL OR " +
-		"(state IN ('completed', 'failed') AND first_output_latency_millis >= 0))"
-	modelInvocationUsageColumn = "usage TEXT CHECK " +
-		"(usage IS NULL OR (state = 'completed' AND json_valid(usage)))"
-)
+// The states they constrain are the Go vocabulary's, for the same reason.
+func modelInvocationLatencyColumn() string {
+	return fmt.Sprintf(
+		"first_output_latency_millis INTEGER CHECK "+
+			"(first_output_latency_millis IS NULL OR "+
+			"(state IN ('%s', '%s') AND first_output_latency_millis >= 0))",
+		modelInvocationCompleted.databaseValue(),
+		modelInvocationFailed.databaseValue(),
+	)
+}
+
+func modelInvocationUsageColumn() string {
+	return fmt.Sprintf(
+		"usage TEXT CHECK (usage IS NULL OR (state = '%s' AND json_valid(usage)))",
+		modelInvocationCompleted.databaseValue(),
+	)
+}
 
 // Open dials a SQLite database at path and installs any missing objects from
 // the current schema. The returned *sql.DB is safe for concurrent use; callers
@@ -135,7 +145,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// unique commit_id. The command owner settles each boundary before issuing
 		// the next, so one marker is sufficient. Restore and recovery clear it
 		// because they did not execute that Application command.
-		`CREATE TABLE IF NOT EXISTS runs (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS runs (
 			run_id             TEXT    PRIMARY KEY,
 			session_id         TEXT    NOT NULL,
 			spawned_by_item_id TEXT    NOT NULL DEFAULT '',
@@ -176,14 +186,19 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			CHECK (
 				(commit_segment_id = '' AND commit_id = '') OR
 				(commit_id != '' AND (
-					(commit_segment_id != '' AND state = 'running' AND active_segment_id = commit_segment_id) OR
-					state = 'waiting' OR
-					(commit_segment_id != '' AND state = 'terminal')
+					(commit_segment_id != '' AND state = '%[1]s' AND active_segment_id = commit_segment_id) OR
+					state = '%[2]s' OR
+					(commit_segment_id != '' AND state = '%[3]s')
 				))
 			)
 		)`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_session_active
-			ON runs(session_id) WHERE state != 'terminal' AND root_run_id = ''`,
+			runStateRunning.databaseValue(),
+			runStateWaiting.databaseValue(),
+			runStateTerminal.databaseValue(),
+		),
+		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_session_active
+			ON runs(session_id) WHERE state != '%s' AND root_run_id = ''`,
+			runStateTerminal.databaseValue()),
 		`CREATE INDEX IF NOT EXISTS idx_runs_session
 			ON runs(session_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_runs_root
@@ -215,8 +230,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			modelInvocationCompleted.databaseValue(),
 			modelInvocationFailed.databaseValue(),
 			modelInvocationUnknown.databaseValue(),
-			modelInvocationLatencyColumn,
-			modelInvocationUsageColumn,
+			modelInvocationLatencyColumn(),
+			modelInvocationUsageColumn(),
 		),
 		`DROP INDEX IF EXISTS idx_model_invocations_run`,
 		`CREATE INDEX IF NOT EXISTS idx_model_invocations_trajectory
@@ -261,19 +276,19 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// Replace the former trigger on existing databases as well. Previously it
 		// erased model-call history as soon as a Run ended.
 		`DROP TRIGGER IF EXISTS prune_terminal_run_invocations`,
-		`CREATE TRIGGER prune_terminal_run_invocations
+		fmt.Sprintf(`CREATE TRIGGER prune_terminal_run_invocations
 			AFTER UPDATE OF state ON runs
-			WHEN OLD.state != 'terminal' AND NEW.state = 'terminal'
+			WHEN OLD.state != '%[1]s' AND NEW.state = '%[1]s'
 			BEGIN
 				DELETE FROM tool_invocations WHERE run_id = NEW.run_id;
-			END`,
-		`CREATE TRIGGER IF NOT EXISTS require_settled_model_invocations
+			END`, runStateTerminal.databaseValue()),
+		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS require_settled_model_invocations
 			BEFORE UPDATE OF state ON runs
-			WHEN OLD.state != 'terminal' AND NEW.state = 'terminal'
-			 AND EXISTS (SELECT 1 FROM model_invocations WHERE run_id = NEW.run_id AND state = 'started')
+			WHEN OLD.state != '%[1]s' AND NEW.state = '%[1]s'
+			 AND EXISTS (SELECT 1 FROM model_invocations WHERE run_id = NEW.run_id AND state = '%[2]s')
 			BEGIN
 				SELECT RAISE(ABORT, 'model invocations must settle before run terminalization');
-			END`,
+			END`, runStateTerminal.databaseValue(), modelInvocationStarted.databaseValue()),
 		// child_run_start_reservations are invisible executor/application ACL
 		// records. They allocate product identity after a managed child admission
 		// but before the executor has conclusively initialized. The conclusive
@@ -603,12 +618,12 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// another pending firing while Run admission is temporarily unavailable.
 		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_firings_schedule_pending
 			ON schedule_firings(schedule_id) WHERE state = '%s'`, scheduleFiringPending.databaseValue()),
-		`CREATE TRIGGER IF NOT EXISTS prune_terminal_run_schedule_firing
+		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS prune_terminal_run_schedule_firing
 			AFTER UPDATE OF state ON runs
-			WHEN OLD.state != 'terminal' AND NEW.state = 'terminal'
+			WHEN OLD.state != '%[1]s' AND NEW.state = '%[1]s'
 			BEGIN
 				DELETE FROM schedule_firings WHERE run_id = NEW.run_id;
-			END`,
+			END`, runStateTerminal.databaseValue()),
 		`CREATE TRIGGER IF NOT EXISTS prune_deleted_run_schedule_firing
 			AFTER DELETE ON runs
 			BEGIN
@@ -791,7 +806,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 	}
 	if usageColumn == 0 {
 		if _, err := tx.ExecContext(ctx,
-			"ALTER TABLE model_invocations ADD COLUMN "+modelInvocationUsageColumn,
+			"ALTER TABLE model_invocations ADD COLUMN "+modelInvocationUsageColumn(),
 		); err != nil {
 			return fmt.Errorf("sqlite: add model invocation usage: %w", err)
 		}
@@ -802,7 +817,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 	}
 	if latencyColumn == 0 {
 		if _, err := tx.ExecContext(ctx,
-			"ALTER TABLE model_invocations ADD COLUMN "+modelInvocationLatencyColumn,
+			"ALTER TABLE model_invocations ADD COLUMN "+modelInvocationLatencyColumn(),
 		); err != nil {
 			return fmt.Errorf("sqlite: add model invocation latency: %w", err)
 		}
