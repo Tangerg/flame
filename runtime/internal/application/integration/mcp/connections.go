@@ -45,8 +45,7 @@ func (c *Coordinator) connectionTarget(ctx context.Context, name mcpserver.Serve
 	if ctx == nil {
 		return mcpserver.Server{}, errors.New("mcp: connection context is required")
 	}
-	registryCtx := context.WithoutCancel(ctx)
-	srv, ok, err := c.registry.Get(registryCtx, name)
+	srv, ok, err := c.registry.Get(ctx, name)
 	if err != nil {
 		return mcpserver.Server{}, fmt.Errorf("mcp: read MCP server %q: %w", name, err)
 	}

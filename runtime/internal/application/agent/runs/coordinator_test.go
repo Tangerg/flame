@@ -418,6 +418,7 @@ type fakeEffects struct {
 	mutateClaim        func(*ClaimedResume)
 	childStarts        map[string]ChildRunStartReservation
 	childOutcomes      map[string]ChildRunStartOutcome
+	abortBounded       []bool
 }
 
 func (f *fakeEffects) ReserveChildRunStart(
@@ -472,11 +473,13 @@ func (f *fakeEffects) CommitStartedChildRun(
 }
 
 func (f *fakeEffects) AbortChildRunStart(
-	_ context.Context,
+	ctx context.Context,
 	reservation ChildRunStartReservation,
 ) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	_, bounded := ctx.Deadline()
+	f.abortBounded = append(f.abortBounded, bounded)
 	memberID := reservation.Member.MemberID
 	if f.childStarts[memberID] != reservation {
 		return errors.New("fake aborted child has no reservation")
@@ -2298,6 +2301,15 @@ func TestCoordinatorRejectsChildWhenAtomicOpeningFails(t *testing.T) {
 	if openings := effects.openingSnapshot(); len(openings) != 1 {
 		t.Fatalf("committed openings = %d, want only root", len(openings))
 	}
+	// The failed receipt aborts the reservation on a context detached from the
+	// owner, because the owner may already be canceled. Detached is not the same
+	// as unbounded: this pump is the only thing driving the Run to a terminal
+	// state, so a store that never answers would strand the Session instead of
+	// leaving the reservation for startup reconciliation.
+	bounded := effects.abortBoundedSnapshot()
+	if len(bounded) == 0 || slices.Contains(bounded, false) {
+		t.Fatalf("abort cleanup deadlines = %v, want every context bounded", bounded)
+	}
 	finished, ok := events[len(events)-1].Payload.(SegmentFinished)
 	if !ok || !runHasOutcome(finished.Run, run.OutcomeFailed) {
 		t.Fatalf("last payload = %#v, want root error terminal", events[len(events)-1].Payload)
@@ -2913,4 +2925,10 @@ func TestCoordinatorCancelContextSurvivesRequestContext(t *testing.T) {
 	}
 	requireCoordinatorShutdown(t, coordinator)
 	consumePulledEvents(next) // drain whatever remains
+}
+
+func (f *fakeEffects) abortBoundedSnapshot() []bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.abortBounded)
 }

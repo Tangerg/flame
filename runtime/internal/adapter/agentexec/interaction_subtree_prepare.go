@@ -122,7 +122,15 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 	discard := true
 	defer func() {
 		if discard {
-			_ = i.discardPreparedSubtree(context.WithoutCancel(ctx))
+			// Detached because the request may already be canceled, and bounded
+			// because discardPreparedSubtree's only way out of an in-flight
+			// preparation is its context: hand it one that cannot end and the
+			// rollback waits forever instead of giving the cut back.
+			discardCtx, cancelDiscard := context.WithTimeout(
+				context.WithoutCancel(ctx), authoritativeProjectionTimeout,
+			)
+			_ = i.discardPreparedSubtree(discardCtx)
+			cancelDiscard()
 		}
 	}()
 	stagedTree, err := i.stagedTree()

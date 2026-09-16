@@ -262,9 +262,16 @@ func (s *segmentPump) handleChildRunStartOutcome(
 			// The executor will not publish a child when this receipt fails. Consume
 			// the invisible reservation as aborted; a failed cleanup remains hidden
 			// and is reconciled at startup rather than becoming a ghost Run.
-			cleanupErr := s.coordinator.childStarts.AbortChildRunStart(
-				context.WithoutCancel(s.ownerCtx), prepared.reservation,
+			// Detached because the owner may already be canceled, and bounded
+			// because this pump is the only thing driving the Run to a terminal
+			// state: an unbounded store call here strands the whole Session.
+			cleanupCtx, cancelCleanup := context.WithTimeout(
+				context.WithoutCancel(s.ownerCtx), runCleanupTimeout,
 			)
+			cleanupErr := s.coordinator.childStarts.AbortChildRunStart(
+				cleanupCtx, prepared.reservation,
+			)
+			cancelCleanup()
 			err = errors.Join(err, cleanupErr)
 			prepared.releaseBinding(s.owner)
 			prepared.route.reducer = nil
@@ -294,9 +301,7 @@ func (s *segmentPump) abortPreparedChildStart(prepared *preparedChildStart) {
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
 	defer cancel()
-	if s.coordinator.childStarts != nil {
-		recordRunCleanupError(ctx, s.coordinator.childStarts.AbortChildRunStart(ctx, prepared.reservation))
-	}
+	recordRunCleanupError(ctx, s.coordinator.childStarts.AbortChildRunStart(ctx, prepared.reservation))
 	prepared.releaseBinding(s.owner)
 }
 

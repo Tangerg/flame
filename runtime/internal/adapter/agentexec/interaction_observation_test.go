@@ -684,17 +684,26 @@ func TestInteractionExecutorKeepsRefetchableProjectionAndPostHookObservational(t
 		interactionUsageTextResponse("done", 1, 1),
 	}}
 	hooks := &failingAfterInteractionHooks{}
+	interpreter := &failingOutcomeInteractionInterpreter{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
 		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{executable},
 		}},
-		ToolInterpreter: failingOutcomeInteractionInterpreter{},
+		ToolInterpreter: interpreter,
 		ToolAuthorizer:  allowInteractionTools{},
 		ToolHooks:       hooks,
 	})
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
 	if hooks.after != 1 {
 		t.Fatalf("post-Tool hooks = %d, want 1", hooks.after)
+	}
+	// The outcome projection is detached so a canceled Run still records it, and
+	// it is losable by its own contract. Losable and unbounded do not go
+	// together: an interpreter that never answers would hold the Tool call, and
+	// with it the model loop, forever.
+	bounded := interpreter.boundedProjections()
+	if len(bounded) == 0 || slices.Contains(bounded, false) {
+		t.Fatalf("outcome projection deadlines = %v, want every context bounded", bounded)
 	}
 	if len(payloadsOf[runs.UnknownEffectsDetected](events)) != 0 {
 		t.Fatalf("refetchable projection or observational hook made Effect unknown: %#v", events)
@@ -1419,10 +1428,24 @@ func (testInteractionToolInterpreter) ProjectOutcome(context.Context, string, st
 	return nil, nil
 }
 
-type failingOutcomeInteractionInterpreter struct{ testInteractionToolInterpreter }
+type failingOutcomeInteractionInterpreter struct {
+	testInteractionToolInterpreter
+	mu       sync.Mutex
+	deadline []bool
+}
 
-func (failingOutcomeInteractionInterpreter) ProjectOutcome(context.Context, string, string, bool) (runs.ExecutionFact, error) {
+func (f *failingOutcomeInteractionInterpreter) ProjectOutcome(ctx context.Context, _, _ string, _ bool) (runs.ExecutionFact, error) {
+	_, bounded := ctx.Deadline()
+	f.mu.Lock()
+	f.deadline = append(f.deadline, bounded)
+	f.mu.Unlock()
 	return nil, errors.New("projection unavailable")
+}
+
+func (f *failingOutcomeInteractionInterpreter) boundedProjections() []bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.deadline)
 }
 
 type testInteractionToolPresenter struct{}

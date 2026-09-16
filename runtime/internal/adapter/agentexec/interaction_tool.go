@@ -157,7 +157,11 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	}
 	if failure == nil || failure.Kind() != toolcontract.FailureKindRejected {
 		o.session.toolOutcomes.record(call.Name, arguments, modelOutput, callErr)
-		o.projectToolOutcome(context.WithoutCancel(ctx), member, call.Name, callErr == nil)
+		outcomeCtx, cancelOutcome := context.WithTimeout(
+			context.WithoutCancel(ctx), authoritativeProjectionTimeout,
+		)
+		o.projectToolOutcome(outcomeCtx, member, call.Name, callErr == nil)
+		cancelOutcome()
 		o.runAfterToolUseHook(ctx, callID, call.Name, arguments, modelOutput, callErr)
 	}
 	return modelOutput, callErr
