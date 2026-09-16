@@ -1067,3 +1067,58 @@ func TestDurableModelContextCompactionTrimsInPlaceWithoutSummarizing(t *testing.
 		t.Fatalf("forgot Session contexts = %v, want [%s]", contextState.sessions, sessionID)
 	}
 }
+
+// TestDurableProtectedTailSpanningEphemeralProtectsTheSameHistory pins the
+// translation between the two sequences this compaction deals in.
+//
+// ProtectedTail counts trailing Candidate messages, but a durable compaction
+// folds the stored history and reattaches the ephemeral suffix verbatim after
+// it. So a tail that reaches past the ephemeral suffix must protect exactly the
+// durable messages the equivalent history-relative tail would, and no more:
+// counting the already-safe suffix again narrows the fold, and comparing a
+// Candidate count against the stored length refuses requests where nothing
+// diverged at all.
+func TestDurableProtectedTailSpanningEphemeralProtectsTheSameHistory(t *testing.T) {
+	history := completeContextTurns()
+	pending := chat.NewUserMessage(chat.NewTextPart("continuation that is not durable yet"))
+	withEphemeral := append(cloneMessages(history), pending)
+	// One durable message protected, expressed against each sequence.
+	const durableProtectedTail = 1
+	candidateProtectedTail := durableProtectedTail + 1
+
+	rewrite := func(sessionID string, candidate []chat.Message, protectedTail int) []chat.Message {
+		t.Helper()
+		store := newCompactionTestStore()
+		if err := store.Write(t.Context(), sessionID, history...); err != nil {
+			t.Fatal(err)
+		}
+		model := newTextStubModel("SUMMARY")
+		client, err := chatclient.New(model, chatclient.Config{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		compactor := mustNewCompactor(t, store, constClient(client), nil,
+			CompactionPolicyValues{MaxTokens: intPointer(contextTokenEstimate(t, candidate))})
+		result, err := compactor.CompactModelContext(
+			t.Context(), durableContextRequest(t, sessionID, candidate, protectedTail, nil),
+		)
+		if err != nil {
+			t.Fatalf("compact %s: %v", sessionID, err)
+		}
+		if !result.Summarized() {
+			t.Fatalf("%s did not reach the summary rung: %+v", sessionID, result)
+		}
+		stored, err := store.Read(t.Context(), sessionID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return stored
+	}
+
+	withoutEphemeral := rewrite("session:tail-history", cloneMessages(history), durableProtectedTail)
+	spanning := rewrite("session:tail-candidate", withEphemeral, candidateProtectedTail)
+	if !reflect.DeepEqual(withoutEphemeral, spanning) {
+		t.Fatalf("durable history after a tail spanning the ephemeral suffix = %#v, want the same %#v",
+			spanning, withoutEphemeral)
+	}
+}

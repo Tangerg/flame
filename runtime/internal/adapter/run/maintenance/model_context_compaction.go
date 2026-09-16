@@ -54,16 +54,21 @@ func (c *Compactor) CompactModelContext(
 				difference,
 			)
 		}
-		if protectedTail > len(stored) {
+		history = stored
+		ephemeral = candidate[candidatePrefix:]
+		// ProtectedTail counts trailing Candidate messages, and the ephemeral
+		// suffix is reattached verbatim after the fold, so it already satisfies
+		// that many of them. Only what reaches past it has to be protected inside
+		// the durable history, which is the sequence this compaction folds.
+		protectedTail = max(protectedTail-len(ephemeral), 0)
+		if protectedTail > len(history) {
 			return agentexec.ModelContextCompactionResult{}, fmt.Errorf(
 				"%w: protected durable tail %d exceeds stored history %d",
 				ErrModelContextDiverged,
 				protectedTail,
-				len(stored),
+				len(history),
 			)
 		}
-		history = stored
-		ephemeral = candidate[candidatePrefix:]
 	}
 
 	limits, _, err := modeladapter.LookupTokenLimits(request.ModelSelection())

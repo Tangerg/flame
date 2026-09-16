@@ -111,6 +111,10 @@ type ModelContextCompactionInput struct {
 	Calibration  ModelContextTokenCalibration
 	Counter      ModelContextInputTokenCounter
 	// ProtectedTail is how many trailing Candidate messages must survive verbatim.
+	// It is counted against Candidate, not against whatever the compactor ends up
+	// folding: a durable compaction folds the Session's stored history and
+	// reattaches the rest of Candidate afterwards, so that suffix already
+	// satisfies its share of this count.
 	ProtectedTail int
 	PreCompact    func(context.Context) (bool, error)
 }
