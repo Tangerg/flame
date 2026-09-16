@@ -93,6 +93,7 @@ func TestActiveGoalAndPlanStayCurrentAcrossLongRunCompaction(t *testing.T) {
 	}
 	model.releaseOpeningCall()
 
+	goalSettlementTimeout := lifecycleWaitBudget(t)
 	deadline := time.Now().Add(goalSettlementTimeout)
 	for {
 		current, getErr := api.GetGoal(ctx, protocol.GoalRequest{SessionID: sessionID})
@@ -226,7 +227,6 @@ func createSessionWithInitialPlan(
 const (
 	goalAcrossCompactionObjective = "preserve the exact active Goal while replacing the Plan across compaction"
 	goalSettlementPollInterval    = 10 * time.Millisecond
-	goalSettlementTimeout         = lifecycleWaitBudget
 	stalePlanText                 = "stale frozen Plan"
 	currentPlanText               = "current durable Plan"
 )

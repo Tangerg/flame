@@ -59,7 +59,7 @@ func TestRuntimeStopsRequiredCompactionWhenHookConfigurationCannotBeRead(t *test
 	events := collectRunEvents(sequence)
 	select {
 	case <-opening:
-	case <-time.After(lifecycleWaitBudget):
+	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatal("opening model call did not arrive")
 	}
 	// Authored configuration can change while the model is running. A later

@@ -154,7 +154,7 @@ func (p *protocolLifecycleFixture) startAndPark() protocol.Interrupt {
 			p.domainFailureDiagnostic(started.RunID),
 			events,
 		)
-	case <-time.After(lifecycleWaitBudget):
+	case <-time.After(lifecycleWaitBudget(p.t)):
 		p.t.Fatal("timed out waiting for first model call")
 	}
 
@@ -481,7 +481,7 @@ func waitForRunEvents(t *testing.T, done <-chan []protocol.RunEvent, phase strin
 			t.Fatalf("%s emitted no run events", phase)
 		}
 		return events
-	case <-time.After(lifecycleWaitBudget):
+	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatalf("timed out waiting for %s events", phase)
 		return nil
 	}
@@ -491,7 +491,7 @@ func waitForSignal(t *testing.T, signal <-chan struct{}, phase string) {
 	t.Helper()
 	select {
 	case <-signal:
-	case <-time.After(lifecycleWaitBudget):
+	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatalf("timed out waiting for %s", phase)
 	}
 }

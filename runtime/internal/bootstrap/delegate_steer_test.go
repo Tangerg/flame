@@ -93,7 +93,7 @@ func TestSteeringARootMidDelegationLandsAfterTheChildResult(t *testing.T) {
 	collected := collectRunEvents(events)
 	select {
 	case <-childEntered:
-	case <-time.After(lifecycleWaitBudget):
+	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatal("the delegated child never reached its provider call")
 	}
 

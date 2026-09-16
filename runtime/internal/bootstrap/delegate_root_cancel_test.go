@@ -102,7 +102,7 @@ func TestCancelingTheRootMidDelegationCancelsTheWholeTree(t *testing.T) {
 		select {
 		case name := <-childEntered:
 			entered[name] = true
-		case <-time.After(lifecycleWaitBudget):
+		case <-time.After(lifecycleWaitBudget(t)):
 			t.Fatalf("only %d delegated children reached a provider call", len(entered))
 		}
 	}

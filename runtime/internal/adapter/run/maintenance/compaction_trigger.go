@@ -41,6 +41,9 @@ type modelContextBudget struct {
 	counter      modelContextInputTokenCounter
 }
 
+// modelContextInputTokenCounter measures a candidate mutable suffix. The
+// implementation owns the imminent call's frozen prefix — instructions, Tools
+// and Options — so callers pass only the messages they are replacing.
 type modelContextInputTokenCounter interface {
 	CountInputTokens(context.Context, []chat.Message) (int64, error)
 }
