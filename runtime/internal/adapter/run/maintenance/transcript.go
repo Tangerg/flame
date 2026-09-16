@@ -49,24 +49,76 @@ func renderTranscript(msgs []chat.Message) string {
 func renderTranscriptMessage(msg chat.Message, budget int) string {
 	switch msg.Role {
 	case chat.RoleSystem:
-		return renderTranscriptParts("[system] ", transcriptValues(msg), "\n", budget)
+		return renderTranscriptParts("[system] ", transcriptValues(msg), budget)
 	case chat.RoleUser:
-		return renderTranscriptParts("[user] ", transcriptValues(msg), "\n", budget)
+		return renderTranscriptParts("[user] ", transcriptValues(msg), budget)
 	case chat.RoleAssistant:
-		return renderTranscriptParts("[assistant] ", transcriptValues(msg), "\n", budget)
+		return renderTranscriptParts("[assistant] ", transcriptValues(msg), budget)
 	case chat.RoleTool:
-		results := make([]string, 0, len(msg.Parts))
-		for _, part := range msg.Parts {
-			if part.Kind == chat.PartToolResult && part.ToolResult != nil {
-				result := part.ToolResult
-				results = append(results, fmt.Sprintf("[result id=%q name=%q error=%t] %s",
-					result.ID, result.Name, result.IsError, renderToolOutput(result.Output)))
-			}
-		}
-		return renderTranscriptParts("[tool] ", results, "\n", budget)
+		return renderToolResults(msg, budget)
 	default:
 		return capText(fmt.Sprintf("[%s] (unrecognized)", msg.Role), budget)
 	}
+}
+
+// renderToolResults keeps each result's identity and error status out of the
+// byte budget and spends what is left on output. Those are the facts a summary
+// may not lose, and they sit in the middle of the line: budgeting them together
+// with the body elides "error=true" before the output it describes, which is how
+// a failed operation reaches the summariser looking like a successful one. A
+// result whose header does not fit is counted, never half-written.
+func renderToolResults(msg chat.Message, budget int) string {
+	const prefix = "[tool] "
+	var headers, outputs []string
+	for _, part := range msg.Parts {
+		if part.Kind != chat.PartToolResult || part.ToolResult == nil {
+			continue
+		}
+		result := part.ToolResult
+		headers = append(headers, fmt.Sprintf("[result id=%q name=%q error=%t] ",
+			result.ID, result.Name, result.IsError))
+		outputs = append(outputs, renderToolOutput(result.Output))
+	}
+	if len(headers) == 0 {
+		return capText(prefix, budget)
+	}
+
+	// Reserved at its widest so admitting one more result can never make the
+	// note that reports the rest no longer fit.
+	note := fmt.Sprintf("(%d results elided)\n", len(headers))
+	remaining, kept := budget-len(prefix), 0
+	for kept < len(headers) {
+		reserve := 0
+		if kept+1 < len(headers) {
+			reserve = len(note)
+		}
+		if len(headers[kept])+1+reserve > remaining {
+			break
+		}
+		remaining -= len(headers[kept]) + 1
+		kept++
+	}
+
+	var rendered strings.Builder
+	rendered.WriteString(prefix)
+	if kept < len(headers) {
+		remaining -= len(note)
+	}
+	outputBudget := 0
+	if kept > 0 {
+		outputBudget = remaining / kept
+	}
+	for index := range kept {
+		rendered.WriteString(headers[index])
+		if outputBudget > 0 {
+			rendered.WriteString(capText(outputs[index], outputBudget))
+		}
+		rendered.WriteByte('\n')
+	}
+	if kept < len(headers) {
+		fmt.Fprintf(&rendered, "(%d results elided)\n", len(headers)-kept)
+	}
+	return rendered.String()
 }
 
 func transcriptValues(msg chat.Message) []string {
@@ -86,16 +138,16 @@ func transcriptValues(msg chat.Message) []string {
 	return values
 }
 
-func renderTranscriptParts(prefix string, values []string, separator string, budget int) string {
+func renderTranscriptParts(prefix string, values []string, budget int) string {
 	if len(values) == 0 {
 		return capText(prefix, budget)
 	}
-	valueBudget := max(1, (budget-len(prefix)-len(separator)*len(values))/len(values))
+	valueBudget := max(1, (budget-len(prefix)-len(values))/len(values))
 	var rendered strings.Builder
 	rendered.WriteString(prefix)
 	for _, value := range values {
 		rendered.WriteString(capText(value, valueBudget))
-		rendered.WriteString(separator)
+		rendered.WriteByte('\n')
 	}
 	return capText(rendered.String(), budget)
 }

@@ -1,6 +1,7 @@
 package maintenance
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -87,5 +88,59 @@ func TestTranscriptMarksMediaInsteadOfSilentlyDroppingIt(t *testing.T) {
 	}
 	if strings.Contains(rendered, "private inline payload") {
 		t.Fatal("binary media was rendered as transcript text")
+	}
+}
+
+// TestToolResultKeepsItsErrorStatusUnderPressure pins the fact a summary may
+// not lose. The identity and error flag sit in the middle of a result line, so
+// budgeting them together with the output elides "error=true" first and hands
+// the summariser a failed operation that reads as a successful one.
+func TestToolResultKeepsItsErrorStatusUnderPressure(t *testing.T) {
+	message := chat.Message{
+		Role: chat.RoleTool,
+		Parts: []chat.Part{{
+			Kind: chat.PartToolResult,
+			ToolResult: &chat.ToolResult{
+				ID: "call_1", Name: "apply_patch", IsError: true,
+				Output: chat.NewTextToolOutput(strings.Repeat("patch rejected. ", 400)),
+			},
+		}},
+	}
+
+	rendered := renderTranscriptMessage(message, 100)
+	if !strings.Contains(rendered, "error=true") {
+		t.Fatalf("rendered = %q, want the failure status retained", rendered)
+	}
+	if !strings.Contains(rendered, `name="apply_patch"`) {
+		t.Fatalf("rendered = %q, want the operation retained", rendered)
+	}
+}
+
+// TestToolResultsThatDoNotFitAreCountedNotHalfWritten pins the other half: a
+// result the budget cannot hold is reported as elided rather than truncated
+// into a header that no longer states what it was.
+func TestToolResultsThatDoNotFitAreCountedNotHalfWritten(t *testing.T) {
+	parts := make([]chat.Part, 0, 8)
+	for index := range 8 {
+		parts = append(parts, chat.Part{
+			Kind: chat.PartToolResult,
+			ToolResult: &chat.ToolResult{
+				ID: fmt.Sprintf("call_%d", index), Name: "shell", IsError: index%2 == 0,
+				Output: chat.NewTextToolOutput("output"),
+			},
+		})
+	}
+
+	rendered := renderTranscriptMessage(chat.Message{Role: chat.RoleTool, Parts: parts}, 160)
+	if !strings.Contains(rendered, "results elided") {
+		t.Fatalf("rendered = %q, want the dropped results counted", rendered)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(rendered), "\n") {
+		if !strings.Contains(line, "[result ") {
+			continue
+		}
+		if !strings.Contains(line, "error=") {
+			t.Fatalf("line %q was written without its error status", line)
+		}
 	}
 }
