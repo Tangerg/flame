@@ -30,7 +30,10 @@ type RunMaintenanceResult struct {
 }
 
 // InteractionLifecycleHooks owns the Runtime lifecycle events that are not
-// part of Tool authorization or prompt composition.
+// part of Tool authorization or prompt composition. These describe the Session
+// rather than one Tool call, so their cwd is the Session's project directory:
+// it is what a hook trust grant was given to, and it outlives the isolated copy
+// an individual Run may have executed in.
 type InteractionLifecycleHooks interface {
 	BeforeCompaction(ctx context.Context, sessionID, cwd string) (bool, error)
 	NotifyWaiting(ctx context.Context, sessionID, cwd string) error

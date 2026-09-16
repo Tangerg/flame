@@ -86,10 +86,14 @@ type ModelAdmitter interface {
 // PromptText is the user-authored text supplied to prompt hooks and relevance
 // recall; it is kept distinct from media and from the historical seed.
 type WorkingContextInput struct {
-	SessionID  string
-	CWD        string
-	PromptText string
-	Seed       []corechat.Message
+	SessionID string
+	// CWD is where this Run's tools operate. WorkspaceCWD is the Session's
+	// project directory: what a trust grant was given to, and what durable
+	// project knowledge is addressed by. They differ for an isolated Run.
+	CWD          string
+	WorkspaceCWD string
+	PromptText   string
+	Seed         []corechat.Message
 }
 
 // WaitingExecutionContinuer stages an exact live or restored waiting tree

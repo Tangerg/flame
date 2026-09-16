@@ -94,6 +94,12 @@ func (w *WorkingContextComposer) ComposeWorkingContext(
 	if strings.TrimSpace(input.CWD) == "" || input.CWD != strings.TrimSpace(input.CWD) {
 		return nil, errors.New("agentexec: working context requires a CWD without surrounding whitespace")
 	}
+	// Hook trust and memory recall are addressed by the workspace. A blank one
+	// would silently compose a context with neither instead of saying so.
+	if strings.TrimSpace(input.WorkspaceCWD) == "" ||
+		input.WorkspaceCWD != strings.TrimSpace(input.WorkspaceCWD) {
+		return nil, errors.New("agentexec: working context requires a workspace CWD without surrounding whitespace")
+	}
 	if len(input.Seed) == 0 || input.Seed[len(input.Seed)-1].Role != corechat.RoleUser {
 		return nil, errors.New("agentexec: working-context seed must end with the current user message")
 	}
@@ -118,7 +124,7 @@ func (w *WorkingContextComposer) ComposeWorkingContext(
 	}
 	contextMessages := make([]corechat.Message, 0, len(seed)+3)
 	contextMessages = append(contextMessages, system)
-	if recalled, found, recallErr := w.recallMessage(ctx, input.CWD, input.PromptText); recallErr != nil {
+	if recalled, found, recallErr := w.recallMessage(ctx, input.WorkspaceCWD, input.PromptText); recallErr != nil {
 		return nil, recallErr
 	} else if found {
 		contextMessages = append(contextMessages, recalled)
@@ -164,7 +170,7 @@ func (w *WorkingContextComposer) evaluatePromptHooks(
 	ctx context.Context,
 	input runs.WorkingContextInput,
 ) (promptHookResult, error) {
-	bound, err := w.config.Hooks.For(ctx, input.CWD)
+	bound, err := w.config.Hooks.For(ctx, input.WorkspaceCWD)
 	if err != nil {
 		return promptHookResult{}, fmt.Errorf("agentexec: resolve prompt lifecycle hooks: %w", err)
 	}
@@ -226,7 +232,7 @@ func (w *WorkingContextComposer) BeforeToolUse(
 	ctx context.Context,
 	input InteractionToolHookInput,
 ) (InteractionToolHookDecision, error) {
-	bound, err := w.config.Hooks.For(ctx, input.CWD)
+	bound, err := w.config.Hooks.For(ctx, input.WorkspaceCWD)
 	if err != nil {
 		return InteractionToolHookDecision{}, fmt.Errorf("agentexec: resolve pre-Tool hooks: %w", err)
 	}
@@ -259,7 +265,7 @@ func (w *WorkingContextComposer) AfterToolUse(
 	ctx context.Context,
 	input InteractionToolHookInput,
 ) error {
-	bound, err := w.config.Hooks.For(ctx, input.CWD)
+	bound, err := w.config.Hooks.For(ctx, input.WorkspaceCWD)
 	if err != nil {
 		return fmt.Errorf("agentexec: resolve post-Tool hooks: %w", err)
 	}

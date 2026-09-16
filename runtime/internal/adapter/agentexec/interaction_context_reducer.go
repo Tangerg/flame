@@ -136,7 +136,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		return i.session.lifecycleHooks.BeforeCompaction(
 			ctx,
 			i.start.SessionID,
-			i.start.CWD,
+			i.start.WorkspaceCWD,
 		)
 	}
 	calibration := i.session.accounting.modelContextCalibration(invocation)

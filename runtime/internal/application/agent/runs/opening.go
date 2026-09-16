@@ -56,10 +56,11 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 	draft.WorkspaceCWD = preparation.session.Workspace().Path()
 	draft.Isolated = isolated
 	draft.WorkingContext, err = c.workingContexts.ComposeWorkingContext(ctx, WorkingContextInput{
-		SessionID:  preparation.session.ID(),
-		CWD:        execCWD,
-		PromptText: preparation.promptText,
-		Seed:       draft.WorkingContext,
+		SessionID:    preparation.session.ID(),
+		CWD:          execCWD,
+		WorkspaceCWD: draft.WorkspaceCWD,
+		PromptText:   preparation.promptText,
+		Seed:         draft.WorkingContext,
 	})
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: compose working context: %w", err)

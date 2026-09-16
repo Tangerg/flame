@@ -105,9 +105,10 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 		},
 	})
 	messages, err := composer.ComposeWorkingContext(t.Context(), runs.WorkingContextInput{
-		SessionID:  "session:one",
-		CWD:        cwd,
-		PromptText: "question",
+		SessionID:    "session:one",
+		CWD:          cwd,
+		WorkspaceCWD: cwd,
+		PromptText:   "question",
 		Seed: []corechat.Message{
 			corechat.NewUserMessage(corechat.NewTextPart("question")),
 		},

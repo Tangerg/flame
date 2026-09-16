@@ -136,11 +136,15 @@ type InteractionToolAuthorizer interface {
 // Result and CallError are present only after execution.
 type InteractionToolHookInput struct {
 	SessionID string
-	CWD       string
-	ToolName  string
-	Arguments tool.Arguments
-	Result    string
-	CallError error
+	// CWD is where the call ran. WorkspaceCWD is the Session's project
+	// directory, which decides which hooks exist and whether the project has
+	// been trusted to run them; an isolated copy was never granted that trust.
+	CWD          string
+	WorkspaceCWD string
+	ToolName     string
+	Arguments    tool.Arguments
+	Result       string
+	CallError    error
 }
 
 // InteractionToolHookDecision is the pre-call hook result: the call is denied

@@ -6,7 +6,9 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -80,5 +82,53 @@ func TestDurableProjectStateIsAddressedByTheWorkspace(t *testing.T) {
 	if maintenanceInput.WorkspaceCWD != workspace {
 		t.Fatalf("Run maintenance scope = %q, want the workspace %q",
 			maintenanceInput.WorkspaceCWD, workspace)
+	}
+}
+
+type scopeCapturingHookResolver struct{ resolvedAt *string }
+
+func (s scopeCapturingHookResolver) For(_ context.Context, cwd string) (*apphooks.Bound, error) {
+	*s.resolvedAt = cwd
+	return nil, nil
+}
+
+type scopeCapturingMemorySearch struct{ searchedAt *string }
+
+func (s scopeCapturingMemorySearch) Search(
+	_ context.Context,
+	project, _ string,
+	_ int,
+) ([]agentmemory.Item, error) {
+	*s.searchedAt = project
+	return nil, nil
+}
+
+// TestWorkingContextResolvesHooksAndMemoryAgainstTheWorkspace pins the other
+// half of the same rule. Hook discovery decides which hooks exist and whether
+// the project was trusted to run them, and recall reads memory consolidation
+// wrote: an isolated copy holds neither that trust grant nor that memory, so
+// resolving against it drops a user's configured hooks silently.
+func TestWorkingContextResolvesHooksAndMemoryAgainstTheWorkspace(t *testing.T) {
+	workspace := t.TempDir()
+	execution := t.TempDir()
+	var hooksResolvedAt, memorySearchedAt string
+
+	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
+		Hooks:             scopeCapturingHookResolver{resolvedAt: &hooksResolvedAt},
+		AgentMemorySearch: scopeCapturingMemorySearch{searchedAt: &memorySearchedAt},
+	})
+	if _, err := composer.ComposeWorkingContext(t.Context(), runs.WorkingContextInput{
+		SessionID: "session:one", CWD: execution, WorkspaceCWD: workspace,
+		PromptText: "question",
+		Seed:       []chat.Message{chat.NewUserMessage(chat.NewTextPart("question"))},
+	}); err != nil {
+		t.Fatalf("ComposeWorkingContext: %v", err)
+	}
+
+	if hooksResolvedAt != workspace {
+		t.Fatalf("hooks resolved against %q, want the workspace %q", hooksResolvedAt, workspace)
+	}
+	if memorySearchedAt != workspace {
+		t.Fatalf("memory searched under %q, want the workspace %q", memorySearchedAt, workspace)
 	}
 }
