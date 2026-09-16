@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -87,9 +88,9 @@ func (b *Bundle) StartExternalChangeObserver(ctx context.Context, notify func())
 		return nil, fmt.Errorf("persistence: read external change baseline: %w", err)
 	}
 	done := make(chan struct{})
+	observer := &externalChangeObserver{db: b.db, notify: notify, version: previous}
 	go func() {
 		defer close(done)
-		failed := false
 		ticker := time.NewTicker(externalChangePollInterval)
 		defer ticker.Stop()
 		for {
@@ -97,26 +98,56 @@ func (b *Bundle) StartExternalChangeObserver(ctx context.Context, notify func())
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				var current int64
-				if err := b.db.QueryRowContext(ctx, `PRAGMA data_version`).Scan(&current); err != nil {
-					if ctx.Err() != nil {
-						return
-					}
-					if !failed {
-						slog.ErrorContext(ctx, "persistence: observe external changes", "error", err)
-					}
-					failed = true
-					continue
-				}
-				failed = false
-				if current != previous {
-					previous = current
-					notify()
+				if !observer.poll(ctx) {
+					return
 				}
 			}
 		}
 	}()
 	return done, nil
+}
+
+// externalChangeObserver holds one observer's poll state across ticks: the last
+// data_version it saw, and whether the previous read failed so a persistent
+// outage is reported once rather than on every retry.
+type externalChangeObserver struct {
+	db      *sql.DB
+	notify  func()
+	version int64
+	failed  bool
+}
+
+// poll bounds one tick and reports whether the observer should keep running. A
+// defect in a tick is that tick's failure — the next read sees the same counter
+// and the notification it describes is a resync the next external commit will
+// raise again — while a panic leaving the observer goroutine would end the
+// process and every Session in it. notify reaches the delivery fan-out, which
+// is the widest surface any background loop here calls into.
+func (o *externalChangeObserver) poll(ctx context.Context) (running bool) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			slog.ErrorContext(ctx, "persistence: external change poll panicked",
+				"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+			running = true
+		}
+	}()
+	var current int64
+	if err := o.db.QueryRowContext(ctx, `PRAGMA data_version`).Scan(&current); err != nil {
+		if ctx.Err() != nil {
+			return false
+		}
+		if !o.failed {
+			slog.ErrorContext(ctx, "persistence: observe external changes", "error", err)
+		}
+		o.failed = true
+		return true
+	}
+	o.failed = false
+	if current != o.version {
+		o.version = current
+		o.notify()
+	}
+	return true
 }
 
 // Open wires the persistence backends. The returned bundle owns the shared
