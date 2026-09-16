@@ -96,7 +96,7 @@ func LookupField(owner reflect.Type, name string) (Field, bool) {
 	return Field{}, false
 }
 
-// HasWirePath reports whether a dotted JSON path (`payload.tool`) addresses a
+// HasPath reports whether a dotted JSON path (`payload.tool`) addresses a
 // real field, returning an error naming the segment that does not exist.
 func HasPath(root reflect.Type, path string) error {
 	current := root

@@ -290,7 +290,7 @@ type RootExecutionStart struct {
 	WorkingContext []corechat.Message
 	InterruptKinds []interrupt.Kind
 	// ChildRunAdmissionEnabled installs the executor-to-application admission
-	// handshake for AgentTool children. It is deliberately explicit and defaults
+	// handshake for Delegate children. It is deliberately explicit and defaults
 	// off; the Run's frozen application policy is its sole production source.
 	ChildRunAdmissionEnabled bool
 	// GoalIncarnationID stamps a Goal-mode autonomous run with its goal incarnation

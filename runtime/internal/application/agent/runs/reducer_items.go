@@ -448,7 +448,7 @@ func (r *reducer) openToolItemID(callID string) (string, bool) {
 
 // spawningItem resolves the executor's immutable parent-call identity to the
 // canonical running Item that represents it. Only currently open calls are
-// eligible: an AgentTool creates its child before that parent call can finish.
+// eligible: a Delegate creates its child before that parent call can finish.
 // It returns the complete canonical Item because child admission must persist
 // that Item in the same transaction as the child's lineage edge. Ambiguity is
 // rejected rather than resolved by ordering.

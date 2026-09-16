@@ -85,8 +85,9 @@ func RuntimeTopics() []RuntimeTopic {
 	}
 }
 
-// RuntimeSubscriptionLimits caps one subscription. Both are fixed rather than
-// configurable: they exist to bound one client's fan-out, not to be tuned.
+// MaxSubscriptionTopics and MaxSubscriptionWatches cap one subscription. Both
+// are fixed rather than configurable: they exist to bound one client's fan-out,
+// not to be tuned.
 const (
 	MaxSubscriptionTopics  = 32
 	MaxSubscriptionWatches = 32
