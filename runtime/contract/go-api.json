@@ -2295,11 +2295,6 @@
               "tag": "json:\"path\""
             },
             {
-              "name": "Title",
-              "type": "string",
-              "tag": "json:\"title,omitempty\""
-            },
-            {
               "name": "Scope",
               "type": "AgentDocScope",
               "tag": "json:\"scope\""

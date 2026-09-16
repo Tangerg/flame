@@ -319,7 +319,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   AgentDoc: object({
     path: allOf([text(), pattern("\\S")]),
     scope: ref(() => CHECKS.AgentDocScope),
-    title: text(),
   }, ["path", "scope"]),
   AgentDocScope: enumOf(["cwd", "projectRoot", "home"]),
   AgentMemoryAddRequest: allOf([

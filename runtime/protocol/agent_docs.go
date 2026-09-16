@@ -15,6 +15,5 @@ const (
 // returns documents in prompt render order: home, project-root tree, then cwd.
 type AgentDoc struct {
 	Path  string        `json:"path"`
-	Title string        `json:"title,omitempty"`
 	Scope AgentDocScope `json:"scope"` // see AgentDocScope
 }

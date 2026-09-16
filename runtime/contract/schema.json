@@ -30,9 +30,6 @@
         },
         "scope": {
           "$ref": "#/$defs/AgentDocScope"
-        },
-        "title": {
-          "type": "string"
         }
       },
       "required": [

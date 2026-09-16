@@ -94,7 +94,6 @@ export interface ActiveRunRef {
 export interface AgentDoc {
   path: string;
   scope: AgentDocScope;
-  title?: string;
 }
 
 export type AgentDocScope = "cwd" | "projectRoot" | "home";
