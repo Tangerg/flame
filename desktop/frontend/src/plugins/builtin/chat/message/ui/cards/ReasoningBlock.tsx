@@ -11,9 +11,39 @@ import { messageStyles as ms } from "../messageStyles";
 
 const FADE = "24px";
 const FOLLOW_SLACK = 24;
+const GLIMPSE_LEAD = "24px";
+
+/** The last line the model has written. Empty while it is between paragraphs. */
+function currentThought(text: string): string | undefined {
+  const lines = text.split("\n");
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const line = lines[index]?.trim();
+    if (line) return line;
+  }
+  return undefined;
+}
 
 const rb = stylex.create({
   note: { marginTop: space.s1 },
+  /**
+   * The NEWEST words, which is why the line is pinned to its end rather than truncated at it.
+   * A paragraph's opening does not change while the model is still writing it, so a glimpse
+   * anchored the usual way would sit still for a minute and report nothing.
+   *
+   * A non-shrinking child in a flex box that packs to the end spills over its start edge, where
+   * the mask takes it — no measuring, because a line short enough to fit leaves that edge empty
+   * and the mask falls on nothing.
+   */
+  glimpse: {
+    display: "flex",
+    minWidth: 0,
+    flex: 1,
+    justifyContent: "flex-end",
+    overflow: "hidden",
+    maskImage: `linear-gradient(to right, transparent 0, #000 ${GLIMPSE_LEAD})`,
+    WebkitMaskImage: `linear-gradient(to right, transparent 0, #000 ${GLIMPSE_LEAD})`,
+  },
+  glimpseLine: { flexShrink: 0, whiteSpace: "nowrap" },
   aside: {
     marginLeft: space.s5,
     borderLeftWidth: "var(--control-edge-width)",
@@ -85,6 +115,10 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
       ? t("reasoning.thought")
       : t("reasoning.thoughtFor", { duration: fmtDuration(thoughtMillis) });
 
+  // Only while it is BOTH running and shut: open, the material itself is on screen, and the row
+  // would be repeating its own first line back at the reader.
+  const glimpse = streaming && !isOpen ? currentThought(text) : undefined;
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ scrolled: false, atBottom: true, overflowing: false });
@@ -139,6 +173,15 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
       icon="sparkle"
       shell="line"
       label={streaming ? <Loader text={label} /> : label}
+      detail={
+        glimpse && (
+          // Not announced: `RunAnnouncer` owns what the run is doing, and a line that changes
+          // on every token would talk over it.
+          <span data-slot="reasoning-glimpse" aria-hidden {...stylex.props(rb.glimpse)}>
+            <span {...stylex.props(rb.glimpseLine, vocab.faint)}>{glimpse}</span>
+          </span>
+        )
+      }
       toggleLabel={label}
       open={isOpen}
       onToggle={toggle}

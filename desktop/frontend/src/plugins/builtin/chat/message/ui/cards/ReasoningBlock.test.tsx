@@ -69,6 +69,33 @@ describe("ReasoningBlock disclosure policy", () => {
     ).toBe("false");
   });
 
+  it("shows the newest line of a thought it is hiding, and only while it is still thinking", () => {
+    const text = "An earlier step.\n\nWhat it is weighing right now.";
+    const view = render(<ReasoningBlock text={text} status="running" />);
+    const live = () => screen.getByRole("button", { name: /Thinking|Thought/ });
+    const glimpse = () =>
+      view.container.querySelector('[data-slot="reasoning-glimpse"]')?.textContent ?? null;
+
+    expect(live().getAttribute("aria-expanded")).toBe("true");
+    expect(glimpse(), "open, the material itself is on screen and the row would repeat it").toBe(
+      null,
+    );
+
+    fireEvent.click(live());
+    expect(glimpse(), "the line it is on, not the one it has left").toBe(
+      "What it is weighing right now.",
+    );
+    expect(
+      live().getAttribute("aria-label"),
+      "the glimpse changes on every token, so it stays out of the name",
+    ).toBe("Thinking");
+
+    view.rerender(<ReasoningBlock text={text} status="complete" />);
+    expect(glimpse(), "a settled thought reports its duration, not a line it is no longer on").toBe(
+      null,
+    );
+  });
+
   it("turns the first user toggle into an explicit override of the automatic state", () => {
     renderReasoning("complete", "Hidden rationale");
     const trigger = screen.getByRole("button", { name: /Thought/ });
