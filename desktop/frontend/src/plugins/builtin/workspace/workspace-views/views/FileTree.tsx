@@ -28,7 +28,7 @@ function TreeNode({ entry, cwd, depth, onSelectFile }: NodeProps) {
   const {
     data: children,
     isLoading,
-    isError,
+    error,
     refetch,
   } = useWorkspaceListFiles(isDir && expanded ? { cwd, path: entry.path } : undefined);
   const indent = { paddingLeft: `${depth * 12 + 6}px` };
@@ -63,7 +63,7 @@ function TreeNode({ entry, cwd, depth, onSelectFile }: NodeProps) {
           <DataView
             items={children}
             isLoading={isLoading}
-            isError={isError}
+            failure={error}
             onRetry={refetch}
             skeletonCount={1}
             error={{ title: t("dataView.error.title"), size: "compact" }}

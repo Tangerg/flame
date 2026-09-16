@@ -19,7 +19,7 @@ import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/sessio
 export function SkillProposals() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
-  const { data, isLoading, isError, refetch } = useSkillProposals(
+  const { data, isLoading, error, refetch } = useSkillProposals(
     workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
   );
   const proposals = data ?? [];
@@ -32,7 +32,7 @@ export function SkillProposals() {
       <DataView
         items={proposals}
         isLoading={isLoading || workspace.status === "resolving"}
-        isError={isError}
+        failure={error}
         onRetry={refetch}
         skeletonCount={3}
         empty={{

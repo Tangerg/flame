@@ -27,7 +27,7 @@ export function InboxTab() {
       <DataView
         items={items}
         isLoading={query.isLoading}
-        isError={query.isError}
+        failure={query.error}
         onRetry={() => void query.refetch()}
         skeletonVariant="stacked"
         empty={{ icon: "bell", title: t("inbox.empty.title"), sub: t("inbox.empty.sub") }}

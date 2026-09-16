@@ -86,7 +86,7 @@ export function ProjectsSection() {
       <DataView
         items={workIndex.groups}
         isLoading={workIndex.isLoading}
-        isError={workIndex.isError}
+        failure={workIndex.error}
         onRetry={workIndex.retry}
         skeletonCount={3}
         skeletonVariant="compact"

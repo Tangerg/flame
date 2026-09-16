@@ -8,7 +8,6 @@ import {
   type ApprovalRuleSummary,
   useApprovalRuleConfigs,
 } from "../application/approvalConfig";
-import { isUnsupportedMethod } from "@/lib/rpcErrors";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { useCommandAction } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
@@ -55,7 +54,7 @@ const r = stylex.create({
 export function RulesRow() {
   const t = useT();
   const sessionId = useActiveSessionId();
-  const { data, isLoading, isError, error, refetch } = useApprovalRuleConfigs(sessionId);
+  const { data, isLoading, error, refetch } = useApprovalRuleConfigs(sessionId);
   const { busy, run } = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: t("approvals.error.forget"),
@@ -66,17 +65,9 @@ export function RulesRow() {
       <DataView
         items={data}
         isLoading={isLoading}
-        isError={isError}
+        failure={error}
         onRetry={refetch}
-        unsupported={
-          isUnsupportedMethod(error)
-            ? {
-                icon: "shield",
-                title: t("runtime.unsupported.title"),
-                sub: t("runtime.unsupported.sub"),
-              }
-            : undefined
-        }
+        unsupported={{ icon: "shield" }}
         empty={{
           icon: "check",
           title: t("approvals.rules.empty"),

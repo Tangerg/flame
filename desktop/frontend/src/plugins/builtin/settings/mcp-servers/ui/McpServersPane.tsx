@@ -12,7 +12,7 @@ const mp = stylex.create({ splitTop: { alignItems: "flex-start" } });
 
 export function McpServersPane() {
   const t = useT();
-  const { data, isLoading, isError, refetch } = useMCPServers();
+  const { data, isLoading, error, refetch } = useMCPServers();
   const [adding, setAdding] = useState(false);
 
   return (
@@ -36,7 +36,7 @@ export function McpServersPane() {
       <DataView
         items={data}
         isLoading={isLoading}
-        isError={isError}
+        failure={error}
         onRetry={refetch}
         skeletonCount={3}
         empty={{

@@ -138,7 +138,7 @@ export function HooksPane() {
       <DataView
         items={data?.hooks}
         isLoading={isLoading || workspace.status === "resolving"}
-        isError={isError}
+        failure={error}
         onRetry={refetch}
         skeletonCount={3}
         empty={{ icon: "lightning", title: t("hooks.empty"), sub: t("hooks.empty.sub") }}

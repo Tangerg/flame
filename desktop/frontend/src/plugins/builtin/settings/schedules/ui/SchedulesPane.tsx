@@ -30,7 +30,7 @@ function EnabledSchedulesPane() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
-  const { data, isLoading, isError, refetch } = useScheduleConfigs();
+  const { data, isLoading, error, refetch } = useScheduleConfigs();
   const [adding, setAdding] = useState(false);
 
   return (
@@ -60,7 +60,7 @@ function EnabledSchedulesPane() {
       <DataView
         items={data}
         isLoading={isLoading}
-        isError={isError}
+        failure={error}
         onRetry={refetch}
         skeletonCount={3}
         empty={{ icon: "command", title: t("schedules.empty"), sub: t("schedules.empty.sub") }}

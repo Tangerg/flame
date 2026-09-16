@@ -103,7 +103,7 @@ export function DiffWorkspaceSurface() {
   const [layout, setLayout] = useState<DiffLayout>("unified");
   const [navigatorOpen, setNavigatorOpen] = useState(true);
   const [collapsedFiles, setCollapsedFiles] = useState<ReadonlySet<string>>(() => new Set());
-  const { fileFocus, files, gitEnabled, isError, isLoading, notARepo, retry, view } =
+  const { fileFocus, files, gitEnabled, error, isLoading, notARepo, retry, view } =
     useWorkspaceDiffView(mode);
   const hasFiles = (files?.length ?? 0) > 0;
 
@@ -191,7 +191,7 @@ export function DiffWorkspaceSurface() {
           <DataView
             items={gitEnabled ? files : []}
             isLoading={isLoading}
-            isError={isError && !notARepo}
+            failure={notARepo ? undefined : error}
             onRetry={retry}
             skeletonCount={10}
             empty={

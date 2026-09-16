@@ -50,6 +50,7 @@ export function useWorkspaceDiffView(mode: WorkspaceDiffMode) {
     files: view.files,
     isLoading: query.isLoading || workspace.status === "resolving",
     isError: query.isError,
+    error: query.error,
     gitEnabled,
     notARepo: isVcsUnavailable(query.error),
     retry: () => void query.refetch(),

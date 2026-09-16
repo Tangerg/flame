@@ -27,6 +27,7 @@ export function useWorkIndex(): WorkIndex {
     activeCwd,
     isLoading: projects.isLoading && !content,
     isError: projects.isError && !content,
+    error: projects.isError && !content ? projects.error : undefined,
     retry: () => void projects.refetch(),
   };
 }

@@ -38,5 +38,7 @@ export interface WorkIndex {
   activeCwd: string | undefined;
   isLoading: boolean;
   isError: boolean;
+  /** What failed, so a view can tell a Runtime that broke from one that never had the call. */
+  error: unknown;
   retry: () => void;
 }

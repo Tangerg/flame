@@ -14,7 +14,6 @@ import {
   useWorkspaceFileViewer,
 } from "@/plugins/builtin/workspace/public/navigation";
 import type { WorkspaceFileViewer } from "../application/ports/navigationState";
-import { isUnsupportedMethod } from "@/lib/rpcErrors";
 import { FileTree } from "./views/FileTree";
 
 const targetWindowRadius = 200;
@@ -41,17 +40,9 @@ function FileBrowser() {
       <DataView
         items={query.data}
         isLoading={query.isLoading || workspace.status === "resolving"}
-        isError={query.isError}
+        failure={query.error}
         onRetry={query.refetch}
-        unsupported={
-          isUnsupportedMethod(query.error)
-            ? {
-                icon: "folder",
-                title: t("runtime.unsupported.title"),
-                sub: t("runtime.unsupported.sub"),
-              }
-            : undefined
-        }
+        unsupported={{ icon: "folder" }}
         skeletonCount={8}
         empty={{ icon: "folder", title: t("file.empty.title"), sub: t("file.empty.sub") }}
       >
@@ -66,7 +57,7 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
   const targetLine = viewer.line;
-  const { data, isLoading, isError, refetch } = useWorkspaceReadFile(
+  const { data, isLoading, error, refetch } = useWorkspaceReadFile(
     workspace.status === "ready"
       ? {
           cwd,
@@ -108,7 +99,7 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
       <DataView
         items={data ? [data] : []}
         isLoading={isLoading || workspace.status === "resolving"}
-        isError={isError}
+        failure={error}
         onRetry={refetch}
         skeletonCount={12}
         error={{ title: t("file.error.title"), sub: t("file.error.sub") }}

@@ -8,7 +8,7 @@ import { SettingsGroup } from "../../kit";
 
 export function ProvidersPane() {
   const t = useT();
-  const { data, isLoading, isError, refetch } = useProviderConfigs();
+  const { data, isLoading, error, refetch } = useProviderConfigs();
 
   return (
     <div {...stylex.props(vocab.column, gap.s6)}>
@@ -19,7 +19,7 @@ export function ProvidersPane() {
       <DataView
         items={data}
         isLoading={isLoading}
-        isError={isError}
+        failure={error}
         onRetry={refetch}
         skeletonCount={3}
         empty={{

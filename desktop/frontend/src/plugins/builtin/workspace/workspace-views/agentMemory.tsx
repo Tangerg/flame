@@ -272,7 +272,7 @@ export function AgentMemoryTab() {
   const available = useRuntimeCapability("agentMemory");
   const projectResolving = scope === "project" && workspace.status === "resolving";
   const enabled = available && (scope === "user" || (workspace.status === "ready" && Boolean(cwd)));
-  const { data, isLoading, isError, refetch } = useAgentMemory(enabled, scope, cwd);
+  const { data, isLoading, error, refetch } = useAgentMemory(enabled, scope, cwd);
   const items = data ?? [];
   const pending = items.filter((m) => m.status === "pending");
   const active = items.filter((m) => m.status === "active");
@@ -300,7 +300,7 @@ export function AgentMemoryTab() {
       <DataView
         items={items}
         isLoading={(enabled && isLoading) || projectResolving}
-        isError={isError}
+        failure={error}
         onRetry={refetch}
         skeletonCount={3}
         empty={

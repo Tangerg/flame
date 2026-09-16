@@ -14,7 +14,7 @@ import { archiveSkill, restoreSkill } from "@/plugins/builtin/workspace/applicat
 
 export function SkillLibrary() {
   const t = useT();
-  const { data, isLoading, isError, refetch } = useManagedSkills();
+  const { data, isLoading, error, refetch } = useManagedSkills();
   const skills = data ?? [];
   const activeCount = skills.filter((s) => s.lifecycle === "active").length;
 
@@ -26,7 +26,7 @@ export function SkillLibrary() {
       <DataView
         items={skills}
         isLoading={isLoading}
-        isError={isError}
+        failure={error}
         onRetry={refetch}
         skeletonCount={4}
         empty={{

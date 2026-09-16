@@ -18,7 +18,7 @@ function duration(call: ModelInvocation): string {
 export function ModelInvocationHistory({ run }: { run: AgentRunView }) {
   const t = useT();
   const [cursor, setCursor] = useState<string>();
-  const { data, isLoading, isError, refetch } = useModelInvocations(run, cursor);
+  const { data, isLoading, error, refetch } = useModelInvocations(run, cursor);
   return (
     <div {...stylex.props(vs.gutter, vs.rowPad)}>
       <div {...stylex.props(vs.splitLine)}>
@@ -50,7 +50,7 @@ export function ModelInvocationHistory({ run }: { run: AgentRunView }) {
       <DataView
         items={data?.data ?? []}
         isLoading={isLoading}
-        isError={isError}
+        failure={error}
         onRetry={refetch}
         skeletonCount={2}
         empty={{ icon: "bot", title: t("timeline.noModelCalls") }}
