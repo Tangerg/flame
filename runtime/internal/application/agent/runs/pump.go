@@ -686,35 +686,53 @@ func (s *segmentPump) tearDownExecutor() {
 	}
 }
 
+// finishBoundary settles what a finished Run still owes the rest of the process.
+// Every obligation here is deferred so a defect in the maintenance it fences
+// still reaches them on its way out: the outer recovery is willing to abandon one
+// Run, and losing this boundary instead leaves a Session that can never admit
+// another Run and a stream no subscriber can leave.
 func (s *segmentPump) finishBoundary() {
-	releaseMaintenance, maintenanceHeld := s.coordinator.admission.BeginMaintenance(s.spec.RunID)
-	entry, tracked := s.coordinator.registry.Get(s.spec.RunID)
-	if tracked && !s.rootParked {
-		entry.owner.stop()
-	}
-	if s.rootFinished {
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
-		if err := s.coordinator.finalizer.Finish(ctx, Finish{
-			SessionID:       s.spec.SessionID,
-			RunID:           s.spec.RunID,
-			WorkspaceCWD:    s.spec.WorkspaceCWD,
-			Parked:          s.rootParked,
-			OpeningUserText: s.spec.OpeningUserText,
-		}); err != nil {
-			recordRunCleanupError(ctx, err)
-		}
-		cancel()
-	}
-	if maintenanceHeld {
-		releaseMaintenance()
-	}
-	// Closing the journal is the externally observable completion boundary. The
-	// synchronous maintenance fence and admission claim must be gone first.
+	defer s.coordinator.registry.RemoveSegment(s.spec.RunID, s.spec.SegmentID)
+	defer s.closeJournal()
+	s.settleMaintenanceFence()
+}
+
+// closeJournal ends the externally observable completion boundary. The
+// synchronous maintenance fence and admission claim are already gone.
+func (s *segmentPump) closeJournal() {
 	if err := s.owner.hub.close(); err != nil {
 		s.owner.completionErr = fmt.Errorf("runs: close replay journal: %w", err)
 		recordRunCleanupError(s.ownerCtx, s.owner.completionErr)
 	}
-	s.coordinator.registry.RemoveSegment(s.spec.RunID, s.spec.SegmentID)
+}
+
+// settleMaintenanceFence runs post-Run maintenance while this Run's admission
+// still holds its Session and working tree, so a following Run cannot write into
+// the snapshot this one is taking, and gives that admission back before
+// returning.
+func (s *segmentPump) settleMaintenanceFence() {
+	releaseMaintenance, maintenanceHeld := s.coordinator.admission.BeginMaintenance(s.spec.RunID)
+	if maintenanceHeld {
+		defer releaseMaintenance()
+	}
+	entry, tracked := s.coordinator.registry.Get(s.spec.RunID)
+	if tracked && !s.rootParked {
+		entry.owner.stop()
+	}
+	if !s.rootFinished {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
+	defer cancel()
+	if err := s.coordinator.finalizer.Finish(ctx, Finish{
+		SessionID:       s.spec.SessionID,
+		RunID:           s.spec.RunID,
+		WorkspaceCWD:    s.spec.WorkspaceCWD,
+		Parked:          s.rootParked,
+		OpeningUserText: s.spec.OpeningUserText,
+	}); err != nil {
+		recordRunCleanupError(ctx, err)
+	}
 }
 
 func engineEventEndsSegment(event ExecutionFact) bool {
