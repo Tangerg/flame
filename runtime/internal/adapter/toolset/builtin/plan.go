@@ -22,9 +22,8 @@ type planReplacer interface {
 	Replace(ctx context.Context, sessionID string, steps []plandomain.Step) (plandomain.State, error)
 }
 
-// PlanUseCases is the Plan application surface consumed by this tool family. It
-// is the union of what its tools consume, not a second declaration of their
-// signatures: each tool still takes only the half it uses.
+// PlanUseCases is the union of what this tool family consumes; each tool still
+// takes only the half it uses.
 type PlanUseCases interface {
 	planStateReader
 	planReplacer

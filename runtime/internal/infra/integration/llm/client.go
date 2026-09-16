@@ -35,10 +35,9 @@ const (
 	defaultOpenAIModel    = "gpt-5.6-sol"
 )
 
-// ClientCredential is one exact API key. Every provider this Runtime serves
-// requires one, so an unauthenticated form would be a state no valid ClientSpec
-// could hold. The zero value is invalid; raw secret access remains inside the
-// provider implementation.
+// ClientCredential is one exact API key — every provider this Runtime serves
+// requires one, so the zero value is invalid. Raw secret access remains inside
+// the provider implementation.
 type ClientCredential struct {
 	apiKey string
 }

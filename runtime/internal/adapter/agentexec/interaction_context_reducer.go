@@ -42,6 +42,23 @@ func newInteractionModelContextReducer(
 	}
 }
 
+// appendPendingContinuation applies Runtime-owned input that already has a
+// durable Item and so cannot arrive through the framework's input Signal.
+func appendPendingContinuation(
+	messages []corechat.Message,
+	pending pendingInteractionContinuation,
+	present bool,
+) ([]corechat.Message, error) {
+	if !present {
+		return messages, nil
+	}
+	message, err := runs.MaterializeUserMessage(pending.content)
+	if err != nil {
+		return nil, fmt.Errorf("agentexec: materialize pending continuation input: %w", err)
+	}
+	return append(messages, message), nil
+}
+
 func (i *interactionModelContextReducer) ReduceModelContext(
 	ctx context.Context,
 	invocation interaction.ModelInvocation,
@@ -83,13 +100,11 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		return nil, err
 	}
 	if i.compactor == nil {
-		effective := cloneChatMessages(request.Messages)
-		if hasPendingContinuation {
-			message, err := runs.MaterializeUserMessage(pendingContinuation.content)
-			if err != nil {
-				return nil, fmt.Errorf("agentexec: materialize pending continuation input: %w", err)
-			}
-			effective = append(effective, message)
+		effective, err := appendPendingContinuation(
+			cloneChatMessages(request.Messages), pendingContinuation, hasPendingContinuation,
+		)
+		if err != nil {
+			return nil, err
 		}
 		validation := request.Clone()
 		validation.Messages = effective
@@ -102,12 +117,9 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if err != nil {
 		return nil, err
 	}
-	if hasPendingContinuation {
-		message, err := runs.MaterializeUserMessage(pendingContinuation.content)
-		if err != nil {
-			return nil, fmt.Errorf("agentexec: materialize pending continuation input: %w", err)
-		}
-		candidate = append(candidate, message)
+	candidate, err = appendPendingContinuation(candidate, pendingContinuation, hasPendingContinuation)
+	if err != nil {
+		return nil, err
 	}
 	fixedContext := cloneChatMessages(i.instructions)
 	if i.state != nil {

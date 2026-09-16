@@ -7,10 +7,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// RunReader returns one Session's complete valid Run aggregates in
-// admission order. Every boundary this package computes — a rollback target, a
-// fork point, an abandoned park, a usage report — reads that same list, so they
-// read it through one contract instead of each restating its signature.
+// RunReader returns one Session's complete valid Run aggregates in admission
+// order. Every boundary this package computes reads that same list.
 type RunReader interface {
 	ListRuns(ctx context.Context, sessionID string) ([]run.Run, error)
 }

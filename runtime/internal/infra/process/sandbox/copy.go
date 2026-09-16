@@ -281,12 +281,9 @@ func (t *treeCopier) copyFile(
 	return nil
 }
 
-// writeOnly narrows a destination to exactly io.Writer. The destination is an
-// *os.File, which implements io.ReaderFrom, and io.CopyBuffer hands the whole
-// copy to that instead — ignoring this copier's bounded buffer and reading the
-// source in chunks it chooses. The buffer is what bounds a tree copy's memory
-// and what keeps the cancelable reader observing the context between chunks, so
-// the fast path has to stay unreachable.
+// writeOnly hides the destination's io.ReaderFrom, which io.CopyBuffer would
+// otherwise use instead of the bounded buffer that caps this copy's memory and
+// keeps the cancelable reader observing the context between chunks.
 type writeOnly struct{ writer io.Writer }
 
 func (w writeOnly) Write(buffer []byte) (int, error) {
