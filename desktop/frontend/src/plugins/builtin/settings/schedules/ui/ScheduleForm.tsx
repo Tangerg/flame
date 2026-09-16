@@ -36,7 +36,7 @@ interface ScheduleFormProps {
 
 const sf = stylex.create({
   preset: {
-    borderWidth: "1px",
+    borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
     paddingInline: space.s2_5,
     paddingBlock: space.s1,

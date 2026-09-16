@@ -16,7 +16,7 @@ const rb = stylex.create({
   note: { marginTop: space.s1 },
   aside: {
     marginLeft: space.s5,
-    borderLeftWidth: "1px",
+    borderLeftWidth: "var(--control-edge-width)",
     borderLeftStyle: "solid",
     borderLeftColor: surface.field,
     paddingTop: space.s0_5,

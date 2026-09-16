@@ -26,6 +26,7 @@ type VisualStyleTokenName =
   | "dock-tab-height"
   | "surface-header-height"
   | "control-edge-width"
+  | "hairline-width"
   | "composer-edge-width"
   | "wash-hover"
   | "wash-selected"
@@ -96,8 +97,11 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "dock-tab-height": "28px",
   "surface-header-height": "46px",
   "control-edge-width": "1px",
-  // One device pixel on a 2x panel; at 1px the composer becomes the heaviest edge on screen.
-  "composer-edge-width": "0.5px",
+  // One device pixel on a 2x panel. The product draws two edge weights on purpose: a control
+  // states its bounds at `control-edge-width`, and something that only wants to be separated
+  // from what it sits on takes this one, which at 1px would become the heaviest line on screen.
+  "hairline-width": "0.5px",
+  "composer-edge-width": "var(--hairline-width)",
 
   "wash-hover": "color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 1.25), transparent)",
   "wash-selected":

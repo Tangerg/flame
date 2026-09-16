@@ -24,7 +24,7 @@ const styles = stylex.create({
     display: "flex",
     alignItems: "center",
     gap: space.s2_5,
-    borderBottomWidth: "1px",
+    borderBottomWidth: "var(--control-edge-width)",
     borderBottomStyle: "solid",
     borderBottomColor: surface.lineSoft,
     paddingInline: "calc(var(--spacing) * 3.5)",

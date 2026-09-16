@@ -588,7 +588,8 @@
   --dock-navigator-width: 240px;
   --control-edge-width: 1px;
   --control-mark-size: 18px;
-  --composer-edge-width: 0.5px;
+  --hairline-width: 0.5px;
+  --composer-edge-width: var(--hairline-width);
 
   --density-row-height: 34px;
   --density-row-gap: 8px;

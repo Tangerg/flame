@@ -37,7 +37,7 @@ const styles = stylex.create({
     // A border on top of `--shadow-modal`, which already carries a ring — the double edge
     // DESIGN.md §5 forbids. Preserved as it was; whether the ring or the line goes is a design
     // decision, not a migration.
-    borderWidth: "1px",
+    borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
     borderColor: surface.field,
     paddingInline: space.s8,

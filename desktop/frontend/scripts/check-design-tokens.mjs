@@ -20,6 +20,18 @@ import { extname, join, relative } from "node:path";
 
 const SRC = new URL("../src/", import.meta.url).pathname;
 
+// The widths the product has named. Derived rather than listed: a token that is renamed or
+// re-valued must break the floor below instead of quietly leaving the rule matching nothing,
+// which is how this file's Tailwind-era rules went silent when the class names left.
+const GLOBALS = readFileSync(new URL("../src/styles/globals.css", import.meta.url), "utf8");
+const NAMED_EDGE_WIDTHS = [
+  ...new Set(
+    [...GLOBALS.matchAll(/^\s*--(?:control-edge|hairline)-width:\s*([\d.]+px);/gm)].map(
+      (match) => match[1],
+    ),
+  ),
+];
+
 const MARKUP_RULES = [
   {
     // `bg-negative/12`, `bg-warning/[0.06]` — a semantic tint with a hand-picked
@@ -134,6 +146,25 @@ const MARKUP_RULES = [
     spansLines: true,
     message: "literal animation duration — use a preset from `lib/motion`, or add the rung there",
     appliesTo: (rel) => rel !== "lib/motion.ts",
+  },
+  {
+    // An edge spelled out where a token already names that exact width. The product draws two
+    // on purpose — a control states its bounds at `--control-edge-width`, something that only
+    // wants separating from what it sits on takes `--hairline-width` — and both are visual-style
+    // tokens, so a literal silently opts its one element out of the style. Twenty-two call sites
+    // had one, in the same two values, which meant a style that moved either width would have
+    // moved it for some of the product's edges and not the rest.
+    //
+    // Only the NAMED values: the composer's 2px, a swatch ring's 2px and a pending mark's 1.5px
+    // are one-of-a-kind strokes, and a token per single call site is the drift this file is for.
+    pattern: new RegExp(
+      String.raw`border(?:Top|Bottom|Left|Right|Block|Inline)?(?:Start|End)?Width:\s*"(?:` +
+        NAMED_EDGE_WIDTHS.map((value) => value.replace(".", String.raw`\.`)).join("|") +
+        String.raw`)"`,
+      "g",
+    ),
+    message:
+      "an edge width a token already names — use `var(--control-edge-width)` or `var(--hairline-width)`",
   },
   {
     // HALF a type step, copied. A step is a bundle — `--text-display-md` carries a size, a
@@ -264,6 +295,14 @@ if (violations.length > 0) {
   for (const violation of violations) console.error(`  ${violation}`);
   process.exit(1);
 }
+// A derived vocabulary that came back empty matches nothing, and matching nothing reads as clean.
+if (NAMED_EDGE_WIDTHS.length < 2) {
+  console.error(
+    `check-design-tokens: derived ${NAMED_EDGE_WIDTHS.length} named edge width(s) from globals.css — the edge rule is not reading its vocabulary.`,
+  );
+  process.exit(2);
+}
+
 // Floor, not a target: a guard that read nothing prints the same OK as one that read everything.
 const MIN_FILES_EXAMINED = 500;
 if (examined < MIN_FILES_EXAMINED) {

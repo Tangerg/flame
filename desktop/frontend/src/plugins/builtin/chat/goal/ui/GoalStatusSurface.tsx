@@ -14,9 +14,9 @@ const goalTray = stylex.create({
     // holds no width.
     width: "100%",
     marginBottom: "-1px",
-    borderTopWidth: "1px",
-    borderLeftWidth: "1px",
-    borderRightWidth: "1px",
+    borderTopWidth: "var(--control-edge-width)",
+    borderLeftWidth: "var(--control-edge-width)",
+    borderRightWidth: "var(--control-edge-width)",
     borderBottomWidth: 0,
     borderStyle: "solid",
     borderColor: "var(--composer-tray-edge-color)",

@@ -24,7 +24,7 @@ const styles = stylex.create({
     },
   },
   outlined: {
-    borderWidth: "0.5px",
+    borderWidth: "var(--hairline-width)",
     borderStyle: "solid",
     borderColor: surface.field,
     color: { default: color.fgSoft, ":hover": color.fg },
@@ -37,7 +37,7 @@ const styles = stylex.create({
   danger: {
     backgroundColor: { default: "transparent", ":hover": surface.negativeWash },
     color: color.negative,
-    borderWidth: "0.5px",
+    borderWidth: "var(--hairline-width)",
     borderStyle: "solid",
     borderColor: color.negative,
   },

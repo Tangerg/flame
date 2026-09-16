@@ -48,7 +48,7 @@ const styles = stylex.create({
     fontFamily: "var(--font-mono)",
   },
   framed: {
-    borderWidth: "0.5px",
+    borderWidth: "var(--hairline-width)",
     borderStyle: "solid",
     borderColor: surface.field,
     backgroundColor: "transparent",

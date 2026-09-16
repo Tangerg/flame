@@ -22,7 +22,7 @@ const sc = stylex.create({
     flex: 1,
     overflow: "auto",
     borderRadius: radius.lg,
-    borderWidth: "0.5px",
+    borderWidth: "var(--hairline-width)",
     borderStyle: "solid",
     borderColor: surface.field,
     backgroundColor: "transparent",

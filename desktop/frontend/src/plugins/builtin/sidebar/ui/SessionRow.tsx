@@ -17,7 +17,7 @@ const sr = stylex.create({
   // running mark's other channel and reduced motion takes it away, which would otherwise leave
   // two 6px dots told apart by colour alone — and the accent is the user's to pick.
   markRunning: {
-    borderWidth: "1px",
+    borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
     borderColor: color.accent,
     animation: "var(--animate-pulse-dot)",

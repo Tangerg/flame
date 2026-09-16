@@ -15,7 +15,7 @@ const a = stylex.create({
     // A round chip, so the corner comes from the bundle that carries the shape with it.
     height: "calc(var(--spacing) * 4.5)",
     width: "calc(var(--spacing) * 4.5)",
-    borderWidth: "0.5px",
+    borderWidth: "var(--hairline-width)",
     borderStyle: "solid",
     borderColor: surface.field,
     backgroundClip: "padding-box",

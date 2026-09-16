@@ -120,7 +120,7 @@ const qc = stylex.create({
     width: space.s5,
     flexShrink: 0,
     placeItems: "center",
-    borderWidth: "1px",
+    borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
   },
   freeMarkOn: { borderColor: color.fg, backgroundColor: color.fg, color: surface.canvas },

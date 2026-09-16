@@ -209,7 +209,7 @@ export const timelineStyles = stylex.create({
   },
   groupGap: { marginTop: space.s3, paddingTop: space.s1 },
   nested: {
-    borderLeftWidth: "1px",
+    borderLeftWidth: "var(--control-edge-width)",
     borderLeftStyle: "solid",
     borderLeftColor: surface.field,
     paddingLeft: space.s2,
@@ -281,7 +281,7 @@ export const codeStyles = stylex.create({
     marginTop: { default: null, ":first-child": space.s2 },
     overflow: "hidden",
     borderRadius: radius.card,
-    borderWidth: "0.5px",
+    borderWidth: "var(--hairline-width)",
     borderStyle: "solid",
     borderColor: surface.field,
   },

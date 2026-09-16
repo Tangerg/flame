@@ -50,7 +50,7 @@ const ig = stylex.create({
   dot: {
     height: space.s2,
     width: space.s2,
-    borderWidth: "0.5px",
+    borderWidth: "var(--hairline-width)",
     borderStyle: "solid",
     borderColor: surface.field,
   },

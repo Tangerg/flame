@@ -43,7 +43,7 @@ export const shellStyles = stylex.create({
     alignItems: "flex-start",
     gap: space.s2_5,
     borderRadius: radius.lg,
-    borderWidth: "1px",
+    borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
     borderColor: "var(--color-negative-edge)",
     backgroundColor: surface.card,
