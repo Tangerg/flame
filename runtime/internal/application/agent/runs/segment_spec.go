@@ -24,8 +24,13 @@ type segmentSpec struct {
 	// Run record and every product capability derived from it address. An
 	// isolated Run executes in a scratch copy instead; only the executor is given
 	// that path, through RootExecutionStart.CWD.
-	WorkspaceCWD       string
-	ExecutorID         string
+	WorkspaceCWD string
+	// Isolated says the Run's tools write into that scratch copy rather than
+	// WorkspaceCWD. Anything this layer reports against the workspace has to
+	// account for it: the project directory does not change while such a Run
+	// executes.
+	Isolated   bool
+	ExecutorID string
 	ModelSelection     modelref.Selection
 	GoalIncarnationID  string
 	InitialSession     *session.Session

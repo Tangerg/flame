@@ -253,7 +253,12 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 	switch e := event.(type) {
 	case ItemCompleted:
 		commit.Items = []transcript.Item{e.Item}
-		if len(e.mutatedPaths) > 0 {
+		// An isolated Run's tools write into a scratch copy, so the Session's
+		// workspace files are exactly as the client last read them. Announcing
+		// them would send every subscriber to re-read an unchanged tree, and
+		// naming the copy instead would publish a process-local path as a
+		// workspace nobody can open.
+		if len(e.mutatedPaths) > 0 && !r.cfg.Isolated {
 			nudge = &Nudge{WorkspaceCWD: r.cfg.WorkspaceCWD, Paths: slices.Clone(e.mutatedPaths)}
 		}
 	case SegmentFinished:

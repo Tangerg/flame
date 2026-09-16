@@ -1805,3 +1805,39 @@ func mustFinishTool(t *testing.T, reducer *reducer, finished ToolCallFinished) [
 	}
 	return testReductions(batch)
 }
+
+// TestIsolatedRunAnnouncesNoWorkspaceFileChange pins that the live file-change
+// notice addresses the Session's workspace: an isolated Run mutates a scratch
+// copy, so there is nothing for a workspace subscriber to re-read.
+func TestIsolatedRunAnnouncesNoWorkspaceFileChange(t *testing.T) {
+	for _, isolated := range []bool{false, true} {
+		t.Run(map[bool]string{false: "workspace run", true: "isolated run"}[isolated], func(t *testing.T) {
+			cfg := testReducerConfig()
+			cfg.Isolated = isolated
+			reducer := newReducer(cfg)
+			mustReduce(t, reducer, ToolCallStarted{
+				CallID: "write_1", ToolName: "write", Arguments: `{"path":"src/a.go"}`,
+			})
+			finished := mustFinishTool(t, reducer, ToolCallFinished{
+				CallID: "write_1", Result: testToolResult(t, map[string]any{}),
+				MutatedPaths: []string{"src/a.go"},
+			})
+
+			var nudge *Nudge
+			for _, reduction := range finished {
+				if reduction.Nudge != nil {
+					nudge = reduction.Nudge
+				}
+			}
+			if isolated {
+				if nudge != nil {
+					t.Fatalf("isolated run announced a workspace change: %+v", nudge)
+				}
+				return
+			}
+			if nudge == nil || nudge.WorkspaceCWD != cfg.WorkspaceCWD {
+				t.Fatalf("workspace run nudge = %+v", nudge)
+			}
+		})
+	}
+}

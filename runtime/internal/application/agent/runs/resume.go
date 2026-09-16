@@ -122,6 +122,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		SegmentID:         segmentID,
 		SessionID:         pending.SessionID,
 		WorkspaceCWD:      sess.Workspace().Path(),
+		Isolated:          sess.Isolated(),
 		ExecutorID:        ref.ExecutorID,
 		ModelSelection:    rootContinuation.ModelSelection,
 		GoalIncarnationID: pending.GoalIncarnationID,

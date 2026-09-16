@@ -56,7 +56,8 @@ func (c *Coordinator) openingRoutes(
 	}
 	rootReducer := newReducer(reducerConfig{
 		RunID: spec.RunID, SegmentID: spec.SegmentID, SessionID: spec.SessionID,
-		WorkspaceCWD: spec.WorkspaceCWD, ModelSelection: spec.ModelSelection,
+		WorkspaceCWD: spec.WorkspaceCWD, Isolated: spec.Isolated,
+		ModelSelection: spec.ModelSelection,
 		GoalIncarnationID: spec.GoalIncarnationID,
 		CreatedAt:         spec.CreatedAt, UserInput: spec.Input,
 		ConversationInput: spec.ConversationInput, ModelOnlyInput: spec.ModelOnlyInput,
@@ -190,7 +191,7 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 	}
 	route.reducer = newReducer(reducerConfig{
 		RunID: route.runID, SegmentID: route.segmentID, SessionID: r.spec.SessionID,
-		Lineage: route.lineage, WorkspaceCWD: r.spec.WorkspaceCWD,
+		Lineage: route.lineage, WorkspaceCWD: r.spec.WorkspaceCWD, Isolated: r.spec.Isolated,
 		GoalIncarnationID: goalIncarnationID, ModelSelection: route.modelSelection,
 		CreatedAt: continuationState.RunCreatedAt, UserInput: userInput,
 		Metrics: continuationState.Metrics, ContextTokens: continuationState.ContextTokens,
@@ -700,6 +701,7 @@ func (c *Coordinator) finalizeChildOpening(
 		SessionID:      spec.SessionID,
 		Lineage:        child.lineage,
 		WorkspaceCWD:   spec.WorkspaceCWD,
+		Isolated:       spec.Isolated,
 		ModelSelection: child.modelSelection,
 		CreatedAt:      startedAt,
 		Limits:         child.limits,

@@ -103,6 +103,7 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 		SegmentID:          segmentID,
 		SessionID:          preparation.session.ID(),
 		WorkspaceCWD:       preparation.session.Workspace().Path(),
+		Isolated:           preparation.session.Isolated(),
 		ExecutorID:         ref.ExecutorID,
 		ModelSelection:     cmd.ModelSelection,
 		GoalIncarnationID:  cmd.GoalIncarnationID,

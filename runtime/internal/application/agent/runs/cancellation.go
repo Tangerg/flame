@@ -390,6 +390,7 @@ func (c *Coordinator) resumeAfterWaitingChildCancellation(
 		SegmentID:         segmentID,
 		SessionID:         plan.pending.SessionID,
 		WorkspaceCWD:      sess.Workspace().Path(),
+		Isolated:          sess.Isolated(),
 		ExecutorID:        plan.executor.ExecutorID,
 		ModelSelection:    rootContinuation.ModelSelection,
 		GoalIncarnationID: transformation.continuation.goalIncarnationID,
