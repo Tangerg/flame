@@ -1,8 +1,10 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	nethttp "net/http"
 	"net/http/httptest"
 	"strings"
@@ -195,4 +197,30 @@ func captureHTTPSpans(t *testing.T) *tracetest.InMemoryExporter {
 		}
 	})
 	return exporter
+}
+
+// TestHandlerPanicReachesTheLoggingChannel pins the diagnostic that does not
+// depend on the host configuring tracing. The span carries this panic only
+// where a TracerProvider was installed, and the client is told nothing beyond
+// "internal error"; without the stack on the logging channel a handler defect
+// leaves nothing anyone can act on.
+func TestHandlerPanicReachesTheLoggingChannel(t *testing.T) {
+	var diagnostics bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
+	handler := (&Server{}).instrumentRequests(nethttp.HandlerFunc(func(nethttp.ResponseWriter, *nethttp.Request) {
+		panic(errors.New("handler sentinel"))
+	}))
+	handler.ServeHTTP(httptest.NewRecorder(),
+		httptest.NewRequest(nethttp.MethodGet, "http://example.test/panic", nil))
+
+	logged := diagnostics.String()
+	if !strings.Contains(logged, "handler panicked") || !strings.Contains(logged, "handler sentinel") {
+		t.Fatalf("diagnostics = %q, want the panic reported without tracing", logged)
+	}
+	if !strings.Contains(logged, "request_instrumentation_test.go") {
+		t.Fatalf("diagnostics = %q, want a stack naming the frame that panicked", logged)
+	}
 }

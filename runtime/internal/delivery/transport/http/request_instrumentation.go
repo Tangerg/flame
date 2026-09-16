@@ -3,7 +3,9 @@ package http
 import (
 	"crypto/rand"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -21,8 +23,9 @@ import (
 //     trace covers the whole request. The span carries HTTP attributes,
 //     duration, and body size, and is marked Error on 5xx.
 //   - panic recovery so the runtime survives a misbehaving handler; the panic
-//     is recorded onto the request span, and an uncommitted response becomes a
-//     flat 500 envelope without corrupting an already-started stream.
+//     is reported on the logging channel with its stack and recorded onto the
+//     request span, and an uncommitted response becomes a flat 500 envelope
+//     without corrupting an already-started stream.
 //
 // All observability flows through OTel; the process composition root installs
 // the global TracerProvider and propagator.
@@ -60,6 +63,12 @@ func (s *Server) instrumentRequests(next http.Handler) http.Handler {
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				err := handlerPanicError(recovered)
+				// The span carries this only where the host configured tracing,
+				// and the client is told nothing beyond "internal error". Without
+				// the stack here a handler defect leaves nothing to act on.
+				slog.ErrorContext(ctx, "http: handler panicked",
+					"http.request.method", r.Method, "url.path", r.URL.Path,
+					"error", err, "stack", string(debug.Stack()))
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
 				if !response.wroteHeader {

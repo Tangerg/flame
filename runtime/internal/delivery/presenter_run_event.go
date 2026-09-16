@@ -3,6 +3,8 @@ package delivery
 import (
 	"fmt"
 	"iter"
+	"log/slog"
+	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -122,6 +124,10 @@ func presentedRunEvent(event runs.ProjectionEvent) (presented protocol.StreamEve
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			presented = protocol.StreamEvent{}
+			// The client learns its stream failed; only the stack says which
+			// projection shape the presenter could not read.
+			slog.Error("delivery: run event presenter panicked",
+				"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
 			err = NewFailure(protocol.ErrInternalError, fmt.Sprintf("the runtime could not present a run event: %v", recovered))
 		}
 	}()

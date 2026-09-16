@@ -142,15 +142,15 @@ func writeProblem(w http.ResponseWriter, status int, typ, detail string, noCache
 		w.Header().Set("Cache-Control", "no-store")
 	}
 	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(transportProblem{
+	// The status line is already on the wire, so a failed body write has no
+	// remaining way to change what this response says.
+	_ = json.NewEncoder(w).Encode(transportProblem{
 		Type:      transportProblemNamespace + typ,
 		Title:     http.StatusText(status),
 		Status:    status,
 		Detail:    detail,
 		RequestID: w.Header().Get("Request-Id"),
-	}); err != nil {
-		return
-	}
+	})
 }
 
 // isJSONMediaType reports whether a Content-Type header denotes JSON.
