@@ -74,7 +74,7 @@ func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequ
 	if err != nil {
 		return "", fmt.Errorf("search_memory: %w", err)
 	}
-	cwd := strings.TrimSpace(executionctx.CWD(ctx, ""))
+	cwd := strings.TrimSpace(executionctx.WorkspaceCWD(ctx, ""))
 	if cwd == "" {
 		return "No project is associated with this session, so there is no project memory to search.", nil
 	}

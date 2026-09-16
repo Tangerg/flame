@@ -371,7 +371,7 @@ func (o *observedInteractionTool) authorizationRequest(
 		}
 	}
 	return ToolAuthorizationRequest{
-		SessionID: o.start.SessionID, CWD: o.start.CWD,
+		SessionID: o.start.SessionID, WorkspaceCWD: o.start.WorkspaceCWD,
 		CallID: callID, ToolName: name, Arguments: arguments,
 		SafetyClass:     o.interpreter.SafetyClass(name),
 		ApprovalSubject: subject,

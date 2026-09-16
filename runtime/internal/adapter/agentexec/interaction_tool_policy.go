@@ -59,7 +59,7 @@ func (t *ToolAuthorizer) AuthorizeTool(
 	if plan.Action == approval.GatePrompt {
 		decision, matched, err := t.policy.Decide(ctx, approval.Query{
 			SessionID:  request.SessionID,
-			ProjectDir: request.CWD,
+			ProjectDir: request.WorkspaceCWD,
 			Tool:       request.ToolName,
 			Subject:    request.ApprovalSubject,
 		})
@@ -112,7 +112,7 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 		if err := t.policy.Remember(ctx, approval.RememberRequest{
 			Scope:      resolution.RememberScope,
 			SessionID:  request.SessionID,
-			ProjectDir: request.CWD,
+			ProjectDir: request.WorkspaceCWD,
 			Tool:       request.ToolName,
 			Subject:    request.ApprovalSubject,
 			Decision:   approval.DecisionOf(resolution.Approved),
@@ -138,7 +138,7 @@ func validateToolAuthorizationRequest(request ToolAuthorizationRequest) error {
 	if err := validateToolAuthorizationText("SessionID", request.SessionID); err != nil {
 		return err
 	}
-	if err := validateToolAuthorizationText("CWD", request.CWD); err != nil {
+	if err := validateToolAuthorizationText("workspace CWD", request.WorkspaceCWD); err != nil {
 		return err
 	}
 	if err := validateToolAuthorizationText("CallID", request.CallID); err != nil {

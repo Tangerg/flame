@@ -41,8 +41,11 @@ type InteractionToolPresenter interface {
 // ToolAuthorizationRequest is the complete pre-call policy input. The
 // authorizer may allow, rewrite, deny, or require durable human approval.
 type ToolAuthorizationRequest struct {
-	SessionID       string
-	CWD             string
+	SessionID string
+	// WorkspaceCWD is the Session's project directory, which is the scope key a
+	// remembered approval is stored under. An isolated Run executes elsewhere;
+	// a rule keyed by that scratch copy would never match the project again.
+	WorkspaceCWD    string
 	CallID          string
 	ToolName        string
 	Arguments       tool.Arguments

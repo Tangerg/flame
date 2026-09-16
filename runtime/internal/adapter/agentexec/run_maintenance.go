@@ -13,8 +13,12 @@ type RunMaintenance interface {
 
 // RunMaintenanceInput is the finished root Interaction's maintenance context.
 type RunMaintenanceInput struct {
-	SessionID               string
-	CWD                     string
+	SessionID string
+	// WorkspaceCWD is the Session's project directory. Mined skills and
+	// consolidated memory are durable project knowledge, so they are addressed
+	// by the workspace even when the Run that produced them executed in an
+	// isolated copy that is about to be discarded.
+	WorkspaceCWD            string
 	ToolCalls               int
 	DurableContextCompacted bool
 }
@@ -40,7 +44,7 @@ func (i *interactionSession) maintainCompletedRoot() {
 	toolCalls := i.accounting.toolCallCount()
 	result := i.maintenance.Maintain(i.lifetime.execution, RunMaintenanceInput{
 		SessionID:               i.start.SessionID,
-		CWD:                     i.start.CWD,
+		WorkspaceCWD:            i.start.WorkspaceCWD,
 		ToolCalls:               toolCalls,
 		DurableContextCompacted: i.state.durableContextCompacted(),
 	})

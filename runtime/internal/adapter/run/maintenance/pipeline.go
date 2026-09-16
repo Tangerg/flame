@@ -35,7 +35,7 @@ func NewPipeline(consolidator *MemoryConsolidator, skillMiner *SkillProposalMine
 // reduction decision from a partial request projection.
 func (p *Pipeline) Maintain(ctx context.Context, input agentexec.RunMaintenanceInput) agentexec.RunMaintenanceResult {
 	result := agentexec.RunMaintenanceResult{}
-	if err := p.skillMiner.MineIfDue(ctx, input.SessionID, input.CWD, input.ToolCalls); err != nil {
+	if err := p.skillMiner.MineIfDue(ctx, input.SessionID, input.WorkspaceCWD, input.ToolCalls); err != nil {
 		result.Errors = append(result.Errors, err)
 	}
 	if err := p.skillArchiver.ArchiveIfDue(ctx); err != nil {
@@ -44,7 +44,7 @@ func (p *Pipeline) Maintain(ctx context.Context, input agentexec.RunMaintenanceI
 	if !input.DurableContextCompacted {
 		return result
 	}
-	if err := p.consolidator.Consolidate(ctx, input.SessionID, input.CWD); err != nil {
+	if err := p.consolidator.Consolidate(ctx, input.SessionID, input.WorkspaceCWD); err != nil {
 		result.Errors = append(result.Errors, err)
 	}
 	return result
