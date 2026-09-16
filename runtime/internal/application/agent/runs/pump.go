@@ -397,6 +397,7 @@ func (s *segmentPump) commitUnknownEffectLoss(route *executorRoute, failure run.
 		return fmt.Errorf("runs: reduce unknown Effect loss: %w", err)
 	}
 	retry := unknownEffectCommitRetry{}
+	reported := false
 	for {
 		publication, publishErr := s.publisher.publishTerminalAtomically(s.ownerCtx, route, batch)
 		if publishErr == nil {
@@ -406,6 +407,16 @@ func (s *segmentPump) commitUnknownEffectLoss(route *executorRoute, failure run.
 				s.rootParked = false
 			}
 			return nil
+		}
+		if !reported {
+			// This retry is unbounded by design, and the Run stays blocked until it
+			// commits. A span reaches nobody on a host that configured no tracing,
+			// so a store outage here would stall a Run for as long as it lasts with
+			// no diagnostic anywhere. Reported once: the retry cadence backs off,
+			// and repeating one outage every attempt buries it.
+			slog.ErrorContext(s.ownerCtx, "runs: unknown Effect loss commit failed, retrying until it commits",
+				"session.id", s.spec.SessionID, "run.id", route.runID, "error", publishErr)
+			reported = true
 		}
 		trace.SpanFromContext(s.ctx).RecordError(fmt.Errorf("runs: retry unknown Effect loss: %w", publishErr))
 		if waitErr := retry.wait(s.ownerCtx); waitErr != nil {
