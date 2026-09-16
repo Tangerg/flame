@@ -1,5 +1,4 @@
 import type { ToolPreviewProps } from "@/plugins/sdk";
-import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { ToolOutputPanel } from "@/plugins/builtin/chat/tools/public/previews/ToolOutputPanel";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
@@ -7,7 +6,7 @@ import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPrevi
 import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
 import { commandToolResult } from "@/plugins/sdk";
 
-function ShellOutput({ tool, onOpenView }: ToolPreviewProps) {
+function ShellOutput({ tool }: ToolPreviewProps) {
   return (
     <div>
       <ToolOutputPanel
@@ -15,12 +14,11 @@ function ShellOutput({ tool, onOpenView }: ToolPreviewProps) {
         status={tool.status}
         idleLabel="tools.preview.idle.noOutput"
       />
-      <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
     </div>
   );
 }
 
-function CommandShapePreview({ tool, onOpenView }: ToolPreviewProps) {
+function CommandShapePreview({ tool }: ToolPreviewProps) {
   return (
     <div>
       <ToolOutputPanel
@@ -28,7 +26,6 @@ function CommandShapePreview({ tool, onOpenView }: ToolPreviewProps) {
         status={tool.status}
         idleLabel="tools.preview.idle.noOutput"
       />
-      <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
     </div>
   );
 }

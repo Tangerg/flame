@@ -1,15 +1,23 @@
 import * as stylex from "@stylexjs/stylex";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
-import { Icon, IconButton, Pressable, StatusDot, toneInk, vocab } from "@/ui";
+import { Icon, IconButton, Pressable, reveal, StatusDot, toneInk, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { openWorkspaceSubagentRun } from "@/plugins/builtin/workspace/public/navigation";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { radius, space, type as typeStep } from "@/styles/tokens.stylex";
+import { motion, radius, space, type as typeStep } from "@/styles/tokens.stylex";
 import { delegatedRunSummary } from "../application/delegatedRunSummary";
 
 const styles = stylex.create({
   row: { display: "flex", alignItems: "center", gap: space.s1, minWidth: 0 },
+  // Four identical open-in-panel glyphs stacked into a column of their own beside four rows
+  // that differ only in their status. The row already answers the pointer; the glyph says
+  // where the click lands, which is worth saying at the moment the pointer is there.
+  openHint: {
+    transitionProperty: "opacity",
+    transitionDuration: motion.fast,
+    transitionTimingFunction: motion.easeState,
+  },
   link: {
     display: "flex",
     alignItems: "flex-start",
@@ -39,7 +47,11 @@ export function DelegatedRunLink({
   const available = useRuntimeCommandsAvailable();
   const model = delegatedRunSummary(t, run, ordinal, siblingCount, taskLabel);
   return (
-    <div data-slot="delegated-run-link" data-run-id={run.id} {...stylex.props(styles.row)}>
+    <div
+      data-slot="delegated-run-link"
+      data-run-id={run.id}
+      {...stylex.props(styles.row, reveal.host)}
+    >
       <Pressable
         onClick={() => openWorkspaceSubagentRun(run.id)}
         className={stylex.props(styles.link).className}
@@ -61,7 +73,10 @@ export function DelegatedRunLink({
             </span>
           )}
         </span>
-        <span {...stylex.props(vocab.firstLine, typeStep.uiSm)}>
+        <span
+          data-reveal="hover"
+          {...stylex.props(vocab.firstLine, typeStep.uiSm, reveal.shown, styles.openHint)}
+        >
           <Icon name="panel-r" size="xs" />
         </span>
       </Pressable>

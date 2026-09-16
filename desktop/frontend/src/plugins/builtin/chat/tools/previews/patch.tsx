@@ -1,7 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import type { ToolPreviewProps } from "@/plugins/sdk";
-import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
@@ -84,7 +83,7 @@ function ProposedChangeRow({ change }: { change: ToolFileChange }) {
   );
 }
 
-export function ApplyPatchPreview({ tool, onOpenView }: ToolPreviewProps) {
+export function ApplyPatchPreview({ tool }: ToolPreviewProps) {
   const changes = projectPatchChanges(tool.result);
   const proposed = tool.status === "running" ? (tool.changes ?? []) : [];
   const rows = changes.length > 0 ? changes.length : proposed.length;
@@ -114,7 +113,6 @@ export function ApplyPatchPreview({ tool, onOpenView }: ToolPreviewProps) {
         <ProposedChangeRow key={change.path} change={change} />
       ))}
       <PreviewOverflow count={rows - INLINE_PREVIEW_ROW_LIMIT} />
-      <PreviewFoot label="tools.preview.openDiff" onClick={onOpenView} />
     </TextPreview>
   );
 }

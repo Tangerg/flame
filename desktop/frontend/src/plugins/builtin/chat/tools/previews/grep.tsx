@@ -2,7 +2,6 @@ import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { LinkedText } from "@/plugins/builtin/chat/file-references/public/LinkedText";
-import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { useGrepToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewQueries";
@@ -32,7 +31,7 @@ function groupByFile(rows: readonly { loc: string; text: string }[]) {
   return groups;
 }
 
-function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
+function GrepPreview({ tool }: ToolPreviewProps) {
   const t = useT();
   const { shown, overflow } = useGrepToolPreview(tool, MAX_GREP_MATCHES);
   return (
@@ -68,7 +67,6 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
           </div>
         )}
       </div>
-      <PreviewFoot label="tools.preview.viewMatches" onClick={onOpenView} />
     </TextPreview>
   );
 }

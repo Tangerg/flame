@@ -1,6 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
-import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
@@ -10,7 +9,7 @@ import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
 import { previewStyles as pv } from "./previewStyles";
 import { TextPreview, vocab } from "@/ui";
 
-function GlobPreview({ tool, onOpenView }: ToolPreviewProps) {
+function GlobPreview({ tool }: ToolPreviewProps) {
   const { paths } = projectGlobPreview(tool.result);
   return (
     <TextPreview>
@@ -30,7 +29,6 @@ function GlobPreview({ tool, onOpenView }: ToolPreviewProps) {
         </div>
       ))}
       <PreviewOverflow count={paths.length - INLINE_PREVIEW_ROW_LIMIT} />
-      <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
     </TextPreview>
   );
 }

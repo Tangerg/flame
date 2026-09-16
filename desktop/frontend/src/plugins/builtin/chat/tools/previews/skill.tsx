@@ -1,6 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
-import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
@@ -16,7 +15,7 @@ const sk = stylex.create({
   row: { display: "flex", alignItems: "baseline", gap: space.s2 },
 });
 
-function SkillCatalogPreview({ tool, onOpenView }: ToolPreviewProps) {
+function SkillCatalogPreview({ tool }: ToolPreviewProps) {
   const entries = projectSkillPreview(tool.result);
   if (entries.length === 0) {
     return (
@@ -38,12 +37,11 @@ function SkillCatalogPreview({ tool, onOpenView }: ToolPreviewProps) {
         </div>
       ))}
       <PreviewOverflow count={entries.length - INLINE_PREVIEW_ROW_LIMIT} />
-      <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
     </TextPreview>
   );
 }
 
-function SkillTextPreview({ tool, onOpenView }: ToolPreviewProps) {
+function SkillTextPreview({ tool }: ToolPreviewProps) {
   const lines = resultLines(tool.result);
   return (
     <TextPreview>
@@ -59,7 +57,6 @@ function SkillTextPreview({ tool, onOpenView }: ToolPreviewProps) {
         />
       )}
       <PreviewOverflow count={lines.length - INLINE_PREVIEW_ROW_LIMIT} />
-      <PreviewFoot label="tools.preview.viewText" onClick={onOpenView} />
     </TextPreview>
   );
 }

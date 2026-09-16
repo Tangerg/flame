@@ -1,5 +1,5 @@
 import { navigator } from "@/lib/navigation";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AgentRunView, Message, ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import type { TurnFacts } from "@/plugins/builtin/agent/public/conversation";
@@ -107,15 +107,33 @@ describe("delegated Run rendering", () => {
     };
 
     renderRootTool(parentTool.id, facts);
-    expect(screen.getAllByRole("button", { name: /Delegate work.*Finished/ })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /Sub-agent.*Finished/ })).toHaveLength(1);
     expect(screen.queryByText("No narrative material yet.")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: /Delegate work.*Finished/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Sub-agent.*Finished/ }));
     expect(navigator().get()).toMatchObject({ dock: "subagents", subagent: "child-run" });
-    expect(screen.getAllByRole("button", { name: /Delegate work.*Finished/ })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /Sub-agent.*Finished/ })).toHaveLength(1);
 
     const taskAnchors = document.querySelectorAll("#task-root, #task-child");
     expect(taskAnchors).toHaveLength(1);
+  });
+
+  it("names the delegation group once so its rows need not repeat the task", () => {
+    const parentTool = tool("task-root");
+    const facts: TurnFacts = {
+      toolCalls: { [parentTool.id]: parentTool },
+      delegatedRuns: {
+        [parentTool.id]: [
+          { run: run("child-a", "root-run", "root-run", parentTool.id), messages: [] },
+          { run: run("child-b", "root-run", "root-run", parentTool.id), messages: [] },
+        ],
+      },
+    };
+
+    renderRootTool(parentTool.id, facts);
+    const group = screen.getByRole("group", { name: "Delegate work" });
+    expect(within(group).getAllByRole("button", { name: /Sub-agent \d of 2/ })).toHaveLength(2);
+    expect(within(group).queryByRole("button", { name: /Delegate work.*Sub-agent/ })).toBeNull();
   });
 
   it("targets the exact descendant Run when its stop action is used", () => {

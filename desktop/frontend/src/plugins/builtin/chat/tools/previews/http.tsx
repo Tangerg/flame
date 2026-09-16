@@ -2,7 +2,6 @@ import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import type { Tone } from "@/lib/tone";
 import { Badge, TextPreview, vocab, Well } from "@/ui";
-import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { ToolOutputPanel } from "@/plugins/builtin/chat/tools/public/previews/ToolOutputPanel";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { definePlugin } from "@/plugins/sdk";
@@ -30,7 +29,7 @@ function statusTone(status: number): Tone | undefined {
   return undefined;
 }
 
-function HttpRequestPreview({ tool, onOpenView }: ToolPreviewProps) {
+function HttpRequestPreview({ tool }: ToolPreviewProps) {
   const t = useT();
   const response = projectHttpPreview(tool.result);
   if (!response) {
@@ -66,12 +65,11 @@ function HttpRequestPreview({ tool, onOpenView }: ToolPreviewProps) {
         status={tool.status}
         idleLabel="tools.preview.idle.emptyBody"
       />
-      <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
     </div>
   );
 }
 
-function WebFetchPreview({ tool, onOpenView }: ToolPreviewProps) {
+function WebFetchPreview({ tool }: ToolPreviewProps) {
   const page = projectFetchedPage(tool.result);
   if (!page) {
     return (
@@ -90,7 +88,6 @@ function WebFetchPreview({ tool, onOpenView }: ToolPreviewProps) {
         <Badge face="mono">{page.format}</Badge>
       </div>
       <Well cap="md">{page.content}</Well>
-      <PreviewFoot label="tools.preview.viewText" onClick={onOpenView} />
     </div>
   );
 }

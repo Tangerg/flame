@@ -2,7 +2,6 @@ import * as stylex from "@stylexjs/stylex";
 import type { Tone } from "@/lib/tone";
 import { TextPreview, toneInk, vocab } from "@/ui";
 import type { ToolPreviewProps } from "@/plugins/sdk";
-import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
@@ -16,7 +15,7 @@ const ls = stylex.create({
   pair: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: space.s3 },
 });
 
-function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
+function LspLocationsPreview({ tool }: ToolPreviewProps) {
   const rows = resultLines(tool.result);
   return (
     <TextPreview>
@@ -49,12 +48,11 @@ function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
         );
       })}
       <PreviewOverflow count={rows.length - INLINE_PREVIEW_ROW_LIMIT} />
-      <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
     </TextPreview>
   );
 }
 
-function LspHoverPreview({ tool, onOpenView }: ToolPreviewProps) {
+function LspHoverPreview({ tool }: ToolPreviewProps) {
   const text = tool.result?.trim();
   return (
     <TextPreview wrap="words" ink="soft">
@@ -65,7 +63,6 @@ function LspHoverPreview({ tool, onOpenView }: ToolPreviewProps) {
           idle="tools.preview.idle.empty"
         />
       )}
-      <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
     </TextPreview>
   );
 }
@@ -78,7 +75,7 @@ const SEVERITY_TONE = new Map<string, Tone>([
   ["warning", "warning"],
 ]);
 
-function LspDiagnosticsPreview({ tool, onOpenView }: ToolPreviewProps) {
+function LspDiagnosticsPreview({ tool }: ToolPreviewProps) {
   const rows = resultLines(tool.result);
   return (
     <TextPreview>
@@ -101,7 +98,6 @@ function LspDiagnosticsPreview({ tool, onOpenView }: ToolPreviewProps) {
         );
       })}
       <PreviewOverflow count={rows.length - INLINE_PREVIEW_ROW_LIMIT} />
-      <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />
     </TextPreview>
   );
 }

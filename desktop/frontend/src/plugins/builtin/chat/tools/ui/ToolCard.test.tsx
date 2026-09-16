@@ -1,7 +1,20 @@
-import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { ToolCard } from "./ToolCard";
+
+const opened = vi.hoisted(() => vi.fn());
+
+vi.mock("@/plugins/sdk", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/plugins/sdk")>();
+  return {
+    ...actual,
+    useExtensionPoint: (point: { id: string }) =>
+      point.id === "flame.tool.viewOpener"
+        ? [{ id: "test-opener", predicate: () => true, open: opened }]
+        : [],
+  };
+});
 
 function card(tool: Partial<ToolCall>) {
   const call: ToolCall = {
@@ -38,5 +51,13 @@ describe("ToolCard", () => {
     });
 
     expect(rows).toEqual(cases.map(() => ({ shell: "line", tone: "neutral" })));
+  });
+
+  it("opens the workspace view only when its own action is pressed", () => {
+    card({ name: "apply_patch", safetyClass: "write", status: "ok" });
+
+    expect(opened).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Open in the context dock" }));
+    expect(opened).toHaveBeenCalledOnce();
   });
 });

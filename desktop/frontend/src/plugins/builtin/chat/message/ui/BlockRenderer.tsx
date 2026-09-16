@@ -49,7 +49,15 @@ export function renderBlock(
       if (!tool) return null;
       const delegatedRuns = facts.delegatedRuns[block.toolCallId] ?? [];
       return (
-        <div id={block.toolCallId} key={block.toolCallId}>
+        // The card and the runs it spawned are one named group, which is what lets the rows
+        // below drop the task from their own labels: a reader entering the group is told the
+        // task once instead of hearing it at the head of every child.
+        <div
+          id={block.toolCallId}
+          key={block.toolCallId}
+          role={delegatedRuns.length > 0 ? "group" : undefined}
+          aria-label={delegatedRuns.length > 0 ? tool.fn : undefined}
+        >
           <ToolCard
             tool={tool}
             expanded={ctx.expandedIds.has(block.toolCallId)}
@@ -59,7 +67,6 @@ export function renderBlock(
             <DelegatedRunLink
               key={narrative.run.id}
               run={narrative.run}
-              taskLabel={tool.fn}
               ordinal={index + 1}
               siblingCount={delegatedRuns.length}
             />

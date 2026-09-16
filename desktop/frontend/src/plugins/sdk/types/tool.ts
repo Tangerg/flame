@@ -3,9 +3,6 @@ import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 
 export interface ToolPreviewProps {
   tool: ToolCall;
-  /** Absent when the tool has no workspace view, in which case the preview hides its foot
-   *  rather than offering a dead button. */
-  onOpenView?: () => void;
 }
 export type ToolPreviewComponent = ComponentType<ToolPreviewProps>;
 

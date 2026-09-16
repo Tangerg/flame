@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { ApplyPatchPreview } from "./patch";
 
@@ -73,18 +73,5 @@ describe("ApplyPatchPreview", () => {
 
     rerender(<ApplyPatchPreview tool={patchTool('{"changes":[]}', "ok")} />);
     expect(screen.getByText("No changes to show")).toBeTruthy();
-  });
-
-  it("opens the existing full diff owner only through the explicit footer action", () => {
-    const onOpenView = vi.fn();
-    render(
-      <ApplyPatchPreview
-        tool={patchTool('{"changes":[{"path":"src/a.ts","status":"modified"}]}')}
-        onOpenView={onOpenView}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: /open full diff/i }));
-    expect(onOpenView).toHaveBeenCalledOnce();
   });
 });

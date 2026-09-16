@@ -1,6 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
-import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { useFileToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewQueries";
@@ -12,7 +11,7 @@ import { TextPreview, vocab } from "@/ui";
 
 const MAX_FILE_LINES = 40;
 
-function FilePreview({ tool, onOpenView }: ToolPreviewProps) {
+function FilePreview({ tool }: ToolPreviewProps) {
   const { data: lines } = useFileToolPreview(tool, MAX_FILE_LINES);
   return (
     <TextPreview>
@@ -24,7 +23,6 @@ function FilePreview({ tool, onOpenView }: ToolPreviewProps) {
           </div>
         ))}
       </div>
-      <PreviewFoot label="tools.preview.viewFile" onClick={onOpenView} />
     </TextPreview>
   );
 }

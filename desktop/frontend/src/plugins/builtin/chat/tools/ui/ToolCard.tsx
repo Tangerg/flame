@@ -80,29 +80,52 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
           )}
         </>
       }
-      actions={actions.map((action) => (
-        <IconButton
-          key={action.id}
-          data-reveal="hover"
-          icon={knownIconName(action.icon) ?? "tool"}
-          size="xs"
-          quiet
-          title={t(action.title)}
-          onClick={(event) => {
-            event.stopPropagation();
-            void Promise.resolve(action.run(tool)).catch((err) => {
-              const owner = lookupToolActionOwner(action.id) ?? "unknown";
-              console.error(`[plugin] tool action ${action.id} threw:`, err);
-              reportPluginError(owner, "command", err, `tool action: ${action.id}`);
-            });
-          }}
-          className={stylex.props(reveal.shown).className}
-        />
-      ))}
+      // An ARRAY, never a fragment: the slot renders on `Children.count`, and a fragment counts
+      // as one child however empty it is — which would hang ten pixels of padding off the right
+      // of every row that has no action at all.
+      actions={[
+        ...actions.map((action) => (
+          <IconButton
+            key={action.id}
+            data-reveal="hover"
+            icon={knownIconName(action.icon) ?? "tool"}
+            size="xs"
+            quiet
+            title={t(action.title)}
+            onClick={(event) => {
+              event.stopPropagation();
+              void Promise.resolve(action.run(tool)).catch((err) => {
+                const owner = lookupToolActionOwner(action.id) ?? "unknown";
+                console.error(`[plugin] tool action ${action.id} threw:`, err);
+                reportPluginError(owner, "command", err, `tool action: ${action.id}`);
+              });
+            }}
+            className={stylex.props(reveal.shown).className}
+          />
+        )),
+        ...(onOpenView
+          ? [
+              <IconButton
+                key="open-view"
+                data-reveal="hover"
+                data-slot="tool-open-view"
+                icon="panel-r"
+                size="xs"
+                quiet
+                title={t("workspace.view.openBeside")}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpenView();
+                }}
+                className={stylex.props(reveal.shown).className}
+              />,
+            ]
+          : []),
+      ]}
       open={expanded}
       onToggle={onToggleExpand}
     >
-      <ToolPreview tool={tool} onOpenView={onOpenView} />
+      <ToolPreview tool={tool} />
     </AgentActivityDisclosure>
   );
 }
