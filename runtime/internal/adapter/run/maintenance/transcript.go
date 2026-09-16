@@ -118,7 +118,11 @@ func renderToolResults(msg chat.Message, budget int) string {
 	if kept < len(headers) {
 		fmt.Fprintf(&rendered, "(%d results elided)\n", len(headers)-kept)
 	}
-	return rendered.String()
+	// Keeping a header whole is the rule inside a budget that can hold one. A
+	// budget too small for even the first header keeps none, so the only thing
+	// left to bound is the note — and every message owes the transcript its
+	// equal share, or one of them silently spends a later message's.
+	return capText(rendered.String(), budget)
 }
 
 func transcriptValues(msg chat.Message) []string {

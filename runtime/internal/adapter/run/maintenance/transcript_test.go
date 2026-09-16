@@ -144,3 +144,33 @@ func TestToolResultsThatDoNotFitAreCountedNotHalfWritten(t *testing.T) {
 		}
 	}
 }
+
+// TestToolResultsNeverSpendAnotherMessagesShare pins the allocation rule the
+// whole-transcript cap depends on. renderTranscript gives every message an
+// equal slice; a tool message that returns more than its own budget makes the
+// final cap cut a later message off entirely instead of degrading each evenly.
+func TestToolResultsNeverSpendAnotherMessagesShare(t *testing.T) {
+	parts := make([]chat.Part, 0, 4)
+	for index := range 4 {
+		parts = append(parts, chat.Part{
+			Kind: chat.PartToolResult,
+			ToolResult: &chat.ToolResult{
+				ID: fmt.Sprintf("call_%d", index), Name: "shell", IsError: true,
+				Output: chat.NewTextToolOutput("output"),
+			},
+		})
+	}
+	message := chat.Message{Role: chat.RoleTool, Parts: parts}
+
+	for _, budget := range []int{1, 8, 26, 64, 200, 4096} {
+		rendered := renderTranscriptMessage(message, budget)
+		if len(rendered) > budget {
+			t.Fatalf("budget %d rendered %d bytes: %q", budget, len(rendered), rendered)
+		}
+		for _, line := range strings.Split(strings.TrimSpace(rendered), "\n") {
+			if strings.Contains(line, "[result ") && !strings.Contains(line, "error=") {
+				t.Fatalf("budget %d wrote a header without its error status: %q", budget, line)
+			}
+		}
+	}
+}
