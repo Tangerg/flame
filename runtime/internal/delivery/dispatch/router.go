@@ -2,6 +2,7 @@ package dispatch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"iter"
 	"reflect"
@@ -18,11 +19,11 @@ type Router struct {
 }
 
 // New builds a Router over the canonical Runtime Delivery Endpoint.
-func New(endpoint *delivery.Endpoint) *Router {
+func New(endpoint *delivery.Endpoint) (*Router, error) {
 	if endpoint == nil {
-		panic("dispatch: nil delivery endpoint")
+		return nil, errors.New("dispatch: delivery endpoint is required")
 	}
-	return &Router{endpoint: endpoint}
+	return &Router{endpoint: endpoint}, nil
 }
 
 // Result holds the JSON-RPC reply and optional stream frames for one envelope.

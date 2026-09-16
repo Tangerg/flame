@@ -714,3 +714,23 @@ func (d delegateTreeResult) assertAllRunsCompleted(t *testing.T) {
 		}
 	}
 }
+
+// TestInteractionPolicyRefusesToolConcurrencyTheFrameworkCannotHold pins the
+// range check that lets the tree-limit conversions downstream be conversions.
+// MaxActiveChildren is a uint32; without the refusal a host limit above that
+// range wraps to a smaller one, and the executor would quietly run a narrower
+// concurrency than it was told to.
+func TestInteractionPolicyRefusesToolConcurrencyTheFrameworkCannotHold(t *testing.T) {
+	beyondRange := math.MaxUint32 + 1
+	if _, err := newInteractionExecutionPolicy(InteractionExecutorConfig{
+		MaxConcurrentToolCalls: &beyondRange,
+	}); err == nil {
+		t.Fatal("policy accepted a Tool concurrency outside the Framework tree-limit range")
+	}
+	policy, err := newInteractionExecutionPolicy(InteractionExecutorConfig{
+		MaxConcurrentToolCalls: intPointer(math.MaxUint32),
+	})
+	if err != nil || policy.maxConcurrentToolCalls != math.MaxUint32 {
+		t.Fatalf("policy at the exact range boundary = (%d, %v)", policy.maxConcurrentToolCalls, err)
+	}
+}

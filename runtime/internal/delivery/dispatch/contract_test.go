@@ -26,6 +26,15 @@ func newOperationEndpoint(t *testing.T, target any) *delivery.Endpoint {
 	return endpoint
 }
 
+func newTestRouter(t *testing.T, target any) *Router {
+	t.Helper()
+	router, err := New(newOperationEndpoint(t, target))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return router
+}
+
 func (c *capabilityRuntime) Discover(context.Context) (*protocol.DiscoverResponse, error) {
 	advertised := make(map[string]protocol.FeatureCapability, len(c.features))
 	for name, enabled := range c.features {
@@ -57,7 +66,7 @@ func (c *capabilityRuntime) RollbackSession(context.Context, protocol.RollbackSe
 
 func call(t *testing.T, features map[string]bool, method, params string) *transport.Response {
 	t.Helper()
-	d := New(newOperationEndpoint(t, &capabilityRuntime{features: features}))
+	d := newTestRouter(t, &capabilityRuntime{features: features})
 	res := d.Dispatch(t.Context(), &transport.Request{
 		ID: testID("1"), Method: method, Params: json.RawMessage(params),
 	})

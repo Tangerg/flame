@@ -137,13 +137,17 @@ func NewServer(cfg Config) (*Server, error) {
 	if serverID == "" {
 		serverID = cfg.ServerInfo.Name + "/" + cfg.ServerInfo.Version
 	}
+	router, err := dispatch.New(cfg.Endpoint)
+	if err != nil {
+		return nil, err
+	}
 	handlerCtx, stopHandlers := context.WithCancel(context.Background())
 	s := &Server{
 		serverID:     serverID,
 		localToken:   cfg.LocalToken,
 		corsOrigins:  slices.Clone(cfg.CORSOrigins),
 		healthProbes: newHealthProbeRunners(cfg.HealthProbes),
-		router:       dispatch.New(cfg.Endpoint),
+		router:       router,
 		handlerCtx:   handlerCtx,
 		stopHandlers: stopHandlers,
 		info:         newInfoResponse(cfg.ServerInfo, cfg.ProtocolVersion),

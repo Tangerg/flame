@@ -79,26 +79,33 @@ func (i *interactionSession) continuedDelegateTools() []runs.ExecutorEvent {
 		calls = append(calls, managed)
 	}
 	i.state.mu.Unlock()
-	var events []runs.ExecutorEvent
+	type reopenedTool struct {
+		member runs.ExecutorMember
+		start  runs.ToolCallStarted
+	}
+	var reopened []reopenedTool
 	for _, managed := range calls {
 		managed.mu.Lock()
 		finished := managed.parentToolFinished
 		parent, start := managed.parentRelation, managed.toolStart()
 		managed.mu.Unlock()
 		if !finished {
-			events = append(events, runs.ExecutorEvent{Member: i.executorMember(parent), Payload: start})
+			reopened = append(reopened, reopenedTool{member: i.executorMember(parent), start: start})
 		}
 	}
-	slices.SortFunc(events, func(left, right runs.ExecutorEvent) int {
-		if parent := strings.Compare(left.Member.MemberID, right.Member.MemberID); parent != 0 {
+	slices.SortFunc(reopened, func(left, right reopenedTool) int {
+		if parent := strings.Compare(left.member.MemberID, right.member.MemberID); parent != 0 {
 			return parent
 		}
-		a, b := left.Payload.(runs.ToolCallStarted), right.Payload.(runs.ToolCallStarted)
-		if call := cmp.Compare(a.ModelCallSequence, b.ModelCallSequence); call != 0 {
+		if call := cmp.Compare(left.start.ModelCallSequence, right.start.ModelCallSequence); call != 0 {
 			return call
 		}
-		return cmp.Compare(a.ToolCallIndex, b.ToolCallIndex)
+		return cmp.Compare(left.start.ToolCallIndex, right.start.ToolCallIndex)
 	})
+	events := make([]runs.ExecutorEvent, len(reopened))
+	for index, value := range reopened {
+		events[index] = runs.ExecutorEvent{Member: value.member, Payload: value.start}
+	}
 	return events
 }
 

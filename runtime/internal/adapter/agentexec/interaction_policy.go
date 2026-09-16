@@ -3,6 +3,7 @@ package agentexec
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	agent "github.com/Tangerg/scope/agent"
@@ -59,6 +60,14 @@ func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactio
 	toolConcurrency, err := positiveOrDefault(config.MaxConcurrentToolCalls, defaultInteractionConcurrentToolCalls, "maximum concurrent Tool calls")
 	if err != nil {
 		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: Interaction policy: %w", err)
+	}
+	// Tool concurrency reaches the Framework as agent.TreeLimits.MaxActiveChildren,
+	// a uint32. Refusing the excess here is what lets every later conversion be a
+	// conversion rather than a silent wrap to a smaller limit.
+	if uint64(toolConcurrency) > math.MaxUint32 {
+		return interactionExecutionPolicy{}, errors.New(
+			"agentexec: Interaction policy: maximum concurrent Tool calls exceeds the Framework tree limit range",
+		)
 	}
 	unknownPoll, err := positiveOrDefault(config.UnknownEffectPollInterval, defaultUnknownEffectPollInterval, "unknown-Effect poll interval")
 	if err != nil {
