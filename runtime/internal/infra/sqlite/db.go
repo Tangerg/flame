@@ -22,6 +22,17 @@ import (
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 )
 
+// A column added to an existing database and the same column in a fresh one are
+// one definition. Spelling it twice lets a later edit leave migrated databases
+// under a constraint fresh ones no longer carry, which nothing would report.
+const (
+	modelInvocationLatencyColumn = "first_output_latency_millis INTEGER CHECK " +
+		"(first_output_latency_millis IS NULL OR " +
+		"(state IN ('completed', 'failed') AND first_output_latency_millis >= 0))"
+	modelInvocationUsageColumn = "usage TEXT CHECK " +
+		"(usage IS NULL OR (state = 'completed' AND json_valid(usage)))"
+)
+
 // Open dials a SQLite database at path and installs any missing objects from
 // the current schema. The returned *sql.DB is safe for concurrent use; callers
 // share it across every
@@ -192,8 +203,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			state       TEXT    NOT NULL,
 			started_at  INTEGER NOT NULL,
 			finished_at INTEGER NOT NULL DEFAULT 0,
-			first_output_latency_millis INTEGER CHECK (first_output_latency_millis IS NULL OR (state IN ('completed', 'failed') AND first_output_latency_millis >= 0)),
-			usage TEXT CHECK (usage IS NULL OR (state = 'completed' AND json_valid(usage))),
+			%[5]s,
+			%[6]s,
 			CHECK (state IN ('%[1]s', '%[2]s', '%[3]s', '%[4]s')),
 			CHECK (
 				(state = '%[1]s' AND finished_at = 0) OR
@@ -204,6 +215,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			modelInvocationCompleted.databaseValue(),
 			modelInvocationFailed.databaseValue(),
 			modelInvocationUnknown.databaseValue(),
+			modelInvocationLatencyColumn,
+			modelInvocationUsageColumn,
 		),
 		`DROP INDEX IF EXISTS idx_model_invocations_run`,
 		`CREATE INDEX IF NOT EXISTS idx_model_invocations_trajectory
@@ -777,7 +790,9 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("sqlite: inspect model invocation schema: %w", err)
 	}
 	if usageColumn == 0 {
-		if _, err := tx.ExecContext(ctx, "ALTER TABLE model_invocations ADD COLUMN usage TEXT CHECK (usage IS NULL OR (state = 'completed' AND json_valid(usage)))"); err != nil {
+		if _, err := tx.ExecContext(ctx,
+			"ALTER TABLE model_invocations ADD COLUMN "+modelInvocationUsageColumn,
+		); err != nil {
 			return fmt.Errorf("sqlite: add model invocation usage: %w", err)
 		}
 	}
@@ -786,7 +801,9 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("sqlite: inspect model invocation latency schema: %w", err)
 	}
 	if latencyColumn == 0 {
-		if _, err := tx.ExecContext(ctx, "ALTER TABLE model_invocations ADD COLUMN first_output_latency_millis INTEGER CHECK (first_output_latency_millis IS NULL OR (state IN ('completed', 'failed') AND first_output_latency_millis >= 0))"); err != nil {
+		if _, err := tx.ExecContext(ctx,
+			"ALTER TABLE model_invocations ADD COLUMN "+modelInvocationLatencyColumn,
+		); err != nil {
 			return fmt.Errorf("sqlite: add model invocation latency: %w", err)
 		}
 	}
