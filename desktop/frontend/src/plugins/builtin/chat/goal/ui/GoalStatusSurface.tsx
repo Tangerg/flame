@@ -194,7 +194,6 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
           <IconButton
             type="button"
             size="xs"
-            iconSize="xs"
             icon="trash"
             quiet
             title={t("goal.action.clear")}
@@ -206,7 +205,6 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             <IconButton
               type="button"
               size="xs"
-              iconSize="xs"
               icon={goal.status === "active" ? "pause" : "play"}
               quiet
               title={t(goal.status === "active" ? "goal.action.pause" : "goal.action.resume")}
@@ -219,7 +217,6 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             <IconButton
               type="button"
               size="xs"
-              iconSize="xs"
               icon="edit"
               quiet
               title={t("goal.action.edit")}

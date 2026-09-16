@@ -71,7 +71,7 @@ export function NotificationsBadge() {
           trailing={
             <IconButton
               icon="trash"
-              iconSize="sm"
+              size="sm"
               title={t("notifications.clearAll")}
               disabled={log.length === 0}
               onClick={clearAll}
@@ -101,7 +101,7 @@ export function NotificationsBadge() {
               {!entry.dismissed && (
                 <IconButton
                   icon="x"
-                  iconSize="xs"
+                  size="xs"
                   title={t("notifications.dismiss")}
                   onClick={() => dismiss(entry.id)}
                 />

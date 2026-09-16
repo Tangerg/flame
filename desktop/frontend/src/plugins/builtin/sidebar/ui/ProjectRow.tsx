@@ -41,7 +41,6 @@ export function ProjectRow({
         <IconButton
           icon="plus"
           size="sm"
-          iconSize="xs"
           data-chrome-focus=""
           aria-label={t("project.row.newSession", { name: project.name })}
           disabled={!canCreateSession}

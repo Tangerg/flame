@@ -119,7 +119,6 @@ export function TextEditorDialog({
                 <IconButton
                   icon="x"
                   size="xs"
-                  iconSize="xs"
                   quiet
                   title={closeLabel}
                   {...stylex.props(styles.close)}

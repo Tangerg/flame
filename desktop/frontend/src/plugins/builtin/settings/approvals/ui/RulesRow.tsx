@@ -115,7 +115,6 @@ export function RulesRow() {
                 </span>
                 <IconButton
                   icon="x"
-                  iconSize="sm"
                   size="xs"
                   quiet
                   className={stylex.props(vocab.hold).className}

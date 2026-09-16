@@ -140,7 +140,6 @@ export function RunErrorBanner() {
           </div>
           <IconButton
             icon="x"
-            iconSize="xs"
             size="xs"
             quiet
             title={t("runError.action.dismiss")}

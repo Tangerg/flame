@@ -128,7 +128,6 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
           <IconButton
             icon="edit"
             size="sm"
-            iconSize="sm"
             active={editing}
             title={t("mcp.edit", { server: server.name })}
             aria-expanded={editing}

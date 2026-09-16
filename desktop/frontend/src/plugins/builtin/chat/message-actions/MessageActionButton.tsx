@@ -31,7 +31,6 @@ export function MessageActionButton({ role, className, ...props }: MessageAction
   return (
     <IconButton
       {...props}
-      iconSize="sm"
       size="sm"
       quiet
       round={isUser}
