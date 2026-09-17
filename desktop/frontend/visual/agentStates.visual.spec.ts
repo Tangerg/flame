@@ -1838,3 +1838,71 @@ test("large command output stays fully readable inside the tool card", async ({ 
   await expect(output).toHaveCount(0);
   await expect(command.locator("[data-output-line]")).toHaveCount(9);
 });
+
+// The glimpse is only reachable by collapsing a reasoning row that is still streaming, which no
+// fixture state does on its own — so it shipped with no coverage at all. Both halves are held
+// here: that the line reports the NEWEST words, and that the lead only softens a real cut.
+test("a collapsed live reasoning row glimpses its newest line, softened only where it is cut", async ({
+  page,
+}) => {
+  await page.goto("/visual/?fixture=agent&state=answer-opening&theme=light");
+  await page.locator("html[data-visual-ready]").waitFor();
+
+  const row = page
+    .locator('[data-slot="agent-activity-disclosure"]')
+    .filter({ hasText: "Thinking" })
+    .first();
+  await row.getByRole("button", { expanded: true }).click();
+
+  const glimpse = page.locator('[data-slot="reasoning-glimpse"]');
+  await expect(glimpse).toBeVisible();
+  // This fixture's thought really does run past the row, so the cut is real and softened.
+  await expect(glimpse).toHaveAttribute("data-clipped", "");
+
+  // Drive the line through the near-miss: `flex-end` puts its first pixel at `container - line`,
+  // so a line that merely APPROACHES the full width used to start inside a constant lead and
+  // ghost an opening that fits. Widths come back with the lead the observer settled on.
+  const measured = await glimpse.evaluate(async (box) => {
+    const line = box.firstElementChild as HTMLElement;
+    const original = line.textContent;
+    const settle = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    // Steps back off the overshoot: one "m" is wider than the margin the near-miss case needs to
+    // land in, so growing until `>= target` can sail past the box edge and stop being a near miss.
+    const grow = async (target: number) => {
+      let text = "M";
+      line.textContent = text;
+      while (line.offsetWidth < target && text.length < 3000) {
+        text += "m";
+        line.textContent = text;
+        if (line.offsetWidth > target) {
+          text = text.slice(0, -1);
+          line.textContent = text;
+          break;
+        }
+      }
+      await settle();
+      return {
+        fits: line.offsetWidth <= box.clientWidth,
+        width: line.offsetWidth,
+        box: box.clientWidth,
+        lead: box.style.getPropertyValue("--glimpse-lead"),
+      };
+    };
+    const nearMiss = await grow(box.clientWidth - 10);
+    const overflowing = await grow(box.clientWidth + 120);
+    line.textContent = original;
+    return { nearMiss, overflowing };
+  });
+
+  expect(measured.nearMiss.fits, "the near-miss case has to actually fit to be worth testing").toBe(
+    true,
+  );
+  expect(measured.nearMiss.lead, "a line that fits is not being cut, so nothing to soften").toBe(
+    "0px",
+  );
+  expect(measured.overflowing.fits).toBe(false);
+  expect(
+    measured.overflowing.lead,
+    "a line wider than its row is cut, and the cut is softened",
+  ).toBe("24px");
+});

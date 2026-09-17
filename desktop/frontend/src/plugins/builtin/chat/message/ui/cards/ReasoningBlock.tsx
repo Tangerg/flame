@@ -31,8 +31,12 @@ const rb = stylex.create({
    * anchored the usual way would sit still for a minute and report nothing.
    *
    * A non-shrinking child in a flex box that packs to the end spills over its start edge, where
-   * the mask takes it — no measuring, because a line short enough to fit leaves that edge empty
-   * and the mask falls on nothing.
+   * the mask takes it. The lead is zero until it has something to soften: this used to be a
+   * constant on the theory that a line short enough to fit leaves the start edge empty, which is
+   * only true with room to spare. `flex-end` puts the line's first pixel at `container - line`,
+   * so any line within the lead of filling the row starts INSIDE the ramp — measured 13.3px in
+   * at 656px of 670, and 1.9px in at 668. The line grows a token at a time, so every one of them
+   * crosses that window on its way to overflowing and ghosts its own opening on the way through.
    */
   glimpse: {
     display: "flex",
@@ -40,8 +44,8 @@ const rb = stylex.create({
     flex: 1,
     justifyContent: "flex-end",
     overflow: "hidden",
-    maskImage: `linear-gradient(to right, transparent 0, #000 ${GLIMPSE_LEAD})`,
-    WebkitMaskImage: `linear-gradient(to right, transparent 0, #000 ${GLIMPSE_LEAD})`,
+    maskImage: `linear-gradient(to right, transparent 0, #000 var(--glimpse-lead, 0px))`,
+    WebkitMaskImage: `linear-gradient(to right, transparent 0, #000 var(--glimpse-lead, 0px))`,
   },
   glimpseLine: { flexShrink: 0, whiteSpace: "nowrap" },
   // Two alignments the row already decides, rather than none.
@@ -125,6 +129,24 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
   // would be repeating its own first line back at the reader.
   const glimpse = streaming && !isOpen ? currentThought(text) : undefined;
 
+  // Whether the line is actually being cut, which is the only time the lead has anything to
+  // soften. Observed rather than derived from `text`: the width changes on a token that adds no
+  // line, and a resize moves the boundary with no new token at all.
+  const glimpseBoxRef = useRef<HTMLSpanElement>(null);
+  const glimpseLineRef = useRef<HTMLSpanElement>(null);
+  const [glimpseClipped, setGlimpseClipped] = useState(false);
+  useEffect(() => {
+    const box = glimpseBoxRef.current;
+    const line = glimpseLineRef.current;
+    if (!box || !line) return;
+    const read = () => setGlimpseClipped(line.offsetWidth > box.clientWidth);
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(box);
+    ro.observe(line);
+    return () => ro.disconnect();
+  }, [glimpse]);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ scrolled: false, atBottom: true, overflowing: false });
@@ -183,8 +205,17 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
         glimpse && (
           // Not announced: `RunAnnouncer` owns what the run is doing, and a line that changes
           // on every token would talk over it.
-          <span data-slot="reasoning-glimpse" aria-hidden {...stylex.props(rb.glimpse)}>
-            <span {...stylex.props(rb.glimpseLine, vocab.faint)}>{glimpse}</span>
+          <span
+            ref={glimpseBoxRef}
+            data-slot="reasoning-glimpse"
+            data-clipped={glimpseClipped ? "" : undefined}
+            aria-hidden
+            style={{ "--glimpse-lead": glimpseClipped ? GLIMPSE_LEAD : "0px" } as CSSProperties}
+            {...stylex.props(rb.glimpse)}
+          >
+            <span ref={glimpseLineRef} {...stylex.props(rb.glimpseLine, vocab.faint)}>
+              {glimpse}
+            </span>
           </span>
         )
       }
