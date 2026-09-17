@@ -1353,7 +1353,11 @@ test("a chosen typeface reaches the controls, not only the text that inherits", 
       return { body: family("body"), control: family("button"), code: family(".shiki-block") };
     });
 
-  expect(await faces()).toEqual({ body: "Geist", control: "Geist", code: "JetBrains Mono" });
+  expect(await faces()).toEqual({
+    body: "-apple-system",
+    control: "-apple-system",
+    code: "JetBrains Mono",
+  });
 
   await page.evaluate(() => {
     document.documentElement.style.setProperty("--font-sans", '"Times New Roman", serif');

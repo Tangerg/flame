@@ -188,14 +188,6 @@
 }
 
 @font-face {
-  font-family: "Geist";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 100 900;
-  src: url("/fonts/geist.woff2") format("woff2-variations");
-}
-
-@font-face {
   font-family: "JetBrains Mono";
   font-style: normal;
   font-display: swap;
@@ -223,13 +215,13 @@
    emit the literal stack — Settings → Font could only ever have reached text inheriting from
    `html`. With no utilities left to compile into, that distinction has nothing to protect. */
 :root {
-  /* `-apple-system` resolves in WebKit only and `BlinkMacSystemFont` in Chromium only, so the
-     pair is one entry that happens to need two spellings — measured, along with "SF Pro Text",
-     which resolved in NEITHER engine and was removed. macOS exposes SF to web content through
-     those keywords, never by family name. */
+  /* The platform's own text face, which is what the reference this design follows resolves to.
+     `-apple-system` answers in WebKit only and `BlinkMacSystemFont` in Chromium only — measured,
+     in both engines — so the pair is ONE entry that needs two spellings, not redundancy to tidy
+     away. macOS exposes SF to web content through those keywords, never by family name. */
   --font-sans:
-    "Geist", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", system-ui,
-    "Segoe UI", "Microsoft YaHei", sans-serif;
+    -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", system-ui, "Segoe UI",
+    "Microsoft YaHei", sans-serif;
   --font-mono:
     "JetBrains Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Code", Consolas,
     monospace;

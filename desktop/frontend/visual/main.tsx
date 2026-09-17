@@ -208,7 +208,7 @@ createRoot(container).render(
   </QueryClientProvider>,
 );
 
-const FIXTURE_FACES = ['1rem "Geist"', '1rem "JetBrains Mono"'];
+const FIXTURE_FACES = ['1rem "JetBrains Mono"'];
 
 function shellArrived(deadlineMs: number): Promise<void> {
   return new Promise((resolve) => {

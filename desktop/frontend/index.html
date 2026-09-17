@@ -44,10 +44,9 @@
     <!-- Focus-ring modality. One file, because the visual harness has its own entry and
          needs the identical behaviour — see public/focus-modality.js. -->
     <script src="/focus-modality.js"></script>
-    <!-- Fonts are bundled variable subsets served from /fonts — see
-         globals.css. Preloaded because both faces are on the very first frame:
-         without this the window paints once in the CJK fallback and reflows. -->
-    <link rel="preload" href="/fonts/geist.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- The one bundled face left: sans comes from the platform now, so only the code face
+         is a download. Preloaded because it is on the very first frame — without this the
+         window paints once in the fallback mono and reflows. -->
     <link
       rel="preload"
       href="/fonts/jetbrains-mono.woff2"
