@@ -608,7 +608,8 @@
             "startedAt": false,
             "status": {
               "enum": [
-                "completed"
+                "completed",
+                "incomplete"
               ]
             },
             "summary": false,
@@ -642,7 +643,8 @@
             "startedAt": false,
             "status": {
               "enum": [
-                "completed"
+                "completed",
+                "incomplete"
               ]
             },
             "summary": false,
@@ -3553,7 +3555,8 @@
             "status": {
               "enum": [
                 "running",
-                "completed"
+                "completed",
+                "incomplete"
               ]
             },
             "summary": false,
@@ -3586,7 +3589,8 @@
             "status": {
               "enum": [
                 "running",
-                "completed"
+                "completed",
+                "incomplete"
               ]
             },
             "summary": false,
@@ -3816,6 +3820,49 @@
             "properties": {
               "status": {
                 "const": "completed"
+              },
+              "type": {
+                "const": "reasoning"
+              }
+            },
+            "required": [
+              "status",
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "text"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "incomplete"
+              },
+              "type": {
+                "const": "agentMessage"
+              }
+            },
+            "required": [
+              "status",
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "content",
+              "phase"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "incomplete"
               },
               "type": {
                 "const": "reasoning"

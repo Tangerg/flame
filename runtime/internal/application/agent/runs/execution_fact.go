@@ -165,11 +165,19 @@ type ModelCallCompleted struct {
 	ContextTokens int64
 }
 
-// ModelCallFailed closes a provider attempt whose failure is definite. It has
-// no semantic assistant output or usage. If this fact itself cannot be durably
-// committed after the provider was called, the dispatcher must instead leave
+// ModelObservation retains validated visible output without asserting a complete
+// response. It never contains executable calls or canonical continuation state.
+type ModelObservation struct {
+	Text      string
+	Reasoning string
+}
+
+// ModelCallFailed closes a provider attempt whose failure is definite. Its
+// observation is incomplete transcript content, not assistant output or usage.
+// If this fact cannot be durably committed, the dispatcher must instead leave
 // the invocation open and reconcile the Effect as unknown.
 type ModelCallFailed struct {
+	Observation ModelObservation
 	executionFactBase
 	FirstOutputLatencyMillis *int64
 	CallID                   string

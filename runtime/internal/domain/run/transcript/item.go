@@ -108,6 +108,17 @@ func NewReasoning(identity ItemIdentity, text string, redacted bool) (Item, erro
 	})
 }
 
+// NewIncompleteAgentMessage retains visible output from an unfinished response.
+func NewIncompleteAgentMessage(identity ItemIdentity, text string) (Item, error) {
+	return RestoreItem(ItemSnapshot{Identity: identity, Status: ItemIncomplete, Kind: AgentMessage,
+		MessagePhase: MessageCommentary, Content: []ContentBlock{{Kind: TextContent, Text: text}}})
+}
+
+// NewIncompleteReasoning retains visible reasoning without provider replay state.
+func NewIncompleteReasoning(identity ItemIdentity, text string) (Item, error) {
+	return RestoreItem(ItemSnapshot{Identity: identity, Status: ItemIncomplete, Kind: Reasoning, Text: text})
+}
+
 // NewQuestion constructs the complete prompt fact for one pending question.
 // Whether it still awaits an answer belongs to the root-owned Pending set, not
 // to a second lifecycle on the transcript Item.
@@ -338,9 +349,9 @@ func (i Item) validate() error {
 	default:
 		return fmt.Errorf("transcript: unknown Item kind %q", i.kind)
 	}
-	// Only a ToolCall has a lifecycle of its own. Every other kind exists only
-	// as a settled fact, so its status is not a variant-by-variant question.
-	if i.kind != ToolCall && i.status != ItemCompleted {
+	// Visible model observations can settle incomplete without becoming a response.
+	if i.kind != ToolCall && i.status != ItemCompleted &&
+		!(i.status == ItemIncomplete && (i.kind == AgentMessage || i.kind == Reasoning)) {
 		return fmt.Errorf("transcript: %s must be complete", i.kind)
 	}
 	return i.rejectDisallowedPayload()

@@ -141,8 +141,7 @@ func TestItemValidateOwnsPayloadInvariants(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	// Only a ToolCall has a lifecycle of its own; every other kind exists only
-	// as a settled fact. One rule, so one table over the kinds it governs.
+	// Visible model observations may settle incomplete; running anchors are never stored.
 	settled := map[transcript.ItemKind]transcript.ItemSnapshot{
 		transcript.UserMessage: {
 			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
@@ -170,7 +169,7 @@ func TestItemValidateOwnsPayloadInvariants(t *testing.T) {
 			}{
 				name:     string(kind) + " " + string(status),
 				snapshot: snapshot,
-				wantErr:  status != transcript.ItemCompleted,
+				wantErr:  status != transcript.ItemCompleted && !(status == transcript.ItemIncomplete && (kind == transcript.AgentMessage || kind == transcript.Reasoning)),
 			})
 		}
 	}

@@ -83,7 +83,9 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	}
 	effectiveArguments, denied, denialReason, prepareErr := o.prepare(ctx, callID, call.Name, arguments)
 	if prepareErr != nil {
-		return corechat.ToolOutput{}, prepareErr
+		if _, known := errors.AsType[*toolcontract.Failure](prepareErr); !known || errors.Is(prepareErr, interaction.ErrHostFailure) {
+			return corechat.ToolOutput{}, prepareErr
+		}
 	}
 	arguments = effectiveArguments
 
@@ -101,7 +103,9 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	var output corechat.ToolOutput
 	var callErr error
 	var mutatedPaths []string
-	if denied {
+	if prepareErr != nil {
+		callErr = prepareErr
+	} else if denied {
 		failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
 			Kind: toolcontract.FailureKindRejected, Output: corechat.NewTextToolOutput(denialReason),
 		})
@@ -118,7 +122,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		})
 		output, callErr = o.invoke(ctx, corechat.ToolCall{
 			ID: call.ID, Name: call.Name, Arguments: rawArguments,
-		})
+		}, arguments)
 	}
 
 	if errors.Is(callErr, interaction.ErrHostFailure) {
@@ -171,6 +175,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 func (o *observedInteractionTool) invoke(
 	ctx context.Context,
 	call corechat.ToolCall,
+	arguments tool.Arguments,
 ) (corechat.ToolOutput, error) {
 	bound, err := o.binding.Contract().Prepare(call)
 	if err != nil {
@@ -183,6 +188,11 @@ func (o *observedInteractionTool) invoke(
 			return corechat.ToolOutput{}, failureErr
 		}
 		return corechat.ToolOutput{}, failure
+	}
+	if o.interpreter.UsesStandardPolicy(call.Name) {
+		if _, err := o.approvalSubject(call.Name, arguments); err != nil {
+			return corechat.ToolOutput{}, err
+		}
 	}
 	return o.binding.Call(ctx, bound)
 }
@@ -305,7 +315,7 @@ func (o *observedInteractionTool) prepare(
 	}
 	request, err := o.authorizationRequest(callID, name, arguments, forceApproval)
 	if err != nil {
-		return tool.Arguments{}, false, "", err
+		return arguments, false, "", err
 	}
 	decision, err := o.authorizer.AuthorizeTool(ctx, request)
 	if err != nil {
@@ -323,15 +333,34 @@ func (o *observedInteractionTool) prepare(
 	return arguments, false, "", nil
 }
 
+func (o *observedInteractionTool) approvalSubject(name string, arguments tool.Arguments) (string, error) {
+	subject, err := o.interpreter.ApprovalSubject(name, arguments)
+	if err != nil {
+		cause := fmt.Errorf("agentexec: derive Tool %q approval subject: %w", name, err)
+		if errors.Is(err, tool.ErrInvalidArguments) {
+			failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{
+				Kind: toolcontract.FailureKindFailed, Cause: cause,
+				Output: corechat.NewTextToolOutput("invalid effective arguments: " + executorDiagnostic(cause)),
+			})
+			if failureErr != nil {
+				return "", interaction.HostFailure(failureErr)
+			}
+			return "", failure
+		}
+		return "", interaction.HostFailure(cause)
+	}
+	return subject, nil
+}
+
 func (o *observedInteractionTool) authorizationRequest(
 	callID string,
 	name string,
 	arguments tool.Arguments,
 	requireApproval bool,
 ) (ToolAuthorizationRequest, error) {
-	subject, err := o.interpreter.ApprovalSubject(name, arguments)
+	subject, err := o.approvalSubject(name, arguments)
 	if err != nil {
-		return ToolAuthorizationRequest{}, interaction.HostFailure(fmt.Errorf("agentexec: derive Tool %q approval subject: %w", name, err))
+		return ToolAuthorizationRequest{}, err
 	}
 	autoApproved := false
 	if o.session.mcpToolAutoApproved != nil {
@@ -408,7 +437,7 @@ func (o *observedInteractionTool) resumePreparedTool(
 	}
 	request, err := o.authorizationRequest(callID, name, arguments, false)
 	if err != nil {
-		return tool.Arguments{}, false, "", err
+		return arguments, false, "", err
 	}
 	return o.resolveToolApproval(ctx, request, prompt, continued.Resolution)
 }

@@ -1345,13 +1345,13 @@ func TestItemStatusesMatchTheirLifecycleOwners(t *testing.T) {
 			shape: "Item", field: "status",
 			value: Item{ID: "item_user", RunID: "run_1", Status: ItemStatusRunning, Type: ItemTypeUserMessage, CreatedAt: at, Content: content},
 		}, {
-			name:  "agent message has no incomplete durable state",
-			shape: "Item", field: "status",
-			value: Item{ID: "item_agent", RunID: "run_1", Status: ItemStatusIncomplete, Type: ItemTypeAgentMessage, CreatedAt: at, Phase: MessagePhaseCommentary, Content: content},
+			name:  "incomplete agent message requires content",
+			shape: "Item", field: "content",
+			value: Item{ID: "item_agent", RunID: "run_1", Status: ItemStatusIncomplete, Type: ItemTypeAgentMessage, CreatedAt: at, Phase: MessagePhaseCommentary},
 		}, {
-			name:  "reasoning has no incomplete durable state",
-			shape: "Item", field: "status",
-			value: Item{ID: "item_reasoning", RunID: "run_1", Status: ItemStatusIncomplete, Type: ItemTypeReasoning, CreatedAt: at, Text: "thinking"},
+			name:  "incomplete reasoning requires observed text",
+			shape: "Item", field: "text",
+			value: Item{ID: "item_reasoning", RunID: "run_1", Status: ItemStatusIncomplete, Type: ItemTypeReasoning, CreatedAt: at},
 		}, {
 			name:  "question is a complete prompt fact",
 			shape: "Item", field: "status",

@@ -162,6 +162,35 @@ func (r *reducer) closeStreaming(phase transcript.MessagePhase) ([]ProjectionEve
 	return append(reasoning, message...), nil
 }
 
+func (r *reducer) failModelObservation(observation ModelObservation) ([]ProjectionEvent, error) {
+	var events []ProjectionEvent
+	for _, visible := range []struct {
+		text      string
+		stream    *openText
+		kind      transcript.ItemKind
+		construct func(transcript.ItemIdentity, string) (transcript.Item, error)
+	}{
+		{observation.Reasoning, r.reasoning, transcript.Reasoning, transcript.NewIncompleteReasoning},
+		{observation.Text, r.text, transcript.AgentMessage, transcript.NewIncompleteAgentMessage},
+	} {
+		if visible.text == "" {
+			continue
+		}
+		stream, started, err := r.openTextStream(visible.stream, visible.kind)
+		if err != nil {
+			return nil, err
+		}
+		item, err := visible.construct(stream.itemIdentity(), visible.text)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, started...)
+		events = append(events, ItemCompleted{Item: item})
+	}
+	r.text, r.reasoning = nil, nil
+	return events, nil
+}
+
 func (r *reducer) completeAssistantMessage(
 	message corechat.Message,
 	phase transcript.MessagePhase,

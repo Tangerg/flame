@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -72,5 +73,79 @@ func (m failedOutputModel) Stream(context.Context, *chat.Request) iter.Seq2[*cha
 			return
 		}
 		yield(nil, errors.New("provider stream failed"))
+	}
+}
+
+func TestFailedStreamRetainsPrefixWhenPreviewQueueIsFull(t *testing.T) {
+	emitted := make(chan struct{})
+	model := overflowingFailedModel{emitted: emitted}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: true})
+	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := executor.Release(context.Background(), ref); err != nil {
+			t.Error(err)
+		}
+	}()
+	session, err := executor.session(ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sequence, err := executor.Observe(t.Context(), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := executor.BeginRoot(t.Context(), ref); err != nil {
+		t.Fatal(err)
+	}
+	// Admit the provider, then stop consuming until all preview delivery has run.
+	start := <-session.lifetime.events
+	commit, ok := start.Payload.(runs.ExecutionFactCommit)
+	if !ok {
+		t.Fatalf("first event=%T", start.Payload)
+	}
+	commit.Complete(nil)
+	<-emitted
+	if err := session.engine.FlushDeltas(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	var failed []runs.ModelCallFailed
+	previews := 0
+	for event := range sequence {
+		if commit, ok := event.Payload.(runs.ExecutionFactCommit); ok {
+			event.Payload = commit.Fact()
+			commit.Complete(nil)
+		}
+		switch fact := event.Payload.(type) {
+		case runs.MessageDelta:
+			previews++
+		case runs.ModelCallFailed:
+			failed = append(failed, fact)
+		}
+	}
+	if previews >= 2048 || len(failed) != 1 || failed[0].Observation.Text != strings.Repeat("x", 2048) {
+		t.Fatalf("preview loss changed authoritative prefix: previews=%d failures=%+v", previews, failed)
+	}
+}
+
+type overflowingFailedModel struct{ emitted chan struct{} }
+
+func (overflowingFailedModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
+	return nil, errors.New("unexpected call")
+}
+func (m overflowingFailedModel) Stream(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return func(yield func(*chat.ResponseDelta, error) bool) {
+
+		for range 2048 {
+			if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("x")}}, nil) {
+				return
+			}
+		}
+		// Signal before the failure boundary waits for its authoritative receipt.
+		close(m.emitted)
+
+		yield(nil, errors.New("stream lost"))
 	}
 }

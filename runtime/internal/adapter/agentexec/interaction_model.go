@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -38,13 +39,13 @@ func (o *observedInteractionModel) Call(
 	}
 	response, err := o.model.Call(ctx, request)
 	if err != nil {
-		return response, o.finishFailedCall(ctx, invocation, attempt, callID, nil, err)
+		return response, o.finishFailedCall(ctx, invocation, attempt, callID, runs.ModelObservation{}, nil, err)
 	}
 	if response == nil {
-		return nil, o.finishFailedCall(ctx, invocation, attempt, callID, nil, errors.New("agentexec: model returned no response"))
+		return nil, o.finishFailedCall(ctx, invocation, attempt, callID, runs.ModelObservation{}, nil, errors.New("agentexec: model returned no response"))
 	}
 	if err := response.Validate(); err != nil {
-		return response, o.finishFailedCall(ctx, invocation, attempt, callID, nil, err)
+		return response, o.finishFailedCall(ctx, invocation, attempt, callID, runs.ModelObservation{}, nil, err)
 	}
 	if err := o.complete(ctx, invocation, callID, response, nil); err != nil {
 		attempt.recordProjectionFailure(err)
@@ -69,23 +70,35 @@ func (o *observedInteractionModel) Stream(
 			return
 		}
 		var accumulated corechat.ResponseAccumulator
+		var text, reasoning strings.Builder
+		observation := func() runs.ModelObservation {
+			return runs.ModelObservation{Text: text.String(), Reasoning: reasoning.String()}
+		}
 		var firstOutputLatencyMillis *int64
 		dispatchedAt := time.Now()
 		for chunk, streamErr := range o.streamer.Stream(ctx, request) {
 			if streamErr != nil {
-				yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, firstOutputLatencyMillis, streamErr))
+				yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, observation(), firstOutputLatencyMillis, streamErr))
 				return
 			}
 			receivedAt := time.Now()
 			if err := accumulated.Add(chunk); err != nil {
-				yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, firstOutputLatencyMillis, err))
+				yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, observation(), firstOutputLatencyMillis, err))
 				return
+			}
+			for _, part := range chunk.Parts {
+				switch part.Kind {
+				case corechat.PartDeltaText, corechat.PartDeltaRefusal:
+					text.WriteString(part.Text)
+				case corechat.PartDeltaReasoning:
+					reasoning.WriteString(part.Text)
+				}
 			}
 			if firstOutputLatencyMillis == nil && hasModelOutput(chunk) {
 				firstOutputLatencyMillis = new(receivedAt.Sub(dispatchedAt).Milliseconds())
 			}
 			if !yield(chunk, nil) {
-				if err := o.fail(ctx, invocation, callID, firstOutputLatencyMillis); err != nil {
+				if err := o.fail(ctx, invocation, callID, observation(), firstOutputLatencyMillis); err != nil {
 					attempt.recordProjectionFailure(err)
 				}
 				return
@@ -98,13 +111,14 @@ func (o *observedInteractionModel) Stream(
 				invocation,
 				attempt,
 				callID,
+				observation(),
 				firstOutputLatencyMillis,
 				responseErr,
 			))
 			return
 		}
 		if err := response.Validate(); err != nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, firstOutputLatencyMillis, err))
+			yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, observation(), firstOutputLatencyMillis, err))
 			return
 		}
 		if err := o.complete(ctx, invocation, callID, response, firstOutputLatencyMillis); err != nil {
@@ -119,10 +133,11 @@ func (o *observedInteractionModel) finishFailedCall(
 	invocation interaction.ModelInvocation,
 	attempt *dispatchAttempt,
 	callID string,
+	observation runs.ModelObservation,
 	firstOutputLatencyMillis *int64,
 	cause error,
 ) error {
-	projectionErr := o.fail(ctx, invocation, callID, firstOutputLatencyMillis)
+	projectionErr := o.fail(ctx, invocation, callID, observation, firstOutputLatencyMillis)
 	if projectionErr == nil {
 		if cause != nil {
 			o.session.modelFailures.record(invocation.Relation().ProcessID(), cause)
@@ -137,14 +152,18 @@ func (o *observedInteractionModel) fail(
 	ctx context.Context,
 	invocation interaction.ModelInvocation,
 	callID string,
+	observation runs.ModelObservation,
 	firstOutputLatencyMillis *int64,
 ) error {
 	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
 	defer cancel()
+	if err := o.session.flushDeltas(projectionCtx); err != nil {
+		return err
+	}
 	return o.session.commitFact(
 		projectionCtx,
 		o.session.executorMember(invocation.Relation()),
-		runs.ModelCallFailed{CallID: callID, FirstOutputLatencyMillis: firstOutputLatencyMillis},
+		runs.ModelCallFailed{CallID: callID, Observation: observation, FirstOutputLatencyMillis: firstOutputLatencyMillis},
 	)
 }
 
@@ -205,7 +224,9 @@ func (o *observedInteractionModel) complete(
 	// Agent owns Delta validation, ordering, buffering, and listener observation. Wait on its
 	// ordering barrier before committing the authoritative full response so an
 	// accepted stream increment can never reopen an Item after completion.
-	if err := o.session.flushDeltas(ctx); err != nil {
+	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
+	defer cancel()
+	if err := o.session.flushDeltas(projectionCtx); err != nil {
 		return err
 	}
 	fact, err := o.session.accounting.accountModelCall(invocation, callID, response)
@@ -213,8 +234,6 @@ func (o *observedInteractionModel) complete(
 		return err
 	}
 	fact.FirstOutputLatencyMillis = firstOutputLatencyMillis
-	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
-	defer cancel()
 	if err := o.session.commitFact(
 		projectionCtx, o.session.executorMember(invocation.Relation()), fact,
 	); err != nil {

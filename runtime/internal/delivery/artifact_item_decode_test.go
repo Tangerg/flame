@@ -297,9 +297,9 @@ func TestArtifactV17RejectsSyntheticLifecyclesForCompleteFacts(t *testing.T) {
 			},
 		},
 		{
-			name: "incomplete reasoning",
+			name: "running reasoning",
 			item: protocol.ArtifactItem{
-				Status: protocol.ItemStatusIncomplete, Type: protocol.ItemTypeReasoning, Text: "thought",
+				Status: protocol.ItemStatusRunning, Type: protocol.ItemTypeReasoning, Text: "thought",
 			},
 		},
 		{

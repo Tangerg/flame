@@ -500,7 +500,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         redacted: absent(),
         safetyClass: absent(),
         startedAt: absent(),
-        status: enumOf(["completed"]),
+        status: enumOf(["completed", "incomplete"]),
         summary: absent(),
         text: absent(),
         tool: absent(),
@@ -517,7 +517,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         question: absent(),
         safetyClass: absent(),
         startedAt: absent(),
-        status: enumOf(["completed"]),
+        status: enumOf(["completed", "incomplete"]),
         summary: absent(),
         tool: absent(),
         type: literal("reasoning"),
@@ -1458,7 +1458,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         redacted: absent(),
         safetyClass: absent(),
         startedAt: absent(),
-        status: enumOf(["running", "completed"]),
+        status: enumOf(["running", "completed", "incomplete"]),
         summary: absent(),
         text: absent(),
         tool: absent(),
@@ -1475,7 +1475,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         question: absent(),
         safetyClass: absent(),
         startedAt: absent(),
-        status: enumOf(["running", "completed"]),
+        status: enumOf(["running", "completed", "incomplete"]),
         summary: absent(),
         tool: absent(),
         type: literal("reasoning"),
@@ -1571,6 +1571,20 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ifThen(
       fields({
         status: literal("completed"),
+        type: literal("reasoning"),
+      }, ["status", "type"]),
+      fields({}, ["text"]),
+    ),
+    ifThen(
+      fields({
+        status: literal("incomplete"),
+        type: literal("agentMessage"),
+      }, ["status", "type"]),
+      fields({}, ["content", "phase"]),
+    ),
+    ifThen(
+      fields({
+        status: literal("incomplete"),
         type: literal("reasoning"),
       }, ["status", "type"]),
       fields({}, ["text"]),

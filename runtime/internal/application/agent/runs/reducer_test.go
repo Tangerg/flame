@@ -3,6 +3,7 @@ package runs
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -1837,6 +1838,40 @@ func TestIsolatedRunAnnouncesNoWorkspaceFileChange(t *testing.T) {
 			}
 			if nudge == nil || nudge.WorkspaceCWD != cfg.WorkspaceCWD {
 				t.Fatalf("workspace run nudge = %+v", nudge)
+			}
+		})
+	}
+}
+
+func TestFailedModelObservationReplacesLossyPreviewAndFencesLateDeltas(t *testing.T) {
+	for _, preview := range []bool{false, true} {
+		t.Run(fmt.Sprint(preview), func(t *testing.T) {
+			reducer := newReducer(testReducerConfig())
+			mustReduce(t, reducer, ModelCallStarted{CallID: "failed_model"})
+			if preview {
+				mustReduce(t, reducer, MessageDelta{Text: "pr"})
+				mustReduce(t, reducer, ReasoningDelta{Text: "th"})
+			}
+			reductions := mustReduce(t, reducer, ModelCallFailed{CallID: "failed_model", Observation: ModelObservation{Text: "prefix", Reasoning: "thinking"}})
+			items := completedItems(reductions)
+			if len(items) != 2 {
+				t.Fatalf("incomplete items: %+v", items)
+			}
+			for _, item := range items {
+				if item.Status() != transcript.ItemIncomplete {
+					t.Fatalf("observation promoted: %+v", item.Snapshot())
+				}
+			}
+			for _, reduction := range reductions {
+				if reduction.Commit != nil && len(reduction.Commit.ConversationMessages) != 0 {
+					t.Fatal("incomplete response entered model history")
+				}
+			}
+			if got := mustReduce(t, reducer, MessageDelta{Text: "late"}); len(got) != 0 {
+				t.Fatalf("late preview reopened item: %+v", got)
+			}
+			if got := mustReduce(t, reducer, ReasoningDelta{Text: "late"}); len(got) != 0 {
+				t.Fatalf("late reasoning reopened item: %+v", got)
 			}
 		})
 	}

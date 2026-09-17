@@ -259,10 +259,10 @@ func registerItemUnions(s *Shapes) {
 				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
 			}, {
 				Tag: string(protocol.ItemTypeAgentMessage), Required: createdItemFields, Optional: []string{"phase", "content"},
-				AllowedValues: allowedItemStatuses(protocol.ItemStatusRunning, protocol.ItemStatusCompleted),
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusRunning, protocol.ItemStatusCompleted, protocol.ItemStatusIncomplete),
 			}, {
 				Tag: string(protocol.ItemTypeReasoning), Required: createdItemFields, Optional: []string{"text", "redacted"},
-				AllowedValues: allowedItemStatuses(protocol.ItemStatusRunning, protocol.ItemStatusCompleted),
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusRunning, protocol.ItemStatusCompleted, protocol.ItemStatusIncomplete),
 			}, {
 				Tag: string(protocol.ItemTypeQuestion), Required: slices.Concat(createdItemFields, []string{"question"}),
 				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
@@ -462,10 +462,10 @@ func registerArtifactUnions(s *Shapes) {
 				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
 			}, {
 				Tag: string(protocol.ItemTypeAgentMessage), Required: slices.Concat(createdItemFields, []string{"phase", "content"}),
-				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted, protocol.ItemStatusIncomplete),
 			}, {
 				Tag: string(protocol.ItemTypeReasoning), Required: slices.Concat(createdItemFields, []string{"text"}), Optional: []string{"redacted"},
-				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
+				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted, protocol.ItemStatusIncomplete),
 			}, {
 				Tag: string(protocol.ItemTypeQuestion), Required: slices.Concat(createdItemFields, []string{"question"}),
 				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
@@ -842,6 +842,20 @@ func registerObjectConstraints(s *Shapes) {
 		},
 		Required: []string{"text"},
 	}})
+	for _, visible := range []struct {
+		kind   protocol.ItemType
+		fields []string
+	}{
+		{protocol.ItemTypeAgentMessage, []string{"phase", "content"}},
+		{protocol.ItemTypeReasoning, []string{"text"}},
+	} {
+		runtimeItemRules = append(runtimeItemRules, ConditionalRule{
+			When: []delivery.FieldCondition{
+				{Field: "type", Operator: delivery.OperatorEquals, Value: string(visible.kind)},
+				{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.ItemStatusIncomplete)},
+			}, Required: visible.fields,
+		})
+	}
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.Item](),
 		Rules:  runtimeItemRules,

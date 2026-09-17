@@ -180,8 +180,8 @@ export type ApprovalRuleScope = "session" | "project" | "global";
 
 export type ArtifactItem =
   | { type: "userMessage"; content: ContentBlock[]; createdAt: string; id: string; runId: string; status: "completed" }
-  | { type: "agentMessage"; content: ContentBlock[]; createdAt: string; id: string; phase: MessagePhase; runId: string; status: "completed" }
-  | { type: "reasoning"; createdAt: string; id: string; redacted?: boolean; runId: string; status: "completed"; text: string }
+  | { type: "agentMessage"; content: ContentBlock[]; createdAt: string; id: string; phase: MessagePhase; runId: string; status: "completed" | "incomplete" }
+  | { type: "reasoning"; createdAt: string; id: string; redacted?: boolean; runId: string; status: "completed" | "incomplete"; text: string }
   | { type: "question"; createdAt: string; id: string; question: Question; runId: string; status: "completed" }
   | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internalError" | "deniedByUser" | "toolFailed" | "childRunCanceled" | "toolCanceled" }; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: "completed" | "incomplete"; tool: ToolInvocation }
   | { type: "compaction"; createdAt: string; droppedMessages?: number; id: string; runId: string; status: "completed"; summary: string };
@@ -596,8 +596,8 @@ export interface InvokeToolRequest {
 
 export type Item =
   | { type: "userMessage"; content: ContentBlock[]; createdAt: string; id: string; runId: string; status: "completed" }
-  | { type: "agentMessage"; content?: ContentBlock[]; createdAt: string; id: string; phase?: MessagePhase; runId: string; status: "running" | "completed" }
-  | { type: "reasoning"; createdAt: string; id: string; redacted?: boolean; runId: string; status: "running" | "completed"; text?: string }
+  | { type: "agentMessage"; content?: ContentBlock[]; createdAt: string; id: string; phase?: MessagePhase; runId: string; status: "running" | "completed" | "incomplete" }
+  | { type: "reasoning"; createdAt: string; id: string; redacted?: boolean; runId: string; status: "running" | "completed" | "incomplete"; text?: string }
   | { type: "question"; createdAt: string; id: string; question: Question; runId: string; status: "completed" }
   | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: ProblemData; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: "running" | "completed" | "incomplete"; tool: ToolInvocation }
   | { type: "compaction"; createdAt: string; droppedMessages?: number; id: string; runId: string; status: "completed"; summary: string };

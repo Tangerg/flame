@@ -78,8 +78,8 @@ type ListItemsResponse struct {
 
 // ItemStatus is the closed vocabulary used across Item variants.
 // The Item union narrows it per owner: UserMessage/Question/Compaction are only
-// completed; AgentMessage/Reasoning are running rendering anchors or completed
-// facts; ToolCall alone owns running/completed/incomplete persistence.
+// completed; AgentMessage/Reasoning are running previews, completed responses,
+// or incomplete observations. ToolCall has its own execution lifecycle.
 type ItemStatus string
 
 const (
@@ -152,7 +152,7 @@ const (
 
 // Item is one wire projection in a Run stream or transcript read.
 // A tag-discriminated union: Type selects which optional fields apply. Durable
-// user/message/reasoning/question/compaction facts are complete; a provisional
+// model observations may be incomplete; other non-tool facts are complete. A provisional
 // AgentMessage/Reasoning start exists only as a stream rendering anchor, while
 // ToolCall is the only variant with a durable running lifecycle.
 //

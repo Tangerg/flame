@@ -80,7 +80,7 @@ type reducer struct {
 	reasoning       *openText
 	modelCalls      map[string]time.Time
 	// modelBoundaryClosed fences lossy stream observations that arrive after the
-	// authoritative ModelCallCompleted commit. A later ModelCallStarted reopens
+	// authoritative model completion or failure commit. A later ModelCallStarted reopens
 	// the observation window for the next provider turn.
 	modelBoundaryClosed bool
 	// Exactly one side of the final model/process confirmation handshake may be
@@ -461,9 +461,14 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 			failed.CallID,
 		)
 	}
+	events, err := r.failModelObservation(failed.Observation)
+	if err != nil {
+		return factReduction{}, err
+	}
 	delete(r.modelCalls, failed.CallID)
+	r.modelBoundaryClosed = true
 	return factReduction{
-		events: []ProjectionEvent{SegmentProgressed{Progress: Progress{Activity: "Model call failed"}}},
+		events: append(events, SegmentProgressed{Progress: Progress{Activity: "Model call failed"}}),
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: failed.CallID, SegmentID: r.cfg.SegmentID,
 			State: ModelInvocationFailed, StartedAt: startedAt, FinishedAt: finishedAt,

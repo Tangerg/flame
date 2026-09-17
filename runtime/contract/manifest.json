@@ -2726,7 +2726,8 @@
               "field": "status",
               "values": [
                 "running",
-                "completed"
+                "completed",
+                "incomplete"
               ]
             }
           ]
@@ -2748,7 +2749,8 @@
               "field": "status",
               "values": [
                 "running",
-                "completed"
+                "completed",
+                "incomplete"
               ]
             }
           ]
@@ -3465,7 +3467,8 @@
             {
               "field": "status",
               "values": [
-                "completed"
+                "completed",
+                "incomplete"
               ]
             }
           ]
@@ -3486,7 +3489,8 @@
             {
               "field": "status",
               "values": [
-                "completed"
+                "completed",
+                "incomplete"
               ]
             }
           ]
@@ -4707,6 +4711,41 @@
               "field": "status",
               "operator": "equals",
               "value": "completed"
+            }
+          ],
+          "required": [
+            "text"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "agentMessage"
+            },
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "incomplete"
+            }
+          ],
+          "required": [
+            "phase",
+            "content"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "reasoning"
+            },
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "incomplete"
             }
           ],
           "required": [
