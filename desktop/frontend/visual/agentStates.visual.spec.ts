@@ -1889,7 +1889,16 @@ test("a collapsed live reasoning row glimpses its newest line, softened only whe
       };
     };
     const nearMiss = await grow(box.clientWidth - 10);
-    const overflowing = await grow(box.clientWidth + 120);
+    // Not a width target: a long enough line can widen the row it sits in, which moves the very
+    // boundary the target was computed from. A line nobody could fit settles that question.
+    line.textContent = "m".repeat(900);
+    await settle();
+    const overflowing = {
+      fits: line.offsetWidth <= box.clientWidth,
+      width: line.offsetWidth,
+      box: box.clientWidth,
+      lead: box.style.getPropertyValue("--glimpse-lead"),
+    };
     line.textContent = original;
     return { nearMiss, overflowing };
   });
