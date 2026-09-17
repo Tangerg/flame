@@ -743,7 +743,7 @@ export const ko: Record<string, string> = {
     "Agent Memory 순위를 선택적으로 개선합니다. 꺼도 Memory는 키워드 일치를 계속 사용합니다.",
   "providers.embedding.off": "끄기",
   "providers.embedding.none":
-    "임베딩을 지원하는 제공자가 아직 없습니다 — 위에서 하나 추가하세요(예: OpenAI, Ollama).",
+    "임베딩을 지원하는 제공자가 아직 없습니다 — 위에서 하나 추가하세요(예: OpenAI).",
   "providers.embedding.error": "임베딩 모델을 설정할 수 없습니다.",
   "mcp.add": "서버 추가",
   "mcp.save": "저장",

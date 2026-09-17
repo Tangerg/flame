@@ -63,7 +63,6 @@ const SECTIONS: Section[] = [
   {
     titleKey: "iconGallery.section.localRuntimes",
     ids: [
-      "Ollama",
       "LmStudio",
       "Vllm",
       "HuggingFace",

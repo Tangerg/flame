@@ -267,10 +267,8 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
       const configured = (await pageData(read.client.providers.list())).filter(
         (provider) => provider.configured,
       );
-      // Runtime owns remote-discovery fallback (for example, an offline
-      // endpoint falls back to its static catalog). A rejected models.list is
-      // therefore a transport / protocol / service failure, not an empty model
-      // catalog; preserve it so consumers can render the failure honestly.
+      // Runtime owns model discovery. A rejected models.list is a failure,
+      // not an empty catalog; preserve it so consumers can render it honestly.
       const lists = await Promise.all(
         configured.map((provider) => pageData(read.client.models.list(provider.id))),
       );

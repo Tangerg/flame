@@ -14,7 +14,6 @@ const RUNTIME_PROVIDER_IDS = [
   "minimax",
   "mistral",
   "moonshot",
-  "ollama",
   "openai",
   "openrouter",
   "perplexity",

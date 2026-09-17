@@ -798,7 +798,7 @@ export const es: Record<string, string> = {
     "Mejora opcionalmente la clasificación de Agent Memory. Si se desactiva, Memory sigue usando coincidencias por palabras clave.",
   "providers.embedding.off": "Desactivado",
   "providers.embedding.none":
-    "Todavía no hay ningún proveedor con embeddings configurado: añade uno arriba (por ejemplo OpenAI u Ollama).",
+    "Todavía no hay ningún proveedor con embeddings configurado: añade uno arriba (por ejemplo OpenAI).",
   "providers.embedding.error": "No se pudo establecer el modelo de embeddings.",
   "mcp.add": "Añadir servidor",
   "mcp.save": "Guardar",

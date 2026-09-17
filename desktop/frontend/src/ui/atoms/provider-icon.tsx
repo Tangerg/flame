@@ -11,7 +11,6 @@ import HuggingFace from "@lobehub/icons/es/HuggingFace/components/Mono";
 import Minimax from "@lobehub/icons/es/Minimax/components/Mono";
 import Mistral from "@lobehub/icons/es/Mistral/components/Mono";
 import Moonshot from "@lobehub/icons/es/Moonshot/components/Mono";
-import Ollama from "@lobehub/icons/es/Ollama/components/Mono";
 import OpenAI from "@lobehub/icons/es/OpenAI/components/Mono";
 import OpenRouter from "@lobehub/icons/es/OpenRouter/components/Mono";
 import Perplexity from "@lobehub/icons/es/Perplexity/components/Mono";
@@ -50,7 +49,6 @@ const BRAND = new Map<string, Brand>([
   ["minimax", { mark: Minimax, name: "MiniMax" }],
   ["mistral", { mark: Mistral, name: "Mistral" }],
   ["moonshot", { mark: Moonshot, name: "Moonshot" }],
-  ["ollama", { mark: Ollama, name: "Ollama" }],
   ["openai", { mark: OpenAI, name: "OpenAI" }],
   ["openrouter", { mark: OpenRouter, name: "OpenRouter" }],
   ["perplexity", { mark: Perplexity, name: "Perplexity" }],

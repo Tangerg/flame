@@ -38,6 +38,7 @@ export interface AgentQuestion {
 }
 
 export interface AgentToolInvocation {
+  argumentsText?: string;
   name: string;
   arguments: Record<string, unknown>;
   result?: unknown;

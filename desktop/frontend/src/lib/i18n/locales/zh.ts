@@ -417,8 +417,7 @@ export const zh: Record<string, string> = {
   "providers.embedding.desc":
     "可选地改善 Agent Memory 排序。请选择支持嵌入的 Provider；关闭时 Memory 仍使用关键词匹配。",
   "providers.embedding.off": "关闭",
-  "providers.embedding.none":
-    "尚未配置支持 embedding 的 provider —— 先在上方添加一个(如 OpenAI 或 Ollama)。",
+  "providers.embedding.none": "尚未配置支持 embedding 的 provider —— 先在上方添加一个(如 OpenAI)。",
   "providers.embedding.error": "设置嵌入模型失败。",
   "plugins.hero":
     "此版本加载的全部插件。出错的插件仍留在列表中并附带它抛出的错误，这样损坏的贡献是可见的，而不是直接消失。",

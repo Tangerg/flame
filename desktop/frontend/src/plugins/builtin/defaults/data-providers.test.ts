@@ -306,7 +306,7 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
               credentialRequirement: "apiKeyRequired",
             },
             {
-              id: "ollama",
+              id: "test-endpoint",
               configured: true,
               credentialRequirement: "apiKeyOptional",
             },
@@ -319,7 +319,7 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
           data: [
             {
               id: "llama-test",
-              provider: "ollama",
+              provider: "test-endpoint",
               displayName: "Llama Test",
               tokenLimits: {
                 contextWindow: 258_000,
@@ -344,13 +344,13 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
 
     expect(requests).toEqual([
       { method: "providers.list", params: {} },
-      { method: "models.list", params: { provider: "ollama" } },
+      { method: "models.list", params: { provider: "test-endpoint" } },
     ]);
     expect(value).toHaveLength(1);
     expect(value[0]).toBeInstanceOf(SelectableModel);
     expect(value[0]).toMatchObject({
       id: "llama-test",
-      provider: "ollama",
+      provider: "test-endpoint",
       label: "Llama Test",
       tokenLimits: {
         contextWindow: 258_000,

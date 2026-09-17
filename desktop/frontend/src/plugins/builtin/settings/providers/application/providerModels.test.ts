@@ -4,7 +4,7 @@ import { ProviderConfiguration } from "./providerModels";
 describe("ProviderConfiguration", () => {
   it("accepts a configured optional-API-key provider without inventing a credential", () => {
     const provider = ProviderConfiguration.restore({
-      id: "ollama",
+      id: "test-endpoint",
       configured: true,
       credentialRequirement: "apiKeyOptional",
       embeddingCapable: true,

@@ -302,6 +302,7 @@ function categoryFields(
 // Returns "" wherever the key arg is already baked into the label, and for an empty object,
 // so a started shell seeds "" for delta accrual rather than "{}".
 export function argsText(tool: AgentToolInvocation): string {
+  if (tool.argumentsText !== undefined) return tool.argumentsText;
   if (nameLabel(tool) !== undefined) return "";
   if (toolCategory(tool.name) !== "generic" && toolCategory(tool.name) !== "subagent") return "";
   return Object.keys(tool.arguments).length > 0 ? JSON.stringify(tool.arguments, null, 2) : "";

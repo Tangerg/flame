@@ -180,3 +180,7 @@ describe("argsText — fn-baked tools suppress the raw JSON echo", () => {
     expect(argsText(tool("linear_create_issue", { title: "t" }))).toContain('"title"');
   });
 });
+
+it("preserves rejected argument text without interpreting it as executable arguments", () => {
+  expect(argsText({ name: "read", arguments: {}, argumentsText: '{"path":' })).toBe('{"path":');
+});

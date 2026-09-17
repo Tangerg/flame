@@ -15,7 +15,7 @@ describe("providerRoleIsAvailable", () => {
       credentialRequirement: "apiKeyRequired",
     }),
     ProviderConfiguration.restore({
-      id: "ollama",
+      id: "test-endpoint",
       configured: true,
       credentialRequirement: "apiKeyOptional",
     }),
@@ -30,7 +30,9 @@ describe("providerRoleIsAvailable", () => {
     );
     expect(providerRoleIsAvailable({ provider: "configured" }, providers)).toBe(false);
     expect(providerRoleIsAvailable(undefined, providers)).toBe(false);
-    expect(providerRoleIsAvailable({ provider: "ollama", model: "local" }, providers)).toBe(true);
+    expect(providerRoleIsAvailable({ provider: "test-endpoint", model: "local" }, providers)).toBe(
+      true,
+    );
   });
 
   it("does not treat a role for an absent provider as executable", () => {

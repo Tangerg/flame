@@ -750,7 +750,7 @@ export const zhTW: Record<string, string> = {
     "可選擇改善 Agent Memory 排序。請選擇支援 embedding 的供應商；關閉時 Memory 仍使用關鍵字比對。",
   "providers.embedding.off": "關閉",
   "providers.embedding.none":
-    "尚未設定任何支援 embedding 的供應商 —— 請先在上方新增一個（例如 OpenAI 或 Ollama）。",
+    "尚未設定任何支援 embedding 的供應商 —— 請先在上方新增一個（例如 OpenAI）。",
   "providers.embedding.error": "無法設定 embedding 模型。",
   "mcp.add": "新增伺服器",
   "mcp.save": "儲存",

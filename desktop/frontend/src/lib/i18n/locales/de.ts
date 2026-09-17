@@ -778,7 +778,7 @@ export const de: Record<string, string> = {
     "Verbessert optional das Ranking des Agent Memory. Bei Aus arbeitet Memory weiterhin mit Stichwortabgleich.",
   "providers.embedding.off": "Aus",
   "providers.embedding.none":
-    "Noch kein Anbieter mit Embedding-Unterstützung konfiguriert — füge oben einen hinzu (z. B. OpenAI oder Ollama).",
+    "Noch kein Anbieter mit Embedding-Unterstützung konfiguriert — füge oben einen hinzu (z. B. OpenAI).",
   "providers.embedding.error": "Embedding-Modell konnte nicht gesetzt werden.",
   "mcp.add": "Server hinzufügen",
   "mcp.save": "Speichern",

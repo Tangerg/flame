@@ -373,7 +373,7 @@ export const en: Record<string, string> = {
     "Optionally improves Agent Memory ranking. Pick an embedding-capable provider; when Off, Memory continues with keyword matching.",
   "providers.embedding.off": "Off",
   "providers.embedding.none":
-    "No embedding-capable provider configured yet — add one (e.g. OpenAI, or Ollama) above.",
+    "No embedding-capable provider configured yet — add one (e.g. OpenAI) above.",
   "providers.embedding.error": "Couldn't set the embedding model.",
 
   "mcp.add": "Add server",

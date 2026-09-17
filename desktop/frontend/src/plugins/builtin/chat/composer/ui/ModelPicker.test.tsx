@@ -86,7 +86,7 @@ describe("ModelPicker", () => {
   beforeEach(() => {
     useRecentModelsStore.setState({ recent: [] });
     state.models = [
-      model({ provider: "ollama", id: "Mistral Local" }),
+      model({ provider: "mistral", id: "Mistral Local" }),
       model({ provider: "deepseek", id: "DeepSeek Chat" }),
       model({ provider: "deepseek", id: "DeepSeek Reasoner", reasoning: true }),
     ];
@@ -101,9 +101,9 @@ describe("ModelPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
 
     await screen.findByPlaceholderText("Search models…");
-    expectRail(["Ollama", "DeepSeek"]);
+    expectRail(["Mistral", "DeepSeek"]);
     expect(screen.getByRole("button", { name: "DeepSeek", pressed: true })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Ollama", pressed: false })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Mistral", pressed: false })).toBeTruthy();
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
       expect.stringContaining("DeepSeek Chat"),
       expect.stringContaining("DeepSeek Reasoner"),
@@ -115,7 +115,7 @@ describe("ModelPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     await screen.findByPlaceholderText("Search models…");
 
-    fireEvent.click(screen.getByRole("button", { name: "Ollama" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mistral" }));
     await waitFor(() => {
       expect(options().getByText("Mistral Local")).toBeTruthy();
       expect(options().queryByText("DeepSeek Chat")).toBeNull();
@@ -159,7 +159,7 @@ describe("ModelPicker", () => {
     fireEvent.click(options().getByText("Mistral Local"));
     expect(state.setModel).toHaveBeenCalledWith({
       kind: "explicit",
-      provider: "ollama",
+      provider: "mistral",
       model: "Mistral Local",
     });
 
@@ -167,7 +167,7 @@ describe("ModelPicker", () => {
     render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     await screen.findByPlaceholderText("Search models…");
-    expectRail(["Recent", "Ollama", "DeepSeek"]);
+    expectRail(["Recent", "Mistral", "DeepSeek"]);
   });
 
   it("carries the reasoning effort the selection was already holding", async () => {

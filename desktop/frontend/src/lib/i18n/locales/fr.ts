@@ -804,7 +804,7 @@ export const fr: Record<string, string> = {
     "Améliore facultativement le classement d'Agent Memory. Désactivé, Memory continue avec la recherche par mots-clés.",
   "providers.embedding.off": "Désactivé",
   "providers.embedding.none":
-    "Aucun fournisseur compatible embedding pour l'instant — ajoutez-en un ci-dessus (par ex. OpenAI ou Ollama).",
+    "Aucun fournisseur compatible embedding pour l'instant — ajoutez-en un ci-dessus (par ex. OpenAI).",
   "providers.embedding.error": "Impossible de définir le modèle d'embedding.",
   "mcp.add": "Ajouter un serveur",
   "mcp.save": "Enregistrer",

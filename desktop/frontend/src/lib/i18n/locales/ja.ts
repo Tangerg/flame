@@ -749,7 +749,7 @@ export const ja: Record<string, string> = {
     "Agent Memory のランキングを必要に応じて改善します。オフの場合も Memory はキーワード照合を続けます。",
   "providers.embedding.off": "オフ",
   "providers.embedding.none":
-    "埋め込み対応のプロバイダーがまだ設定されていません — 上で追加してください（例：OpenAI、Ollama）。",
+    "埋め込み対応のプロバイダーがまだ設定されていません — 上で追加してください（例：OpenAI）。",
   "providers.embedding.error": "埋め込みモデルを設定できませんでした。",
   "mcp.add": "サーバーを追加",
   "mcp.save": "保存",

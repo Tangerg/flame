@@ -99,7 +99,7 @@ describe("ProviderRow", () => {
     render(
       <ProviderRow
         p={provider({
-          id: "ollama",
+          id: "test-endpoint",
           baseUrl: undefined,
           configured: true,
           credential: undefined,
