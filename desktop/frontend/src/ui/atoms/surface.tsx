@@ -16,26 +16,43 @@ import { radius, space, surface } from "@/styles/tokens.stylex";
  * orthogonal props would spell eight planes of which half mean nothing (a fill-less plane with
  * a popover cast), and a plane's identity is one decision, not three that happen to agree.
  *
- * `card` fills and is read from its value delta; `--shadow-surface-card` is the visual style's
- * hook and is `none` under the tool-window style. `group` has no fill at all and states its
- * edge, which is why it may never also carry a cast — that is the double edge DESIGN.md §5
- * forbids. `request` and `prompt` sit inside the transcript, where every block is a bubble.
+ * `group` has no fill at all and states its edge, which is why it may never also carry a cast —
+ * that is the double edge DESIGN.md §5 forbids. `request` and `prompt` sit inside the
+ * transcript, where every block is a bubble.
+ *
+ * `card` and `request` state an edge TOO, because a fill alone does not make a plane. They read
+ * from `--app-card-surface`, and a theme is free to set that to the same value as the canvas —
+ * the light theme does, and Codex's light theme does the same thing, because in light mode a
+ * raised plane has nowhere brighter to go. With `--shadow-surface-card: none` under every
+ * shipped visual style, the fill was the only separation on offer and in light it was worth
+ * zero: measured `rgb(255,255,255)` on `rgb(255,255,255)`, no border, no shadow, so an approval
+ * had no boundary and its buttons read as loose page furniture.
+ *
+ * The edge is what does not depend on a delta this atom cannot see. A visual style that ever
+ * gives `--shadow-surface-card` a real cast has to turn this off in the same change, or it is
+ * the double edge again — `prompt` is the standing example, which is why it has no edge here.
  */
 type SurfaceVariant = "card" | "group" | "request" | "prompt";
 
+const edge = {
+  borderWidth: "var(--control-edge-width)",
+  borderStyle: "solid",
+  borderColor: surface.field,
+} as const;
+
 const styles = stylex.create({
   card: {
+    ...edge,
     borderRadius: radius.card,
     backgroundColor: surface.card,
     boxShadow: "var(--shadow-surface-card)",
   },
   group: {
+    ...edge,
     borderRadius: radius.card,
-    borderWidth: "var(--control-edge-width)",
-    borderStyle: "solid",
-    borderColor: surface.field,
   },
   request: {
+    ...edge,
     borderRadius: radius.bubble,
     backgroundColor: surface.card,
     boxShadow: "var(--shadow-surface-card)",

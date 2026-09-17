@@ -63,12 +63,34 @@ test("HITL approval settles through the exact Run and Item identity", async ({ p
   await expect(page.locator("html")).toHaveAttribute("data-visual-resumed-item", "item_approval");
 });
 
-test("a pending approval uses the Codex neutral request surface", async ({ page }) => {
+// Asks whether the plane SEPARATES, not how. It used to pin `border-top-width: 0px`, which read
+// as "Codex's request surface is borderless" — and Codex's is not; its light elevated equals its
+// light surface and the edge is what divides them. Pinning the mechanism meant the fill was the
+// only separation under test, so when the light theme made card and canvas the same white this
+// stayed green while the approval lost its boundary outright.
+test("a pending approval is a plane against whatever it sits on", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=waiting");
   await page.locator("html[data-visual-ready]").waitFor();
 
   const surface = page.locator('[data-slot="approval-surface"]');
-  await expect(surface).toHaveCSS("border-top-width", "0px");
+  const separation = await surface.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    let node = el.parentElement;
+    let behind = "rgba(0, 0, 0, 0)";
+    while (node && behind === "rgba(0, 0, 0, 0)") {
+      behind = getComputedStyle(node).backgroundColor;
+      node = node.parentElement;
+    }
+    return {
+      byFill: cs.backgroundColor !== behind,
+      byEdge: parseFloat(cs.borderTopWidth) > 0 && cs.borderTopColor !== cs.backgroundColor,
+      byCast: cs.boxShadow !== "none",
+    };
+  });
+  expect(
+    separation.byFill || separation.byEdge || separation.byCast,
+    `an approval the reader has to act on cannot be invisible against its page: ${JSON.stringify(separation)}`,
+  ).toBe(true);
   await expect(surface).toHaveCSS("border-radius", "20px");
   await expect(surface.getByText("Shell", { exact: true })).toBeVisible();
   await expect(

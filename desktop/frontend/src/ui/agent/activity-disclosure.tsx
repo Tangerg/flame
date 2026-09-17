@@ -26,7 +26,16 @@ type ActivityLeading = { icon: IconName; leading?: never } | { icon?: never; lea
 const styles = stylex.create({
   frame: { minWidth: 0, overflow: "clip" },
   frameLine: { borderRadius: radius.sm },
-  frameCard: { borderRadius: radius.card, backgroundColor: surface.card },
+  // Edged for the same reason `Surface` is: the card fill equals the canvas in light, so the
+  // fill alone drew nothing. This states the plane rather than reaching for `Surface`, which
+  // would put a second box between the header and its sticky offset.
+  frameCard: {
+    borderRadius: radius.card,
+    backgroundColor: surface.card,
+    borderWidth: "var(--control-edge-width)",
+    borderStyle: "solid",
+    borderColor: surface.field,
+  },
   header: { display: "flex", minWidth: 0, alignItems: "center" },
   // A header that stays put while its own disclosure scrolls under it has to be opaque, and
   // opaque against whichever plane it is sitting on.
