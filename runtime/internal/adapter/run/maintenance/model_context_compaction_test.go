@@ -197,7 +197,7 @@ func TestDefaultModelContextCompactionDoesNotFailOnLongAssistantSequence(t *test
 		durableContextRequest(t, sessionID, history, 0, nil),
 	)
 	if err != nil {
-		t.Fatalf("well-below-token-budget assistant sequence failed: %v", err)
+		t.Fatalf("assistant sequence below the compaction threshold failed: %v", err)
 	}
 	if result.Changed() || store.rewrites != 0 {
 		t.Fatalf("result = changed:%t rewrites:%d, want untouched context", result.Changed(), store.rewrites)

@@ -6,6 +6,8 @@ import (
 	"iter"
 	"strings"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
@@ -159,6 +161,54 @@ func TestCompleteRejectsIncompleteTextGenerations(t *testing.T) {
 			if text != "" || err == nil || !strings.Contains(err.Error(), tc.wantReason) {
 				t.Fatalf("Complete error = %v, want %q", err, tc.wantReason)
 			}
+		})
+	}
+}
+
+func TestAuxiliaryRequestLifetimeBelongsToCaller(t *testing.T) {
+	for _, stop := range []string{"complete", "cancel", "deadline"} {
+		t.Run(stop, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				if stop == "deadline" {
+					var end context.CancelFunc
+					ctx, end = context.WithTimeout(ctx, 3*time.Minute)
+					defer end()
+				}
+				model := chat.ModelFunc(func(callCtx context.Context, request *chat.Request) (*chat.Response, error) {
+					select {
+					case <-time.After(5 * time.Minute):
+						message := chat.NewAssistantMessage(chat.NewTextPart("completed"))
+						return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
+					case <-callCtx.Done():
+						return nil, callCtx.Err()
+					}
+				})
+				client, err := chatclient.New(model, chatclient.Config{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if stop == "cancel" {
+					timer := time.AfterFunc(3*time.Minute, cancel)
+					defer timer.Stop()
+				}
+				text, err := fixedAuxiliaryClient(&client).Complete(ctx, AuxiliaryPrompt{Operation: "compaction", SystemPrompt: "summarize", UserPrompt: "history", MaxInputBytes: 1024, MaxOutputTokens: 100})
+				switch stop {
+				case "complete":
+					if err != nil || text != "completed" {
+						t.Fatalf("long request: %q, %v", text, err)
+					}
+				case "cancel":
+					if !errors.Is(err, context.Canceled) {
+						t.Fatalf("cancel: %v", err)
+					}
+				case "deadline":
+					if !errors.Is(err, context.DeadlineExceeded) {
+						t.Fatalf("deadline: %v", err)
+					}
+				}
+			})
 		})
 	}
 }

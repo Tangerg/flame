@@ -16,6 +16,8 @@ CLI owns only command and presentation concerns:
 
 A Runtime event may update a preview, but completed Items and authoritative snapshots win after reconnect, gaps, and cold recovery.
 
+Run observation retries classified transient transport failures until its caller cancels, with bounded backoff and no attempt quota. Subscription and rendering failures do not authorize a Run cancellation. Explicit user cancellation remains a separate Runtime command; permanent observation errors remain visible without manufacturing a product terminal. Mutation acknowledgement recovery separately honors Runtime's advertised replay retention and exact command identity.
+
 One-shot execution reads the complete tree interruption from Conversation after the root Segment closes. Member interrupts alone do not authorize a resume; a stream lost before the root boundary must reconnect or recover the durable snapshot first.
 
 ## Dependency direction

@@ -16,7 +16,6 @@ type Goal struct {
 	Provider        string      `json:"provider"`
 	Model           string      `json:"model"`
 	ReasoningEffort string      `json:"reasoningEffort,omitempty"`
-	Budget          *GoalBudget `json:"budget,omitempty"`
 	Used            GoalUsage   `json:"used"`
 	CreatedAt       time.Time   `json:"createdAt,omitzero"`
 	UpdatedAt       time.Time   `json:"updatedAt,omitzero"`
@@ -52,24 +51,11 @@ const (
 	GoalReasonAwaitingInput          GoalReasonCode = "awaitingInput"
 	GoalReasonTerminalOutcomeMissing GoalReasonCode = "terminalOutcomeMissing"
 	GoalReasonRunNotCompleted        GoalReasonCode = "runNotCompleted"
-	GoalReasonRunBudgetReached       GoalReasonCode = "runBudgetReached"
-	GoalReasonCostBudgetReached      GoalReasonCode = "costBudgetReached"
-	GoalReasonStepBudgetReached      GoalReasonCode = "stepBudgetReached"
-	GoalReasonPricingUnavailable     GoalReasonCode = "pricingUnavailable"
-	GoalReasonBlockedByModel         GoalReasonCode = "blockedByModel"
+
+	GoalReasonBlockedByModel GoalReasonCode = "blockedByModel"
 )
 
-// GoalBudget is a bounded cross-Run spending policy. Every present field is a
-// strictly positive cap and at least one field must be present. An omitted
-// Goal.budget or StartGoalRequest.budget is the only unbounded representation.
-type GoalBudget struct {
-	MaxRuns    *int     `json:"maxRuns,omitempty"`
-	MaxCostUSD *float64 `json:"maxCostUsd,omitempty"`
-	MaxSteps   *int     `json:"maxSteps,omitempty"`
-}
-
-// GoalUsage is what the loop has spent so far. CostUSD is absent when any
-// completed Run could not be priced; a present zero remains an exact total.
+// GoalUsage reports consumption across all Runs for an objective.
 type GoalUsage struct {
 	Runs    int      `json:"runs"`
 	CostUSD *float64 `json:"costUsd,omitempty"`
@@ -78,16 +64,15 @@ type GoalUsage struct {
 
 // StartGoalRequest — goals.start body.
 type StartGoalRequest struct {
-	SessionID       string      `json:"sessionId"`
-	Objective       string      `json:"objective"`
-	Provider        string      `json:"provider,omitempty"`
-	Model           string      `json:"model,omitempty"`
-	ReasoningEffort string      `json:"reasoningEffort,omitempty"`
-	Budget          *GoalBudget `json:"budget,omitempty"`
+	SessionID       string `json:"sessionId"`
+	Objective       string `json:"objective"`
+	Provider        string `json:"provider,omitempty"`
+	Model           string `json:"model,omitempty"`
+	ReasoningEffort string `json:"reasoningEffort,omitempty"`
 }
 
 // UpdateGoalRequest — goals.update body. Updating the objective preserves the
-// Goal's lifecycle, accounting, model selection and budget while opening a new
+// Goal's lifecycle, accounting and model selection while opening a new
 // objective incarnation so work admitted for the prior text cannot mutate it.
 type UpdateGoalRequest struct {
 	SessionID string `json:"sessionId"`

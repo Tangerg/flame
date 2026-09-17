@@ -1,12 +1,9 @@
 package agentexec
 
 import (
-	"crypto/sha256"
-	"encoding/json"
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -17,64 +14,6 @@ type interactionChildProjection struct{ mu sync.Mutex }
 
 func (i *interactionChildProjection) lock()   { i.mu.Lock() }
 func (i *interactionChildProjection) unlock() { i.mu.Unlock() }
-
-// interactionToolOutcomes owns the consecutive identical Tool-result invariant
-// used by the doom-loop brake. It changes independently of Process topology.
-type interactionToolOutcomes struct {
-	mu      sync.Mutex
-	key     interactionToolCallKey
-	digest  [sha256.Size]byte
-	repeats int
-}
-
-type interactionToolCallKey struct {
-	name      string
-	arguments string
-}
-
-func newInteractionToolCallKey(toolName string, arguments tool.Arguments) interactionToolCallKey {
-	return interactionToolCallKey{name: toolName, arguments: arguments.Canonical()}
-}
-
-func (i *interactionToolOutcomes) repeated(toolName string, arguments tool.Arguments) int {
-	key := newInteractionToolCallKey(toolName, arguments)
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	if key != i.key {
-		return 0
-	}
-	return i.repeats
-}
-
-func (i *interactionToolOutcomes) reset() {
-	i.mu.Lock()
-	i.repeats = 0
-	i.mu.Unlock()
-}
-
-func (i *interactionToolOutcomes) record(
-	toolName string,
-	arguments tool.Arguments,
-	result corechat.ToolOutput,
-	callErr error,
-) {
-	key := newInteractionToolCallKey(toolName, arguments)
-	encoded, _ := json.Marshal(result)
-	if callErr != nil {
-		encoded = append(encoded, 0)
-		encoded = append(encoded, callErr.Error()...)
-	}
-	digest := sha256.Sum256(encoded)
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	if key == i.key && digest == i.digest {
-		i.repeats++
-		return
-	}
-	i.key = key
-	i.digest = digest
-	i.repeats = 1
-}
 
 // interactionCommittedReplies owns assistant values already accepted by the
 // authoritative Run projection until the corresponding Delegate closes.

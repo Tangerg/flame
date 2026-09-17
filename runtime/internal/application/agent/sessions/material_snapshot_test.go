@@ -155,7 +155,7 @@ func TestMaterialSnapshotRejectsRunningItemOwnedByTerminalRun(t *testing.T) {
 func TestMaterialSnapshotRejectsGoalFromAnotherSession(t *testing.T) {
 	snapshot := validMaterialSnapshot()
 	foreign, err := goal.New(
-		"ses_other", "wrong owner", testsupport.DefaultModelSelection(), goal.UnlimitedBudget(), run.Capabilities{},
+		"ses_other", "wrong owner", testsupport.DefaultModelSelection(), run.Capabilities{},
 		"goal_other", snapshot.Runs[0].CreatedAt(),
 	)
 	if err != nil {

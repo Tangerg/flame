@@ -33,7 +33,7 @@ type managedDelegateCall struct {
 	call               corechat.ToolCall
 	input              delegateInput
 	arguments          tool.Arguments
-	modelCallSequence  uint32
+	modelCallSequence  uint64
 	toolCallIndex      uint32
 	callID             runtimeidentity.EffectID
 	admission          agent.ProcessAdmission
@@ -196,7 +196,7 @@ func decodeDelegateCall(call corechat.ToolCall) (delegateInput, tool.Arguments, 
 	if rawArguments == "" {
 		rawArguments = "{}"
 	}
-	erased, err := agent.ParseInput([]byte(rawArguments))
+	erased, err := agent.ParsePayload([]byte(rawArguments))
 	if err != nil {
 		return delegateInput{}, tool.Arguments{}, err
 	}

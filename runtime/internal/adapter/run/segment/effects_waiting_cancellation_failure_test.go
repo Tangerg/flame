@@ -156,9 +156,6 @@ func TestCommitWaitingSubtreeCancellationRejectsMismatchedCheckpointBindingWitho
 		"root":             func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.RootMemberID = "other_root" },
 		"session":          func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" },
 		"goal incarnation": func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" },
-		"limits": func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.Limits = testsupport.MustRunLimits(run.LimitValues{MaxTotalTokens: testsupport.Pointer[int64](1)})
-		},
 		"provider": func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.ModelSelection, _ = modelref.New("openai", "model")
 		},
@@ -188,13 +185,6 @@ func TestCommitWaitingSubtreeCancellationRejectsRunContinuationFactDriftWithoutM
 			replacement := draft.terminalRuns[0]
 			state := mutatedRun(replacement.State(), func(snapshot *run.Snapshot) {
 				snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: snapshot.Metrics.Steps() + 1})
-			})
-			draft.terminalRuns[0] = testsupport.MustRunReplacement(replacement.Expected(), state)
-		},
-		"frozen limits": func(draft *waitingCancellationCommitDraft) {
-			replacement := draft.terminalRuns[0]
-			state := mutatedRun(replacement.State(), func(snapshot *run.Snapshot) {
-				snapshot.Limits = testsupport.MustRunLimits(run.LimitValues{MaxSteps: testsupport.Pointer(1)})
 			})
 			draft.terminalRuns[0] = testsupport.MustRunReplacement(replacement.Expected(), state)
 		},

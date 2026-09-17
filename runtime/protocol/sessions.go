@@ -239,17 +239,13 @@ type ArtifactRun struct {
 	// ParentRunID and RootRunID are the child edges, all-or-none with
 	// SpawnedByItemID exactly as RunSummary's are — an archive is a durable input
 	// document, so a half-linked child would import a tree that cannot be walked.
-	ParentRunID     string `json:"parentRunId,omitempty"`
-	RootRunID       string `json:"rootRunId,omitempty"`
-	Provider        string `json:"provider"`
-	Model           string `json:"model"`
-	ReasoningEffort string `json:"reasoningEffort,omitempty"`
-	// Limits and Metrics split the same way the live wire does. The archive has
-	// to move with it: leaving the old combined shape here would keep a second,
-	// older account of what a run cost alive inside the export format.
-	Limits        *RunLimits `json:"limits,omitempty"`
-	Metrics       RunMetrics `json:"metrics"`
-	ContextTokens int64      `json:"contextTokens,omitempty"`
+	ParentRunID     string     `json:"parentRunId,omitempty"`
+	RootRunID       string     `json:"rootRunId,omitempty"`
+	Provider        string     `json:"provider"`
+	Model           string     `json:"model"`
+	ReasoningEffort string     `json:"reasoningEffort,omitempty"`
+	Metrics         RunMetrics `json:"metrics"`
+	ContextTokens   int64      `json:"contextTokens,omitempty"`
 	// ProtocolProfile is the contract the run published under, required on a root
 	// and absent on a child. An import that dropped it would restore a run claiming
 	// the Minimal Profile, which is a different run. Import and export must
@@ -280,10 +276,9 @@ const (
 	ArtifactOutcomeCompleted ArtifactOutcomeType = "completed"
 	ArtifactOutcomeTimedOut  ArtifactOutcomeType = "timedOut"
 	ArtifactOutcomeFailed    ArtifactOutcomeType = "failed"
-	ArtifactOutcomeMaxSteps  ArtifactOutcomeType = "maxSteps"
-	ArtifactOutcomeMaxBudget ArtifactOutcomeType = "maxBudget"
-	ArtifactOutcomeCanceled  ArtifactOutcomeType = "canceled"
-	ArtifactOutcomeLost      ArtifactOutcomeType = "lost"
+
+	ArtifactOutcomeCanceled ArtifactOutcomeType = "canceled"
+	ArtifactOutcomeLost     ArtifactOutcomeType = "lost"
 )
 
 // ArtifactItem is the durable transcript representation. It is not the live

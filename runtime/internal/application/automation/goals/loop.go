@@ -165,7 +165,7 @@ func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID, incarnationID
 // drive runs autonomous Runs until the goal leaves active. Cancellation quiesces
 // execution; Stop owns the final durable pause after joining the drive. Startup
 // reconciliation pauses any Goal left active by shutdown rather than silently
-// resuming it and consuming budget.
+// resuming it and consuming resources.
 func (d *Driver) drive(ctx context.Context, sessionID, incarnationID string) error {
 	for {
 		if ctx.Err() != nil {
@@ -395,9 +395,8 @@ func (d *Driver) resolveTerminalRun(
 		return disposition, nil
 	}
 	// The terminal Run transaction has already recorded this Run's usage (and
-	// derived any pause/block) under the Goal incarnation. Do not reconstruct that
-	// durable fact from the stream: a failed post-hoc checkpoint can otherwise
-	// start an extra run against an undercounted budget.
+	// derived any pause) under the Goal incarnation. Do not reconstruct that
+	// durable fact from the stream; accounting must share the terminal commit.
 	return dispContinue, nil
 }
 

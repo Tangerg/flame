@@ -36,8 +36,7 @@ func TestRunOutcomeProjectionIsExhaustive(t *testing.T) {
 		{run.OutcomeCanceled, protocol.OutcomeCanceled, protocol.ArtifactOutcomeCanceled},
 		{run.OutcomeTimedOut, protocol.OutcomeTimedOut, protocol.ArtifactOutcomeTimedOut},
 		{run.OutcomeFailed, protocol.OutcomeFailed, protocol.ArtifactOutcomeFailed},
-		{run.OutcomeMaxBudget, protocol.OutcomeMaxBudget, protocol.ArtifactOutcomeMaxBudget},
-		{run.OutcomeMaxSteps, protocol.OutcomeMaxSteps, protocol.ArtifactOutcomeMaxSteps},
+
 		{run.OutcomeLost, protocol.OutcomeLost, protocol.ArtifactOutcomeLost},
 	}
 	for _, test := range tests {

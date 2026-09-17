@@ -20,7 +20,7 @@ func modelInvocationID(invocation interaction.ModelInvocation) (runtimeidentity.
 	return modelInvocationIDFrom(invocation.EffectID(), invocation.ModelCallSequence())
 }
 
-func modelInvocationIDFrom(effectID agent.EffectID, modelCallSequence uint32) (runtimeidentity.EffectID, error) {
+func modelInvocationIDFrom(effectID agent.EffectID, modelCallSequence uint64) (runtimeidentity.EffectID, error) {
 	digest := sha256.New()
 	_, _ = digest.Write([]byte(effectID.String()))
 	_, _ = digest.Write([]byte{0})
@@ -39,7 +39,7 @@ func toolInvocationID(invocation interaction.ToolInvocation) (runtimeidentity.Ef
 
 func logicalToolCallID(
 	caller agent.ProcessID,
-	modelCallSequence uint32,
+	modelCallSequence uint64,
 	toolCallIndex uint32,
 	sourceID string,
 	name string,
@@ -52,10 +52,10 @@ func logicalToolCallID(
 	_, _ = digest.Write([]byte(sourceID))
 	_, _ = digest.Write([]byte{0})
 	_, _ = digest.Write([]byte(name))
-	return parsedInvocationID(toolInvocationNamespace, digest.Sum(nil), toolCallIndex)
+	return parsedInvocationID(toolInvocationNamespace, digest.Sum(nil), uint64(toolCallIndex))
 }
 
-func parsedInvocationID(namespace string, digest []byte, ordinal uint32) (runtimeidentity.EffectID, error) {
+func parsedInvocationID(namespace string, digest []byte, ordinal uint64) (runtimeidentity.EffectID, error) {
 	return runtimeidentity.ParseEffect(
 		namespace + ":" + hex.EncodeToString(digest) + ":" + strconv.FormatUint(uint64(ordinal), 10),
 	)

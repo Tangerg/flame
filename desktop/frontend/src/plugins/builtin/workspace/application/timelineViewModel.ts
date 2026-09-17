@@ -37,7 +37,6 @@ const STATUS_VIEW: Record<AgentRunPresentationState, { labelKey: string; tone: T
   finished: { labelKey: "agent.runTree.status.finished", tone: "success" },
   error: { labelKey: "agent.runTree.status.error", tone: "negative" },
   canceled: { labelKey: "agent.runTree.status.canceled", tone: "neutral" },
-  limit: { labelKey: "agent.runTree.status.limit", tone: "warning" },
 };
 
 export function timelineViewModel(

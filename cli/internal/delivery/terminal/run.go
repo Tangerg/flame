@@ -24,7 +24,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
@@ -105,8 +104,8 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 				snapshot: prepared.opened, clientVersion: cfg.ClientVersion,
 				registry: registry, pluginHost: extensionHost, pluginIssues: discovered.Issues,
 				attachments: prepared.attachments,
-				settings:    prepared.settings, reconnectPolicy: prepared.reconnectPolicy,
-				options: prepared.options, keyBindings: prepared.keyBindings, queue: queue,
+				settings:    prepared.settings,
+				options:     prepared.options, keyBindings: prepared.keyBindings, queue: queue,
 				workbench: prepared.workbench, initialDraft: prepared.draft, editor: prepared.editor,
 			})
 			if prepared.rollbackRecovery != nil {
@@ -134,12 +133,12 @@ func (e terminalUnavailableError) Unwrap() error      { return e.cause }
 func (terminalUnavailableError) TerminalUnavailable() {}
 
 type preparedSession struct {
-	opened           agent.SessionSnapshot
-	runtimeProfile   *runtimebinding.Profile
-	attachments      *attachment.Resolver
-	keyBindings      keyBindings
-	settings         settings.Config
-	reconnectPolicy  retry.ReconnectPolicy
+	opened         agent.SessionSnapshot
+	runtimeProfile *runtimebinding.Profile
+	attachments    *attachment.Resolver
+	keyBindings    keyBindings
+	settings       settings.Config
+
 	options          agent.RunOptions
 	workbench        *workbench.Store
 	draft            agent.Message
@@ -160,10 +159,6 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	if err != nil {
 		return preparedSession{}, err
 	}
-	reconnectPolicy, err := retry.NewReconnectPolicy(configured.UI.ReconnectAttempts)
-	if err != nil {
-		return preparedSession{}, fmt.Errorf("session reconnect policy: %w", err)
-	}
 	authoring, err := openSessionWorkbench(cfg.StateDirectory)
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("open CLI workbench: %w", err)
@@ -172,7 +167,7 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	if err != nil {
 		return preparedSession{}, errors.Join(err, authoring.Close())
 	}
-	prepared, err := openPreparedSession(ctx, cfg, profile, configured, reconnectPolicy, bindings, authoring)
+	prepared, err := openPreparedSession(ctx, cfg, profile, configured, bindings, authoring)
 	if err != nil {
 		return preparedSession{}, errors.Join(err, authoring.Close())
 	}
@@ -251,7 +246,6 @@ func openPreparedSession(
 	cfg Config,
 	profile *runtimebinding.Profile,
 	configured settings.Config,
-	reconnectPolicy retry.ReconnectPolicy,
 	bindings keyBindings,
 	authoring *workbench.Store,
 ) (preparedSession, error) {
@@ -289,7 +283,7 @@ func openPreparedSession(
 	}
 	return preparedSession{
 		opened: opened, runtimeProfile: profile, attachments: attachments, keyBindings: bindings,
-		settings: configured, reconnectPolicy: reconnectPolicy, options: options,
+		settings: configured, options: options,
 		workbench: authoring, draft: activation.Draft, editor: editor,
 		rollbackRecovery: activation.Rollback,
 	}, nil

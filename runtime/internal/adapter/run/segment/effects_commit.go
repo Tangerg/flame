@@ -267,8 +267,7 @@ func (e *Effects) loadResumeCheckpoint(
 	); err != nil {
 		return runs.ExecutorCheckpoint{}, err
 	}
-	if !loaded.ModelSelection.Equal(prepared.root.ModelSelection) || loaded.Limits != prepared.root.Limits ||
-		loaded.Scope.GoalIncarnationID != pending.GoalIncarnationID {
+	if !loaded.ModelSelection.Equal(prepared.root.ModelSelection) || loaded.Scope.GoalIncarnationID != pending.GoalIncarnationID {
 		return runs.ExecutorCheckpoint{}, fmt.Errorf(
 			"%w: claimed checkpoint policy differs from Pending", runs.ErrInvalidExecutorCheckpoint,
 		)

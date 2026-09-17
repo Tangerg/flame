@@ -7,7 +7,7 @@
 // What each call MEANS lives in wireCheck.ts. This file only says which rule
 // applies where.
 
-import { absent, allOf, anyOf, anything, array, distinctViolations, enumOf, exclusiveMinimum, fields, flag, ifThen, integer, literal, maxItems, maxLength, maximum, minItems, minLength, minProperties, minimum, nullable, numeric, object, oneOf, pattern, propertyNames, record, ref, text, uniqueItems } from "./wireCheck";
+import { absent, allOf, anyOf, anything, array, distinctViolations, enumOf, fields, flag, ifThen, integer, literal, maxItems, maxLength, maximum, minItems, minLength, minProperties, minimum, nullable, numeric, object, oneOf, pattern, propertyNames, record, ref, text, uniqueItems } from "./wireCheck";
 import type { WireCheck, WireViolation } from "./wireCheck";
 
 import type { WireMethodName } from "./wire.methods.generated";
@@ -96,7 +96,6 @@ export type WireTypeName =
   | "GetSessionRequest"
   | "GetSessionSnapshotRequest"
   | "Goal"
-  | "GoalBudget"
   | "GoalReason"
   | "GoalReasonCode"
   | "GoalRequest"
@@ -228,7 +227,6 @@ export type WireTypeName =
   | "RollbackSessionRequest"
   | "RollbackSessionResponse"
   | "RunEvent"
-  | "RunLimits"
   | "RunMetrics"
   | "RunOutcome"
   | "RunOutcomeType"
@@ -289,6 +287,7 @@ export type WireTypeName =
   | "ToolInvocation"
   | "ToolSpec"
   | "TransportKind"
+  | "UnresolvedEffect"
   | "UpdateGoalRequest"
   | "UpdateKnowledgeRequest"
   | "UpdateMCPServerRequest"
@@ -617,14 +616,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["error", "type"]),
       fields({
         error: absent(),
-        type: literal("maxSteps"),
-      }, ["type"]),
-      fields({
-        error: absent(),
-        type: literal("maxBudget"),
-      }, ["type"]),
-      fields({
-        error: absent(),
         type: literal("canceled"),
       }, ["type"]),
       fields({
@@ -636,7 +627,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["error", "type"]),
     ]),
   ]),
-  ArtifactOutcomeType: enumOf(["completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"]),
+  ArtifactOutcomeType: enumOf(["completed", "timedOut", "failed", "canceled", "lost"]),
   ArtifactProblem: allOf([
     object({
       detail: text(),
@@ -724,7 +715,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       createdAt: text(),
       finishedAt: text(),
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      limits: ref(() => CHECKS.RunLimits),
       messageMark: allOf([integer(), minimum(0)]),
       metrics: ref(() => CHECKS.RunMetrics),
       model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -1136,7 +1126,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["sessionId"]),
   Goal: allOf([
     object({
-      budget: ref(() => CHECKS.GoalBudget),
       createdAt: text(),
       model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       objective: allOf([text(), pattern("\\S")]),
@@ -1180,18 +1169,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["status"]),
       fields({
         reason: fields({
-          code: enumOf(["runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"]),
+          code: enumOf(["blockedByModel"]),
         }, []),
       }, ["reason"]),
     ),
-  ]),
-  GoalBudget: allOf([
-    object({
-      maxCostUsd: allOf([numeric(), exclusiveMinimum(0)]),
-      maxRuns: allOf([integer(), minimum(1)]),
-      maxSteps: allOf([integer(), minimum(1)]),
-    }, []),
-    anyOf([fields({}, ["maxRuns"]), fields({}, ["maxCostUsd"]), fields({}, ["maxSteps"])]),
   ]),
   GoalReason: allOf([
     object({
@@ -1250,40 +1231,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         detail: absent(),
       }, []),
     ),
-    ifThen(
-      fields({
-        code: literal("runBudgetReached"),
-      }, ["code"]),
-      fields({
-        detail: absent(),
-      }, []),
-    ),
-    ifThen(
-      fields({
-        code: literal("costBudgetReached"),
-      }, ["code"]),
-      fields({
-        detail: absent(),
-      }, []),
-    ),
-    ifThen(
-      fields({
-        code: literal("stepBudgetReached"),
-      }, ["code"]),
-      fields({
-        detail: absent(),
-      }, []),
-    ),
-    ifThen(
-      fields({
-        code: literal("pricingUnavailable"),
-      }, ["code"]),
-      fields({
-        detail: absent(),
-      }, []),
-    ),
   ]),
-  GoalReasonCode: enumOf(["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"]),
+  GoalReasonCode: enumOf(["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "blockedByModel"]),
   GoalRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -2682,14 +2631,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     timestamp: text(),
   }, ["event", "eventId", "runId", "segmentId", "timestamp"]),
-  RunLimits: allOf([
-    object({
-      maxBudgetUsd: allOf([numeric(), exclusiveMinimum(0)]),
-      maxSteps: allOf([integer(), minimum(1)]),
-      maxTotalTokens: allOf([integer(), minimum(1)]),
-    }, []),
-    anyOf([fields({}, ["maxTotalTokens"]), fields({}, ["maxSteps"]), fields({}, ["maxBudgetUsd"])]),
-  ]),
   RunMetrics: object({
     activeDurationMillis: allOf([integer(), minimum(0), maximum(9223372036854)]),
     steps: allOf([integer(), minimum(0)]),
@@ -2700,6 +2641,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       detail: text(),
       error: ref(() => CHECKS.ProblemData),
       type: ref(() => CHECKS.RunOutcomeType),
+      unresolvedEffects: array(ref(() => CHECKS.UnresolvedEffect)),
     }, []),
     oneOf([
       fields({
@@ -2717,14 +2659,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["error", "type"]),
       fields({
         error: absent(),
-        type: literal("maxSteps"),
-      }, ["type"]),
-      fields({
-        error: absent(),
-        type: literal("maxBudget"),
-      }, ["type"]),
-      fields({
-        error: absent(),
         type: literal("canceled"),
       }, ["type"]),
       fields({
@@ -2733,7 +2667,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["error", "type"]),
     ]),
   ]),
-  RunOutcomeType: enumOf(["completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"]),
+  RunOutcomeType: enumOf(["completed", "timedOut", "failed", "canceled", "lost"]),
   RunProgress: allOf([
     object({
       activity: text(),
@@ -2755,7 +2689,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       createdAt: text(),
       finishedAt: text(),
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      limits: ref(() => CHECKS.RunLimits),
       metrics: ref(() => CHECKS.RunMetrics),
       model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       outcome: ref(() => CHECKS.RunOutcome),
@@ -3183,18 +3116,21 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       error: ref(() => CHECKS.ProblemData),
       interrupts: array(ref(() => CHECKS.Interrupt)),
       type: ref(() => CHECKS.SegmentOutcomeType),
+      unresolvedEffects: array(ref(() => CHECKS.UnresolvedEffect)),
     }, []),
     oneOf([
       fields({
         detail: absent(),
         error: absent(),
         type: literal("interrupt"),
+        unresolvedEffects: absent(),
       }, ["interrupts", "type"]),
       fields({
         detail: absent(),
         error: absent(),
         interrupts: absent(),
         type: literal("suspended"),
+        unresolvedEffects: absent(),
       }, ["type"]),
       fields({
         detail: absent(),
@@ -3215,16 +3151,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({
         error: absent(),
         interrupts: absent(),
-        type: literal("maxSteps"),
-      }, ["type"]),
-      fields({
-        error: absent(),
-        interrupts: absent(),
-        type: literal("maxBudget"),
-      }, ["type"]),
-      fields({
-        error: absent(),
-        interrupts: absent(),
         type: literal("canceled"),
       }, ["type"]),
       fields({
@@ -3234,7 +3160,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["error", "type"]),
     ]),
   ]),
-  SegmentOutcomeType: enumOf(["interrupt", "suspended", "completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"]),
+  SegmentOutcomeType: enumOf(["interrupt", "suspended", "completed", "timedOut", "failed", "canceled", "lost"]),
   ServerCapabilities: object({
     features: record(ref(() => CHECKS.FeatureCapability)),
     limits: ref(() => CHECKS.RuntimeLimits),
@@ -3319,7 +3245,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   SkillScope: enumOf(["project", "user"]),
   StartGoalRequest: allOf([
     object({
-      budget: ref(() => CHECKS.GoalBudget),
       model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       objective: allOf([text(), pattern("\\S")]),
       provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3342,7 +3267,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   StartRunRequest: allOf([
     object({
       input: allOf([array(ref(() => CHECKS.ContentBlock)), minItems(1)]),
-      limits: ref(() => CHECKS.RunLimits),
       model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       params: ref(() => CHECKS.GenerationParams),
       provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3531,6 +3455,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     safetyClass: ref(() => CHECKS.SafetyClass),
   }, ["name"]),
   TransportKind: enumOf(["http"]),
+  UnresolvedEffect: object({
+    cause: text(),
+    detail: text(),
+    effectId: text(),
+    processId: text(),
+    reason: text(),
+  }, ["cause", "effectId", "processId"]),
   UpdateGoalRequest: object({
     objective: allOf([text(), pattern("\\S")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),

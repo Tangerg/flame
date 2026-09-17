@@ -34,7 +34,7 @@ type interactionAccounting struct {
 
 type preparedModelContext struct {
 	effectID  agent.EffectID
-	sequence  uint32
+	sequence  uint64
 	estimated int
 }
 
@@ -170,7 +170,7 @@ func mergeInteractionUsage(
 func advanceProcessUsage(
 	current map[string]accounting.ModelUsage,
 	delta accounting.ModelUsage,
-	expectedCalls uint32,
+	expectedCalls uint64,
 ) (map[string]accounting.ModelUsage, []accounting.ModelUsage, accounting.ModelUsage, error) {
 	next := maps.Clone(current)
 	if next == nil {
@@ -195,7 +195,7 @@ func advanceProcessUsage(
 	if err != nil {
 		return nil, nil, accounting.ModelUsage{}, fmt.Errorf("agentexec: total model usage: %w", err)
 	}
-	if total.Calls != int(expectedCalls) {
+	if uint64(total.Calls) != expectedCalls {
 		return nil, nil, accounting.ModelUsage{}, fmt.Errorf(
 			"agentexec: model call sequence %d differs from accounted calls %d",
 			expectedCalls, total.Calls,
@@ -275,6 +275,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 		pendingSteers,
 		pendingContinuation,
 		metadata,
+		executionOptions(i.start.ModelSelection, i.start.Options),
 	)
 }
 

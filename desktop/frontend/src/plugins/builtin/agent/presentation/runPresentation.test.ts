@@ -41,8 +41,6 @@ describe("Run presentation facts", () => {
     [{ type: "timedOut", error: { message: "Provider timed out" } } as const, "error"],
     [{ type: "lost", error: { message: "Runtime restarted" } } as const, "error"],
     [{ type: "canceled", detail: "Stopped by user" } as const, "canceled"],
-    [{ type: "maxSteps", detail: "Step limit" } as const, "limit"],
-    [{ type: "maxBudget", detail: "Budget limit" } as const, "limit"],
   ])("projects terminal outcome %o as %s", (outcome, expected) => {
     const finished = run({
       status: "finished",

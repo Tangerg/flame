@@ -397,7 +397,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	goalValue, err := goal.New("session", "finish recovery", selection, goal.UnlimitedBudget(), run.Capabilities{}, "lease_recovery", createdAt)
+	goalValue, err := goal.New("session", "finish recovery", selection, run.Capabilities{}, "lease_recovery", createdAt)
 	if err != nil {
 		t.Fatalf("New Goal: %v", err)
 	}

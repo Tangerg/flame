@@ -1006,7 +1006,7 @@ func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 	// segment finishes, so whoever receives the finish has received the final value
 	// — see reducer.fenceFinalPlan.
 	terminal := mustReduce(t, reducer, SegmentEnded{
-		Reason: run.OutcomeMaxBudget, Duration: 1500 * time.Millisecond,
+		Reason: run.OutcomeCanceled, Duration: 1500 * time.Millisecond,
 		usage: &SegmentUsage{
 			Tokens: accounting.TokenUsage{
 				PromptTokens:     1200,
@@ -1019,7 +1019,7 @@ func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 	})
 	finished := terminal[len(terminal)-1].Event.(SegmentFinished)
 	if finished.Run.Metrics().ActiveDuration() != 1500*time.Millisecond || finished.Run.Detail() != "" {
-		t.Fatalf("budget terminal = %+v", finished.Run)
+		t.Fatalf("canceled terminal = %+v", finished.Run)
 	}
 	fence, fenced := terminal[len(terminal)-2].Event.(PlanSnapshot)
 	if !fenced || fence.Revision != 3 {

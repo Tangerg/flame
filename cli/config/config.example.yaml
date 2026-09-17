@@ -20,12 +20,6 @@
 # provider: deepseek
 # model: deepseek-v4-flash
 
-# Omit a limit for unlimited. Every configured value must be strictly positive.
-# run:
-#   max-total-tokens: 200000
-#   max-steps: 100
-#   max-budget-usd: 2.50
-
 # Default scope offered after approving a tool. The choices are:
 # none | session | project | global
 approval:
@@ -36,7 +30,6 @@ ui:
   notifications: true
   tool-details: false
   transcript-retain: 24       # 4..500 finished transcript blocks
-  reconnect-attempts: 4       # 0..20 dropped-stream reconnect attempts
 
 # Omit this block to use ~/.flame/plugins. Paths must be non-empty and unique;
 # each directory may contain at most 1024 immediate entries.

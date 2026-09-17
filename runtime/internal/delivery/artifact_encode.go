@@ -79,7 +79,6 @@ func artifactRunFromPortable(run sessions.PortableRun) (protocol.ArtifactRun, er
 		ReasoningEffort: run.Selection.ReasoningEffort(),
 		ParentRunID:     run.ParentRunID,
 		RootRunID:       run.RootRunID,
-		Limits:          presentLimits(run.Limits),
 		Metrics:         presentMetrics(run.Metrics),
 		ContextTokens:   run.ContextTokens,
 		ProtocolProfile: presentArtifactProtocolProfile(run.Capabilities),
@@ -113,10 +112,6 @@ func artifactOutcomeType(outcome run.Outcome) (protocol.ArtifactOutcomeType, err
 		return protocol.ArtifactOutcomeTimedOut, nil
 	case run.OutcomeFailed:
 		return protocol.ArtifactOutcomeFailed, nil
-	case run.OutcomeMaxBudget:
-		return protocol.ArtifactOutcomeMaxBudget, nil
-	case run.OutcomeMaxSteps:
-		return protocol.ArtifactOutcomeMaxSteps, nil
 	case run.OutcomeLost:
 		return protocol.ArtifactOutcomeLost, nil
 	default:

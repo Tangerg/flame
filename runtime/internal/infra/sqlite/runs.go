@@ -75,7 +75,6 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 		return fmt.Errorf("sqlite: admit run %q: %w", draft.RunID, err)
 	}
 	now := admitted.CreatedAt().UnixNano()
-	maxTotalTokens, maxSteps, maxBudgetUSD := runLimitColumnValues(admitted.Limits())
 	// This is the capability set's only writer, here and in Restore. Suspend,
 	// resume, and finish deliberately do not name the column: the value cannot change
 	// after admission, and the way to guarantee that is to have nothing able to
@@ -104,15 +103,15 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 		_, err = conn(ctx, r.db).ExecContext(ctx,
 			`INSERT INTO runs(
 			   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
-			   state, active_segment_id, provider, model, reasoning_effort, goal_incarnation_id, max_total_tokens, max_steps, max_budget_usd,
+			   state, active_segment_id, provider, model, reasoning_effort, goal_incarnation_id,
 			   capabilities, message_mark, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			admitted.ID(), admitted.SessionID(),
 			lineage.SpawnedByItemID, lineage.ParentRunID, lineage.RootRunID,
 			runStateRunning.databaseValue(), admitted.ActiveSegmentID(),
 			admitted.ModelSelection().Provider(), admitted.ModelSelection().Model(), admitted.ModelSelection().ReasoningEffort(),
 			admitted.GoalIncarnationID(),
-			maxTotalTokens, maxSteps, maxBudgetUSD, capabilities,
+			capabilities,
 			rundomain.UnknownMessageMark, now, now)
 		// Two constraints can reject this INSERT and they mean opposite things: the
 		// primary key says the id is spoken for, the partial index says the Session
@@ -543,7 +542,7 @@ func (r *RunStore) terminalize(
 			failureRef = &failure
 		}
 		return current.Terminate(rundomain.Termination{
-			Outcome: outcome, Detail: value.Detail(), Failure: failureRef,
+			Outcome: outcome, Detail: value.Detail(), Failure: failureRef, UnresolvedEffects: value.UnresolvedEffects(),
 			FinishedAt: value.FinishedAt(), MessageMark: value.MessageMark(),
 		})
 	})
@@ -622,6 +621,10 @@ func (r *RunStore) finish(
 	if hasFailure {
 		failureRef = &failure
 	}
+	encodedEffects, err := encodeUnresolvedEffects(value.UnresolvedEffects())
+	if err != nil {
+		return err
+	}
 	encodedFailure, err := encodeRunFailure(failureRef)
 	if err != nil {
 		return fmt.Errorf("sqlite: %s run %q: %w", op, value.ID(), err)
@@ -663,12 +666,12 @@ func (r *RunStore) finish(
 			`UPDATE runs SET
 			   state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
 			   outcome = ?, detail = ?, steps = ?, active_duration_ns = ?,
-			   usage = ?, context_tokens = ?, problem = ?, message_mark = ?, finished_at = ?, updated_at = ?
+			   usage = ?, context_tokens = ?, problem = ?, unresolved_effects = ?, message_mark = ?, finished_at = ?, updated_at = ?
 			 WHERE session_id = ? AND run_id = ? AND state = ?`
 		args := []any{
 			coarseState(next.State()).databaseValue(), commitSegmentID, commitID,
 			string(outcome), value.Detail(), metrics.steps, metrics.durationNs,
-			metrics.usage, next.ContextTokens(), encodedFailure,
+			metrics.usage, next.ContextTokens(), encodedFailure, encodedEffects,
 			value.MessageMark(), value.FinishedAt().UTC().UnixNano(),
 			value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(), coarseState(current.State()).databaseValue(),
 		}
@@ -733,6 +736,10 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 	if hasFailure {
 		failureRef = &failure
 	}
+	encodedEffects, err := encodeUnresolvedEffects(value.UnresolvedEffects())
+	if err != nil {
+		return err
+	}
 	encodedFailure, err := encodeRunFailure(failureRef)
 	if err != nil {
 		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
@@ -743,23 +750,20 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 	}
 	outcome, _ := value.Outcome()
 	selection := value.ModelSelection()
-	limits := value.Limits()
-	maxTotalTokens, maxSteps, maxBudgetUSD := runLimitColumnValues(limits)
 	_, err = conn(ctx, r.db).ExecContext(ctx,
 		`INSERT INTO runs(
 		   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
 		   state, outcome, provider, model, reasoning_effort, goal_incarnation_id,
-		   detail, steps, active_duration_ns, usage, context_tokens, problem,
-		   max_total_tokens, max_steps, max_budget_usd,
+		   detail, steps, active_duration_ns, usage, context_tokens, problem, unresolved_effects,
 		   capabilities, message_mark, created_at, finished_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		value.ID(), value.SessionID(),
 		lineage.SpawnedByItemID, lineage.ParentRunID, lineage.RootRunID,
 		coarseState(value.State()).databaseValue(), string(outcome),
 		selection.Provider(), selection.Model(), selection.ReasoningEffort(),
 		value.GoalIncarnationID(),
-		value.Detail(), metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedFailure,
-		maxTotalTokens, maxSteps, maxBudgetUSD, capabilities, value.MessageMark(),
+		value.Detail(), metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedFailure, encodedEffects,
+		capabilities, value.MessageMark(),
 		value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano())
 	if isPrimaryKeyViolation(err) {
 		// A Run id belongs to one Session for its whole lifetime. An import that

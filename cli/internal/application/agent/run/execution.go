@@ -39,12 +39,12 @@ type Runtime interface {
 }
 
 type Invocation struct {
-	Runtime           Runtime
-	Renderer          Renderer
-	Start             agent.StartRun
-	ApproveAll        bool
-	ReconnectAttempts int
-	ReplayPolicy      mutation.ReplayPolicy
+	Runtime    Runtime
+	Renderer   Renderer
+	Start      agent.StartRun
+	ApproveAll bool
+
+	ReplayPolicy mutation.ReplayPolicy
 }
 
 // Execute drives one stable Run across as many Segments as its interrupts
@@ -66,10 +66,6 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if err := invocation.ReplayPolicy.Validate(); err != nil {
 		return fmt.Errorf("one-shot command replay policy: %w", err)
 	}
-	reconnectPolicy, err := retry.NewReconnectPolicy(invocation.ReconnectAttempts)
-	if err != nil {
-		return fmt.Errorf("one-shot reconnect policy: %w", err)
-	}
 	defer func() { runErr = errors.Join(runErr, invocation.Renderer.Close()) }()
 
 	startReplay, err := invocation.ReplayPolicy.NewGuard()
@@ -85,11 +81,10 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 			return err
 		}
 	}
-	cancelOnExit := true
 	var watcher *cancellationWatcher
 	if opened.RunID != "" {
 		watcher = watchCancellation(ctx, invocation.Runtime, opened.RunID, invocation.ReplayPolicy)
-		defer func() { runErr = errors.Join(runErr, watcher.Finish(cancelOnExit)) }()
+		defer func() { runErr = errors.Join(runErr, watcher.Finish()) }()
 	}
 	if err != nil {
 		return err
@@ -102,7 +97,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		Lineage:  agent.RootRunLineage(),
 		Provider: invocation.Start.Options.Provider, Model: invocation.Start.Options.Model,
 		ReasoningEffort: invocation.Start.Options.ReasoningEffort,
-		Status:          protocol.RunStatusRunning, ActiveSegmentID: opened.SegmentID, Limits: invocation.Start.Options.Limits,
+		Status:          protocol.RunStatusRunning, ActiveSegmentID: opened.SegmentID,
 	}
 	if run.Provider == "" {
 		// The runtime default is intentionally opaque to the caller. Validation
@@ -114,11 +109,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		return beginErr
 	}
 
-	disposition, err := drive(ctx, invocation, reconnectPolicy, opened)
-	if disposition.preservesRun() {
-		cancelOnExit = false
-	}
-	return err
+	return drive(ctx, invocation, opened)
 }
 
 func openRun(
@@ -134,7 +125,7 @@ func openRun(
 }
 
 type cancellationWatcher struct {
-	exit   chan bool
+	exit   chan struct{}
 	result chan error
 }
 
@@ -144,28 +135,27 @@ func watchCancellation(
 	runID string,
 	replayPolicy mutation.ReplayPolicy,
 ) *cancellationWatcher {
-	watcher := &cancellationWatcher{exit: make(chan bool, 1), result: make(chan error, 1)}
+	watcher := &cancellationWatcher{exit: make(chan struct{}), result: make(chan error, 1)}
 	go func() {
-		shouldCancel := true
 		select {
-		case shouldCancel = <-watcher.exit:
+		case <-watcher.exit:
 		case <-ctx.Done():
 		}
-		if !shouldCancel {
+		if ctx.Err() == nil {
 			watcher.result <- nil
 			return
 		}
-		watcher.result <- cancelAbandonedRun(ctx, runtime, runID, replayPolicy)
+		watcher.result <- cancelRequestedRun(ctx, runtime, runID, replayPolicy)
 	}()
 	return watcher
 }
 
-func (c *cancellationWatcher) Finish(cancelRun bool) error {
-	c.exit <- cancelRun
+func (c *cancellationWatcher) Finish() error {
+	close(c.exit)
 	return <-c.result
 }
 
-func cancelAbandonedRun(
+func cancelRequestedRun(
 	ctx context.Context,
 	runtime Lifecycle,
 	runID string,
@@ -176,13 +166,13 @@ func cancelAbandonedRun(
 	defer cancel()
 	replay, err := replayPolicy.NewGuard()
 	if err != nil {
-		return fmt.Errorf("prepare abandoned run cancellation replay guard: %w", err)
+		return fmt.Errorf("prepare requested run cancellation replay guard: %w", err)
 	}
 	result, err := mutation.ConfirmAdmitted(
 		cancelCtx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(replayPolicy, replay),
 		func(ctx context.Context) (agent.RunCancellation, error) {
 			return runtime.CancelRun(ctx, agent.CancelRun{
-				CommandID: commandID, RunID: runID, Reason: "CLI execution ended before the run settled",
+				CommandID: commandID, RunID: runID, Reason: "CLI execution canceled",
 			})
 		},
 	)
@@ -190,29 +180,18 @@ func cancelAbandonedRun(
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("cancel abandoned run %s: %w", runID, err)
+		return fmt.Errorf("cancel requested run %s: %w", runID, err)
 	}
 	if err := result.ValidateTarget(runID); err != nil {
-		return fmt.Errorf("cancel abandoned run %s: %w", runID, err)
+		return fmt.Errorf("cancel requested run %s: %w", runID, err)
 	}
 	return nil
 }
 
-type disposition uint8
-
-const (
-	continuing disposition = iota
-	abandoned
-	settled
-	parked
-)
-
-func (d disposition) preservesRun() bool { return d == settled || d == parked }
-
-func drive(ctx context.Context, invocation Invocation, policy retry.ReconnectPolicy, opened agent.SegmentStream) (disposition, error) {
+func drive(ctx context.Context, invocation Invocation, opened agent.SegmentStream) error {
 	driver := executionDriver{
 		invocation: invocation, openedRunID: opened.RunID,
-		conversation: agent.NewConversation(), policy: policy, current: opened,
+		conversation: agent.NewConversation(), current: opened,
 	}
 	return driver.run(ctx)
 }
@@ -221,21 +200,20 @@ type executionDriver struct {
 	invocation   Invocation
 	openedRunID  string
 	conversation *agent.Conversation
-	policy       retry.ReconnectPolicy
 	current      agent.SegmentStream
 	failures     int
 }
 
-func (e *executionDriver) run(ctx context.Context) (disposition, error) {
+func (e *executionDriver) run(ctx context.Context) error {
 	for {
 		followed := consume(e.current.Events, e.conversation, e.invocation.Renderer)
 		if followed.err == nil && e.conversation.RunID() == e.current.RunID {
 			switch e.conversation.Phase() {
 			case agent.ConversationIdle:
-				return settled, errorForOutcome(e.conversation.Outcome())
+				return errorForOutcome(e.conversation.Outcome())
 			case agent.ConversationWaiting:
 				if err := e.resume(ctx, e.conversation.Interactions(), e.current.RunID); err != nil {
-					return interactionDisposition(err), err
+					return err
 				}
 				continue
 			}
@@ -247,9 +225,9 @@ func (e *executionDriver) run(ctx context.Context) (disposition, error) {
 		if followed.applied > 0 {
 			e.failures = 0
 		}
-		reconnectDisposition, err := e.reconnect(ctx, cause)
-		if reconnectDisposition != continuing {
-			return reconnectDisposition, err
+		continued, err := e.reconnect(ctx, cause)
+		if !continued {
+			return err
 		}
 	}
 }
@@ -282,35 +260,28 @@ func (e *executionDriver) resume(ctx context.Context, interactions []agent.Inter
 	return nil
 }
 
-func interactionDisposition(err error) disposition {
-	if _, required := errors.AsType[*interactionRequiredError](err); required {
-		return parked
-	}
-	return abandoned
-}
-
-func (e *executionDriver) reconnect(ctx context.Context, cause error) (disposition, error) {
+func (e *executionDriver) reconnect(ctx context.Context, cause error) (bool, error) {
 	for {
 		e.failures++
-		delay, shouldRetry, policyErr := e.policy.Next(e.failures, cause)
+		delay, shouldRetry, policyErr := retry.ReconnectDelay(e.failures, cause)
 		if policyErr != nil {
-			return abandoned, policyErr
+			return false, policyErr
 		}
 		if !shouldRetry {
-			return abandoned, cause
+			return false, cause
 		}
 		if err := retry.Wait(ctx, delay); err != nil {
-			return abandoned, err
+			return false, err
 		}
 		rebound, err := e.invocation.Runtime.SubscribeRun(ctx, agent.SubscribeRun{
 			RunID: e.current.RunID, SegmentID: e.current.SegmentID, AfterEventID: e.conversation.Checkpoint(),
 		})
 		if err == nil {
 			if validateSubscriptionErr := rebound.ValidateSubscription(); validateSubscriptionErr != nil {
-				return abandoned, fmt.Errorf("subscribe run: %w", validateSubscriptionErr)
+				return false, fmt.Errorf("subscribe run: %w", validateSubscriptionErr)
 			}
 			e.current = rebound
-			return continuing, nil
+			return true, nil
 		}
 		if !RecoveryRequired(err) {
 			cause = err
@@ -327,24 +298,24 @@ func (e *executionDriver) reconnect(ctx context.Context, cause error) (dispositi
 	}
 }
 
-func (e *executionDriver) installRecovery(ctx context.Context, recovered Recovery) (disposition, error) {
+func (e *executionDriver) installRecovery(ctx context.Context, recovered Recovery) (bool, error) {
 	if err := e.invocation.Renderer.Reconcile(recovered.Snapshot); err != nil {
-		return abandoned, err
+		return false, err
 	}
 	if err := restoreRecoveredConversation(e.conversation, recovered); err != nil {
-		return abandoned, err
+		return false, err
 	}
 	switch recovered.Run.Status {
 	case protocol.RunStatusFinished:
-		return settled, errorForOutcome(recovered.Run.Outcome)
+		return false, errorForOutcome(recovered.Run.Outcome)
 	case protocol.RunStatusWaiting:
 		if err := e.resume(ctx, recovered.Snapshot.Interactions, recovered.Run.ID); err != nil {
-			return interactionDisposition(err), err
+			return false, err
 		}
 	case protocol.RunStatusRunning:
 		e.current = recovered.Stream
 	}
-	return continuing, nil
+	return true, nil
 }
 
 func restoreRecoveredConversation(conversation *agent.Conversation, recovered Recovery) error {

@@ -367,7 +367,7 @@ func seedMaximalSession(t *testing.T, rt *stubRuntime) string {
 		t.Fatalf("seed messages: %v", err)
 	}
 
-	seedPolicyStoppedRun(t, rt, sessionID)
+	seedCanceledRun(t, rt, sessionID)
 	seedFailedRun(t, rt, sessionID)
 	seedEveryItemKind(t, rt, sessionID)
 	seedChildRun(t, rt, sessionID)
@@ -381,25 +381,17 @@ func seedMaximalSession(t *testing.T, rt *stubRuntime) string {
 	return sessionID
 }
 
-func seedPolicyStoppedRun(t *testing.T, rt *stubRuntime, sessionID string) {
+func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	t.Helper()
 	cost := 1.25
-	outcome := run.OutcomeMaxSteps
+	outcome := run.OutcomeCanceled
 	selection, err := modelref.NewWithReasoningEffort("anthropic", "claude-opus-5", "high")
 	if err != nil {
 		t.Fatalf("model selection: %v", err)
 	}
-	maxTotalTokens, maxSteps, maxBudgetUSD := int64(32_768), 12, 3.5
-	limits, err := run.NewLimits(run.LimitValues{
-		MaxTotalTokens: &maxTotalTokens, MaxSteps: &maxSteps, MaxBudgetUSD: &maxBudgetUSD,
-	})
-	if err != nil {
-		t.Fatalf("run limits: %v", err)
-	}
-	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_done", State: run.Failed,
+	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_done", State: run.Canceled,
 		ModelSelection: selection, Outcome: &outcome,
-		Detail: "step limit reached",
-		Limits: limits,
+		Detail: "user stopped execution",
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{
 			Total: accounting.Totals{
 				InputTokens: 100, OutputTokens: 20, CacheReadTokens: 5,

@@ -47,10 +47,10 @@ func (r runBindingStub) CancelRun(ctx context.Context, request protocol.CancelRu
 	return r.cancel(ctx, request, options)
 }
 
-func unlimitedStartRequest(sessionID string, message agent.Message) agent.StartRun {
+func testStartRequest(sessionID string, message agent.Message) agent.StartRun {
 	return agent.StartRun{
 		SessionID: sessionID, Message: message,
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	}
 }
 
@@ -70,9 +70,6 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 		if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion ||
 			options.RequestMeta.ClientInfo == nil || options.RequestMeta.ClientInfo.Name != clientName {
 			t.Fatalf("start options = %+v", options)
-		}
-		if request.Limits == nil || request.Limits.MaxTotalTokens != nil || request.Limits.MaxSteps == nil || *request.Limits.MaxSteps != 20 || request.Limits.MaxBudgetUSD == nil || *request.Limits.MaxBudgetUSD != 3.5 {
-			t.Fatalf("start limits = %+v", request.Limits)
 		}
 		contextTokens := int64(12_345)
 		return &protocol.StartRunResponse{RunID: runID, SegmentID: segmentID, UserItemID: "item_user"}, func(yield func(protocol.RunEvent, error) bool) {
@@ -98,14 +95,9 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 		}, nil
 	}
 	runtime := &Connection{runs: stub, meta: requestMeta("test"), loadAttachment: loadAttachmentFile}
-	maxSteps, maxBudget := 20, 3.5
-	limits, err := agent.NewRunLimits(agent.RunLimitValues{MaxSteps: &maxSteps, MaxBudgetUSD: &maxBudget})
-	if err != nil {
-		t.Fatal(err)
-	}
 	stream, err := runtime.StartRun(t.Context(), agent.StartRun{
 		SessionID: "ses_1", Message: agent.Message{Text: "hello"}, Options: agent.RunOptions{
-			Provider: "deepseek", Model: "deepseek-reasoner", ReasoningEffort: "high", Limits: limits,
+			Provider: "deepseek", Model: "deepseek-reasoner", ReasoningEffort: "high",
 		},
 	})
 	if err != nil {
@@ -172,7 +164,7 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 		runs: stub, meta: requestMeta("test"),
 		profile: profileWithReplayNamespace(t, namespace),
 	}
-	request := unlimitedStartRequest("ses_1", agent.Message{Text: "start"})
+	request := testStartRequest("ses_1", agent.Message{Text: "start"})
 	request.CommandID = commandID
 	if _, err := runtime.StartRun(t.Context(), request); err != nil {
 		t.Fatal(err)
@@ -202,7 +194,7 @@ func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapab
 		{
 			name: "start",
 			call: func(ctx context.Context, runtime *Connection) error {
-				_, err := runtime.StartRun(ctx, unlimitedStartRequest("ses_1", message))
+				_, err := runtime.StartRun(ctx, testStartRequest("ses_1", message))
 				return err
 			},
 		},
@@ -363,7 +355,7 @@ func TestRunMutationAdaptersPreservePartialAcceptedReceipts(t *testing.T) {
 		},
 	}, meta: requestMeta("test")}
 
-	started, err := runtime.StartRun(t.Context(), unlimitedStartRequest("ses_1", agent.Message{Text: "start"}))
+	started, err := runtime.StartRun(t.Context(), testStartRequest("ses_1", agent.Message{Text: "start"}))
 	requireRuntimeContractViolation(t, err)
 	receipt, accepted := agent.AcceptedMutationReceipt(err)
 	if !accepted || !segmentStreamEmpty(started) || receipt.RunID != "run_started" || receipt.SegmentID != "seg_started" {

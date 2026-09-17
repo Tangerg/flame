@@ -3,7 +3,6 @@ package agentexec
 import (
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	agent "github.com/Tangerg/scope/agent"
 )
 
@@ -28,12 +27,17 @@ func (i *interactionEffectFailures) record(id agent.EffectID, cause error) {
 	}
 }
 
-func (i *interactionEffectFailures) observations(ids []agent.EffectID) []runs.UnknownEffect {
+func (i *interactionEffectFailures) observations(ids []agent.EffectID) []effectObservation {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	effects := make([]runs.UnknownEffect, len(ids))
+	effects := make([]effectObservation, len(ids))
 	for index, id := range ids {
-		effects[index] = runs.UnknownEffect{ID: id.String(), Detail: i.causes[id]}
+		effects[index] = effectObservation{ID: id.String(), Detail: i.causes[id]}
 	}
 	return effects
+}
+
+type effectObservation struct {
+	ID     string
+	Detail string
 }

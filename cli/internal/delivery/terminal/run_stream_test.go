@@ -312,7 +312,7 @@ func TestRecoveredSessionRetriesATransientAttachRead(t *testing.T) {
 			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
-	_, err := base.StartRun(t.Context(), testUnlimitedStartRun("ses_demo_1", "recover attach"))
+	_, err := base.StartRun(t.Context(), testStartRun("ses_demo_1", "recover attach"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -594,7 +594,7 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_0123456789abcdef0123456789abcdef"),
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "replay after launch"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	}
 	stageDispatchingRun(t, store, command)
 	runtime := &recordingRuntime{Runtime: base}
@@ -622,7 +622,7 @@ func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T)
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_abcdef0123456789abcdef0123456789"),
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "already accepted"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	}
 	runtime := &idempotentStartRuntime{Runtime: base}
 	if _, err := runtime.StartRun(t.Context(), command); err != nil {
@@ -658,7 +658,7 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
-	active := testUnlimitedStartRun("ses_demo_1", "already active")
+	active := testStartRun("ses_demo_1", "already active")
 	if _, err := base.StartRun(t.Context(), active); err != nil {
 		t.Fatal(err)
 	}
@@ -670,7 +670,7 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 	original := agent.CommandID("cli_22222222222222222222222222222222")
 	command := agent.StartRun{
 		CommandID: original, SessionID: active.SessionID, Message: agent.Message{Text: "queue after recovery"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	}
 	stageDispatchingRun(t, store, command)
 	runtime := &activeConflictRuntime{Runtime: base, attempted: make(chan agent.StartRun, 1), conflict: original}
@@ -711,7 +711,7 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_77777777777777777777777777777777"),
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "cancel after restart"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	}
 	idempotent := &idempotentStartRuntime{Runtime: base}
 	runtime := &heldCancellationResultRuntime{
@@ -767,7 +767,7 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_99999999999999999999999999999999"),
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "recover canceled start ownership"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	}
 	runtime := &heldCancellationResultRuntime{
 		idempotentStartRuntime: &idempotentStartRuntime{Runtime: base},
@@ -841,7 +841,7 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_88888888888888888888888888888888"),
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "cancel malformed start after restart"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	}
 	stateDirectory := t.TempDir()
 	store, err := openSessionWorkbench(stateDirectory)
@@ -908,7 +908,7 @@ func TestRecoveredStartStopsBeforeRetryingOutsideItsReplayStore(t *testing.T) {
 	}
 	command := agent.StartRun{
 		CommandID: "cli_cccccccccccccccccccccccccccccccc", SessionID: "ses_demo_1",
-		Message: agent.Message{Text: "do not replay outside the owning store"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Message: agent.Message{Text: "do not replay outside the owning store"}, Options: agent.RunOptions{},
 	}
 	_, err := openStartRunWithBackoff(
 		t.Context(), runtime, command,
@@ -934,7 +934,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			stage: func(t *testing.T, store *workbench.Store) {
 				command := agent.StartRun{
 					CommandID: "cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", SessionID: "ses_demo_1",
-					Message: agent.Message{Text: "do not replay across stores"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+					Message: agent.Message{Text: "do not replay across stores"}, Options: agent.RunOptions{},
 				}
 				if err := store.StagePendingRun(workbench.PendingRun{
 					State: workbench.PendingRunQueued, Command: command,

@@ -39,7 +39,7 @@ Scope's Agent Framework is the only process, strategy, child-tree, tool-loop, an
 
 `adapter/agentexec` is the anti-corruption boundary. It maps Runtime commands and values to public Scope contracts, observes framework outcomes, and maps them back to Runtime facts. Application owns product admission, transaction ordering, cancellation intent, durable waiting state, and durable terminal publication. Scope owns execution cancellation and immutable termination; Runtime does not maintain a second dispatch cancellation tree or override a settled termination with later intent.
 
-A model error remains an unknown external outcome in Scope. After committing the failed-call fact, Runtime explicitly cancels that member and projects its provider failure only when Scope acknowledges that model-failure stop; allowance denial stops the same member before another call begins. Interrupted Effects retained in terminal snapshots are evidence, not resumable work. A failed authoritative projection after external execution still follows the unknown-effect recovery path.
+A model error remains an unknown external outcome in Scope. After committing the failed-call fact, Runtime explicitly cancels that member and projects its provider failure only when Scope acknowledges that model-failure stop. Interrupted Effects retained in terminal snapshots are evidence, not resumable work. A failed authoritative projection after external execution still follows the unknown-effect recovery path.
 
 Framework observations are wake-ups, not durable commits. Runtime reconciles authoritative framework state into an Application write set before publishing durable product facts. A completed durable Item or snapshot wins over a missing or duplicated preview event.
 
@@ -47,7 +47,7 @@ The live registry fences opening commits together with owner registration. A con
 
 Cold stream recovery uses `runs.subscribe` with `snapshot: true`. The tree owner fences its durable commits and event publication while the Session use case reads material and the successor tail attaches. The reply contains both the snapshot and its tail head; a replay cursor is mutually exclusive with this mode. Ordinary replay retains the consumed cursor. Waiting for the fence revalidates the addressed Segment so a replacement cannot be paired with an old tail.
 
-Model-call allowances apply to cumulative usage across the execution tree. A limit denial belongs to the member whose next call was refused; it does not replace a sibling's completed, canceled, or failed outcome.
+Usage accumulates across the execution tree for accounting. Each member retains its own terminal outcome.
 
 A parked Interaction holds new Effect dispatch until the next product Segment activates. Canceling a waiting child can wake its parent in Scope before that activation; the execution adapter keeps that Effect behind the same continuation boundary. Activation releases it before reconciling the parent Tool results and reducing model context. Scope cancellation unblocks the waiter through the dispatch context; Runtime release also opens the local wait boundary.
 
@@ -71,7 +71,13 @@ Runtime policy and pre-Tool hooks own their public refusal reasons. The executio
 
 Result publication callbacks first ask the Segment owner for a durable receipt, ordered with commits on its event stream. The receipt binds the Scope Effect and digest to the Session, Run, and active Segment. Only an unpublished batch needs pending product metadata and reducer mutation. Direct Tool completion uses these same committed results without synthesizing an assistant answer.
 
-Unknown external effects fail closed. Runtime does not guess whether an unconfirmed model or tool effect succeeded and does not silently replay it.
+Unknown external effects fail closed. Runtime stops live unresolved execution through Scope, then projects the immutable outcomes; it does not independently terminalize every Run as Lost. A canceled or timed-out Run can retain unresolved effects. Ordinary Tool processes contribute their evidence to the calling Run, while Delegates own theirs. Process and Effect identities, original termination cause, and bounded diagnostics commit atomically with the terminal Run and appear in both cold reads and terminal events. Already published Tool results retain their durable Items; unstarted effects are not reported as unknown. A canceled partial Tool batch can still strand completed sibling results inside Scope before ResultCommitter runs. Exporting those exact results requires a typed Scope terminal-evidence API; Runtime must not decode private prepared state or reconstruct model results from presentation metadata.
+
+Root Await establishes the root outcome; Join establishes local subtree drainage. Reconciliation stays available during Join, followed by a final postorder sweep before Engine closure. Terminal projection waits for a durable receipt, including when background scanning is stopped. A held root outcome survives missing-child cleanup. Consumer rejection of a model stream does not request cancellation; the Dispatcher supplies the actual error and unresolved evidence.
+
+Each parent Run admits at most four active delegated children, including pending reservations. The product admission pump owns this limit independently of Scope's mixed Tool/Delegate tree capacity. Aborted initialization releases a reservation; a started child releases capacity only after its drained terminal commits. Delegates inherit generation options without root output framing or stop strings. Checkpoints retain those options, and deployment identities bind their effective policy across restoration.
+
+Runtime uses Scope's unlimited cumulative quotas for Interaction model calls, process Steps/Effects/Signals, ordinary Tools, Delegates, and lifetime child/process counts. Depth, active-child concurrency, pending mailbox capacity, and operation-specific waits bound resource use. Model-call identities and pending result attribution retain Scope's uint64 sequences through checkpoint restoration.
 
 ## Persistence and recovery
 
@@ -89,7 +95,7 @@ Background recovery reports the first consecutive sweep failure through the same
 
 The active development contract has one current storage shape. SQLite installs that shape directly and does not maintain a schema-version or migration graph. A breaking schema change replaces the old shape completely; incompatible development state is reset explicitly unless the user authorizes a real migration requirement.
 
-Executor restore compatibility belongs to the exact BuildID and framework Deployment references. Checkpoint payloads, policy, context sources, and Tool-input continuations encode the current shape without independent hand-maintained schema counters. Decoding still validates complete identities, capabilities, budgets, prompt digests, and structural relationships before restoring execution.
+Executor restore compatibility belongs to the exact BuildID and framework Deployment references. Checkpoint payloads, policy, context sources, and Tool-input continuations encode the current shape without independent hand-maintained schema counters. Decoding still validates complete identities, capabilities, prompt digests, and structural relationships before restoring execution.
 
 ## Provider and integration boundaries
 
@@ -154,6 +160,8 @@ Production construction consumes the complete storage bundle opened by persisten
 Skill discovery, library curation, and proposal review require complete implementations. Bootstrap requires an absolute user Skill directory and constructs its store, usage recorder, and maintenance workers even when the library is empty. A Skill store requires an absolute library root and a valid scope, and a maintenance component requires its sweeper at construction.
 
 Every goroutine has one owner, stop condition, and join path. Request cancellation governs the request; accepted Run execution uses a Runtime-owned lifetime. Transport disconnect does not implicitly cancel durable execution.
+
+Authoritative execution publication has no fixed wall-clock deadline. Admission follows its execution context; observed model and Tool outcomes survive execution cancellation until the product owner releases the executor. Release cancels outstanding publication waits when the Run pump stops consuming. Tree reconciliation and final effect inspection follow their owner lifetime. Best-effort lifecycle notifications, refetchable hints, and cleanup callers retain bounded waits. Auxiliary model resolution and generation follow their caller's context, including required compaction, without an adapter-imposed timeout.
 
 The execution registry owns each Interaction session from assembly until release
 succeeds. Publication adds a callable index; it does not acquire the resources.

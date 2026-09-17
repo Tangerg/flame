@@ -167,7 +167,7 @@ func TestRunTerminalFactsRemainCoherent(t *testing.T) {
 		{name: "timeout classified", outcome: OutcomeTimedOut, failure: &Failure{Kind: FailureTimeout}},
 		{name: "timeout misclassified", outcome: OutcomeTimedOut, failure: &Failure{Kind: FailureInternal}, wantErr: true},
 		{name: "lost classified", outcome: OutcomeLost, failure: &Failure{Kind: FailureLost}},
-		{name: "policy stop carries detail", outcome: OutcomeMaxSteps, detail: "limit reached"},
+		{name: "cancellation carries detail", outcome: OutcomeCanceled, detail: "stopped by user"},
 		{name: "cancellation carries detail", outcome: OutcomeCanceled, detail: "user stopped"},
 		{name: "success carries failure", outcome: OutcomeCompleted, failure: &Failure{Kind: FailureInternal}, wantErr: true},
 	}

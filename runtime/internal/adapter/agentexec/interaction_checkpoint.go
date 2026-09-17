@@ -21,6 +21,7 @@ import (
 )
 
 type interactionCheckpointPayloadWire struct {
+	Options             corechat.Options                    `json:"options"`
 	ToolMetadata        []toolResultMetadata                `json:"tool_metadata,omitempty"`
 	Tree                json.RawMessage                     `json:"tree"`
 	Instructions        []corechat.Message                  `json:"instructions,omitempty"`
@@ -66,6 +67,7 @@ type interactionContentBlockWire struct {
 }
 
 type interactionCheckpointState struct {
+	options             corechat.Options
 	toolMetadata        map[string]toolResultMetadata
 	tree                agent.TreeSnapshot
 	callsByProcess      map[agent.ProcessID]map[string]int
@@ -95,7 +97,7 @@ func (i *interactionSession) executorCheckpoint(
 		ToolResultIDs: checkpointToolResultIDs(decoded),
 		RootMemberID:  tree.RootID().String(), Payload: payload,
 		BuildID: i.buildID.String(), Scope: i.scope,
-		ModelSelection: i.start.ModelSelection, Limits: i.start.Limits,
+		ModelSelection: i.start.ModelSelection,
 		Capabilities: run.Capabilities{
 			ChildRuns:      i.start.ChildRunAdmissionEnabled,
 			InterruptKinds: slices.Clone(i.start.InterruptKinds),
@@ -117,12 +119,13 @@ func encodeInteractionCheckpointPayload(
 	pendingSteers map[agent.SignalID]pendingInteractionSteer,
 	pendingContinuation *pendingInteractionContinuation,
 	toolMetadata []toolResultMetadata,
+	options corechat.Options,
 ) ([]byte, error) {
 	if !tree.Valid() {
 		return nil, errors.New("agentexec: encode invalid Interaction tree checkpoint")
 	}
 	wire := interactionCheckpointPayloadWire{
-		ToolMetadata: toolMetadata,
+		ToolMetadata: toolMetadata, Options: options.Clone(),
 		Tree:         tree.JSON(),
 		Instructions: cloneChatMessages(instructions),
 	}
@@ -324,6 +327,9 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
+	if err := wire.Options.Validate(); err != nil {
+		return interactionCheckpointState{}, err
+	}
 	tree, processes, err := decodeInteractionCheckpointTree(wire.Tree)
 	if err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint tree: %w", err)
@@ -360,7 +366,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	}
 	return interactionCheckpointState{
 		tree: tree, callsByProcess: callsByProcess, carriedCallCount: carriedCallCount,
-		contextByProcess: contextByProcess, instructions: instructions, pendingSteers: pendingSteers,
+		contextByProcess: contextByProcess, instructions: instructions, options: wire.Options.Clone(), pendingSteers: pendingSteers,
 		pendingContinuation: pendingContinuation, toolMetadata: metadata,
 	}, nil
 }

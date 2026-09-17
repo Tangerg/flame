@@ -269,3 +269,11 @@ func TestDecodeAcceptsRequestsWithoutConstraints(t *testing.T) {
 		t.Fatalf("sessionId = %q, want ses_1", in.SessionID)
 	}
 }
+
+func TestGoalStartRejectsUnknownFields(t *testing.T) {
+	var request protocol.StartGoalRequest
+	err := decodeParams(json.RawMessage(`{"sessionId":"ses_1","objective":"finish","unexpected":true}`), &request)
+	if err == nil || !strings.Contains(err.Error(), `unknown field "unexpected"`) {
+		t.Fatalf("unknown field = %v", err)
+	}
+}

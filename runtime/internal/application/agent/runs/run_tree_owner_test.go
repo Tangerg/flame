@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -311,4 +312,21 @@ func testRunTreeOwner(t *testing.T, hub *journal) *runTreeOwner {
 	taskContext, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 	return newRunTreeOwner(cancel, taskContext, hub)
+}
+
+func TestRunTreeOwnerAllowsSlowInterruptCommit(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		owner := testRunTreeOwner(t, nil)
+		committed, err := owner.commitInterrupt(t.Context(), func(ctx context.Context) error {
+			select {
+			case <-time.After(time.Minute):
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		})
+		if err != nil || !committed {
+			t.Fatalf("slow interrupt commit: %v, %v", committed, err)
+		}
+	})
 }

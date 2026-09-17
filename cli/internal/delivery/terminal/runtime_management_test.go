@@ -478,7 +478,7 @@ func (g *goalServiceStub) StartGoal(_ context.Context, start protocol.StartGoalR
 	at := time.Unix(1, 0).UTC()
 	current := protocol.Goal{
 		SessionID: start.SessionID, Objective: start.Objective, Status: protocol.GoalActive,
-		Provider: start.Provider, Model: start.Model, ReasoningEffort: start.ReasoningEffort, Budget: start.Budget,
+		Provider: start.Provider, Model: start.Model, ReasoningEffort: start.ReasoningEffort,
 		CreatedAt: at, UpdatedAt: at,
 	}
 	g.set(current)

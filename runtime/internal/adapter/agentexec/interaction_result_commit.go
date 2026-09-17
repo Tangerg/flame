@@ -115,7 +115,7 @@ func (i *interactionSession) CommitResults(ctx context.Context, batch interactio
 	if err != nil {
 		return interaction.ResultReceipt{}, err
 	}
-	projectionCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
+	projectionCtx, cancel := i.lifetime.publicationContext(ctx)
 	defer cancel()
 	if err := i.lifetime.sendAuthoritative(projectionCtx, runs.ExecutorEvent{Member: member, Payload: lookup}); err != nil {
 		return interaction.ResultReceipt{}, err

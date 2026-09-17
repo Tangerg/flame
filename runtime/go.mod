@@ -5,8 +5,8 @@ go 1.27.0
 require (
 	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260912094153-1dc998bda962
 	github.com/Tangerg/scope/a2a v0.22.0
-	github.com/Tangerg/scope/agent v0.25.0
-	github.com/Tangerg/scope/core v0.23.0
+	github.com/Tangerg/scope/agent v0.27.0
+	github.com/Tangerg/scope/core v0.24.0
 	github.com/Tangerg/scope/mcp v0.23.0
 	github.com/Tangerg/scope/models/alibaba v0.22.0
 	github.com/Tangerg/scope/models/anthropic v0.22.0
@@ -28,8 +28,8 @@ require (
 	github.com/Tangerg/scope/models/xiaomi v0.22.0
 	github.com/Tangerg/scope/models/zhipu v0.22.0
 	github.com/Tangerg/scope/otel v0.22.0
-	github.com/Tangerg/scope/skills v0.22.0
-	github.com/Tangerg/scope/tools v0.23.0
+	github.com/Tangerg/scope/skills v0.22.1
+	github.com/Tangerg/scope/tools v0.24.0
 	github.com/Tangerg/sse v0.0.6
 	github.com/bluekeyes/go-gitdiff v0.9.0
 	github.com/fsnotify/fsnotify v1.10.1

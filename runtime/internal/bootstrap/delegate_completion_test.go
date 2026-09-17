@@ -8,17 +8,21 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func TestProtocolKeepsCompletedChildOutcomeWhenSiblingExhaustsAllowance(t *testing.T) {
+func TestProtocolCompletesAllDelegates(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	var calls atomic.Int32
 	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 		calls.Add(1)
+		for _, message := range request.Messages {
+			if message.Role == chat.RoleTool {
+				return completedTextResponse("all done"), nil
+			}
+		}
 		for _, message := range request.Messages {
 			if message.Role == chat.RoleUser && strings.Contains(message.Text(), "finish child") {
 				return completedTextResponse("child completed"), nil
@@ -58,7 +62,7 @@ func TestProtocolKeepsCompletedChildOutcomeWhenSiblingExhaustsAllowance(t *testi
 		}
 	})
 	created := endpoint.Invoke(ctx, delivery.SessionsCreate, protocol.CreateSessionRequest{
-		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "shared child allowance",
+		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "independent child completion",
 	}, options)
 	if created.Failure != nil {
 		t.Fatal(created.Failure)
@@ -67,7 +71,6 @@ func TestProtocolKeepsCompletedChildOutcomeWhenSiblingExhaustsAllowance(t *testi
 	started := endpoint.Invoke(ctx, delivery.RunsStart, protocol.StartRunRequest{
 		SessionID: session.ID,
 		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "delegate both tasks"}},
-		Limits:    &protocol.RunLimits{MaxSteps: testsupport.Pointer(2)},
 	}, options)
 	if started.Failure != nil {
 		t.Fatal(started.Failure)
@@ -90,8 +93,8 @@ func TestProtocolKeepsCompletedChildOutcomeWhenSiblingExhaustsAllowance(t *testi
 		t.Fatal(listed.Failure)
 	}
 	finished := listed.Value.(*protocol.Page[protocol.RunRef])
-	if len(finished.Data) != 3 || calls.Load() != 2 {
-		t.Fatalf("tree = %d Runs, %d provider calls; want 3 Runs sharing 2 calls", len(finished.Data), calls.Load())
+	if len(finished.Data) != 3 || calls.Load() != 4 {
+		t.Fatalf("tree = %d Runs, %d provider calls; want 3 Runs using 4 calls", len(finished.Data), calls.Load())
 	}
 	completedChildren := 0
 	for _, value := range finished.Data {
@@ -108,11 +111,11 @@ func TestProtocolKeepsCompletedChildOutcomeWhenSiblingExhaustsAllowance(t *testi
 			completedChildren++
 			continue
 		}
-		if value.Outcome.Type != protocol.OutcomeMaxSteps {
-			t.Fatalf("Run %s ended as %s, want maxSteps", value.ID, value.Outcome.Type)
+		if value.Outcome.Type != protocol.OutcomeCompleted {
+			t.Fatalf("Run %s ended as %s, want completed", value.ID, value.Outcome.Type)
 		}
 	}
-	if completedChildren != 1 {
-		t.Fatalf("completed children = %d, want the child that returned its final answer", completedChildren)
+	if completedChildren != 2 {
+		t.Fatalf("completed children = %d, want both children", completedChildren)
 	}
 }

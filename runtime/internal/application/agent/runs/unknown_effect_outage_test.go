@@ -45,7 +45,7 @@ func TestUnknownEffectLossOutageReachesTheOperatorOnce(t *testing.T) {
 	executor := &fakeExecutor{executorEvents: []ExecutorEvent{
 		{
 			Member:  ExecutorMember{MemberID: "member_root"},
-			Payload: NewUnknownEffectsDetected([]UnknownEffect{{ID: "effect:test", Detail: "publication unavailable"}}),
+			Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost}, nil, 0),
 		},
 	}}
 	effects := &fakeEffects{commitErr: outage, commitErrAt: 1, commitErrCount: 3}
@@ -70,7 +70,7 @@ func TestUnknownEffectLossOutageReachesTheOperatorOnce(t *testing.T) {
 	if !ok || !runHasOutcome(finished.Run, run.OutcomeLost) {
 		t.Fatalf("last event = %#v, want a lost SegmentFinished after the outage cleared", events[len(events)-1].Payload)
 	}
-	if reports := captured.count("unknown Effect loss commit failed"); reports != 1 {
+	if reports := captured.count("terminal commit failed"); reports != 1 {
 		t.Fatalf("operator reports = %d, want exactly one for one outage spanning several retries", reports)
 	}
 }

@@ -22,7 +22,7 @@ func (i *interactionSession) sendExecutorRequest(
 	select {
 	case i.lifetime.events <- event:
 		return nil
-	case <-i.lifetime.releasing:
+	case <-i.lifetime.releasing.Done():
 		return errInteractionReleased
 	case <-ctx.Done():
 		return ctx.Err()
@@ -60,9 +60,9 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 	// One inspection decides which delegated children have finished. Asking each
 	// child separately would compose the answer out of readings taken at
 	// different moments, and this reconciliation publishes terminal facts.
-	inspection, readable := i.inspectTree(ctx)
-	if !readable {
-		return false, nil
+	inspection, err := i.engine.InspectTree(ctx, i.processRootID())
+	if err != nil {
+		return false, fmt.Errorf("agentexec: inspect delegated terminals: %w", err)
 	}
 	progressed := false
 	for _, managed := range calls {
@@ -75,7 +75,7 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 			continue
 		}
 		member, inspected := inspection.Process(processID)
-		if !inspected || !member.Snapshot.Status().Terminal() {
+		if !inspected || !member.Snapshot.Status().Terminal() || !subtreeDrained(inspection, processID) {
 			continue
 		}
 		process, found := i.engine.Process(processID)
@@ -141,9 +141,7 @@ func (i *interactionSession) projectDelegateTerminal(
 	if err != nil {
 		return false, err
 	}
-	if err := i.sendExecutorRequest(ctx, runs.ExecutorEvent{
-		Member: member, Payload: end,
-	}); err != nil {
+	if err := i.commitFact(context.WithoutCancel(ctx), member, end); err != nil {
 		return false, fmt.Errorf("agentexec: publish delegated child terminal: %w", err)
 	}
 	managed.segmentProjected = true

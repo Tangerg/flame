@@ -117,7 +117,6 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 		Input:              cmd.Input,
 		ConversationInput:  &conversationInput,
 		ModelOnlyInput:     modelOnlyInput,
-		Limits:             cmd.Limits,
 		Capabilities:       cmd.Capabilities,
 		admission:          &runAdmission,
 		DetachActivation:   true,
@@ -193,7 +192,6 @@ func (c *Coordinator) prepareRootStart(
 	cmd.ModelSelection = effectiveSelection
 	draft := RootExecutionStart{
 		ModelSelection:           effectiveSelection,
-		Limits:                   cmd.Limits,
 		Options:                  cmd.Options,
 		InterruptKinds:           cmd.Capabilities.InterruptKinds,
 		ChildRunAdmissionEnabled: cmd.Capabilities.ChildRuns,

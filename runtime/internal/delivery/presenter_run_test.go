@@ -17,9 +17,9 @@ import (
 // way through this path and another through the Artifact encoder, and shipped
 // English no translator could see.
 func TestPresentationDoesNotAuthorOutcomeOrFailureDetail(t *testing.T) {
-	maxBudget := run.OutcomeMaxBudget
-	if outcome := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Outcome: &maxBudget})); outcome.Detail != "" {
-		t.Fatalf("budget outcome detail = %q, want the domain's silence preserved", outcome.Detail)
+	canceled := run.OutcomeCanceled
+	if outcome := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Outcome: &canceled})); outcome.Detail != "" {
+		t.Fatalf("canceled outcome detail = %q, want the domain's silence preserved", outcome.Detail)
 	}
 
 	problem := presentRunFailure(&run.Failure{Kind: run.FailureLost})
@@ -27,7 +27,6 @@ func TestPresentationDoesNotAuthorOutcomeOrFailureDetail(t *testing.T) {
 		t.Fatalf("run-lost problem = %+v, want the type alone", problem)
 	}
 
-	canceled := run.OutcomeCanceled
 	spoken := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Outcome: &canceled, Detail: "user asked to stop"}))
 	if spoken.Detail != "user asked to stop" {
 		t.Fatalf("canceled outcome detail = %q, want it verbatim", spoken.Detail)

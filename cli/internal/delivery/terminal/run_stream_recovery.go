@@ -24,7 +24,7 @@ func (a *app) followRecoveredSession() {
 	a.startFollowing(func(ctx context.Context, lease operationLease) {
 		follower := streamFollower{
 			app: a, ctx: ctx, dispatcher: dispatcher, lease: lease, sessionID: sessionID,
-			applyEvent: a.apply, policy: a.reconnectPolicy,
+			applyEvent: a.apply,
 		}
 		recovered, ok := follower.restoreAttachedSession(sessionID)
 		if !ok {
@@ -40,7 +40,7 @@ func (a *app) followRecoveredSession() {
 			reconcileErr = a.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
 		})
 		if postErr != nil || reconcileErr != nil {
-			follower.postFailure(a.execution.conversation.RunID(), errors.Join(postErr, reconcileErr))
+			follower.postFailure(errors.Join(postErr, reconcileErr))
 			return
 		}
 		if !active || recovered.Run.Status != protocol.RunStatusRunning {
@@ -59,7 +59,7 @@ type streamFollower struct {
 	sessionID  string
 	open       func(context.Context) (agent.SegmentStream, error)
 	applyEvent func(agent.RunEvent) error
-	policy     retry.ReconnectPolicy
+
 	opening    streamOpeningObserver
 	failures   int
 	checkpoint string
@@ -76,7 +76,7 @@ func (s *streamFollower) restoreAttachedSession(sessionID string) (runworkflow.R
 			s.failures = 0
 			return recovered, true
 		}
-		if !s.waitBeforeRetry("", fmt.Errorf("restore active session: %w", err)) {
+		if !s.waitBeforeRetry(fmt.Errorf("restore active session: %w", err)) {
 			return runworkflow.Recovery{}, false
 		}
 	}
@@ -129,7 +129,7 @@ func (s *streamFollower) waitBeforeOpenRetry(cause error) bool {
 	if s.opening.persistent && mutation.AcknowledgementUncertain(cause) {
 		return s.postRetryStatus(true) && runtimeRecoveryBackoff.Wait(s.ctx, s.failures) == nil
 	}
-	delay, shouldRetry, policyErr := s.policy.Next(s.failures, cause)
+	delay, shouldRetry, policyErr := retry.ReconnectDelay(s.failures, cause)
 	if policyErr != nil {
 		s.postOpenFailure(policyErr)
 		return false
@@ -143,7 +143,7 @@ func (s *streamFollower) waitBeforeOpenRetry(cause error) bool {
 
 func (s *streamFollower) runStream(current agent.SegmentStream) {
 	if err := current.Validate(); err != nil {
-		s.postFailure(current.RunID, err)
+		s.postFailure(err)
 		return
 	}
 	for {
@@ -152,7 +152,7 @@ func (s *streamFollower) runStream(current agent.SegmentStream) {
 			return
 		}
 		if applicationErr, ok := errors.AsType[*eventApplicationError](streamErr); ok {
-			s.postFailure(current.RunID, applicationErr.err)
+			s.postFailure(applicationErr.err)
 			return
 		}
 		snapshot, err := s.snapshot()
@@ -248,7 +248,7 @@ func (s *streamFollower) snapshot() (followSnapshot, error) {
 
 func (s *streamFollower) reconnect(runID, segmentID string, cause error) (agent.SegmentStream, bool) {
 	for {
-		if !s.waitBeforeRetry(runID, cause) {
+		if !s.waitBeforeRetry(cause) {
 			return agent.SegmentStream{}, false
 		}
 		rebound, err := s.app.runtime.SubscribeRun(s.ctx, agent.SubscribeRun{
@@ -273,15 +273,15 @@ func (s *streamFollower) reconnect(runID, segmentID string, cause error) (agent.
 	}
 }
 
-func (s *streamFollower) waitBeforeRetry(runID string, cause error) bool {
+func (s *streamFollower) waitBeforeRetry(cause error) bool {
 	s.failures++
-	delay, shouldRetry, policyErr := s.policy.Next(s.failures, cause)
+	delay, shouldRetry, policyErr := retry.ReconnectDelay(s.failures, cause)
 	if policyErr != nil {
-		s.postFailure(runID, policyErr)
+		s.postFailure(policyErr)
 		return false
 	}
 	if !shouldRetry {
-		s.postFailure(runID, cause)
+		s.postFailure(cause)
 		return false
 	}
 	return s.postRetryStatus(false) && retry.Wait(s.ctx, delay) == nil
@@ -290,7 +290,7 @@ func (s *streamFollower) waitBeforeRetry(runID string, cause error) bool {
 func (s *streamFollower) postRetryStatus(persistent bool) bool {
 	err := post(s.ctx, s.dispatcher, func() {
 		if s.current() {
-			label := fmt.Sprintf("reconnecting %d/%d", s.failures, s.policy.AttemptLimit())
+			label := fmt.Sprintf("reconnecting · attempt %d", s.failures)
 			if persistent {
 				label = fmt.Sprintf("confirming delivery · attempt %d", s.failures)
 			}
@@ -303,11 +303,11 @@ func (s *streamFollower) postRetryStatus(persistent bool) bool {
 
 func (s *streamFollower) acceptRebound(runID, segmentID string, rebound agent.SegmentStream) (agent.SegmentStream, bool) {
 	if err := rebound.ValidateSubscription(); err != nil {
-		s.postFailure(runID, err)
+		s.postFailure(err)
 		return agent.SegmentStream{}, false
 	}
 	if rebound.RunID != runID || rebound.SegmentID != segmentID {
-		s.postFailure(runID, errors.New("runtime rebound a different run segment"))
+		s.postFailure(errors.New("runtime rebound a different run segment"))
 		return agent.SegmentStream{}, false
 	}
 	return rebound, true
@@ -331,7 +331,7 @@ func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
 		reconcileErr = s.app.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
 	})
 	if postErr != nil || reconcileErr != nil {
-		s.postFailure(runID, errors.Join(postErr, reconcileErr))
+		s.postFailure(errors.Join(postErr, reconcileErr))
 		return recoveryAttempt{disposition: recoveryStopped}
 	}
 	if !active || recovered.Run.Status != protocol.RunStatusRunning {
@@ -349,7 +349,7 @@ func (s *streamFollower) finish() {
 	})
 }
 
-func (s *streamFollower) postFailure(runID string, err error) {
+func (s *streamFollower) postFailure(err error) {
 	if errors.Is(err, context.Canceled) || s.ctx.Err() != nil {
 		return
 	}
@@ -358,9 +358,6 @@ func (s *streamFollower) postFailure(runID string, err error) {
 			return
 		}
 		s.app.fail(err)
-		if runID != "" {
-			s.app.cancelRuntimePreservingFailure(agent.CancelRun{RunID: runID, Reason: "terminal stream failed"})
-		}
 	})
 }
 

@@ -42,17 +42,10 @@ const (
 type Config struct {
 	Provider string              `json:"provider" mapstructure:"provider"`
 	Model    string              `json:"model"    mapstructure:"model"`
-	Run      Run                 `json:"run"      mapstructure:"run"`
 	Approval Approval            `json:"approval" mapstructure:"approval"`
 	UI       UI                  `json:"ui"       mapstructure:"ui"`
 	Plugins  Plugins             `json:"plugins"  mapstructure:"plugins"`
 	Keys     map[string][]string `json:"keys"     mapstructure:"keys"`
-}
-
-type Run struct {
-	MaxTotalTokens *int64   `json:"maxTotalTokens,omitempty" mapstructure:"max-total-tokens"`
-	MaxSteps       *int     `json:"maxSteps,omitempty"       mapstructure:"max-steps"`
-	MaxBudgetUSD   *float64 `json:"maxBudgetUsd,omitempty"   mapstructure:"max-budget-usd"`
 }
 
 type Approval struct {
@@ -84,11 +77,10 @@ func (r RememberPreference) Scope() protocol.RememberScopeKind {
 }
 
 type UI struct {
-	Mouse             bool `json:"mouse"             mapstructure:"mouse"`
-	Notifications     bool `json:"notifications"     mapstructure:"notifications"`
-	ToolDetails       bool `json:"toolDetails"       mapstructure:"tool-details"`
-	TranscriptRetain  int  `json:"transcriptRetain"  mapstructure:"transcript-retain"`
-	ReconnectAttempts int  `json:"reconnectAttempts" mapstructure:"reconnect-attempts"`
+	Mouse            bool `json:"mouse"             mapstructure:"mouse"`
+	Notifications    bool `json:"notifications"     mapstructure:"notifications"`
+	ToolDetails      bool `json:"toolDetails"       mapstructure:"tool-details"`
+	TranscriptRetain int  `json:"transcriptRetain"  mapstructure:"transcript-retain"`
 }
 
 type Plugins struct {
@@ -98,7 +90,7 @@ type Plugins struct {
 func Default() Config {
 	return Config{
 		Approval: Approval{Remember: RememberNone},
-		UI:       UI{Mouse: true, Notifications: true, ToolDetails: false, TranscriptRetain: 24, ReconnectAttempts: 4},
+		UI:       UI{Mouse: true, Notifications: true, ToolDetails: false, TranscriptRetain: 24},
 		Keys: map[string][]string{
 			ActionSend:            {"enter"},
 			ActionNewline:         {"shift+enter", "alt+enter"},
@@ -127,15 +119,7 @@ func Default() Config {
 
 func (c Config) Validate() error {
 	var problems []error
-	options, err := c.RunOptions()
-	if err != nil {
-		problems = append(problems, err)
-		if selectionErr := (agent.RunOptions{
-			Provider: c.Provider, Model: c.Model, Limits: agent.UnlimitedRunLimits(),
-		}).Validate(); selectionErr != nil {
-			problems = append(problems, selectionErr)
-		}
-	} else if err := options.Validate(); err != nil {
+	if _, err := c.RunOptions(); err != nil {
 		problems = append(problems, err)
 	}
 	problems = append(problems, validateApproval(c.Approval)...)
@@ -156,9 +140,6 @@ func validateUI(ui UI) []error {
 	var problems []error
 	if ui.TranscriptRetain < 4 || ui.TranscriptRetain > 500 {
 		problems = append(problems, fmt.Errorf("ui.transcript-retain must be between 4 and 500, got %d", ui.TranscriptRetain))
-	}
-	if ui.ReconnectAttempts < 0 || ui.ReconnectAttempts > 20 {
-		problems = append(problems, fmt.Errorf("ui.reconnect-attempts must be between 0 and 20, got %d", ui.ReconnectAttempts))
 	}
 	return problems
 }
@@ -206,26 +187,12 @@ func validateKeys(keys map[string][]string) []error {
 }
 
 func (c Config) RunOptions() (agent.RunOptions, error) {
-	limits := agent.UnlimitedRunLimits()
-	if c.Run.MaxTotalTokens != nil || c.Run.MaxSteps != nil || c.Run.MaxBudgetUSD != nil {
-		var err error
-		limits, err = agent.NewRunLimits(agent.RunLimitValues{
-			MaxTotalTokens: c.Run.MaxTotalTokens,
-			MaxSteps:       c.Run.MaxSteps,
-			MaxBudgetUSD:   c.Run.MaxBudgetUSD,
-		})
-		if err != nil {
-			return agent.RunOptions{}, fmt.Errorf("run settings: %w", err)
-		}
-	}
-	return agent.RunOptions{Provider: c.Provider, Model: c.Model, Limits: limits}, nil
+	options := agent.RunOptions{Provider: c.Provider, Model: c.Model}
+	return options, options.Validate()
 }
 
 func (c Config) Clone() Config {
 	out := c
-	out.Run.MaxTotalTokens = clonePointer(c.Run.MaxTotalTokens)
-	out.Run.MaxSteps = clonePointer(c.Run.MaxSteps)
-	out.Run.MaxBudgetUSD = clonePointer(c.Run.MaxBudgetUSD)
 	out.Plugins.Directories = slices.Clone(c.Plugins.Directories)
 	out.Keys = make(map[string][]string, len(c.Keys))
 	for action, bindings := range c.Keys {

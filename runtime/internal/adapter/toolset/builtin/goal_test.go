@@ -61,7 +61,7 @@ func (m *memStore) List(context.Context) ([]goalstate.Goal, error) { return nil,
 
 // testSessionActiveGoal builds a stored active goal with an opaque current incarnation.
 func testSessionActiveGoal() goalstate.Goal {
-	g, _ := goalstate.New("s1", "obj", testSelection(), goalstate.UnlimitedBudget(), run.Capabilities{}, "lease-active", time.Unix(0, 0))
+	g, _ := goalstate.New("s1", "obj", testSelection(), run.Capabilities{}, "lease-active", time.Unix(0, 0))
 	return g
 }
 
@@ -228,7 +228,6 @@ func TestGetGoalReturnsActionableViewWithoutOwnershipInternals(t *testing.T) {
 	g := testSessionActiveGoal()
 	snapshot := g.Snapshot()
 	snapshot.Revision = 42
-	snapshot.Budget = testLimitedBudget(t, goalstate.BudgetLimits{MaxRuns: intLimit(3)})
 	snapshot.Used = goalstate.Usage{Runs: 1, Steps: 5}
 	g, _ = goalstate.Restore(snapshot)
 	store.put(g)
@@ -237,29 +236,11 @@ func TestGetGoalReturnsActionableViewWithoutOwnershipInternals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Goal == nil || result.Goal.Objective != "obj" || result.Goal.Budget == nil || result.Goal.Budget.MaxRuns == nil || *result.Goal.Budget.MaxRuns != 3 || result.Goal.Usage.Steps != 5 {
+	if result.Goal == nil || result.Goal.Objective != "obj" || result.Goal.Usage.Steps != 5 {
 		t.Fatalf("goal view = %+v", result.Goal)
 	}
 	if result.Goal.SessionID != "s1" || result.Goal.Status != "active" {
 		t.Fatalf("goal identity/status = %+v", result.Goal)
-	}
-}
-
-func TestGetGoalExplainsUnavailableCostAccounting(t *testing.T) {
-	store := newMemStore()
-	g := testSessionActiveGoal()
-	g, err := g.Block(goalstate.ReasonPricingUnavailable, "", g.UpdatedAt())
-	if err != nil {
-		t.Fatal(err)
-	}
-	store.put(g)
-
-	result, err := newGetter(t, store).get(testSessionContext(), getArgs{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Goal == nil || result.Goal.Reason != "cost accounting is unavailable for at least one completed Run" {
-		t.Fatalf("goal view = %+v", result.Goal)
 	}
 }
 
@@ -277,24 +258,21 @@ type fakeStarter struct {
 	sessionID    string
 	objective    string
 	selection    modelref.Selection
-	budget       goalstate.Budget
 	capabilities run.Capabilities
 }
 
-func (f *fakeStarter) Start(_ context.Context, sessionID, objective string, selection modelref.Selection, budget goalstate.Budget, capabilities run.Capabilities) (goalstate.Goal, error) {
+func (f *fakeStarter) Start(_ context.Context, sessionID, objective string, selection modelref.Selection, capabilities run.Capabilities) (goalstate.Goal, error) {
 	f.sessionID = sessionID
 	f.objective = objective
 	f.selection = selection
-	f.budget = budget
 	f.capabilities = capabilities.Clone()
-	return goalstate.New(sessionID, objective, testSelection(), budget, capabilities, "lease", time.Unix(1, 0))
+	return goalstate.New(sessionID, objective, testSelection(), capabilities, "lease", time.Unix(1, 0))
 }
 
-func TestCreateGoalUsesCurrentSessionAndExplicitBudget(t *testing.T) {
+func TestCreateGoalUsesCurrentSessionAndCapabilities(t *testing.T) {
 	starter := &fakeStarter{}
 	result, err := (&creator{goals: starter}).create(testSessionContext(), createArgs{
 		Objective: "  finish the migration  ",
-		Budget:    &createBudget{MaxRuns: intLimit(4), MaxCostUSD: costLimit(2.5), MaxSteps: intLimit(20)},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -305,10 +283,6 @@ func TestCreateGoalUsesCurrentSessionAndExplicitBudget(t *testing.T) {
 	if starter.selection.Configured() {
 		t.Fatal("create_goal must use the runtime's surrounding model default")
 	}
-	wantBudget := testLimitedBudget(t, goalstate.BudgetLimits{MaxRuns: intLimit(4), MaxCostUSD: costLimit(2.5), MaxSteps: intLimit(20)})
-	if starter.budget != wantBudget {
-		t.Fatalf("budget = %+v", starter.budget)
-	}
 	if !starter.capabilities.Equal(testGoalRunCapabilities()) {
 		t.Fatalf("capabilities = %+v", starter.capabilities)
 	}
@@ -316,19 +290,6 @@ func TestCreateGoalUsesCurrentSessionAndExplicitBudget(t *testing.T) {
 		t.Fatalf("result = %+v", result)
 	}
 }
-
-func testLimitedBudget(t *testing.T, limits goalstate.BudgetLimits) goalstate.Budget {
-	t.Helper()
-	budget, err := goalstate.NewBudget(limits)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return budget
-}
-
-func intLimit(value int) *int { return &value }
-
-func costLimit(value float64) *float64 { return &value }
 
 func TestGoalToolContractsUseOnePreciseVocabulary(t *testing.T) {
 	mem := newMemStore()
@@ -363,7 +324,7 @@ func TestGoalToolContractsUseOnePreciseVocabulary(t *testing.T) {
 		t.Fatalf("report name = %q", got)
 	}
 	createSchema := string(create.Definition().InputSchema)
-	for _, want := range []string{`"objective"`, `"budget"`, `"max_runs"`, `"max_cost_usd"`, `"max_steps"`, `"anyOf"`, `"exclusiveMinimum":0`} {
+	for _, want := range []string{`"objective"`} {
 		if !strings.Contains(createSchema, want) {
 			t.Errorf("create_goal schema %s missing %s", createSchema, want)
 		}

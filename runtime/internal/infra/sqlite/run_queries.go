@@ -15,8 +15,8 @@ import (
 const runColumns = `r.run_id, r.session_id, r.spawned_by_item_id, r.parent_run_id, r.root_run_id,
 	r.state, r.active_segment_id, r.outcome,
 	r.provider, r.model, r.reasoning_effort, r.goal_incarnation_id, r.detail,
-	r.steps, r.active_duration_ns, r.usage, r.context_tokens, r.problem,
-	r.max_total_tokens, r.max_steps, r.max_budget_usd, r.capabilities, tree_root.capabilities,
+	r.steps, r.active_duration_ns, r.usage, r.context_tokens, r.problem, r.unresolved_effects,
+	r.capabilities, tree_root.capabilities,
 	r.message_mark, r.created_at, r.finished_at, r.updated_at, i.payload`
 
 // runReadJoins materializes the root-owned capabilities and pending set for

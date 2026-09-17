@@ -295,7 +295,6 @@ interface RunSummary {          // 列一行、连一棵树够用
 
 interface RunRef extends RunSummary {
   metrics: RunMetrics;
-  limits?: RunLimits;
   activeSegmentId?: string;     // 仅 running
   protocolProfile: RunProtocolProfile;
 }
@@ -304,12 +303,6 @@ interface RunMetrics {
   steps: number;
   activeDurationMs: number;     // 不含等人的时间
   usage?: Usage;
-}
-
-interface RunLimits {           // 冻结的有限 run-tree policy，跨 child 与 resume 累计；present 时至少一轴
-  maxSteps?: number;
-  maxBudgetUsd?: number;
-  maxTotalTokens?: number;      // prompt + completion，≠ params.maxTokens（后者只管一次输出）
 }
 
 interface RunProtocolProfile {
@@ -327,8 +320,6 @@ interface RunProgress {         // 瞬时读数，无权威落点
 type RunOutcome =
   | { type: "completed" }
   | { type: "error";     error: ProblemData }
-  | { type: "maxSteps";  detail?: string }
-  | { type: "maxBudget"; detail?: string }
   | { type: "canceled";  detail?: string };
 
 /** 段级终态比 Run 级多两个：段结束不等于 Run 结束 */
@@ -635,7 +626,7 @@ interface BlockCtx {
 | 4.9 | 提问卡 | D3 | `Item{question}` / interrupt | 待答 → 已答 |
 | 4.10 | 压缩条 | D3，全宽无 chrome | `Item{compaction}` | 原子 |
 | 4.11 | 子 agent 叙事 | D3，挂在父工具卡下 | 子 run 的全部 Item | 跟随子 run |
-| 4.12 | Run 异常终态提示 | D5 | 根 Run `outcome` | 仅 canceled / maxSteps / maxBudget |
+| 4.12 | Run 异常终态提示 | D5 | 根 Run `outcome` | 仅 canceled |
 | 4.13 | 日期分隔 / caption / 操作条 / 等待指示 | D1 / D2 / D4 / D3 尾 | 派生 | — |
 
 ---
@@ -975,7 +966,7 @@ Plan, Goal, and schedule tools omit their transcript rows only after Runtime rep
 ### 4.12 Run 异常终态提示
 
 **位置** D5，transcript 末尾，一条无卡片、无分隔线的 quiet narrative row。
-**何时** 最新根 Run 以 `canceled` / `maxSteps` / `maxBudget` 结束。普通 `completed` 已由最终 assistant message 表达，不再追加“完成”或统计 footer；`failed` / `timedOut` / `lost` 归 §5.2 的可操作恢复条。
+**何时** 最新根 Run 以 `canceled` 结束。普通 `completed` 已由最终 assistant message 表达，不再追加“完成”或统计 footer；`failed` / `timedOut` / `lost` 归 §5.2 的可操作恢复条。
 
 ```
 ■ 已取消 · 用户停止
@@ -984,8 +975,6 @@ Plan, Goal, and schedule tools omit their transcript rows only after Runtime rep
 | `outcome.type` | 图标 | 意图色 | 附加 |
 | --- | --- | --- | --- |
 | `canceled` | ■ | neutral | `detail`（区分"被用户取消" vs "被超时取消"，`runs.cancel` 的 reason 经此回流） |
-| `maxSteps` | ⚠ | neutral | `detail` |
-| `maxBudget` | ⚠ | neutral | `detail` |
 
 这一行只消费终态类型与 Runtime 提供的 `detail`；不重复 duration、steps、token、cost 或 Context accounting。
 
@@ -1079,7 +1068,7 @@ Plan 不创建 disclosure card、底部 progress bar、关闭按钮或 click-exp
 | `status` | 本地化 lifecycle 文案与 identity mark | attached tray leading edge |
 | clear / pause-resume / edit capability | 固定次序的真实命令动作 | attached tray trailing edge |
 
-Goal 与 Composer 同宽，以重叠 1px 接缝组成一个 stack；空态不留下固定边线或高度。预算、额度、花费、步数、轮次、model、last move、限制条件和 `reason.detail` 一律不进入 standing UI。完整 objective 只进入 420px compact editor，不在常驻条展开第二张卡。
+Goal 与 Composer 同宽，以重叠 1px 接缝组成一个 stack；空态不留下固定边线或高度。花费、步数、轮次、model、last move 和 `reason.detail` 一律不进入 standing UI。完整 objective 只进入 420px compact editor，不在常驻条展开第二张卡。
 
 自治 drive 的控制提示是 Application-authored model input：Runtime 只把它持久到 provider Conversation，不创建 Transcript `userMessage` 或 `userItemId`。Frontend 不按字符串、来源 ID 或 CSS 猜测并隐藏内部提示；真实用户 start/resume input 仍必须作为用户消息出现。
 
@@ -1458,11 +1447,6 @@ All three are `safe`. C4 represents successful Goal calls. Pending, failed, or d
 ```ts
 interface CreateGoalArguments {
   objective: string;
-  budget?: {
-    max_runs?: number;
-    max_cost_usd?: number;
-    max_steps?: number;
-  }; // 整体省略 = 无预算边界；出现时至少一个字段，且每个值严格为正
 }
 ```
 
@@ -1481,11 +1465,6 @@ interface GoalToolResult {   // snake_case，未归一化
     reason?: string;
     provider?: string;
     model?: string;
-    budget?: { // 省略 = 无预算边界；出现时至少一个字段，且每个值严格为正
-      max_runs?: number;
-      max_cost_usd?: number;
-      max_steps?: number;
-    };
     usage:  { runs: number; cost_usd: number; steps: number };
     created_at: string;
     updated_at: string;
@@ -1691,7 +1670,7 @@ interface UnknownToolCall {
 | 美元 | **不能把非零金额显示成 `$0.00`**（会读作免费） | 常规 2 位；`0<x<0.01` 用 4 位 |
 | 时长 | **进位后再选单位**（59.6s 不能显示成 `60s`） | `<10s` 一位小数；`<60s` 整秒；否则 `4m 06s` |
 | 步数 / 条数 / 命中数 | 走 i18n 复数规则，**不手拼** | — |
-| 比率（`3/7`、预算轴） | 用**裸记号**：各语言同形，**不进翻译目录**（一条没有词的词条只会让格式更难找） | `3/7` |
+| 比率（`3/7`） | 用**裸记号**：各语言同形，**不进翻译目录**（一条没有词的词条只会让格式更难找） | `3/7` |
 | 行号 / 行跨度 | **协议全线 1-based**，别减一 | `L40-80` |
 | 相关度评分（0–1） | **不要印裸浮点** | 画条或不显示 |
 
@@ -1699,8 +1678,6 @@ interface UnknownToolCall {
 
 1. **会变化的数字用等宽字形。** 流式里逐 token 跳动的数字宽度，是最容易被一眼看出来的抖动源。
 2. **`undefined` ≠ `0`。** 花费缺席 = 该模型不在定价表 → **显示 token 但不许编一个价格**；`added`/`removed` 双缺席 → 什么都不画；`exitCode` 缺席（命令转后台）→ 不画。
-3. **预算缺席与数值 `0` 不可互换。** Goal 的整个 `budget`、Run 的整个 `limits` 缺席才分别表示 unlimited；
-   present object 至少含一个轴，出现的每个上限必须严格为正。任何界面都不能把缺席补零、发送空对象，或把零画成一条满的进度条。
 
 ### 8.2 时间
 
@@ -2200,7 +2177,7 @@ interface Page<T> { data: T[]; nextCursor?: string }
 **这十条与视觉方案无关** —— 换一套设计语言之后，它们还是同样的十条，因为它们问的全是"数据的真实形态被如实表达了吗"。
 
 1. **会变的数字用等宽字形了吗？** 流式里跳动的数字宽度是第一眼就能看出来的廉价感。
-2. **`undefined` 和 `0` 分开画了吗？** 尤其花费 / 退出码 / diffstat / 预算三轴。
+2. **`undefined` 和 `0` 分开画了吗？** 尤其花费 / 退出码 / diffstat。
 3. **三种空态都有吗？**（还没有 / 有但为空 / 不可用）
 4. **路径是从左截断的吗？** 丢了文件名的路径等于没有路径。
 5. **枚举是查表不是模板吗？** 协议长一个值就在每种语言里露生 key 的地方，编译期挡不住。

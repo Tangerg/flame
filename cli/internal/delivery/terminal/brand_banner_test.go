@@ -60,7 +60,7 @@ func TestLargeBrandMarksFitTheirResponsiveBreakpoint(t *testing.T) {
 }
 
 func TestBrandBannerUsesASCIIMarkForASCIITerminals(t *testing.T) {
-	banner := newBrandBanner(kit.Dark(), kit.ASCII(), "dev", agent.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()})
+	banner := newBrandBanner(kit.Dark(), kit.ASCII(), "dev", agent.Session{}, agent.RunOptions{})
 	got := drawStatic(t, banner, 72, 12)
 	if !strings.Contains(got, "FFFFF L      AAA") || strings.Contains(got, "██") {
 		t.Fatalf("ASCII brand banner used the wrong mark:\n%s", got)
@@ -69,7 +69,7 @@ func TestBrandBannerUsesASCIIMarkForASCIITerminals(t *testing.T) {
 
 func TestTranscriptBrandIsAOneShotEntranceProjection(t *testing.T) {
 	view := testTranscriptView(t)
-	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()})
+	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{})
 	view.SetEntrance(banner)
 
 	if empty := drawRoot(t, view, 72, 12); !strings.Contains(empty, "Flame CLI  vtest") {
@@ -89,7 +89,7 @@ func TestTranscriptBrandIsAOneShotEntranceProjection(t *testing.T) {
 
 func TestTranscriptResetConsumesAnUnshownEntranceProjection(t *testing.T) {
 	view := testTranscriptView(t)
-	view.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()}))
+	view.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{}))
 
 	view.Reset()
 	if got := drawRoot(t, view, 72, 12); strings.Contains(got, "Flame CLI") {
@@ -99,7 +99,7 @@ func TestTranscriptResetConsumesAnUnshownEntranceProjection(t *testing.T) {
 
 func TestReplacementTranscriptDoesNotInheritTheBrand(t *testing.T) {
 	initial := testTranscriptView(t)
-	initial.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()}))
+	initial.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{}))
 	a := &app{transcript: initial, syntax: initial.syntax, settings: settings.Default()}
 
 	replacement := a.newTranscript()

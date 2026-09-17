@@ -44,7 +44,6 @@ type ExecutorCheckpointRecord struct {
 	BuildID        string
 	Scope          ExecutorScopeRecord
 	ModelSelection modelref.Selection
-	Limits         run.Limits
 	Capabilities   run.Capabilities
 	Usage          accounting.Snapshot
 }
@@ -67,9 +66,6 @@ func (e ExecutorCheckpointRecord) validate() error {
 	}
 	if err := e.ModelSelection.ValidateExact(); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpointRecord, err)
-	}
-	if err := e.Limits.Validate(); err != nil {
-		return fmt.Errorf("%w: limits: %w", ErrInvalidExecutorCheckpointRecord, err)
 	}
 	if err := e.Capabilities.Validate(); err != nil {
 		return fmt.Errorf("%w: capabilities: %w", ErrInvalidExecutorCheckpointRecord, err)
@@ -122,13 +118,6 @@ type executorScopeWire struct {
 	GoalIncarnationID string `json:"goal_incarnation_id"`
 }
 
-type executorLimitsWire struct {
-	Type           runLimitKind `json:"type"`
-	MaxTotalTokens *int64       `json:"max_total_tokens,omitempty"`
-	MaxBudgetUSD   *float64     `json:"max_budget_usd,omitempty"`
-	MaxSteps       *int         `json:"max_steps,omitempty"`
-}
-
 type executorCapabilitiesWire struct {
 	ChildRuns      bool     `json:"child_runs"`
 	InterruptKinds []string `json:"interrupt_kinds"`
@@ -139,7 +128,6 @@ type executorPolicyWire struct {
 	Provider        string                    `json:"provider"`
 	Model           string                    `json:"model"`
 	ReasoningEffort string                    `json:"reasoning_effort"`
-	Limits          executorLimitsWire        `json:"limits"`
 	Capabilities    *executorCapabilitiesWire `json:"capabilities"`
 }
 
@@ -155,7 +143,7 @@ type executorModelUsageWire struct {
 }
 
 // SaveCheckpoint atomically advances one root-owned executor checkpoint. The
-// root's Session, build, host scope, model selection, and budget are immutable;
+// root's Session, build, host scope, and model selection are immutable;
 // only the opaque payload and cumulative usage may advance between barriers.
 func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint ExecutorCheckpointRecord) error {
 	if err := checkpoint.validate(); err != nil {
@@ -343,7 +331,6 @@ func encodeExecutorPolicy(checkpoint ExecutorCheckpointRecord) ([]byte, error) {
 	for index, kind := range checkpoint.Capabilities.InterruptKinds {
 		interruptKinds[index] = string(kind)
 	}
-	limits := runLimitsRowOf(checkpoint.Limits)
 	return json.Marshal(executorPolicyWire{
 		Scope: executorScopeWire{
 			SessionID:         checkpoint.Scope.SessionID,
@@ -355,10 +342,6 @@ func encodeExecutorPolicy(checkpoint ExecutorCheckpointRecord) ([]byte, error) {
 		Provider:        checkpoint.ModelSelection.Provider(),
 		Model:           checkpoint.ModelSelection.Model(),
 		ReasoningEffort: checkpoint.ModelSelection.ReasoningEffort(),
-		Limits: executorLimitsWire{
-			Type: limits.Type, MaxTotalTokens: limits.MaxTotalTokens,
-			MaxBudgetUSD: limits.MaxBudgetUSD, MaxSteps: limits.MaxSteps,
-		},
 		Capabilities: &executorCapabilitiesWire{
 			ChildRuns:      checkpoint.Capabilities.ChildRuns,
 			InterruptKinds: interruptKinds,
@@ -380,12 +363,6 @@ func decodeExecutorPolicy(data string) (ExecutorCheckpointRecord, error) {
 		WorkspaceCWD:      wire.Scope.WorkspaceCWD,
 		Isolated:          wire.Scope.Isolated,
 		GoalIncarnationID: wire.Scope.GoalIncarnationID,
-	}
-	limits, err := runLimitsFromStored(
-		wire.Limits.Type, wire.Limits.MaxTotalTokens, wire.Limits.MaxSteps, wire.Limits.MaxBudgetUSD,
-	)
-	if err != nil {
-		return ExecutorCheckpointRecord{}, err
 	}
 	capabilities := run.Capabilities{
 		ChildRuns: wire.Capabilities.ChildRuns,
@@ -414,7 +391,6 @@ func decodeExecutorPolicy(data string) (ExecutorCheckpointRecord, error) {
 	return ExecutorCheckpointRecord{
 		Scope:          scope,
 		ModelSelection: selection,
-		Limits:         limits,
 		Capabilities:   capabilities,
 	}, nil
 }

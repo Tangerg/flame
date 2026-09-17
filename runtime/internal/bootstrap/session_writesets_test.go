@@ -510,7 +510,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 		"ses_A",
 		"finish the parked run",
 		testsupport.DefaultModelSelection(),
-		goal.UnlimitedBudget(),
+
 		run.Capabilities{},
 		incarnationID,
 		parkCreatedAt,
@@ -1011,7 +1011,7 @@ func seedGoal(t *testing.T, ss sessionStores, sessionID string) {
 	} else if err != nil {
 		t.Fatalf("get goal session %q: %v", sessionID, err)
 	}
-	g, _ := goal.New(sessionID, "obj", testsupport.DefaultModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "lease-"+sessionID, time.Unix(0, 0))
+	g, _ := goal.New(sessionID, "obj", testsupport.DefaultModelSelection(), run.Capabilities{}, "lease-"+sessionID, time.Unix(0, 0))
 	replacement, err := goal.NewReplacement(bootstrapUnwrittenGoalVersion(t, sessionID), g)
 	if err != nil {
 		t.Fatalf("prepare Goal replacement %q: %v", sessionID, err)

@@ -33,7 +33,7 @@ Flame's provider adapters.
 
 Flame uses the kernel's execution model completely and its recovery model
 partially. The Process state machine, signal and wait semantics, effect
-dispatch, child composition, budgets, events, and deltas are all wired. What is
+dispatch, child composition, events, and deltas are all wired. What is
 not wired is the durability port: `EngineConfig.TreeDurability` is nil, so the
 kernel runs in ephemeral mode and Flame supplies its own recovery substrate
 instead.
@@ -93,7 +93,6 @@ implementation against `v0.14.0` semantics means writing it twice.
 | `EventListeners` | yes | framework event observation |
 | `DeltaListeners` | yes | delta projection |
 | `DeltaBufferCapacity` | yes | from Runtime policy |
-| `Limits` | yes | `DefaultLimits()` |
 | `TreeLimits` | yes | from the deployment catalog |
 | `TreeDurability` | **no** | nil selects ephemeral mode |
 | `Capabilities` | **no** | root authority set stays empty |

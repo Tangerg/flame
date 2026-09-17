@@ -178,10 +178,6 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 	if err != nil {
 		return sessions.PortableRun{}, invalidArtifact(path, "invalid model selection: %v", err)
 	}
-	limits, err := limitsFromWire(artifact.Limits)
-	if err != nil {
-		return sessions.PortableRun{}, invalidArtifact(path+".limits", "%v", err)
-	}
 	return sessions.PortableRun{
 		SessionID: artifact.SessionID, ID: artifact.ID, SpawnedByItemID: artifact.SpawnedByItemID,
 		ParentRunID: artifact.ParentRunID, RootRunID: artifact.RootRunID,
@@ -189,7 +185,6 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 		Failure:       failure,
 		Metrics:       metrics,
 		ContextTokens: artifact.ContextTokens,
-		Limits:        limits,
 		Capabilities:  capabilities,
 		Detail:        artifact.Outcome.Detail,
 		CreatedAt:     artifact.CreatedAt, FinishedAt: artifact.FinishedAt,
@@ -236,10 +231,6 @@ func portableOutcomeFromArtifact(path string, value protocol.ArtifactOutcomeType
 		return run.OutcomeTimedOut, nil
 	case protocol.ArtifactOutcomeFailed:
 		return run.OutcomeFailed, nil
-	case protocol.ArtifactOutcomeMaxBudget:
-		return run.OutcomeMaxBudget, nil
-	case protocol.ArtifactOutcomeMaxSteps:
-		return run.OutcomeMaxSteps, nil
 	case protocol.ArtifactOutcomeLost:
 		return run.OutcomeLost, nil
 	default:

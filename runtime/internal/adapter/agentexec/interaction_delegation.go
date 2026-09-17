@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 
 	agent "github.com/Tangerg/scope/agent"
@@ -13,61 +12,7 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-const (
-	defaultDelegateDepth          = 4
-	defaultDelegateChildren       = 16
-	defaultActiveDelegateChildren = 4
-	defaultDelegateTreeProcesses  = 64
-	defaultDelegateSteps          = 256
-	defaultDelegateEffects        = 256
-	defaultDelegateSignals        = 2048
-)
-
-type effectiveInteractionDelegation struct {
-	treeLimits    agent.TreeLimits
-	processBudget agent.Budget
-}
-
-// interactionDelegation bounds managed children independently of model/token
-// product limits. The values translate only into Agent Framework structural
-// limits and a minimum per-Process work allocation. A delegated Process
-// receives one allocation unit for itself and one for each remaining recursion
-// level, so the configured depth is reachable without renewing or duplicating
-// Framework budget.
-func interactionDelegation() (effectiveInteractionDelegation, error) {
-	treeLimits := agent.TreeLimits{
-		MaxDepth: defaultDelegateDepth, MaxChildren: defaultDelegateChildren,
-		MaxActiveChildren: defaultActiveDelegateChildren, MaxTreeProcesses: defaultDelegateTreeProcesses,
-	}
-	if !treeLimits.Valid() {
-		return effectiveInteractionDelegation{}, errors.New("agentexec: Interaction delegation tree limits are invalid")
-	}
-	budget := agent.Budget{
-		Steps: defaultDelegateSteps, Effects: defaultDelegateEffects, Signals: defaultDelegateSignals,
-	}
-	if !budget.Valid() {
-		return effectiveInteractionDelegation{}, errors.New("agentexec: Interaction delegation budget is invalid")
-	}
-	return effectiveInteractionDelegation{treeLimits: treeLimits, processBudget: budget}, nil
-}
-
-func delegateSubtreeBudget(base agent.Budget, processLevels uint32) (agent.Budget, error) {
-	if !base.Valid() || processLevels == 0 {
-		return agent.Budget{}, errors.New("agentexec: delegated subtree budget requires a positive base and depth")
-	}
-	scale := uint64(processLevels)
-	if base.Steps > math.MaxUint64/scale || base.Effects > math.MaxUint64/scale ||
-		base.Signals > math.MaxUint64/scale {
-		return agent.Budget{}, errors.New("agentexec: delegated subtree budget overflows")
-	}
-	budget := agent.Budget{
-		Steps: base.Steps * scale, Effects: base.Effects * scale, Signals: base.Signals * scale,
-	}
-	if !budget.Valid() {
-		return agent.Budget{}, errors.New("agentexec: delegated subtree budget is invalid")
-	}
-	return budget, nil
-}
+const defaultDelegateDepth = 4
 
 type delegatedTaskOutput struct {
 	Reply string `json:"reply" jsonschema:"minLength=1"`
@@ -81,12 +26,14 @@ type delegatedInteractionDefinition struct {
 	descriptor   agent.Descriptor
 	inner        *interaction.Definition
 	instructions []corechat.Message
+	options      corechat.Options
 }
 
 func newDelegatedInteractionDefinition(
 	name string,
 	inner *interaction.Definition,
 	instructions []corechat.Message,
+	options corechat.Options,
 ) (*delegatedInteractionDefinition, error) {
 	if inner == nil {
 		return nil, errors.New("agentexec: delegated Interaction definition is nil")
@@ -108,7 +55,7 @@ func newDelegatedInteractionDefinition(
 	}
 	return &delegatedInteractionDefinition{
 		descriptor: descriptor, inner: inner,
-		instructions: cloneChatMessages(instructions),
+		instructions: cloneChatMessages(instructions), options: options.Clone(),
 	}, nil
 }
 
@@ -123,7 +70,7 @@ func (d *delegatedInteractionDefinition) Descriptor() agent.Descriptor {
 	return d.descriptor
 }
 
-func (d *delegatedInteractionDefinition) Start(input agent.Input) (agent.Execution, error) {
+func (d *delegatedInteractionDefinition) Start(input agent.Payload) (agent.Execution, error) {
 	task, err := input.Decode[delegateInput]()
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: decode delegated task: %w", err)
@@ -133,7 +80,7 @@ func (d *delegatedInteractionDefinition) Start(input agent.Input) (agent.Executi
 	}
 	messages := cloneChatMessages(d.instructions)
 	messages = append(messages, corechat.NewUserMessage(corechat.NewTextPart(task.Instructions)))
-	adapted, err := agent.EncodeInput(interaction.Input{Messages: messages})
+	adapted, err := agent.EncodePayload(interaction.Input{Messages: messages, Options: d.options.Clone()})
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: encode delegated Interaction input: %w", err)
 	}
@@ -145,9 +92,10 @@ func (d *delegatedInteractionDefinition) Start(input agent.Input) (agent.Executi
 }
 
 func (d *delegatedInteractionDefinition) Restore(
+	ctx context.Context,
 	state agent.ExecutionState,
 ) (agent.Execution, error) {
-	execution, err := d.inner.Restore(state)
+	execution, err := d.inner.Restore(ctx, state)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +124,7 @@ func (d *delegatedInteractionExecution) Step(
 	if err != nil {
 		return agent.Transition{}, err
 	}
-	adapted, err := agent.EncodeOutput(delegatedTaskOutput{Reply: reply})
+	adapted, err := agent.EncodePayload(delegatedTaskOutput{Reply: reply})
 	if err != nil {
 		return agent.Transition{}, fmt.Errorf("agentexec: encode delegated task output: %w", err)
 	}

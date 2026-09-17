@@ -1660,7 +1660,7 @@ test("every sibling keeps its own status and child approval target", async ({ pa
 const GOAL_CONTROLS: ReadonlyArray<{ state: string; label: string; actions: string[] }> = [
   { state: "running", label: "Pursuing goal", actions: ["Clear goal", "Pause goal", "Edit goal"] },
   { state: "canceled", label: "Goal stalled", actions: ["Clear goal", "Resume goal", "Edit goal"] },
-  { state: "terminal", label: "Cost budget reached", actions: ["Clear goal", "Edit goal"] },
+  { state: "terminal", label: "Paused goal", actions: ["Clear goal", "Resume goal", "Edit goal"] },
   { state: "steer", label: "Finishing goal", actions: ["Clear goal"] },
 ];
 
@@ -1735,7 +1735,7 @@ test("an expanded wave keeps its summary while its rows scroll past", async ({ p
   expect(stuck?.overflow).toBe("clip");
 });
 
-test("the Goal surface stays quiet and omits Runtime constraints", async ({ page }) => {
+test("the Goal surface presents status and objective without usage counters", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=running");
   await page.locator("html[data-visual-ready]").waitFor();
 
@@ -1746,8 +1746,6 @@ test("the Goal surface stays quiet and omits Runtime constraints", async ({ page
   await expect(row.getByRole("button", { name: "Pause goal" })).toBeVisible();
   await expect(row.getByRole("button", { name: "Edit goal" })).toBeVisible();
 
-  await expect(row).not.toContainText("$4.50/$5.00");
-  await expect(row).not.toContainText("7/20");
   await expect(row).not.toContainText("31");
   await expect(row.locator("[role=progressbar]")).toHaveCount(0);
 });

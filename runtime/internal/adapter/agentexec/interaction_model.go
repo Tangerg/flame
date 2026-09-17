@@ -85,7 +85,9 @@ func (o *observedInteractionModel) Stream(
 				firstOutputLatencyMillis = new(receivedAt.Sub(dispatchedAt).Milliseconds())
 			}
 			if !yield(chunk, nil) {
-				_ = o.finishFailedCall(ctx, invocation, attempt, callID, firstOutputLatencyMillis, nil)
+				if err := o.fail(ctx, invocation, callID, firstOutputLatencyMillis); err != nil {
+					attempt.recordProjectionFailure(err)
+				}
 				return
 			}
 		}
@@ -137,7 +139,7 @@ func (o *observedInteractionModel) fail(
 	callID string,
 	firstOutputLatencyMillis *int64,
 ) error {
-	projectionCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
+	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
 	defer cancel()
 	return o.session.commitFact(
 		projectionCtx,
@@ -162,9 +164,7 @@ func (o *observedInteractionModel) begin(
 	defer func() {
 		if err != nil {
 			o.session.accounting.discardPreparedModelContext(preparedInvocation)
-			if !errors.Is(err, errInteractionAllowanceDenied) {
-				o.session.modelFailures.record(preparedInvocation.Relation().ProcessID(), interaction.HostFailure(err))
-			}
+			o.session.modelFailures.record(preparedInvocation.Relation().ProcessID(), interaction.HostFailure(err))
 			err = errors.Join(err, o.session.stopModelProcess(ctx, preparedInvocation.Relation().ProcessID()))
 		}
 	}()
@@ -213,7 +213,7 @@ func (o *observedInteractionModel) complete(
 		return err
 	}
 	fact.FirstOutputLatencyMillis = firstOutputLatencyMillis
-	projectionCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
+	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
 	defer cancel()
 	if err := o.session.commitFact(
 		projectionCtx, o.session.executorMember(invocation.Relation()), fact,

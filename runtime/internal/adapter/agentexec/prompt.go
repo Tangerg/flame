@@ -168,7 +168,7 @@ func (w *WorkingContextComposer) CurrentSessionState(
 			prompt.append(
 				"## Current Autonomous Goal\n\nObjective: "+strconv.Quote(current.Objective())+
 					"\nStatus: "+string(current.Status())+
-					"\n\nThis snapshot is current for this model call. Use get_goal for full budget, usage, and reason details.",
+					"\n\nThis snapshot is current for this model call. Use get_goal for full usage and reason details.",
 				contextSourceSessionGoal.source(sessionID),
 			)
 			message, err := prompt.systemMessage()

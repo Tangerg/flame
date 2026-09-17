@@ -16,7 +16,6 @@ describe("Runtime Goal Adapter", () => {
         provider: "openai",
         model: "gpt-5",
         reasoningEffort: "high",
-        budget: { maxRuns: 4, maxCostUsd: 2, maxSteps: 50 },
         used: { runs: 2, costUsd: 0.75, steps: 12 },
         createdAt: "2026-08-12T08:00:00Z",
         updatedAt: "2026-08-12T08:01:00Z",
@@ -29,7 +28,6 @@ describe("Runtime Goal Adapter", () => {
       provider: "openai",
       model: "gpt-5",
       reasoningEffort: "high",
-      budget: { maxRuns: 4, maxCostUsd: 2, maxSteps: 50 },
       used: { runs: 2, costUsd: 0.75, steps: 12 },
       createdAt: "2026-08-12T08:00:00Z",
       updatedAt: "2026-08-12T08:01:00Z",
@@ -61,36 +59,5 @@ describe("Runtime Goal Adapter", () => {
     });
 
     expect(runtimeGoalMaterial(goal, false)).toEqual({ available: false, goal: null });
-  });
-
-  it("represents an omitted wire budget as an unlimited application Goal", () => {
-    expect(
-      toGoalReadModel({
-        sessionId: "ses_goal",
-        objective: "keep going",
-        status: "active",
-        provider: "openai",
-        model: "gpt-5",
-        used: { runs: 0, costUsd: 0, steps: 0 },
-        createdAt: "2026-08-12T08:00:00Z",
-        updatedAt: "2026-08-12T08:01:00Z",
-      }).budget,
-    ).toBeNull();
-  });
-
-  it("rejects an impossible empty finite budget at the adapter boundary", () => {
-    expect(() =>
-      toGoalReadModel({
-        sessionId: "ses_goal",
-        objective: "keep going",
-        status: "active",
-        provider: "openai",
-        model: "gpt-5",
-        budget: {},
-        used: { runs: 0, costUsd: 0, steps: 0 },
-        createdAt: "2026-08-12T08:00:00Z",
-        updatedAt: "2026-08-12T08:01:00Z",
-      }),
-    ).toThrow("Runtime Goal budget contains no limit");
   });
 });

@@ -156,9 +156,8 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		return corechat.ToolOutput{}, o.projectionFailure(err)
 	}
 	if failure == nil || failure.Kind() != toolcontract.FailureKindRejected {
-		o.session.toolOutcomes.record(call.Name, arguments, modelOutput, callErr)
 		outcomeCtx, cancelOutcome := context.WithTimeout(
-			context.WithoutCancel(ctx), authoritativeProjectionTimeout,
+			context.WithoutCancel(ctx), auxiliaryOperationTimeout,
 		)
 		o.projectToolOutcome(outcomeCtx, member, call.Name, callErr == nil)
 		cancelOutcome()
@@ -256,7 +255,7 @@ func (o *observedInteractionTool) runAfterToolUseHook(
 	if o.hooks == nil {
 		return
 	}
-	hookCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
+	hookCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), auxiliaryOperationTimeout)
 	if err := o.hooks.AfterToolUse(hookCtx, InteractionToolHookInput{
 		SessionID: o.start.SessionID, CWD: o.start.CWD, WorkspaceCWD: o.start.WorkspaceCWD,
 		ToolName: name, Arguments: arguments, Result: hookToolOutput(output), CallError: callErr,
@@ -302,7 +301,7 @@ func (o *observedInteractionTool) prepare(
 		if forceApproval {
 			return arguments, true, "a lifecycle hook requires approval, but approval is unavailable", nil
 		}
-		return o.applyDoomLoopBrake(ctx, callID, name, arguments)
+		return arguments, false, "", nil
 	}
 	request, err := o.authorizationRequest(callID, name, arguments, forceApproval)
 	if err != nil {
@@ -321,34 +320,7 @@ func (o *observedInteractionTool) prepare(
 	if prompt, ok := decision.Approval(); ok {
 		return o.requestToolApproval(ctx, request, prompt)
 	}
-	return o.applyDoomLoopBrake(ctx, callID, name, arguments)
-}
-
-func (o *observedInteractionTool) applyDoomLoopBrake(
-	ctx context.Context,
-	callID string,
-	name string,
-	arguments tool.Arguments,
-) (tool.Arguments, bool, string, error) {
-	if o.session.toolOutcomes.repeated(name, arguments) < interactionDoomLoopThreshold {
-		return arguments, false, "", nil
-	}
-	o.session.toolOutcomes.reset()
-	reason := fmt.Sprintf(
-		"%q has been called with the same arguments and unchanged result %d times; approve to continue or deny so the agent changes approach",
-		name, interactionDoomLoopThreshold,
-	)
-	if !slices.Contains(o.start.InterruptKinds, interrupt.Approval) {
-		return arguments, true, reason, nil
-	}
-	request, err := o.authorizationRequest(callID, name, arguments, true)
-	if err != nil {
-		return tool.Arguments{}, false, "", err
-	}
-	return o.requestToolApproval(ctx, request, runs.ApprovalPrompt{
-		CallID: callID, ToolName: name, Arguments: arguments.Canonical(),
-		SafetyClass: request.SafetyClass, Risk: tool.RiskHigh, Reason: reason,
-	})
+	return arguments, false, "", nil
 }
 
 func (o *observedInteractionTool) authorizationRequest(

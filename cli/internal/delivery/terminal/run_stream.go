@@ -10,9 +10,7 @@ import (
 	"github.com/Tangerg/oolong/core/term"
 
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
@@ -69,9 +67,10 @@ func (a *app) startRun(commandID agent.CommandID, message agent.Message, options
 	}
 	a.presentRunStart(status)
 	a.followOpening(func(ctx context.Context) (agent.SegmentStream, error) {
-		opened, err := openStartRun(
-			ctx, a.runtime, input, retry.DisabledReconnectPolicy(), commandReplayAdmission(replay, a.runtimeProfile),
-		)
+		if err := commandReplayAdmission(replay, a.runtimeProfile)(); err != nil {
+			return agent.SegmentStream{}, err
+		}
+		opened, err := a.runtime.StartRun(ctx, input)
 		if err != nil {
 			if _, accepted := agent.AcceptedMutationReceipt(err); accepted {
 				return agent.SegmentStream{}, err
@@ -176,39 +175,6 @@ func (a *app) requeueDefinitivelyRefusedStart(input agent.StartRun, failure erro
 	return nil
 }
 
-func openStartRun(
-	ctx context.Context,
-	runtime runworkflow.Lifecycle,
-	command agent.StartRun,
-	policy retry.ReconnectPolicy,
-	admit mutation.Admission,
-) (agent.SegmentStream, error) {
-	if err := policy.Validate(); err != nil {
-		return agent.SegmentStream{}, err
-	}
-	for attempt := 1; ; attempt++ {
-		if admit != nil {
-			if err := admit(); err != nil {
-				return agent.SegmentStream{}, err
-			}
-		}
-		opened, err := runtime.StartRun(ctx, command)
-		if err == nil {
-			return opened, nil
-		}
-		delay, shouldRetry, policyErr := policy.Next(attempt, err)
-		if policyErr != nil {
-			return agent.SegmentStream{}, policyErr
-		}
-		if !shouldRetry {
-			return agent.SegmentStream{}, err
-		}
-		if err := retry.Wait(ctx, delay); err != nil {
-			return agent.SegmentStream{}, err
-		}
-	}
-}
-
 type streamOpeningDisposition uint8
 
 const (
@@ -237,7 +203,6 @@ func (a *app) followOpening(
 		follower := streamFollower{
 			app: a, ctx: ctx, dispatcher: a.loop.Dispatcher(), lease: lease, sessionID: sessionID,
 			open: open, applyEvent: a.apply,
-			policy: a.reconnectPolicy,
 		}
 		follower.opening = observer
 		follower.run()
@@ -369,7 +334,7 @@ func outcomeNotification(outcome agent.Outcome) string {
 		return "flame run completed"
 	case runtimeprotocol.OutcomeCanceled:
 		return "flame run canceled"
-	case runtimeprotocol.OutcomeTimedOut, runtimeprotocol.OutcomeMaxSteps, runtimeprotocol.OutcomeMaxBudget:
+	case runtimeprotocol.OutcomeTimedOut:
 		return "flame run stopped: " + string(outcome.Status)
 	case runtimeprotocol.OutcomeFailed, runtimeprotocol.OutcomeLost:
 		return "flame run failed"

@@ -35,7 +35,6 @@ func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
 		ContextTokens: 32_768,
 		Lineage:       agent.RootRunLineage(),
-		Limits:        agent.UnlimitedRunLimits(),
 		ProtocolProfile: &protocol.RunProtocolProfile{
 			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
 			InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},

@@ -28,7 +28,7 @@ const (
 	// Completed — the model finished normally.
 	Completed State = "completed"
 	// Failed — the Run stopped without completing. The exact reason remains in
-	// its Outcome: TimedOut, Failed, MaxBudget, MaxSteps, or Lost.
+	// its Outcome: TimedOut, Failed, or Lost.
 	Failed State = "failed"
 	// Canceled — the caller canceled the run, or its context was canceled.
 	Canceled State = "canceled"
@@ -121,13 +121,6 @@ const (
 	OutcomeTimedOut Outcome = "timedOut"
 	// OutcomeFailed — the run aborted on an error. → Failed.
 	OutcomeFailed Outcome = "failed"
-	// OutcomeMaxBudget — the run hit its token/cost budget and stopped cleanly
-	// after the current round (the partial reply already streamed). → Failed.
-	OutcomeMaxBudget Outcome = "maxBudget"
-	// OutcomeMaxSteps — the run hit its delegation-tree model-call cap and
-	// stopped cleanly. Distinct from OutcomeMaxBudget because the exhausted
-	// allowance is a different terminal fact. → Failed.
-	OutcomeMaxSteps Outcome = "maxSteps"
 	// OutcomeLost — recovery proved that no live executor or valid checkpoint
 	// can continue the Run. It is produced by recovery, never by an executor. →
 	// Failed.
@@ -151,7 +144,7 @@ func (o Outcome) terminalState() State {
 func (o Outcome) valid() bool {
 	switch o {
 	case OutcomeCompleted, OutcomeCanceled, OutcomeTimedOut, OutcomeFailed,
-		OutcomeMaxBudget, OutcomeMaxSteps, OutcomeLost:
+		OutcomeLost:
 		return true
 	default:
 		return false

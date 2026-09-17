@@ -11,7 +11,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -34,10 +33,6 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 	if err != nil {
 		return nil, nil, err
 	}
-	limits, err := limitsFromWire(in.Limits)
-	if err != nil {
-		return nil, nil, fmt.Errorf("%w: run limits: %w", protocol.ErrInvalidParams, err)
-	}
 	// Negotiated before admission: the Run is created under this contract and keeps
 	// it for life, so a capability we cannot honor has to stop the call rather than
 	// be discovered halfway through its stream.
@@ -48,7 +43,6 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 	result, err := s.runs.Start(ctx, runs.StartCommand{
 		SessionID:      in.SessionID,
 		ModelSelection: selection,
-		Limits:         limits,
 		Options:        options,
 		Capabilities:   capabilities,
 		Input:          input,
@@ -59,15 +53,6 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 	// Return the opening userMessage Item id so the client reconciles its
 	// optimistic bubble by exact id (same id the stream + items.list carry).
 	return &protocol.StartRunResponse{RunID: result.RunID, SegmentID: result.SegmentID, UserItemID: result.UserItemID}, mapRunEvents(result.Events), nil
-}
-
-func limitsFromWire(wire *protocol.RunLimits) (run.Limits, error) {
-	if wire == nil {
-		return run.UnlimitedLimits(), nil
-	}
-	return run.NewLimits(run.LimitValues{
-		MaxTotalTokens: wire.MaxTotalTokens, MaxSteps: wire.MaxSteps, MaxBudgetUSD: wire.MaxBudgetUSD,
-	})
 }
 
 func decodeRunInput(blocks []protocol.ContentBlock) ([]transcript.ContentBlock, error) {
@@ -103,8 +88,6 @@ func wireRunStartErr(err error) error {
 	case errors.Is(err, runs.ErrInputRequired):
 		return fmt.Errorf("%w: input must contain a user text or image block", protocol.ErrInvalidParams)
 	case modelref.IsInvalid(err):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
-	case errors.Is(err, runs.ErrInvalidRunLimit):
 		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
 	case errors.Is(err, runs.ErrInvalidRunOptions):
 		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)

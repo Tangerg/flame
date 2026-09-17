@@ -123,7 +123,7 @@ func TestInteractionResponseLostAfterSideEffectRemainsUnknown(t *testing.T) {
 		return nil
 	})
 	if writes.Load() != 1 || modelCalls.Load() != 1 || publications.Load() != 0 ||
-		len(payloadsOf[runs.UnknownEffectsDetected](events)) != 1 || len(payloadsOf[runs.ToolCallFinished](events)) != 0 {
+		len(unresolvedTerminals(events)) != 1 || len(payloadsOf[runs.ToolCallFinished](events)) != 0 {
 		t.Fatalf("uncertain write became known or was repeated: writes=%d model=%d publications=%d events=%#v", writes.Load(), modelCalls.Load(), publications.Load(), events)
 	}
 }

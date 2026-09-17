@@ -25,7 +25,6 @@ type executorRoute struct {
 	rootRunID        string
 	lineage          rundomain.Lineage
 	modelSelection   modelref.Selection
-	limits           rundomain.Limits
 	capabilities     rundomain.Capabilities
 	reducer          *reducer
 	segmentStartedAt time.Time
@@ -61,7 +60,7 @@ func (c *Coordinator) openingRoutes(
 		GoalIncarnationID: spec.GoalIncarnationID,
 		CreatedAt:         spec.CreatedAt, UserInput: spec.Input,
 		ConversationInput: spec.ConversationInput, ModelOnlyInput: spec.ModelOnlyInput,
-		Metrics: spec.priorMetrics(), Limits: spec.effectiveLimits(),
+		Metrics:      spec.priorMetrics(),
 		Capabilities: spec.effectiveCapabilities(),
 		Now:          c.publications.nowUTC, CancelReason: cancellationReason(cancelReason, spec.RunID),
 	})
@@ -70,7 +69,6 @@ func (c *Coordinator) openingRoutes(
 		segmentID:      spec.SegmentID,
 		rootRunID:      spec.RunID,
 		modelSelection: spec.ModelSelection,
-		limits:         spec.effectiveLimits(),
 		capabilities:   spec.effectiveCapabilities(),
 		reducer:        rootReducer,
 	}
@@ -180,7 +178,6 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 		rootRunID:      r.continuation.rootRunID,
 		lineage:        continuationState.Lineage,
 		modelSelection: continuationState.ModelSelection,
-		limits:         continuationState.Limits,
 		capabilities:   r.continuation.capabilities,
 	}
 	userInput := []transcript.ContentBlock(nil)
@@ -195,7 +192,6 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 		GoalIncarnationID: goalIncarnationID, ModelSelection: route.modelSelection,
 		CreatedAt: continuationState.RunCreatedAt, UserInput: userInput,
 		Metrics: continuationState.Metrics, ContextTokens: continuationState.ContextTokens,
-		Limits:       continuationState.Limits,
 		Capabilities: r.continuation.capabilities, Continuation: r.continuation,
 		Now:          r.now,
 		CancelReason: cancellationReason(r.cancelReason, route.runID),
@@ -646,7 +642,6 @@ func (c *Coordinator) prepareChildStart(
 		rootRunID:      parent.rootRunID,
 		lineage:        lineage,
 		modelSelection: parent.modelSelection,
-		limits:         parent.limits,
 		capabilities:   parent.capabilities,
 	}
 	if bindExecutorMemberErr := owner.bindExecutorMember(child.runID, member.MemberID); bindExecutorMemberErr != nil {
@@ -704,7 +699,6 @@ func (c *Coordinator) finalizeChildOpening(
 		Isolated:       spec.Isolated,
 		ModelSelection: child.modelSelection,
 		CreatedAt:      startedAt,
-		Limits:         child.limits,
 		Capabilities:   child.capabilities,
 		Now:            c.publications.nowUTC,
 		CancelReason:   cancellationReason(owner.CancelReasonFor, child.runID),
@@ -724,7 +718,6 @@ func (c *Coordinator) finalizeChildOpening(
 		RootRunID:       child.lineage.RootRunID,
 		SegmentID:       child.segmentID,
 		ModelSelection:  child.modelSelection,
-		Limits:          child.limits,
 		Capabilities:    child.capabilities,
 		CreatedAt:       startedAt,
 	}

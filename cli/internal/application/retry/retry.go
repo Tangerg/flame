@@ -11,7 +11,7 @@ import (
 var ErrInvalidBackoff = errors.New("retry backoff is invalid")
 
 // Backoff is an unbounded retry schedule whose delay has a finite ceiling.
-// The caller's context, rather than an attempt budget, decides its lifetime.
+// The caller's context decides its lifetime.
 // The zero value is unconfigured: a schedule with no floor would busy-spin.
 type Backoff struct {
 	base    time.Duration

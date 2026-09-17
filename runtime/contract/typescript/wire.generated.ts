@@ -190,12 +190,10 @@ export type ArtifactOutcome =
   | { type: "completed" }
   | { type: "timedOut"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "timeout" } }
   | { type: "failed"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internalError" | "agentStuck" | "rateLimited" | "invalidApiKey" | "timeout" | "providerUnavailable" | "providerRejected" } }
-  | { type: "maxSteps"; detail?: string }
-  | { type: "maxBudget"; detail?: string }
   | { type: "canceled"; detail?: string }
   | { type: "lost"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "runLost" } };
 
-export type ArtifactOutcomeType = "completed" | "timedOut" | "failed" | "maxSteps" | "maxBudget" | "canceled" | "lost";
+export type ArtifactOutcomeType = "completed" | "timedOut" | "failed" | "canceled" | "lost";
 
 export interface ArtifactProblem {
   detail?: string;
@@ -211,7 +209,6 @@ export interface ArtifactRun {
   createdAt: string;
   finishedAt: string;
   id: string;
-  limits?: RunLimits;
   messageMark: number;
   metrics: RunMetrics;
   model: string;
@@ -481,7 +478,6 @@ export interface GetSessionSnapshotRequest {
 }
 
 export interface Goal {
-  budget?: GoalBudget;
   createdAt: string;
   model: string;
   objective: string;
@@ -494,18 +490,12 @@ export interface Goal {
   used: GoalUsage;
 }
 
-export interface GoalBudget {
-  maxCostUsd?: number;
-  maxRuns?: number;
-  maxSteps?: number;
-}
-
 export interface GoalReason {
   code: GoalReasonCode;
   detail?: string;
 }
 
-export type GoalReasonCode = "stoppedByUser" | "runtimeRestarted" | "runStartFailed" | "awaitingInput" | "terminalOutcomeMissing" | "runNotCompleted" | "runBudgetReached" | "costBudgetReached" | "stepBudgetReached" | "pricingUnavailable" | "blockedByModel";
+export type GoalReasonCode = "stoppedByUser" | "runtimeRestarted" | "runStartFailed" | "awaitingInput" | "terminalOutcomeMissing" | "runNotCompleted" | "blockedByModel";
 
 export interface GoalRequest {
   sessionId: string;
@@ -1141,12 +1131,6 @@ export interface RunEvent {
   timestamp: string;
 }
 
-export interface RunLimits {
-  maxBudgetUsd?: number;
-  maxSteps?: number;
-  maxTotalTokens?: number;
-}
-
 export interface RunMetrics {
   activeDurationMillis: number;
   steps: number;
@@ -1154,15 +1138,13 @@ export interface RunMetrics {
 }
 
 export type RunOutcome =
-  | { type: "completed" }
-  | { type: "timedOut"; error: ProblemData }
-  | { type: "failed"; error: ProblemData }
-  | { type: "maxSteps"; detail?: string }
-  | { type: "maxBudget"; detail?: string }
-  | { type: "canceled"; detail?: string }
-  | { type: "lost"; error: ProblemData };
+  | { type: "completed"; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "timedOut"; error: ProblemData; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "failed"; error: ProblemData; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "canceled"; detail?: string; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "lost"; error: ProblemData; unresolvedEffects?: UnresolvedEffect[] };
 
-export type RunOutcomeType = "completed" | "timedOut" | "failed" | "maxSteps" | "maxBudget" | "canceled" | "lost";
+export type RunOutcomeType = "completed" | "timedOut" | "failed" | "canceled" | "lost";
 
 export interface RunProgress {
   activity?: string;
@@ -1184,7 +1166,6 @@ export interface RunRef {
   createdAt: string;
   finishedAt?: string;
   id: string;
-  limits?: RunLimits;
   metrics: RunMetrics;
   model: string;
   outcome?: RunOutcome;
@@ -1327,15 +1308,13 @@ export interface SearchResult {
 export type SegmentOutcome =
   | { type: "interrupt"; interrupts: Interrupt[] }
   | { type: "suspended" }
-  | { type: "completed" }
-  | { type: "timedOut"; error: ProblemData }
-  | { type: "failed"; error: ProblemData }
-  | { type: "maxSteps"; detail?: string }
-  | { type: "maxBudget"; detail?: string }
-  | { type: "canceled"; detail?: string }
-  | { type: "lost"; error: ProblemData };
+  | { type: "completed"; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "timedOut"; error: ProblemData; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "failed"; error: ProblemData; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "canceled"; detail?: string; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "lost"; error: ProblemData; unresolvedEffects?: UnresolvedEffect[] };
 
-export type SegmentOutcomeType = "interrupt" | "suspended" | "completed" | "timedOut" | "failed" | "maxSteps" | "maxBudget" | "canceled" | "lost";
+export type SegmentOutcomeType = "interrupt" | "suspended" | "completed" | "timedOut" | "failed" | "canceled" | "lost";
 
 export interface ServerCapabilities {
   features: Record<string, FeatureCapability>;
@@ -1436,7 +1415,6 @@ export interface SkillProposalRef {
 export type SkillScope = "project" | "user";
 
 export interface StartGoalRequest {
-  budget?: GoalBudget;
   model?: string;
   objective: string;
   provider?: string;
@@ -1446,7 +1424,6 @@ export interface StartGoalRequest {
 
 export interface StartRunRequest {
   input: ContentBlock[];
-  limits?: RunLimits;
   model?: string;
   params?: GenerationParams;
   provider?: string;
@@ -1516,6 +1493,14 @@ export interface ToolSpec {
 }
 
 export type TransportKind = "http";
+
+export interface UnresolvedEffect {
+  cause: string;
+  detail?: string;
+  effectId: string;
+  processId: string;
+  reason?: string;
+}
 
 export interface UpdateGoalRequest {
   objective: string;
@@ -1670,7 +1655,7 @@ export const WIRE_ENUMS = {
   ApprovalRisk: ["low", "medium", "high"],
   ApprovalRuleDecision: ["allow", "deny"],
   ApprovalRuleScope: ["session", "project", "global"],
-  ArtifactOutcomeType: ["completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"],
+  ArtifactOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
   ArtifactProblemType: ["internalError", "runLost", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"],
   CancelRunResponseType: ["root", "child"],
   CapabilityRequirementType: ["feature", "interruptType", "runtimeTopic"],
@@ -1683,7 +1668,7 @@ export const WIRE_ENUMS = {
   FeedbackRating: ["positive", "negative"],
   FileEntryType: ["file", "dir", "symlink"],
   FileStatus: ["added", "modified", "deleted", "renamed", "untracked"],
-  GoalReasonCode: ["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"],
+  GoalReasonCode: ["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "blockedByModel"],
   GoalStatus: ["active", "paused", "blocked", "completing"],
   HealthStatus: ["ok", "degraded", "unhealthy"],
   HookEvent: ["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "PreCompact", "Stop", "Notification"],
@@ -1713,7 +1698,7 @@ export const WIRE_ENUMS = {
   RecipeScope: ["project", "global"],
   RememberScopeKind: ["session", "project", "global"],
   RestoreType: ["history", "files", "both"],
-  RunOutcomeType: ["completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"],
+  RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
   RunProtocolFeature: ["subagents"],
   RunReplayScope: ["runtimeInstanceRootSegment"],
   RunStatus: ["running", "waiting", "finished"],
@@ -1721,7 +1706,7 @@ export const WIRE_ENUMS = {
   RuntimeTopic: ["files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
   ScheduleWorkspaceMode: ["default"],
-  SegmentOutcomeType: ["interrupt", "suspended", "completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"],
+  SegmentOutcomeType: ["interrupt", "suspended", "completed", "timedOut", "failed", "canceled", "lost"],
   SessionStatus: ["running", "waiting", "idle"],
   SkillLifecycle: ["active", "archived"],
   SkillProposalOrigin: ["requested", "mined"],

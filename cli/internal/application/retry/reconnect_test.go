@@ -4,65 +4,32 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"math"
 	"testing"
 	"time"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
-func TestReconnectRetriesOnlyTransientErrorsWithinBudget(t *testing.T) {
-	policy, err := newReconnectPolicy(3, 10*time.Millisecond, 25*time.Millisecond)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for failure, want := range []time.Duration{10 * time.Millisecond, 20 * time.Millisecond, 25 * time.Millisecond} {
-		got, ok, err := policy.Next(failure+1, agent.ErrDisconnected)
-		if err != nil || !ok || got != want {
-			t.Fatalf("failure %d = %s, %v; want %s", failure+1, got, ok, want)
+func TestReconnectContinuesWithBoundedDelay(t *testing.T) {
+	for _, failure := range []int{1, 2, 20, 1000, math.MaxInt} {
+		delay, again, err := ReconnectDelay(failure, agent.ErrDisconnected)
+		if err != nil || !again || delay < 50*time.Millisecond || delay > time.Second {
+			t.Fatalf("retry %d: %v, %v, %v", failure, delay, again, err)
 		}
 	}
-	if _, ok, err := policy.Next(4, agent.ErrDisconnected); err != nil || ok {
-		t.Fatal("retry budget was exceeded")
+	for _, cause := range []error{agent.ErrEventConflict, agent.ErrReplayUnavailable, context.Canceled} {
+		if _, again, err := ReconnectDelay(1, cause); err != nil || again {
+			t.Fatalf("retry permanent error %v: %v, %v", cause, again, err)
+		}
 	}
-	if _, ok, err := policy.Next(1, agent.ErrEventConflict); err != nil || ok {
-		t.Fatal("identity conflict was treated as transient")
-	}
-	if _, ok, err := policy.Next(1, agent.ErrReplayUnavailable); err != nil || ok {
-		t.Fatal("unavailable replay was treated as a retryable disconnect")
+	if _, _, err := ReconnectDelay(0, agent.ErrDisconnected); !errors.Is(err, ErrInvalidBackoff) {
+		t.Fatalf("invalid count: %v", err)
 	}
 }
 
-func TestCommandCommitRetriesHonorTheRuntimeBackoffFloor(t *testing.T) {
-	policy, err := newReconnectPolicy(2, 10*time.Millisecond, 2*time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if delay, ok, err := policy.Next(1, agent.ErrCommandInProgress); err != nil || !ok || delay != time.Second {
-		t.Fatalf("command progress retry = %s, %t; want 1s, true", delay, ok)
-	}
-	if !IsReconnectable(agent.ErrCommandInProgress) {
-		t.Fatal("command progress was not retryable")
-	}
-	if IsReconnectable(agent.ErrCommandConflict) {
-		t.Fatal("command identity conflict was retryable")
-	}
-}
-
-func TestReconnectPolicyRequiresNamedDisabledOrBoundedState(t *testing.T) {
-	t.Parallel()
-	if _, reconnectable, err := DisabledReconnectPolicy().Next(1, agent.ErrDisconnected); err != nil || reconnectable {
-		t.Fatalf("disabled Next = (%t, %v)", reconnectable, err)
-	}
-	if _, _, err := (ReconnectPolicy{}).Next(1, agent.ErrDisconnected); !errors.Is(err, ErrInvalidReconnectPolicy) {
-		t.Fatalf("zero policy Next = %v", err)
-	}
-	if _, err := NewReconnectPolicy(-1); !errors.Is(err, ErrInvalidReconnectPolicy) {
-		t.Fatalf("NewReconnectPolicy(-1) = %v", err)
-	}
-	for _, bounds := range [][2]time.Duration{{0, time.Second}, {time.Second, time.Millisecond}} {
-		if _, err := newReconnectPolicy(1, bounds[0], bounds[1]); !errors.Is(err, ErrInvalidReconnectPolicy) {
-			t.Fatalf("newReconnectPolicy(1, %s, %s) = %v", bounds[0], bounds[1], err)
-		}
+func TestCommandProgressUsesBackoffFloor(t *testing.T) {
+	if delay, again, err := ReconnectDelay(1, agent.ErrCommandInProgress); err != nil || !again || delay != time.Second {
+		t.Fatalf("progress delay: %v, %v, %v", delay, again, err)
 	}
 }
 
@@ -85,15 +52,5 @@ func TestIsReconnectableRecognizesOnlyClassifiedDisconnects(t *testing.T) {
 				t.Fatalf("IsReconnectable(%v) = %t, want %t", test.err, got, test.want)
 			}
 		})
-	}
-}
-
-func TestReconnectPolicyPreservesInvalidBackoffCause(t *testing.T) {
-	_, constructorErr := newReconnectPolicy(1, 0, time.Second)
-	_, _, nextErr := (ReconnectPolicy{}).Next(1, agent.ErrDisconnected)
-	for _, err := range []error{constructorErr, (ReconnectPolicy{}).Validate(), nextErr} {
-		if !errors.Is(err, ErrInvalidReconnectPolicy) || !errors.Is(err, ErrInvalidBackoff) {
-			t.Fatalf("policy error = %v, want policy category and backoff cause", err)
-		}
 	}
 }

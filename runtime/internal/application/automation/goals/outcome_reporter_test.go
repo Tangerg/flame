@@ -46,7 +46,7 @@ func TestOutcomeReporterOwnsTerminalGoalTransition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	g, err := goal.New("ses_1", "finish", selection, goal.UnlimitedBudget(), run.Capabilities{}, "lease-current", now.Add(-time.Hour))
+	g, err := goal.New("ses_1", "finish", selection, run.Capabilities{}, "lease-current", now.Add(-time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}

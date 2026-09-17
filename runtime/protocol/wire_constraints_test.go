@@ -1432,17 +1432,6 @@ func TestPublishedLimitWireConstraints(t *testing.T) {
 		}).ValidateWire(), "MCPHandshakeTimeout", "seconds")
 	}
 
-	negativeTokens, negativeSteps, negativeBudget := int64(-1), -1, -0.01
-	start := StartRunRequest{SessionID: "ses_1", Input: []ContentBlock{{Type: ContentBlockText, Text: "go"}}, Limits: &RunLimits{MaxTotalTokens: &negativeTokens}}
-	assertConstraintField(t, ValidateWireTree(start), "StartRunRequest", "limits.maxTotalTokens")
-
-	run := RunLimits{MaxSteps: &negativeSteps}
-	assertConstraintField(t, run.ValidateWire(), "RunLimits", "maxSteps")
-
-	budget := RunLimits{MaxBudgetUSD: &negativeBudget}
-	assertConstraintField(t, budget.ValidateWire(), "RunLimits", "maxBudgetUsd")
-
-	assertConstraintField(t, (RunLimits{}).ValidateWire(), "RunLimits", "maxTotalTokens|maxSteps|maxBudgetUsd")
 	zeroContext := int64(0)
 	assertConstraintField(t, (ModelTokenLimits{}).ValidateWire(), "ModelTokenLimits", "contextWindow|maxInputTokens|maxOutputTokens")
 	assertConstraintField(t, (ModelTokenLimits{ContextWindow: &zeroContext}).ValidateWire(), "ModelTokenLimits", "contextWindow")
@@ -1517,7 +1506,7 @@ func TestGoalWireConstraintsCloseLifecycleState(t *testing.T) {
 		{name: "active reason", field: "reason", value: valid(GoalActive, &GoalReason{Code: GoalReasonStoppedByUser})},
 		{name: "completing reason", field: "reason", value: valid(GoalCompleting, &GoalReason{Code: GoalReasonStoppedByUser})},
 		{name: "paused without reason", field: "reason", value: valid(GoalPaused, nil)},
-		{name: "paused with blocked reason", field: "reason.code", value: valid(GoalPaused, &GoalReason{Code: GoalReasonRunBudgetReached})},
+		{name: "paused with blocked reason", field: "reason.code", value: valid(GoalPaused, &GoalReason{Code: GoalReasonBlockedByModel})},
 		{name: "blocked without reason", field: "reason", value: valid(GoalBlocked, nil)},
 		{name: "blocked with paused reason", field: "reason.code", value: valid(GoalBlocked, &GoalReason{Code: GoalReasonStoppedByUser})},
 	} {
@@ -1922,9 +1911,6 @@ func TestGenerationAndGoalBoundsAreWireConstraints(t *testing.T) {
 	temperature := 2.1
 	topP := 1.1
 	zeroTokens := int64(0)
-	zeroRuns := 0
-	zeroCost := 0.0
-	zeroSteps := 0
 	for _, test := range []struct {
 		field string
 		value GenerationParams
@@ -1937,17 +1923,7 @@ func TestGenerationAndGoalBoundsAreWireConstraints(t *testing.T) {
 		assertConstraintField(t, test.value.ValidateWire(), "GenerationParams", test.field)
 	}
 
-	assertConstraintField(t, (GoalBudget{}).ValidateWire(), "GoalBudget", "maxRuns|maxCostUsd|maxSteps")
-	assertConstraintField(t, (GoalBudget{MaxRuns: &zeroRuns}).ValidateWire(), "GoalBudget", "maxRuns")
-	assertConstraintField(t, (GoalBudget{MaxCostUSD: &zeroCost}).ValidateWire(), "GoalBudget", "maxCostUsd")
-	assertConstraintField(t, (GoalBudget{MaxSteps: &zeroSteps}).ValidateWire(), "GoalBudget", "maxSteps")
-	positiveFractionalCost := 0.25
-	if err := (GoalBudget{MaxCostUSD: &positiveFractionalCost}).ValidateWire(); err != nil {
-		t.Fatalf("ValidateWire rejected a positive fractional cost: %v", err)
-	}
 	nonFiniteCost := math.Inf(1)
-	assertConstraintField(t, (GoalBudget{MaxCostUSD: &nonFiniteCost}).ValidateWire(), "GoalBudget", "maxCostUsd")
-
 	negativeCost := -0.01
 	for _, test := range []struct {
 		field string

@@ -69,7 +69,6 @@ type ExecutorCheckpoint struct {
 	BuildID        string
 	Scope          ExecutionScope
 	ModelSelection modelref.Selection
-	Limits         run.Limits
 	Capabilities   run.Capabilities
 	Usage          accounting.Snapshot
 }
@@ -86,7 +85,6 @@ type ExecutorCheckpointExpectation struct {
 	Isolated          bool
 	GoalIncarnationID string
 	ModelSelection    modelref.Selection
-	Limits            run.Limits
 	Capabilities      run.Capabilities
 }
 
@@ -119,9 +117,6 @@ func (e ExecutorCheckpoint) Validate() error {
 	}
 	if err := e.ModelSelection.ValidateExact(); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
-	}
-	if err := e.Limits.Validate(); err != nil {
-		return fmt.Errorf("%w: limits: %w", ErrInvalidExecutorCheckpoint, err)
 	}
 	if err := e.Capabilities.Validate(); err != nil {
 		return fmt.Errorf("%w: capabilities: %w", ErrInvalidExecutorCheckpoint, err)
@@ -182,9 +177,6 @@ func (e ExecutorCheckpoint) ValidateFor(expected ExecutorCheckpointExpectation) 
 	if err := expected.ModelSelection.ValidateExact(); err != nil {
 		return fmt.Errorf("%w: expected %w", ErrInvalidExecutorCheckpoint, err)
 	}
-	if err := expected.Limits.Validate(); err != nil {
-		return fmt.Errorf("%w: expected limits: %w", ErrInvalidExecutorCheckpoint, err)
-	}
 	if err := expected.Capabilities.Validate(); err != nil {
 		return fmt.Errorf("%w: expected capabilities: %w", ErrInvalidExecutorCheckpoint, err)
 	}
@@ -229,14 +221,6 @@ func (e ExecutorCheckpoint) ValidateFor(expected ExecutorCheckpointExpectation) 
 			ErrInvalidExecutorCheckpoint,
 			e.ModelSelection,
 			expected.ModelSelection,
-		)
-	}
-	if e.Limits != expected.Limits {
-		return fmt.Errorf(
-			"%w: limits %+v do not match owner %+v",
-			ErrInvalidExecutorCheckpoint,
-			e.Limits,
-			expected.Limits,
 		)
 	}
 	if !e.Capabilities.Equal(expected.Capabilities) {

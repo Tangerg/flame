@@ -21,14 +21,7 @@ func TestDefaultIsValidAndCloned(t *testing.T) {
 	if defaults.Plugins.Directories[0] != "one" {
 		t.Fatal("Clone leaked a plugin directory slice")
 	}
-	limited := Default()
-	limited.Run.MaxSteps = new(9)
-	clone = limited.Clone()
-	*clone.Run.MaxSteps = 10
-	if *limited.Run.MaxSteps != 9 {
-		t.Fatal("Clone leaked a run limit pointer")
-	}
-	if options, err := defaults.RunOptions(); err != nil || options.Provider != "" || options.Model != "" || !options.Limits.Unlimited() {
+	if options, err := defaults.RunOptions(); err != nil || options.Provider != "" || options.Model != "" {
 		t.Fatalf("RunOptions = %+v", options)
 	}
 	if defaults.Approval.Remember != RememberNone {
@@ -52,7 +45,6 @@ func TestValidationReportsAllIndependentProblems(t *testing.T) {
 	settings := Default()
 	settings.Provider = "mock"
 	settings.Model = ""
-	settings.Run.MaxSteps = new(-1)
 	settings.UI.TranscriptRetain = 0
 	settings.Plugins.Directories = []string{"", "/plugins", "/plugins"}
 	delete(settings.Keys, ActionShortcuts)
@@ -61,7 +53,7 @@ func TestValidationReportsAllIndependentProblems(t *testing.T) {
 	if err == nil {
 		t.Fatal("invalid settings were accepted")
 	}
-	for _, want := range []string{"provider and model must be set together", "positive", "transcript-retain", "empty path", "repeats", "shortcuts is missing", "unknown", "empty binding"} {
+	for _, want := range []string{"provider and model must be set together", "transcript-retain", "empty path", "repeats", "shortcuts is missing", "unknown", "empty binding"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Fatalf("validation error %q does not mention %q", err, want)
 		}

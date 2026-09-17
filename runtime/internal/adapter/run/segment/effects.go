@@ -44,7 +44,7 @@ type ScheduleStore interface {
 	RecordRun(ctx context.Context, record schedule.RunRecord) error
 }
 
-// GoalRunRecorder records the budget charge for a terminal goal-owned Run. It
+// GoalRunRecorder records usage and outcome for a terminal goal-owned Run. It
 // runs in the same transaction as terminalizing that Run.
 type GoalRunRecorder interface {
 	RecordRun(ctx context.Context, record goal.RunRecord) error
@@ -285,7 +285,7 @@ const runsegmentTracerName = "scope/flame/segment"
 
 // New returns the durable Run-segment effects. Every dependency is required: a
 // segment commit is one transaction, and a missing store would either fail it
-// halfway or drop the schedule, Goal-budget or Tool-result work it owns.
+// halfway or drop the schedule, Goal-accounting or Tool-result work it owns.
 func New(cfg Config) (*Effects, error) {
 	required := []struct {
 		name  string

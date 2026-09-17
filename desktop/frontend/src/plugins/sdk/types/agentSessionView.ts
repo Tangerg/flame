@@ -118,11 +118,7 @@ export type AgentRunFailureOutcome = {
 };
 
 export type AgentRunOutcome =
-  | { type: "completed" }
-  | AgentRunFailureOutcome
-  | { type: "maxSteps"; detail?: string }
-  | { type: "maxBudget"; detail?: string }
-  | { type: "canceled"; detail?: string };
+  { type: "completed" } | AgentRunFailureOutcome | { type: "canceled"; detail?: string };
 
 export interface AgentRunMetrics {
   steps: number;

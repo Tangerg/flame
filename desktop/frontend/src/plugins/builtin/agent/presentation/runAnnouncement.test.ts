@@ -14,7 +14,6 @@ describe("runAnnouncement", () => {
   it("names how a finished turn ended, through the same mapping the notifier uses", () => {
     expect(runAnnouncement("finished", null)).toBe("finished");
     expect(runAnnouncement("finished", outcome({ type: "canceled" }))).toBe("canceled");
-    expect(runAnnouncement("finished", outcome({ type: "maxSteps" }))).toBe("limit");
   });
 
   it("has a catalog key for every state it can be in", () => {

@@ -12,12 +12,11 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// Goal operations drive an autonomous loop toward
-// an objective until the model signals complete/blocked, a budget is spent, or
-// the user stops it.
+// Goal operations drive an objective until completion, blocking, Run failure,
+// or an explicit user stop.
 
 type goalUseCases interface {
-	Start(ctx context.Context, sessionID, objective string, selection modelref.Selection, budget goal.Budget, capabilities run.Capabilities) (goal.Goal, error)
+	Start(ctx context.Context, sessionID, objective string, selection modelref.Selection, capabilities run.Capabilities) (goal.Goal, error)
 	UpdateObjective(ctx context.Context, sessionID, objective string, caller run.Capabilities) (goal.Goal, error)
 	Clear(ctx context.Context, sessionID string) error
 	Resume(ctx context.Context, sessionID string, caller run.Capabilities) (goal.Goal, error)
@@ -56,11 +55,7 @@ func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (
 	if err != nil {
 		return nil, err
 	}
-	budget, err := budgetFromWire(in.Budget)
-	if err != nil {
-		return nil, mapGoalErr(err)
-	}
-	g, err := s.goals.Start(ctx, in.SessionID, in.Objective, selection, budget, capabilities)
+	g, err := s.goals.Start(ctx, in.SessionID, in.Objective, selection, capabilities)
 	if err != nil {
 		return nil, mapGoalErr(err)
 	}
@@ -113,10 +108,6 @@ func mapGoalErr(err error) error {
 		return fmt.Errorf("%w: a goal is already active for this session — stop it first", protocol.ErrSessionBusy)
 	case errors.Is(err, goals.ErrNoGoal):
 		return fmt.Errorf("%w: no goal for this session", protocol.ErrInvalidParams)
-	case errors.Is(err, goal.ErrBudgetExhausted):
-		return fmt.Errorf("%w: goal budget is exhausted; start a new goal to change it", protocol.ErrInvalidParams)
-	case errors.Is(err, goal.ErrPricingUnavailable):
-		return fmt.Errorf("%w: goal cost is unavailable; start a new goal to restore a cost limit", protocol.ErrInvalidParams)
 	case errors.Is(err, goal.ErrNotResumable):
 		return fmt.Errorf("%w: this goal is not resumable", protocol.ErrInvalidParams)
 	case errors.Is(err, goal.ErrNotEditable):
@@ -132,32 +123,6 @@ func mapGoalErr(err error) error {
 	}
 }
 
-func budgetFromWire(b *protocol.GoalBudget) (goal.Budget, error) {
-	if b == nil {
-		return goal.UnlimitedBudget(), nil
-	}
-	return goal.NewBudget(goal.BudgetLimits{
-		MaxRuns: b.MaxRuns, MaxCostUSD: b.MaxCostUSD, MaxSteps: b.MaxSteps,
-	})
-}
-
-func presentGoalBudget(budget goal.Budget) *protocol.GoalBudget {
-	if budget.Unlimited() {
-		return nil
-	}
-	wire := &protocol.GoalBudget{}
-	if value, limited := budget.MaxRuns(); limited {
-		wire.MaxRuns = &value
-	}
-	if value, limited := budget.MaxCostUSD(); limited {
-		wire.MaxCostUSD = &value
-	}
-	if value, limited := budget.MaxSteps(); limited {
-		wire.MaxSteps = &value
-	}
-	return wire
-}
-
 func presentGoal(g goal.Goal) (*protocol.Goal, error) {
 	status, ok := presentGoalStatus(g.Status())
 	if !ok {
@@ -167,7 +132,7 @@ func presentGoal(g goal.Goal) (*protocol.Goal, error) {
 	if err != nil {
 		return nil, err
 	}
-	selection, budget, used := g.ModelSelection(), g.Budget(), g.Used()
+	selection, used := g.ModelSelection(), g.Used()
 	w := protocol.Goal{
 		SessionID:       g.SessionID(),
 		Objective:       g.Objective(),
@@ -176,7 +141,6 @@ func presentGoal(g goal.Goal) (*protocol.Goal, error) {
 		Provider:        selection.Provider(),
 		Model:           selection.Model(),
 		ReasoningEffort: selection.ReasoningEffort(),
-		Budget:          presentGoalBudget(budget),
 		Used:            protocol.GoalUsage{Runs: used.Runs, CostUSD: used.Cost.OptionalUSD(), Steps: used.Steps},
 		CreatedAt:       g.CreatedAt(),
 		UpdatedAt:       g.UpdatedAt(),
@@ -216,14 +180,6 @@ func presentGoalReason(reason goal.Reason) (*protocol.GoalReason, error) {
 		code = protocol.GoalReasonTerminalOutcomeMissing
 	case goal.ReasonRunNotCompleted:
 		code = protocol.GoalReasonRunNotCompleted
-	case goal.ReasonRunBudgetReached:
-		code = protocol.GoalReasonRunBudgetReached
-	case goal.ReasonCostBudgetReached:
-		code = protocol.GoalReasonCostBudgetReached
-	case goal.ReasonStepBudgetReached:
-		code = protocol.GoalReasonStepBudgetReached
-	case goal.ReasonPricingUnavailable:
-		code = protocol.GoalReasonPricingUnavailable
 	case goal.ReasonBlockedByModel:
 		code = protocol.GoalReasonBlockedByModel
 	default:

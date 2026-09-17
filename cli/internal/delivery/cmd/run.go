@@ -123,9 +123,8 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 			Message:   message,
 			Options:   runOptions,
 		},
-		ApproveAll:        r.approveAll,
-		ReconnectAttempts: config.UI.ReconnectAttempts,
-		ReplayPolicy:      replayPolicy,
+		ApproveAll:   r.approveAll,
+		ReplayPolicy: replayPolicy,
 	})
 }
 

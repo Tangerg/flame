@@ -355,7 +355,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("canceled Interaction did not reach a terminal boundary")
 	}
-	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 0 {
+	if unknown := unresolvedTerminals(events); len(unknown) != 0 {
 		t.Fatalf("canceled Tool became an unknown Effect: %#v", unknown)
 	}
 	if finished := payloadsOf[runs.ToolCallFinished](events); len(finished) != 0 {
@@ -426,7 +426,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightModel(t *testing
 			case <-time.After(waitBudget(time.Second)):
 				t.Fatal("canceled Interaction did not reach a terminal boundary")
 			}
-			if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 0 {
+			if unknown := unresolvedTerminals(events); len(unknown) != 0 {
 				t.Fatalf("canceled model became an unknown Effect: %#v", unknown)
 			}
 			failed := payloadsOf[runs.ModelCallFailed](events)
@@ -705,7 +705,7 @@ func TestInteractionExecutorKeepsRefetchableProjectionAndPostHookObservational(t
 	if len(bounded) == 0 || slices.Contains(bounded, false) {
 		t.Fatalf("outcome projection deadlines = %v, want every context bounded", bounded)
 	}
-	if len(payloadsOf[runs.UnknownEffectsDetected](events)) != 0 {
+	if len(unresolvedTerminals(events)) != 0 {
 		t.Fatalf("refetchable projection or observational hook made Effect unknown: %#v", events)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
@@ -735,7 +735,7 @@ func TestInteractionExecutorDoesNotCallProviderWhenModelStartCommitFails(t *test
 	if calls != 0 {
 		t.Fatalf("provider calls = %d, want 0", calls)
 	}
-	if len(payloadsOf[runs.UnknownEffectsDetected](events)) != 0 {
+	if len(unresolvedTerminals(events)) != 0 {
 		t.Fatalf("pre-call failure became unknown: %#v", events)
 	}
 	assertInternalProjectionTerminal(t, events)
@@ -828,18 +828,15 @@ func (failingPreparationHooks) AfterToolUse(context.Context, InteractionToolHook
 	return nil
 }
 
-// assertUnrecordedToolCallTerminal states the outcome of a Tool call the Host
-// could not durably record. Interaction gives a model call a definite
-// host-failure settlement but deliberately gives a Tool none, so the Tool Effect
-// stays unknown and the Run's fate belongs to the Coordinator that owns unknown
-// work, not to an executor-projected terminal.
+// An unrecorded external result remains unknown; stopping the process allows
+// its immutable terminal and evidence to commit together without replay.
 func assertUnrecordedToolCallTerminal(t *testing.T, events []runs.ExecutorEvent) {
 	t.Helper()
-	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
+	if unknown := unresolvedTerminals(events); len(unknown) != 1 {
 		t.Fatalf("unrecorded Tool call observations = %#v, want one unknown Effect", unknown)
 	}
-	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 0 {
-		t.Fatalf("unknown Tool Effect was projected as a definite terminal: %#v", ended)
+	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 1 || ended[0].Reason != run.OutcomeLost {
+		t.Fatalf("unknown Tool Effect did not retain its lost terminal: %#v", ended)
 	}
 }
 
@@ -868,12 +865,12 @@ func TestInteractionExecutorReconcilesModelFinalCommitFailureAsUnknown(t *testin
 	if calls != 1 {
 		t.Fatalf("provider calls = %d, want 1", calls)
 	}
-	unknown := payloadsOf[runs.UnknownEffectsDetected](events)
+	unknown := unresolvedTerminals(events)
 	if len(unknown) != 1 {
 		t.Fatalf("unknown observations = %#v, want one Effect", unknown)
 	}
-	if len(payloadsOf[runs.SegmentEnded](events)) != 0 {
-		t.Fatalf("unknown Effect was projected as a definite terminal: %#v", events)
+	if ends := payloadsOf[runs.SegmentEnded](events); len(ends) != 1 || ends[0].Reason != run.OutcomeLost {
+		t.Fatalf("unknown Effect did not retain its lost terminal: %#v", events)
 	}
 }
 
@@ -916,7 +913,7 @@ func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T
 				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
-			if _, unknown := event.Payload.(runs.UnknownEffectsDetected); unknown {
+			if _, unknown := event.Payload.(runs.SegmentEnded); unknown {
 				break
 			}
 		}
@@ -931,7 +928,7 @@ func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T
 	case <-time.After(waitBudget(time.Second)):
 		t.Fatal("periodic reconciliation did not report unknown Effect")
 	}
-	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
+	if unknown := unresolvedTerminals(events); len(unknown) != 1 {
 		t.Fatalf("unknown observations = %#v, want polling fallback", unknown)
 	}
 	if err := executor.Release(context.Background(), ref); err != nil {
@@ -967,7 +964,7 @@ func TestInteractionExecutorReconcilesToolResultCommitFailureAsUnknown(t *testin
 	if toolCalls != 1 {
 		t.Fatalf("Tool calls = %d, want 1", toolCalls)
 	}
-	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
+	if unknown := unresolvedTerminals(events); len(unknown) != 1 {
 		t.Fatalf("unknown observations = %#v, want one Effect", unknown)
 	}
 	if len(payloadsOf[runs.ToolCallFinished](events)) != 1 {
@@ -1095,16 +1092,16 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenResultWriteFails(t *testi
 	if gotCalls != 2 {
 		t.Fatalf("external Tool calls = %d, want both exactly once", gotCalls)
 	}
-	unknown := payloadsOf[runs.UnknownEffectsDetected](events)
+	unknown := unresolvedTerminals(events)
 	if len(unknown) != 1 {
 		t.Fatalf("unknown observations = %#v", unknown)
 	}
-	evidence := unknown[0].Effects()
-	if len(evidence) != 1 || evidence[0].ID == "" || !strings.Contains(evidence[0].Detail, projectionFailure.Error()) {
+	evidence := unknown[0].UnresolvedEffects()
+	if len(evidence) != 1 || evidence[0].EffectID() == "" || !strings.Contains(evidence[0].Detail(), projectionFailure.Error()) {
 		t.Fatalf("publication lost diagnostic: %+v", evidence)
 	}
-	if len(payloadsOf[runs.SegmentEnded](events)) != 0 {
-		t.Fatalf("unknown publication was projected as definite: %#v", events)
+	if ends := payloadsOf[runs.SegmentEnded](events); len(ends) != 1 || ends[0].Reason != run.OutcomeLost {
+		t.Fatalf("unknown publication did not retain its lost terminal: %#v", events)
 	}
 }
 
@@ -1176,7 +1173,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
-			if _, unknown := event.Payload.(runs.UnknownEffectsDetected); unknown {
+			if _, unknown := event.Payload.(runs.SegmentEnded); unknown {
 				break
 			}
 		}
@@ -1194,16 +1191,16 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 	if externalCalls != 1 {
 		t.Fatalf("external Tool calls = %d, want 1", externalCalls)
 	}
-	unknown := payloadsOf[runs.UnknownEffectsDetected](events)
+	unknown := unresolvedTerminals(events)
 	if len(unknown) != 1 {
 		t.Fatalf("unknown observations = %#v", unknown)
 	}
-	evidence := unknown[0].Effects()
-	if len(evidence) != 1 || evidence[0].ID == "" || !strings.Contains(evidence[0].Detail, projectionFailure.Error()) {
+	evidence := unknown[0].UnresolvedEffects()
+	if len(evidence) != 1 || evidence[0].EffectID() == "" || !strings.Contains(evidence[0].Detail(), projectionFailure.Error()) {
 		t.Fatalf("publication lost diagnostic: %+v", evidence)
 	}
-	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 0 {
-		t.Fatalf("external Effect was projected as definite: %#v", ended)
+	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 1 || ended[0].Reason != run.OutcomeLost {
+		t.Fatalf("external Effect did not retain its lost terminal: %#v", ended)
 	}
 }
 
@@ -1276,7 +1273,7 @@ func TestInteractionExecutorTerminatesWhenAutomaticDenialCommitFails(t *testing.
 	assertUnrecordedToolCallTerminal(t, events)
 }
 
-func TestInteractionExecutorPreservesNoProgressDoomLoopBrake(t *testing.T) {
+func TestInteractionExecutorAllowsRepeatedPolling(t *testing.T) {
 	var toolCalls int
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
 		Name: "lookup", Description: "Return an unchanged value.",
@@ -1287,20 +1284,19 @@ func TestInteractionExecutorPreservesNoProgressDoomLoopBrake(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	model := &doomLoopScriptModel{}
+	model := &pollingScriptModel{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
 		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 	})
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
-	if toolCalls != interactionDoomLoopThreshold {
-		t.Fatalf("Tool calls = %d, want %d before brake", toolCalls, interactionDoomLoopThreshold)
+	if toolCalls != 8 {
+		t.Fatalf("Tool calls = %d, want %d", toolCalls, 8)
 	}
 	finished := payloadsOf[runs.ToolCallFinished](events)
-	if len(finished) != interactionDoomLoopThreshold+1 || finished[len(finished)-1].Failure == nil ||
-		finished[len(finished)-1].Failure.Kind != domaintool.FailureDenied {
-		t.Fatalf("doom-loop Tool completions = %#v", finished)
+	if len(finished) != 8 || finished[len(finished)-1].Failure != nil {
+		t.Fatalf("polling Tool completions = %#v", finished)
 	}
 }
 
@@ -1548,21 +1544,21 @@ type manifestScriptModel struct {
 	manifests [][]string
 }
 
-type doomLoopScriptModel struct {
+type pollingScriptModel struct {
 	mu   sync.Mutex
 	call int
 }
 
-func (d *doomLoopScriptModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
+func (d *pollingScriptModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.call++
-	if d.call <= interactionDoomLoopThreshold+1 {
+	if d.call <= 8 {
 		return interactionToolResponse(chat.ToolCall{
 			ID: "lookup_" + strconv.Itoa(d.call), Name: "lookup", Arguments: `{}`,
 		}, 1, 1), nil
 	}
-	return interactionUsageTextResponse("changed approach", 1, 1), nil
+	return interactionUsageTextResponse("polling complete", 1, 1), nil
 }
 
 func (m *manifestScriptModel) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
@@ -1603,7 +1599,6 @@ func newObservedTestInteractionExecutor(
 	extra.ImplementationIdentity = "interaction-observation-test-build"
 	extra.ConfigurationIdentity = "interaction-observation-test-config"
 	extra.BuildID = interactionTestBuildID
-	extra.DefaultMaxModelCalls = uint32Pointer(8)
 	extra.UnknownEffectPollInterval = durationPointer(5 * time.Millisecond)
 	executor, err := NewInteractionExecutor(extra)
 	if err != nil {
@@ -1640,7 +1635,7 @@ func runInteractionHarnessWithCommit(
 				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
-			if _, unknown := event.Payload.(runs.UnknownEffectsDetected); unknown {
+			if _, unknown := event.Payload.(runs.SegmentEnded); unknown {
 				break
 			}
 		}

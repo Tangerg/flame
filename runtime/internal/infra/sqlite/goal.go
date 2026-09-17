@@ -14,7 +14,7 @@ import (
 )
 
 // GoalStore is the SQLite persistence adapter for autonomous goals: one row per session, the
-// budget and used accumulators JSON blobs read/written whole with the row.
+// accumulated usage JSON is read and written whole with the row.
 //
 // Safe for concurrent use; the *sql.DB serializes writes (MaxOpenConns 1, see
 // [Open]).
@@ -25,20 +25,6 @@ type GoalStore struct {
 // NewGoalStore wires a database with the current [Open]-installed schema to the
 // autonomous-goal persistence surface.
 func NewGoalStore(db *sql.DB) *GoalStore { return &GoalStore{db: db} }
-
-type goalBudgetType string
-
-const (
-	goalBudgetUnlimited goalBudgetType = "unlimited"
-	goalBudgetLimited   goalBudgetType = "limited"
-)
-
-type storedGoalBudget struct {
-	Type       goalBudgetType `json:"type"`
-	MaxRuns    *int           `json:"max_runs,omitempty"`
-	MaxCostUSD *float64       `json:"max_cost_usd,omitempty"`
-	MaxSteps   *int           `json:"max_steps,omitempty"`
-}
 
 type goalUsed struct {
 	Runs    int      `json:"runs"`
@@ -53,7 +39,7 @@ func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, er
 		return goal.Current{}, err
 	}
 	row := conn(ctx, g.db).QueryRowContext(ctx,
-		`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, budget, used, incarnation_id, revision, created_at, updated_at
+		`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, used, incarnation_id, revision, created_at, updated_at
 		 FROM goals WHERE session_id = ?`, sessionID)
 	loaded, err := scanGoal(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -77,10 +63,6 @@ func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (boo
 	record := replacement.State()
 	expected := replacement.ExpectedVersion()
 	snapshot := record.Snapshot()
-	budget, err := encodeGoalBudget(snapshot.Budget)
-	if err != nil {
-		return false, fmt.Errorf("sqlite: encode goal budget: %w", err)
-	}
 	used, err := json.Marshal(goalUsed{Runs: snapshot.Used.Runs, CostUSD: snapshot.Used.Cost.OptionalUSD(), Steps: snapshot.Used.Steps})
 	if err != nil {
 		return false, fmt.Errorf("sqlite: encode goal used: %w", err)
@@ -91,11 +73,11 @@ func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (boo
 	}
 	if expected.IsUnwritten() {
 		res, execContextErr := conn(ctx, g.db).ExecContext(ctx,
-			`INSERT INTO goals(session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, budget, used, incarnation_id, revision, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`INSERT INTO goals(session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, used, incarnation_id, revision, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			 ON CONFLICT(session_id) DO NOTHING`,
 			snapshot.SessionID, snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), snapshot.ReasonDetail, snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
-			capabilities, budget, string(used), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano())
+			capabilities, string(used), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano())
 		if execContextErr != nil {
 			return false, fmt.Errorf("sqlite: insert goal: %w", execContextErr)
 		}
@@ -111,10 +93,10 @@ func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (boo
 		return false, errors.New("sqlite: committed Goal version lost identity")
 	}
 	res, err := conn(ctx, g.db).ExecContext(ctx,
-		`UPDATE goals SET objective = ?, status = ?, reason_code = ?, reason_detail = ?, provider = ?, model = ?, reasoning_effort = ?, capabilities = ?, budget = ?, used = ?, incarnation_id = ?, revision = ?, created_at = ?, updated_at = ?
+		`UPDATE goals SET objective = ?, status = ?, reason_code = ?, reason_detail = ?, provider = ?, model = ?, reasoning_effort = ?, capabilities = ?, used = ?, incarnation_id = ?, revision = ?, created_at = ?, updated_at = ?
 		 WHERE session_id = ? AND incarnation_id = ? AND revision = ?`,
 		snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), snapshot.ReasonDetail, snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
-		capabilities, budget, string(used), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
+		capabilities, string(used), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
 		snapshot.SessionID, expectedIncarnation, expectedRevision)
 	if err != nil {
 		return false, fmt.Errorf("sqlite: save goal: %w", err)
@@ -276,7 +258,7 @@ func (g *GoalStore) ClearIf(ctx context.Context, sessionID string, expected goal
 // List returns every stored goal (for the boot reconcile).
 func (g *GoalStore) List(ctx context.Context) ([]goal.Goal, error) {
 	rows, err := conn(ctx, g.db).QueryContext(ctx,
-		`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, budget, used, incarnation_id, revision, created_at, updated_at FROM goals`)
+		`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, used, incarnation_id, revision, created_at, updated_at FROM goals`)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list goals: %w", err)
 	}
@@ -307,10 +289,10 @@ func scanGoal(row scanRow) (goal.Goal, error) {
 		reasonDetail                        string
 		provider, model, reasoningEffort    string
 		capabilitiesJSON                    string
-		budgetJSON, usedJSON                string
+		usedJSON                            string
 		createdAt, updatedAt                int64
 	)
-	if err := row.Scan(&sessionID, &objective, &status, &reasonCode, &reasonDetail, &provider, &model, &reasoningEffort, &capabilitiesJSON, &budgetJSON, &usedJSON, &incarnationID, &revision, &createdAt, &updatedAt); err != nil {
+	if err := row.Scan(&sessionID, &objective, &status, &reasonCode, &reasonDetail, &provider, &model, &reasoningEffort, &capabilitiesJSON, &usedJSON, &incarnationID, &revision, &createdAt, &updatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return goal.Goal{}, err
 		}
@@ -324,10 +306,6 @@ func scanGoal(row scanRow) (goal.Goal, error) {
 	if err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: decode goal capabilities: %w", err)
 	}
-	budget, err := decodeGoalBudget(budgetJSON)
-	if err != nil {
-		return goal.Goal{}, fmt.Errorf("sqlite: decode goal budget: %w", err)
-	}
 	var used goalUsed
 	if err := json.Unmarshal([]byte(usedJSON), &used); err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: decode goal used: %w", err)
@@ -340,7 +318,6 @@ func scanGoal(row scanRow) (goal.Goal, error) {
 		SessionID: sessionID, Objective: objective, Status: goal.Status(status),
 		ReasonCode: goal.ReasonCode(reasonCode), ReasonDetail: reasonDetail,
 		ModelSelection: selection, Capabilities: capabilities,
-		Budget:        budget,
 		Used:          goal.Usage{Runs: used.Runs, Cost: usedCost, Steps: used.Steps},
 		IncarnationID: incarnationID, Revision: revision,
 		CreatedAt: time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
@@ -349,48 +326,4 @@ func scanGoal(row scanRow) (goal.Goal, error) {
 		return goal.Goal{}, fmt.Errorf("sqlite: validate goal: %w", err)
 	}
 	return value, nil
-}
-
-func encodeGoalBudget(budget goal.Budget) (string, error) {
-	if err := budget.Validate(); err != nil {
-		return "", err
-	}
-	row := storedGoalBudget{Type: goalBudgetUnlimited}
-	if !budget.Unlimited() {
-		row.Type = goalBudgetLimited
-		if value, limited := budget.MaxRuns(); limited {
-			row.MaxRuns = &value
-		}
-		if value, limited := budget.MaxCostUSD(); limited {
-			row.MaxCostUSD = &value
-		}
-		if value, limited := budget.MaxSteps(); limited {
-			row.MaxSteps = &value
-		}
-	}
-	encoded, err := json.Marshal(row)
-	if err != nil {
-		return "", err
-	}
-	return string(encoded), nil
-}
-
-func decodeGoalBudget(encoded string) (goal.Budget, error) {
-	var row storedGoalBudget
-	if err := decodeStoredJSON([]byte(encoded), &row); err != nil {
-		return goal.Budget{}, err
-	}
-	switch row.Type {
-	case goalBudgetUnlimited:
-		if row.MaxRuns != nil || row.MaxCostUSD != nil || row.MaxSteps != nil {
-			return goal.Budget{}, errors.New("unlimited budget carries a limit")
-		}
-		return goal.UnlimitedBudget(), nil
-	case goalBudgetLimited:
-		return goal.NewBudget(goal.BudgetLimits{
-			MaxRuns: row.MaxRuns, MaxCostUSD: row.MaxCostUSD, MaxSteps: row.MaxSteps,
-		})
-	default:
-		return goal.Budget{}, fmt.Errorf("unknown budget type %q", row.Type)
-	}
 }

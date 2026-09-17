@@ -50,7 +50,7 @@ func TestDriverResumeWaitsForItsPriorLeaseRelease(t *testing.T) {
 	}, &fakeSessions{}, goals.NewSessionMutations(), ownership, testPrompt)
 	cleanupDriver(t, driver)
 
-	initial, err := driver.Start(t.Context(), "s1", "finish the task", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{})
+	initial, err := driver.Start(t.Context(), "s1", "finish the task", testGoalModelSelection(), run.Capabilities{})
 	if err != nil {
 		t.Fatal(err)
 	}

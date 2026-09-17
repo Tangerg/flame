@@ -942,7 +942,7 @@ func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 	}
 }
 
-// TestCommitEventRecordsGoalRunWithTerminalRun proves budget accounting is a
+// TestCommitEventRecordsGoalRunWithTerminalRun proves usage accounting is a
 // terminal Run fact, not a best-effort follow-up by the Goal driver. Both the
 // Run state and the Goal aggregate must become visible together.
 func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
@@ -962,12 +962,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 		t.Fatalf("seed goal session: %v", insertErr)
 	}
 	selection := mustEffectSelection(t, "provider", "model")
-	maxRuns := 1
-	budget, err := goal.NewBudget(goal.BudgetLimits{MaxRuns: &maxRuns})
-	if err != nil {
-		t.Fatalf("new budget: %v", err)
-	}
-	g, err := goal.New("ses_goal", "finish", selection, budget, run.Capabilities{}, "lease_goal", created)
+	g, err := goal.New("ses_goal", "finish", selection, run.Capabilities{}, "lease_goal", created)
 	if err != nil {
 		t.Fatalf("new goal: %v", err)
 	}
@@ -1032,7 +1027,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("goal after terminal found=%v err=%v", found, err)
 	}
-	if got.Used() != (goal.Usage{Runs: 1, Cost: segmentTestCost(t, 0.25), Steps: 2}) || got.Status() != goal.StatusBlocked || got.Reason().Code() != goal.ReasonRunBudgetReached {
+	if got.Used() != (goal.Usage{Runs: 1, Cost: segmentTestCost(t, 0.25), Steps: 2}) || got.Status() != goal.StatusActive || !got.Reason().IsNone() {
 		t.Fatalf("goal after terminal = %+v", got)
 	}
 	var runState string
@@ -1275,7 +1270,6 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		BuildID:        checkpointBuildID,
 		Scope:          runs.ExecutionScope{SessionID: pending.SessionID},
 		ModelSelection: root.ModelSelection,
-		Limits:         root.Limits,
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
@@ -1284,7 +1278,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: pending.RootRunID, SessionID: pending.SessionID, SegmentID: "segment_claim",
 		ModelSelection: root.ModelSelection, GoalIncarnationID: pending.GoalIncarnationID,
-		Limits: root.Limits, Capabilities: pending.Capabilities, CreatedAt: root.RunCreatedAt,
+		Capabilities: pending.Capabilities, CreatedAt: root.RunCreatedAt,
 	}); admitErr != nil {
 		t.Fatalf("admit claim root Run: %v", admitErr)
 	}
@@ -1459,15 +1453,15 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: root.MemberID, Payload: []byte(`{"opaque":"tree"}`),
 		BuildID: checkpointBuildID, Scope: runs.ExecutionScope{SessionID: pending.SessionID},
-		ModelSelection: root.ModelSelection, Limits: root.Limits,
+		ModelSelection: root.ModelSelection,
 	}
 	if saveCheckpointErr := checkpoints.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
 	}
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: pending.RootRunID, SessionID: pending.SessionID, SegmentID: "segment_approval_claim",
-		ModelSelection: root.ModelSelection, Limits: root.Limits,
-		Capabilities: pending.Capabilities, CreatedAt: root.RunCreatedAt,
+		ModelSelection: root.ModelSelection,
+		Capabilities:   pending.Capabilities, CreatedAt: root.RunCreatedAt,
 	}); admitErr != nil {
 		t.Fatalf("admit Run: %v", admitErr)
 	}
@@ -1689,7 +1683,6 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 		BuildID:        checkpointBuildID,
 		Scope:          runs.ExecutionScope{SessionID: pending.SessionID},
 		ModelSelection: root.ModelSelection,
-		Limits:         root.Limits,
 	}
 	if saveCheckpointErr := checkpoints.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
@@ -1697,7 +1690,7 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: pending.RootRunID, SessionID: pending.SessionID, SegmentID: "segment_claim_" + suffix,
 		ModelSelection: root.ModelSelection, GoalIncarnationID: pending.GoalIncarnationID,
-		Limits: root.Limits, Capabilities: pending.Capabilities, CreatedAt: root.RunCreatedAt,
+		Capabilities: pending.Capabilities, CreatedAt: root.RunCreatedAt,
 	}); admitErr != nil {
 		t.Fatalf("admit claim root Run: %v", admitErr)
 	}
@@ -1770,7 +1763,6 @@ func executorCheckpointValuesEqual(left, right runs.ExecutorCheckpoint) bool {
 		left.BuildID == right.BuildID &&
 		left.Scope == right.Scope &&
 		left.ModelSelection == right.ModelSelection &&
-		left.Limits == right.Limits &&
 		left.Capabilities.Equal(right.Capabilities) &&
 		slices.Equal(left.Usage.Models, right.Usage.Models)
 }

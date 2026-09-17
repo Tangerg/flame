@@ -20,7 +20,7 @@ func TestStorePersistsRunAndResumeReplayOwnership(t *testing.T) {
 	cancelGuard := protectedReplayGuard(t, "runtime-a", startGuard.Until().Add(time.Minute))
 	start := agent.StartRun{
 		CommandID: "cli_88888888888888888888888888888888", SessionID: "ses_1",
-		Message: agent.Message{Text: "persist guards"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Message: agent.Message{Text: "persist guards"}, Options: agent.RunOptions{},
 	}
 	if stagePendingRunErr := store.StagePendingRun(PendingRun{
 		State: PendingRunQueued, Command: start,
@@ -78,9 +78,6 @@ func protectedReplayGuard(t *testing.T, namespace string, until time.Time) comma
 }
 
 func queuedPendingRun(command agent.StartRun) PendingRun {
-	if command.Options.Limits == (agent.RunLimits{}) {
-		command.Options.Limits = agent.UnlimitedRunLimits()
-	}
 	return PendingRun{
 		State: PendingRunQueued, Command: command,
 		Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(),

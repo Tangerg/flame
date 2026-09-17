@@ -294,7 +294,6 @@ func (r *recoveryStoreStub) LoadExecutorCheckpoint(
 				Isolated: sess.Isolated(), GoalIncarnationID: pending.GoalIncarnationID,
 			},
 			ModelSelection: root.ModelSelection,
-			Limits:         root.Limits,
 			Capabilities:   pending.Capabilities,
 		}, nil
 	}
@@ -1178,7 +1177,7 @@ func TestRecoveryPreservesOnlyCoherentInterruptedTree(t *testing.T) {
 			SessionID: run.SessionID(), CWD: "/workspace", WorkspaceCWD: "/workspace",
 			GoalIncarnationID: pending.GoalIncarnationID,
 		},
-		ModelSelection: run.ModelSelection(), Limits: run.Limits(), Capabilities: pending.Capabilities,
+		ModelSelection: run.ModelSelection(), Capabilities: pending.Capabilities,
 	})
 	if err != nil {
 		t.Fatalf("waitingContinuationFromPending: %v", err)
@@ -1346,9 +1345,6 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 		{name: "model", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.ModelSelection = mustCheckpointSelection(checkpoint.ModelSelection.Provider(), "model_other")
 		}},
-		{name: "limits", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.Limits = testsupport.MustRunLimits(rundomain.LimitValues{MaxSteps: testsupport.Pointer(1)})
-		}},
 		{name: "capabilities", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.Capabilities.ChildRuns = true
 		}},
@@ -1370,7 +1366,6 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 					WorkspaceCWD: "/workspace",
 				},
 				ModelSelection: root.ModelSelection,
-				Limits:         root.Limits,
 				Capabilities:   pending.Capabilities.Clone(),
 			}
 			test.mutate(&checkpoint)
@@ -1544,12 +1539,6 @@ func TestRecoveryRejectsContinuationFactDriftWithoutProbingCheckpoint(t *testing
 					panic(err)
 				}
 				pending.Continuations[0].Metrics = metrics
-			},
-		},
-		{
-			name: "frozen limits",
-			mutate: func(_ *rundomain.Run, pending *Pending) {
-				pending.Continuations[0].Limits = testsupport.MustRunLimits(rundomain.LimitValues{MaxSteps: testsupport.Pointer(1)})
 			},
 		},
 		{

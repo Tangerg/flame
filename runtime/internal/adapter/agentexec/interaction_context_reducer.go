@@ -67,17 +67,6 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if i == nil || i.session == nil || request == nil || !invocation.Valid() {
 		return nil, errors.New("agentexec: model-context reduction requires an attributed Interaction request")
 	}
-	// Scope settles a rejected preparation definitively. Admission inside Model.Call
-	// would instead leave an unknown Effect even though no provider was called.
-	attempt, err := dispatchAttemptFrom(ctx, invocation.EffectID())
-	if err != nil {
-		return nil, err
-	}
-	turn, err := i.session.acquireModelAllowance(ctx, invocation.Relation().ProcessID())
-	if err != nil {
-		return nil, err
-	}
-	attempt.modelAllowance = turn
 	prefixMatches, err := sameInteractionMessages(
 		request.Messages[:min(len(request.Messages), len(i.instructions))],
 		i.instructions,

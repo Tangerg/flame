@@ -34,7 +34,7 @@ func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
 			detail = r.cfg.CancelReason()
 		}
 	}
-	terminal, err := r.finishedRun(e.Reason, failure, detail)
+	terminal, err := r.finishedRun(e.Reason, failure, detail, e.unresolvedEffects)
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +68,8 @@ func (r *reducer) runRecord(state run.State) (run.Run, error) {
 		ModelSelection: r.cfg.ModelSelection, GoalIncarnationID: r.cfg.GoalIncarnationID,
 		State: run.Running, ActiveSegmentID: r.cfg.SegmentID,
 		Metrics: metrics, ContextTokens: r.contextTokens,
-		Limits: r.cfg.Limits, Capabilities: r.cfg.Capabilities,
-		CreatedAt: createdAt, UpdatedAt: updatedAt, MessageMark: run.UnknownMessageMark,
+		Capabilities: r.cfg.Capabilities,
+		CreatedAt:    createdAt, UpdatedAt: updatedAt, MessageMark: run.UnknownMessageMark,
 	})
 	if err != nil {
 		return run.Run{}, fmt.Errorf("project Run: %w", err)
@@ -127,7 +127,7 @@ func (r *reducer) applyUsage(reported SegmentUsage) error {
 	return nil
 }
 
-func (r *reducer) finishedRun(outcome run.Outcome, failure *run.Failure, detail string) (SegmentFinished, error) {
+func (r *reducer) finishedRun(outcome run.Outcome, failure *run.Failure, detail string, effects []run.UnresolvedEffect) (SegmentFinished, error) {
 	if _, ok := run.Running.Terminate(outcome); !ok {
 		return SegmentFinished{}, fmt.Errorf("outcome %q does not terminate a running run", outcome)
 	}
@@ -136,7 +136,7 @@ func (r *reducer) finishedRun(outcome run.Outcome, failure *run.Failure, detail 
 		return SegmentFinished{}, err
 	}
 	terminal, err := current.Terminate(run.Termination{
-		Outcome: outcome, Detail: detail, Failure: failure,
+		Outcome: outcome, Detail: detail, Failure: failure, UnresolvedEffects: effects,
 		FinishedAt: r.now().UTC(), MessageMark: run.UnknownMessageMark,
 	})
 	if err != nil {

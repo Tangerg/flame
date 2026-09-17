@@ -81,7 +81,7 @@ func TestInteractionSearchFailureCommitsFeedbackAndAllowsCorrection(t *testing.T
 	if len(committed) != 2 {
 		t.Fatalf("committed results = %d, want failed and corrected search", len(committed))
 	}
-	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 0 {
+	if unknown := unresolvedTerminals(events); len(unknown) != 0 {
 		t.Fatalf("search produced unknown Effects: %+v", unknown)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)

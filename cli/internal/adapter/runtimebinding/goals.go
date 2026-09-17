@@ -77,7 +77,6 @@ func (r *Connection) StartGoal(ctx context.Context, start protocol.StartGoalRequ
 	}
 	if started.Objective != start.Objective || started.Status != protocol.GoalActive ||
 		!goalStartSelectionAcknowledged(start, started) ||
-		!equalGoalBudget(started.Budget, start.Budget) ||
 		started.Used.Runs != 0 || started.Used.Steps != 0 || started.Used.CostUSD != nil {
 		return protocol.Goal{}, runtimeContractViolation("start goal returned an acknowledgement that differs from the request")
 	}
@@ -164,24 +163,8 @@ func cloneGoal(value protocol.Goal) protocol.Goal {
 	if value.Reason != nil {
 		value.Reason = new(*value.Reason)
 	}
-	if value.Budget != nil {
-		budget := *value.Budget
-		budget.MaxRuns = cloneOptional(budget.MaxRuns)
-		budget.MaxCostUSD = cloneOptional(budget.MaxCostUSD)
-		budget.MaxSteps = cloneOptional(budget.MaxSteps)
-		value.Budget = &budget
-	}
 	value.Used.CostUSD = cloneOptional(value.Used.CostUSD)
 	return value
-}
-
-func equalGoalBudget(left, right *protocol.GoalBudget) bool {
-	if left == nil || right == nil {
-		return left == nil && right == nil
-	}
-	return equalOptional(left.MaxRuns, right.MaxRuns) &&
-		equalOptional(left.MaxCostUSD, right.MaxCostUSD) &&
-		equalOptional(left.MaxSteps, right.MaxSteps)
 }
 
 func cloneOptional[T any](value *T) *T {

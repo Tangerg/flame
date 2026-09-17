@@ -490,7 +490,6 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 			SegmentID:         spec.SegmentID,
 			ModelSelection:    spec.ModelSelection,
 			GoalIncarnationID: spec.GoalIncarnationID,
-			Limits:            spec.Limits,
 			Capabilities:      spec.Capabilities,
 			CreatedAt:         spec.CreatedAt,
 		}

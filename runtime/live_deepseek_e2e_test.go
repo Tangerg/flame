@@ -20,7 +20,6 @@ const (
 	liveDeepSeekEnvironment        = "FLAME_LIVE_DEEPSEEK"
 	liveConfigDirectoryEnvironment = "FLAME_LIVE_CONFIG_DIR"
 	liveGoalMarker                 = "LIVE_GOAL_PLAN_OK"
-	liveTokenBudgetMarker          = "LIVE_TOKEN_BUDGET_TOOL_OK"
 	liveScheduleMarker             = "LIVE_SCHEDULE_RUN_OK"
 	liveSteerMarker                = "LIVE_STEER_APPLIED"
 	liveHITLMarker                 = "LIVE_HITL_RESUMED"
@@ -132,13 +131,12 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 	fixture := newLiveDeepSeekFixture(t, 3*time.Minute)
 	session := fixture.createSession(t, "Live DeepSeek Goal and Plan E2E")
-	maxRuns, maxSteps := 2, 12
+
 	goal, err := fixture.runtime.StartGoal(fixture.ctx, protocol.StartGoalRequest{
 		SessionID: session.ID,
 		Objective: "Use set_plan exactly once to create one completed step whose description is " +
 			liveGoalMarker + ". Then call report_goal_outcome with outcome completed. " +
 			"Do not ask the user, run shell commands, edit files, or perform any other work.",
-		Budget: &protocol.GoalBudget{MaxRuns: &maxRuns, MaxSteps: &maxSteps},
 	}, flameruntime.CommandOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -198,56 +196,6 @@ func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 	t.Logf("Goal settled after %d steps for $%.6f; final observable state was %s", lastGoal.Used.Steps, *lastGoal.Used.CostUSD, lastGoal.Status)
 }
 
-func TestLiveDeepSeekTokenBudgetStopsBeforeFollowUpModelCall(t *testing.T) {
-	fixture := newLiveDeepSeekFixture(t, 3*time.Minute)
-	session := fixture.createSession(t, "Live DeepSeek token budget E2E")
-	maxTokens, maxSteps := int64(1), 4
-	started, events, err := fixture.runtime.StartRun(fixture.ctx, protocol.StartRunRequest{
-		SessionID: session.ID,
-		Input: []protocol.ContentBlock{{
-			Type: protocol.ContentBlockText,
-			Text: "Use set_plan exactly once to create one completed step whose description is " +
-				liveTokenBudgetMarker + ". After the tool returns, reply exactly UNREACHABLE. " +
-				"Do not call any other tool or ask the user anything.",
-		}},
-		Limits: &protocol.RunLimits{MaxTotalTokens: &maxTokens, MaxSteps: &maxSteps},
-	}, flameruntime.RunCommandOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, eventErr := range events {
-		if eventErr != nil {
-			t.Fatal(eventErr)
-		}
-	}
-	finished, err := fixture.runtime.GetRun(
-		fixture.ctx,
-		protocol.GetRunRequest{RunID: started.RunID},
-		flameruntime.CallOptions{},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if finished.Status != protocol.RunStatusFinished || finished.Outcome == nil ||
-		finished.Outcome.Type != protocol.OutcomeMaxBudget || finished.Metrics.Steps != 1 {
-		t.Fatalf("token-limited Run = %+v, want one-step max-budget terminal", finished)
-	}
-	assertDeepSeekRun(t, finished)
-	plan, err := fixture.runtime.GetPlan(
-		fixture.ctx,
-		protocol.GetPlanRequest{SessionID: session.ID},
-		flameruntime.CallOptions{},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if plan.State == nil || len(plan.State.Steps) != 1 ||
-		plan.State.Steps[0].Description != liveTokenBudgetMarker ||
-		plan.State.Steps[0].Status != protocol.PlanStatusCompleted {
-		t.Fatalf("Plan = %+v, want completed boundary Tool effect", plan)
-	}
-}
-
 func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {
 	fixture := newLiveDeepSeekFixture(t, 3*time.Minute)
 	if _, err := fixture.runtime.SetApprovalMode(
@@ -258,7 +206,7 @@ func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	session := fixture.createSession(t, "Live DeepSeek Steer E2E")
-	maxSteps := 8
+
 	started, events, err := fixture.runtime.StartRun(fixture.ctx, protocol.StartRunRequest{
 		SessionID: session.ID,
 		Input: []protocol.ContentBlock{{
@@ -267,7 +215,6 @@ func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {
 				"After it finishes, answer exactly ORIGINAL_RESPONSE. Do not use any other tool. " +
 				"Obey a later user steer instruction over this prompt.",
 		}},
-		Limits: &protocol.RunLimits{MaxSteps: &maxSteps},
 	}, flameruntime.RunCommandOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -315,7 +262,7 @@ func TestLiveDeepSeekQuestionSurvivesRuntimeRestart(t *testing.T) {
 	requestMeta := protocol.RequestMeta{ClientCapabilities: &protocol.ClientCapabilities{
 		InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion},
 	}}
-	maxSteps := 6
+
 	started, events, err := fixture.runtime.StartRun(fixture.ctx, protocol.StartRunRequest{
 		SessionID: session.ID,
 		Input: []protocol.ContentBlock{{
@@ -324,7 +271,6 @@ func TestLiveDeepSeekQuestionSurvivesRuntimeRestart(t *testing.T) {
 				"After the tool returns, reply with exactly " + liveHITLMarker + " and nothing else. " +
 				"Do not use another tool and do not answer before asking the question.",
 		}},
-		Limits: &protocol.RunLimits{MaxSteps: &maxSteps},
 	}, flameruntime.RunCommandOptions{RequestMeta: requestMeta})
 	if err != nil {
 		t.Fatal(err)
@@ -500,7 +446,7 @@ func TestLiveDeepSeekCrashHelper(t *testing.T) {
 	}
 	session := fixture.createSession(t, "Live DeepSeek crash recovery helper")
 	toolMarkerPath := requiredLiveCrashPath(t, liveCrashToolMarkerEnvironment)
-	maxSteps := 6
+
 	started, events, err := runtime.StartRun(ctx, protocol.StartRunRequest{
 		SessionID: session.ID,
 		Input: []protocol.ContentBlock{{
@@ -508,7 +454,6 @@ func TestLiveDeepSeekCrashHelper(t *testing.T) {
 			Text: "Call shell exactly once with this exact command: `touch " + toolMarkerPath + " && sleep 8`. " +
 				"After it finishes, reply exactly UNREACHABLE_HELPER_RESPONSE. Do not use another tool.",
 		}},
-		Limits: &protocol.RunLimits{MaxSteps: &maxSteps},
 	}, flameruntime.RunCommandOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -781,11 +726,10 @@ type liveTurn struct {
 
 func (f liveDeepSeekFixture) runTurn(t *testing.T, sessionID, prompt string) liveTurn {
 	t.Helper()
-	maxSteps := 4
+
 	started, events, err := f.runtime.StartRun(f.ctx, protocol.StartRunRequest{
 		SessionID: sessionID,
 		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: prompt}},
-		Limits:    &protocol.RunLimits{MaxSteps: &maxSteps},
 	}, flameruntime.RunCommandOptions{})
 	if err != nil {
 		t.Fatal(err)

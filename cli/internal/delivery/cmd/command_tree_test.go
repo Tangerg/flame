@@ -483,19 +483,6 @@ func (alwaysDisconnected) SubscribeRun(context.Context, agent.SubscribeRun) (age
 	return agent.SegmentStream{}, fmt.Errorf("test transport: %w", agent.ErrDisconnected)
 }
 
-func TestRunStopsAfterReconnectBudgetIsExhausted(t *testing.T) {
-	rt := instantRuntime()
-	rt.Script = shortCompletedScript
-	out, _, err := executeCommand(t, alwaysDisconnected{Runtime: rt}, "", "--reconnect-attempts", "2", "run", "--json", "-s", firstSession(t, rt), "offline")
-	if !errors.Is(err, agent.ErrDisconnected) {
-		t.Fatalf("run error = %v, want ErrDisconnected", err)
-	}
-	result := decodeResult(t, out)
-	if result.Status != "incomplete" || result.RunID == "" || result.SessionID == "" {
-		t.Fatalf("incomplete result = %+v", result)
-	}
-}
-
 func shortCompletedScript(string) runtimefixture.Script {
 	return runtimefixture.Script{Prelude: []runtimefixture.Step{
 		{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}},
@@ -1016,7 +1003,7 @@ func createProjectApprovalRule(t *testing.T, runtime Runtime, sessionID string) 
 	t.Helper()
 	stream, err := runtime.StartRun(t.Context(), agent.StartRun{
 		SessionID: sessionID, Message: agent.Message{Text: "remember this"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)

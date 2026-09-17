@@ -33,7 +33,7 @@ func TestRunPageValidatesItemsIndependentlyOfTreePageBoundaries(t *testing.T) {
 	page := RunPage{Items: []Run{{
 		ID: "run_child", SessionID: "ses_1",
 		Lineage: lineage,
-		Status:  protocol.RunStatusWaiting, Limits: UnlimitedRunLimits(),
+		Status:  protocol.RunStatusWaiting,
 	}}}
 	if err := page.Validate(); err != nil {
 		t.Fatalf("Validate() = %v", err)
@@ -49,7 +49,7 @@ func TestRunCancellationClosesRootAndChildResults(t *testing.T) {
 	rootCanceled := Run{
 		ID: "run_root", SessionID: "ses_1", Status: protocol.RunStatusFinished,
 		Lineage: RootRunLineage(),
-		Limits:  UnlimitedRunLimits(), Outcome: Outcome{Status: protocol.OutcomeCanceled},
+		Outcome: Outcome{Status: protocol.OutcomeCanceled},
 	}
 	if err := (RunCancellation{Canceled: rootCanceled, Root: rootCanceled}).Validate(); err != nil {
 		t.Fatalf("root cancellation: %v", err)
@@ -58,7 +58,7 @@ func TestRunCancellationClosesRootAndChildResults(t *testing.T) {
 	childCanceled := Run{
 		ID: "run_child", SessionID: "ses_1",
 		Lineage: testChildRunLineage(t, "run_child", "item_spawn", "run_root", "run_root"),
-		Status:  protocol.RunStatusFinished, Limits: UnlimitedRunLimits(), Outcome: Outcome{Status: protocol.OutcomeCanceled},
+		Status:  protocol.RunStatusFinished, Outcome: Outcome{Status: protocol.OutcomeCanceled},
 	}
 	rootWaiting := testRootRun(Run{ID: "run_root", SessionID: "ses_1", Status: protocol.RunStatusWaiting})
 	if err := (RunCancellation{Canceled: childCanceled, Root: rootWaiting}).Validate(); err != nil {

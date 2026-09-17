@@ -1198,7 +1198,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 	opened, err := base.StartRun(t.Context(), agent.StartRun{
 		CommandID: agent.CommandID("cli_55555555555555555555555555555555"),
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "persist mixed interaction delivery"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -1310,7 +1310,7 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 			},
 		}
 	}
-	opened, err := base.StartRun(t.Context(), testUnlimitedStartRun("ses_demo_1", "settle before restart"))
+	opened, err := base.StartRun(t.Context(), testStartRun("ses_demo_1", "settle before restart"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1388,7 +1388,7 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 			},
 		}
 	}
-	opened, err := base.StartRun(t.Context(), testUnlimitedStartRun("ses_demo_1", "retry after retention"))
+	opened, err := base.StartRun(t.Context(), testStartRun("ses_demo_1", "retry after retention"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1507,7 +1507,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingRunOutbox(t *testing.T) {
 		CommandID: agent.CommandID("cli_77777777777777777777777777777777"),
 		SessionID: "ses_demo_2",
 		Message:   agent.Message{Text: "recover destination queued prompt"},
-		Options:   agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options:   agent.RunOptions{},
 	}
 	if stagePendingRunErr := store.StagePendingRun(workbench.PendingRun{
 		State: workbench.PendingRunQueued, Command: command,
@@ -1557,7 +1557,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 	opened, err := base.StartRun(t.Context(), agent.StartRun{
 		CommandID: agent.CommandID("cli_88888888888888888888888888888888"),
 		SessionID: "ses_demo_2", Message: agent.Message{Text: "recover destination decision"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -1945,7 +1945,7 @@ func TestCancelRootRunConfirmsATimedOutAcknowledgement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	opened, err := base.StartRun(t.Context(), testUnlimitedStartRun(session.ID, "cancel"))
+	opened, err := base.StartRun(t.Context(), testStartRun(session.ID, "cancel"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3021,12 +3021,10 @@ func firstRuntimeSession(t *testing.T, runtime Runtime) string {
 	return page.Items[0].ID
 }
 
-func TestProviderQualifiedModelAndLimitsApplyToTheNextRun(t *testing.T) {
+func TestProviderQualifiedModelAppliesToTheNextRun(t *testing.T) {
 	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	configured := settings.Default()
-	configured.Run.MaxSteps = new(42)
-	configured.Run.MaxBudgetUSD = new(2.5)
 	host, stop := runUIWithSettings(t, backend, configured)
 	host.Shows(t, "mock/balanced")
 
@@ -3051,12 +3049,6 @@ func TestProviderQualifiedModelAndLimitsApplyToTheNextRun(t *testing.T) {
 	host.Shows(t, "complete")
 	if got := backend.options(); got.Provider != "synthetic" || got.Model != "deep" {
 		t.Fatalf("StartRun options = %+v", got)
-	} else {
-		steps, stepsLimited := got.Limits.MaxSteps()
-		budget, budgetLimited := got.Limits.MaxBudgetUSD()
-		if !stepsLimited || steps != 42 || !budgetLimited || budget != 2.5 {
-			t.Fatalf("StartRun limits = %+v", got.Limits)
-		}
 	}
 
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
@@ -4839,7 +4831,7 @@ func TestOpeningAnActiveSessionRecoversAStreamWhoseTransientStartPredatesAttachm
 	if err != nil {
 		t.Fatal(err)
 	}
-	opened, err := backend.StartRun(t.Context(), testUnlimitedStartRun(session.ID, "recover me"))
+	opened, err := backend.StartRun(t.Context(), testStartRun(session.ID, "recover me"))
 	if err != nil {
 		t.Fatal(err)
 	}

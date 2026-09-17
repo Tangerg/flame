@@ -35,10 +35,6 @@ function onSettled({ sessionId, status, errorMessage }: RootRunSettlement): void
       title = `${PRODUCT_NAME} stopped`;
       body = "The agent run was canceled.";
       break;
-    case "limit":
-      title = `${PRODUCT_NAME} reached a limit`;
-      body = "The agent stopped after reaching its configured limit.";
-      break;
     case "finished":
       break;
   }

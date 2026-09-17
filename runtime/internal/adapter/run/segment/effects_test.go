@@ -528,9 +528,6 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 		{name: "root", identity: "root", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.RootMemberID = "other_proc" }},
 		{name: "session", identity: "session", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" }},
 		{name: "goal incarnation", identity: "goal_incarnation", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" }},
-		{name: "limits", identity: "limits", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.Limits = testsupport.MustRunLimits(run.LimitValues{MaxTotalTokens: testsupport.Pointer[int64](1)})
-		}},
 		{name: "provider", identity: "provider", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.ModelSelection, _ = modelref.New("openai", checkpoint.ModelSelection.Model())
 		}},
@@ -578,14 +575,6 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 			},
 		},
 		{
-			name: "frozen limits", identity: "frozen_limits",
-			mutate: func(_ *runs.Pending, record *run.Run) {
-				snapshot := record.Snapshot()
-				snapshot.Limits = testsupport.MustRunLimits(run.LimitValues{MaxSteps: testsupport.Pointer(6)})
-				*record = testsupport.MustRestoreRun(snapshot)
-			},
-		},
-		{
 			name: "frozen model selection", identity: "frozen_model_selection",
 			mutate: func(_ *runs.Pending, record *run.Run) {
 				snapshot := record.Snapshot()
@@ -620,7 +609,6 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 			)
 			pending.GoalIncarnationID = "goal-lease"
 			pending.Continuations[0].Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2})
-			pending.Continuations[0].Limits = testsupport.MustRunLimits(run.LimitValues{MaxSteps: testsupport.Pointer(5)})
 			run := testsupport.MustRestoreRun(run.Snapshot{SessionID: pending.SessionID,
 				ID:                pending.RootRunID,
 				ModelSelection:    pending.Continuations[0].ModelSelection,
@@ -628,7 +616,6 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 				State:             run.Waiting,
 
 				Metrics:      pending.Continuations[0].Metrics,
-				Limits:       pending.Continuations[0].Limits,
 				Capabilities: pending.Capabilities,
 				CreatedAt:    createdAt,
 				MessageMark:  run.UnknownMessageMark})
@@ -636,7 +623,6 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 			test.mutate(&pending, &run)
 			checkpoint := testRootExecutorCheckpoint()
 			checkpoint.Scope.GoalIncarnationID = pending.GoalIncarnationID
-			checkpoint.Limits = pending.Continuations[0].Limits
 			_, err := runs.NewTreeBarrierCommit(
 				testCommitID(runtimeidentity.CommitPrefix+"barrier_fact_"+test.identity),
 				pending,

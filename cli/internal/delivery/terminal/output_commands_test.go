@@ -149,7 +149,7 @@ func TestSessionExportOutlivesSameSessionProjectionReplacement(t *testing.T) {
 	}
 	backend.Instant = true
 	backend.Script = stableCompletedScript
-	opened, err := backend.StartRun(t.Context(), testUnlimitedStartRun(created.ID, "create export history"))
+	opened, err := backend.StartRun(t.Context(), testStartRun(created.ID, "create export history"))
 	if err != nil {
 		t.Fatal(err)
 	}

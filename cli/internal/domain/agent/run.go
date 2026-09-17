@@ -24,7 +24,6 @@ type Run struct {
 	ActiveSegmentID string
 	CreatedAt       time.Time
 	FinishedAt      time.Time
-	Limits          RunLimits
 	ContextTokens   int64
 	Outcome         Outcome
 	Usage           Usage
@@ -85,7 +84,7 @@ func (r Run) Equal(other Run) bool {
 		r.Model == other.Model && r.ReasoningEffort == other.ReasoningEffort &&
 		r.Status == other.Status && r.ActiveSegmentID == other.ActiveSegmentID &&
 		r.CreatedAt.Equal(other.CreatedAt) && r.FinishedAt.Equal(other.FinishedAt) &&
-		r.Limits == other.Limits && r.ContextTokens == other.ContextTokens &&
+		r.ContextTokens == other.ContextTokens &&
 		r.Outcome.Equal(other.Outcome) && r.Usage.Equal(other.Usage) &&
 		equalRunProtocolProfiles(r.ProtocolProfile, other.ProtocolProfile)
 }
@@ -198,7 +197,6 @@ type RunOptions struct {
 	Provider        string
 	Model           string
 	ReasoningEffort string
-	Limits          RunLimits
 	Generation      protocol.GenerationParams
 }
 
@@ -220,7 +218,6 @@ func (r RunOptions) Clone() RunOptions {
 // configuration. Optional generation values retain nil-vs-zero semantics.
 func (r RunOptions) Equal(other RunOptions) bool {
 	return r.Provider == other.Provider && r.Model == other.Model && r.ReasoningEffort == other.ReasoningEffort &&
-		r.Limits == other.Limits &&
 		equalOptional(r.Generation.Temperature, other.Generation.Temperature) &&
 		equalOptional(r.Generation.MaxTokens, other.Generation.MaxTokens) &&
 		equalOptional(r.Generation.TopP, other.Generation.TopP) &&

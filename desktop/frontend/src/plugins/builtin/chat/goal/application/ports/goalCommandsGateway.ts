@@ -1,13 +1,9 @@
-import type { GoalBudget } from "../goalBudget";
-
 export interface StartGoalInput {
   sessionId: string;
   objective: string;
   provider?: string;
   model?: string;
   reasoningEffort?: string;
-  /** Omitted means unlimited; a present budget has at least one finite limit. */
-  budget?: GoalBudget;
 }
 
 export interface UpdateGoalInput {

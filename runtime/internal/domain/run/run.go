@@ -3,6 +3,7 @@ package run
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
@@ -32,9 +33,9 @@ type Run struct {
 	outcome           *Outcome
 	detail            string
 	failure           *Failure
+	unresolvedEffects []UnresolvedEffect
 	metrics           Metrics
 	contextTokens     int64
-	limits            Limits
 	capabilities      Capabilities
 	createdAt         time.Time
 	finishedAt        time.Time
@@ -55,11 +56,11 @@ type Snapshot struct {
 	Outcome           *Outcome
 	Detail            string
 	Failure           *Failure
+	UnresolvedEffects []UnresolvedEffect
 	Metrics           Metrics
 	// ContextTokens is the latest completed model request's prompt footprint.
 	// Zero means no authoritative footprint has been observed yet.
 	ContextTokens int64
-	Limits        Limits
 	Capabilities  Capabilities
 	CreatedAt     time.Time
 	FinishedAt    time.Time
@@ -75,7 +76,7 @@ func Admit(draft Draft) (Run, error) {
 	return Restore(Snapshot{
 		SessionID: draft.SessionID, ID: draft.RunID, Lineage: draft.Lineage(),
 		ModelSelection: draft.ModelSelection, GoalIncarnationID: draft.GoalIncarnationID,
-		State: Running, ActiveSegmentID: draft.SegmentID, Limits: draft.Limits,
+		State: Running, ActiveSegmentID: draft.SegmentID,
 		Capabilities: draft.Capabilities, CreatedAt: draft.CreatedAt.UTC(),
 		UpdatedAt: draft.CreatedAt.UTC(), MessageMark: UnknownMessageMark,
 	})
@@ -92,10 +93,10 @@ func Restore(snapshot Snapshot) (Run, error) {
 		modelSelection: snapshot.ModelSelection, goalIncarnationID: goalIncarnationID,
 		state: snapshot.State, activeSegmentID: snapshot.ActiveSegmentID,
 		outcome: cloneOutcome(snapshot.Outcome), detail: snapshot.Detail,
-		failure: cloneFailure(snapshot.Failure), metrics: snapshot.Metrics,
+		failure: cloneFailure(snapshot.Failure), unresolvedEffects: slices.Clone(snapshot.UnresolvedEffects), metrics: snapshot.Metrics,
 		contextTokens: snapshot.ContextTokens,
-		limits:        snapshot.Limits, capabilities: snapshot.Capabilities.Clone(),
-		createdAt: snapshot.CreatedAt.UTC(), finishedAt: snapshot.FinishedAt.UTC(),
+		capabilities:  snapshot.Capabilities.Clone(),
+		createdAt:     snapshot.CreatedAt.UTC(), finishedAt: snapshot.FinishedAt.UTC(),
 		updatedAt: snapshot.UpdatedAt.UTC(), messageMark: snapshot.MessageMark,
 	}
 	if err := run.validate(); err != nil {
@@ -111,10 +112,10 @@ func (r Run) Snapshot() Snapshot {
 		ModelSelection: r.modelSelection, GoalIncarnationID: r.goalIncarnationID.String(),
 		State: r.state, ActiveSegmentID: r.activeSegmentID,
 		Outcome: cloneOutcome(r.outcome), Detail: r.detail,
-		Failure: cloneFailure(r.failure), Metrics: r.metrics,
+		Failure: cloneFailure(r.failure), UnresolvedEffects: slices.Clone(r.unresolvedEffects), Metrics: r.metrics,
 		ContextTokens: r.contextTokens,
-		Limits:        r.limits, Capabilities: r.capabilities.Clone(),
-		CreatedAt: r.createdAt, FinishedAt: r.finishedAt,
+		Capabilities:  r.capabilities.Clone(),
+		CreatedAt:     r.createdAt, FinishedAt: r.finishedAt,
 		UpdatedAt: r.updatedAt, MessageMark: r.messageMark,
 	}
 }
@@ -146,10 +147,10 @@ func (r Run) Equal(other Run) bool {
 		!r.modelSelection.Equal(other.modelSelection) || r.goalIncarnationID != other.goalIncarnationID ||
 		r.state != other.state || r.activeSegmentID != other.activeSegmentID ||
 		r.detail != other.detail || !r.metrics.Equal(other.metrics) ||
-		r.contextTokens != other.contextTokens || r.limits != other.limits ||
+		r.contextTokens != other.contextTokens ||
 		!r.capabilities.Equal(other.capabilities) || !r.createdAt.Equal(other.createdAt) ||
 		!r.finishedAt.Equal(other.finishedAt) || !r.updatedAt.Equal(other.updatedAt) ||
-		r.messageMark != other.messageMark {
+		r.messageMark != other.messageMark || !slices.Equal(r.unresolvedEffects, other.unresolvedEffects) {
 		return false
 	}
 	if r.outcome == nil || other.outcome == nil {
@@ -182,6 +183,13 @@ func cloneFailure(failure *Failure) *Failure {
 }
 
 func (r Run) validate() error {
+	if err := validateUnresolvedEffects(r.unresolvedEffects); err != nil {
+		return err
+	}
+	if len(r.unresolvedEffects) > 0 && !r.state.IsTerminal() {
+		return errors.New("run: open run carries terminal effect evidence")
+	}
+
 	if !r.state.Valid() {
 		return fmt.Errorf("run: invalid state %q", r.state)
 	}
@@ -224,9 +232,6 @@ func (r Run) validate() error {
 	}
 	if r.contextTokens < 0 {
 		return errors.New("run: context tokens must not be negative")
-	}
-	if err := r.limits.Validate(); err != nil {
-		return err
 	}
 	if err := r.capabilities.Validate(); err != nil {
 		return err
@@ -289,7 +294,7 @@ func (r Run) validateTerminal() error {
 	}
 	if r.detail != "" {
 		switch *r.outcome {
-		case OutcomeMaxSteps, OutcomeMaxBudget, OutcomeCanceled:
+		case OutcomeCanceled:
 		default:
 			return fmt.Errorf("run: outcome %s cannot carry terminal detail", *r.outcome)
 		}
@@ -363,11 +368,12 @@ func (r Run) Resume(segmentID string, resumedAt time.Time) (Run, error) {
 
 // Termination is the complete fact set required to finish a Run.
 type Termination struct {
-	Outcome     Outcome
-	Detail      string
-	Failure     *Failure
-	FinishedAt  time.Time
-	MessageMark int
+	Outcome           Outcome
+	UnresolvedEffects []UnresolvedEffect
+	Detail            string
+	Failure           *Failure
+	FinishedAt        time.Time
+	MessageMark       int
 }
 
 // Terminate finishes a Running Run with one coherent terminal fact set.
@@ -405,6 +411,7 @@ func (r Run) finish(state State, termination Termination) (Run, error) {
 	r.detail, r.failure = termination.Detail, cloneFailure(termination.Failure)
 	r.finishedAt, r.updatedAt = termination.FinishedAt.UTC(), termination.FinishedAt.UTC()
 	r.messageMark = termination.MessageMark
+	r.unresolvedEffects = slices.Clone(termination.UnresolvedEffects)
 	if err := r.validate(); err != nil {
 		return Run{}, err
 	}
@@ -462,9 +469,10 @@ func (r Run) Failure() (Failure, bool) {
 }
 func (r Run) Metrics() Metrics           { return r.metrics }
 func (r Run) ContextTokens() int64       { return r.contextTokens }
-func (r Run) Limits() Limits             { return r.limits }
 func (r Run) Capabilities() Capabilities { return r.capabilities.Clone() }
 func (r Run) CreatedAt() time.Time       { return r.createdAt }
 func (r Run) FinishedAt() time.Time      { return r.finishedAt }
 func (r Run) UpdatedAt() time.Time       { return r.updatedAt }
 func (r Run) MessageMark() int           { return r.messageMark }
+
+func (r Run) UnresolvedEffects() []UnresolvedEffect { return slices.Clone(r.unresolvedEffects) }

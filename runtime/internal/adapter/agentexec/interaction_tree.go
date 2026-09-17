@@ -213,7 +213,7 @@ func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.Effe
 			continue
 		}
 		processID := member.Snapshot.ProcessID()
-		if i.allowance.denial(processID) != interactionAllowanceOpen || i.modelFailures.has(processID) {
+		if i.modelFailures.has(processID) {
 			continue
 		}
 		ids = append(ids, member.Snapshot.UnknownEffectIDs()...)

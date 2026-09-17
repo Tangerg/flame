@@ -14,7 +14,7 @@ import (
 func enqueue(q *Queue, sessionID string, message agent.Message) (Entry, error) {
 	return q.EnqueueCommand(
 		mutation.NewCommandID(), sessionID, message,
-		agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		agent.RunOptions{},
 	)
 }
 
@@ -244,8 +244,8 @@ func TestQueueRestoresDurableCommandsWithFreshLocalIdentities(t *testing.T) {
 		t.Fatal(err)
 	}
 	commands := []agent.StartRun{
-		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
-		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
+		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{}},
+		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{}},
 	}
 	if err := queue.Restore("session", commands, ""); err != nil {
 		t.Fatal(err)
@@ -267,8 +267,8 @@ func TestQueueRestoresDurableCommandsWithFreshLocalIdentities(t *testing.T) {
 func TestQueueRestoresADurableDispatchReservationAtomically(t *testing.T) {
 	queue := New()
 	commands := []agent.StartRun{
-		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
-		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "queued"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
+		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}, Options: agent.RunOptions{}},
+		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "queued"}, Options: agent.RunOptions{}},
 	}
 	if err := queue.Restore("session", commands, commands[0].CommandID); err != nil {
 		t.Fatal(err)
@@ -293,8 +293,8 @@ func TestQueueRejectsAnInvalidDurableDispatchWithoutMutation(t *testing.T) {
 	existing, _ := enqueue(queue, "session", agent.Message{Text: "existing"})
 	before := queue.State("session")
 	commands := []agent.StartRun{
-		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
-		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
+		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{}},
+		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{}},
 	}
 	if err := queue.Restore("session", commands, commands[1].CommandID); err == nil {
 		t.Fatal("queue accepted a non-front durable dispatch")

@@ -33,10 +33,7 @@ func TestGoalProjectsEveryMachineReadableReason(t *testing.T) {
 		{goal.ReasonAwaitingInput, goal.StatusPaused, "", protocol.GoalReasonAwaitingInput},
 		{goal.ReasonTerminalOutcomeMissing, goal.StatusPaused, "", protocol.GoalReasonTerminalOutcomeMissing},
 		{goal.ReasonRunNotCompleted, goal.StatusPaused, "failed", protocol.GoalReasonRunNotCompleted},
-		{goal.ReasonRunBudgetReached, goal.StatusBlocked, "", protocol.GoalReasonRunBudgetReached},
-		{goal.ReasonCostBudgetReached, goal.StatusBlocked, "", protocol.GoalReasonCostBudgetReached},
-		{goal.ReasonStepBudgetReached, goal.StatusBlocked, "", protocol.GoalReasonStepBudgetReached},
-		{goal.ReasonPricingUnavailable, goal.StatusBlocked, "", protocol.GoalReasonPricingUnavailable},
+
 		{goal.ReasonBlockedByModel, goal.StatusBlocked, "safe context", protocol.GoalReasonBlockedByModel},
 	}
 
@@ -88,7 +85,7 @@ func serverGoalWithState(t *testing.T, status goal.Status, reason goal.ReasonCod
 	value, err := goal.Restore(goal.Snapshot{
 		SessionID: "session-1", Objective: "finish the migration", Status: status,
 		ReasonCode: reason, ReasonDetail: detail, ModelSelection: selection,
-		Capabilities: run.Capabilities{}, Budget: goal.UnlimitedBudget(), IncarnationID: "incarnation-1", Revision: 1,
+		Capabilities: run.Capabilities{}, IncarnationID: "incarnation-1", Revision: 1,
 		CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(2, 0).UTC(),
 	})
 	if err != nil {

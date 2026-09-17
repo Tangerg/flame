@@ -86,7 +86,7 @@ func TestRunsListKeepsPaginationOutOfMachineOutput(t *testing.T) {
 	runtime.Script = shortCompletedScript
 	stream, err := runtime.StartRun(t.Context(), agent.StartRun{
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "newer run"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -180,7 +180,7 @@ func TestRunsCancelRequiresConfirmationAndReturnsRootSnapshot(t *testing.T) {
 	}
 	opened, err := runtime.StartRun(t.Context(), agent.StartRun{
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "keep running"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -260,9 +260,9 @@ func TestRunsCancelPreservesSurvivingRootStateForAChild(t *testing.T) {
 	child := agent.Run{
 		ID: "run_child", SessionID: "ses_1",
 		Lineage: lineage,
-		Status:  protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: protocol.OutcomeCanceled},
+		Status:  protocol.RunStatusFinished, Outcome: agent.Outcome{Status: protocol.OutcomeCanceled},
 	}
-	root := agent.Run{ID: "run_root", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusWaiting, Limits: agent.UnlimitedRunLimits()}
+	root := agent.Run{ID: "run_root", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusWaiting}
 	runtime := childCancellationRuntime{
 		Runtime: instantRuntime(),
 		result:  agent.RunCancellation{Canceled: child, Root: root},
@@ -286,7 +286,7 @@ func TestRunsCancelConfirmsTimeoutWithOneMutationIdentity(t *testing.T) {
 	}
 	opened, err := base.StartRun(t.Context(), agent.StartRun{
 		SessionID: "ses_demo_1", Message: agent.Message{Text: "cancel through subcommand"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)

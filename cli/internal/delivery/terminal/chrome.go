@@ -341,8 +341,7 @@ func (s *statusView) Draw(view grid.View) {
 		style = s.theme.Danger
 	case s.outcome.Status == protocol.OutcomeCompleted:
 		style = s.theme.Success
-	case s.outcome.Status == protocol.OutcomeCanceled || s.outcome.Status == protocol.OutcomeTimedOut ||
-		s.outcome.Status == protocol.OutcomeMaxSteps || s.outcome.Status == protocol.OutcomeMaxBudget:
+	case s.outcome.Status == protocol.OutcomeCanceled || s.outcome.Status == protocol.OutcomeTimedOut:
 		style = s.theme.Warning
 	case s.outcome.Status == protocol.OutcomeFailed || s.outcome.Status == protocol.OutcomeLost:
 		style = s.theme.Danger
@@ -400,9 +399,6 @@ func contextLabel(contextTokens int64) string {
 
 func optionsLabel(options agent.RunOptions) string {
 	parts := []string{modelLabel(options)}
-	if limits := limitsLabel(options.Limits); limits != "" {
-		parts = append(parts, strings.TrimPrefix(limits, "\n"))
-	}
 	return strings.Join(parts, " · ")
 }
 
@@ -428,23 +424,6 @@ func displayRunOptions(options agent.RunOptions, session agent.Session) agent.Ru
 	return options
 }
 
-func limitsLabel(limits agent.RunLimits) string {
-	parts := make([]string, 0, 3)
-	if value, limited := limits.MaxTotalTokens(); limited {
-		parts = append(parts, fmt.Sprintf("tokens ≤ %d", value))
-	}
-	if value, limited := limits.MaxSteps(); limited {
-		parts = append(parts, fmt.Sprintf("steps ≤ %d", value))
-	}
-	if value, limited := limits.MaxBudgetUSD(); limited {
-		parts = append(parts, fmt.Sprintf("budget ≤ $%.2f", value))
-	}
-	if len(parts) == 0 {
-		return ""
-	}
-	return "\nlimits: " + strings.Join(parts, ", ")
-}
-
 func (s *statusView) tick(elapsed time.Duration) {
 	s.status.Tick()
 	s.elapsed = fmt.Sprintf("%4.1fs", elapsed.Seconds())
@@ -463,10 +442,6 @@ func (s *statusView) settled(run agent.Run) {
 		s.doing = "canceled"
 	case protocol.OutcomeTimedOut:
 		s.doing = "timed out"
-	case protocol.OutcomeMaxSteps:
-		s.doing = "max steps"
-	case protocol.OutcomeMaxBudget:
-		s.doing = "max budget"
 	case protocol.OutcomeFailed:
 		s.doing = "failed: " + run.Outcome.Explanation()
 	case protocol.OutcomeLost:

@@ -76,7 +76,7 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 	t.Helper()
 	start := protocol.StartGoalRequest{
 		SessionID: sessionID, Objective: "verify embedded goal lifecycle",
-		Provider: "missing", Model: "missing", Budget: limitedGoalBudget(t, 3),
+		Provider: "missing", Model: "missing",
 	}
 	started, err := runtime.StartGoal(t.Context(), start)
 	if err != nil {
@@ -85,18 +85,12 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 	if started.Status != protocol.GoalActive || started.Objective != start.Objective {
 		t.Fatalf("started goal: %+v", started)
 	}
-	*start.Budget.MaxRuns = 7
-	if started.Budget == nil || started.Budget.MaxRuns == nil || *started.Budget.MaxRuns != 3 {
-		t.Fatalf("caller reuse changed the accepted goal budget: %+v", started.Budget)
-	}
-	*started.Budget.MaxRuns = 8
 	update := protocol.UpdateGoalRequest{SessionID: sessionID, Objective: "verify revised embedded goal lifecycle"}
 	updated, err := runtime.UpdateGoal(t.Context(), update)
 	if err != nil {
 		t.Fatalf("UpdateGoal: %v", err)
 	}
-	if updated.Objective != update.Objective || updated.Budget == nil ||
-		updated.Budget.MaxRuns == nil || *updated.Budget.MaxRuns != 3 {
+	if updated.Objective != update.Objective {
 		t.Fatalf("updated goal: %+v", updated)
 	}
 	stopped, err := runtime.StopGoal(t.Context(), sessionID)

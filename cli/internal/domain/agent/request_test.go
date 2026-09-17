@@ -10,7 +10,7 @@ import (
 func TestStartRunValidation(t *testing.T) {
 	valid := StartRun{
 		SessionID: "ses_1", Message: Message{Text: "hello"},
-		Options: RunOptions{Provider: "mock", Model: "balanced", Limits: UnlimitedRunLimits()},
+		Options: RunOptions{Provider: "mock", Model: "balanced"},
 	}
 	if err := valid.Validate(); err != nil {
 		t.Fatal(err)
@@ -68,7 +68,7 @@ func TestDeleteSessionValidatesItsOptionalMutationIdentity(t *testing.T) {
 func TestStartRunEqualUsesTheCompleteMutationFingerprint(t *testing.T) {
 	request := StartRun{
 		CommandID: CommandID("cli_11111111111111111111111111111111"), SessionID: "ses_1",
-		Message: Message{Text: "hello"}, Options: RunOptions{Provider: "mock", Model: "balanced", Limits: UnlimitedRunLimits()},
+		Message: Message{Text: "hello"}, Options: RunOptions{Provider: "mock", Model: "balanced"},
 	}
 	if !request.Equal(request.Clone()) {
 		t.Fatal("cloned start request is not equal")

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
@@ -234,29 +234,10 @@ func advertisedReplayPolicy(t *testing.T) mutation.ReplayPolicy {
 	return policy
 }
 
-func unlimitedStart(sessionID, text string) agent.StartRun {
+func testRunStart(sessionID, text string) agent.StartRun {
 	return agent.StartRun{
 		SessionID: sessionID, Message: agent.Message{Text: text},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
-	}
-}
-
-func TestExecuteRejectsInvalidReconnectPolicyBeforeStartingRun(t *testing.T) {
-	t.Parallel()
-	runtime := runtimefixture.New()
-	err := Execute(t.Context(), Invocation{
-		Runtime: runtime, Renderer: new(recordingRenderer), ReconnectAttempts: -1,
-		ReplayPolicy: unavailableReplayPolicy(t),
-		Start:        unlimitedStart("ses_demo_1", "must not start"),
-	})
-	if !errors.Is(err, retry.ErrInvalidReconnectPolicy) {
-		t.Fatalf("Execute error = %v, want ErrInvalidReconnectPolicy", err)
-	}
-	page, listErr := runtime.ListRuns(t.Context(), agent.RunQuery{
-		SessionID: "ses_demo_1", PageSize: agent.DefaultPageSize(),
-	})
-	if listErr != nil || len(page.Items) != 1 {
-		t.Fatalf("runs after rejected invocation = (%+v, %v)", page, listErr)
+		Options: agent.RunOptions{},
 	}
 }
 
@@ -266,7 +247,7 @@ func TestOpenRunChecksReplayAdmissionBeforeEveryAttempt(t *testing.T) {
 	admissions := 0
 	_, err := openRun(t.Context(), runtime, agent.StartRun{
 		CommandID: "cli_dddddddddddddddddddddddddddddddd", SessionID: "ses_demo_1",
-		Message: agent.Message{Text: "admit every attempt"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Message: agent.Message{Text: "admit every attempt"}, Options: agent.RunOptions{},
 	}, func() error {
 		admissions++
 		if admissions > 1 {
@@ -291,9 +272,8 @@ func TestExecuteDrivesApprovalAcrossSegments(t *testing.T) {
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: renderer,
 		ReplayPolicy: unavailableReplayPolicy(t),
-		Start:        unlimitedStart(session.ID, "fix it"),
-		ApproveAll:   true, ReconnectAttempts: 2,
-	})
+		Start:        testRunStart(session.ID, "fix it"),
+		ApproveAll:   true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,10 +297,8 @@ func TestExecuteConfirmsTimedOutMutationsWithoutChangingIdentity(t *testing.T) {
 	err = Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: new(recordingRenderer),
 		ReplayPolicy: advertisedReplayPolicy(t),
-		Start:        unlimitedStart(session.ID, "confirm every mutation"),
+		Start:        testRunStart(session.ID, "confirm every mutation"),
 		ApproveAll:   true,
-		// Acknowledgement confirmation is not a stream reconnect budget.
-		ReconnectAttempts: 0,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -345,7 +323,7 @@ func TestExecuteDoesNotRetryATimedOutStartWithoutRuntimeReplayCapability(t *test
 	err = Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: new(recordingRenderer),
 		ReplayPolicy: unavailableReplayPolicy(t),
-		Start:        unlimitedStart(session.ID, "do not guess at replay"),
+		Start:        testRunStart(session.ID, "do not guess at replay"),
 	})
 	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
 		t.Fatalf("one-shot error = %v", err)
@@ -374,7 +352,7 @@ func TestExecuteLeavesQuestionsParked(t *testing.T) {
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: new(recordingRenderer),
 		ReplayPolicy: unavailableReplayPolicy(t),
-		Start:        unlimitedStart(session.ID, "ask"),
+		Start:        testRunStart(session.ID, "ask"),
 	})
 	if _, ok := errors.AsType[*interactionRequiredError](err); !ok {
 		t.Fatalf("error = %v", err)
@@ -398,9 +376,8 @@ func TestExecuteReconnectsOnlyTheCurrentSegment(t *testing.T) {
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: new(recordingRenderer),
-		ReplayPolicy:      unavailableReplayPolicy(t),
-		Start:             unlimitedStart(session.ID, "fix"),
-		ReconnectAttempts: 3,
+		ReplayPolicy: unavailableReplayPolicy(t),
+		Start:        testRunStart(session.ID, "fix"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -415,7 +392,7 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 	}
 	root := agent.Run{
 		ID: "run_root", SessionID: session.ID, Lineage: agent.RootRunLineage(),
-		Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_root", Limits: agent.UnlimitedRunLimits(),
+		Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_root",
 	}
 	lineage, err := agent.NewChildRunLineage("run_child", "item_delegate", root.ID, root.ID)
 	if err != nil {
@@ -423,7 +400,7 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 	}
 	child := agent.Run{
 		ID: "run_child", SessionID: session.ID, Lineage: lineage,
-		Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child", Limits: agent.UnlimitedRunLimits(),
+		Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child",
 	}
 	event := func(id, runID, segmentID string, payload agent.Event) agent.RunEvent {
 		return agent.RunEvent{
@@ -435,7 +412,7 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 		event("event_root_started", root.ID, root.ActiveSegmentID, agent.SegmentStarted{Run: root}),
 		event("event_child_started", child.ID, child.ActiveSegmentID, agent.SegmentStarted{Run: child}),
 		event("event_child_finished", child.ID, child.ActiveSegmentID, agent.RunFinished{
-			Outcome: agent.Outcome{Status: protocol.OutcomeMaxSteps, Detail: "child limit"},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCanceled, Detail: "child canceled"},
 		}),
 	}
 	rootFinished := event("event_root_finished", root.ID, root.ActiveSegmentID, agent.RunFinished{
@@ -467,9 +444,8 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 	renderer := new(recordingRenderer)
 	err = Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: renderer,
-		ReplayPolicy:      unavailableReplayPolicy(t),
-		Start:             unlimitedStart(session.ID, "delegate then continue"),
-		ReconnectAttempts: 1,
+		ReplayPolicy: unavailableReplayPolicy(t),
+		Start:        testRunStart(session.ID, "delegate then continue"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -494,7 +470,7 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 			}
 			root := agent.Run{
 				ID: "run_root", SessionID: session.ID, Lineage: agent.RootRunLineage(),
-				Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_root", Limits: agent.UnlimitedRunLimits(),
+				Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_root",
 			}
 			event := func(id string, run agent.Run, streamSegment string, payload agent.Event) agent.RunEvent {
 				return agent.RunEvent{
@@ -514,7 +490,7 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 				}
 				child := agent.Run{
 					ID: "run_child_" + suffix, SessionID: session.ID, Lineage: lineage,
-					Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child_" + suffix, Limits: agent.UnlimitedRunLimits(),
+					Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child_" + suffix,
 				}
 				tool := &agent.ToolCall{Kind: agent.ToolRead, Name: "read", Status: agent.ToolRunning}
 				block := agent.Block{ID: "item_approval_" + suffix, RunID: child.ID, Status: agent.BlockStatusRunning, Kind: agent.BlockTool, Tool: tool}
@@ -564,8 +540,7 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 			}
 			if err := Execute(t.Context(), Invocation{
 				Runtime: runtime, Renderer: new(recordingRenderer), ReplayPolicy: unavailableReplayPolicy(t),
-				Start: unlimitedStart(session.ID, "approve the delegated tree"), ApproveAll: true, ReconnectAttempts: 1,
-			}); err != nil {
+				Start: testRunStart(session.ID, "approve the delegated tree"), ApproveAll: true}); err != nil {
 				t.Fatal(err)
 			}
 			if len(runtime.resumptions) != 1 {
@@ -582,7 +557,7 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 	}
 }
 
-func TestExecutePropagatesRendererFailureAndCancelsRun(t *testing.T) {
+func TestExecutePropagatesRendererFailure(t *testing.T) {
 	runtime := runtimefixture.New()
 	runtime.Instant = true
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
@@ -590,14 +565,14 @@ func TestExecutePropagatesRendererFailureAndCancelsRun(t *testing.T) {
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: &recordingRenderer{err: want},
 		ReplayPolicy: unavailableReplayPolicy(t),
-		Start:        unlimitedStart(session.ID, "fix"),
+		Start:        testRunStart(session.ID, "fix"),
 	})
 	if !errors.Is(err, want) {
 		t.Fatalf("error = %v", err)
 	}
 }
 
-func TestExecuteReportsAbandonedRunCancellationFailure(t *testing.T) {
+func TestExecuteReportsExplicitCancellationFailure(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
@@ -611,17 +586,19 @@ func TestExecuteReportsAbandonedRunCancellationFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	renderFailure := errors.New("output unavailable")
-	err = Execute(t.Context(), Invocation{
-		Runtime: runtime, Renderer: &recordingRenderer{err: renderFailure},
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	err = Execute(ctx, Invocation{
+		Runtime: runtime, Renderer: &cancelingRenderer{recordingRenderer: recordingRenderer{err: renderFailure}, cancel: cancel},
 		ReplayPolicy: advertisedReplayPolicy(t),
-		Start:        unlimitedStart(session.ID, "fail and clean up"),
+		Start:        testRunStart(session.ID, "fail and clean up"),
 	})
 	if !errors.Is(err, renderFailure) || !errors.Is(err, cleanupFailure) {
 		t.Fatalf("joined execution failure = %v", err)
 	}
 	attempts := runtime.cancellationAttempts()
 	if len(attempts) != 1 || attempts[0].CommandID == "" || attempts[0].RunID == "" ||
-		attempts[0].Reason != "CLI execution ended before the run settled" {
+		attempts[0].Reason != "CLI execution canceled" {
 		t.Fatalf("abandoned run cleanup attempts = %+v", attempts)
 	}
 	commandID := mutation.NewCommandID()
@@ -645,10 +622,12 @@ func TestExecuteConfirmsTimedOutCleanupWithoutChangingIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	renderFailure := errors.New("output unavailable")
-	err = Execute(t.Context(), Invocation{
-		Runtime: runtime, Renderer: &recordingRenderer{err: renderFailure},
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	err = Execute(ctx, Invocation{
+		Runtime: runtime, Renderer: &cancelingRenderer{recordingRenderer: recordingRenderer{err: renderFailure}, cancel: cancel},
 		ReplayPolicy: advertisedReplayPolicy(t),
-		Start:        unlimitedStart(session.ID, "confirm cleanup"),
+		Start:        testRunStart(session.ID, "confirm cleanup"),
 	})
 	if !errors.Is(err, renderFailure) {
 		t.Fatalf("execution error = %v", err)
@@ -660,7 +639,7 @@ func TestExecuteConfirmsTimedOutCleanupWithoutChangingIdentity(t *testing.T) {
 	}
 }
 
-func TestExecuteRejectsAMisdirectedAbandonedRunCancellation(t *testing.T) {
+func TestExecuteRejectsAMisdirectedExplicitCancellation(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
@@ -672,18 +651,20 @@ func TestExecuteRejectsAMisdirectedAbandonedRunCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	renderFailure := errors.New("output unavailable")
-	err = Execute(t.Context(), Invocation{
-		Runtime: misdirectedCancellationRuntime{Runtime: base}, Renderer: &recordingRenderer{err: renderFailure},
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	err = Execute(ctx, Invocation{
+		Runtime: misdirectedCancellationRuntime{Runtime: base}, Renderer: &cancelingRenderer{recordingRenderer: recordingRenderer{err: renderFailure}, cancel: cancel},
 		ReplayPolicy: unavailableReplayPolicy(t),
-		Start:        unlimitedStart(session.ID, "validate cleanup receipt"),
+		Start:        testRunStart(session.ID, "validate cleanup receipt"),
 	})
-	if !errors.Is(err, renderFailure) || !strings.Contains(err.Error(), "cancel abandoned run") ||
+	if !errors.Is(err, renderFailure) || !strings.Contains(err.Error(), "cancel requested run") ||
 		!strings.Contains(err.Error(), "run_misdirected") {
 		t.Fatalf("misdirected cleanup failure = %v", err)
 	}
 }
 
-func TestExecuteCancelsARunWhoseOpeningStreamIsInvalid(t *testing.T) {
+func TestExecutePreservesRunWhenOpeningObservationIsInvalid(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
@@ -692,7 +673,7 @@ func TestExecuteCancelsARunWhoseOpeningStreamIsInvalid(t *testing.T) {
 	err := Execute(t.Context(), Invocation{
 		Runtime: invalidOpeningRuntime{Runtime: base}, Renderer: new(recordingRenderer),
 		ReplayPolicy: unavailableReplayPolicy(t),
-		Start:        unlimitedStart(session.ID, "start"),
+		Start:        testRunStart(session.ID, "start"),
 	})
 	if err == nil {
 		t.Fatal("invalid opening stream was accepted")
@@ -702,7 +683,96 @@ func TestExecuteCancelsARunWhoseOpeningStreamIsInvalid(t *testing.T) {
 		t.Fatal(snapshotErr)
 	}
 	latest, ok := snapshot.LatestRun()
-	if !ok || latest.Status != protocol.RunStatusFinished || latest.Outcome.Status != protocol.OutcomeCanceled {
-		t.Fatalf("invalid opening left run active: %+v", snapshot.Runs)
+	if !ok || latest.Status != protocol.RunStatusRunning {
+		t.Fatalf("invalid opening canceled run: %+v", snapshot.Runs)
+	}
+}
+
+type cancelingRenderer struct {
+	recordingRenderer
+	cancel context.CancelFunc
+}
+
+func (r *cancelingRenderer) Begin(run agent.Run, options agent.RunOptions) error {
+	r.cancel()
+	return r.recordingRenderer.Begin(run, options)
+}
+
+type outageRuntime struct {
+	*refusingCancellationRuntime
+	remaining  int
+	subscribed int
+	failure    error
+}
+
+func (r *outageRuntime) SubscribeRun(ctx context.Context, command agent.SubscribeRun) (agent.SegmentStream, error) {
+	r.subscribed++
+	if r.remaining > 0 {
+		r.remaining--
+		return agent.SegmentStream{}, r.failure
+	}
+	return r.Runtime.SubscribeRun(ctx, command)
+}
+
+func TestExecuteRecoversAfterProlongedOutageWithoutCancelingRun(t *testing.T) {
+	workspace := t.TempDir()
+	synctest.Test(t, func(t *testing.T) {
+		base := runtimefixture.New()
+		base.Faults = []runtimefixture.SubscriptionFault{{Kind: runtimefixture.FaultDisconnect, After: 1}}
+		base.Script = func(string) runtimefixture.Script {
+			return runtimefixture.Script{Prelude: []runtimefixture.Step{
+				{Delay: 3 * time.Minute, Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}},
+				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+			}}
+		}
+		runtime := &outageRuntime{refusingCancellationRuntime: &refusingCancellationRuntime{Runtime: base, failure: errors.New("unexpected cancel")}, remaining: 100, failure: agent.ErrDisconnected}
+		session, err := base.CreateSession(t.Context(), agent.CreateSession{Workspace: workspace})
+		if err != nil {
+			t.Fatal(err)
+		}
+		renderer := new(recordingRenderer)
+		err = Execute(t.Context(), Invocation{Runtime: runtime, Renderer: renderer, Start: testRunStart(session.ID, "continue"), ReplayPolicy: unavailableReplayPolicy(t)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if runtime.subscribed != 101 {
+			t.Fatalf("subscriptions=%d", runtime.subscribed)
+		}
+		if attempts := runtime.cancellationAttempts(); len(attempts) != 0 {
+			t.Fatalf("observation canceled Run: %+v", attempts)
+		}
+		snapshot, err := base.GetSession(t.Context(), session.ID)
+		latest, found := snapshot.LatestRun()
+		if err != nil || !found || latest.Outcome.Status != protocol.OutcomeCompleted {
+			t.Fatalf("terminal: %+v, %v", latest, err)
+		}
+	})
+}
+
+func TestExecutePreservesRunAfterPermanentObservationFailure(t *testing.T) {
+	base := runtimefixture.New()
+	base.Faults = []runtimefixture.SubscriptionFault{{Kind: runtimefixture.FaultDisconnect, After: 1}}
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
+	}
+	runtime := &outageRuntime{refusingCancellationRuntime: &refusingCancellationRuntime{Runtime: base}, remaining: 1, failure: agent.ErrEventConflict}
+	session, err := base.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = Execute(t.Context(), Invocation{Runtime: runtime, Renderer: new(recordingRenderer), Start: testRunStart(session.ID, "continue"), ReplayPolicy: unavailableReplayPolicy(t)})
+	if !errors.Is(err, agent.ErrEventConflict) {
+		t.Fatalf("observation error: %v", err)
+	}
+	if attempts := runtime.cancellationAttempts(); len(attempts) != 0 {
+		t.Fatalf("observation canceled Run: %+v", attempts)
+	}
+	snapshot, err := base.GetSession(t.Context(), session.ID)
+	active, found := snapshot.ActiveRun()
+	if err != nil || !found {
+		t.Fatalf("lost active Run: %+v, %v", snapshot, err)
+	}
+	if _, err := base.CancelRun(t.Context(), agent.CancelRun{CommandID: mutation.NewCommandID(), RunID: active.ID, Reason: "test cleanup"}); err != nil {
+		t.Fatal(err)
 	}
 }

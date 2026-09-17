@@ -36,7 +36,7 @@ type ApprovalPrompt struct {
 	Risk        tool.RiskLevel
 	Reason      string
 	// Rememberable distinguishes ordinary policy approvals from one-off
-	// confirmations such as the doom-loop brake. It must persist with the
+	// confirmations requested by lifecycle hooks. It must persist with the
 	// prompt so a resumed execution cannot accidentally create a standing rule.
 	Rememberable bool
 }

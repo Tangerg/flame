@@ -49,7 +49,6 @@ func validateRecoveryParkedTree(
 		Isolated:          false,
 		GoalIncarnationID: pending.GoalIncarnationID,
 		ModelSelection:    rootContinuation.ModelSelection,
-		Limits:            rootContinuation.Limits,
 		Capabilities:      pending.Capabilities,
 	}
 	checkpoint, err := store.LoadExecutorCheckpoint(ctx, rootContinuation.MemberID)

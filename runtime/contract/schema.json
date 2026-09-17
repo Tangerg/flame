@@ -895,28 +895,6 @@
           "properties": {
             "error": false,
             "type": {
-              "const": "maxSteps"
-            }
-          },
-          "required": [
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "error": false,
-            "type": {
-              "const": "maxBudget"
-            }
-          },
-          "required": [
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "error": false,
-            "type": {
               "const": "canceled"
             }
           },
@@ -953,8 +931,6 @@
         "completed",
         "timedOut",
         "failed",
-        "maxSteps",
-        "maxBudget",
         "canceled",
         "lost"
       ]
@@ -1173,9 +1149,6 @@
           "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
-        },
-        "limits": {
-          "$ref": "#/$defs/RunLimits"
         },
         "messageMark": {
           "type": "integer",
@@ -2594,9 +2567,6 @@
     "Goal": {
       "type": "object",
       "properties": {
-        "budget": {
-          "$ref": "#/$defs/GoalBudget"
-        },
         "createdAt": {
           "type": "string",
           "format": "date-time"
@@ -2737,10 +2707,6 @@
                 "properties": {
                   "code": {
                     "enum": [
-                      "runBudgetReached",
-                      "costBudgetReached",
-                      "stepBudgetReached",
-                      "pricingUnavailable",
                       "blockedByModel"
                     ]
                   }
@@ -2751,44 +2717,6 @@
               "reason"
             ]
           }
-        }
-      ]
-    },
-    "GoalBudget": {
-      "type": "object",
-      "properties": {
-        "maxCostUsd": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "maxRuns": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "maxSteps": {
-          "type": "integer",
-          "minimum": 1
-        }
-      },
-      "allOf": [
-        {
-          "anyOf": [
-            {
-              "required": [
-                "maxRuns"
-              ]
-            },
-            {
-              "required": [
-                "maxCostUsd"
-              ]
-            },
-            {
-              "required": [
-                "maxSteps"
-              ]
-            }
-          ]
         }
       ]
     },
@@ -2924,74 +2852,6 @@
               "detail": false
             }
           }
-        },
-        {
-          "if": {
-            "properties": {
-              "code": {
-                "const": "runBudgetReached"
-              }
-            },
-            "required": [
-              "code"
-            ]
-          },
-          "then": {
-            "properties": {
-              "detail": false
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "code": {
-                "const": "costBudgetReached"
-              }
-            },
-            "required": [
-              "code"
-            ]
-          },
-          "then": {
-            "properties": {
-              "detail": false
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "code": {
-                "const": "stepBudgetReached"
-              }
-            },
-            "required": [
-              "code"
-            ]
-          },
-          "then": {
-            "properties": {
-              "detail": false
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "code": {
-                "const": "pricingUnavailable"
-              }
-            },
-            "required": [
-              "code"
-            ]
-          },
-          "then": {
-            "properties": {
-              "detail": false
-            }
-          }
         }
       ]
     },
@@ -3004,10 +2864,6 @@
         "awaitingInput",
         "terminalOutcomeMissing",
         "runNotCompleted",
-        "runBudgetReached",
-        "costBudgetReached",
-        "stepBudgetReached",
-        "pricingUnavailable",
         "blockedByModel"
       ]
     },
@@ -7225,44 +7081,6 @@
         "timestamp"
       ]
     },
-    "RunLimits": {
-      "type": "object",
-      "properties": {
-        "maxBudgetUsd": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "maxSteps": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "maxTotalTokens": {
-          "type": "integer",
-          "minimum": 1
-        }
-      },
-      "allOf": [
-        {
-          "anyOf": [
-            {
-              "required": [
-                "maxTotalTokens"
-              ]
-            },
-            {
-              "required": [
-                "maxSteps"
-              ]
-            },
-            {
-              "required": [
-                "maxBudgetUsd"
-              ]
-            }
-          ]
-        }
-      ]
-    },
     "RunMetrics": {
       "type": "object",
       "properties": {
@@ -7295,6 +7113,12 @@
         },
         "type": {
           "$ref": "#/$defs/RunOutcomeType"
+        },
+        "unresolvedEffects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UnresolvedEffect"
+          }
         }
       },
       "oneOf": [
@@ -7338,28 +7162,6 @@
           "properties": {
             "error": false,
             "type": {
-              "const": "maxSteps"
-            }
-          },
-          "required": [
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "error": false,
-            "type": {
-              "const": "maxBudget"
-            }
-          },
-          "required": [
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "error": false,
-            "type": {
               "const": "canceled"
             }
           },
@@ -7387,8 +7189,6 @@
         "completed",
         "timedOut",
         "failed",
-        "maxSteps",
-        "maxBudget",
         "canceled",
         "lost"
       ]
@@ -7492,9 +7292,6 @@
           "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
-        },
-        "limits": {
-          "$ref": "#/$defs/RunLimits"
         },
         "metrics": {
           "$ref": "#/$defs/RunMetrics"
@@ -8709,6 +8506,12 @@
         },
         "type": {
           "$ref": "#/$defs/SegmentOutcomeType"
+        },
+        "unresolvedEffects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UnresolvedEffect"
+          }
         }
       },
       "oneOf": [
@@ -8718,7 +8521,8 @@
             "error": false,
             "type": {
               "const": "interrupt"
-            }
+            },
+            "unresolvedEffects": false
           },
           "required": [
             "interrupts",
@@ -8732,7 +8536,8 @@
             "interrupts": false,
             "type": {
               "const": "suspended"
-            }
+            },
+            "unresolvedEffects": false
           },
           "required": [
             "type"
@@ -8782,30 +8587,6 @@
             "error": false,
             "interrupts": false,
             "type": {
-              "const": "maxSteps"
-            }
-          },
-          "required": [
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "error": false,
-            "interrupts": false,
-            "type": {
-              "const": "maxBudget"
-            }
-          },
-          "required": [
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "error": false,
-            "interrupts": false,
-            "type": {
               "const": "canceled"
             }
           },
@@ -8836,8 +8617,6 @@
         "completed",
         "timedOut",
         "failed",
-        "maxSteps",
-        "maxBudget",
         "canceled",
         "lost"
       ]
@@ -9234,9 +9013,6 @@
     "StartGoalRequest": {
       "type": "object",
       "properties": {
-        "budget": {
-          "$ref": "#/$defs/GoalBudget"
-        },
         "model": {
           "type": "string",
           "maxLength": 256,
@@ -9316,9 +9092,6 @@
           "items": {
             "$ref": "#/$defs/ContentBlock"
           }
-        },
-        "limits": {
-          "$ref": "#/$defs/RunLimits"
         },
         "model": {
           "type": "string",
@@ -9864,6 +9637,31 @@
       "type": "string",
       "enum": [
         "http"
+      ]
+    },
+    "UnresolvedEffect": {
+      "type": "object",
+      "properties": {
+        "cause": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "effectId": {
+          "type": "string"
+        },
+        "processId": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "cause",
+        "effectId",
+        "processId"
       ]
     },
     "UpdateGoalRequest": {

@@ -264,14 +264,6 @@ func (w waitingCancellationBuilder) validate() error {
 			ErrInvalidExecutorCheckpoint,
 		)
 	}
-	if w.prepared.checkpoint.Limits != rootContinuation.Limits {
-		return fmt.Errorf(
-			"runs: prepared waiting subtree checkpoint limits %+v do not match root continuation %+v: %w",
-			w.prepared.checkpoint.Limits,
-			rootContinuation.Limits,
-			ErrInvalidExecutorCheckpoint,
-		)
-	}
 	return nil
 }
 

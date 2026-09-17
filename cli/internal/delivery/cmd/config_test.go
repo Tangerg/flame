@@ -26,9 +26,6 @@ func TestConfigurationInheritsTheRuntimeModelByDefault(t *testing.T) {
 	if got.Provider != "" || got.Model != "" {
 		t.Fatalf("default model override = %q/%q, want omitted", got.Provider, got.Model)
 	}
-	if got.Run.MaxTotalTokens != nil || got.Run.MaxSteps != nil || got.Run.MaxBudgetUSD != nil {
-		t.Fatalf("default run limits = %+v, want explicit absence", got.Run)
-	}
 }
 
 func TestRuntimeProviderEnvironmentDoesNotBecomeAClientOverride(t *testing.T) {
@@ -68,11 +65,11 @@ func TestShippedExampleIsValidCLIConfiguration(t *testing.T) {
 
 func TestConfigurationPrecedenceFileEnvironmentFlag(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "flame.yaml")
-	if err := os.WriteFile(path, []byte("provider: file-provider\nmodel: file-model\nrun:\n  max-total-tokens: 12000\n  max-steps: 8\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("provider: file-provider\nmodel: file-model\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("FLAME_CLI_MODEL", "environment-model")
-	out, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "--max-steps", "12", "config", "show")
+	out, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "--provider", "flag-provider", "config", "show")
 	if err != nil {
 		t.Fatalf("config show: %v", err)
 	}
@@ -80,7 +77,7 @@ func TestConfigurationPrecedenceFileEnvironmentFlag(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatalf("config show JSON: %v\n%s", err, out)
 	}
-	if got.Provider != "file-provider" || got.Model != "environment-model" || got.Run.MaxTotalTokens == nil || *got.Run.MaxTotalTokens != 12000 || got.Run.MaxSteps == nil || *got.Run.MaxSteps != 12 {
+	if got.Provider != "flag-provider" || got.Model != "environment-model" {
 		t.Fatalf("effective settings = %+v", got)
 	}
 }
@@ -218,9 +215,6 @@ func TestConfigurationRegistersEnvironmentOnlyKeysForUnmarshal(t *testing.T) {
 	t.Setenv("FLAME_CLI_UI_TRANSCRIPT_RETAIN", "77")
 	t.Setenv("FLAME_CLI_UI_TOOL_DETAILS", "true")
 	t.Setenv("FLAME_CLI_APPROVAL_REMEMBER", "project")
-	t.Setenv("FLAME_CLI_RUN_MAX_TOTAL_TOKENS", "24000")
-	t.Setenv("FLAME_CLI_RUN_MAX_STEPS", "9")
-	t.Setenv("FLAME_CLI_RUN_MAX_BUDGET_USD", "1.25")
 	out, _, err := executeCommand(t, instantRuntime(), "", "config", "show")
 	if err != nil {
 		t.Fatal(err)
@@ -229,34 +223,8 @@ func TestConfigurationRegistersEnvironmentOnlyKeysForUnmarshal(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatal(err)
 	}
-	if got.UI.TranscriptRetain != 77 || !got.UI.ToolDetails || got.Approval.Remember != "project" ||
-		got.Run.MaxTotalTokens == nil || *got.Run.MaxTotalTokens != 24000 ||
-		got.Run.MaxSteps == nil || *got.Run.MaxSteps != 9 ||
-		got.Run.MaxBudgetUSD == nil || *got.Run.MaxBudgetUSD != 1.25 {
+	if got.UI.TranscriptRetain != 77 || !got.UI.ToolDetails || got.Approval.Remember != "project" {
 		t.Fatalf("environment settings = %+v", got)
-	}
-}
-
-func TestConfigurationRunLimitPrecedenceIsFileEnvironmentFlag(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "flame.yaml")
-	if err := os.WriteFile(path, []byte("run:\n  max-total-tokens: 12000\n  max-steps: 4\n  max-budget-usd: 0.5\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("FLAME_CLI_RUN_MAX_TOTAL_TOKENS", "24000")
-	t.Setenv("FLAME_CLI_RUN_MAX_STEPS", "8")
-	t.Setenv("FLAME_CLI_RUN_MAX_BUDGET_USD", "1.5")
-	out, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "--max-steps", "12", "config", "show")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got settings.Config
-	if err := json.Unmarshal([]byte(out), &got); err != nil {
-		t.Fatal(err)
-	}
-	if got.Run.MaxTotalTokens == nil || *got.Run.MaxTotalTokens != 24000 ||
-		got.Run.MaxSteps == nil || *got.Run.MaxSteps != 12 ||
-		got.Run.MaxBudgetUSD == nil || *got.Run.MaxBudgetUSD != 1.5 {
-		t.Fatalf("effective run limits = %+v", got.Run)
 	}
 }
 
@@ -295,24 +263,7 @@ func TestConfigurationMergesPartialKeyOverridesWithDefaultActions(t *testing.T) 
 	}
 }
 
-func TestConfigurationRejectsInvalidValuesAndMissingExplicitFile(t *testing.T) {
-	for _, value := range []string{"0", "-1", "not-a-number"} {
-		if _, _, err := executeCommand(t, instantRuntime(), "", "--max-steps="+value, "config", "show"); err == nil {
-			t.Fatalf("run step limit %q was accepted", value)
-		}
-	}
-	for _, value := range []string{"0", "NaN", "+Inf"} {
-		if _, _, err := executeCommand(t, instantRuntime(), "", "--max-budget-usd="+value, "config", "show"); err == nil {
-			t.Fatalf("run budget limit %q was accepted", value)
-		}
-	}
-	zeroConfig := filepath.Join(t.TempDir(), "zero-limit.yaml")
-	if err := os.WriteFile(zeroConfig, []byte("run:\n  max-budget-usd: 0\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := executeCommand(t, instantRuntime(), "", "--config", zeroConfig, "config", "show"); err == nil {
-		t.Fatal("configuration numeric zero sentinel was accepted")
-	}
+func TestConfigurationRejectsMissingExplicitFile(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "missing.yaml")
 	if _, _, err := executeCommand(t, instantRuntime(), "", "--config", missing, "config", "show"); err == nil {
 		t.Fatal("missing explicit configuration was ignored")
@@ -363,5 +314,11 @@ func TestDynamicCompletionDoesNotDependOnConfiguration(t *testing.T) {
 	}
 	if !strings.Contains(out, "ses_demo_") {
 		t.Fatalf("dynamic completion output has no session IDs:\n%s", out)
+	}
+}
+
+func TestConfigurationRejectsUnknownFlags(t *testing.T) {
+	if _, _, err := executeCommand(t, instantRuntime(), "", "--unknown-setting", "4", "config", "show"); err == nil || !strings.Contains(err.Error(), "unknown flag") {
+		t.Fatalf("unknown flag: %v", err)
 	}
 }

@@ -173,12 +173,6 @@ func validateContinuationRunFacts(
 			rootRunID,
 			value.ID(),
 		)
-	case value.Limits() != continuation.Limits:
-		return fmt.Errorf(
-			"runs: validate Run tree %q: Run %q frozen limits differ from its continuation",
-			rootRunID,
-			value.ID(),
-		)
 	case !value.CreatedAt().Equal(continuation.RunCreatedAt):
 		return fmt.Errorf(
 			"runs: validate Run tree %q: Run %q and continuation creation times differ",

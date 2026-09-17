@@ -532,7 +532,6 @@ func (t treePublisher) reduceInterruptedRoute(
 		RunCreatedAt:   waitingRun.CreatedAt(),
 		Metrics:        waitingRun.Metrics(),
 		ContextTokens:  waitingRun.ContextTokens(),
-		Limits:         waitingRun.Limits(),
 	}
 	return treeBarrierReduction{route: route, batch: batch, interrupts: projectedInterrupts}, bindings, continuation, nil
 }

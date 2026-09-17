@@ -42,10 +42,9 @@ func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	if err := runapplication.Execute(ctx, runapplication.Invocation{
-		Runtime: runtime, Renderer: renderer, ReplayPolicy: replay, ApproveAll: true, ReconnectAttempts: 2,
-		Start: agent.StartRun{
+		Runtime: runtime, Renderer: renderer, ReplayPolicy: replay, ApproveAll: true, Start: agent.StartRun{
 			SessionID: session.ID, Message: agent.Message{Text: "delegate approval probe"},
-			Options: agent.RunOptions{Provider: "deepseek", Model: "deepseek-chat", Limits: agent.UnlimitedRunLimits()},
+			Options: agent.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
 		},
 	}); err != nil {
 		t.Fatal(err)

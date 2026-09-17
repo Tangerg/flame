@@ -32,7 +32,7 @@ func enqueueTestPrompt(t *testing.T, queue *promptqueue.Queue, sessionID string,
 	t.Helper()
 	entry, err := queue.EnqueueCommand(
 		mutation.NewCommandID(), sessionID, message,
-		agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		agent.RunOptions{},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -564,8 +564,8 @@ func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
 	}
 	queue := promptqueue.New()
 	commands := []agent.StartRun{
-		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
-		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "send next"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
+		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}, Options: agent.RunOptions{}},
+		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "send next"}, Options: agent.RunOptions{}},
 	}
 	for _, command := range commands {
 		if err := store.StagePendingRun(workbench.PendingRun{
@@ -624,9 +624,9 @@ func TestQueueMutationRollbackPreservesTheDispatchReservation(t *testing.T) {
 	}
 	queue := promptqueue.New()
 	commands := []agent.StartRun{
-		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
-		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
-		{CommandID: agent.CommandID("cli_33333333333333333333333333333333"), SessionID: "session", Message: agent.Message{Text: "promote me"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},
+		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}, Options: agent.RunOptions{}},
+		{CommandID: agent.CommandID("cli_22222222222222222222222222222222"), SessionID: "session", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{}},
+		{CommandID: agent.CommandID("cli_33333333333333333333333333333333"), SessionID: "session", Message: agent.Message{Text: "promote me"}, Options: agent.RunOptions{}},
 	}
 	for _, command := range commands {
 		if stagePendingRunErr := store.StagePendingRun(workbench.PendingRun{
@@ -730,11 +730,11 @@ func TestRestoredPendingRunStateControlsQueueOwnership(t *testing.T) {
 			pending := []workbench.PendingRun{
 				{State: test.state, Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(), Command: agent.StartRun{
 					CommandID: agent.CommandID("cli_11111111111111111111111111111111"),
-					SessionID: "session", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+					SessionID: "session", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{},
 				}},
 				{State: workbench.PendingRunQueued, Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(), Command: agent.StartRun{
 					CommandID: agent.CommandID("cli_22222222222222222222222222222222"),
-					SessionID: "session", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+					SessionID: "session", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{},
 				}},
 			}
 			if err := application.restorePendingQueue(pending); err != nil {

@@ -91,8 +91,6 @@ func terminalToolResult(outcome run.Outcome, detail string) string {
 		result = "tool result unavailable because execution state was lost"
 	case run.OutcomeFailed:
 		result = "tool call did not complete because the run failed"
-	case run.OutcomeMaxBudget:
-		result = "tool call did not complete before the run reached its budget"
 	default:
 		result = "tool call ended without a result before the run finished"
 	}

@@ -1,7 +1,7 @@
 // Package goals owns autonomous Goal execution: given a
 // session's objective, it launches runs back-to-back until the model signals the
-// goal complete or blocked (through terminal outcome reporting), an opt-in cross-Run
-// budget is spent, or the user stops it. It mirrors application/automation/schedules — a
+// goal complete or blocked (through terminal outcome reporting), or the user
+// stops it. It mirrors application/automation/schedules — an
 // autonomous application component that drives the runs Coordinator — but is
 // event-driven per goal rather than cron-timed, and consumes each run's terminal
 // to decide whether to continue.
@@ -213,7 +213,6 @@ func (d *Driver) Start(
 	ctx context.Context,
 	sessionID, objective string,
 	selection modelref.Selection,
-	budget goal.Budget,
 	capabilities run.Capabilities,
 ) (goal.Goal, error) {
 	release, err := d.mutations.acquire(ctx, sessionID)
@@ -271,7 +270,7 @@ func (d *Driver) Start(
 	if ok {
 		expected = existing.Version()
 	}
-	g, err := goal.New(sessionID, objective, selection, budget, capabilities, d.newIncarnation(), d.now())
+	g, err := goal.New(sessionID, objective, selection, capabilities, d.newIncarnation(), d.now())
 	if err != nil {
 		return goal.Goal{}, err
 	}
@@ -667,7 +666,7 @@ func (d *Driver) quiesceDrive(ctx context.Context, sessionID string) error {
 
 // Reconcile degrades Goals whose drive owner died. A goal whose Session no
 // longer exists is cleared; an abandoned active Goal becomes paused rather than
-// silently resuming and burning budget; a Goal caught at transient complete is
+// silently resuming and consuming resources; a Goal caught at transient complete is
 // cleared. The same cross-process lease held by a live drive makes startup and
 // survivor sweeps skip it. Every transition still uses the listed version and
 // fails closed on a CAS miss.

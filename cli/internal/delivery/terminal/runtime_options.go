@@ -158,7 +158,7 @@ func (a *app) ShowRuntimeStatus() {
 func runtimeStatusText(profile *runtimebinding.Profile, options agent.RunOptions, mode protocol.ApprovalMode) string {
 	lines := []string{
 		"model: " + modelLabel(options),
-		"approval mode: " + string(mode) + limitsLabel(options.Limits),
+		"approval mode: " + string(mode),
 	}
 	if profile == nil {
 		return strings.Join(lines, "\n")

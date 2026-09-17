@@ -282,7 +282,6 @@ type RootExecutionStart struct {
 	WorkspaceCWD   string
 	Isolated       bool
 	ModelSelection modelref.Selection
-	Limits         run.Limits
 	Options        *corechat.Options
 	// WorkingContext is the complete provider-neutral context for a fresh
 	// execution, including the current user message as its final entry. It is a

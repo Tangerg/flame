@@ -438,7 +438,7 @@ func (g *goalBindingStub) GetGoal(context.Context, protocol.GoalRequest, flameru
 }
 
 func (g *goalBindingStub) StartGoal(_ context.Context, request protocol.StartGoalRequest, options flameruntime.CommandOptions) (*protocol.Goal, error) {
-	if request.SessionID != "ses_1" || request.Objective != "finish" || request.Budget == nil || request.Budget.MaxRuns == nil || *request.Budget.MaxRuns != 3 || options.IdempotencyKey == "" {
+	if request.SessionID != "ses_1" || request.Objective != "finish" || options.IdempotencyKey == "" {
 		g.t.Fatalf("start goal request = %+v, options = %+v", request, options)
 	}
 	g.last = "start"
@@ -476,11 +476,11 @@ func (g *goalBindingStub) ResumeGoal(context.Context, protocol.GoalRequest, flam
 }
 
 func activeProtocolGoal() *protocol.Goal {
-	maxRuns := 3
+
 	return &protocol.Goal{
 		SessionID: "ses_1", Objective: "finish", Status: protocol.GoalActive,
 		Provider: "openai", Model: "gpt-5.6-sol",
-		Budget: &protocol.GoalBudget{MaxRuns: &maxRuns}, CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(2, 0),
+		CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(2, 0),
 	}
 }
 
@@ -492,7 +492,7 @@ func TestGoalAdapterProjectsTheCompleteLifecycle(t *testing.T) {
 	}
 	started, err := runtime.StartGoal(t.Context(), protocol.StartGoalRequest{
 		SessionID: "ses_1", Objective: "finish",
-		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh", Budget: limitedGoalBudget(t, 3),
+		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
 	})
 	if err != nil || started.Status != protocol.GoalActive || started.ReasoningEffort != "xhigh" || stub.last != "start" {
 		t.Fatalf("StartGoal = (%+v, %v), last %q", started, err, stub.last)
@@ -530,7 +530,7 @@ func TestGoalAdapterAcceptsRuntimeResolvedInheritedSelection(t *testing.T) {
 	runtime := &Connection{goals: stub, meta: requestMeta("test")}
 
 	started, err := runtime.StartGoal(t.Context(), protocol.StartGoalRequest{
-		SessionID: "ses_1", Objective: "finish", Budget: limitedGoalBudget(t, 3),
+		SessionID: "ses_1", Objective: "finish",
 	})
 	if err != nil {
 		t.Fatalf("StartGoal with inherited selection: %v", err)
@@ -547,24 +547,6 @@ func TestGoalAdapterRejectsAResponseForAnotherSession(t *testing.T) {
 
 	_, _, err := runtime.GetGoal(t.Context(), "ses_other")
 	requireRuntimeContractViolation(t, err)
-}
-
-func TestGoalAdapterRejectsInvalidNestedBudgetBeforeCallingRuntime(t *testing.T) {
-	t.Parallel()
-	stub := &goalBindingStub{t: t}
-	runtime := &Connection{goals: stub, meta: requestMeta("test")}
-	invalid := -1
-
-	_, err := runtime.StartGoal(t.Context(), protocol.StartGoalRequest{
-		SessionID: "ses_1", Objective: "finish",
-		Budget: &protocol.GoalBudget{MaxRuns: &invalid},
-	})
-	if err == nil {
-		t.Fatal("StartGoal accepted a negative nested budget")
-	}
-	if stub.last != "" {
-		t.Fatalf("StartGoal called runtime before validating nested budget: %q", stub.last)
-	}
 }
 
 func TestGoalAdapterRejectsInvalidSessionIdentityBeforeCallingRuntime(t *testing.T) {
@@ -621,7 +603,7 @@ func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			}()},
 			invoke: func(runtime *Connection) error {
 				_, err := runtime.StartGoal(t.Context(), protocol.StartGoalRequest{
-					SessionID: "ses_1", Objective: "finish", Budget: limitedGoalBudget(t, 3),
+					SessionID: "ses_1", Objective: "finish",
 				})
 				return err
 			},
@@ -663,11 +645,6 @@ func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			requireRuntimeContractViolation(t, test.invoke(runtime))
 		})
 	}
-}
-
-func limitedGoalBudget(t testing.TB, maxRuns int) *protocol.GoalBudget {
-	t.Helper()
-	return &protocol.GoalBudget{MaxRuns: &maxRuns}
 }
 
 func ownedGoalResult(value *protocol.Goal) *protocol.Goal {

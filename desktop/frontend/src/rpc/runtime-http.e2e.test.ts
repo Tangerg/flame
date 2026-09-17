@@ -318,9 +318,12 @@ function scriptedReply(body: FakeChatRequest): {
   }
 
   if (
-    transcript.includes("E2E_GOAL_SETTLEMENT") &&
     availableTools.has("report_goal_outcome") &&
-    !hasToolResult
+    (((transcript.includes("E2E_GOAL_SETTLEMENT") ||
+      transcript.includes("E2E_GOAL_COMPLETE") ||
+      transcript.includes("E2E_GOAL_STOP")) &&
+      !hasToolResult) ||
+      (transcript.includes("E2E_GOAL_AFTER_INPUT") && toolResultCount === 1))
   ) {
     return {
       tool: {
@@ -1345,7 +1348,6 @@ for await (const line of lines) {
           faultClient.goals.start({
             sessionId,
             objective: "E2E_GOAL_REPLAY_CUTPOINT preserve one drive per command.",
-            budget: { maxRuns: 3 },
           }),
         ),
       ).resolves.toMatchObject({ status: "active", used: { runs: 0 } });
@@ -2792,7 +2794,7 @@ for await (const line of lines) {
     await expect(client.approval.getMode()).resolves.toEqual(original);
   }, 30_000);
 
-  it("drives a goal to its durable budget boundary", async () => {
+  it("completes a goal through its model-reported outcome", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
     const session = await client.sessions.create({
@@ -2810,28 +2812,21 @@ for await (const line of lines) {
     await expect(
       client.goals.start({
         sessionId,
-        objective: "E2E_GOAL complete one autonomous run.",
-        budget: { maxRuns: 1 },
+        objective: "E2E_GOAL_COMPLETE complete one autonomous run.",
       }),
     ).resolves.toMatchObject({
       sessionId: session.id,
       status: "active",
-      budget: { maxRuns: 1 },
       used: { runs: 0 },
     });
     await nextRuntimeEvent(runtimeEvents, "goals.changed");
 
     let current = await client.goals.get(sessionId);
-    for (let attempt = 0; attempt < 100 && current?.status === "active"; attempt++) {
+    for (let attempt = 0; attempt < 100 && current !== null; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 50));
       current = await client.goals.get(sessionId);
     }
-    expect(current).toMatchObject({
-      sessionId: session.id,
-      status: "blocked",
-      reason: { code: "runBudgetReached" },
-      used: { runs: 1 },
-    });
+    expect(current).toBeNull();
     await nextRuntimeEvent(runtimeEvents, "goals.changed");
 
     const runs = await client.runs.list({ sessionId });
@@ -2841,9 +2836,6 @@ for await (const line of lines) {
       status: "finished",
       outcome: { type: "completed" },
     });
-    await expect(client.goals.resume(sessionId)).rejects.toSatisfy(
-      (error: unknown) => error instanceof RpcError && errorType(error.data) === "invalid_params",
-    );
 
     streamController.abort();
     await runtimeEvents.return?.();
@@ -2920,8 +2912,7 @@ for await (const line of lines) {
     await expect(
       client.goals.start({
         sessionId,
-        objective: "E2E_HITL attempt to ask for input from this headless goal run.",
-        budget: { maxRuns: 1 },
+        objective: "E2E_HITL E2E_GOAL_AFTER_INPUT ask for input, then complete the goal.",
       }),
     ).resolves.toMatchObject({
       sessionId: session.id,
@@ -2988,15 +2979,11 @@ for await (const line of lines) {
     });
 
     current = await client.goals.get(sessionId);
-    for (let attempt = 0; attempt < 100 && current?.status === "active"; attempt++) {
+    for (let attempt = 0; attempt < 100 && current !== null; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 50));
       current = await client.goals.get(sessionId);
     }
-    expect(current).toMatchObject({
-      status: "blocked",
-      reason: { code: "runBudgetReached" },
-      used: { runs: 1 },
-    });
+    expect(current).toBeNull();
   }, 30_000);
 
   it("stops an active goal, cancels its owned run and resumes from durable usage", async () => {
@@ -3014,7 +3001,6 @@ for await (const line of lines) {
         client.goals.start({
           sessionId,
           objective: "E2E_GOAL_STOP exercise stop and resume.",
-          budget: { maxRuns: 2 },
         }),
       ).resolves.toMatchObject({ status: "active", used: { runs: 0 } });
       await within(gate.arrived.promise, "the goal-owned model request");
@@ -3043,15 +3029,11 @@ for await (const line of lines) {
         used: { runs: 1 },
       });
       let current = await client.goals.get(sessionId);
-      for (let attempt = 0; attempt < 100 && current?.status === "active"; attempt++) {
+      for (let attempt = 0; attempt < 100 && current !== null; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 50));
         current = await client.goals.get(sessionId);
       }
-      expect(current).toMatchObject({
-        status: "blocked",
-        reason: { code: "runBudgetReached" },
-        used: { runs: 2 },
-      });
+      expect(current).toBeNull();
       const runs = await client.runs.list({ sessionId });
       expect(runs.data).toHaveLength(2);
       expect(runs.data.filter((run) => run.outcome?.type === "canceled")).toHaveLength(1);
@@ -4396,7 +4378,6 @@ for await (const line of lines) {
             text: `${compactionCutpointMarker} advance the Plan while processing long context.`,
           },
         ],
-        limits: { maxSteps: 32 },
       });
       const failedEvents = collectRunEvents(started.events);
       await within(openingCall.arrived.promise, "the opening model call");
@@ -4484,7 +4465,6 @@ for await (const line of lines) {
             text: `${compactionCutpointMarker} reach the compaction crash cutpoint.`,
           },
         ],
-        limits: { maxSteps: 32 },
       });
       const runId = asRunId(started.result.runId);
       const killedStream = collectRunEvents(started.events).then(
@@ -4580,7 +4560,6 @@ for await (const line of lines) {
     await client.goals.start({
       sessionId: goalSessionId,
       objective: "E2E_HITL preserve this Goal wait across SIGKILL.",
-      budget: { maxRuns: 1 },
     });
     let goal = await client.goals.get(goalSessionId);
     for (let attempt = 0; attempt < 100 && goal?.status === "active"; attempt++) {
@@ -4612,7 +4591,6 @@ for await (const line of lines) {
       await client.goals.start({
         sessionId: activeGoalSessionId,
         objective: "E2E_FORCE_KILL_GOAL remain active until process death.",
-        budget: { maxRuns: 2 },
       });
       await within(gate.arrived.promise, "the SIGKILL Goal model request");
       const activeGoalRuns = await client.runs.list({ sessionId: activeGoalSessionId });

@@ -28,7 +28,7 @@ const (
 // FinishedAt stay here because they are lifecycle rather than metering: a
 // `status:"finished"` a client cannot explain would only send it back for another
 // request. What is left out is what grows with the model and the subtree —
-// metrics, limits, protocol profile, active segment — and that is [RunRef].
+// metrics, protocol profile, active segment — and that is [RunRef].
 type RunSummary struct {
 	ID              string `json:"id"`
 	SessionID       string `json:"sessionId"`
@@ -70,17 +70,12 @@ type RunRef struct {
 	ActiveSegmentID string `json:"activeSegmentId,omitempty"`
 	// Metrics is what the run has consumed so far, cumulative over every segment
 	// and present in every status. It is not optional: a running run costs money,
-	// and a client that can only see spend once a run ends cannot show a budget.
+	// and clients need current consumption while execution continues.
 	Metrics RunMetrics `json:"metrics"`
 	// ContextTokens is the latest completed model request's prompt footprint.
 	// It survives waiting, terminalization, and restart; absence means this Run
 	// has not produced an authoritative footprint yet.
 	ContextTokens int64 `json:"contextTokens,omitempty"`
-	// Limits is the allowance in force for this run, omitted when it runs
-	// uncapped. It is the durable execution policy the run was admitted under,
-	// not an echo of the request — a resume and a cross-restart recovery report
-	// the same caps as the first segment.
-	Limits *RunLimits `json:"limits,omitempty"`
 	// ProtocolProfile is the protocol contract this run was created under, and it
 	// is present in every status: a client that reconnects to a run has to know
 	// what the run may publish before it starts folding the stream.
@@ -133,16 +128,6 @@ type RunMetrics struct {
 	ActiveDurationMillis int64 `json:"activeDurationMillis"`
 }
 
-// RunLimits is a bounded allowance a run may consume before it is stopped.
-// Every present field is a strictly positive cap and at least one field
-// must be present. An omitted RunRef.limits or StartRunRequest.limits is the only
-// unlimited wire representation.
-type RunLimits struct {
-	MaxTotalTokens *int64   `json:"maxTotalTokens,omitempty"`
-	MaxSteps       *int     `json:"maxSteps,omitempty"`
-	MaxBudgetUSD   *float64 `json:"maxBudgetUsd,omitempty"`
-}
-
 // RunOutcomeType discriminates the RunOutcome union.
 type RunOutcomeType string
 
@@ -150,11 +135,18 @@ const (
 	OutcomeCompleted RunOutcomeType = "completed"
 	OutcomeTimedOut  RunOutcomeType = "timedOut"
 	OutcomeFailed    RunOutcomeType = "failed"
-	OutcomeMaxSteps  RunOutcomeType = "maxSteps"
-	OutcomeMaxBudget RunOutcomeType = "maxBudget"
-	OutcomeCanceled  RunOutcomeType = "canceled"
-	OutcomeLost      RunOutcomeType = "lost"
+
+	OutcomeCanceled RunOutcomeType = "canceled"
+	OutcomeLost     RunOutcomeType = "lost"
 )
+
+type UnresolvedEffect struct {
+	ProcessID string `json:"processId"`
+	EffectID  string `json:"effectId"`
+	Cause     string `json:"cause"`
+	Reason    string `json:"reason,omitempty"`
+	Detail    string `json:"detail,omitempty"`
+}
 
 // RunOutcome is a tag-discriminated union over why a run STOPPED FOR GOOD.
 // It answers only that: what the run consumed is RunMetrics, published
@@ -162,21 +154,20 @@ const (
 //
 //	completed                → nothing further
 //	error                    → Error
-//	maxSteps/maxBudget/canceled → optional Detail
+//	canceled                 → optional Detail
 //
 // An interrupt is deliberately not a member: parking is a status, not a terminal
 // reason, and a parked run is resumable. The segment that parked reports it as a
 // [SegmentOutcome].
 type RunOutcome struct {
-	Type RunOutcomeType `json:"type"`
+	UnresolvedEffects []UnresolvedEffect `json:"unresolvedEffects,omitempty"`
+	Type              RunOutcomeType     `json:"type"`
 	// Error explains the error terminal and appears on no other. Its own Detail
 	// carries the human-readable note, which is why Detail below stays
 	// absent here rather than repeating it.
 	Error *ProblemData `json:"error,omitempty"`
 	// Detail is a human-readable note for the non-error terminals
-	// (maxSteps / maxBudget / canceled) — lets the client tell "user
-	// canceled" from "timed out", show "$X / $Y" for maxBudget, etc. The
-	// runs.cancel reason flows here.
+	// canceled outcome. The runs.cancel reason flows here.
 	Detail string `json:"detail,omitempty"`
 }
 
@@ -202,8 +193,6 @@ const (
 	SegmentCompleted = SegmentOutcomeType(OutcomeCompleted)
 	SegmentTimedOut  = SegmentOutcomeType(OutcomeTimedOut)
 	SegmentFailed    = SegmentOutcomeType(OutcomeFailed)
-	SegmentMaxSteps  = SegmentOutcomeType(OutcomeMaxSteps)
-	SegmentMaxBudget = SegmentOutcomeType(OutcomeMaxBudget)
 	SegmentCanceled  = SegmentOutcomeType(OutcomeCanceled)
 	SegmentLost      = SegmentOutcomeType(OutcomeLost)
 )
@@ -215,7 +204,8 @@ const (
 //	suspended                → nothing further
 //	every RunOutcomeType     → as RunOutcome
 type SegmentOutcome struct {
-	Type SegmentOutcomeType `json:"type"`
+	UnresolvedEffects []UnresolvedEffect `json:"unresolvedEffects,omitempty"`
+	Type              SegmentOutcomeType `json:"type"`
 	// Error and Detail belong to the terminal tags, and carry exactly what the
 	// same-named RunOutcome fields do.
 	Error  *ProblemData `json:"error,omitempty"`
@@ -227,7 +217,7 @@ type SegmentOutcome struct {
 
 // StartRunRequest is the runs.start body. The session owns cwd,
 // available tools, and its Plan, so clients send only the user input and
-// explicit execution limits/model selection.
+// explicit model selection.
 type StartRunRequest struct {
 	SessionID string         `json:"sessionId"`
 	Input     []ContentBlock `json:"input"`
@@ -239,7 +229,6 @@ type StartRunRequest struct {
 	Provider        string            `json:"provider,omitempty"`
 	Model           string            `json:"model,omitempty"`
 	ReasoningEffort string            `json:"reasoningEffort,omitempty"`
-	Limits          *RunLimits        `json:"limits,omitempty"`
 	Params          *GenerationParams `json:"params,omitempty"`
 }
 

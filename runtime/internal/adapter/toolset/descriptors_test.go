@@ -43,7 +43,7 @@ func (activeGoalStub) Report(context.Context, goals.ReportCommand) (goals.Report
 
 type allWiredGoalStarter struct{}
 
-func (allWiredGoalStarter) Start(context.Context, string, string, modelref.Selection, goal.Budget, run.Capabilities) (goal.Goal, error) {
+func (allWiredGoalStarter) Start(context.Context, string, string, modelref.Selection, run.Capabilities) (goal.Goal, error) {
 	return goal.Goal{}, nil
 }
 

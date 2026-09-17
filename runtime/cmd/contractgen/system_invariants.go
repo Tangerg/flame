@@ -30,7 +30,7 @@ func systemInvariants() []invariantEntry {
 	}, {
 		Key: "parked_continuation_matches_run_facts",
 		Why: "A continuation is a hand-off of the admitted Run, not a second author. " +
-			"If its model, cumulative accounting, limits, lineage, creation time, goal " +
+			"If its model, cumulative accounting, lineage, creation time, goal " +
 			"lease or capabilities differ, resume or teardown would rewrite history.",
 		Boundaries: []string{
 			"runsegment.opening",

@@ -7,7 +7,6 @@ import (
 	"iter"
 	"log/slog"
 	"runtime/debug"
-	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel/trace"
@@ -114,17 +113,14 @@ func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 		fact := commit.Fact()
 		err := s.handleAuthoritativeFact(event.Member, fact)
 		commit.Complete(err)
+		if err == nil && s.rootFinished {
+			return false
+		}
 		// A rejected authoritative write is reported synchronously to the
 		// executor. It then produces either a definite failed result or
 		// an unknown settlement; stopping this pump here would race that decision
 		// and tear down the only source able to report it.
 		return true
-	}
-	if unknown, detected := event.Payload.(UnknownEffectsDetected); detected {
-		if err := s.handleUnknownEffects(event.Member, unknown); err != nil {
-			s.fail(err)
-		}
-		return false
 	}
 	if barrier, interrupted := event.Payload.(TreeInterrupted); interrupted {
 		s.handleTreeBarrier(event, barrier)
@@ -172,6 +168,10 @@ func (s *segmentPump) handleChildRunReservation(
 			return true
 		}
 		_ = request.complete(existing.prepared.reservation.Binding, nil)
+		return true
+	}
+	if s.activeChildReservations(event.Member.ParentID) >= MaxActiveChildRuns {
+		_ = request.complete(ChildRunBinding{}, errors.New("runs: active child Run limit reached"))
 		return true
 	}
 	prepared, err := s.coordinator.prepareChildStart(
@@ -335,6 +335,13 @@ func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact Execut
 		return fmt.Errorf("runs: admitted child run %q has no segment reducer", route.runID)
 	}
 	fact = s.classifyChildCancellationFact(route, fact)
+	if engineEventEndsSegment(fact) {
+		if route == s.routes.root && s.routes.unfinishedCount() > 1 {
+			return errors.New("runs: authoritative root terminal precedes children")
+		}
+		_, err := s.projectFact(route, fact)
+		return err
+	}
 	speculative := route.reducer.clone()
 	batch, err := speculative.reduce(fact)
 	if err != nil {
@@ -349,80 +356,6 @@ func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact Execut
 	}
 	route.reducer = speculative
 	return nil
-}
-
-func (s *segmentPump) handleUnknownEffects(
-	member ExecutorMember,
-	unknown UnknownEffectsDetected,
-) error {
-	if err := unknown.validate(); err != nil {
-		return err
-	}
-	route, err := s.routes.resolve(member)
-	if err != nil {
-		return err
-	}
-	if route != s.routes.root {
-		return errors.New("runs: root-only execution reported unknown Effects for a child member")
-	}
-	details := []string{"external operations have no provable durable result"}
-	for _, effect := range unknown.Effects() {
-		detail := effect.ID
-		if effect.Detail != "" {
-			detail += ": " + effect.Detail
-		}
-		details = append(details, detail)
-	}
-	failure := run.Failure{Kind: run.FailureLost, Detail: strings.Join(details, "\n")}
-	ordered, err := s.routes.unfinishedInPostorder()
-	if err != nil {
-		return fmt.Errorf("runs: order unknown Effect loss: %w", err)
-	}
-	for _, unfinished := range ordered {
-		if err := s.commitUnknownEffectLoss(unfinished, failure); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *segmentPump) commitUnknownEffectLoss(route *executorRoute, failure run.Failure) error {
-	batch, err := route.reducer.reduce(NewSegmentEnded(
-		run.OutcomeLost,
-		&failure,
-		nil,
-		route.activeDuration(s.coordinator.publications.nowUTC()),
-	))
-	if err != nil {
-		return fmt.Errorf("runs: reduce unknown Effect loss: %w", err)
-	}
-	retry := unknownEffectCommitRetry{}
-	reported := false
-	for {
-		publication, publishErr := s.publisher.publishTerminalAtomically(s.ownerCtx, route, batch)
-		if publishErr == nil {
-			route.segmentFinished = publication.finished()
-			if route == s.routes.root {
-				s.rootFinished = publication.finished()
-				s.rootParked = false
-			}
-			return nil
-		}
-		if !reported {
-			// This retry is unbounded by design, and the Run stays blocked until it
-			// commits. A span reaches nobody on a host that configured no tracing,
-			// so a store outage here would stall a Run for as long as it lasts with
-			// no diagnostic anywhere. Reported once: the retry cadence backs off,
-			// and repeating one outage every attempt buries it.
-			slog.ErrorContext(s.ownerCtx, "runs: unknown Effect loss commit failed, retrying until it commits",
-				"session.id", s.spec.SessionID, "run.id", route.runID, "error", publishErr)
-			reported = true
-		}
-		trace.SpanFromContext(s.ctx).RecordError(fmt.Errorf("runs: retry unknown Effect loss: %w", publishErr))
-		if waitErr := retry.wait(s.ownerCtx); waitErr != nil {
-			return errors.Join(publishErr, waitErr)
-		}
-	}
 }
 
 func (s *segmentPump) handleTreeBarrier(event ExecutorEvent, barrier TreeInterrupted) {
@@ -501,7 +434,11 @@ func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionF
 	}
 	var publication reductionPublication
 	if terminalFact {
-		publication, err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, reductions)
+		if end, ok := executionFact.(SegmentEnded); ok && (len(end.unresolvedEffects) > 0 || end.Reason == run.OutcomeLost) {
+			publication, err = s.publishTerminal(route, reductions)
+		} else {
+			publication, err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, reductions)
+		}
 	} else {
 		publication, err = s.publisher.publish(s.ownerCtx, route, reductions)
 	}
@@ -526,21 +463,10 @@ func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionF
 	return !s.rootParked && !s.rootFinished, nil
 }
 
-// resumeDeferredRootTerminal commits the root boundary held back while children
-// were still live, once the last of them has terminalized.
-//
-// The executor ends a canceled subtree by cancelling the children's work and
-// publishing the parent's terminal first, so a root cancellation routinely
-// arrives ahead of the children it ended. Committing it on arrival would close
-// the tree over live descendant rows, and the durable Run projection has no way
-// to represent that: the partial unique index only keeps one non-terminal tree
-// per Session, so publication order is the only thing enforcing it.
-//
-// Holding the root's own fact rather than stopping here is what lets the
-// children report their real terminals — a child cancelled inside a provider
-// call settles as canceled, where a synthesized close would have to call it
-// lost. When the executor stream ends before the children report, the terminal
-// synthesis in finish() remains the backstop and closes the tree itself.
+// A non-authoritative executor may report the root boundary before its children.
+// Hold that exact fact until the children finish: synthesizing it would discard
+// the root's outcome, diagnostics, and timing. Authoritative receipts require
+// child-first publication and reject this ordering instead.
 func (s *segmentPump) resumeDeferredRootTerminal() (bool, error) {
 	if s.deferredRootTerminal == nil || s.routes.unfinishedCount() != 1 {
 		return true, nil
@@ -665,7 +591,13 @@ func (s *segmentPump) synthesizeUnfinished() {
 }
 
 func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute) bool {
-	reductions, err := route.reducer.synthesizeTerminal()
+	var reductions reductionBatch
+	var err error
+	if route == s.routes.root && s.deferredRootTerminal != nil {
+		reductions, err = route.reducer.reduce(s.deferredRootTerminal)
+	} else {
+		reductions, err = route.reducer.synthesizeTerminal()
+	}
 	if err != nil {
 		s.fail(err)
 		return false
@@ -766,4 +698,19 @@ func recordRunCleanupError(ctx context.Context, err error) {
 	}
 	slog.ErrorContext(ctx, "runs: Run cleanup failed", "error", err)
 	trace.SpanFromContext(ctx).RecordError(err)
+}
+
+func (s *segmentPump) activeChildReservations(parentID string) int {
+	count := 0
+	for _, route := range s.routes.byMember {
+		if route.member.ParentID == parentID && !route.segmentFinished {
+			count++
+		}
+	}
+	for _, child := range s.childStarts {
+		if child.prepared.member.ParentID == parentID && child.outcome == "" {
+			count++
+		}
+	}
+	return count
 }

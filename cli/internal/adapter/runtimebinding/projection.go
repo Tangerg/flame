@@ -23,18 +23,8 @@ func projectRun(value protocol.RunRef) (agent.Run, error) {
 		Lineage: lineage,
 		Status:  value.Status, ActiveSegmentID: value.ActiveSegmentID,
 		CreatedAt: value.CreatedAt, FinishedAt: value.FinishedAt,
-		Limits: agent.UnlimitedRunLimits(), ContextTokens: value.ContextTokens,
-		Usage: projectUsage(value.Metrics), ProtocolProfile: projectRunProtocolProfile(value.ProtocolProfile),
-	}
-	if value.Limits != nil {
-		projected.Limits, err = agent.NewRunLimits(agent.RunLimitValues{
-			MaxTotalTokens: value.Limits.MaxTotalTokens,
-			MaxSteps:       value.Limits.MaxSteps,
-			MaxBudgetUSD:   value.Limits.MaxBudgetUSD,
-		})
-		if err != nil {
-			return agent.Run{}, fmt.Errorf("runtime run %s limits: %w", value.ID, err)
-		}
+		ContextTokens: value.ContextTokens,
+		Usage:         projectUsage(value.Metrics), ProtocolProfile: projectRunProtocolProfile(value.ProtocolProfile),
 	}
 	if value.Outcome != nil {
 		projected.Outcome = projectRunOutcome(*value.Outcome)

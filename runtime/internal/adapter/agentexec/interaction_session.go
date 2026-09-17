@@ -28,14 +28,13 @@ type interactionSession struct {
 	ref        runs.ExecutorRef
 	scope      runs.ExecutionScope
 	deployment agent.Deployment
-	input      agent.Input
+	input      agent.Payload
 	engine     *agent.Engine
 
 	lifetime            interactionLifetime
 	state               interactionState
 	childProjection     interactionChildProjection
 	accounting          interactionAccounting
-	allowance           *interactionAllowance
 	unknownPollInterval time.Duration
 	statePollInterval   time.Duration
 	mcpToolAutoApproved func(server, tool string) bool
@@ -43,7 +42,6 @@ type interactionSession struct {
 	lifecycleHooks      InteractionLifecycleHooks
 	buildID             runtimeidentity.BuildID
 	start               runs.RootExecutionStart
-	toolOutcomes        interactionToolOutcomes
 	modelFailures       interactionModelFailures
 	committedReplies    interactionCommittedReplies
 	effectFailures      interactionEffectFailures
@@ -52,7 +50,7 @@ type interactionSession struct {
 
 // interactionState owns the one lock domain whose facts must move atomically:
 // the live Process, its observation/waiting boundary, exact pending steers,
-// and Delegate topology. Accounting, repetition detection,
+// and Delegate topology. Accounting,
 // committed replies, and Segment timing have independent invariants and do not
 // belong under this lock.
 type interactionState struct {
@@ -211,7 +209,7 @@ func (i *interactionSession) startWorkers() {
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
 	select {
-	case <-i.lifetime.releasing:
+	case <-i.lifetime.releasing.Done():
 		return
 	default:
 	}
@@ -363,8 +361,27 @@ func (i *interactionSession) commitFact(
 	member runs.ExecutorMember,
 	fact runs.ExecutionFact,
 ) error {
-	ctx, cancel := i.lifetime.bind(ctx)
-	defer cancel()
+	// New work follows execution cancellation. Settled outcomes survive it until
+	// the product owner releases the session and stops consuming publication.
+	owner := i.lifetime.execution
+	switch fact.(type) {
+	case runs.ModelCallCompleted, runs.ModelCallFailed, runs.ToolResultsCommitted,
+		runs.AssistantMessageCompleted, runs.SegmentEnded:
+		owner = i.lifetime.releasing
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := owner.Err(); err != nil {
+		return err
+	}
+	bound, cancel := context.WithCancel(ctx)
+	stop := context.AfterFunc(owner, cancel)
+	defer func() {
+		stop()
+		cancel()
+	}()
+	ctx = bound
 	commit, receipt, err := runs.NewExecutionFactCommit(fact)
 	if err != nil {
 		return err
@@ -402,9 +419,7 @@ func (i *interactionSession) reconcileExecutionState() {
 		case <-i.lifetime.reconciling.Done():
 			return
 		}
-		ctx, cancel := context.WithTimeout(i.lifetime.reconciling, authoritativeProjectionTimeout)
-		progressed, err := i.reconcileCompletedDelegateChildren(ctx)
-		cancel()
+		progressed, err := i.reconcileCompletedDelegateChildren(i.lifetime.reconciling)
 		if err != nil {
 			if !releasedDuringProjection(err) {
 				i.publishProjectionFailure(err)
@@ -428,8 +443,7 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 		return false
 	}
 	i.state.mu.Unlock()
-	ctx, cancel := context.WithTimeout(i.lifetime.reconciling, authoritativeProjectionTimeout)
-	defer cancel()
+	ctx := i.lifetime.reconciling
 	snapshot, interruptions, found, err := i.captureHumanInputBarrier(ctx)
 	if err != nil {
 		if !releasedDuringProjection(err) {
@@ -542,13 +556,12 @@ func (i *interactionState) continueExecution() {
 func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
 	return slices.Equal(left.ToolResultIDs, right.ToolResultIDs) && left.RootMemberID == right.RootMemberID && left.BuildID == right.BuildID &&
 		left.Scope == right.Scope && left.ModelSelection.Equal(right.ModelSelection) &&
-		left.Limits == right.Limits && slices.Equal(left.Usage.Models, right.Usage.Models) &&
+		slices.Equal(left.Usage.Models, right.Usage.Models) &&
 		bytes.Equal(left.Payload, right.Payload)
 }
 
 func (i *interactionSession) reportUnknownEffects() bool {
-	ctx, cancel := context.WithTimeout(i.lifetime.reconciling, authoritativeProjectionTimeout)
-	defer cancel()
+	ctx := i.lifetime.reconciling
 	ids, readable := i.unknownEffectIDs(ctx)
 	if !readable || len(ids) == 0 {
 		return false
@@ -559,39 +572,30 @@ func (i *interactionSession) reportUnknownEffects() bool {
 		return true
 	}
 	i.state.unknownReported = true
-	member := runs.ExecutorMember{MemberID: i.state.process.Relation().ProcessID().String()}
+	process := i.state.process
 	i.state.mu.Unlock()
-	return i.lifetime.send(runs.ExecutorEvent{
-		Member: member, Payload: runs.NewUnknownEffectsDetected(i.effectFailures.observations(ids)),
-	})
+	if err := process.Kill(ctx, unresolvedEffectsStopReason); err != nil && !errors.Is(err, agent.ErrProcessFinished) {
+		i.publishProjectionFailure(err)
+	}
+	return true
 }
 
 func (i *interactionSession) await() {
-	joinCtx := context.WithoutCancel(i.lifetime.execution)
+	joinCtx, cancelJoin := i.lifetime.publicationContext(i.lifetime.execution)
+	defer cancelJoin()
 	result, err := i.state.process.Await(joinCtx)
 	if err == nil {
-		projectionCtx, cancel := context.WithTimeout(joinCtx, authoritativeProjectionTimeout)
-		_, sweepErr := i.reconcileCompletedDelegateChildren(projectionCtx)
-		cancel()
-		// A last sweep the owner released out from under has not found a broken
-		// Run. The terminal published below is the authoritative fact either way.
-		if !releasedDuringProjection(sweepErr) {
-			err = sweepErr
-		}
+		err = i.state.process.Join(joinCtx)
 	}
 	i.stopReconciliation()
 	if err == nil {
-		// A Tool call and a Delegate both outlive the result of the member that
-		// made them: Await reports the root's outcome while its descendants are
-		// still being reaped. The Engine closes only once the whole tree is
-		// finished, so the join is what proves that, not the root result.
-		err = i.state.process.Join(joinCtx)
-	}
-	if err == nil {
-		err = i.engine.Close(joinCtx)
+		_, err = i.reconcileCompletedDelegateChildren(joinCtx)
 	}
 	if err == nil {
 		err = i.publishResult(result)
+	}
+	if err == nil {
+		err = i.engine.Close(joinCtx)
 	}
 	if err != nil {
 		i.publishProjectionFailure(err)
@@ -633,12 +637,16 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 	if err != nil {
 		return err
 	}
-	if i.lifetime.send(runs.ExecutorEvent{Member: member, Payload: end}) {
-		i.modelFailures.forget(result.ProcessID())
+	ctx := context.WithoutCancel(i.lifetime.execution)
+	if err := i.commitFact(ctx, member, end); err != nil {
+		return err
 	}
+	i.modelFailures.forget(result.ProcessID())
 	if i.lifecycleHooks != nil {
+		ctx, cancel := context.WithTimeout(ctx, auxiliaryOperationTimeout)
+		defer cancel()
 		if err := i.lifecycleHooks.NotifyStopped(
-			i.lifetime.execution, i.start.SessionID, i.start.WorkspaceCWD, string(end.Reason),
+			ctx, i.start.SessionID, i.start.WorkspaceCWD, string(end.Reason),
 		); err != nil {
 			slog.ErrorContext(i.lifetime.execution, "agentexec: notify stopped",
 				"session.id", i.start.SessionID, "error", err,
@@ -707,11 +715,6 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 	termination := result.Termination()
 	duration := i.segmentClock.duration(result.StartedAt(), result.FinishedAt())
 	end := segmentEndFromTermination(termination, duration)
-	if failure, failed := termination.Failure(); failed && failure.Code() == "interaction.host.failed" {
-		if stop := i.allowance.denial(result.ProcessID()); stop != interactionAllowanceOpen {
-			end = segmentEndFromAllowance(stop, duration)
-		}
-	}
 	if termination.Cause() == agent.TerminationCauseHostCancellation && termination.Reason() == modelProcessStopReason {
 		if classified, found := i.modelFailures.lookup(result.ProcessID()); found {
 			end.reason = run.OutcomeFailed
@@ -722,32 +725,19 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 	if err != nil {
 		return runs.SegmentEnded{}, err
 	}
-	return runs.NewSegmentEnded(end.reason, end.failure, usage, end.duration), nil
+	ctx, cancel := i.lifetime.publicationContext(i.lifetime.execution)
+	defer cancel()
+	effects, err := i.terminalEffects(ctx, result.ProcessID())
+	if err != nil {
+		return runs.SegmentEnded{}, err
+	}
+	return runs.NewSegmentEnded(end.reason, end.failure, usage, end.duration).WithUnresolvedEffects(effects), nil
 }
 
 type segmentEndDraft struct {
 	reason   run.Outcome
 	failure  *run.Failure
 	duration time.Duration
-}
-
-func segmentEndFromAllowance(stop interactionAllowanceStop, duration time.Duration) segmentEndDraft {
-	end := segmentEndDraft{duration: duration}
-	switch stop {
-	case interactionAllowanceStepsExhausted:
-		end.reason = run.OutcomeMaxSteps
-	case interactionAllowanceBudgetExhausted:
-		end.reason = run.OutcomeMaxBudget
-	case interactionAllowancePricingUnavailable:
-		end.reason = run.OutcomeFailed
-		end.failure = &run.Failure{
-			Kind:   run.FailureProviderRejected,
-			Detail: "served model pricing is unavailable for the configured cost limit",
-		}
-	default:
-		panic("agentexec: impossible allowance stop")
-	}
-	return end
 }
 
 func segmentEndFromTermination(termination agent.Termination, duration time.Duration) segmentEndDraft {
@@ -768,10 +758,6 @@ func segmentEndFromTermination(termination agent.Termination, duration time.Dura
 		end.reason = run.OutcomeCanceled
 	case agent.TerminationCauseExecutionFailure:
 		failure, _ := termination.Failure()
-		if failure.Code() == "interaction.limit.model_calls" {
-			end.reason = run.OutcomeMaxSteps
-			break
-		}
 		end.reason = run.OutcomeFailed
 		problem := run.Failure{
 			Kind:   run.FailureAgentStuck,
@@ -804,6 +790,11 @@ func segmentEndFromTermination(termination agent.Termination, duration time.Dura
 		}
 		end.failure = &problem
 	case agent.TerminationCauseEngineKill:
+		if termination.Reason() == unresolvedEffectsStopReason {
+			end.reason = run.OutcomeLost
+			end.failure = &run.Failure{Kind: run.FailureLost, Detail: "external operations have no provable durable result"}
+			break
+		}
 		end.reason = run.OutcomeFailed
 		problem := run.Failure{
 			Kind:   run.FailureInternal,
@@ -820,3 +811,5 @@ func segmentEndFromTermination(termination agent.Termination, duration time.Dura
 	}
 	return end
 }
+
+const unresolvedEffectsStopReason = "runtime unresolved external effects"

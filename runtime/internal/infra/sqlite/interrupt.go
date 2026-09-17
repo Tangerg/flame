@@ -60,7 +60,6 @@ type ContinuationRecord struct {
 	RunCreatedAt   time.Time
 	Metrics        run.Metrics
 	ContextTokens  int64
-	Limits         run.Limits
 }
 
 // InterruptBindingRecord is the stored item-to-input-request correspondence.
@@ -641,7 +640,7 @@ func continuationRows(values []ContinuationRecord) []continuationRow {
 			DrainedTools:    drainedToolRows(value.DrainedTools),
 			RunCreatedAt:    value.RunCreatedAt.UnixNano(),
 			ContextTokens:   value.ContextTokens,
-			Accounting:      runAccountingRowOf(value.Metrics, value.Limits),
+			Accounting:      runAccountingRowOf(value.Metrics),
 		}
 	}
 	return rows
@@ -654,7 +653,7 @@ func continuationsFromRows(rows []continuationRow) ([]ContinuationRecord, error)
 		if err != nil {
 			return nil, fmt.Errorf("continuation[%d] model selection: %w", index, err)
 		}
-		metrics, limits, err := row.Accounting.values()
+		metrics, err := row.Accounting.values()
 		if err != nil {
 			return nil, fmt.Errorf("continuation[%d] accounting: %w", index, err)
 		}
@@ -671,7 +670,6 @@ func continuationsFromRows(rows []continuationRow) ([]ContinuationRecord, error)
 			RunCreatedAt:   time.Unix(0, row.RunCreatedAt).UTC(),
 			Metrics:        metrics,
 			ContextTokens:  row.ContextTokens,
-			Limits:         limits,
 		}
 	}
 	return values, nil

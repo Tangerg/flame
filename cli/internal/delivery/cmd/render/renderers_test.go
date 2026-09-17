@@ -34,7 +34,7 @@ func TestTextRendersStreamedAnswerToolAndUsage(t *testing.T) {
 func TestTextRendersRunRecoveryMetadata(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewText(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Render(testEvent("failed", agent.RunFinished{Outcome: agent.Outcome{
@@ -55,10 +55,10 @@ func TestTextRendersRunRecoveryMetadata(t *testing.T) {
 	}
 }
 
-func TestRunOptionsJSONUsesLimitPresenceInsteadOfZeroFilling(t *testing.T) {
+func TestRunOptionsJSONPreservesGenerationParameterPresence(t *testing.T) {
 	temperature, topP, maxTokens := 0.7, 0.9, int64(2_048)
-	unlimited, err := json.Marshal(encodeRunOptions(agent.RunOptions{
-		Provider: "mock", Model: "balanced", ReasoningEffort: "high", Limits: agent.UnlimitedRunLimits(),
+	configured, err := json.Marshal(encodeRunOptions(agent.RunOptions{
+		Provider: "mock", Model: "balanced", ReasoningEffort: "high",
 		Generation: protocol.GenerationParams{
 			Temperature: &temperature, MaxTokens: &maxTokens, TopP: &topP, Stop: []string{"END"},
 		},
@@ -66,28 +66,23 @@ func TestRunOptionsJSONUsesLimitPresenceInsteadOfZeroFilling(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := string(unlimited), `{"provider":"mock","model":"balanced","reasoningEffort":"high","params":{"temperature":0.7,"maxTokens":2048,"topP":0.9,"stop":["END"]}}`; got != want {
-		t.Fatalf("unlimited options = %s, want %s", got, want)
+	if got, want := string(configured), `{"provider":"mock","model":"balanced","reasoningEffort":"high","params":{"temperature":0.7,"maxTokens":2048,"topP":0.9,"stop":["END"]}}`; got != want {
+		t.Fatalf("configured options = %s, want %s", got, want)
 	}
 
-	maxSteps := 12
-	limits, err := agent.NewRunLimits(agent.RunLimitValues{MaxSteps: &maxSteps})
+	inherited, err := json.Marshal(encodeRunOptions(agent.RunOptions{Provider: "mock", Model: "balanced"}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	limited, err := json.Marshal(encodeRunOptions(agent.RunOptions{Provider: "mock", Model: "balanced", Limits: limits}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := string(limited), `{"provider":"mock","model":"balanced","limits":{"maxSteps":12}}`; got != want {
-		t.Fatalf("limited options = %s, want %s", got, want)
+	if got, want := string(inherited), `{"provider":"mock","model":"balanced"}`; got != want {
+		t.Fatalf("inherited options = %s, want %s", got, want)
 	}
 }
 
 func TestTextStreamsOrderedDeltasUntilAuthoritativeCompletion(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewText(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range []agent.RunEvent{
@@ -179,7 +174,7 @@ func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 
 	var textOutput bytes.Buffer
 	textRenderer := NewText(&textOutput)
-	if err := textRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := textRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := textRenderer.Render(event); err != nil {
@@ -194,7 +189,7 @@ func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 
 	var jsonOutput bytes.Buffer
 	jsonRenderer := NewNDJSON(&jsonOutput)
-	if err := jsonRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := jsonRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := jsonRenderer.Render(event); err != nil {
@@ -211,7 +206,7 @@ func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 func TestNDJSONPreservesProgressToolArgumentsAndCustomPayloads(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewNDJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	step, contextTokens := 4, int64(16_384)
@@ -250,7 +245,7 @@ func TestNDJSONPreservesProgressToolArgumentsAndCustomPayloads(t *testing.T) {
 func TestNDJSONCarriesContentDelta(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewNDJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Render(testEvent("content", agent.BlockDelta{BlockID: "answer", Text: "third"})); err != nil {
@@ -338,7 +333,7 @@ func TestOutcomeJSONPreservesStructuredProblem(t *testing.T) {
 func TestResultJSONRetainsLatestRootProgressUsageBeforeSettlement(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Render(testEvent("progress", agent.RunProgress{Usage: &agent.Usage{InputTokens: 33, OutputTokens: 5}})); err != nil {
@@ -440,7 +435,7 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 
 	var stream bytes.Buffer
 	ndjson := NewNDJSON(&stream)
-	if err := ndjson.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := ndjson.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := ndjson.Render(completed); err != nil {
@@ -457,7 +452,7 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 
 	var resultOutput bytes.Buffer
 	result := NewResultJSON(&resultOutput)
-	if err := result.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := result.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := result.Render(completed); err != nil {
@@ -476,7 +471,7 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 
 	var textOutput bytes.Buffer
 	plain := NewText(&textOutput)
-	if err := plain.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := plain.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := plain.Render(completed); err != nil {
@@ -490,7 +485,7 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 func TestNDJSONPreservesCompleteToolArgumentsAndResult(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewNDJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	event := testEvent("tool", agent.BlockCompleted{Block: agent.Block{
@@ -517,7 +512,7 @@ func TestNDJSONPreservesCompleteToolArgumentsAndResult(t *testing.T) {
 func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	question := agent.Question{
@@ -550,7 +545,7 @@ func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 func TestResultJSONFoldsFinalAssistantProjection(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{Provider: "mock", Model: "balanced", Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{Provider: "mock", Model: "balanced"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range testEvents() {
@@ -575,7 +570,7 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 
 	var textOutput bytes.Buffer
 	textRenderer := NewText(&textOutput)
-	if err := textRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := textRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range events {
@@ -597,7 +592,7 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 
 	var streamOutput bytes.Buffer
 	streamRenderer := NewNDJSON(&streamOutput)
-	if err := streamRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := streamRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range events {
@@ -618,7 +613,7 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 
 	var resultOutput bytes.Buffer
 	resultRenderer := NewResultJSON(&resultOutput)
-	if err := resultRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := resultRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range events {
@@ -660,9 +655,9 @@ func reconciliationSnapshot(t testing.TB) agent.SessionSnapshot {
 			{ID: "new", RunID: "run_new", Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "newer answer"},
 		},
 		Runs: []agent.Run{
-			{ID: "run_old", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
-			{ID: "run_1", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
-			{ID: "run_new", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			{ID: "run_old", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			{ID: "run_1", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			{ID: "run_new", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		},
 		Plan: &plan,
 	}
@@ -672,7 +667,7 @@ func requireScopedResultJSON(t *testing.T, snapshot agent.SessionSnapshot) {
 	t.Helper()
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Reconcile(snapshot); err != nil {
@@ -690,7 +685,7 @@ func requireScopedText(t *testing.T, snapshot agent.SessionSnapshot) {
 	t.Helper()
 	var output bytes.Buffer
 	textRenderer := NewText(&output)
-	if err := textRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := textRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := textRenderer.Reconcile(snapshot); err != nil {
@@ -708,7 +703,7 @@ func requireScopedStream(t *testing.T, snapshot agent.SessionSnapshot) {
 	t.Helper()
 	var output bytes.Buffer
 	streamRenderer := NewNDJSON(&output)
-	if err := streamRenderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+	if err := streamRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := streamRenderer.Reconcile(snapshot); err != nil {
@@ -802,7 +797,6 @@ func runTreeEvents(t *testing.T) []agent.RunEvent {
 		ID: "run_child", SessionID: root.SessionID,
 		Lineage:  lineage,
 		Provider: root.Provider, Model: root.Model, Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child",
-		Limits: agent.UnlimitedRunLimits(),
 	}
 	event := func(id, runID, segmentID string, payload agent.Event) agent.RunEvent {
 		return agent.RunEvent{
@@ -845,7 +839,7 @@ func testRun() agent.Run {
 	return agent.Run{
 		ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced",
 		Lineage: agent.RootRunLineage(),
-		Status:  protocol.RunStatusRunning, ActiveSegmentID: "seg_1", Limits: agent.UnlimitedRunLimits(),
+		Status:  protocol.RunStatusRunning, ActiveSegmentID: "seg_1",
 	}
 }
 

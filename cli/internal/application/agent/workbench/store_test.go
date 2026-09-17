@@ -219,7 +219,7 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 		Command: agent.StartRun{
 			CommandID: agent.CommandID("cli_11111111111111111111111111111111"),
 			SessionID: sessionID, Message: agent.Message{Text: "pending run"},
-			Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+			Options: agent.RunOptions{},
 		},
 	}
 	if stagePendingRunErr := store.StagePendingRun(pending); stagePendingRunErr != nil {
@@ -436,7 +436,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 		Command: agent.StartRun{
 			CommandID: agent.CommandID("cli_11111111111111111111111111111111"),
 			SessionID: sessionID, Message: agent.Message{Text: "pending run"},
-			Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+			Options: agent.RunOptions{},
 		},
 	}
 	if stagePendingRunErr := store.StagePendingRun(command); stagePendingRunErr != nil {
@@ -911,7 +911,7 @@ func TestStorePersistsAndAcknowledgesPendingRunsByCommandIdentity(t *testing.T) 
 	commandID := agent.CommandID("cli_0123456789abcdef0123456789abcdef")
 	pending := agent.StartRun{
 		CommandID: commandID, SessionID: "ses_1", Message: agent.Message{Text: "recover this start"},
-		Options: agent.RunOptions{Provider: "deepseek", Model: "deepseek-v4-flash", Limits: agent.UnlimitedRunLimits(), Generation: protocol.GenerationParams{Stop: []string{"done"}}},
+		Options: agent.RunOptions{Provider: "deepseek", Model: "deepseek-v4-flash", Generation: protocol.GenerationParams{Stop: []string{"done"}}},
 	}
 	if saveDraftErr := store.SaveDraft("ses_1", pending.Message); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
@@ -1089,7 +1089,7 @@ func TestStagingTheSameCommandRejectsADifferentPayload(t *testing.T) {
 	pending := PendingRun{State: PendingRunQueued, Command: agent.StartRun{
 		CommandID: agent.CommandID("cli_33333333333333333333333333333333"),
 		SessionID: "ses_1", Message: agent.Message{Text: "original"},
-		Options: agent.RunOptions{Provider: "deepseek", Model: "v4", Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{Provider: "deepseek", Model: "v4"},
 	}, Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard()}
 	if err := store.StagePendingRun(pending); err != nil {
 		t.Fatal(err)
@@ -1245,11 +1245,11 @@ func TestPendingRunSequenceKeepsTheOnlyDeliveryStateAtTheFIFOBoundary(t *testing
 	commands := []PendingRun{
 		{State: PendingRunQueued, Command: agent.StartRun{
 			CommandID: agent.CommandID("cli_11111111111111111111111111111111"),
-			SessionID: "ses_1", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+			SessionID: "ses_1", Message: agent.Message{Text: "first"}, Options: agent.RunOptions{},
 		}, Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard()},
 		{State: PendingRunQueued, Command: agent.StartRun{
 			CommandID: agent.CommandID("cli_22222222222222222222222222222222"),
-			SessionID: "ses_1", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+			SessionID: "ses_1", Message: agent.Message{Text: "second"}, Options: agent.RunOptions{},
 		}, Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard()},
 	}
 	if err := store.SavePendingRuns("ses_1", commands); err != nil {

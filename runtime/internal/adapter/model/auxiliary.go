@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -19,9 +18,6 @@ import (
 // Resolving at the boundary lets a role configuration change take effect without
 // rebuilding the owning worker.
 type AuxiliaryResolver func(context.Context) (*chatclient.Client, error)
-
-// callTimeout bounds one auxiliary model request independently of an Agent Run.
-const callTimeout = 2 * time.Minute
 
 // AuxiliaryPrompt is the complete resource envelope for one auxiliary model request.
 // Input bytes and output tokens are deliberately mandatory: background
@@ -86,9 +82,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		}
 		span.End()
 	}()
-	callCtx, cancel := context.WithTimeout(ctx, callTimeout)
-	defer cancel()
-	client, err := r(callCtx)
+	client, err := r(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -96,7 +90,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		return "", errors.New("auxiliary model: client is required")
 	}
 	stage = "call"
-	response, err := client.Call(callCtx, &chat.Request{Messages: []chat.Message{
+	response, err := client.Call(ctx, &chat.Request{Messages: []chat.Message{
 		chat.NewSystemMessage(prompt.SystemPrompt),
 		chat.NewUserMessage(chat.NewTextPart(prompt.UserPrompt)),
 	}, Options: chat.Options{MaxOutputTokens: &prompt.MaxOutputTokens}})

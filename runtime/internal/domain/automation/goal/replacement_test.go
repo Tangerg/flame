@@ -15,7 +15,7 @@ func TestReplacementOwnsOneExactGoalVersionAdvance(t *testing.T) {
 		t.Fatal(err)
 	}
 	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
-	state := testGoalFor(t, "ses_1", "inc_1", UnlimitedBudget())
+	state := testGoalFor(t, "ses_1", "inc_1")
 	state.capabilities = capabilities.Normalized()
 	replacement, err := NewReplacement(expected.Version(), state)
 	if err != nil {
@@ -44,7 +44,7 @@ func TestReplacementOwnsOneExactGoalVersionAdvance(t *testing.T) {
 		t.Fatalf("skipped revision error = %v, want ErrInvalid", err)
 	}
 
-	other := testGoalFor(t, "ses_2", "inc_2", UnlimitedBudget())
+	other := testGoalFor(t, "ses_2", "inc_2")
 	if _, err := NewReplacement(state.Version(), other); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("cross-Session error = %v, want ErrInvalid", err)
 	}

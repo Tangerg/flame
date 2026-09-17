@@ -338,16 +338,6 @@ func registerRunValues(s *Shapes) {
 			{Field: "stop", Kind: ConstraintUniqueItems},
 		},
 	})
-	for _, limits := range []any{protocol.RunLimits{}} {
-		s.valueConstraint(FieldConstraintSpec{
-			GoType: reflect.TypeOf(limits),
-			Constraints: []FieldConstraint{
-				{Field: "maxTotalTokens", Kind: ConstraintPositive},
-				{Field: "maxSteps", Kind: ConstraintPositive},
-				{Field: "maxBudgetUsd", Kind: ConstraintPositive},
-			},
-		})
-	}
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ModelTokenLimits](),
 		Constraints: []FieldConstraint{
@@ -890,14 +880,6 @@ func registerGoalValues(s *Shapes) {
 		GoType: typeOf[protocol.UpdateGoalRequest](),
 		Constraints: append(requiredResourceIdentity("sessionId"),
 			FieldConstraint{Field: "objective", Kind: ConstraintPattern, Value: nonBlankObjective}),
-	})
-	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.GoalBudget](),
-		Constraints: []FieldConstraint{
-			{Field: "maxRuns", Kind: ConstraintPositive},
-			{Field: "maxCostUsd", Kind: ConstraintPositive},
-			{Field: "maxSteps", Kind: ConstraintPositive},
-		},
 	})
 }
 

@@ -36,7 +36,6 @@ func (r *Connection) StartRun(ctx context.Context, input agent.StartRun) (agent.
 		SessionID: input.SessionID, Input: content,
 		Provider: input.Options.Provider, Model: input.Options.Model,
 		ReasoningEffort: input.Options.ReasoningEffort,
-		Limits:          projectRunLimitsToWire(input.Options.Limits),
 	}
 	if generationParamsPresent(input.Options.Generation) {
 		params := input.Options.Clone().Generation
@@ -64,23 +63,6 @@ func (r *Connection) StartRun(ctx context.Context, input agent.StartRun) (agent.
 		)
 	}
 	return stream, nil
-}
-
-func projectRunLimitsToWire(limits agent.RunLimits) *protocol.RunLimits {
-	if limits.Unlimited() {
-		return nil
-	}
-	wire := &protocol.RunLimits{}
-	if value, limited := limits.MaxTotalTokens(); limited {
-		wire.MaxTotalTokens = &value
-	}
-	if value, limited := limits.MaxSteps(); limited {
-		wire.MaxSteps = &value
-	}
-	if value, limited := limits.MaxBudgetUSD(); limited {
-		wire.MaxBudgetUSD = &value
-	}
-	return wire
 }
 
 func generationParamsPresent(value protocol.GenerationParams) bool {

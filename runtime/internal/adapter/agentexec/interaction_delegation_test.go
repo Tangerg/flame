@@ -22,8 +22,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func uint32Pointer(value uint32) *uint32 { return &value }
-func intPointer(value int) *int          { return &value }
+func intPointer(value int) *int { return &value }
 func durationPointer(value time.Duration) *time.Duration {
 	return &value
 }
@@ -45,59 +44,19 @@ func TestDelegatedInteractionReplyPreservesRefusal(t *testing.T) {
 	}
 }
 
-// TestInteractionDelegationPolicyIsAcceptedByTheFramework proves the named
-// structural limits Flame ships still satisfy the Agent Framework's own
-// validity rules, which is the only way these constants can become wrong.
-func TestInteractionDelegationPolicyIsAcceptedByTheFramework(t *testing.T) {
-	delegation, err := interactionDelegation()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if delegation.treeLimits != (agent.TreeLimits{
-		MaxDepth: defaultDelegateDepth, MaxChildren: defaultDelegateChildren,
-		MaxActiveChildren: defaultActiveDelegateChildren, MaxTreeProcesses: defaultDelegateTreeProcesses,
-	}) || delegation.processBudget != (agent.Budget{
-		Steps: defaultDelegateSteps, Effects: defaultDelegateEffects, Signals: defaultDelegateSignals,
-	}) {
-		t.Fatalf("delegation policy = %+v", delegation)
-	}
-}
-
 // TestPositiveOrDefaultRefusesAnUnusableDefault covers the arm no policy value
 // can reach: the fallback is a composition-root constant, so only the rule
 // itself can refuse one that admits nothing.
 func TestPositiveOrDefaultRefusesAnUnusableDefault(t *testing.T) {
-	if _, err := positiveOrDefault[int](nil, 0, "step budget"); err == nil {
+	if _, err := positiveOrDefault[int](nil, 0, "tool concurrency"); err == nil {
 		t.Fatal("a zero signed default was accepted")
 	}
 	if _, err := positiveOrDefault[time.Duration](nil, 0, "poll interval"); err == nil {
 		t.Fatal("a zero duration default was accepted")
 	}
-	if _, err := positiveOrDefault[uint64](nil, 0, "child effects"); err == nil {
-		t.Fatal("a zero unsigned default was accepted")
-	}
-	value, err := positiveOrDefault[uint32](nil, 3, "child depth")
+	value, err := positiveOrDefault[int](nil, 3, "tool concurrency")
 	if err != nil || value != 3 {
 		t.Fatalf("positiveOrDefault(absent, 3) = (%d, %v)", value, err)
-	}
-}
-
-func TestDelegateSubtreeBudgetReservesEveryRemainingProcessLevel(t *testing.T) {
-	base := agent.Budget{Steps: 2, Effects: 3, Signals: 5}
-	budget, err := delegateSubtreeBudget(base, 4)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if budget != (agent.Budget{Steps: 8, Effects: 12, Signals: 20}) {
-		t.Fatalf("scaled budget = %+v", budget)
-	}
-	if _, err := delegateSubtreeBudget(base, 0); err == nil {
-		t.Fatal("zero process levels were accepted")
-	}
-	if _, err := delegateSubtreeBudget(
-		agent.Budget{Steps: math.MaxUint64, Effects: 1, Signals: 1}, 2,
-	); err == nil {
-		t.Fatal("overflowing delegated subtree budget was accepted")
 	}
 }
 
@@ -107,8 +66,8 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-delegate-test-build",
-		ConfigurationIdentity:  "interaction-delegate-test-config", DefaultMaxModelCalls: uint32Pointer(4),
-		BuildID: interactionTestBuildID,
+		ConfigurationIdentity:  "interaction-delegate-test-config",
+		BuildID:                interactionTestBuildID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -243,8 +202,8 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-running-cancel-test-build",
-		ConfigurationIdentity:  "interaction-running-cancel-test-config", DefaultMaxModelCalls: uint32Pointer(4),
-		BuildID: interactionTestBuildID,
+		ConfigurationIdentity:  "interaction-running-cancel-test-config",
+		BuildID:                interactionTestBuildID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -604,7 +563,7 @@ func startDelegateTreeWithCompactor(t *testing.T, model chat.Model, input string
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-delegate-tree-test-build",
-		ConfigurationIdentity:  "interaction-delegate-tree-test-config", DefaultMaxModelCalls: uint32Pointer(6),
+		ConfigurationIdentity:  "interaction-delegate-tree-test-config",
 		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
 		ModelContextCompactor: compactor, ModelContextState: contextState,
 	})

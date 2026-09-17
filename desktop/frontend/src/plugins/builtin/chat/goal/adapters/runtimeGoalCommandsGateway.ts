@@ -15,7 +15,6 @@ import type {
   GoalCommandsGateway,
 } from "../application/ports/goalCommandsGateway";
 import { GoalCommandOwner } from "../application/goalCommands";
-import type { GoalBudget } from "../application/goalBudget";
 import type { GoalReadModel, GoalState } from "../application/goalReadModel";
 
 function goalMutationIdentity(
@@ -34,7 +33,6 @@ export function toGoalReadModel(goal: Goal): GoalReadModel {
     provider: goal.provider ?? "",
     model: goal.model ?? "",
     reasoningEffort: goal.reasoningEffort ?? "",
-    budget: toGoalBudget(goal.budget),
     used: {
       runs: goal.used.runs,
       ...(goal.used.costUsd !== undefined ? { costUsd: goal.used.costUsd } : {}),
@@ -43,14 +41,6 @@ export function toGoalReadModel(goal: Goal): GoalReadModel {
     createdAt: goal.createdAt,
     updatedAt: goal.updatedAt,
   };
-}
-
-function toGoalBudget(budget: Goal["budget"]): GoalBudget | null {
-  if (!budget) return null;
-  if (budget.maxRuns !== undefined) return { ...budget, maxRuns: budget.maxRuns };
-  if (budget.maxCostUsd !== undefined) return { ...budget, maxCostUsd: budget.maxCostUsd };
-  if (budget.maxSteps !== undefined) return { ...budget, maxSteps: budget.maxSteps };
-  throw new Error("Runtime Goal budget contains no limit");
 }
 
 export function toGoalCommandReceipt(goal: Pick<Goal, "sessionId">): GoalCommandReceipt {

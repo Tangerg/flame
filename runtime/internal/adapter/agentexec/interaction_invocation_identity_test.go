@@ -14,7 +14,7 @@ func TestModelInvocationIdentityBoundsMaximumFrameworkEffect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse maximum Framework EffectID: %v", err)
 	}
-	identity, err := modelInvocationIDFrom(frameworkID, math.MaxUint32)
+	identity, err := modelInvocationIDFrom(frameworkID, math.MaxUint64)
 	if err != nil {
 		t.Fatalf("modelInvocationIDFrom maximum inputs: %v", err)
 	}
@@ -24,11 +24,11 @@ func TestModelInvocationIdentityBoundsMaximumFrameworkEffect(t *testing.T) {
 	if len(identity.String()) > runtimeidentity.MaximumExecutorIdentityBytes {
 		t.Fatalf("generated invocation identity has %d bytes, maximum is %d", len(identity.String()), runtimeidentity.MaximumExecutorIdentityBytes)
 	}
-	repeated, err := modelInvocationIDFrom(frameworkID, math.MaxUint32)
+	repeated, err := modelInvocationIDFrom(frameworkID, math.MaxUint64)
 	if err != nil || repeated != identity {
 		t.Fatalf("repeated identity = %q, %v; want %q", repeated.String(), err, identity.String())
 	}
-	different, err := modelInvocationIDFrom(frameworkID, math.MaxUint32-1)
+	different, err := modelInvocationIDFrom(frameworkID, math.MaxUint64-1)
 	if err != nil || different == identity {
 		t.Fatalf("different sequence identity = %q, %v; want distinct", different.String(), err)
 	}

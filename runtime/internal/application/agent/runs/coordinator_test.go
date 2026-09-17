@@ -507,7 +507,6 @@ func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (C
 	checkpoint.Scope.WorkspaceCWD = "/work"
 	checkpoint.Scope.GoalIncarnationID = pending.GoalIncarnationID
 	checkpoint.ModelSelection = root.ModelSelection
-	checkpoint.Limits = root.Limits
 	claimed := ClaimedResume{
 		Pending: pending, Answers: claim.Answers(),
 		Checkpoint: checkpoint,
@@ -774,9 +773,9 @@ func testSegment() segmentSpec {
 func runForSegment(spec segmentSpec) run.Run {
 	return testsupport.MustRestoreRun(run.Snapshot{ID: spec.RunID, SessionID: spec.SessionID, State: run.Running,
 		ActiveSegmentID: spec.SegmentID, ModelSelection: spec.ModelSelection,
-		GoalIncarnationID: spec.GoalIncarnationID, Limits: spec.Limits,
-		Capabilities: spec.Capabilities,
-		CreatedAt:    spec.CreatedAt, UpdatedAt: spec.CreatedAt,
+		GoalIncarnationID: spec.GoalIncarnationID,
+		Capabilities:      spec.Capabilities,
+		CreatedAt:         spec.CreatedAt, UpdatedAt: spec.CreatedAt,
 		MessageMark: run.UnknownMessageMark})
 
 }
@@ -1672,7 +1671,6 @@ func requireIndependentChildLifecycle(
 	started := lifecycle.started
 	if started.Run.Lineage() != lineage ||
 		started.Run.ActiveSegmentID() != childSegmentID ||
-		started.Run.Limits() != spec.Limits ||
 		started.Run.Capabilities().String() != spec.Capabilities.String() {
 		t.Fatalf("child opening Run = %+v, want independent inherited segment state", started.Run)
 	}
@@ -1765,9 +1763,6 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 	coordinator.newRunID = func() string { return "run_child" }
 	coordinator.newSegmentID = func() string { return "seg_child" }
 	spec := testSegment()
-	spec.Limits = testsupport.MustRunLimits(run.LimitValues{
-		MaxSteps: testsupport.Pointer(20), MaxBudgetUSD: testsupport.Pointer(float64(3)),
-	})
 	spec.Capabilities = run.Capabilities{
 		ChildRuns: true,
 	}
@@ -2165,7 +2160,7 @@ func TestRootBoundaryClosesAnUnreportedChildBeforeItself(t *testing.T) {
 		{Member: childMember, Payload: request},
 		// The root's boundary, with the child still live and no terminal of its
 		// own ever arriving.
-		{Member: rootMember, Payload: SegmentEnded{Reason: run.OutcomeCompleted}},
+		{Member: rootMember, Payload: NewSegmentEnded(run.OutcomeTimedOut, &run.Failure{Kind: run.FailureTimeout, Detail: "original deadline"}, nil, 3*time.Second)},
 	}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
@@ -2191,6 +2186,9 @@ func TestRootBoundaryClosesAnUnreportedChildBeforeItself(t *testing.T) {
 		terminalRuns[0].ID() != "run_child" ||
 		terminalRuns[1].ID() != "run_1" {
 		t.Fatalf("terminal event order = %+v, want child then root", terminalRuns)
+	}
+	if outcome, _ := terminalRuns[1].Outcome(); outcome != run.OutcomeTimedOut || terminalRuns[1].Metrics().ActiveDuration() != 3*time.Second {
+		t.Fatalf("known root terminal was replaced: %+v", terminalRuns[1])
 	}
 	for _, record := range terminalRuns {
 		if _, terminal := record.Outcome(); !terminal {

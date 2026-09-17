@@ -50,11 +50,6 @@ func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.Exec
 			GoalIncarnationID: "lease-" + sessionID,
 		},
 		ModelSelection: selection,
-		Limits: testsupport.MustRunLimits(run.LimitValues{
-			MaxTotalTokens: testsupport.Pointer[int64](8_192),
-			MaxBudgetUSD:   testsupport.Pointer(2.5),
-			MaxSteps:       testsupport.Pointer(16),
-		}),
 		Capabilities: run.Capabilities{
 			ChildRuns:      true,
 			InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
@@ -137,9 +132,6 @@ func TestExecutorCheckpointStoreRejectsImmutablePolicyReplacement(t *testing.T) 
 		}},
 		{name: "reasoning effort", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.ModelSelection, _ = modelref.NewWithReasoningEffort("anthropic", "claude", "medium")
-		}},
-		{name: "limits", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.Limits = testsupport.MustRunLimits(run.LimitValues{MaxSteps: testsupport.Pointer(17)})
 		}},
 		{name: "capabilities", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.Capabilities.ChildRuns = false
@@ -234,37 +226,13 @@ func TestExecutorCheckpointStoreRoundTripsApplicationEnvelope(t *testing.T) {
 		got.BuildID != want.BuildID ||
 		got.Scope != want.Scope ||
 		got.ModelSelection != want.ModelSelection ||
-		got.Limits != want.Limits ||
 		!reflect.DeepEqual(got.Capabilities, want.Capabilities) ||
 		!reflect.DeepEqual(got.Usage, want.Usage) {
 		t.Fatalf("application envelope = %+v, want %+v", got, want)
 	}
 }
 
-func TestExecutorCheckpointStorePersistsUnlimitedPolicyWithoutCaps(t *testing.T) {
-	database, store := newExecutorCheckpointStorage(t)
-	want := storedExecutorCheckpoint("member_unlimited", "session-unlimited", `{"opaque":true}`)
-	want.Limits = run.UnlimitedLimits()
-	if err := store.SaveCheckpoint(t.Context(), want); err != nil {
-		t.Fatalf("SaveCheckpoint: %v", err)
-	}
-	got, err := store.LoadCheckpoint(t.Context(), want.RootMemberID)
-	if err != nil || got.Limits != want.Limits {
-		t.Fatalf("LoadCheckpoint = (%+v, %v), want unlimited", got, err)
-	}
-	var policy string
-	if err := database.QueryRowContext(t.Context(),
-		`SELECT policy FROM executor_checkpoints WHERE root_member_id = ?`, want.RootMemberID,
-	).Scan(&policy); err != nil {
-		t.Fatalf("read policy: %v", err)
-	}
-	if !strings.Contains(policy, `"limits":{"type":"unlimited"}`) || strings.Contains(policy, `"max_steps"`) || strings.Contains(policy, `"max_total_tokens"`) || strings.Contains(policy, `"max_budget_usd"`) {
-		t.Fatalf("unlimited policy = %s", policy)
-	}
-}
-
 func TestExecutorCheckpointStoreRejectsRetiredOrMalformedPolicy(t *testing.T) {
-	const limits = `"limits":{"type":"limited","max_total_tokens":8192,"max_budget_usd":2.5,"max_steps":16}`
 	tests := map[string]func(string) string{
 		"unknown policy field": func(policy string) string {
 			return `{"unexpected":true,` + policy[1:]
@@ -280,18 +248,6 @@ func TestExecutorCheckpointStoreRejectsRetiredOrMalformedPolicy(t *testing.T) {
 		},
 		"unknown kind": func(policy string) string {
 			return strings.Replace(policy, `["approval","question"]`, `["approval","future"]`, 1)
-		},
-		"old zero sentinels": func(policy string) string {
-			return strings.Replace(policy, limits, `"limits":{"max_total_tokens":0,"max_budget_usd":0,"max_steps":0}`, 1)
-		},
-		"limited zero": func(policy string) string {
-			return strings.Replace(policy, limits, `"limits":{"type":"limited","max_steps":0}`, 1)
-		},
-		"limited empty": func(policy string) string {
-			return strings.Replace(policy, limits, `"limits":{"type":"limited"}`, 1)
-		},
-		"unlimited with cap": func(policy string) string {
-			return strings.Replace(policy, limits, `"limits":{"type":"unlimited","max_steps":16}`, 1)
 		},
 	}
 	for name, mutate := range tests {

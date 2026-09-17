@@ -57,8 +57,7 @@ func Samples() []Sample {
 
 		// Run — RunOutcome union, RunRef, Interrupt union, method envelopes.
 		{"outcome.failed.json", reflect.TypeFor[protocol.RunOutcome]()},
-		{"outcome.maxSteps.json", reflect.TypeFor[protocol.RunOutcome]()},
-		{"outcome.maxBudget.json", reflect.TypeFor[protocol.RunOutcome]()},
+
 		{"outcome.canceled.json", reflect.TypeFor[protocol.RunOutcome]()},
 		// The two stops a run survives are SegmentOutcome-only, and bound to it: a
 		// RunOutcome can never carry either. `suspended` is produced only for a root

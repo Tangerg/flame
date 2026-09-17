@@ -329,7 +329,7 @@ func backgroundedJSON(id string) (string, error) {
 // elapses. It reuses the same per-shell done channel the shell
 // foreground path selects on (no polling). A timeout is NOT an error: the
 // caller then reports the current still-running output, just as if wait were
-// off. Returns ctx.Err() only on cancellation (Run cancel / budget timeout).
+// off. Returns ctx.Err() when the caller context ends.
 func waitForShell(ctx context.Context, sh *exec.Shell, timeout exec.Timeout) error {
 	duration, enabled := timeout.Duration()
 	if !enabled {

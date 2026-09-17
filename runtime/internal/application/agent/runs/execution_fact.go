@@ -138,43 +138,6 @@ func (a AssistantMessageCompleted) Message() corechat.Message {
 	return a.message.Clone()
 }
 
-// UnknownEffect preserves the identity and available cause of an unsettled
-// external operation. Detail is diagnostic evidence, not a definite outcome.
-type UnknownEffect struct {
-	ID     string
-	Detail string
-}
-
-// UnknownEffectsDetected carries unresolved execution evidence into the RunLost
-// transaction before the executor is released.
-type UnknownEffectsDetected struct {
-	executorPayloadBase
-	effects []UnknownEffect
-}
-
-func NewUnknownEffectsDetected(effects []UnknownEffect) UnknownEffectsDetected {
-	return UnknownEffectsDetected{effects: slices.Clone(effects)}
-}
-
-func (u UnknownEffectsDetected) Effects() []UnknownEffect { return slices.Clone(u.effects) }
-
-func (u UnknownEffectsDetected) validate() error {
-	if len(u.effects) == 0 {
-		return errors.New("runs: unknown Effect observation is empty")
-	}
-	seen := make(map[string]struct{}, len(u.effects))
-	for _, effect := range u.effects {
-		if err := runtimeidentity.ValidateEffect(effect.ID); err != nil {
-			return err
-		}
-		if _, duplicate := seen[effect.ID]; duplicate {
-			return errors.New("runs: duplicate unknown Effect")
-		}
-		seen[effect.ID] = struct{}{}
-	}
-	return nil
-}
-
 // ModelCallStarted is the authoritative pre-provider boundary for one model
 // invocation. CallID is an opaque, stable executor identity; the Application
 // never parses framework Effect identity from it.
@@ -217,7 +180,7 @@ type ToolCallStarted struct {
 	ArgumentsText string
 	executionFactBase
 	CallID            string
-	ModelCallSequence uint32
+	ModelCallSequence uint64
 	ToolCallIndex     uint32
 	// SourceCallID is the executor's parent-call identity. It exists solely to map
 	// a child member causal edge to this
@@ -395,7 +358,8 @@ func (s SegmentInterrupted) validate() error {
 
 type SegmentEnded struct {
 	executionFactBase
-	Reason run.Outcome
+	Reason            run.Outcome
+	unresolvedEffects []run.UnresolvedEffect
 	// Failure is present exactly when Reason is Failed, TimedOut, or Lost. It is
 	// already a stable, client-safe classification; executor diagnostics
 	// never enter the event stream.
@@ -510,4 +474,12 @@ func (t ToolCallFinished) clone() ToolCallFinished {
 	}
 	t.MutatedPaths = slices.Clone(t.MutatedPaths)
 	return t
+}
+
+func (s SegmentEnded) WithUnresolvedEffects(effects []run.UnresolvedEffect) SegmentEnded {
+	s.unresolvedEffects = slices.Clone(effects)
+	return s
+}
+func (s SegmentEnded) UnresolvedEffects() []run.UnresolvedEffect {
+	return slices.Clone(s.unresolvedEffects)
 }

@@ -16,7 +16,6 @@ const model = vi.hoisted(() => ({
     objective: "Ship alpha",
     status: "active",
     stop: null,
-    budget: { maxRuns: 10 },
     used: { runs: 1, costUsd: 0, steps: 2 },
     provider: "openai",
     model: "gpt-5",
@@ -57,7 +56,6 @@ describe("Goal status surface", () => {
       objective: "Ship alpha",
       status: "active",
       stop: null,
-      budget: { maxRuns: 10 },
       used: { runs: 1, costUsd: 0, steps: 2 },
       provider: "openai",
       model: "gpt-5",
@@ -210,20 +208,6 @@ describe("Goal status surface", () => {
     expect(model.resumeGoal).not.toHaveBeenCalled();
   });
 
-  it("does not offer Resume after a durable budget boundary", () => {
-    model.goal = {
-      ...model.goal,
-      status: "blocked",
-      stop: { code: "runBudgetReached", detail: "" },
-    };
-    render(<GoalStatusSurface />);
-
-    expect(screen.queryByRole("button", { name: "Resume goal" })).toBeNull();
-    expect(screen.queryByText("Out of turns")).toBeNull();
-    expect(screen.getByText("Run budget reached")).toBeTruthy();
-    expect(screen.queryByText("Goal stalled")).toBeNull();
-  });
-
   it("keeps the plain status word when the Runtime would still resume", () => {
     model.goal = {
       ...model.goal,
@@ -236,15 +220,13 @@ describe("Goal status surface", () => {
     expect(screen.getByText("Paused goal")).toBeTruthy();
   });
 
-  it("presents only Goal status and objective, never limits or usage", () => {
+  it("presents only Goal status and objective, without usage counters", () => {
     render(<GoalStatusSurface />);
 
     expect(screen.getByText("Pursuing goal")).toBeTruthy();
     expect(screen.getByText("Ship alpha")).toBeTruthy();
-    expect(screen.queryByText("1/10")).toBeNull();
     expect(screen.queryByText("Turns")).toBeNull();
     expect(screen.queryByText("Steps")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Show the allowance" })).toBeNull();
   });
 
   it("uses the Codex top-tray surface and dedicated Goal glyph", () => {

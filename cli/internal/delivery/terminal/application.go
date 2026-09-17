@@ -23,7 +23,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
@@ -85,29 +84,29 @@ type app struct {
 	execution        executionState
 	dialogs          dialogState
 
-	transcript      *transcriptView
-	brand           *brandBanner
-	header          *sessionHeader
-	activity        *activityView
-	queueView       *queueView
-	queueDrawer     *queueDrawer
-	status          *statusView
-	settings        settings.Config
-	reconnectPolicy retry.ReconnectPolicy
-	options         agent.RunOptions
-	composer        kit.Composer
-	prompt          *promptView
-	commands        commandCatalog
-	completion      headless.Completion
-	completionGate  completionGate
-	shell           *shellView
-	stack           headless.Stack
-	queue           *promptqueue.Queue
-	workbench       *workbench.Store
-	drafts          *draftPersistence
-	draftState      draftObservation
-	stopDraftSave   func()
-	editor          *draftEditor
+	transcript  *transcriptView
+	brand       *brandBanner
+	header      *sessionHeader
+	activity    *activityView
+	queueView   *queueView
+	queueDrawer *queueDrawer
+	status      *statusView
+	settings    settings.Config
+
+	options        agent.RunOptions
+	composer       kit.Composer
+	prompt         *promptView
+	commands       commandCatalog
+	completion     headless.Completion
+	completionGate completionGate
+	shell          *shellView
+	stack          headless.Stack
+	queue          *promptqueue.Queue
+	workbench      *workbench.Store
+	drafts         *draftPersistence
+	draftState     draftObservation
+	stopDraftSave  func()
+	editor         *draftEditor
 
 	attachments        *attachment.Resolver
 	attachmentElements map[uint64]agent.Attachment
@@ -153,12 +152,12 @@ type appConfig struct {
 	attachments      *attachment.Resolver
 	initialDraft     agent.Message
 	settings         settings.Config
-	reconnectPolicy  retry.ReconnectPolicy
-	options          agent.RunOptions
-	keyBindings      keyBindings
-	queue            *promptqueue.Queue
-	workbench        *workbench.Store
-	editor           *draftEditor
+
+	options     agent.RunOptions
+	keyBindings keyBindings
+	queue       *promptqueue.Queue
+	workbench   *workbench.Store
+	editor      *draftEditor
 }
 
 type terminalAppearance struct {
@@ -213,7 +212,6 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		workbench:          cfg.workbench,
 		editor:             cfg.editor,
 		settings:           cfg.settings.Clone(),
-		reconnectPolicy:    cfg.reconnectPolicy,
 		options:            cfg.options,
 		syntax:             appearance.syntax,
 		attachments:        cfg.attachments,

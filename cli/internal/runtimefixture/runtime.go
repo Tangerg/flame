@@ -76,7 +76,6 @@ type runState struct {
 	provider        string
 	model           string
 	reasoningEffort string
-	limits          agent.RunLimits
 	contextTokens   int64
 	status          protocol.RunStatus
 	active          string

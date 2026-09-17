@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-func TestUnknownEffectCommitRetryBacksOffAndCaps(t *testing.T) {
-	retry := unknownEffectCommitRetry{}
+func TestTerminalCommitRetryBacksOffAndCaps(t *testing.T) {
+	retry := terminalCommitRetry{}
 	got := make([]time.Duration, 8)
 	for index := range got {
 		got[index] = retry.advance()
@@ -29,12 +29,12 @@ func TestUnknownEffectCommitRetryBacksOffAndCaps(t *testing.T) {
 	}
 }
 
-func TestUnknownEffectCommitRetryStopsWithOwnerCause(t *testing.T) {
+func TestTerminalCommitRetryStopsWithOwnerCause(t *testing.T) {
 	cause := errors.New("runtime owner retired")
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cancel(cause)
 
-	retry := unknownEffectCommitRetry{}
+	retry := terminalCommitRetry{}
 	if err := retry.wait(ctx); !errors.Is(err, cause) {
 		t.Fatalf("retry wait error = %v, want owner cause", err)
 	}

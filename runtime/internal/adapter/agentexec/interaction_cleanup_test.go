@@ -74,7 +74,7 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 		})
 		start := interactionTestStart()
 		start.CWD, start.WorkspaceCWD = workspace, workspace
-		start.ModelSelection, start.Limits = checkpoint.ModelSelection, checkpoint.Limits
+		start.ModelSelection = checkpoint.ModelSelection
 		start.InterruptKinds = []interrupt.Kind{interrupt.Question}
 		state, err := decodeExecutorCheckpoint(checkpoint)
 		if err != nil {

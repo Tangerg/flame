@@ -110,7 +110,7 @@ func TestResultCommitterReconcilesStoredReceiptBeforeProductMetadata(t *testing.
 							select {
 							case event := <-target.lifetime.events:
 								handle(event)
-							case <-target.lifetime.releasing:
+							case <-target.lifetime.releasing.Done():
 								return
 							}
 						}
@@ -133,6 +133,9 @@ func TestResultCommitterReconcilesStoredReceiptBeforeProductMetadata(t *testing.
 				var ends []runs.SegmentEnded
 				for event := range sequence {
 					handle(event)
+					if commit, ok := event.Payload.(runs.ExecutionFactCommit); ok {
+						event.Payload = commit.Fact()
+					}
 					if end, ok := event.Payload.(runs.SegmentEnded); ok {
 						ends = append(ends, end)
 					}

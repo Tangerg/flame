@@ -957,12 +957,6 @@
           }
         },
         {
-          "name": "limits",
-          "schema": {
-            "$ref": "schema.json#/$defs/RunLimits"
-          }
-        },
-        {
           "name": "params",
           "schema": {
             "$ref": "schema.json#/$defs/GenerationParams"
@@ -4579,12 +4573,6 @@
             "type": "string",
             "maxLength": 32,
             "pattern": "^[^\\p{C}\\p{Z}]*$"
-          }
-        },
-        {
-          "name": "budget",
-          "schema": {
-            "$ref": "schema.json#/$defs/GoalBudget"
           }
         },
         {

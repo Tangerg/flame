@@ -40,7 +40,6 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: identity + "-build",
 		ConfigurationIdentity:  identity + "-config",
-		DefaultMaxModelCalls:   uint32Pointer(4),
 		BuildID:                interactionTestBuildID,
 		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{question},

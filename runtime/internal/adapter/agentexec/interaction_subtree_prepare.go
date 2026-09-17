@@ -127,7 +127,7 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 			// preparation is its context: hand it one that cannot end and the
 			// rollback waits forever instead of giving the cut back.
 			discardCtx, cancelDiscard := context.WithTimeout(
-				context.WithoutCancel(ctx), authoritativeProjectionTimeout,
+				context.WithoutCancel(ctx), executionCleanupTimeout,
 			)
 			_ = i.discardPreparedSubtree(discardCtx)
 			cancelDiscard()

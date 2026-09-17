@@ -34,8 +34,8 @@ func (i *InsufficientCapabilitiesError) Is(target error) bool {
 // Capabilities is the frozen set of optional behaviors a Run may exercise:
 // whether it may create child Runs and which durable human waits it may produce.
 //
-// It sits beside [Limits] because admission fixes both values and every later
-// segment obeys them. A continuation answers an interrupt; it does not renegotiate
+// Admission fixes these capabilities and every later segment obeys them.
+// A continuation answers an interrupt; it does not renegotiate
 // what the Run is allowed to do.
 //
 // Input boundaries translate negotiated caller capabilities into this value.

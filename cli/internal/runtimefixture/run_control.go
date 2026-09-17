@@ -51,7 +51,7 @@ func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.Segmen
 		id: runID, sessionID: in.SessionID,
 		lineage:  agent.RootRunLineage(),
 		provider: in.Options.Provider, model: in.Options.Model, reasoningEffort: in.Options.ReasoningEffort,
-		limits: in.Options.Limits, status: protocol.RunStatusRunning,
+		status:   protocol.RunStatusRunning,
 		segments: make(map[string]*segmentState), script: script, answers: make(map[string]agent.Answer), cancel: make(chan struct{}),
 	}
 	run.script = namespaceScript(run.script, run.id)

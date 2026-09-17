@@ -4,8 +4,14 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+)
+
+const (
+	auxiliaryOperationTimeout = 15 * time.Second
+	executionCleanupTimeout   = 15 * time.Second
 )
 
 // errInteractionReleased reports that a projection could not be delivered
@@ -35,7 +41,8 @@ type interactionLifetime struct {
 	stopReconciling context.CancelFunc
 	events          chan runs.ExecutorEvent
 	done            chan struct{}
-	releasing       chan struct{}
+	releasing       context.Context
+	stopRelease     context.CancelFunc
 	unknownWake     chan struct{}
 	stateWake       chan struct{}
 	releaseOnce     sync.Once
@@ -47,6 +54,7 @@ type interactionLifetime struct {
 func newInteractionLifetime(parent context.Context) interactionLifetime {
 	lifetime, stop := context.WithCancel(parent)
 	reconciling, stopReconciling := context.WithCancel(lifetime)
+	releasing, stopRelease := context.WithCancel(context.WithoutCancel(parent))
 	return interactionLifetime{
 		execution:       lifetime,
 		stopExecution:   stop,
@@ -54,7 +62,8 @@ func newInteractionLifetime(parent context.Context) interactionLifetime {
 		stopReconciling: stopReconciling,
 		events:          make(chan runs.ExecutorEvent, interactionEventBuffer),
 		done:            make(chan struct{}),
-		releasing:       make(chan struct{}),
+		releasing:       releasing,
+		stopRelease:     stopRelease,
 		unknownWake:     make(chan struct{}, 1),
 		stateWake:       make(chan struct{}, 1),
 	}
@@ -88,7 +97,7 @@ func (i *interactionLifetime) start(
 func (i *interactionLifetime) beginRelease() {
 	i.releaseOnce.Do(func() {
 		i.stopExecution()
-		close(i.releasing)
+		i.stopRelease()
 	})
 }
 
@@ -105,7 +114,7 @@ func (i *interactionLifetime) send(event runs.ExecutorEvent) bool {
 	select {
 	case i.events <- event:
 		return true
-	case <-i.releasing:
+	case <-i.releasing.Done():
 		return false
 	}
 }
@@ -117,10 +126,21 @@ func (i *interactionLifetime) sendAuthoritative(
 	select {
 	case i.events <- event:
 		return nil
-	case <-i.releasing:
+	case <-i.releasing.Done():
 		return errInteractionReleased
 	case <-ctx.Done():
 		return ctx.Err()
+	}
+}
+
+// publicationContext preserves observed results after execution cancellation.
+// Only release ends publication, when the product owner stops consuming facts.
+func (i *interactionLifetime) publicationContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	bound, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	stop := context.AfterFunc(i.releasing, cancel)
+	return bound, func() {
+		stop()
+		cancel()
 	}
 }
 

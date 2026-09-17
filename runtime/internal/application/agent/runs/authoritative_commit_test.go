@@ -68,7 +68,7 @@ func (c *concurrentToolExecutor) Observe(
 		commitErr := receipt.Await(ctx)
 		if commitErr != nil {
 			c.failures <- commitErr
-			yield(ExecutorEvent{Member: member, Payload: NewUnknownEffectsDetected([]UnknownEffect{{ID: "effect:test", Detail: commitErr.Error()}})})
+			yield(ExecutorEvent{Member: member, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:test: " + commitErr.Error()}, nil, 0)})
 			return
 		}
 
@@ -122,7 +122,7 @@ func (a *authoritativeFailureExecutor) Observe(
 		a.receipts <- completionReceipt.Await(ctx)
 		yield(ExecutorEvent{
 			Member:  member,
-			Payload: NewUnknownEffectsDetected([]UnknownEffect{{ID: "effect:test"}}),
+			Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost}, nil, 0),
 		})
 	}, nil
 }
@@ -213,7 +213,9 @@ func TestUnknownEffectsCloseUnfinishedTreeAsLostInPostorder(t *testing.T) {
 		{Member: completed, Payload: NewSegmentEnded(run.OutcomeCompleted, nil, nil, 0)},
 		{Member: sibling, Payload: ModelCallStarted{CallID: "in_flight_model"}},
 		{Member: child, Payload: ToolCallStarted{CallID: "unknown_tool", SourceCallID: "provider_tool", ToolName: "write", Arguments: `{}`}},
-		{Member: root, Payload: NewUnknownEffectsDetected([]UnknownEffect{{ID: "effect:unknown_tool", Detail: "publication unavailable"}})},
+		{Member: child, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:unknown_tool: publication unavailable"}, nil, 0)},
+		{Member: sibling, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:unknown_tool: publication unavailable"}, nil, 0)},
+		{Member: root, Payload: NewSegmentEnded(run.OutcomeLost, &run.Failure{Kind: run.FailureLost, Detail: "effect:unknown_tool: publication unavailable"}, nil, 0)},
 	}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)

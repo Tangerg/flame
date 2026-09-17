@@ -2591,42 +2591,43 @@
       "discriminator": "type",
       "variants": [
         {
-          "tag": "completed"
+          "tag": "completed",
+          "optional": [
+            "unresolvedEffects"
+          ]
         },
         {
           "tag": "timedOut",
           "required": [
             "error"
+          ],
+          "optional": [
+            "unresolvedEffects"
           ]
         },
         {
           "tag": "failed",
           "required": [
             "error"
-          ]
-        },
-        {
-          "tag": "maxSteps",
+          ],
           "optional": [
-            "detail"
-          ]
-        },
-        {
-          "tag": "maxBudget",
-          "optional": [
-            "detail"
+            "unresolvedEffects"
           ]
         },
         {
           "tag": "canceled",
           "optional": [
-            "detail"
+            "detail",
+            "unresolvedEffects"
           ]
         },
         {
           "tag": "lost",
           "required": [
             "error"
+          ],
+          "optional": [
+            "unresolvedEffects"
           ]
         }
       ]
@@ -2645,42 +2646,43 @@
           "tag": "suspended"
         },
         {
-          "tag": "completed"
+          "tag": "completed",
+          "optional": [
+            "unresolvedEffects"
+          ]
         },
         {
           "tag": "timedOut",
           "required": [
             "error"
+          ],
+          "optional": [
+            "unresolvedEffects"
           ]
         },
         {
           "tag": "failed",
           "required": [
             "error"
-          ]
-        },
-        {
-          "tag": "maxSteps",
+          ],
           "optional": [
-            "detail"
-          ]
-        },
-        {
-          "tag": "maxBudget",
-          "optional": [
-            "detail"
+            "unresolvedEffects"
           ]
         },
         {
           "tag": "canceled",
           "optional": [
-            "detail"
+            "detail",
+            "unresolvedEffects"
           ]
         },
         {
           "tag": "lost",
           "required": [
             "error"
+          ],
+          "optional": [
+            "unresolvedEffects"
           ]
         }
       ]
@@ -3406,18 +3408,6 @@
           ]
         },
         {
-          "tag": "maxSteps",
-          "optional": [
-            "detail"
-          ]
-        },
-        {
-          "tag": "maxBudget",
-          "optional": [
-            "detail"
-          ]
-        },
-        {
           "tag": "canceled",
           "optional": [
             "detail"
@@ -3614,30 +3604,6 @@
     }
   ],
   "objectConstraints": [
-    {
-      "type": "GoalBudget",
-      "rules": [
-        {
-          "requiredAny": [
-            "maxRuns",
-            "maxCostUsd",
-            "maxSteps"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "RunLimits",
-      "rules": [
-        {
-          "requiredAny": [
-            "maxTotalTokens",
-            "maxSteps",
-            "maxBudgetUsd"
-          ]
-        }
-      ]
-    },
     {
       "type": "ModelTokenLimits",
       "rules": [
@@ -4458,10 +4424,6 @@
             {
               "field": "reason.code",
               "values": [
-                "runBudgetReached",
-                "costBudgetReached",
-                "stepBudgetReached",
-                "pricingUnavailable",
                 "blockedByModel"
               ]
             }
@@ -4550,54 +4512,6 @@
               "field": "code",
               "operator": "equals",
               "value": "terminalOutcomeMissing"
-            }
-          ],
-          "forbidden": [
-            "detail"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "code",
-              "operator": "equals",
-              "value": "runBudgetReached"
-            }
-          ],
-          "forbidden": [
-            "detail"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "code",
-              "operator": "equals",
-              "value": "costBudgetReached"
-            }
-          ],
-          "forbidden": [
-            "detail"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "code",
-              "operator": "equals",
-              "value": "stepBudgetReached"
-            }
-          ],
-          "forbidden": [
-            "detail"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "code",
-              "operator": "equals",
-              "value": "pricingUnavailable"
             }
           ],
           "forbidden": [
@@ -6332,23 +6246,6 @@
         {
           "field": "stop",
           "constraint": "uniqueItems"
-        }
-      ]
-    },
-    {
-      "type": "RunLimits",
-      "rules": [
-        {
-          "field": "maxTotalTokens",
-          "constraint": "positive"
-        },
-        {
-          "field": "maxSteps",
-          "constraint": "positive"
-        },
-        {
-          "field": "maxBudgetUsd",
-          "constraint": "positive"
         }
       ]
     },
@@ -8139,23 +8036,6 @@
       ]
     },
     {
-      "type": "GoalBudget",
-      "rules": [
-        {
-          "field": "maxRuns",
-          "constraint": "positive"
-        },
-        {
-          "field": "maxCostUsd",
-          "constraint": "positive"
-        },
-        {
-          "field": "maxSteps",
-          "constraint": "positive"
-        }
-      ]
-    },
-    {
       "type": "ClientInfo",
       "rules": [
         {
@@ -8560,7 +8440,7 @@
     },
     {
       "key": "parked_continuation_matches_run_facts",
-      "why": "A continuation is a hand-off of the admitted Run, not a second author. If its model, cumulative accounting, limits, lineage, creation time, goal lease or capabilities differ, resume or teardown would rewrite history.",
+      "why": "A continuation is a hand-off of the admitted Run, not a second author. If its model, cumulative accounting, lineage, creation time, goal lease or capabilities differ, resume or teardown would rewrite history.",
       "boundaries": [
         "runsegment.opening",
         "runsegment.event",
@@ -8665,14 +8545,6 @@
     },
     {
       "file": "outcome.failed.json",
-      "shape": "RunOutcome"
-    },
-    {
-      "file": "outcome.maxSteps.json",
-      "shape": "RunOutcome"
-    },
-    {
-      "file": "outcome.maxBudget.json",
       "shape": "RunOutcome"
     },
     {

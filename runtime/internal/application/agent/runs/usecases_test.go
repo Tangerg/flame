@@ -559,15 +559,9 @@ func TestStartOwnsCompleteAdmissionSequence(t *testing.T) {
 	control.activateCheck = func() { _, activatedAfterOpening = effects.opening().Admission() }
 	c := newUseCaseCoordinator(exec, control, sessions, effects)
 
-	wantLimits := testsupport.MustRunLimits(run.LimitValues{
-		MaxTotalTokens: testsupport.Pointer[int64](16_384),
-		MaxSteps:       testsupport.Pointer(12),
-		MaxBudgetUSD:   testsupport.Pointer(3.5),
-	})
 	result, err := c.Start(context.Background(), StartCommand{
 		SessionID:      "ses_1",
 		ModelSelection: mustUseCaseSelection("provider", "model"),
-		Limits:         wantLimits,
 		Capabilities:   run.Capabilities{ChildRuns: true},
 		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 	})
@@ -581,9 +575,6 @@ func TestStartOwnsCompleteAdmissionSequence(t *testing.T) {
 	if control.started.SessionID != "ses_1" || control.started.CWD != "/work" || control.started.WorkspaceCWD != "/work" {
 		t.Fatalf("started execution = %+v", control.started)
 	}
-	if control.started.Limits != wantLimits {
-		t.Fatalf("executor limits = %+v, want %+v", control.started.Limits, wantLimits)
-	}
 	if !control.validated.ChildRunAdmissionEnabled || !control.started.ChildRunAdmissionEnabled {
 		t.Fatalf("child admission policy did not reach the executor: validated=%+v started=%+v", control.validated, control.started)
 	}
@@ -595,8 +586,6 @@ func TestStartOwnsCompleteAdmissionSequence(t *testing.T) {
 	replacement, replaced := opening.SessionReplacement()
 	if opening.CommitID().IsZero() || !admitted || admission.RunID != "run_new" {
 		t.Fatalf("opening = %+v, want fresh run admission", opening)
-	} else if admission.Limits != wantLimits {
-		t.Fatalf("opening limits = %+v, want %+v", admission.Limits, wantLimits)
 	} else if !replaced ||
 		replacement.State().ID() != "ses_1" ||
 		replacement.State().Selection() != mustUseCaseSelection("provider", "model") {
@@ -1992,7 +1981,6 @@ func runForContinuation(
 		GoalIncarnationID: goalIncarnationID,
 		State:             run.Waiting,
 		Metrics:           continuation.Metrics,
-		Limits:            continuation.Limits,
 		Capabilities:      pending.Capabilities,
 		CreatedAt:         continuation.RunCreatedAt,
 		MessageMark:       run.UnknownMessageMark, Lineage: run.Lineage{SpawnedByItemID: continuation.Lineage.SpawnedByItemID,
@@ -2104,7 +2092,6 @@ func projectAdmittedChildRun(
 		State:           run.Running,
 		ActiveSegmentID: draft.SegmentID,
 		ModelSelection:  draft.ModelSelection,
-		Limits:          draft.Limits,
 		Capabilities:    draft.Capabilities,
 		CreatedAt:       draft.CreatedAt,
 		UpdatedAt:       draft.CreatedAt,

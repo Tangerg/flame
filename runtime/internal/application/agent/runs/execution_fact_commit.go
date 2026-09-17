@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"slices"
 	"sync"
+
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -106,7 +107,7 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 		value.Interrupts = interrupts
 		return value, true
 	case SegmentEnded:
-		return NewSegmentEnded(value.Reason, value.failure, value.usage, value.Duration), true
+		return NewSegmentEnded(value.Reason, value.failure, value.usage, value.Duration).WithUnresolvedEffects(value.unresolvedEffects), true
 	case UsageReported:
 		value.ByModel = slices.Clone(value.ByModel)
 		return value, true

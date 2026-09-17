@@ -28,7 +28,7 @@ func (i *interactionSession) awaitDispatchSegment(ctx context.Context) error {
 		case <-ready:
 		case <-ctx.Done():
 			return context.Cause(ctx)
-		case <-i.lifetime.releasing:
+		case <-i.lifetime.releasing.Done():
 			return errInteractionReleased
 		}
 	}
@@ -37,13 +37,13 @@ func (i *interactionSession) awaitDispatchSegment(ctx context.Context) error {
 
 // stopModelProcess ends only the member whose model call cannot continue.
 // Scope preserves model errors as unknown external outcomes; Runtime owns the
-// decision to stop and retains its allowance or provider failure separately.
+// decision to stop and retains its provider failure separately.
 func (i *interactionSession) stopModelProcess(ctx context.Context, processID agent.ProcessID) error {
 	process, found := i.engine.Process(processID)
 	if !found {
 		return fmt.Errorf("agentexec: model process %s is unavailable", processID)
 	}
-	controlCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
+	controlCtx, cancel := i.lifetime.publicationContext(ctx)
 	defer cancel()
 	if err := process.RequestCancellation(controlCtx, modelProcessStopReason); err != nil && !errors.Is(err, agent.ErrProcessFinished) {
 		return fmt.Errorf("agentexec: stop model process: %w", err)

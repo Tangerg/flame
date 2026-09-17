@@ -203,7 +203,7 @@ that the Flame side currently deletes when a Run finishes.
 ## Continuation is not anchored to a verified prefix
 
 Flame recovery reconstructs from durable Runtime state and public framework
-checkpoints, validating identities, capabilities, budgets, and prompt digests
+checkpoints, validating identities, capabilities, and prompt digests
 before restoring execution. Content digests exist in Flame over files,
 knowledge, and skills — not over history.
 

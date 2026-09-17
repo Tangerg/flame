@@ -794,15 +794,13 @@ func (c CancelRunResponse) ValidateWire() error {
 
 func (r RunOutcome) ValidateWire() error {
 	return collectWireViolations("RunOutcome",
-		closedEnum("type", string(r.Type), []string{"completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"}, false),
+		closedEnum("type", string(r.Type), []string{"completed", "timedOut", "failed", "canceled", "lost"}, false),
 		forbiddenWhen(wireFieldEquals(r, "type", "completed"), "error", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "completed"), "detail", r),
 		requiredWhen(wireFieldEquals(r, "type", "timedOut"), "error", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "timedOut"), "detail", r),
 		requiredWhen(wireFieldEquals(r, "type", "failed"), "error", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "failed"), "detail", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "maxSteps"), "error", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "maxBudget"), "error", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "canceled"), "error", r),
 		requiredWhen(wireFieldEquals(r, "type", "lost"), "error", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "lost"), "detail", r),
@@ -811,11 +809,13 @@ func (r RunOutcome) ValidateWire() error {
 
 func (s SegmentOutcome) ValidateWire() error {
 	return collectWireViolations("SegmentOutcome",
-		closedEnum("type", string(s.Type), []string{"interrupt", "suspended", "completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"}, false),
+		closedEnum("type", string(s.Type), []string{"interrupt", "suspended", "completed", "timedOut", "failed", "canceled", "lost"}, false),
 		requiredWhen(wireFieldEquals(s, "type", "interrupt"), "interrupts", s),
+		forbiddenWhen(wireFieldEquals(s, "type", "interrupt"), "unresolvedEffects", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "interrupt"), "error", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "interrupt"), "detail", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "suspended"), "interrupts", s),
+		forbiddenWhen(wireFieldEquals(s, "type", "suspended"), "unresolvedEffects", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "suspended"), "error", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "suspended"), "detail", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "completed"), "interrupts", s),
@@ -827,10 +827,6 @@ func (s SegmentOutcome) ValidateWire() error {
 		requiredWhen(wireFieldEquals(s, "type", "failed"), "error", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "failed"), "interrupts", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "failed"), "detail", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "maxSteps"), "interrupts", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "maxSteps"), "error", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "maxBudget"), "interrupts", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "maxBudget"), "error", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "canceled"), "interrupts", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "canceled"), "error", s),
 		requiredWhen(wireFieldEquals(s, "type", "lost"), "error", s),
@@ -1457,7 +1453,7 @@ func (r RuntimeEvent) ValidateWire() error {
 
 func (a ArtifactOutcome) ValidateWire() error {
 	return collectWireViolations("ArtifactOutcome",
-		closedEnum("type", string(a.Type), []string{"completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"}, false),
+		closedEnum("type", string(a.Type), []string{"completed", "timedOut", "failed", "canceled", "lost"}, false),
 		forbiddenWhen(wireFieldEquals(a, "type", "completed"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "completed"), "detail", a),
 		requiredWhen(wireFieldEquals(a, "type", "timedOut"), "error", a),
@@ -1466,8 +1462,6 @@ func (a ArtifactOutcome) ValidateWire() error {
 		requiredWhen(wireFieldEquals(a, "type", "failed"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "failed"), "detail", a),
 		allowedValuesWhen(wireFieldEquals(a, "type", "failed"), "error.type", a, []string{"internalError", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected"}),
-		forbiddenWhen(wireFieldEquals(a, "type", "maxSteps"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "maxBudget"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "canceled"), "error", a),
 		requiredWhen(wireFieldEquals(a, "type", "lost"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "lost"), "detail", a),
@@ -1627,24 +1621,6 @@ func (d DiffRow) ValidateWire() error {
 		requiredWhen(wireFieldEquals(d, "type", "deleted"), "leftLine", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "deleted"), "text", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "deleted"), "rightLine", d),
-	)
-}
-
-func (g GoalBudget) ValidateWire() error {
-	return collectWireViolations("GoalBudget",
-		optionalPositiveNumber("maxRuns", g.MaxRuns),
-		optionalPositiveNumber("maxCostUsd", g.MaxCostUSD),
-		optionalPositiveNumber("maxSteps", g.MaxSteps),
-		requiredAnyWhen(true, []string{"maxRuns", "maxCostUsd", "maxSteps"}, g),
-	)
-}
-
-func (r RunLimits) ValidateWire() error {
-	return collectWireViolations("RunLimits",
-		optionalPositiveNumber("maxTotalTokens", r.MaxTotalTokens),
-		optionalPositiveNumber("maxSteps", r.MaxSteps),
-		optionalPositiveNumber("maxBudgetUsd", r.MaxBudgetUSD),
-		requiredAnyWhen(true, []string{"maxTotalTokens", "maxSteps", "maxBudgetUsd"}, r),
 	)
 }
 
@@ -1831,13 +1807,13 @@ func (g Goal) ValidateWire() error {
 		requiredWhen(wireFieldEquals(g, "status", "paused"), "reason", g),
 		allowedValuesWhen(wireFieldEquals(g, "status", "paused"), "reason.code", g, []string{"stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted"}),
 		requiredWhen(wireFieldEquals(g, "status", "blocked"), "reason", g),
-		allowedValuesWhen(wireFieldEquals(g, "status", "blocked"), "reason.code", g, []string{"runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"}),
+		allowedValuesWhen(wireFieldEquals(g, "status", "blocked"), "reason.code", g, []string{"blockedByModel"}),
 	)
 }
 
 func (g GoalReason) ValidateWire() error {
 	return collectWireViolations("GoalReason",
-		closedEnum("code", string(g.Code), []string{"stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "runBudgetReached", "costBudgetReached", "stepBudgetReached", "pricingUnavailable", "blockedByModel"}, false),
+		closedEnum("code", string(g.Code), []string{"stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "blockedByModel"}, false),
 		requiredWhen(wireFieldEquals(g, "code", "runNotCompleted"), "detail", g),
 		requiredWhen(wireFieldEquals(g, "code", "blockedByModel"), "detail", g),
 		forbiddenWhen(wireFieldEquals(g, "code", "stoppedByUser"), "detail", g),
@@ -1845,10 +1821,6 @@ func (g GoalReason) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(g, "code", "runStartFailed"), "detail", g),
 		forbiddenWhen(wireFieldEquals(g, "code", "awaitingInput"), "detail", g),
 		forbiddenWhen(wireFieldEquals(g, "code", "terminalOutcomeMissing"), "detail", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "runBudgetReached"), "detail", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "costBudgetReached"), "detail", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "stepBudgetReached"), "detail", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "pricingUnavailable"), "detail", g),
 	)
 }
 

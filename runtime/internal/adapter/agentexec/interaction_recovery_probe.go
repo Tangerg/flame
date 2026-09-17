@@ -78,7 +78,6 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		Isolated:                 checkpoint.Scope.Isolated,
 		GoalIncarnationID:        checkpoint.Scope.GoalIncarnationID,
 		ModelSelection:           checkpoint.ModelSelection,
-		Limits:                   checkpoint.Limits,
 		InterruptKinds:           continuation.Capabilities.InterruptKinds,
 		ChildRunAdmissionEnabled: continuation.ChildRunAdmissionEnabled,
 		WorkingContext:           cloneChatMessages(state.instructions),

@@ -119,11 +119,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// without the other. steps / active_duration_ns / usage are a different
 		// kind of fact — how much the Run has consumed — and are written by every
 		// commit from the first segment on, because a running Run costs money and
-		// a parked one has to report what it already spent. max_total_tokens / max_steps /
-		// max_budget_usd are the allowance it was admitted under, frozen at
-		// creation: a resume and a cross-restart rehydrate have to apply the same
-		// caps the first segment did. SQL NULL means that one dimension is not
-		// capped; every present value is strictly positive.
+		// a parked one has to report what it already spent.
 		//
 		// A Run's open interrupts are NOT here — the interrupts table owns them
 		// and a read composes them, because two copies of one park would be two
@@ -166,9 +162,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			usage              TEXT    NOT NULL DEFAULT '',
 			context_tokens     INTEGER NOT NULL DEFAULT 0 CHECK (context_tokens >= 0),
 			problem            TEXT    NOT NULL DEFAULT '',
-			max_total_tokens         INTEGER,
-			max_steps          INTEGER,
-			max_budget_usd     REAL,
+			unresolved_effects TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(unresolved_effects) AND json_type(unresolved_effects) = 'array'),
 			capabilities       TEXT    NOT NULL DEFAULT '',
 			message_mark       INTEGER NOT NULL DEFAULT -1,
 			created_at         INTEGER NOT NULL,
@@ -180,9 +174,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 				 parent_run_id != run_id AND root_run_id != run_id)
 			),
 			CHECK (root_run_id = '' OR goal_incarnation_id = ''),
-			CHECK (max_total_tokens IS NULL OR max_total_tokens > 0),
-			CHECK (max_steps IS NULL OR max_steps > 0),
-			CHECK (max_budget_usd IS NULL OR max_budget_usd > 0),
 			CHECK (
 				(commit_segment_id = '' AND commit_id = '') OR
 				(commit_id != '' AND (
@@ -515,7 +506,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		)`,
 		// One autonomous goal per session (Goal mode). The FK is the durable
 		// ownership invariant: a Goal cannot survive or be created after its
-		// Session. budget/used are small JSON blobs read/written whole with the row.
+		// Session. Used accounting is a small JSON blob read/written whole with the row.
 		`CREATE TABLE IF NOT EXISTS goals (
 			session_id TEXT    PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
 			objective  TEXT    NOT NULL,
@@ -526,7 +517,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			model      TEXT    NOT NULL DEFAULT '',
 			reasoning_effort TEXT NOT NULL DEFAULT '',
 			capabilities TEXT  NOT NULL DEFAULT '',
-			budget     TEXT    NOT NULL,
 			used       TEXT    NOT NULL,
 			incarnation_id   TEXT    NOT NULL CHECK (incarnation_id <> ''),
 			revision   INTEGER NOT NULL CHECK (revision > 0),
@@ -535,7 +525,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		)`,
 		// One immutable row per terminal goal-owned Run. This is not a cache of
 		// Goal.Used: it is the idempotency identity that lets terminal Run state
-		// and cross-Run budget accounting commit as one fact. The Run foreign key
+		// and cross-Run usage accounting commit as one fact. The Run foreign key
 		// keeps that technical tombstone through ordinary Goal replacement while
 		// pruning it when rollback or Session replacement removes the Run itself.
 		`CREATE TABLE IF NOT EXISTS goal_runs (

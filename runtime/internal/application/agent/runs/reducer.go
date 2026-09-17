@@ -50,9 +50,6 @@ type reducerConfig struct {
 	// ContextTokens is the latest authoritative prompt footprint brought into a
 	// resumed Segment. Zero means the Run has not observed one yet.
 	ContextTokens int64
-	// Limits is the allowance in force for the whole Run, frozen at admission and
-	// carried unchanged through every continuation.
-	Limits run.Limits
 	// Capabilities is the Run's frozen optional behavior. Every record this reducer
 	// commits carries the admission value, including continuation records.
 	Capabilities run.Capabilities
@@ -69,7 +66,7 @@ type reducer struct {
 	resume  *resumeBinding
 	itemIDs segmentItemIdentities
 	// step is the latest cumulative accounted model-call count reported by the
-	// executor. It uses the same unit as Limits.MaxSteps; tool events never
+	// executor. Tool events never
 	// infer it.
 	step int
 	// usage is the latest authoritative cumulative Run accounting reported by
@@ -113,7 +110,7 @@ type openTool struct {
 	argumentsText     string
 	callID            string
 	sourceCallID      string
-	modelCallSequence uint32
+	modelCallSequence uint64
 	toolCallIndex     uint32
 	id                string
 	occurredAt        time.Time
@@ -126,7 +123,7 @@ type openTool struct {
 }
 
 type toolPosition struct {
-	modelCallSequence uint32
+	modelCallSequence uint64
 	toolCallIndex     uint32
 }
 
@@ -217,7 +214,7 @@ func (r *reducer) open() (reductionBatch, error) {
 		return reductionBatch{}, fmt.Errorf("%w: %w", errReducerInvariant, r.resume.err)
 	}
 	// The opening Run record goes through runRecord like every other one, so a
-	// resumed segment announces the Run's accrual and allowance rather than a fresh
+	// resumed segment announces the Run's accrual rather than a fresh
 	// Run's zeros. Only the creation stamp differs: an opening may have to mint one.
 	opening, err := r.runRecord(run.Running)
 	if err != nil {
@@ -647,7 +644,7 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 	if outcome == run.OutcomeCanceled && r.cfg.CancelReason != nil {
 		detail = r.cfg.CancelReason()
 	}
-	terminal, err := r.finishedRun(outcome, failure, detail)
+	terminal, err := r.finishedRun(outcome, failure, detail, nil)
 	if err != nil {
 		return reductionBatch{}, fmt.Errorf("%w: synthesize terminal: %w", errReducerInvariant, err)
 	}

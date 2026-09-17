@@ -24,8 +24,8 @@ require (
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Tangerg/scope/a2a v0.22.0 // indirect
-	github.com/Tangerg/scope/agent v0.25.0 // indirect
-	github.com/Tangerg/scope/core v0.23.0 // indirect
+	github.com/Tangerg/scope/agent v0.27.0 // indirect
+	github.com/Tangerg/scope/core v0.24.0 // indirect
 	github.com/Tangerg/scope/mcp v0.23.0 // indirect
 	github.com/Tangerg/scope/models/alibaba v0.22.0 // indirect
 	github.com/Tangerg/scope/models/anthropic v0.22.0 // indirect
@@ -48,8 +48,8 @@ require (
 	github.com/Tangerg/scope/models/xai v0.22.0 // indirect
 	github.com/Tangerg/scope/models/xiaomi v0.22.0 // indirect
 	github.com/Tangerg/scope/models/zhipu v0.22.0 // indirect
-	github.com/Tangerg/scope/skills v0.22.0 // indirect
-	github.com/Tangerg/scope/tools v0.23.0 // indirect
+	github.com/Tangerg/scope/skills v0.22.1 // indirect
+	github.com/Tangerg/scope/tools v0.24.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/a2aproject/a2a-go/v2 v2.5.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect

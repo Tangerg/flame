@@ -116,7 +116,7 @@ func TestMockStartRunRevisionExhaustionIsAtomic(t *testing.T) {
 	state.meta.Revision = exactint.Maximum
 	originalRuntimeRuns := len(runtime.runs)
 
-	_, err = runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "do not partially start"))
+	_, err = runtime.StartRun(t.Context(), testStartRun(session.ID, "do not partially start"))
 	if !errors.Is(err, errSessionRevisionExhausted) {
 		t.Fatalf("start after revision exhaustion error = %v", err)
 	}
@@ -142,7 +142,7 @@ func TestMockBackgroundEventRevisionExhaustionTerminatesTheSegmentWithoutPartial
 	state := runtime.sessions[session.ID]
 	state.meta.Revision = exactint.Maximum - uint64(startRunRevisionChanges(state))
 
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "exhaust after opening"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "exhaust after opening"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +177,7 @@ func TestMockParkRevisionExhaustionDoesNotPublishAPartialWaitingSet(t *testing.T
 	state := runtime.sessions[session.ID]
 	state.meta.Revision = exactint.Maximum - uint64(startRunRevisionChanges(state))
 
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "cannot partially wait"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "cannot partially wait"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ func TestMockFinishRevisionExhaustionLeavesTheRunExecutingAndReportsTheStreamFai
 	state := runtime.sessions[session.ID]
 	state.meta.Revision = exactint.Maximum - uint64(startRunRevisionChanges(state)) - uint64(sessionEventRevisionChange())
 
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "cannot partially finish"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "cannot partially finish"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +231,7 @@ func TestMockCancelRevisionExhaustionIsAtomic(t *testing.T) {
 	}
 	state := runtime.sessions[session.ID]
 	state.meta.Revision = exactint.Maximum - uint64(startRunRevisionChanges(state)) - uint64(sessionEventRevisionChange())
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "cannot partially cancel"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "cannot partially cancel"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +282,7 @@ func TestRuntimePreservesAuthoredMessageTextAcrossRunMutations(t *testing.T) {
 		}
 	}
 
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", startText))
+	opened, err := runtime.StartRun(t.Context(), testStartRun("ses_demo_1", startText))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,7 +367,7 @@ func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "wait for approval"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "wait for approval"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,10 +397,10 @@ func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
 	}
 }
 
-func unlimitedStartRun(sessionID, text string) agent.StartRun {
+func testStartRun(sessionID, text string) agent.StartRun {
 	return agent.StartRun{
 		SessionID: sessionID, Message: agent.Message{Text: text},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	}
 }
 
@@ -456,14 +456,9 @@ func TestProjectApprovalRulesFollowTheResolvedProjectRoot(t *testing.T) {
 
 func startWaitingRun(t *testing.T, runtime *Runtime, sessionID string) (agent.SegmentStream, *agent.Conversation) {
 	t.Helper()
-	maxSteps, maxBudget := 12, 1.5
-	limits, err := agent.NewRunLimits(agent.RunLimitValues{MaxSteps: &maxSteps, MaxBudgetUSD: &maxBudget})
-	if err != nil {
-		t.Fatal(err)
-	}
 	opened, err := runtime.StartRun(t.Context(), agent.StartRun{
 		SessionID: sessionID, Message: agent.Message{Text: "fix the flaky test"},
-		Options: agent.RunOptions{Provider: "mock", Model: "balanced", Limits: limits},
+		Options: agent.RunOptions{Provider: "mock", Model: "balanced"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -527,14 +522,9 @@ func requireCompletedColdProjection(t *testing.T, runtime *Runtime, sessionID, r
 	if _, active := snapshot.ActiveRun(); active || len(snapshot.Interactions) != 0 || len(snapshot.Transcript) < 4 {
 		t.Fatalf("snapshot = runs %+v, interactions %d, transcript %d", snapshot.Runs, len(snapshot.Interactions), len(snapshot.Transcript))
 	}
-	latest, ok := snapshot.LatestRun()
+	_, ok := snapshot.LatestRun()
 	if !ok {
 		t.Fatal("latest run is missing")
-	}
-	steps, stepsLimited := latest.Limits.MaxSteps()
-	budget, budgetLimited := latest.Limits.MaxBudgetUSD()
-	if !stepsLimited || steps != 12 || !budgetLimited || budget != 1.5 {
-		t.Fatalf("latest run limits = %+v", latest.Limits)
 	}
 	approvalItem, ok := snapshotBlock(snapshot, runID, agent.InteractionItemID(interaction))
 	if !ok || approvalItem.Status != agent.BlockStatusCompleted || approvalItem.Tool.Status != agent.ToolOK {
@@ -556,7 +546,7 @@ func TestRuntimeReconnectUsesOpaqueReplayCheckpoint(t *testing.T) {
 		}}
 	}
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "hello"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "hello"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -596,7 +586,7 @@ func TestRuntimeSubscribeWithoutCheckpointAttachesAtHead(t *testing.T) {
 		return Script{Prelude: []Step{eventStep(time.Second, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "hello"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "hello"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -665,7 +655,7 @@ func TestRuntimeForkExcludesAnActiveTail(t *testing.T) {
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "active tail"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun("ses_demo_1", "active tail"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -703,12 +693,12 @@ func TestRuntimeForkCopiesThePlanAtItsRunBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "boundary"))
+	first, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "boundary"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	drain(t, first, agent.NewConversation())
-	second, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "active"))
+	second, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "active"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -750,7 +740,7 @@ func TestRuntimeColdReadTracksAndSettlesRunningItems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "run"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "run"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -802,7 +792,7 @@ func TestScriptContinuationReceivesFixtureLocalItemIDs(t *testing.T) {
 		}
 	}
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "ask"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "ask"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -841,7 +831,7 @@ func TestApprovalArgumentOverrideBecomesTheCompletedToolProjection(t *testing.T)
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
 	opened, err := runtime.StartRun(t.Context(), agent.StartRun{
 		SessionID: session.ID, Message: agent.Message{Text: "run safely"},
-		Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
+		Options: agent.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -880,7 +870,7 @@ func TestInvalidFaultConfigurationDoesNotMutateRunState(t *testing.T) {
 	runtime := New()
 	runtime.Faults = []SubscriptionFault{{Kind: FaultKind("unknown"), After: 1}}
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
-	if _, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "start")); err == nil {
+	if _, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "start")); err == nil {
 		t.Fatal("invalid subscription fault was ignored")
 	}
 	snapshot, err := runtime.GetSession(t.Context(), session.ID)
@@ -916,7 +906,7 @@ func TestRememberedRulesRemoveOnlyMatchedApprovalsFromThePendingSet(t *testing.T
 		}
 	}
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "ask"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "ask"))
 	if err != nil {
 		t.Fatal(err)
 	}

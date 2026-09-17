@@ -66,7 +66,6 @@ var (
 	ErrInputRequired             = errors.New("runs: input required")
 	ErrUnsupportedMedia          = errors.New("runs: unsupported media")
 	ErrUnsupportedModelSelection = errors.New("runs: unsupported model selection")
-	ErrInvalidRunLimit           = errors.New("runs: invalid run limit")
 	ErrInvalidRunOptions         = errors.New("runs: invalid run options")
 	// ErrInvalidCancellationReason reports a cancellation note that cannot be
 	// represented by the Runtime product contract.
@@ -109,7 +108,6 @@ type StartCommand struct {
 	DefaultWorkspacePath string
 	NewSessionTitle      string
 	ModelSelection       modelref.Selection
-	Limits               run.Limits
 	Options              *corechat.Options
 	// Capabilities is the optional behavior enabled for this Run, already resolved
 	// by the caller against what this build can execute. The use case freezes it at
@@ -446,9 +444,6 @@ func (r RootExecutionStart) Validate() error {
 	}
 	if len(r.WorkingContext) > 0 && r.WorkingContext[len(r.WorkingContext)-1].Role != corechat.RoleUser {
 		return errors.New("runs: fresh working context must end with the current user message")
-	}
-	if err := r.Limits.Validate(); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidRunLimit, err)
 	}
 	if err := r.ModelSelection.ValidateExact(); err != nil {
 		return fmt.Errorf("runs: %w", err)

@@ -57,6 +57,9 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	var modelCalls atomic.Int32
 	model := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 		modelCalls.Add(1)
+		if request.Options.Temperature == nil || *request.Options.Temperature != 0.37 || request.Options.MaxOutputTokens == nil || *request.Options.MaxOutputTokens != 731 {
+			return nil, errors.New("restored child lost generation options")
+		}
 		switch {
 		case hasToolMessage(request.Messages):
 			return interactionUsageTextResponse("continued", 2, 1), nil
@@ -93,7 +96,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
 		Lifetime: t.Context(), ChatResolver: staticInteractionChatResolver(model),
 		ImplementationIdentity: "completed-sibling-build", ConfigurationIdentity: "completed-sibling-config",
-		DefaultMaxModelCalls: uint32Pointer(6), MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
+		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
 		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{question, ordinary}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		ToolHooks: siblingEditHook{}, ToolResultStore: offloads,
@@ -128,7 +131,8 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	})
 	started, err := coordinator.Start(t.Context(), runs.StartCommand{
 		SessionID: "session_1", Capabilities: run.Capabilities{ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question}},
-		Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "delegate both siblings"}},
+		Input:   []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "delegate both siblings"}},
+		Options: &chat.Options{Temperature: new(0.37), MaxOutputTokens: new(int64(731))},
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -17,8 +17,7 @@ import (
 //
 // Startup owes the user three things here, and they belong to three different
 // owners. Run recovery must terminalize the abandoned Run as lost. The Goal
-// ledger must charge that Run exactly once, because a Goal's budget is the only
-// thing standing between an autonomous drive and an unbounded spend. And the
+// ledger must record that Run exactly once to preserve accurate usage. The
 // Goal must end in a state the user can act on rather than active with a Run
 // that no longer exists.
 //
@@ -53,11 +52,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 		t.Fatalf("insert Session: %v", insertErr)
 	}
 
-	budget, err := goal.NewBudget(goal.BudgetLimits{MaxRuns: testsupport.Pointer(3)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	active, err := goal.New(sessionID, "drive until done", selection, budget, run.Capabilities{}, incarnationID, createdAt)
+	active, err := goal.New(sessionID, "drive until done", selection, run.Capabilities{}, incarnationID, createdAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,10 +105,8 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 			recovered.Status(), recovered.Reason().Code(), recovered.Reason().Detail())
 	}
 
-	// Recovery is re-entered on every boot, and a Goal's budget is cumulative.
-	// A restart loop that re-charged the same Run would exhaust the budget
-	// without the agent doing any work, so the second startup must find nothing
-	// left to reconcile rather than the same Run again.
+	// Repeated recovery must not count the same Run twice. A second startup
+	// finds no unfinished Run and preserves the recorded usage.
 	if closeErr := host.Close(); closeErr != nil {
 		t.Fatalf("close first Runtime: %v", closeErr)
 	}
@@ -167,11 +160,7 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 	})); insertErr != nil {
 		t.Fatalf("insert Session: %v", insertErr)
 	}
-	budget, err := goal.NewBudget(goal.BudgetLimits{MaxRuns: testsupport.Pointer(3)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	active, err := goal.New(sessionID, "drive until done", selection, budget, run.Capabilities{}, incarnationID, createdAt)
+	active, err := goal.New(sessionID, "drive until done", selection, run.Capabilities{}, incarnationID, createdAt)
 	if err != nil {
 		t.Fatal(err)
 	}

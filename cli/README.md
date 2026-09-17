@@ -26,6 +26,8 @@ CLI preferences and Runtime configuration have separate owners.
 
 The process working directory is never an implicit Runtime configuration source. Source checkouts that use `runtime/config/config.yaml` select it explicitly with `FLAME_RUNTIME_CONFIG_DIR`.
 
+Run subscriptions reconnect with bounded backoff until canceled.
+
 Provider selection is either an exact provider/model pair or absent. Absence means that Runtime applies the active Session selection; CLI never infers a provider from a model name.
 
 ## Architecture

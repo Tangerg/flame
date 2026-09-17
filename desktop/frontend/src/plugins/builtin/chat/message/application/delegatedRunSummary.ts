@@ -45,11 +45,6 @@ const STATUS_VIEW: Record<
     dotTone: "idle",
     ink: "neutral",
   },
-  limit: {
-    labelKey: "agent.runTree.status.limit",
-    dotTone: "waiting",
-    ink: "warning",
-  },
 };
 
 export function delegatedRunSummary(

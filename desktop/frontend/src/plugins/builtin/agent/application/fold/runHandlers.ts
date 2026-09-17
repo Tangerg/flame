@@ -40,10 +40,7 @@ function sameRunOutcome(left: AgentRunOutcome | null, right: AgentRunOutcome): b
       left.error.retryAfterSeconds === right.error.retryAfterSeconds
     );
   }
-  if (
-    (left.type === "maxSteps" || left.type === "maxBudget" || left.type === "canceled") &&
-    right.type === left.type
-  ) {
+  if (left.type === "canceled" && right.type === left.type) {
     return left.detail === right.detail;
   }
   return false;

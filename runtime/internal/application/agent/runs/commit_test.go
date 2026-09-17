@@ -342,7 +342,6 @@ func TestCompositeCommitsRejectNestedTopLevelEventIdentity(t *testing.T) {
 	checkpoint := testExecutorCheckpoint()
 	root, _ := pending.RootContinuation()
 	checkpoint.ModelSelection = root.ModelSelection
-	checkpoint.Limits = root.Limits
 	checkpoint.Capabilities = pending.Capabilities
 	_, err := NewTreeBarrierCommit(
 		testCommitID("run_commit_barrier_parent"),
@@ -365,7 +364,6 @@ func TestTreeBarrierCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	checkpoint := testExecutorCheckpoint()
 	root, _ := pending.RootContinuation()
 	checkpoint.ModelSelection = root.ModelSelection
-	checkpoint.Limits = root.Limits
 	checkpoint.Capabilities = pending.Capabilities
 	commits := []EventCommit{{
 		RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_root",

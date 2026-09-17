@@ -53,7 +53,6 @@ func presentRun(run rundomain.Run) protocol.RunRef {
 		ActiveSegmentID: run.ActiveSegmentID(),
 		Metrics:         presentMetrics(run.Metrics()),
 		ContextTokens:   run.ContextTokens(),
-		Limits:          presentLimits(run.Limits()),
 		ProtocolProfile: presentRunProtocolProfile(run.Capabilities()),
 	}
 }
@@ -109,7 +108,7 @@ func presentSegmentFinished(run rundomain.Run, interrupts []transcript.Interrupt
 	return protocol.SegmentOutcome{
 		Type:   protocol.SegmentOutcomeType(terminal.Type),
 		Error:  terminal.Error,
-		Detail: terminal.Detail,
+		Detail: terminal.Detail, UnresolvedEffects: terminal.UnresolvedEffects,
 	}, metrics
 }
 
@@ -128,10 +127,6 @@ func presentOutcome(run rundomain.Run) protocol.RunOutcome {
 		kind = protocol.OutcomeTimedOut
 	case rundomain.OutcomeFailed:
 		kind = protocol.OutcomeFailed
-	case rundomain.OutcomeMaxBudget:
-		kind = protocol.OutcomeMaxBudget
-	case rundomain.OutcomeMaxSteps:
-		kind = protocol.OutcomeMaxSteps
 	case rundomain.OutcomeLost:
 		kind = protocol.OutcomeLost
 	default:
@@ -142,7 +137,12 @@ func presentOutcome(run rundomain.Run) protocol.RunOutcome {
 	if failed {
 		problem = presentRunFailure(&failure)
 	}
-	return protocol.RunOutcome{Type: kind, Error: problem, Detail: run.Detail()}
+	effects := run.UnresolvedEffects()
+	projected := make([]protocol.UnresolvedEffect, 0, len(effects))
+	for _, effect := range effects {
+		projected = append(projected, protocol.UnresolvedEffect{ProcessID: effect.ProcessID(), EffectID: effect.EffectID(), Cause: effect.Cause(), Reason: effect.Reason(), Detail: effect.Detail()})
+	}
+	return protocol.RunOutcome{Type: kind, Error: problem, Detail: run.Detail(), UnresolvedEffects: projected}
 }
 
 func presentMetrics(metrics rundomain.Metrics) protocol.RunMetrics {
@@ -156,23 +156,6 @@ func presentMetrics(metrics rundomain.Metrics) protocol.RunMetrics {
 		Steps:                metrics.Steps(),
 		ActiveDurationMillis: metrics.ActiveDuration().Milliseconds(),
 	}
-}
-
-func presentLimits(limits rundomain.Limits) *protocol.RunLimits {
-	if limits.Unlimited() {
-		return nil
-	}
-	wire := &protocol.RunLimits{}
-	if value, limited := limits.MaxTotalTokens(); limited {
-		wire.MaxTotalTokens = &value
-	}
-	if value, limited := limits.MaxSteps(); limited {
-		wire.MaxSteps = &value
-	}
-	if value, limited := limits.MaxBudgetUSD(); limited {
-		wire.MaxBudgetUSD = &value
-	}
-	return wire
 }
 
 func presentProgress(progress runs.Progress) protocol.RunProgress {

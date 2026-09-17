@@ -225,3 +225,8 @@ func (c ChildRunStartOutcomeReceipt) Await(ctx context.Context) error {
 	_, err := c.exchange.await(ctx)
 	return err
 }
+
+// MaxActiveChildRuns bounds product delegation independently of ordinary Tool
+// processes. Reservations count until initialization aborts or the drained
+// child's authoritative terminal commits.
+const MaxActiveChildRuns = 4

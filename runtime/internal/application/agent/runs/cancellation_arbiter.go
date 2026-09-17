@@ -326,12 +326,12 @@ func (r *runTreeOwner) abortRootCancellation(reason string) {
 	}
 }
 
-// commitInterrupt reserves the interrupt boundary, runs its context-bounded
+// commitInterrupt reserves the interrupt boundary, runs its owner-cancelable
 // durable commit and publication without holding mu, then releases waiting
 // cancellation. committed=false means cancellation won before the reservation
 // or the commit failed.
 func (r *runTreeOwner) commitInterrupt(ctx context.Context, commit func(context.Context) error) (committed bool, err error) {
-	commitCtx, cancelCommit := context.WithTimeout(ctx, runCleanupTimeout)
+	commitCtx, cancelCommit := context.WithCancel(ctx)
 	r.mu.Lock()
 	if r.cancelRequested {
 		r.mu.Unlock()

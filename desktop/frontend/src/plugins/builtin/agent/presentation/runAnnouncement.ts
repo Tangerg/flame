@@ -32,7 +32,6 @@ const KEY: Record<Exclude<RunAnnouncement, null>, string> = {
   finished: "announce.finished",
   error: "announce.error",
   canceled: "announce.canceled",
-  limit: "announce.limit",
 };
 
 export function runAnnouncementKey(announcement: RunAnnouncement): string | null {

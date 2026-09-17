@@ -30,11 +30,7 @@ import { useT } from "@/lib/i18n";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError } from "@/plugins/sdk";
 import { clearGoal, resumeGoal, stopGoal, updateGoal } from "../application/goalCommands";
-import {
-  GOAL_STATUS_I18N,
-  goalCanResume,
-  goalRefusalLabel,
-} from "../application/goalStatusPresentation";
+import { GOAL_STATUS_I18N, goalCanResume } from "../application/goalStatusPresentation";
 import { type GoalReadModel, useGoalMaterial } from "../application/goalReadModel";
 import {
   runtimeCommandsAvailable,
@@ -183,7 +179,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             onClick={openEditor}
           >
             <span {...stylex.props(vocab.hold, vocab.ink)}>
-              {t(goalRefusalLabel(goal) ?? GOAL_STATUS_I18N[goal.status].label)}
+              {t(GOAL_STATUS_I18N[goal.status].label)}
             </span>
             <span {...stylex.props(gs.objective, vocab.min, vocab.truncate, vocab.muted)}>
               {goal.objective}

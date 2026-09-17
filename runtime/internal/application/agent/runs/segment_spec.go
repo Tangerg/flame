@@ -48,11 +48,8 @@ type segmentSpec struct {
 	// Item. Only a fresh autonomous Goal root may set it; resumed input remains
 	// human-authored and visible even when the Run belongs to a Goal.
 	ModelOnlyInput bool
-	// Limits and Capabilities are admission policy for a fresh Run. A
-	// continuation reads the frozen values carried by Continuation.
-	Limits       run.Limits
-	Capabilities run.Capabilities
-	Continuation *treeContinuation
+	Capabilities   run.Capabilities
+	Continuation   *treeContinuation
 	// admission transfers the pre-commit reservation to the live Run only after
 	// its opening write-set commits.
 	admission *ownership.RunAdmission
@@ -79,14 +76,6 @@ func (s segmentSpec) priorMetrics() run.Metrics {
 	}
 	root, _ := s.Continuation.root()
 	return root.Metrics
-}
-
-func (s segmentSpec) effectiveLimits() run.Limits {
-	if s.Continuation == nil {
-		return s.Limits
-	}
-	root, _ := s.Continuation.root()
-	return root.Limits
 }
 
 func (s segmentSpec) effectiveCapabilities() run.Capabilities {

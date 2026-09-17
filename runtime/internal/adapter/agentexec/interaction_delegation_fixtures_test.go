@@ -419,8 +419,8 @@ func (d *delegateProjection) applyOpening(opening runs.OpeningCommit) {
 
 			State: run.Running, ActiveSegmentID: draft.SegmentID,
 			ModelSelection: draft.ModelSelection, GoalIncarnationID: draft.GoalIncarnationID,
-			Limits: draft.Limits, Capabilities: draft.Capabilities,
-			CreatedAt: draft.CreatedAt, UpdatedAt: draft.CreatedAt,
+			Capabilities: draft.Capabilities,
+			CreatedAt:    draft.CreatedAt, UpdatedAt: draft.CreatedAt,
 			MessageMark: run.UnknownMessageMark, Lineage: run.Lineage{SpawnedByItemID: draft.SpawnedByItemID, ParentRunID: draft.ParentRunID,
 				RootRunID: draft.RootRunID}})
 

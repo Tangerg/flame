@@ -48,7 +48,6 @@ type Snapshot struct {
 	ReasonDetail   string
 	ModelSelection modelref.Selection
 	Capabilities   run.Capabilities
-	Budget         Budget
 	Used           Usage
 	IncarnationID  string
 	Revision       int64
@@ -65,7 +64,6 @@ type Goal struct {
 	reason        Reason
 	selection     modelref.Selection
 	capabilities  run.Capabilities
-	budget        Budget
 	used          Usage
 	incarnationID goalref.IncarnationID
 	revision      int64
@@ -94,8 +92,6 @@ var (
 	errObjectiveRequired   = errors.New("goal: objective is required")
 	ErrInvalid             = errors.New("goal: invalid Goal")
 	ErrInvalidTransition   = errors.New("goal: invalid lifecycle transition")
-	ErrBudgetExhausted     = errors.New("goal: budget exhausted")
-	ErrPricingUnavailable  = errors.New("goal: pricing unavailable")
 	ErrNotResumable        = errors.New("goal: status is not resumable")
 	ErrNotEditable         = errors.New("goal: status is not editable")
 	ErrRunIdentityConflict = errors.New("goal: Run identity conflict")
@@ -169,7 +165,6 @@ func (c Current) Version() Version {
 func New(
 	sessionID, objective string,
 	selection modelref.Selection,
-	budget Budget,
 	capabilities run.Capabilities,
 	incarnationID string,
 	now time.Time,
@@ -180,7 +175,6 @@ func New(
 		Status:         StatusActive,
 		ModelSelection: selection,
 		Capabilities:   capabilities.Normalized(),
-		Budget:         budget,
 		IncarnationID:  incarnationID,
 		Revision:       firstRevision,
 		CreatedAt:      canonicalTime(now),
@@ -209,7 +203,6 @@ func Restore(snapshot Snapshot) (Goal, error) {
 		reason:        reason,
 		selection:     snapshot.ModelSelection,
 		capabilities:  snapshot.Capabilities.Clone(),
-		budget:        snapshot.Budget,
 		used:          snapshot.Used,
 		incarnationID: incarnationID,
 		revision:      snapshot.Revision,
@@ -247,9 +240,6 @@ func (g Goal) ValidateSnapshot() error {
 	if err := g.capabilities.Validate(); err != nil {
 		return fmt.Errorf("%w: capabilities: %v", ErrInvalid, err)
 	}
-	if err := g.budget.Validate(); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalid, err)
-	}
 	if err := g.used.validate(); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalid, err)
 	}
@@ -270,14 +260,6 @@ func (g Goal) ValidateSnapshot() error {
 			return fmt.Errorf("%w: invalid %s reason: %v", ErrInvalid, g.status, err)
 		}
 	}
-	if g.status == StatusActive {
-		if limit, exhausted := g.budget.exceeded(g.used); exhausted {
-			return fmt.Errorf("%w: active Goal has exhausted %s budget", ErrInvalid, limit)
-		}
-		if g.budget.pricingUnavailable(g.used) {
-			return fmt.Errorf("%w: active Goal has unavailable cost accounting", ErrInvalid)
-		}
-	}
 	return nil
 }
 
@@ -286,7 +268,7 @@ func (g Goal) Snapshot() Snapshot {
 		SessionID: g.sessionID, Objective: g.objective, Status: g.status,
 		ReasonCode: g.reason.code, ReasonDetail: g.reason.detail,
 		ModelSelection: g.selection, Capabilities: g.capabilities.Clone(),
-		Budget: g.budget, Used: g.used, IncarnationID: g.incarnationID.String(),
+		Used: g.used, IncarnationID: g.incarnationID.String(),
 		Revision: g.revision, CreatedAt: g.createdAt, UpdatedAt: g.updatedAt,
 	}
 }
@@ -302,7 +284,6 @@ func (g Goal) Status() Status                     { return g.status }
 func (g Goal) Reason() Reason                     { return g.reason }
 func (g Goal) ModelSelection() modelref.Selection { return g.selection }
 func (g Goal) Capabilities() run.Capabilities     { return g.capabilities.Clone() }
-func (g Goal) Budget() Budget                     { return g.budget }
 func (g Goal) Used() Usage                        { return g.used }
 func (g Goal) IncarnationID() string              { return g.incarnationID.String() }
 func (g Goal) Revision() int64                    { return g.revision }
@@ -436,12 +417,6 @@ func (g Goal) Resume(now time.Time) (Goal, error) {
 	if g.status != StatusPaused && g.status != StatusBlocked {
 		return Goal{}, ErrNotResumable
 	}
-	if _, exhausted := g.budget.exceeded(g.used); exhausted {
-		return Goal{}, ErrBudgetExhausted
-	}
-	if g.budget.pricingUnavailable(g.used) {
-		return Goal{}, ErrPricingUnavailable
-	}
 	next, err := g.next(now)
 	if err != nil {
 		return Goal{}, err
@@ -458,12 +433,6 @@ func (g Goal) ReviseObjective(objective, incarnationID string, now time.Time) (G
 func (g Goal) ReviseObjectiveAndResume(objective, incarnationID string, now time.Time) (Goal, error) {
 	if g.status != StatusPaused {
 		return Goal{}, fmt.Errorf("%w: only a paused Goal can revise and resume", ErrInvalidTransition)
-	}
-	if _, exhausted := g.budget.exceeded(g.used); exhausted {
-		return Goal{}, ErrBudgetExhausted
-	}
-	if g.budget.pricingUnavailable(g.used) {
-		return Goal{}, ErrPricingUnavailable
 	}
 	return g.reviseObjective(objective, incarnationID, true, now)
 }

@@ -15,9 +15,7 @@ type dispatchAttemptContextKey struct{}
 // decorators distinguish a definite failure before an external call from a
 // projection failure after any call in the Effect has crossed that boundary.
 type dispatchAttempt struct {
-	// The Effect owns the turn even if Scope rejects the prepared request before calling the model.
-	modelAllowance *interactionAllowanceTurn
-	effectID       agent.EffectID
+	effectID agent.EffectID
 
 	mu                      sync.Mutex
 	externalBoundaryCrossed bool
@@ -64,12 +62,6 @@ func (d *dispatchAttempt) recordProjectionFailure(err error) {
 		return
 	}
 	d.projectionErr = errors.Join(d.projectionErr, err)
-}
-
-func (d *dispatchAttempt) close() {
-	if d.modelAllowance != nil {
-		d.modelAllowance.release()
-	}
 }
 
 func (d *dispatchAttempt) indeterminateFailure() error {

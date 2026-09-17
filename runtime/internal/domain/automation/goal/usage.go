@@ -12,84 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
-// Budget is the immutable cross-Run spending policy. Its zero value is invalid;
-// callers must choose [UnlimitedBudget] or construct explicit positive limits
-// with [NewBudget].
-type Budget struct {
-	maxRuns      int
-	maxCostUSD   float64
-	maxSteps     int
-	runsLimited  bool
-	costLimited  bool
-	stepsLimited bool
-	initialized  bool
-}
-
-// BudgetLimits is the construction boundary for a limited Budget. Every
-// present value is a real positive cap; absence means that axis is not capped.
-// At least one axis must be present.
-type BudgetLimits struct {
-	MaxRuns    *int
-	MaxCostUSD *float64
-	MaxSteps   *int
-}
-
-// UnlimitedBudget explicitly selects a Goal with no cross-Run cap.
-func UnlimitedBudget() Budget {
-	return Budget{initialized: true}
-}
-
-// NewBudget constructs a Budget with at least one explicit positive limit.
-func NewBudget(limits BudgetLimits) (Budget, error) {
-	budget := Budget{initialized: true}
-	if limits.MaxRuns != nil {
-		if *limits.MaxRuns <= 0 {
-			return Budget{}, fmt.Errorf("%w: maximum runs must be positive", ErrInvalid)
-		}
-		budget.maxRuns, budget.runsLimited = *limits.MaxRuns, true
-	}
-	if limits.MaxCostUSD != nil {
-		if *limits.MaxCostUSD <= 0 || math.IsNaN(*limits.MaxCostUSD) || math.IsInf(*limits.MaxCostUSD, 0) {
-			return Budget{}, fmt.Errorf("%w: maximum cost must be finite and positive", ErrInvalid)
-		}
-		budget.maxCostUSD, budget.costLimited = *limits.MaxCostUSD, true
-	}
-	if limits.MaxSteps != nil {
-		if *limits.MaxSteps <= 0 {
-			return Budget{}, fmt.Errorf("%w: maximum steps must be positive", ErrInvalid)
-		}
-		budget.maxSteps, budget.stepsLimited = *limits.MaxSteps, true
-	}
-	if budget.Unlimited() {
-		return Budget{}, fmt.Errorf("%w: limited budget requires at least one limit", ErrInvalid)
-	}
-	return budget, nil
-}
-
-func (b Budget) Validate() error {
-	if !b.initialized {
-		return fmt.Errorf("%w: budget must be constructed explicitly", ErrInvalid)
-	}
-	if b.maxRuns < 0 || b.maxSteps < 0 ||
-		b.runsLimited != (b.maxRuns > 0) || b.stepsLimited != (b.maxSteps > 0) {
-		return fmt.Errorf("%w: count limit presence and value disagree", ErrInvalid)
-	}
-	if b.maxCostUSD < 0 || b.costLimited != (b.maxCostUSD > 0) ||
-		math.IsNaN(b.maxCostUSD) || math.IsInf(b.maxCostUSD, 0) {
-		return fmt.Errorf("%w: cost limit presence and value disagree", ErrInvalid)
-	}
-	return nil
-}
-
-// Unlimited reports whether no budget axis is capped.
-func (b Budget) Unlimited() bool {
-	return b.initialized && !b.runsLimited && !b.costLimited && !b.stepsLimited
-}
-
-func (b Budget) MaxRuns() (int, bool)        { return b.maxRuns, b.runsLimited }
-func (b Budget) MaxCostUSD() (float64, bool) { return b.maxCostUSD, b.costLimited }
-func (b Budget) MaxSteps() (int, bool)       { return b.maxSteps, b.stepsLimited }
-
 // Usage is the immutable accounting value accumulated across Goal-owned Runs.
 type Usage struct {
 	Runs  int
@@ -133,36 +55,6 @@ func (u Usage) add(record RunRecord) (Usage, error) {
 		return Usage{}, err
 	}
 	return next, nil
-}
-
-type BudgetLimit string
-
-const (
-	BudgetLimitRuns  BudgetLimit = "runs"
-	BudgetLimitCost  BudgetLimit = "cost"
-	BudgetLimitSteps BudgetLimit = "steps"
-)
-
-func (b Budget) exceeded(u Usage) (BudgetLimit, bool) {
-	cost, priced := u.Cost.USD()
-	switch {
-	case b.runsLimited && u.Runs >= b.maxRuns:
-		return BudgetLimitRuns, true
-	case b.costLimited && priced && cost >= b.maxCostUSD:
-		return BudgetLimitCost, true
-	case b.stepsLimited && u.Steps >= b.maxSteps:
-		return BudgetLimitSteps, true
-	default:
-		return BudgetLimit(""), false
-	}
-}
-
-func (b Budget) pricingUnavailable(u Usage) bool {
-	if !b.costLimited || u.Runs == 0 {
-		return false
-	}
-	_, priced := u.Cost.USD()
-	return !priced
 }
 
 type RunRecord struct {
@@ -243,8 +135,7 @@ func ValidateCharge(value run.Run, record *RunRecord) error {
 	return record.Describes(value)
 }
 
-// RecordRun returns one replacement revision even when accounting also derives
-// a pause or budget block.
+// RecordRun accumulates usage and pauses active Goals after unsuccessful Runs.
 func (g Goal) RecordRun(record RunRecord) (Goal, error) {
 	if err := record.Validate(); err != nil {
 		return Goal{}, err
@@ -264,29 +155,11 @@ func (g Goal) RecordRun(record RunRecord) (Goal, error) {
 		if record.Outcome != run.OutcomeCompleted {
 			next.status = StatusPaused
 			next.reason, err = newReason(StatusPaused, ReasonRunNotCompleted, string(record.Outcome))
-		} else if limit, exhausted := g.budget.exceeded(next.used); exhausted {
-			next.status = StatusBlocked
-			next.reason, err = newReason(StatusBlocked, reasonForBudgetLimit(limit), "")
-		} else if g.budget.pricingUnavailable(next.used) {
-			next.status = StatusBlocked
-			next.reason, err = newReason(StatusBlocked, ReasonPricingUnavailable, "")
+
 		}
 		if err != nil {
 			return Goal{}, err
 		}
 	}
 	return next, next.ValidateSnapshot()
-}
-
-func reasonForBudgetLimit(limit BudgetLimit) ReasonCode {
-	switch limit {
-	case BudgetLimitRuns:
-		return ReasonRunBudgetReached
-	case BudgetLimitCost:
-		return ReasonCostBudgetReached
-	case BudgetLimitSteps:
-		return ReasonStepBudgetReached
-	default:
-		panic("goal: impossible budget limit")
-	}
 }

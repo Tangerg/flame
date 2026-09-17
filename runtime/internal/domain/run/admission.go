@@ -36,13 +36,8 @@ type Draft struct {
 	// the Run and charge the exact incarnation in one transaction. Child Runs leave it
 	// empty because the root is the single Goal Run.
 	GoalIncarnationID string
-	// Limits is the allowance this Run is admitted under. It is recorded with the
-	// admission and never changes: a resume answers an interrupt, it does not
-	// renegotiate the budget the Run was accepted with.
-	Limits Limits
-	// Capabilities is the optional behavior enabled for this Run. Like Limits it
-	// is fixed here — and unlike Limits, admission is its ONLY
-	// writer: no later transition mentions it, which is how "immutable for the
+	// Capabilities is the optional behavior enabled for this Run. Admission is
+	// its only writer: no later transition mentions it, which is how "immutable for the
 	// Run's whole life" is kept by construction rather than by a check.
 	Capabilities Capabilities
 	CreatedAt    time.Time
@@ -72,9 +67,6 @@ func (d Draft) Validate() error {
 	}
 	if err := d.ModelSelection.ValidateExact(); err != nil {
 		return fmt.Errorf("run: %w", err)
-	}
-	if err := d.Limits.Validate(); err != nil {
-		return err
 	}
 	if err := d.Capabilities.Validate(); err != nil {
 		return err

@@ -305,7 +305,7 @@ func (t TokenUsage) Validate() error {
 	return nil
 }
 
-// Total returns prompt + completion: the figure a token budget caps.
+// Total returns prompt plus completion tokens.
 func (t TokenUsage) Total() (int64, error) {
 	if err := t.Validate(); err != nil {
 		return 0, err

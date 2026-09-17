@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"iter"
 	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -31,19 +32,16 @@ func TestInteractionExecutionPolicyPreservesOptionalPresence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if policy.defaultMaxModelCalls != defaultInteractionModelCalls ||
-		policy.deltaBufferCapacity != defaultInteractionDeltaBuffer ||
+	if policy.deltaBufferCapacity != defaultInteractionDeltaBuffer ||
 		policy.maxConcurrentToolCalls != defaultInteractionConcurrentToolCalls ||
 		policy.unknownEffectPollInterval != defaultUnknownEffectPollInterval ||
 		policy.statePollInterval != defaultInteractionStatePoll {
 		t.Fatalf("default Interaction execution policy = %+v", policy)
 	}
 
-	zeroUint := uint32(0)
 	zeroInt := 0
 	zeroDuration := time.Duration(0)
 	for name, config := range map[string]InteractionExecutorConfig{
-		"model calls":      {DefaultMaxModelCalls: &zeroUint},
 		"delta buffer":     {DeltaBufferCapacity: &zeroInt},
 		"Tool concurrency": {MaxConcurrentToolCalls: &zeroInt},
 		"unknown poll":     {UnknownEffectPollInterval: &zeroDuration},
@@ -411,7 +409,6 @@ func TestInteractionExecutorMapsStreamingModelFailure(t *testing.T) {
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config",
-		DefaultMaxModelCalls:   uint32Pointer(4),
 		BuildID:                interactionTestBuildID,
 		StreamModelResponses:   true,
 	})
@@ -511,12 +508,12 @@ func TestInteractionExecutorReportsDispatcherPanicAsUnknownEffect(t *testing.T) 
 	events := runInteractionHarnessWithCommit(
 		t, executor, interactionTestStart(), func(runs.ExecutionFact) error { return nil },
 	)
-	unknown := payloadsOf[runs.UnknownEffectsDetected](events)
+	unknown := unresolvedTerminals(events)
 	if len(unknown) != 1 {
 		t.Fatalf("panic unknown effects = %#v", unknown)
 	}
-	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 0 {
-		t.Fatalf("dispatcher panic was projected as a definite terminal = %#v", ended)
+	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 1 || ended[0].Reason != run.OutcomeLost {
+		t.Fatalf("dispatcher panic did not retain its lost terminal = %#v", ended)
 	}
 }
 
@@ -534,7 +531,6 @@ func TestInteractionTerminationMappingIsComplete(t *testing.T) {
 		{name: "host deadline", status: "timed_out", cause: "host_deadline", reason: "host deadline", wantOutcome: run.OutcomeTimedOut, wantFailure: run.FailureTimeout, hasFailure: true},
 		{name: "parent cancellation", status: "canceled", cause: "parent_cancellation", reason: "parent canceled", wantOutcome: run.OutcomeCanceled},
 		{name: "host cancellation", status: "canceled", cause: "host_cancellation", reason: "host canceled", wantOutcome: run.OutcomeCanceled},
-		{name: "model call limit", status: "failed", cause: "execution_failure", reason: "model call limit", failureKind: "execution", failureCode: "interaction.limit.model_calls", wantOutcome: run.OutcomeMaxSteps},
 		{name: "strategy failure", status: "failed", cause: "execution_failure", reason: "strategy failed", failureKind: "execution", failureCode: "execution.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureAgentStuck, hasFailure: true},
 		{name: "external failure", status: "failed", cause: "external_failure", reason: "provider unavailable", failureKind: "external", failureCode: "interaction.model.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderUnavailable, hasFailure: true},
 		{name: "unknown external failure", status: "failed", cause: "external_failure", reason: "external failure", failureKind: "external", failureCode: "new.external.failure", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
@@ -603,8 +599,8 @@ func newTestInteractionExecutorWithLifetime(
 		Lifetime:               lifetime,
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-executor-test-build",
-		ConfigurationIdentity:  "interaction-executor-test-config", DefaultMaxModelCalls: uint32Pointer(4),
-		BuildID: interactionTestBuildID,
+		ConfigurationIdentity:  "interaction-executor-test-config",
+		BuildID:                interactionTestBuildID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -728,11 +724,20 @@ func TestInteractionExecutorRefusesATypedNilCapability(t *testing.T) {
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-typed-nil-build",
 		ConfigurationIdentity:  "interaction-typed-nil-config",
-		DefaultMaxModelCalls:   uint32Pointer(4),
 		BuildID:                interactionTestBuildID,
 		ToolPresenter:          absent,
 	})
 	if err == nil || !strings.Contains(err.Error(), "typed nil") {
 		t.Fatalf("NewInteractionExecutor accepted a typed-nil capability: %v", err)
 	}
+}
+
+func unresolvedTerminals(events []runs.ExecutorEvent) []runs.SegmentEnded {
+	var ends []runs.SegmentEnded
+	for _, end := range payloadsOf[runs.SegmentEnded](events) {
+		if end.Reason == run.OutcomeLost && len(end.UnresolvedEffects()) > 0 {
+			ends = append(ends, end)
+		}
+	}
+	return ends
 }

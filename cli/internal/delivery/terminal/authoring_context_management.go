@@ -35,9 +35,6 @@ func agentDocumentsDocument(workspacePath string, documents []protocol.AgentDoc)
 	lines := make([]string, 0, len(documents))
 	for _, document := range documents {
 		label := string(document.Scope) + "  " + document.Path
-		if document.Title != "" {
-			label += "  · " + document.Title
-		}
 		lines = append(lines, label)
 	}
 	return paragraphDocument("Agent documents", fmt.Sprintf("%d applicable · %s", len(documents), workspacePath), lines)

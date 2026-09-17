@@ -9,7 +9,6 @@ function goal(patch: Partial<GoalReadModel> = {}): GoalReadModel {
     objective: "Ship the retry fix",
     status: "active",
     stop: null,
-    budget: { maxRuns: 20, maxCostUsd: 5 },
     used: { runs: 7, costUsd: 4.5, steps: 31 },
     provider: "openai",
     model: "gpt-5",
@@ -21,20 +20,6 @@ function goal(patch: Partial<GoalReadModel> = {}): GoalReadModel {
 }
 
 describe("goal lifecycle actions", () => {
-  it.each(["runBudgetReached", "costBudgetReached", "stepBudgetReached"] as const)(
-    "does not offer a guaranteed-failing resume after %s",
-    (code) => {
-      expect(
-        goalCanResume(
-          goal({
-            status: "blocked",
-            stop: { code, detail: "" },
-          }),
-        ),
-      ).toBe(false);
-    },
-  );
-
   it.each(["stoppedByUser", "awaitingInput", "blockedByModel"] as const)(
     "keeps %s resumable",
     (code) => {
@@ -56,17 +41,5 @@ describe("the wording tables", () => {
       .map((status) => status.label)
       .filter((key) => !(key in en));
     expect(unworded).toEqual([]);
-  });
-});
-
-describe("a goal the Runtime will not resume", () => {
-  it("offers no resume when pricing is unavailable", () => {
-    expect(
-      goalCanResume({
-        ...goal(),
-        status: "blocked",
-        stop: { code: "pricingUnavailable", detail: "" },
-      }),
-    ).toBe(false);
   });
 });

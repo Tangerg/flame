@@ -3,13 +3,10 @@ package agentexec
 import (
 	"context"
 	"fmt"
-	"time"
 
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
-
-const authoritativeProjectionTimeout = 15 * time.Second
 
 // interactionDispatcher gives each EffectRequest one independent attempt
 // tracker. The inner Interaction Dispatcher still owns protocol decoding and
@@ -30,7 +27,6 @@ func (i *interactionDispatcher) Dispatch(
 		return agent.Settlement{}, err
 	}
 	attempt := newDispatchAttempt(request.ID())
-	defer attempt.close()
 	settlement, err = i.inner.Dispatch(withDispatchAttempt(ctx, attempt), request, emit)
 	if projectionErr := attempt.indeterminateFailure(); projectionErr != nil {
 		i.session.lifetime.wakeUnknown()

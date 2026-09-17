@@ -62,7 +62,6 @@ type PortableRun struct {
 	Failure       *run.Failure
 	Metrics       run.Metrics
 	ContextTokens int64
-	Limits        run.Limits
 	// Capabilities is a pointer because an empty set is a known minimal Run while
 	// nil means the archive omitted the root-owned fact. A root must carry it; a
 	// child must not and inherits its root's value.
@@ -161,7 +160,6 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 			Failure:        portable.Failure,
 			Metrics:        portable.Metrics,
 			ContextTokens:  portable.ContextTokens,
-			Limits:         portable.Limits,
 			Capabilities:   capabilitySets[portable.rootID()],
 			Detail:         portable.Detail,
 			CreatedAt:      portable.CreatedAt,
@@ -262,7 +260,6 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 			Outcome:         outcome,
 			Metrics:         run.Metrics(),
 			ContextTokens:   run.ContextTokens(),
-			Limits:          run.Limits(),
 			Detail:          run.Detail(),
 			CreatedAt:       run.CreatedAt(),
 			FinishedAt:      run.FinishedAt(),

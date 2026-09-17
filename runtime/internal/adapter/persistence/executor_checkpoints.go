@@ -38,7 +38,6 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 			GoalIncarnationID: checkpoint.Scope.GoalIncarnationID,
 		},
 		ModelSelection: checkpoint.ModelSelection,
-		Limits:         checkpoint.Limits,
 		Capabilities:   checkpoint.Capabilities.Clone(),
 		Usage:          checkpoint.Usage,
 	})
@@ -63,7 +62,6 @@ func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 			GoalIncarnationID: record.Scope.GoalIncarnationID,
 		},
 		ModelSelection: record.ModelSelection,
-		Limits:         record.Limits,
 		Capabilities:   record.Capabilities.Clone(),
 		Usage:          record.Usage,
 	}

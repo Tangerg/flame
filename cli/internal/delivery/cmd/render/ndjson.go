@@ -88,7 +88,6 @@ type runOptionsJSON struct {
 	Provider        string                `json:"provider,omitzero"`
 	Model           string                `json:"model,omitzero"`
 	ReasoningEffort string                `json:"reasoningEffort,omitzero"`
-	Limits          *runLimitsJSON        `json:"limits,omitempty"`
 	Params          *generationParamsJSON `json:"params,omitempty"`
 }
 
@@ -387,7 +386,7 @@ func encodeRunOptions(options agent.RunOptions) *runOptionsJSON {
 	options = options.Clone()
 	return &runOptionsJSON{
 		Provider: options.Provider, Model: options.Model, ReasoningEffort: options.ReasoningEffort,
-		Limits: encodeRunLimits(options.Limits), Params: encodeGenerationParams(options.Generation),
+		Params: encodeGenerationParams(options.Generation),
 	}
 }
 
@@ -399,23 +398,6 @@ func encodeGenerationParams(params protocol.GenerationParams) *generationParamsJ
 		Temperature: params.Temperature, MaxTokens: params.MaxTokens, TopP: params.TopP,
 		Stop: slices.Clone(params.Stop),
 	}
-}
-
-func encodeRunLimits(limits agent.RunLimits) *runLimitsJSON {
-	if limits.Unlimited() {
-		return nil
-	}
-	encoded := &runLimitsJSON{}
-	if value, limited := limits.MaxTotalTokens(); limited {
-		encoded.MaxTotalTokens = &value
-	}
-	if value, limited := limits.MaxSteps(); limited {
-		encoded.MaxSteps = &value
-	}
-	if value, limited := limits.MaxBudgetUSD(); limited {
-		encoded.MaxBudgetUSD = &value
-	}
-	return encoded
 }
 
 func encodeInteractions(interactions []agent.Interaction) []interactionJSON {

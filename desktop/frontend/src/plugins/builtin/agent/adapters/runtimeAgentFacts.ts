@@ -75,8 +75,6 @@ function runtimeRunOutcome(outcome: RunOutcome): AgentRunOutcome {
     case "failed":
     case "lost":
       return { type: outcome.type, error: runtimeProblem(outcome.error) };
-    case "maxSteps":
-    case "maxBudget":
     case "canceled":
       return {
         type: outcome.type,

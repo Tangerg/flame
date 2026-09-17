@@ -18,9 +18,6 @@ func (r Run) Validate() error {
 	if err := r.Lineage.validate(r.ID); err != nil {
 		problems = append(problems, err)
 	}
-	if err := r.Limits.Validate(); err != nil {
-		problems = append(problems, err)
-	}
 	if err := errors.Join(problems...); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
@@ -61,9 +58,6 @@ func (r RunLineage) validate(runID string) error {
 func (r RunOptions) Validate() error {
 	var problems []error
 	if err := runtimeprotocol.ValidateModelSelection(r.Provider, r.Model, r.ReasoningEffort); err != nil {
-		problems = append(problems, err)
-	}
-	if err := r.Limits.Validate(); err != nil {
 		problems = append(problems, err)
 	}
 	if err := r.Generation.ValidateWire(); err != nil {

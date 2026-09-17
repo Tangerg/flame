@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -49,22 +48,6 @@ func goalDocument(current protocol.Goal, exists bool) readerDocument {
 		}
 	}
 	lines = append(lines, "model      "+model)
-	budget := []string{}
-	if current.Budget != nil {
-		if current.Budget.MaxRuns != nil {
-			budget = append(budget, fmt.Sprintf("%d runs", *current.Budget.MaxRuns))
-		}
-		if current.Budget.MaxSteps != nil {
-			budget = append(budget, fmt.Sprintf("%d steps", *current.Budget.MaxSteps))
-		}
-		if current.Budget.MaxCostUSD != nil {
-			budget = append(budget, fmt.Sprintf("$%.4f", *current.Budget.MaxCostUSD))
-		}
-	}
-	if len(budget) == 0 {
-		budget = append(budget, "unbounded")
-	}
-	lines = append(lines, "budget     "+strings.Join(budget, " · "))
 	if current.Reason != nil {
 		reason := string(current.Reason.Code)
 		if current.Reason.Detail != "" {

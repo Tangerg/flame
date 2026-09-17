@@ -60,14 +60,9 @@ func TestRunLineageRequiresExplicitRootOrValidChild(t *testing.T) {
 
 func TestRunOptionsValidateBounds(t *testing.T) {
 	temperature, topP, maxTokens := 0.7, 0.9, int64(4096)
-	maxSteps, maxBudget := 20, float64(3)
-	limits, err := NewRunLimits(RunLimitValues{MaxSteps: &maxSteps, MaxBudgetUSD: &maxBudget})
-	if err != nil {
-		t.Fatal(err)
-	}
 	options := RunOptions{
 		Provider: "mock", Model: "balanced", ReasoningEffort: "high",
-		Limits: limits, Generation: runtimeprotocol.GenerationParams{
+		Generation: runtimeprotocol.GenerationParams{
 			Temperature: &temperature, TopP: &topP, MaxTokens: &maxTokens, Stop: []string{"END"},
 		},
 	}
@@ -83,7 +78,7 @@ func TestRunOptionsValidateBounds(t *testing.T) {
 	if err := options.Validate(); err == nil {
 		t.Fatal("duplicate stop sequences were accepted")
 	}
-	options = RunOptions{ReasoningEffort: "high", Limits: UnlimitedRunLimits()}
+	options = RunOptions{ReasoningEffort: "high"}
 	if err := options.Validate(); err == nil {
 		t.Fatal("reasoning effort without a model was accepted")
 	}
@@ -92,7 +87,7 @@ func TestRunOptionsValidateBounds(t *testing.T) {
 func TestRunOptionsEqualPreservesOptionalGenerationSemantics(t *testing.T) {
 	zero := 0.0
 	left := RunOptions{
-		Provider: "deepseek", Model: "v4", Limits: UnlimitedRunLimits(),
+		Provider: "deepseek", Model: "v4",
 		Generation: runtimeprotocol.GenerationParams{Temperature: &zero, Stop: []string{"END"}},
 	}
 	if !left.Equal(left.Clone()) {
@@ -117,12 +112,10 @@ func TestRunOptionsEqualPreservesOptionalGenerationSemantics(t *testing.T) {
 
 func testRootRun(run Run) Run {
 	run.Lineage = RootRunLineage()
-	run.Limits = UnlimitedRunLimits()
 	return run
 }
 
 func testChildRun(run Run) Run {
-	run.Limits = UnlimitedRunLimits()
 	return run
 }
 

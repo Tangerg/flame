@@ -352,7 +352,7 @@ type Outcome struct {
 	// Problem is the single source of failure classification, display text, and
 	// recovery metadata for failed, timed-out, and lost outcomes.
 	Problem *protocol.ProblemData
-	// Detail explains a policy stop such as max steps, max budget, or cancel.
+	// Detail carries the Runtime-provided explanation for the outcome.
 	Detail string
 }
 

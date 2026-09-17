@@ -79,7 +79,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 		t.Fatal(err)
 	}
 	originalGoal, err := goal.New(
-		original.ID(), "before", selection, goal.UnlimitedBudget(), run.Capabilities{},
+		original.ID(), "before", selection, run.Capabilities{},
 		"goal_before", createdAt,
 	)
 	if err != nil {

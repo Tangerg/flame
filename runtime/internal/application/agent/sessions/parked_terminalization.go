@@ -200,7 +200,6 @@ func waitingRunMatchesContinuation(
 		run.ModelSelection().Equal(continuation.ModelSelection) &&
 		run.CreatedAt().Equal(continuation.RunCreatedAt) &&
 		run.Metrics().Equal(continuation.Metrics) &&
-		run.Limits() == continuation.Limits &&
 		run.Capabilities().Equal(capabilities)
 }
 

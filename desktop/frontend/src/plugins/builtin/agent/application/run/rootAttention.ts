@@ -10,7 +10,7 @@ import { isAgentRunFailure } from "../view/runOutcome";
 
 export interface RootRunSettlement {
   sessionId: string;
-  status: "needsInput" | "finished" | "error" | "canceled" | "limit";
+  status: "needsInput" | "finished" | "error" | "canceled";
   errorMessage: string | null;
 }
 
@@ -32,9 +32,6 @@ export function terminalSettlementStatus(
   switch (outcome?.type) {
     case "canceled":
       return "canceled";
-    case "maxSteps":
-    case "maxBudget":
-      return "limit";
     default:
       return "finished";
   }

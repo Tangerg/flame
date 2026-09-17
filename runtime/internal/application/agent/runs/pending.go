@@ -29,7 +29,7 @@ type Pending struct {
 	ExecutorID string
 	// GoalIncarnationID is the root Run's autonomous-goal incarnation. It is an
 	// Run continuation fact, not executor payload: a resumed Segment
-	// needs it to keep terminal budget accounting attached to the same Goal.
+	// needs it to keep terminal usage accounting attached to the same Goal.
 	GoalIncarnationID string
 	Interrupts        []transcript.Interrupt
 	Bindings          []InterruptBinding
@@ -55,7 +55,6 @@ type Continuation struct {
 	RunCreatedAt   time.Time
 	Metrics        run.Metrics
 	ContextTokens  int64
-	Limits         run.Limits
 }
 
 // InterruptBinding is the private correspondence between one published
@@ -546,9 +545,6 @@ func (c Continuation) validateRun() error {
 	}
 	if c.ContextTokens < 0 {
 		return errors.New("context tokens must not be negative")
-	}
-	if err := c.Limits.Validate(); err != nil {
-		return fmt.Errorf("limits: %w", err)
 	}
 	return nil
 }

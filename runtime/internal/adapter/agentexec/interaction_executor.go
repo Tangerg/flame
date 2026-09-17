@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"math"
 	"os"
 	"slices"
 	"strings"
@@ -34,12 +33,10 @@ import (
 const (
 	interactionDefinitionName        = "flame.runtime.interaction"
 	interactionDefinitionDescription = "Run one model-directed Flame interaction over a frozen working context."
-	defaultInteractionModelCalls     = 64
 	interactionEventBuffer           = 64
 	interactionReleaseReason         = "runtime released execution resources"
 	defaultUnknownEffectPollInterval = time.Second
 	defaultInteractionStatePoll      = 250 * time.Millisecond
-	interactionDoomLoopThreshold     = 3
 )
 
 // InteractionChatResolver resolves one exact provider construction selected by
@@ -61,7 +58,6 @@ type InteractionExecutorConfig struct {
 	ChatResolver              InteractionChatResolver
 	ImplementationIdentity    string
 	ConfigurationIdentity     string
-	DefaultMaxModelCalls      *uint32
 	StreamModelResponses      bool
 	DeltaBufferCapacity       *int
 	MaxConcurrentToolCalls    *int
@@ -173,8 +169,7 @@ func (i *InteractionExecutor) ValidateRootStart(start runs.RootExecutionStart) e
 	if err := validateModelOutputReservation(start.ModelSelection, start.Options); err != nil {
 		return err
 	}
-	_, err := i.maxModelCalls(start)
-	return err
+	return nil
 }
 
 func validateModelOutputReservation(
@@ -229,7 +224,7 @@ func (i *InteractionExecutor) StageRoot(
 			err = errors.Join(err, i.discardInteraction(session))
 		}
 	}()
-	input, err := agent.EncodeInput(interaction.Input{
+	input, err := agent.EncodePayload(interaction.Input{
 		Messages: cloneChatMessages(start.WorkingContext), Options: executionOptions(start.ModelSelection, start.Options),
 	})
 	if err != nil {
@@ -254,14 +249,6 @@ func (i *InteractionExecutor) assembleInteraction(
 	model := resolved.Model()
 	streamer, _ := resolved.Streamer()
 	counter, _ := resolved.InputTokenCounter()
-	maxModelCalls, err := i.maxModelCalls(start)
-	if err != nil {
-		return nil, err
-	}
-	allowance, err := newInteractionAllowance(start.Limits, start.ModelSelection, i.config.Pricing)
-	if err != nil {
-		return nil, err
-	}
 	session := newInteractionSession(i.lifetime, ref, start, i.config, i.buildID, i.policy)
 	i.sessions.own(session)
 	defer func() {
@@ -269,13 +256,12 @@ func (i *InteractionExecutor) assembleInteraction(
 			err = errors.Join(err, i.discardInteraction(session))
 		}
 	}()
-	session.allowance = allowance
 	observed, err := newObservedInteractionModel(model, streamer, session)
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: observe Interaction model: %w", err)
 	}
 	deployments, err := i.buildInteractionDeployments(
-		runExecutionContext(ctx, rootExecutionScope(start), start), session, start, observed, counter, maxModelCalls,
+		runExecutionContext(ctx, rootExecutionScope(start), start), session, start, observed, counter,
 	)
 	if err != nil {
 		return nil, err
@@ -331,19 +317,16 @@ func (i *InteractionExecutor) validateInteractionTools(manifest toolset.Manifest
 // with the conversation would declare every checkpoint incompatible.
 func (i *InteractionExecutor) interactionConfiguration(
 	session *interactionSession,
-	maxModelCalls uint32,
 	manifest toolset.Manifest,
 	group domaintool.Group,
 	depth uint32,
 	delegate agent.DeploymentRef,
-	delegateBudget agent.Budget,
 	instructions []corechat.Message,
 ) ([]byte, error) {
 	configuration, err := json.Marshal(struct {
 		Identity               string                     `json:"identity"`
 		Provider               string                     `json:"provider"`
 		Model                  string                     `json:"model"`
-		MaxModelCalls          uint32                     `json:"maxModelCalls"`
 		Streaming              bool                       `json:"streaming"`
 		MaxConcurrentToolCalls int                        `json:"maxConcurrentToolCalls"`
 		ToolResultOffload      *toolResultOffloadIdentity `json:"toolResultOffload,omitempty"`
@@ -354,19 +337,19 @@ func (i *InteractionExecutor) interactionConfiguration(
 		Group                  domaintool.Group           `json:"group"`
 		Depth                  uint32                     `json:"depth"`
 		Delegate               string                     `json:"delegate,omitempty"`
-		DelegateBudget         agent.Budget               `json:"delegateBudget,omitzero"`
+		DelegateOptions        corechat.Options           `json:"delegateOptions"`
 		Instructions           []corechat.Message         `json:"instructions,omitempty"`
 	}{
 		Identity: i.configurationIdentity.String(),
 		Provider: session.accounting.providerName(), Model: session.accounting.modelName(),
-		MaxModelCalls: maxModelCalls, Streaming: i.config.StreamModelResponses,
+		Streaming:              i.config.StreamModelResponses,
 		MaxConcurrentToolCalls: i.policy.maxConcurrentToolCalls,
 		ToolResultOffload:      i.policy.toolResultOffload.identity(),
 		InteractiveApproval:    i.config.ToolAuthorizer != nil,
 		ContextCompaction:      i.config.ModelContextCompactor != nil,
 		VisibleTools:           toolDefinitions(manifest.Visible), DeferredTools: toolDefinitions(manifest.Deferred),
-		Group: group, Depth: depth, Delegate: delegate.String(), DelegateBudget: delegateBudget,
-		Instructions: cloneChatMessages(instructions),
+		Group: group, Depth: depth, Delegate: delegate.String(),
+		Instructions: cloneChatMessages(instructions), DelegateOptions: delegatedExecutionOptions(session.start),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: encode Interaction configuration identity: %w", err)
@@ -596,10 +579,11 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		SessionID: continuation.SessionID,
 		CWD:       continuation.Checkpoint.Scope.CWD, WorkspaceCWD: continuation.Checkpoint.Scope.WorkspaceCWD,
 		Isolated: continuation.Checkpoint.Scope.Isolated, GoalIncarnationID: continuation.Checkpoint.Scope.GoalIncarnationID,
-		ModelSelection: continuation.Checkpoint.ModelSelection, Limits: continuation.Checkpoint.Limits,
+		ModelSelection:           continuation.Checkpoint.ModelSelection,
 		InterruptKinds:           continuation.Capabilities.InterruptKinds,
 		ChildRunAdmissionEnabled: continuation.ChildRunAdmissionEnabled,
 		WorkingContext:           cloneChatMessages(checkpoint.instructions),
+		Options:                  new(checkpoint.options.Clone()),
 	}
 	session, err := i.assembleInteraction(ctx, ref, start)
 	if err != nil {
@@ -662,7 +646,7 @@ func (i *InteractionExecutor) validateRestoreScope(scope runs.ExecutionScope) er
 func (i *InteractionExecutor) discardInteraction(session *interactionSession) error {
 	cleanupCtx, cancel := context.WithTimeout(
 		context.WithoutCancel(session.lifetime.execution),
-		authoritativeProjectionTimeout,
+		executionCleanupTimeout,
 	)
 	defer cancel()
 	if err := session.release(cleanupCtx); err != nil {
@@ -755,17 +739,6 @@ func (i *InteractionExecutor) resolveChat(
 	return resolved, nil
 }
 
-func (i *InteractionExecutor) maxModelCalls(start runs.RootExecutionStart) (uint32, error) {
-	maxSteps, limited := start.Limits.MaxSteps()
-	if !limited {
-		return i.policy.defaultMaxModelCalls, nil
-	}
-	if uint64(maxSteps) > math.MaxUint32 {
-		return 0, fmt.Errorf("%w: max steps exceeds Interaction model-call range", runs.ErrInvalidRunLimit)
-	}
-	return uint32(maxSteps), nil
-}
-
 func (i *InteractionExecutor) session(ref runs.ExecutorRef) (*interactionSession, error) {
 	if i == nil {
 		return nil, errors.New("agentexec: Interaction executor is nil")
@@ -802,3 +775,12 @@ var (
 	_ runs.WaitingExecutionContinuer        = (*InteractionExecutor)(nil)
 	_ runs.RunningExecutionSteerer          = (*InteractionExecutor)(nil)
 )
+
+// Delegates inherit generation policy, but root output framing belongs only to
+// the root task. The deployment digest binds this policy across restoration.
+func delegatedExecutionOptions(start runs.RootExecutionStart) corechat.Options {
+	options := executionOptions(start.ModelSelection, start.Options)
+	options.OutputFormat = nil
+	options.Stop = nil
+	return options
+}

@@ -141,18 +141,18 @@ it("marks a delegated user message as the same speech bubble the transcript draw
   ).toBeNull();
 });
 
-it("keeps the selected run failure visible when no narrative was produced", () => {
+it("keeps the selected run cancellation visible when no narrative was produced", () => {
   material.rows = rows({
     ...child,
     status: "finished",
     activeSegmentId: null,
-    outcome: { type: "maxBudget", detail: "The review exhausted its token budget." },
+    outcome: { type: "canceled", detail: "The user canceled the review." },
   });
   material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages = [];
   navigator().go({ session: "session" });
   openWorkspaceSubagentRun("child");
   render(<SubagentsPanel />);
-  expect(screen.getByText("The review exhausted its token budget.")).toBeTruthy();
+  expect(screen.getByText("The user canceled the review.")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Cancel this run" })).toBeNull();
 });
 

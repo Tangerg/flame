@@ -78,7 +78,6 @@ import type {
   AgentMemoryList,
   AgentMemoryScope,
   Goal,
-  GoalBudget,
   StartRunRequest,
   RuntimeSubscribeRequest,
   RuntimeSubscribeResponse,
@@ -353,7 +352,6 @@ export interface Methods {
         objective: string;
         provider?: string;
         model?: string;
-        budget?: GoalBudget;
       },
       signal?: AbortSignal,
     ) => MutationPromise<Goal>;

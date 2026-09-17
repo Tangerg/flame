@@ -81,15 +81,13 @@ function wire(initial: AgentSessionView) {
 
 const terminalCases: Array<{
   outcome: AgentRunView["outcome"];
-  status: "finished" | "error" | "canceled" | "limit";
+  status: "finished" | "error" | "canceled";
 }> = [
   { outcome: { type: "completed" }, status: "finished" },
   { outcome: { type: "failed", error: { message: "Provider failed" } }, status: "error" },
   { outcome: { type: "timedOut", error: { message: "Provider timed out" } }, status: "error" },
   { outcome: { type: "lost", error: { message: "Runtime restarted" } }, status: "error" },
   { outcome: { type: "canceled" }, status: "canceled" },
-  { outcome: { type: "maxSteps" }, status: "limit" },
-  { outcome: { type: "maxBudget" }, status: "limit" },
 ];
 
 describe("root Run attention", () => {

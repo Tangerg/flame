@@ -14,7 +14,7 @@ func TestRunCatalogReadsFiltersAndPaginatesNewestFirst(t *testing.T) {
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "active"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun("ses_demo_1", "active"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestRunCatalogRetainsLatestProgressFootprint(t *testing.T) {
 			eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "progress"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun("ses_demo_1", "progress"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestRunStreamFinishesWithLatestProgressFootprint(t *testing.T) {
 			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
-	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "progress"))
+	opened, err := runtime.StartRun(t.Context(), testStartRun("ses_demo_1", "progress"))
 	if err != nil {
 		t.Fatal(err)
 	}

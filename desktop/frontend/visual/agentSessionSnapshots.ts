@@ -186,7 +186,7 @@ const RUNNING_REASONING: Item = {
     "So the protocol carries the claim and the store carries the fact, and recovery is the act of reconciling the two in that order.",
     "Everything else in this boundary follows from that ordering, including why an interrupt has to be durable before it is acknowledged.",
     "Which also settles the compaction question: a summary is application material, so the framework may ask for one but must never assume it happened.",
-    "The same reasoning applies to a Goal, whose budget is a durable fact and whose progress is a claim.",
+    "The same reasoning applies to a Goal, whose lifecycle is a durable fact and whose progress is a claim.",
   ].join(" "),
 };
 
@@ -984,9 +984,9 @@ const FANOUT_OUTCOMES: ReadonlyArray<{ id: string; summary: string; outcome: Run
       outcome: { type: "canceled", detail: "Stopped once the answer was already known." },
     },
     {
-      id: "run_fan_limit",
+      id: "run_fan_trace",
       summary: "Trace every call path",
-      outcome: { type: "maxSteps", detail: "Reached the step ceiling for one delegation." },
+      outcome: { type: "canceled", detail: "The user canceled this delegation." },
     },
   ];
 
@@ -1227,7 +1227,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
           type: "failed",
           error: {
             type: "provider_rejected",
-            detail: "served model pricing is unavailable for the configured cost limit",
+            detail: "the requested model is unavailable",
           },
         },
       }),
@@ -1683,7 +1683,6 @@ export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
     objective: "Get the desktop suite green on Linux without loosening any gate or skipping a test",
     status: "active",
     stop: null,
-    budget: { maxRuns: 20, maxCostUsd: 5 },
     used: { runs: 7, costUsd: 4.5, steps: 31 },
     provider: "openai",
     model: "gpt-5",
@@ -1695,8 +1694,7 @@ export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
     sessionId: SESSION_ID,
     objective: "Get the desktop suite green on Linux",
     status: "paused",
-    stop: { code: "costBudgetReached", detail: "" },
-    budget: { maxRuns: 20, maxCostUsd: 5 },
+    stop: { code: "stoppedByUser", detail: "" },
     used: { runs: 12, costUsd: 5, steps: 58 },
     provider: "openai",
     model: "gpt-5",
@@ -1709,7 +1707,6 @@ export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
     objective: "Get the desktop suite green on Linux",
     status: "blocked",
     stop: { code: "awaitingInput", detail: "The run asked a question and is waiting." },
-    budget: { maxRuns: 20, maxCostUsd: 5 },
     used: { runs: 4, costUsd: 1.2, steps: 18 },
     provider: "openai",
     model: "gpt-5",
@@ -1722,7 +1719,6 @@ export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
     objective: "Get the desktop suite green on Linux",
     status: "completing",
     stop: null,
-    budget: { maxRuns: 20, maxCostUsd: 5 },
     used: { runs: 19, costUsd: 4.9, steps: 96 },
     provider: "openai",
     model: "gpt-5",

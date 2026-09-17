@@ -1,7 +1,6 @@
 package run
 
 import (
-	"math"
 	"testing"
 )
 
@@ -12,8 +11,7 @@ var allOutcomes = []Outcome{
 	OutcomeCanceled,
 	OutcomeTimedOut,
 	OutcomeFailed,
-	OutcomeMaxBudget,
-	OutcomeMaxSteps,
+
 	OutcomeLost,
 }
 
@@ -103,36 +101,6 @@ func TestRecoverLost(t *testing.T) {
 	}
 }
 
-func TestRunLimitsValidate(t *testing.T) {
-	for _, test := range []struct {
-		name   string
-		values LimitValues
-	}{
-		{name: "empty"},
-		{name: "negative tokens", values: LimitValues{MaxTotalTokens: int64Pointer(-1)}},
-		{name: "negative steps", values: LimitValues{MaxSteps: intPointer(-1)}},
-		{name: "negative budget", values: LimitValues{MaxBudgetUSD: floatPointer(-1)}},
-		{name: "nan budget", values: LimitValues{MaxBudgetUSD: floatPointer(math.NaN())}},
-		{name: "positive infinite budget", values: LimitValues{MaxBudgetUSD: floatPointer(math.Inf(1))}},
-		{name: "negative infinite budget", values: LimitValues{MaxBudgetUSD: floatPointer(math.Inf(-1))}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if _, err := NewLimits(test.values); err == nil {
-				t.Fatal("NewLimits accepted malformed limits")
-			}
-		})
-	}
-	if limits := UnlimitedLimits(); !limits.Unlimited() || limits.Validate() != nil {
-		t.Fatalf("UnlimitedLimits = %+v", limits)
-	}
-	limited, err := NewLimits(LimitValues{
-		MaxTotalTokens: int64Pointer(10), MaxSteps: intPointer(2), MaxBudgetUSD: floatPointer(0.25),
-	})
-	if err != nil || limited.Unlimited() {
-		t.Fatalf("NewLimits = (%+v, %v)", limited, err)
-	}
-}
-
 func intPointer(value int) *int { return &value }
 
 func int64Pointer(value int64) *int64 { return &value }
@@ -147,9 +115,8 @@ func TestOutcomeTerminalState(t *testing.T) {
 		OutcomeCanceled:  Canceled,
 		OutcomeTimedOut:  Failed,
 		OutcomeFailed:    Failed,
-		OutcomeMaxBudget: Failed,
-		OutcomeMaxSteps:  Failed,
-		OutcomeLost:      Failed,
+
+		OutcomeLost: Failed,
 	}
 	for _, o := range allOutcomes {
 		if got := o.terminalState(); got != want[o] {

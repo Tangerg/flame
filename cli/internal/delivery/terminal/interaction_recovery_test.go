@@ -17,6 +17,7 @@ import (
 type invalidEventAfterInterruptRuntime struct {
 	Runtime
 	release <-chan struct{}
+	started chan<- string
 }
 
 func (i invalidEventAfterInterruptRuntime) StartRun(
@@ -27,6 +28,7 @@ func (i invalidEventAfterInterruptRuntime) StartRun(
 	if err != nil {
 		return agent.SegmentStream{}, err
 	}
+	i.started <- command.SessionID
 	original := stream.Events
 	stream.Events = func(yield func(agent.RunEvent, error) bool) {
 		for event, streamErr := range original {
@@ -98,7 +100,8 @@ func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
 				}
 			}
 			release := make(chan struct{})
-			host, stop := runUIWith(t, invalidEventAfterInterruptRuntime{Runtime: backend, release: release})
+			started := make(chan string, 1)
+			host, stop := runUIWith(t, invalidEventAfterInterruptRuntime{Runtime: backend, release: release, started: started})
 			host.Shows(t, "Ask flame")
 			host.Type("exercise an invalid event after HITL")
 			host.Press(input.Enter)
@@ -116,6 +119,11 @@ func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
 			host.Type("/plugins")
 			host.Press(input.Enter)
 			host.Shows(t, "terminal.core@1.0.0")
+			snapshot, err := backend.GetSession(t.Context(), <-started)
+			active, found := snapshot.ActiveRun()
+			if err != nil || !found || active.Status != protocol.RunStatusWaiting {
+				t.Fatalf("observation failure canceled waiting Run: %+v, %v", snapshot.Runs, err)
+			}
 			stop()
 		})
 	}

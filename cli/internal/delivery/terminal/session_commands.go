@@ -520,17 +520,16 @@ func (a *app) retireSessionState(sessionID string) (int, error) {
 }
 
 // readSessionAfterMutation converges the authoritative projection without
-// repeating a mutation that may already be durable. Its retry budget is the
-// same user-configured transport policy as live run recovery.
+// repeating a mutation that may already be durable. Its caller owns cancellation,
+// just as the observer owns live Run recovery.
 func (a *app) readSessionAfterMutation(ctx context.Context, sessionID string) (agent.SessionSnapshot, error) {
-	policy := a.reconnectPolicy
 	for failures := 0; ; {
 		snapshot, err := a.runtime.GetSession(ctx, sessionID)
 		if err == nil {
 			return snapshot, nil
 		}
 		failures++
-		delay, shouldRetry, policyErr := policy.Next(failures, err)
+		delay, shouldRetry, policyErr := retry.ReconnectDelay(failures, err)
 		if policyErr != nil {
 			return agent.SessionSnapshot{}, policyErr
 		}

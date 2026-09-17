@@ -3,9 +3,7 @@ package sqlite
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -38,89 +36,7 @@ type runModelRowUse struct {
 	CostUSD          *float64 `json:"costUsd,omitempty"`
 }
 
-type runLimitKind string
-
-const (
-	runLimitsUnlimited runLimitKind = "unlimited"
-	runLimitsLimited   runLimitKind = "limited"
-)
-
-type runLimitsRow struct {
-	Type           runLimitKind `json:"type"`
-	MaxTotalTokens *int64       `json:"maxTotalTokens,omitempty"`
-	MaxSteps       *int         `json:"maxSteps,omitempty"`
-	MaxBudgetUSD   *float64     `json:"maxBudgetUsd,omitempty"`
-}
-
-func runLimitsRowOf(limits rundomain.Limits) runLimitsRow {
-	row := runLimitsRow{Type: runLimitsUnlimited}
-	if limits.Unlimited() {
-		return row
-	}
-	row.Type = runLimitsLimited
-	if value, limited := limits.MaxTotalTokens(); limited {
-		row.MaxTotalTokens = &value
-	}
-	if value, limited := limits.MaxSteps(); limited {
-		row.MaxSteps = &value
-	}
-	if value, limited := limits.MaxBudgetUSD(); limited {
-		row.MaxBudgetUSD = &value
-	}
-	return row
-}
-
-func runLimitsFromStored(kind runLimitKind, maxTotalTokens *int64, maxSteps *int, maxBudgetUSD *float64) (rundomain.Limits, error) {
-	switch kind {
-	case runLimitsUnlimited:
-		if maxTotalTokens != nil || maxSteps != nil || maxBudgetUSD != nil {
-			return rundomain.Limits{}, errors.New("unlimited run limits carry a cap")
-		}
-		return rundomain.UnlimitedLimits(), nil
-	case runLimitsLimited:
-		return rundomain.NewLimits(rundomain.LimitValues{
-			MaxTotalTokens: maxTotalTokens, MaxSteps: maxSteps, MaxBudgetUSD: maxBudgetUSD,
-		})
-	default:
-		return rundomain.Limits{}, fmt.Errorf("unknown run limits type %q", kind)
-	}
-}
-
-func runLimitColumnValues(limits rundomain.Limits) (maxTotalTokens *int64, maxSteps *int, maxBudgetUSD *float64) {
-	if value, limited := limits.MaxTotalTokens(); limited {
-		maxTotalTokens = &value
-	}
-	if value, limited := limits.MaxSteps(); limited {
-		maxSteps = &value
-	}
-	if value, limited := limits.MaxBudgetUSD(); limited {
-		maxBudgetUSD = &value
-	}
-	return maxTotalTokens, maxSteps, maxBudgetUSD
-}
-
-func runLimitsFromColumns(maxTotalTokens, maxSteps sql.NullInt64, maxBudgetUSD sql.NullFloat64) (rundomain.Limits, error) {
-	var values rundomain.LimitValues
-	if maxTotalTokens.Valid {
-		values.MaxTotalTokens = &maxTotalTokens.Int64
-	}
-	if maxSteps.Valid {
-		if maxSteps.Int64 < math.MinInt || maxSteps.Int64 > math.MaxInt {
-			return rundomain.Limits{}, errors.New("run max steps overflows int")
-		}
-		value := int(maxSteps.Int64)
-		values.MaxSteps = &value
-	}
-	if maxBudgetUSD.Valid {
-		values.MaxBudgetUSD = &maxBudgetUSD.Float64
-	}
-	if values.MaxTotalTokens == nil && values.MaxSteps == nil && values.MaxBudgetUSD == nil {
-		return rundomain.UnlimitedLimits(), nil
-	}
-	return rundomain.NewLimits(values)
-}
-
-// runAccountingRow is the parked Run's consumption and allowance, encoded as the
+// runAccountingRow is the parked Run's consumption, encoded as the
 // one value a continuation needs to pick the Run back up where it left off. It
 // reuses runUsageRow rather than spelling usage a second way, so the two carriers
 // of a Run's accounting agree by construction.
@@ -128,10 +44,9 @@ type runAccountingRow struct {
 	Steps            int          `json:"steps,omitzero"`
 	ActiveDurationNs int64        `json:"activeDurationNs,omitzero"`
 	Usage            *runUsageRow `json:"usage,omitempty"`
-	Limits           runLimitsRow `json:"limits"`
 }
 
-func runAccountingRowOf(metrics rundomain.Metrics, limits rundomain.Limits) runAccountingRow {
+func runAccountingRowOf(metrics rundomain.Metrics) runAccountingRow {
 	usage, reported := metrics.Usage()
 	var usageRef *accounting.Usage
 	if reported {
@@ -141,22 +56,15 @@ func runAccountingRowOf(metrics rundomain.Metrics, limits rundomain.Limits) runA
 		Steps:            metrics.Steps(),
 		ActiveDurationNs: int64(metrics.ActiveDuration()),
 		Usage:            runUsageRowOf(usageRef),
-		Limits:           runLimitsRowOf(limits),
 	}
 }
 
-func (r runAccountingRow) values() (rundomain.Metrics, rundomain.Limits, error) {
+func (r runAccountingRow) values() (rundomain.Metrics, error) {
 	metrics, err := rundomain.NewMetrics(r.Usage.usage(), r.Steps, time.Duration(r.ActiveDurationNs))
 	if err != nil {
-		return rundomain.Metrics{}, rundomain.Limits{}, fmt.Errorf("metrics: %w", err)
+		return rundomain.Metrics{}, fmt.Errorf("metrics: %w", err)
 	}
-	limits, err := runLimitsFromStored(
-		r.Limits.Type, r.Limits.MaxTotalTokens, r.Limits.MaxSteps, r.Limits.MaxBudgetUSD,
-	)
-	if err != nil {
-		return rundomain.Metrics{}, rundomain.Limits{}, fmt.Errorf("limits: %w", err)
-	}
-	return metrics, limits, nil
+	return metrics, nil
 }
 
 // runCapabilitiesRow is the Run's frozen optional behavior. Interrupt kinds are
@@ -330,26 +238,25 @@ func scanRunForRecovery(row scanRow) (rundomain.Run, error) {
 
 func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, error) {
 	var (
-		id                  string
-		sessionID           string
-		spawnedByItemID     string
-		parentRunID         string
-		rootRunID           string
-		coarse              string
-		activeSegmentID     string
-		outcome             string
-		provider            string
-		model               string
-		reasoningEffort     string
-		goalIncarnationID   string
-		detail              string
-		steps               int
-		usage               string
-		contextTokens       int64
-		problem             string
-		maxTotalTokens      sql.NullInt64
-		maxSteps            sql.NullInt64
-		maxBudgetUSD        sql.NullFloat64
+		id                string
+		sessionID         string
+		spawnedByItemID   string
+		parentRunID       string
+		rootRunID         string
+		coarse            string
+		activeSegmentID   string
+		outcome           string
+		provider          string
+		model             string
+		reasoningEffort   string
+		goalIncarnationID string
+		detail            string
+		steps             int
+		usage             string
+		contextTokens     int64
+		problem           string
+		unresolvedEffects string
+
 		messageMark         int
 		ownCapabilities     string
 		rootCapabilities    sql.NullString
@@ -364,8 +271,8 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		&spawnedByItemID, &parentRunID, &rootRunID,
 		&coarse, &activeSegmentID, &outcome,
 		&provider, &model, &reasoningEffort, &goalIncarnationID, &detail,
-		&steps, &durationNs, &usage, &contextTokens, &problem,
-		&maxTotalTokens, &maxSteps, &maxBudgetUSD, &ownCapabilities, &rootCapabilities,
+		&steps, &durationNs, &usage, &contextTokens, &problem, &unresolvedEffects,
+		&ownCapabilities, &rootCapabilities,
 		&messageMark, &createdAt, &finishedAt, &updatedAt, &interruptsSuspended,
 	); err != nil {
 		return rundomain.Run{}, fmt.Errorf("scan run row: %w", err)
@@ -405,19 +312,19 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 	if err != nil {
 		return rundomain.Run{}, fmt.Errorf("decode run %q metrics: %w", id, err)
 	}
-	limits, err := runLimitsFromColumns(maxTotalTokens, maxSteps, maxBudgetUSD)
-	if err != nil {
-		return rundomain.Run{}, fmt.Errorf("decode run %q limits: %w", id, err)
-	}
 	snapshot := rundomain.Snapshot{
 		SessionID: sessionID, ID: id, Lineage: lineage, ModelSelection: selection,
 		GoalIncarnationID: goalIncarnationID, ActiveSegmentID: activeSegmentID, Detail: detail,
 		Metrics: metrics, ContextTokens: contextTokens,
-		Limits: limits, Capabilities: capabilitiesValue,
-		CreatedAt: time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
+		Capabilities: capabilitiesValue,
+		CreatedAt:    time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
 		MessageMark: messageMark,
 	}
 
+	snapshot.UnresolvedEffects, err = decodeUnresolvedEffects(unresolvedEffects)
+	if err != nil {
+		return rundomain.Run{}, fmt.Errorf("decode run effects: %w", err)
+	}
 	switch storedState {
 	case runStateRunning:
 		snapshot.State = rundomain.Running

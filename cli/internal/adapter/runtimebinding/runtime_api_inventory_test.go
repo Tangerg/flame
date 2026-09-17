@@ -268,6 +268,7 @@ func runtimeFeatureConsumptionByName() map[string]runtimeFeatureConsumption {
 		protocol.FeatureGit:           gated("workspace", "change monitor, change list, and diff surfaces"),
 		protocol.FeatureCheckpoints:   gated("sessions", "file and combined rollback scopes"),
 		protocol.FeatureFileWatch:     gated("runtime side channel", "workspace file-change subscriptions"),
+		protocol.FeatureIsolation:     runtimeExecuted("run execution", "runtime-owned workspace isolation"),
 		protocol.FeatureLSP:           runtimeExecuted("run projection", "runtime-owned LSP tools projected as ordinary tool activity"),
 		protocol.FeatureSessionExport: gated("transcript and sessions", "session import and export surfaces"),
 		protocol.FeatureRelocate:      gated("sessions", "workspace relocation surface"),

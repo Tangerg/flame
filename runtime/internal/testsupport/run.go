@@ -45,16 +45,6 @@ func MustRunMetrics(input RunMetricsInput) run.Metrics {
 // Pointer returns an owned pointer for explicit optional fixture values.
 func Pointer[T any](value T) *T { return &value }
 
-// MustRunLimits constructs a valid limited execution policy or panics. Use
-// run.UnlimitedLimits when a fixture intentionally has no execution cap.
-func MustRunLimits(values run.LimitValues) run.Limits {
-	limits, err := run.NewLimits(values)
-	if err != nil {
-		panic(err)
-	}
-	return limits
-}
-
 // MustRestoreRun constructs a valid Run or panics. Tests exercising invalid
 // snapshots must call run.Restore themselves and assert the returned error.
 func MustRestoreRun(snapshot run.Snapshot) run.Run {

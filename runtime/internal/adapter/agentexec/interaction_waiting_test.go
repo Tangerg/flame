@@ -56,6 +56,9 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		interactionUsageTextResponse("completed", 3, 1),
 	}}
 	recordingModel := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+		if request.Options.Temperature == nil || *request.Options.Temperature != 0.27 || request.Options.MaxOutputTokens == nil || *request.Options.MaxOutputTokens != 321 {
+			return nil, errors.New("restoration lost generation options")
+		}
 		mu.Lock()
 		requests = append(requests, cloneChatMessages(request.Messages))
 		mu.Unlock()
@@ -68,6 +71,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
 	})
 	start := interactionTestStart()
+	start.Options = &chat.Options{Temperature: new(0.27), MaxOutputTokens: new(int64(321))}
 	start.CWD, start.WorkspaceCWD = workspace, workspace
 	start.InterruptKinds = []interrupt.Kind{interrupt.Question}
 	ref, err := executor.StageRoot(t.Context(), start)
@@ -758,7 +762,7 @@ func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *te
 	}
 }
 
-func TestInteractionExecutorCheckpointsWithoutReplayingUnknownEffect(t *testing.T) {
+func TestInteractionExecutorTerminatesWithoutReplayingUnknownEffect(t *testing.T) {
 	workspace := t.TempDir()
 	var calls int
 	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
@@ -794,9 +798,10 @@ func TestInteractionExecutorCheckpointsWithoutReplayingUnknownEffect(t *testing.
 				if _, completed := commit.Fact().(runs.ModelCallCompleted); completed {
 					commitErr = errors.New("final projection is indeterminate")
 				}
+				event.Payload = commit.Fact()
 				commit.Complete(commitErr)
 			}
-			if _, unknown := event.Payload.(runs.UnknownEffectsDetected); unknown {
+			if _, unknown := event.Payload.(runs.SegmentEnded); unknown {
 				close(unknownReady)
 				return
 			}
@@ -814,17 +819,15 @@ func TestInteractionExecutorCheckpointsWithoutReplayingUnknownEffect(t *testing.
 	if process == nil {
 		t.Fatal("unknown Interaction has no Process")
 	}
-	captureCtx, cancel := context.WithTimeout(t.Context(), time.Second)
-	defer cancel()
-	snapshot, err := session.engine.CaptureTree(captureCtx, process.ID())
-	if err != nil || !snapshot.Valid() {
-		t.Fatalf("CaptureTree with unknown Effect = (%v, %v), want a durable snapshot", snapshot.Valid(), err)
+	result, err := process.Await(t.Context())
+	if err != nil || len(result.Termination().UnresolvedEffectIDs()) == 0 {
+		t.Fatalf("terminal evidence missing: %v", err)
 	}
 	if err := executor.Release(t.Context(), ref); err != nil {
 		t.Fatal(err)
 	}
 	if calls != 1 {
-		t.Fatalf("provider calls = %d, want no replay after checkpoint probe", calls)
+		t.Fatalf("provider calls = %d, want no replay after terminal evidence collection", calls)
 	}
 }
 
@@ -934,7 +937,7 @@ func TestInteractionExecutorDoesNotCallNextModelWhenAppliedSteerCommitFails(t *t
 	if calls != 1 {
 		t.Fatalf("model calls = %d, want no next turn after rejected steer commit", calls)
 	}
-	if len(payloadsOf[runs.UnknownEffectsDetected](events)) != 0 {
+	if len(unresolvedTerminals(events)) != 0 {
 		t.Fatalf("pre-call steer failure became unknown: %#v", events)
 	}
 	assertInternalProjectionTerminal(t, events)

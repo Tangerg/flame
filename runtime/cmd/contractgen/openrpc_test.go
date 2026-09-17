@@ -124,10 +124,6 @@ func TestOpenRPCParamsPreserveRequestFieldConstraints(t *testing.T) {
 			t.Errorf("%s.%s pattern = %q, want %q", test.method, test.param, param.Schema.Pattern, test.pattern)
 		}
 	}
-	limits := openRPCParam(t, openRPCMethod(t, document, "runs.start"), "limits")
-	if limits.Schema.Ref != bundleRef+refPrefix+"RunLimits" {
-		t.Errorf("runs.start.limits schema ref = %q", limits.Schema.Ref)
-	}
 }
 
 func openRPCParam(t *testing.T, method openrpcMethod, name string) openrpcParam {

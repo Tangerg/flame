@@ -122,9 +122,7 @@ func (i *interactionWaitingSubtreeChange) Continue(ctx context.Context) error {
 	if err := i.session.acceptSubtreeContinuation(i); err != nil {
 		return err
 	}
-	resumeCtx, cancelResume := context.WithTimeout(ctx, authoritativeProjectionTimeout)
-	defer cancelResume()
-	if err := i.session.resumePausedProcesses(resumeCtx, paused); err != nil {
+	if err := i.session.resumePausedProcesses(ctx, paused); err != nil {
 		return fmt.Errorf("agentexec: continue applied waiting Interaction subtree: %w", err)
 	}
 	return nil
@@ -197,9 +195,7 @@ func (i *interactionSession) beginSubtreeApplication(
 func (i *interactionSession) cancelPreparedSubtree(
 	change *interactionWaitingSubtreeChange,
 ) error {
-	ctx, cancel := context.WithTimeout(
-		context.WithoutCancel(i.lifetime.execution), authoritativeProjectionTimeout,
-	)
+	ctx, cancel := i.lifetime.publicationContext(i.lifetime.execution)
 	defer cancel()
 	target, found := i.engine.Process(change.targetID)
 	if !found {

@@ -102,7 +102,7 @@ func TestCustomMultipleValuesRejectEmptyAndDuplicateInput(t *testing.T) {
 		name  string
 		value string
 	}{
-		{name: "empty separators", value: " , , "},
+		{name: "empty separators", value: " , "},
 		{name: "duplicate", value: "linux, darwin, linux"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

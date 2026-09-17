@@ -76,7 +76,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 		t.Fatalf("save Plan: %v", saveErr)
 	}
 	standingGoal, err := goal.New(
-		"ses_1", "Finish the recovery", testsupport.DefaultModelSelection(), goal.UnlimitedBudget(), capabilities,
+		"ses_1", "Finish the recovery", testsupport.DefaultModelSelection(), capabilities,
 		"goal_snapshot", createdAt,
 	)
 	if err != nil {

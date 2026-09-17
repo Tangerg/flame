@@ -230,15 +230,17 @@ func registerRunUnions(s *Shapes) {
 // could otherwise append into, and the two registrations must not be able to
 // reach each other's fields.
 func runOutcomeVariants() []VariantSpec {
-	return []VariantSpec{
+	variants := []VariantSpec{
 		{Tag: string(protocol.OutcomeCompleted)},
 		{Tag: string(protocol.OutcomeTimedOut), Required: []string{"error"}},
 		{Tag: string(protocol.OutcomeFailed), Required: []string{"error"}},
-		{Tag: string(protocol.OutcomeMaxSteps), Optional: []string{"detail"}},
-		{Tag: string(protocol.OutcomeMaxBudget), Optional: []string{"detail"}},
 		{Tag: string(protocol.OutcomeCanceled), Optional: []string{"detail"}},
 		{Tag: string(protocol.OutcomeLost), Required: []string{"error"}},
 	}
+	for index := range variants {
+		variants[index].Optional = append(variants[index].Optional, "unresolvedEffects")
+	}
+	return variants
 }
 
 func registerItemUnions(s *Shapes) {
@@ -440,8 +442,6 @@ func registerArtifactUnions(s *Shapes) {
 					protocol.ArtifactProblemProviderRejected,
 				),
 			},
-			{Tag: string(protocol.ArtifactOutcomeMaxSteps), Optional: []string{"detail"}},
-			{Tag: string(protocol.ArtifactOutcomeMaxBudget), Optional: []string{"detail"}},
 			{Tag: string(protocol.ArtifactOutcomeCanceled), Optional: []string{"detail"}},
 			{
 				Tag: string(protocol.ArtifactOutcomeLost), Required: []string{"error"},
@@ -517,8 +517,6 @@ func registerObjectConstraints(s *Shapes) {
 		goType      reflect.Type
 		requiredAny []string
 	}{
-		{goType: typeOf[protocol.GoalBudget](), requiredAny: []string{"maxRuns", "maxCostUsd", "maxSteps"}},
-		{goType: typeOf[protocol.RunLimits](), requiredAny: []string{"maxTotalTokens", "maxSteps", "maxBudgetUsd"}},
 		{goType: typeOf[protocol.ModelTokenLimits](), requiredAny: []string{"contextWindow", "maxInputTokens", "maxOutputTokens"}},
 		{goType: typeOf[protocol.FeedbackRequest](), requiredAny: []string{"rating", "text"}},
 	} {
@@ -759,10 +757,6 @@ func registerObjectConstraints(s *Shapes) {
 			When:     []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.GoalBlocked)}},
 			Required: []string{"reason"},
 			AllowedValues: allowedGoalReasonCodes(
-				protocol.GoalReasonRunBudgetReached,
-				protocol.GoalReasonCostBudgetReached,
-				protocol.GoalReasonStepBudgetReached,
-				protocol.GoalReasonPricingUnavailable,
 				protocol.GoalReasonBlockedByModel,
 			),
 		}},
@@ -782,10 +776,6 @@ func registerObjectConstraints(s *Shapes) {
 		protocol.GoalReasonRunStartFailed,
 		protocol.GoalReasonAwaitingInput,
 		protocol.GoalReasonTerminalOutcomeMissing,
-		protocol.GoalReasonRunBudgetReached,
-		protocol.GoalReasonCostBudgetReached,
-		protocol.GoalReasonStepBudgetReached,
-		protocol.GoalReasonPricingUnavailable,
 	} {
 		goalReasonRules = append(goalReasonRules, ConditionalRule{
 			When:      []delivery.FieldCondition{{Field: "code", Operator: delivery.OperatorEquals, Value: string(code)}},

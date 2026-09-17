@@ -32,15 +32,6 @@ func TestNewExecutionFactCommitRejectsUnsupportedFactRepresentation(t *testing.T
 	}
 }
 
-func TestUnknownEffectsDetectedRequiresConstruction(t *testing.T) {
-	if err := (UnknownEffectsDetected{}).validate(); err == nil {
-		t.Fatal("zero unknown-Effect observation validated")
-	}
-	if err := NewUnknownEffectsDetected([]UnknownEffect{{ID: "effect:test"}}).validate(); err != nil {
-		t.Fatalf("constructed unknown-Effect observation: %v", err)
-	}
-}
-
 func mustAssistantMessageCompleted(t testing.TB, message corechat.Message) AssistantMessageCompleted {
 	t.Helper()
 	completed, err := NewAssistantMessageCompleted(message)
@@ -303,18 +294,24 @@ func TestFirstOutputLatencyFactDoesNotAliasProducerOrConsumer(t *testing.T) {
 	}
 }
 
-func TestUnknownEffectsOwnsAndValidatesEvidence(t *testing.T) {
-	original := []UnknownEffect{{ID: "effect:test", Detail: "write failed"}}
-	fact := NewUnknownEffectsDetected(original)
-	original[0].Detail = "changed"
-	projected := fact.Effects()
-	projected[0].Detail = "changed again"
-	if fact.Effects()[0].Detail != "write failed" {
-		t.Fatal("unknown evidence aliases caller")
+func TestTerminalCommitOwnsUnresolvedEvidence(t *testing.T) {
+	effect, err := run.NewUnresolvedEffect("process", "effect", "host_cancellation", "stop", "unknown")
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, effects := range [][]UnknownEffect{nil, {{ID: ""}}, {{ID: "effect:test"}, {ID: "effect:test"}}} {
-		if err := NewUnknownEffectsDetected(effects).validate(); err == nil {
-			t.Fatalf("invalid evidence accepted: %+v", effects)
-		}
+	values := []run.UnresolvedEffect{effect}
+	end := NewSegmentEnded(run.OutcomeCanceled, nil, nil, 0).WithUnresolvedEffects(values)
+	values[0] = run.UnresolvedEffect{}
+	commit, _, err := NewExecutionFactCommit(end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := commit.Fact().(SegmentEnded).UnresolvedEffects()
+	if len(got) != 1 || got[0] != effect {
+		t.Fatalf("commit lost evidence: %+v", got)
+	}
+	got[0] = run.UnresolvedEffect{}
+	if commit.Fact().(SegmentEnded).UnresolvedEffects()[0] != effect {
+		t.Fatal("commit evidence was mutable")
 	}
 }

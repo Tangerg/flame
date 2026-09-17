@@ -693,16 +693,6 @@
           "value": "\"lost\""
         },
         {
-          "name": "ArtifactOutcomeMaxBudget",
-          "type": "ArtifactOutcomeType",
-          "value": "\"maxBudget\""
-        },
-        {
-          "name": "ArtifactOutcomeMaxSteps",
-          "type": "ArtifactOutcomeType",
-          "value": "\"maxSteps\""
-        },
-        {
           "name": "ArtifactOutcomeTimedOut",
           "type": "ArtifactOutcomeType",
           "value": "\"timedOut\""
@@ -1028,21 +1018,6 @@
           "value": "\"blockedByModel\""
         },
         {
-          "name": "GoalReasonCostBudgetReached",
-          "type": "GoalReasonCode",
-          "value": "\"costBudgetReached\""
-        },
-        {
-          "name": "GoalReasonPricingUnavailable",
-          "type": "GoalReasonCode",
-          "value": "\"pricingUnavailable\""
-        },
-        {
-          "name": "GoalReasonRunBudgetReached",
-          "type": "GoalReasonCode",
-          "value": "\"runBudgetReached\""
-        },
-        {
           "name": "GoalReasonRunNotCompleted",
           "type": "GoalReasonCode",
           "value": "\"runNotCompleted\""
@@ -1056,11 +1031,6 @@
           "name": "GoalReasonRuntimeRestarted",
           "type": "GoalReasonCode",
           "value": "\"runtimeRestarted\""
-        },
-        {
-          "name": "GoalReasonStepBudgetReached",
-          "type": "GoalReasonCode",
-          "value": "\"stepBudgetReached\""
         },
         {
           "name": "GoalReasonStoppedByUser",
@@ -1441,16 +1411,6 @@
           "name": "OutcomeLost",
           "type": "RunOutcomeType",
           "value": "\"lost\""
-        },
-        {
-          "name": "OutcomeMaxBudget",
-          "type": "RunOutcomeType",
-          "value": "\"maxBudget\""
-        },
-        {
-          "name": "OutcomeMaxSteps",
-          "type": "RunOutcomeType",
-          "value": "\"maxSteps\""
         },
         {
           "name": "OutcomeTimedOut",
@@ -1851,16 +1811,6 @@
           "name": "SegmentLost",
           "type": "SegmentOutcomeType",
           "value": "\"lost\""
-        },
-        {
-          "name": "SegmentMaxBudget",
-          "type": "SegmentOutcomeType",
-          "value": "\"maxBudget\""
-        },
-        {
-          "name": "SegmentMaxSteps",
-          "type": "SegmentOutcomeType",
-          "value": "\"maxSteps\""
         },
         {
           "name": "SegmentSuspended",
@@ -2818,11 +2768,6 @@
               "name": "ReasoningEffort",
               "type": "string",
               "tag": "json:\"reasoningEffort,omitempty\""
-            },
-            {
-              "name": "Limits",
-              "type": "*RunLimits",
-              "tag": "json:\"limits,omitempty\""
             },
             {
               "name": "Metrics",
@@ -4015,11 +3960,6 @@
               "tag": "json:\"reasoningEffort,omitempty\""
             },
             {
-              "name": "Budget",
-              "type": "*GoalBudget",
-              "tag": "json:\"budget,omitempty\""
-            },
-            {
               "name": "Used",
               "type": "GoalUsage",
               "tag": "json:\"used\""
@@ -4033,33 +3973,6 @@
               "name": "UpdatedAt",
               "type": "time.Time",
               "tag": "json:\"updatedAt,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "GoalBudget",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "MaxRuns",
-              "type": "*int",
-              "tag": "json:\"maxRuns,omitempty\""
-            },
-            {
-              "name": "MaxCostUSD",
-              "type": "*float64",
-              "tag": "json:\"maxCostUsd,omitempty\""
-            },
-            {
-              "name": "MaxSteps",
-              "type": "*int",
-              "tag": "json:\"maxSteps,omitempty\""
             }
           ],
           "methods": [
@@ -6605,33 +6518,6 @@
           ]
         },
         {
-          "name": "RunLimits",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "MaxTotalTokens",
-              "type": "*int64",
-              "tag": "json:\"maxTotalTokens,omitempty\""
-            },
-            {
-              "name": "MaxSteps",
-              "type": "*int",
-              "tag": "json:\"maxSteps,omitempty\""
-            },
-            {
-              "name": "MaxBudgetUSD",
-              "type": "*float64",
-              "tag": "json:\"maxBudgetUsd,omitempty\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
           "name": "RunMetrics",
           "kind": "struct",
           "fields": [
@@ -6662,6 +6548,11 @@
           "name": "RunOutcome",
           "kind": "struct",
           "fields": [
+            {
+              "name": "UnresolvedEffects",
+              "type": "[]UnresolvedEffect",
+              "tag": "json:\"unresolvedEffects,omitempty\""
+            },
             {
               "name": "Type",
               "type": "RunOutcomeType",
@@ -6771,11 +6662,6 @@
               "name": "ContextTokens",
               "type": "int64",
               "tag": "json:\"contextTokens,omitempty\""
-            },
-            {
-              "name": "Limits",
-              "type": "*RunLimits",
-              "tag": "json:\"limits,omitempty\""
             },
             {
               "name": "ProtocolProfile",
@@ -7185,6 +7071,11 @@
           "name": "SegmentOutcome",
           "kind": "struct",
           "fields": [
+            {
+              "name": "UnresolvedEffects",
+              "type": "[]UnresolvedEffect",
+              "tag": "json:\"unresolvedEffects,omitempty\""
+            },
             {
               "name": "Type",
               "type": "SegmentOutcomeType",
@@ -7674,11 +7565,6 @@
               "name": "ReasoningEffort",
               "type": "string",
               "tag": "json:\"reasoningEffort,omitempty\""
-            },
-            {
-              "name": "Budget",
-              "type": "*GoalBudget",
-              "tag": "json:\"budget,omitempty\""
             }
           ],
           "methods": [
@@ -7716,11 +7602,6 @@
               "name": "ReasoningEffort",
               "type": "string",
               "tag": "json:\"reasoningEffort,omitempty\""
-            },
-            {
-              "name": "Limits",
-              "type": "*RunLimits",
-              "tag": "json:\"limits,omitempty\""
             },
             {
               "name": "Params",
@@ -8028,6 +7909,37 @@
             {
               "name": "ValidateWire",
               "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "UnresolvedEffect",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ProcessID",
+              "type": "string",
+              "tag": "json:\"processId\""
+            },
+            {
+              "name": "EffectID",
+              "type": "string",
+              "tag": "json:\"effectId\""
+            },
+            {
+              "name": "Cause",
+              "type": "string",
+              "tag": "json:\"cause\""
+            },
+            {
+              "name": "Reason",
+              "type": "string",
+              "tag": "json:\"reason,omitempty\""
+            },
+            {
+              "name": "Detail",
+              "type": "string",
+              "tag": "json:\"detail,omitempty\""
             }
           ]
         },
