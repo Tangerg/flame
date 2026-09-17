@@ -613,12 +613,6 @@ export const de: Record<string, string> = {
 
   "diff.workingTree": "Arbeitsbaum",
   "diff.branchCompare": "Branch-Vergleich",
-  "diff.files.aria": "Geänderte Dateien",
-  "diff.files.filter": "Dateien filtern…",
-  "diff.files.show": "Geänderte Dateien anzeigen",
-  "diff.files.hide": "Geänderte Dateien ausblenden",
-  "diff.files.none": "Keine Dateien in diesem Diff.",
-  "diff.files.noMatch": "Keine passenden Dateien.",
   "diff.baselineAria": "Diff-Basis",
   "diff.mode.worktree": "Arbeitsbaum",
   "diff.mode.branch": "Branch",
@@ -636,8 +630,6 @@ export const de: Record<string, string> = {
     "Diff am Zeilenlimit abgeschnitten — die übrigen Dateien werden nicht angezeigt.",
 
   "plan.list.heading": "Aufgabenplan",
-
-  "files.binary": "bin",
 
   "compaction.compacted": "Kontext automatisch komprimiert",
   "projects.showMore": "{{count}} weitere anzeigen",

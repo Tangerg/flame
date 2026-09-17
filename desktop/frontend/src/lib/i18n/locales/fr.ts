@@ -634,12 +634,6 @@ export const fr: Record<string, string> = {
 
   "diff.workingTree": "Arbre de travail",
   "diff.branchCompare": "Comparaison de branches",
-  "diff.files.aria": "Fichiers modifiés",
-  "diff.files.filter": "Filtrer les fichiers…",
-  "diff.files.show": "Afficher les fichiers modifiés",
-  "diff.files.hide": "Masquer les fichiers modifiés",
-  "diff.files.none": "Aucun fichier dans ce diff.",
-  "diff.files.noMatch": "Aucun fichier correspondant.",
   "diff.baselineAria": "Base du diff",
   "diff.mode.worktree": "Arbre",
   "diff.mode.branch": "Branche",
@@ -658,8 +652,6 @@ export const fr: Record<string, string> = {
     "Diff tronqué à la limite de lignes — les fichiers restants ne sont pas affichés.",
 
   "plan.list.heading": "Plan de tâches",
-
-  "files.binary": "bin",
 
   "compaction.compacted": "Contexte compacté automatiquement",
   "projects.showMore": "Afficher {{count}} de plus",

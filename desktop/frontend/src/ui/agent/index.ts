@@ -19,9 +19,6 @@ export { AgentStatusPill } from "./status-pill";
 export { ToolText } from "./tool-text";
 export { AgentDockToggle, AgentSurfaceHeader } from "./surface-header";
 export {
-  AgentViewNavigator,
-  AgentViewNavigatorToggle,
-  AgentViewSplit,
   AgentWorkspaceView,
 } from "./workspace-view";
 export {

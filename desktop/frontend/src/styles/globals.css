@@ -584,7 +584,6 @@
   );
   --composer-control-height: 28px;
   --composer-control-icon: 16px;
-  --dock-navigator-width: 240px;
   --control-edge-width: 1px;
   --control-mark-size: 18px;
   --hairline-width: 0.5px;
@@ -1305,30 +1304,6 @@ html.theme-dark {
 
 .agent-context-dock .agent-workspace-view {
   background: transparent;
-}
-
-.agent-view-navigator {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  flex: 0 0 var(--dock-navigator-width);
-  flex-direction: column;
-}
-
-.agent-view-navigator-header {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 6px;
-  padding: 8px;
-  box-shadow: var(--app-header-edge) var(--color-border);
-}
-
-@container workspace-view (width < 720px) {
-  .agent-view-navigator,
-  .agent-view-navigator-toggle {
-    display: none;
-  }
 }
 
 .agent-context-dock > .agent-surface-header:first-child {

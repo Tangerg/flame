@@ -589,12 +589,6 @@ export const zhTW: Record<string, string> = {
 
   "diff.workingTree": "工作樹",
   "diff.branchCompare": "分支比對",
-  "diff.files.aria": "變更檔案",
-  "diff.files.filter": "篩選檔案…",
-  "diff.files.show": "顯示變更檔案",
-  "diff.files.hide": "隱藏變更檔案",
-  "diff.files.none": "此 diff 沒有檔案。",
-  "diff.files.noMatch": "沒有相符的檔案。",
   "diff.baselineAria": "Diff 基準",
   "diff.layoutAria": "Diff 版面",
   "diff.layout.unified": "統一",
@@ -619,8 +613,6 @@ export const zhTW: Record<string, string> = {
   "diff.truncated": "Diff 已達行數上限 —— 其餘檔案未顯示。",
 
   "plan.list.heading": "任務計畫",
-
-  "files.binary": "bin",
 
   "compaction.compacted": "已自動壓縮上下文",
   "projects.showMore": "顯示另外 {{count}} 條",

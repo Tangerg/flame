@@ -11,14 +11,12 @@ import {
   chevron,
   vocab,
 } from "@/ui";
-import { AgentViewNavigatorToggle, AgentViewSplit, AgentWorkspaceView } from "@/ui/agent";
+import { AgentWorkspaceView } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import type { DiffLayout } from "./views/DiffView";
 import { DiffView } from "./views/DiffView";
-import { ReviewFileTree } from "./views/ReviewFileTree";
 import { ViewHeader } from "./views/ViewHeader";
 import { gitOffEmpty, notARepoEmpty } from "./views/vcsGate";
-import { focusWorkspaceFile } from "@/plugins/builtin/workspace/application/navigation";
 import {
   type WorkspaceDiffMode,
   type WorkspaceFileDiff,
@@ -101,11 +99,9 @@ export function DiffWorkspaceSurface() {
   const t = useT();
   const [mode, setMode] = useState<WorkspaceDiffMode>("worktree");
   const [layout, setLayout] = useState<DiffLayout>("unified");
-  const [navigatorOpen, setNavigatorOpen] = useState(true);
   const [collapsedFiles, setCollapsedFiles] = useState<ReadonlySet<string>>(() => new Set());
   const { fileFocus, files, gitEnabled, error, isLoading, notARepo, retry, view } =
     useWorkspaceDiffView(mode);
-  const hasFiles = (files?.length ?? 0) > 0;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollToFile = (path: string) => {
@@ -164,29 +160,9 @@ export function DiffWorkspaceSurface() {
                 { value: "base", label: t("diff.mode.branch") },
               ]}
             />
-            {hasFiles && (
-              <AgentViewNavigatorToggle
-                open={navigatorOpen}
-                onToggle={() => setNavigatorOpen((open) => !open)}
-                showLabel={t("diff.files.show")}
-                hideLabel={t("diff.files.hide")}
-              />
-            )}
           </div>
         }
       />
-      <AgentViewSplit
-        navigator={
-          navigatorOpen && hasFiles ? (
-            <ReviewFileTree
-              files={files ?? []}
-              selectedPath={fileFocus.path}
-              onSelectFile={focusWorkspaceFile}
-              onClose={() => setNavigatorOpen(false)}
-            />
-          ) : undefined
-        }
-      >
         <ScrollArea ref={scrollRef} className={stylex.props(df.scroller).className}>
           <DataView
             items={gitEnabled ? files : []}
@@ -228,7 +204,6 @@ export function DiffWorkspaceSurface() {
             )}
           </DataView>
         </ScrollArea>
-      </AgentViewSplit>
     </AgentWorkspaceView>
   );
 }
