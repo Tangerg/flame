@@ -612,3 +612,41 @@ func TestProjectRejectedToolPreservesRawArguments(t *testing.T) {
 		})
 	}
 }
+
+func TestProjectIncompleteModelObservationsFromRuntime(t *testing.T) {
+	at := time.Date(2026, time.September, 18, 0, 0, 0, 0, time.UTC)
+	for _, test := range []struct {
+		item protocol.Item
+		kind agent.BlockKind
+	}{
+		{protocol.Item{ID: "item_message", RunID: "run_1", Type: protocol.ItemTypeAgentMessage,
+			Status: protocol.ItemStatusIncomplete, CreatedAt: at, Phase: protocol.MessagePhaseCommentary,
+			Content: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "visible prefix"}}}, agent.BlockAssistant},
+		{protocol.Item{ID: "item_reasoning", RunID: "run_1", Type: protocol.ItemTypeReasoning,
+			Status: protocol.ItemStatusIncomplete, CreatedAt: at, Text: "visible prefix"}, agent.BlockReasoning},
+	} {
+		t.Run(string(test.item.Type), func(t *testing.T) {
+			event := protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &test.item}
+			if err := event.ValidateWire(); err != nil {
+				t.Fatal(err)
+			}
+			live, included, err := projectEvent(protocol.RunEvent{
+				EventID: "evt_observation", RunID: "run_1", SegmentID: "seg_1", Timestamp: at, Event: event,
+			})
+			if err != nil || !included {
+				t.Fatalf("live observation: %+v, %v", live, err)
+			}
+			completed, ok := live.Event.(agent.BlockCompleted)
+			if !ok {
+				t.Fatalf("event = %T", live.Event)
+			}
+			restored, err := projectItem(test.item)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(completed.Block, restored) || restored.Status != agent.BlockStatusIncomplete || restored.Kind != test.kind || restored.Text != "visible prefix" {
+				t.Fatalf("live/restored observation differs: live=%+v restored=%+v", completed.Block, restored)
+			}
+		})
+	}
+}
