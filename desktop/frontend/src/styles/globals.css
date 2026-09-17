@@ -450,6 +450,9 @@
   --color-diff-added-meta: #2a713e;
   --color-diff-deleted-tint: color-mix(in srgb, var(--tone-negative) 9%, transparent);
   --color-diff-deleted-meta: #b0342b;
+  /* The words that changed, over the tint their row already carries. */
+  --color-diff-added-word: color-mix(in srgb, var(--tone-success) 26%, transparent);
+  --color-diff-deleted-word: color-mix(in srgb, var(--tone-negative) 24%, transparent);
 
   --color-cta: var(--color-accent);
   --color-cta-hover: var(--color-accent-border);
@@ -949,6 +952,15 @@ html.theme-dark {
   --color-diff-added-meta: #6db473;
   --color-diff-deleted-tint: color-mix(in srgb, var(--tone-negative) 8%, transparent);
   --color-diff-deleted-meta: #e68a8a;
+  /* Deeper than the row, not lighter — which is the opposite of the light scheme and is forced,
+     not a preference. `--tone-*` sits at 68% lightness, so ANY alpha of it over a dark row raises
+     the background toward this theme's dimmest syntax colours: measured, the fill has to fall to
+     6% before the red clears AA, and 6% over an 8% row tint is not a mark. Resolving downward
+     instead keeps the hue and buys headroom — worst ink 5.99 on the added mark, 6.11 on the
+     deleted, against 4.92 and 5.02 on the bare row. Opaque, so the mark does not drift with the
+     tint underneath it. */
+  --color-diff-added-word: #0e2713;
+  --color-diff-deleted-word: #391516;
 
   --color-negative: #e68a8a;
   --color-warning: #d6a750;
