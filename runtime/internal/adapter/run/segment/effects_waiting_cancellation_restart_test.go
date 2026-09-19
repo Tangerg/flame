@@ -87,7 +87,7 @@ type restartedWaitingCancellationStores struct {
 	runs        *sqlite.RunStore
 	interrupts  *persistence.InterruptStore
 	transcript  *sqlite.TranscriptStore
-	checkpoints *persistence.ExecutorCheckpointStore
+	checkpoints *sqlite.ExecutorCheckpointStore
 	query       runQuery
 }
 
@@ -107,7 +107,7 @@ func reopenWaitingCancellationStores(t *testing.T, path string) restartedWaiting
 		runs:        runStore,
 		interrupts:  persistence.NewInterruptStore(sqlite.NewInterruptStore(database)),
 		transcript:  sqlite.NewTranscriptStore(database),
-		checkpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(database)),
+		checkpoints: sqlite.NewExecutorCheckpointStore(database),
 		query:       runStore,
 	}
 }
@@ -170,12 +170,12 @@ func assertRestartedRunTopology(
 func assertRestartedExecutorCheckpoint(
 	t *testing.T,
 	fixture waitingCancellationSQLiteFixture,
-	checkpointStore *persistence.ExecutorCheckpointStore,
+	checkpointStore *sqlite.ExecutorCheckpointStore,
 ) {
 	t.Helper()
 	checkpoint, err := checkpointStore.LoadCheckpoint(
 		fixture.ctx,
-		fixture.replacementCheckpoint.RootMemberID,
+		fixture.replacementCheckpoint.RootMemberID(),
 	)
 	if err != nil {
 		t.Fatalf("load restarted executor checkpoint: %v", err)
@@ -237,14 +237,11 @@ func queryRun(
 
 func assertReplacementCheckpoint(
 	t *testing.T,
-	checkpoint runs.ExecutorCheckpoint,
+	checkpoint run.Checkpoint,
 	fixture waitingCancellationSQLiteFixture,
 ) {
 	t.Helper()
-	if !reflect.DeepEqual(
-		normalizedExecutorCheckpoint(checkpoint),
-		normalizedExecutorCheckpoint(fixture.replacementCheckpoint),
-	) {
+	if !checkpoint.Equal(fixture.replacementCheckpoint) {
 		t.Fatalf(
 			"restarted checkpoint differs from committed replacement:\ngot  %+v\nwant %+v",
 			checkpoint,
@@ -259,7 +256,7 @@ func assertRestartedWaitingBoundary(
 	runStore *sqlite.RunStore,
 	interruptStore *persistence.InterruptStore,
 	transcriptStore *sqlite.TranscriptStore,
-	checkpointStore *persistence.ExecutorCheckpointStore,
+	checkpointStore *sqlite.ExecutorCheckpointStore,
 ) {
 	t.Helper()
 	pending, found, err := interruptStore.Get(fixture.ctx, fixture.rootRun.ID())
@@ -289,12 +286,9 @@ func assertRestartedWaitingBoundary(
 
 	checkpoint, err := checkpointStore.LoadCheckpoint(
 		fixture.ctx,
-		fixture.replacementCheckpoint.RootMemberID,
+		fixture.replacementCheckpoint.RootMemberID(),
 	)
-	if err != nil || !reflect.DeepEqual(
-		normalizedExecutorCheckpoint(checkpoint),
-		normalizedExecutorCheckpoint(fixture.replacementCheckpoint),
-	) {
+	if err != nil || !checkpoint.Equal(fixture.replacementCheckpoint) {
 		t.Fatalf("restarted executor checkpoint = (%+v, %v), want committed replacement", checkpoint, err)
 	}
 	for _, runID := range []string{"run_sibling", fixture.rootRun.ID()} {

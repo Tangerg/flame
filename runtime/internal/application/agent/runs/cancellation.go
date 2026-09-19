@@ -66,10 +66,8 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 		if errors.Is(requestErr, ErrRunFinished) {
 			return CancelResult{}, errors.Join(requestErr, entry.owner.wait(cleanupCtx))
 		}
-		c.registry.MarkCancel(plan.root.run.ID(), cmd.Reason)
 		return CancelResult{}, errors.Join(requestErr, entry.owner.wait(cleanupCtx))
 	}
-	c.registry.MarkCancel(plan.root.run.ID(), cmd.Reason)
 	if interruptCommitted {
 		// The interrupt transaction won before cancellation. Its pump owns the
 		// live admission until it has published and closed the parked segment;
@@ -311,7 +309,7 @@ func (c *Coordinator) waitingChildCancellationContinuation(
 	}
 	checkpoint, err := c.checkpoints.ReadWaitingCheckpoint(ctx, rootContinuation.MemberID)
 	if err != nil {
-		if !errors.Is(err, ErrExecutorStateLost) && !errors.Is(err, ErrExecutorCheckpointNotFound) {
+		if !errors.Is(err, ErrExecutorStateLost) && !errors.Is(err, rundomain.ErrCheckpointNotFound) {
 			return WaitingContinuation{}, err
 		}
 		lostErr := c.terminations.ApplyRunLost(

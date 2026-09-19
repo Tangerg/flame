@@ -1,8 +1,6 @@
 package delivery
 
 import (
-	"context"
-
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -21,9 +19,5 @@ func registerInterrupts(registry *Registry) {
 			protocol.ErrRunNotRoot.Error(),
 			protocol.ErrCapabilityNotNeg.Error(),
 		},
-	}, func(service interface {
-		ListInterrupts(context.Context, protocol.ListInterruptsRequest) (*protocol.Page[protocol.PendingInterruptSet], error)
-	}, ctx context.Context, request protocol.ListInterruptsRequest) (*protocol.Page[protocol.PendingInterruptSet], error) {
-		return service.ListInterrupts(ctx, request)
-	})
+	}, (*Handler).ListInterrupts)
 }

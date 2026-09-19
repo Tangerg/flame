@@ -3,6 +3,8 @@ package render
 import (
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -10,22 +12,19 @@ import (
 // root stream to carry events from its negotiated child-run tree.
 type runScope struct {
 	rootID  string
-	members map[string]agent.RunLineage
+	members map[string]string
 }
 
-func (r *runScope) bind(run agent.Run) error {
-	if err := run.Validate(); err != nil {
+func (r *runScope) bindRoot(runID string) error {
+	if err := protocol.ValidateRunID(runID); err != nil {
 		return err
 	}
-	if !run.Lineage.IsRoot() {
-		return fmt.Errorf("run %s is not a root", run.ID)
-	}
-	if r.rootID != "" && r.rootID != run.ID {
-		return fmt.Errorf("run %s does not match %s", run.ID, r.rootID)
+	if r.rootID != "" && r.rootID != runID {
+		return fmt.Errorf("run %s does not match %s", runID, r.rootID)
 	}
 	r.ensureMembers()
-	r.rootID = run.ID
-	r.members[run.ID] = run.Lineage
+	r.rootID = runID
+	r.members[runID] = ""
 	return nil
 }
 
@@ -39,24 +38,24 @@ func (r *runScope) accept(envelope agent.RunEvent) error {
 	return validateRunEventOwnership(envelope)
 }
 
-func (r *runScope) acceptSegmentStarted(envelopeRunID string, run agent.Run) error {
+func (r *runScope) acceptSegmentStarted(envelopeRunID string, run protocol.RunRef) error {
 	if run.ID != envelopeRunID {
 		return fmt.Errorf("segment start run %s does not match envelope %s", run.ID, envelopeRunID)
 	}
-	if run.Lineage.IsRoot() {
-		return r.bind(run)
+	if run.ParentRunID == "" {
+		return r.bindRoot(run.ID)
 	}
-	if r.rootID == "" || run.Lineage.RootRunID() != r.rootID {
+	if r.rootID == "" || run.RootRunID != r.rootID {
 		return fmt.Errorf("child run %s does not belong to root %s", run.ID, r.rootID)
 	}
 	r.ensureMembers()
-	if _, exists := r.members[run.Lineage.ParentRunID()]; !exists {
-		return fmt.Errorf("child run %s has unknown parent %s", run.ID, run.Lineage.ParentRunID())
+	if _, exists := r.members[run.ParentRunID]; !exists {
+		return fmt.Errorf("child run %s has unknown parent %s", run.ID, run.ParentRunID)
 	}
-	if lineage, exists := r.members[run.ID]; exists && lineage != run.Lineage {
+	if lineage, exists := r.members[run.ID]; exists && lineage != run.ParentRunID {
 		return fmt.Errorf("child run %s changed lineage", run.ID)
 	}
-	r.members[run.ID] = run.Lineage
+	r.members[run.ID] = run.ParentRunID
 	return nil
 }
 
@@ -85,12 +84,15 @@ func (r *runScope) restore(snapshot agent.SessionSnapshot, rootID string) error 
 	if !exists {
 		return fmt.Errorf("run %s is absent from the snapshot", rootID)
 	}
-	if err := r.bind(run); err != nil {
+	if run.ParentRunID != "" {
+		return fmt.Errorf("run %s is not a root", run.ID)
+	}
+	if err := r.bindRoot(run.ID); err != nil {
 		return err
 	}
 	for _, member := range snapshot.Runs {
-		if member.Lineage.RootRunID() == rootID {
-			r.members[member.ID] = member.Lineage
+		if member.RootRunID == rootID {
+			r.members[member.ID] = member.ParentRunID
 		}
 	}
 	return nil
@@ -105,11 +107,11 @@ func (r *runScope) isRoot(runID string) bool { return runID != "" && runID == r.
 
 func (r *runScope) isChild(runID string) bool {
 	lineage, exists := r.members[runID]
-	return exists && !lineage.IsRoot()
+	return exists && lineage != ""
 }
 
 func (r *runScope) ensureMembers() {
 	if r.members == nil {
-		r.members = make(map[string]agent.RunLineage)
+		r.members = make(map[string]string)
 	}
 }

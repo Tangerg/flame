@@ -1363,6 +1363,7 @@ export interface SessionSnapshot {
   items: Item[];
   plan?: Plan;
   runs: RunRef[];
+  session: Session;
 }
 
 export type SessionStatus = "running" | "waiting" | "idle";

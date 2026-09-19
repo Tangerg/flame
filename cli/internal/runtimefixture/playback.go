@@ -118,8 +118,8 @@ func (r *Runtime) park(run *runState) {
 	}
 	run.status = protocol.RunStatusWaiting
 	run.interactions = agent.CloneInteractions(pending)
-	run.usage = run.script.InterruptUsage.Clone()
-	if err := r.emitLocked(run, agent.RunInterrupted{Interactions: agent.CloneInteractions(run.interactions), Usage: run.usage}); err != nil {
+	run.metrics = agent.CloneRunMetrics(run.script.InterruptMetrics)
+	if err := r.emitLocked(run, agent.RunInterrupted{Interactions: agent.CloneInteractions(run.interactions), Metrics: run.metrics}); err != nil {
 		r.failSegmentLocked(run, err)
 		r.mu.Unlock()
 		return
@@ -322,7 +322,7 @@ func (r *Runtime) emitLocked(run *runState, event agent.Event) error {
 			run.contextTokens = *item.ContextTokens
 		}
 		if item.Usage != nil {
-			run.usage = item.Usage.Clone()
+			run.metrics.Usage = agent.CloneRunMetrics(protocol.RunMetrics{Usage: item.Usage}).Usage
 		}
 	case agent.RunInterrupted:
 		r.closeSegmentLocked(segment)
@@ -388,7 +388,7 @@ func (r *Runtime) finishLocked(run *runState, event agent.RunFinished) error {
 	}
 
 	run.outcome = event.Outcome
-	run.usage = event.Usage.Clone()
+	run.metrics = agent.CloneRunMetrics(event.Metrics)
 	if run.active != "" {
 		for _, block := range settlements {
 			if err := r.emitLocked(run, agent.BlockCompleted{Block: block}); err != nil {

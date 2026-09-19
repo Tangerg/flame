@@ -70,7 +70,7 @@ func newGatedServer(t *testing.T) *httptest.Server {
 func newGatedServerWithOrigins(t *testing.T, origins []string) *httptest.Server {
 	t.Helper()
 	srv, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint:        newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
+		Endpoint:        newTestEndpoint(t, delivery.HandlerConfig{Runs: &fakeRuns{}}, delivery.EndpointConfig{}),
 		Addr:            ":0",
 		ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
 		ProtocolVersion: testProtocolVersion,

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 type sessionBindingStub struct {
@@ -45,7 +45,7 @@ func (s sessionBindingStub) ImportSession(ctx context.Context, request protocol.
 	return s.imported(ctx, request, options)
 }
 
-func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
+func TestSessionControlProjectsTheRollbackAcknowledgement(t *testing.T) {
 	image := []byte("image body")
 	commandID := agent.CommandID("cli_77777777777777777777777777777777")
 	stub := sessionBindingStub{}
@@ -63,7 +63,9 @@ func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
 				CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
 			},
 			DroppedRuns: []protocol.DroppedRun{{
-				Run: protocol.RunSummary{ID: "run_2", SessionID: "ses_1", Status: protocol.RunStatusFinished},
+				Run: protocol.RunSummary{ID: "run_2", SessionID: "ses_1", Status: protocol.RunStatusFinished,
+					Provider: testSessionProvider, Model: testSessionModel, CreatedAt: testSessionTime, FinishedAt: testSessionTime,
+					Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted}},
 				UserInput: []protocol.ContentBlock{
 					{Type: protocol.ContentBlockText, Text: "try another approach"},
 					{Type: protocol.ContentBlockImage, Mime: "image/png", Data: base64.StdEncoding.EncodeToString(image)},
@@ -81,13 +83,8 @@ func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, ok := result.FirstOpeningInput()
-	if !ok || len(input.Input) != 2 || string(input.Input[1].Data) != string(image) {
-		t.Fatalf("rollback result = %+v", result)
-	}
-	text, images := input.OpeningText()
-	if text != "try another approach" || images != 1 {
-		t.Fatalf("opening input = %q, %d", text, images)
+	if result.Session.ID != "ses_1" || !slices.Equal(result.DroppedRunIDs, []string{"run_2"}) {
+		t.Fatalf("rollback acknowledgement = %+v", result)
 	}
 }
 
@@ -121,6 +118,42 @@ func TestSessionControlRejectsCrossSessionResponses(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 	_, err = runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: protocol.ExportFormatJSON})
 	requireRuntimeContractViolation(t, err)
+}
+
+func TestSessionControlRejectsInvalidDroppedRunIdentities(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		runs []protocol.RunSummary
+	}{
+		{name: "empty run", runs: []protocol.RunSummary{{SessionID: "ses_1"}}},
+		{name: "duplicate run", runs: []protocol.RunSummary{
+			{ID: "run_2", SessionID: "ses_1"}, {ID: "run_2", SessionID: "ses_1"},
+		}},
+		{name: "foreign session", runs: []protocol.RunSummary{{ID: "run_2", SessionID: "ses_other"}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			stub := sessionBindingStub{
+				rollback: func(context.Context, protocol.RollbackSessionRequest, flameruntime.CommandOptions) (*protocol.RollbackSessionResponse, error) {
+					response := &protocol.RollbackSessionResponse{Session: &protocol.Session{
+						ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel,
+						Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
+						CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
+					}}
+					for _, run := range test.runs {
+						response.DroppedRuns = append(response.DroppedRuns, protocol.DroppedRun{Run: run})
+					}
+					return response, nil
+				},
+			}
+			runtime := &Connection{
+				sessions: stub, meta: requestMeta("test"), profile: sessionControlProfile(t),
+			}
+			_, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
+				SessionID: "ses_1", Scope: protocol.RestoreHistory,
+			})
+			requireRuntimeContractViolation(t, err)
+		})
+	}
 }
 
 func TestSessionTransferPreservesRuntimeNativeFormats(t *testing.T) {
@@ -356,7 +389,7 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolvedWorkspace := workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable}
+	resolvedWorkspace := protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/workspace"}, ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable}
 	valid := protocol.Session{
 		ID: artifact.Session.ID, Title: artifact.Session.Title, Status: protocol.SessionStatusIdle,
 		Provider: artifact.Session.Provider, Model: artifact.Session.Model, ReasoningEffort: artifact.Session.ReasoningEffort,
@@ -390,7 +423,7 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 			runtime := &Connection{
 				sessions: stub,
 				workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
-					Ref: protocol.WorkspaceRef{Path: resolvedWorkspace.Path}, ProjectRoot: resolvedWorkspace.ProjectRoot,
+					Ref: protocol.WorkspaceRef{Path: resolvedWorkspace.Ref.Path}, ProjectRoot: resolvedWorkspace.ProjectRoot,
 					Availability: protocol.WorkspaceAvailable,
 				}},
 				meta:    requestMeta("test"),

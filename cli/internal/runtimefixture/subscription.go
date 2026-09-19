@@ -20,14 +20,14 @@ func (r *Runtime) SubscribeRun(ctx context.Context, in agent.SubscribeRun) (agen
 	defer r.mu.Unlock()
 	run := r.runs[in.RunID]
 	if run == nil {
-		return agent.SegmentStream{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, in.RunID)
+		return agent.SegmentStream{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, in.RunID)
 	}
 	if run.active != in.SegmentID || run.status != protocol.RunStatusRunning {
-		return agent.SegmentStream{}, fmt.Errorf("%w: run %s is not executing segment %s", agent.ErrStaleSegment, in.RunID, in.SegmentID)
+		return agent.SegmentStream{}, fmt.Errorf("%w: run %s is not executing segment %s", protocol.ErrStaleSegment, in.RunID, in.SegmentID)
 	}
 	segment := run.segments[in.SegmentID]
 	if segment == nil {
-		return agent.SegmentStream{}, fmt.Errorf("%w: %s", agent.ErrStaleSegment, in.SegmentID)
+		return agent.SegmentStream{}, fmt.Errorf("%w: %s", protocol.ErrStaleSegment, in.SegmentID)
 	}
 
 	head := len(segment.events)
@@ -35,7 +35,7 @@ func (r *Runtime) SubscribeRun(ctx context.Context, in agent.SubscribeRun) (agen
 	if in.AfterEventID != "" {
 		at := replayIndex(segment.events, in.AfterEventID)
 		if at < 0 {
-			return agent.SegmentStream{}, fmt.Errorf("%w: event %s", agent.ErrReplayUnavailable, in.AfterEventID)
+			return agent.SegmentStream{}, fmt.Errorf("%w: event %s", protocol.ErrReplayUnavailable, in.AfterEventID)
 		}
 		start = at + 1
 	}

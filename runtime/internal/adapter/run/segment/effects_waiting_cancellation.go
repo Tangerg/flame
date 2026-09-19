@@ -16,11 +16,8 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 	ctx context.Context,
 	commit runs.WaitingSubtreeCancellationCommit,
 ) (runs.WaitingSubtreeCancellationResult, error) {
-	if err := commit.Validate(); err != nil {
-		return runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
-			"segment: invalid waiting subtree cancellation: %w",
-			err,
-		)
+	if commit.IsZero() {
+		return runs.WaitingSubtreeCancellationResult{}, errors.New("segment: waiting subtree cancellation is required")
 	}
 	var target, root run.Run
 	err := e.runInTx(ctx, func(ctx context.Context) error {
@@ -178,10 +175,10 @@ func (e *Effects) persistWaitingCancellationDisposition(
 		}
 	}
 	for _, event := range commit.OpeningEvents() {
-		if err := e.applyCommit(ctx, event); err != nil {
+		if err := e.applyCommit(ctx, event, event.CommitID()); err != nil {
 			return fmt.Errorf(
 				"segment: persist opening projection for surviving Run %q: %w",
-				event.RunID,
+				event.RunID(),
 				err,
 			)
 		}

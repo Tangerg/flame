@@ -10,24 +10,17 @@ import (
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/input"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestTimelineGroupsDescendantsBeneathNewestRoots(t *testing.T) {
-	child, err := agent.NewChildRunLineage("run_child", "spawn", "run_new", "run_new")
-	if err != nil {
-		t.Fatal(err)
-	}
-	grandchild, err := agent.NewChildRunLineage("run_grandchild", "nested", "run_child", "run_new")
-	if err != nil {
-		t.Fatal(err)
-	}
-	runs := []agent.Run{
-		{ID: "run_old", Lineage: agent.RootRunLineage()},
-		{ID: "run_new", Lineage: agent.RootRunLineage()},
-		{ID: "run_child", Lineage: child},
-		{ID: "run_grandchild", Lineage: grandchild},
+	child := protocol.RunSummary{ID: "run_child", SpawnedByItemID: "spawn", ParentRunID: "run_new", RootRunID: "run_new"}
+	grandchild := protocol.RunSummary{ID: "run_grandchild", SpawnedByItemID: "nested", ParentRunID: "run_child", RootRunID: "run_new"}
+	runs := []protocol.RunRef{
+		{RunSummary: protocol.RunSummary{ID: "run_old"}},
+		{RunSummary: protocol.RunSummary{ID: "run_new"}},
+		{RunSummary: protocol.RunSummary{ID: "run_child", SpawnedByItemID: (child).SpawnedByItemID, ParentRunID: (child).ParentRunID, RootRunID: (child).RootRunID}},
+		{RunSummary: protocol.RunSummary{ID: "run_grandchild", SpawnedByItemID: (grandchild).SpawnedByItemID, ParentRunID: (grandchild).ParentRunID, RootRunID: (grandchild).RootRunID}},
 	}
 	entries := buildTimelineEntries(runs)
 	ids := make([]string, 0, len(entries))
@@ -50,9 +43,9 @@ func TestTimelineCommandInterruptsAPendingPickerClick(t *testing.T) {
 		func(timelineEntry) { jumped++ },
 		func(timelineEntry) { forked++ },
 	)
-	pane.SetRuns([]agent.Run{
-		{ID: "one", Lineage: agent.RootRunLineage()},
-		{ID: "two", Lineage: agent.RootRunLineage()},
+	pane.SetRuns([]protocol.RunRef{
+		{RunSummary: protocol.RunSummary{ID: "one"}},
+		{RunSummary: protocol.RunSummary{ID: "two"}},
 	})
 	pane.Focus(true)
 	root := headless.NewRoot(pane)
@@ -74,7 +67,7 @@ func TestTimelineCommandInterruptsAPendingPickerClick(t *testing.T) {
 func TestLiveTimelineDisablesForkAndExplainsItsMode(t *testing.T) {
 	forked := 0
 	pane := newTimelinePane(kit.Dark(), kit.Unicode(), nil, func(timelineEntry) { forked++ })
-	pane.SetRuns([]agent.Run{{ID: "root", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusRunning}})
+	pane.SetRuns([]protocol.RunRef{{RunSummary: protocol.RunSummary{ID: "root", Status: protocol.RunStatusRunning}}})
 	pane.SetLive(true)
 	pane.Focus(true)
 

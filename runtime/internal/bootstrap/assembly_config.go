@@ -43,9 +43,6 @@ type Config struct {
 	// state.
 	SkillsUserDir string
 
-	// Maintenance overrides the default post-Run maintenance pipeline.
-	Maintenance agentexec.RunMaintenance
-
 	// Resources are one-shot process adapters whose ownership transfers to
 	// the Runtime lifecycle when construction starts. It bounds each Close
 	// call and releases resources

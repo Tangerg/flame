@@ -239,7 +239,7 @@ type MemberInterruption struct {
 // in one transaction.
 type TreeInterrupted struct {
 	executorPayloadBase
-	checkpoint    ExecutorCheckpoint
+	checkpoint    run.Checkpoint
 	interruptions []MemberInterruption
 }
 
@@ -247,11 +247,11 @@ type TreeInterrupted struct {
 // waiting boundary. The Coordinator never interprets the checkpoint; it only
 // places its write into the tree-barrier transaction.
 func NewTreeInterrupted(
-	checkpoint ExecutorCheckpoint,
+	checkpoint run.Checkpoint,
 	interruptions []MemberInterruption,
 ) (TreeInterrupted, error) {
 	barrier := TreeInterrupted{
-		checkpoint:    checkpoint.Clone(),
+		checkpoint:    checkpoint,
 		interruptions: cloneMemberInterruptions(interruptions),
 	}
 	if err := barrier.validate(); err != nil {
@@ -261,8 +261,8 @@ func NewTreeInterrupted(
 }
 
 // Checkpoint returns an ownership-independent executor snapshot.
-func (t TreeInterrupted) Checkpoint() ExecutorCheckpoint {
-	return t.checkpoint.Clone()
+func (t TreeInterrupted) Checkpoint() run.Checkpoint {
+	return t.checkpoint
 }
 
 // Interruptions returns ownership-independent external-input bindings.
@@ -280,8 +280,8 @@ func cloneMemberInterruptions(values []MemberInterruption) []MemberInterruption 
 }
 
 func (t TreeInterrupted) validate() error {
-	if err := t.checkpoint.Validate(); err != nil {
-		return fmt.Errorf("runs: executor tree interrupt has an invalid checkpoint: %w", err)
+	if t.checkpoint.IsZero() {
+		return fmt.Errorf("runs: executor tree interrupt has an invalid checkpoint: %w", run.ErrInvalidCheckpoint)
 	}
 	if len(t.interruptions) == 0 {
 		return errors.New("runs: executor emitted an empty tree interrupt")
@@ -322,20 +322,20 @@ func (t TreeInterrupted) validateFor(
 	if err := t.checkpoint.ValidateOwnership(rootMemberID, sessionID); err != nil {
 		return fmt.Errorf("runs: executor tree interrupt checkpoint ownership: %w", err)
 	}
-	if t.checkpoint.Scope.GoalIncarnationID != goalIncarnationID {
+	if t.checkpoint.Scope().GoalIncarnationID != goalIncarnationID {
 		return fmt.Errorf(
 			"runs: executor tree interrupt checkpoint goal incarnation %q does not match Run %q: %w",
-			t.checkpoint.Scope.GoalIncarnationID,
+			t.checkpoint.Scope().GoalIncarnationID,
 			goalIncarnationID,
-			ErrInvalidExecutorCheckpoint,
+			run.ErrInvalidCheckpoint,
 		)
 	}
-	if !t.checkpoint.ModelSelection.Equal(selection) {
+	if !t.checkpoint.ModelSelection().Equal(selection) {
 		return fmt.Errorf(
 			"runs: executor tree interrupt checkpoint model %q does not match Run %q: %w",
-			t.checkpoint.ModelSelection,
+			t.checkpoint.ModelSelection(),
 			selection,
-			ErrInvalidExecutorCheckpoint,
+			run.ErrInvalidCheckpoint,
 		)
 	}
 	return nil

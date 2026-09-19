@@ -127,7 +127,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled protocol.Schedul
 		a.dialogs.scheduleDialog = nil
 	}
 	generation := a.session.context
-	draft := newScheduleFormDraft(mode, scheduled, a.session.current.Workspace.Path)
+	draft := newScheduleFormDraft(mode, scheduled, a.session.current.Workspace.Ref.Path)
 	textField := func(label, placeholder string, value *string, check func(string) error) *headless.Text {
 		field := &headless.Text{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check}
 		field.Editor().Clipboard = a.loop.Clipboard()

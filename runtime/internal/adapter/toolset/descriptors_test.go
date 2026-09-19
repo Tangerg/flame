@@ -9,8 +9,6 @@ import (
 	"testing"
 	"unicode"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
@@ -30,6 +28,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type activeGoalStub struct{}
@@ -149,7 +148,7 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 	closeBuiltToolset(t, built)
 	wireCreateGoal(t, built.Resolver)
 
-	goalRunContext := executionctx.WithScope(t.Context(), runs.ExecutionScope{
+	goalRunContext := executionctx.WithScope(t.Context(), run.ExecutionScope{
 		SessionID: "session-goal", GoalIncarnationID: "incarnation-1",
 	})
 	manifest, err := built.Resolver.Manifest(goalRunContext, tool.GroupRoot)
@@ -205,7 +204,7 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 	closeBuiltToolset(t, built)
 	wireCreateGoal(t, built.Resolver)
 
-	goalRunContext := executionctx.WithScope(t.Context(), runs.ExecutionScope{
+	goalRunContext := executionctx.WithScope(t.Context(), run.ExecutionScope{
 		SessionID: "session-goal", GoalIncarnationID: "incarnation-1",
 	})
 	manifest, err := built.Resolver.Manifest(goalRunContext, tool.GroupRoot)

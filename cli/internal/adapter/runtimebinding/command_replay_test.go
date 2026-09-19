@@ -7,22 +7,11 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
-func TestCommandReplayPolicyKeepsUnavailableAndInvalidDistinct(t *testing.T) {
-	t.Parallel()
-
-	unavailable, err := CommandReplayPolicy(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	guard, err := unavailable.NewGuard()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if unavailable.Available() || !unavailable.CanStart(guard) || unavailable.Replayable(guard) {
-		t.Fatalf("unavailable policy = %+v, guard %+v", unavailable, guard)
-	}
-	if _, err := CommandReplayPolicy(&Profile{}); err == nil {
-		t.Fatal("invalid advertised command replay capability degraded to unavailable")
+func TestCommandReplayPolicyRequiresNegotiatedProfile(t *testing.T) {
+	for _, profile := range []*Profile{nil, {}} {
+		if _, err := CommandReplayPolicy(profile); err == nil {
+			t.Fatal("command replay policy accepted an incomplete profile")
+		}
 	}
 }
 
@@ -43,7 +32,7 @@ func TestCommandReplayPolicyProjectsTheAdvertisedStoreAndClock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !policy.Available() || guard.Namespace() != capability.Namespace() ||
+	if guard.Namespace() != capability.Namespace() ||
 		!guard.Until().Equal(now.Add(capability.Retention())) {
 		t.Fatalf("advertised policy = %+v, guard %+v", policy, guard)
 	}

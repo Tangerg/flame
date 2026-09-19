@@ -174,7 +174,7 @@ func TestSideloadedPluginMustDeclareCommandsCapability(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = extensionHost.Close() }()
+	defer extensionHost.Close()
 	results, err := extensionHost.Activate(discovered.Plugins)
 	if err != nil {
 		t.Fatal(err)
@@ -319,10 +319,10 @@ func loadFixtureCommands(t *testing.T, root string) ([]terminal.SlashCommand, fu
 	}
 	results, err := extensionHost.Activate(discovered.Plugins)
 	if err != nil || len(results) != 1 || results[0].Phase != extensions.PluginLoaded {
-		_ = extensionHost.Close()
+		extensionHost.Close()
 		t.Fatalf("activation = %+v, %v", results, err)
 	}
-	return registry.Values(terminal.SlashCommands), func() { _ = extensionHost.Close() }
+	return registry.Values(terminal.SlashCommands), extensionHost.Close
 }
 
 func TestExecutableCommandHonorsCancellation(t *testing.T) {

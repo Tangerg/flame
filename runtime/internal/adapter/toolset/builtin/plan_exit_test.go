@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -48,7 +49,7 @@ func (p planReader) State(context.Context, string) (plandomain.Current, error) {
 
 func planContext(t *testing.T, sessionID string) context.Context {
 	t.Helper()
-	return executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: sessionID})
+	return executionctx.WithScope(t.Context(), run.ExecutionScope{SessionID: sessionID})
 }
 
 func balancedPlanPolicy(t *testing.T) *approvals.RuntimePolicy {

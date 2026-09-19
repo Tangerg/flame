@@ -16,7 +16,7 @@ const workspaceWatchID = "flame-active-workspace"
 
 func (a *app) followRuntimeChanges() {
 	a.operations.Cancel(runtimeChangesOperation)
-	workspacePath := a.session.current.Workspace.Path
+	workspacePath := a.session.current.Workspace.Ref.Path
 	var repository WorkspaceChanges
 	if a.runtimeSupports(protocol.FeatureGit) {
 		repository = a.workspaces
@@ -28,13 +28,12 @@ func (a *app) followRuntimeChanges() {
 	a.operations.Go(runtimeChangesOperation, true, func(ctx context.Context, lease operationLease) {
 		monitor := runtimeChangeMonitor{
 			workspace: workspacePath, repository: repository, source: a.changes,
-			recovery:           runtimeRecoveryBackoff,
-			subscriptionLimits: a.runtimeChangeSubscriptionLimits(),
-			watchFiles:         a.runtimeSupports(protocol.FeatureFileWatch),
-			resources:          a.observedRuntimeResources(),
+			recovery:   runtimeRecoveryBackoff,
+			watchFiles: a.runtimeSupports(protocol.FeatureFileWatch),
+			resources:  a.observedRuntimeResources(),
 			applyFiles: func(changes []workspace.Change) error {
 				return post(ctx, dispatcher, func() {
-					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
+					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Ref.Path != workspacePath {
 						return
 					}
 					a.applyWorkspaceChanges(changes)
@@ -42,7 +41,7 @@ func (a *app) followRuntimeChanges() {
 			},
 			applyEvent: func(event changefeed.Event) error {
 				return post(ctx, dispatcher, func() {
-					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
+					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Ref.Path != workspacePath {
 						return
 					}
 					a.applyRuntimeInvalidation(event)
@@ -50,7 +49,7 @@ func (a *app) followRuntimeChanges() {
 			},
 			applyResync: func(topics []protocol.RuntimeTopic) error {
 				return post(ctx, dispatcher, func() {
-					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
+					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Ref.Path != workspacePath {
 						return
 					}
 					a.applyRuntimeResync(topics)
@@ -59,7 +58,7 @@ func (a *app) followRuntimeChanges() {
 		}
 		if err := monitor.run(ctx); err != nil && context.Cause(ctx) == nil {
 			_ = post(ctx, dispatcher, func() {
-				if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
+				if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Ref.Path != workspacePath {
 					return
 				}
 				a.message("runtime change observation stopped: " + err.Error())
@@ -72,21 +71,20 @@ func (a *app) applyWorkspaceChanges(changes []workspace.Change) {
 	a.header.SetWorkspaceChanges(len(changes))
 	if a.dialogs.workspaceReader == workspaceReaderChanges {
 		follow := a.dialogs.reader.scroll.AtBottom()
-		a.dialogs.reader.replace(workspaceChangesDocument(a.session.current.Workspace.Path, changes), true, follow)
+		a.dialogs.reader.replace(workspaceChangesDocument(a.session.current.Workspace.Ref.Path, changes), true, follow)
 	}
 }
 
 type runtimeChangeMonitor struct {
-	workspace          string
-	repository         WorkspaceChanges
-	source             changefeed.Source
-	recovery           retry.Backoff
-	watchFiles         bool
-	resources          runtimeResourceObservation
-	applyFiles         func([]workspace.Change) error
-	applyEvent         func(changefeed.Event) error
-	applyResync        func([]protocol.RuntimeTopic) error
-	subscriptionLimits changefeed.SubscriptionLimits
+	workspace   string
+	repository  WorkspaceChanges
+	source      changefeed.Source
+	recovery    retry.Backoff
+	watchFiles  bool
+	resources   runtimeResourceObservation
+	applyFiles  func([]workspace.Change) error
+	applyEvent  func(changefeed.Event) error
+	applyResync func([]protocol.RuntimeTopic) error
 }
 
 type runtimeResourceObservation struct {
@@ -134,62 +132,16 @@ func (r runtimeChangeMonitor) run(ctx context.Context) error {
 	if r.observesWorkspace() && containsTopic(topics, protocol.TopicFilesChanged) {
 		requested.Watches = []changefeed.Watch{{ID: workspaceWatchID, Workspace: r.workspace}}
 	}
-	subscriptions, err := r.subscriptionLimits.Partition(requested)
-	if err != nil {
-		return fmt.Errorf("plan runtime change subscriptions: %w", err)
-	}
-	if len(subscriptions) == 1 {
-		return r.runSubscription(ctx, subscriptions[0], r.repository != nil)
-	}
-	return r.runSubscriptions(ctx, subscriptions)
-}
-
-func (a *app) runtimeChangeSubscriptionLimits() changefeed.SubscriptionLimits {
-	if a.runtimeProfile == nil {
-		return changefeed.SubscriptionLimits{}
-	}
-	limits := a.runtimeProfile.Discovery().Capabilities.Limits.RuntimeSubscription
-	return changefeed.SubscriptionLimits{MaxTopics: limits.MaxTopics, MaxWatches: limits.MaxWatches}
-}
-
-func (r runtimeChangeMonitor) runSubscriptions(ctx context.Context, subscriptions []changefeed.Subscription) error {
-	groupContext, cancelGroup := context.WithCancelCause(ctx)
-	defer cancelGroup(nil)
-
-	fileOwner := 0
-	for index, subscription := range subscriptions {
-		if containsTopic(subscription.Topics, protocol.TopicFilesChanged) {
-			fileOwner = index
-			break
-		}
-	}
-	results := make(chan error, len(subscriptions))
-	for index, subscription := range subscriptions {
-		ownsFileProjection := r.repository != nil && index == fileOwner
-		go func(subscription changefeed.Subscription, ownsFileProjection bool) {
-			results <- r.runSubscription(groupContext, subscription, ownsFileProjection)
-		}(subscription, ownsFileProjection)
-	}
-
-	first := <-results
-	cancelGroup(first)
-	for range len(subscriptions) - 1 {
-		<-results
-	}
-	if cause := context.Cause(ctx); cause != nil {
-		return cause
-	}
-	return first
+	return r.runSubscription(ctx, requested)
 }
 
 func (r runtimeChangeMonitor) runSubscription(
 	ctx context.Context,
 	subscription changefeed.Subscription,
-	ownsFileProjection bool,
 ) error {
 	setupFailures, streamFailures := 0, 0
 	for context.Cause(ctx) == nil {
-		attempt, err := r.openSubscriptionAttempt(ctx, subscription, ownsFileProjection)
+		attempt, err := r.openSubscriptionAttempt(ctx, subscription)
 		if err != nil {
 			setupFailures++
 			if retryErr := r.waitToRetry(ctx, err, setupFailures); retryErr != nil {
@@ -198,7 +150,7 @@ func (r runtimeChangeMonitor) runSubscription(
 			continue
 		}
 		setupFailures = 0
-		progressed, attemptErr := r.consumeSubscription(attempt, subscription.Topics, ownsFileProjection)
+		progressed, attemptErr := r.consumeSubscription(attempt, subscription.Topics)
 		attempt.cancel()
 		if cause := context.Cause(ctx); cause != nil {
 			return cause
@@ -223,7 +175,6 @@ type runtimeChangeAttempt struct {
 func (r runtimeChangeMonitor) openSubscriptionAttempt(
 	ctx context.Context,
 	subscription changefeed.Subscription,
-	ownsFileProjection bool,
 ) (runtimeChangeAttempt, error) {
 	attemptContext, cancelAttempt := context.WithCancel(ctx)
 	attempt := runtimeChangeAttempt{ctx: attemptContext, cancel: cancelAttempt}
@@ -238,7 +189,7 @@ func (r runtimeChangeMonitor) openSubscriptionAttempt(
 	// remain buffered and trigger a later replacement, closing read-then-subscribe
 	// gaps. File query and watch support are independent, so the owner also installs
 	// the file projection when files.changed itself was not negotiated.
-	if ownsFileProjection {
+	if r.repository != nil {
 		if err := r.refreshFiles(attemptContext); err != nil {
 			cancelAttempt()
 			return runtimeChangeAttempt{}, err
@@ -254,7 +205,6 @@ func (r runtimeChangeMonitor) openSubscriptionAttempt(
 func (r runtimeChangeMonitor) consumeSubscription(
 	attempt runtimeChangeAttempt,
 	topics []protocol.RuntimeTopic,
-	ownsFileProjection bool,
 ) (bool, error) {
 	sequences := changefeed.NewSequenceTracker()
 	progressed := false
@@ -262,7 +212,7 @@ func (r runtimeChangeMonitor) consumeSubscription(
 		if streamErr != nil {
 			return progressed, streamErr
 		}
-		applied, err := r.consumeChangeEvent(attempt.ctx, topics, ownsFileProjection, sequences, event)
+		applied, err := r.consumeChangeEvent(attempt.ctx, topics, sequences, event)
 		if err != nil {
 			return progressed, err
 		}
@@ -274,7 +224,6 @@ func (r runtimeChangeMonitor) consumeSubscription(
 func (r runtimeChangeMonitor) consumeChangeEvent(
 	ctx context.Context,
 	topics []protocol.RuntimeTopic,
-	ownsFileProjection bool,
 	sequences *changefeed.SequenceTracker,
 	event changefeed.Event,
 ) (bool, error) {
@@ -286,7 +235,7 @@ func (r runtimeChangeMonitor) consumeChangeEvent(
 		return false, nil
 	}
 	if disposition == changefeed.SequenceGap {
-		if ownsFileProjection && containsTopic(topics, protocol.TopicFilesChanged) {
+		if r.repository != nil && containsTopic(topics, protocol.TopicFilesChanged) {
 			if err := r.refreshFiles(ctx); err != nil {
 				return false, err
 			}
@@ -299,7 +248,7 @@ func (r runtimeChangeMonitor) consumeChangeEvent(
 		// on a persistently gappy stream.
 		return true, nil
 	}
-	if ownsFileProjection && r.invalidatesFiles(event) {
+	if r.repository != nil && r.invalidatesFiles(event) {
 		if err := r.refreshFiles(ctx); err != nil {
 			return false, err
 		}

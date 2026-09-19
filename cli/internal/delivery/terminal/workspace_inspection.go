@@ -29,14 +29,14 @@ func (a *app) ShowWorkspaces() {
 			}
 			lines := make([]string, 0, len(values))
 			for _, value := range values {
-				label := value.Name + "  " + value.Workspace.Path
+				label := value.Name + "  " + value.Workspace.Ref.Path
 				if value.Sessions > 0 {
 					label += fmt.Sprintf("  · %d sessions", value.Sessions)
 				}
-				if !value.Workspace.IsAvailable() {
+				if value.Workspace.Availability != protocol.WorkspaceAvailable {
 					label += "  · missing"
 				}
-				if value.Workspace.ProjectRoot != "" && value.Workspace.ProjectRoot != value.Workspace.Path {
+				if value.Workspace.ProjectRoot != "" && value.Workspace.ProjectRoot != value.Workspace.Ref.Path {
 					label += "  · project " + value.Workspace.ProjectRoot
 				}
 				if value.LastActive != nil {
@@ -49,7 +49,7 @@ func (a *app) ShowWorkspaces() {
 }
 
 func (a *app) ShowWorkspaceChanges() {
-	path := a.session.current.Workspace.Path
+	path := a.session.current.Workspace.Ref.Path
 	a.runWorkspaceQuery("loading workspace changes",
 		func(ctx context.Context) (readerDocument, error) {
 			changes, err := a.workspaces.Changes(ctx, path)
@@ -66,7 +66,7 @@ func (a *app) ShowWorkspaceDiff(argument string) error {
 		return err
 	}
 	request := workspace.DiffRequest{
-		Workspace: a.session.current.Workspace.Path, Path: selection.path,
+		Workspace: a.session.current.Workspace.Ref.Path, Path: selection.path,
 		Mode: selection.mode, Format: selection.format, RowLimit: selection.limit,
 	}
 	a.runWorkspaceQuery("loading workspace diff",
@@ -100,7 +100,7 @@ func (a *app) PreviewWorkspaceFile(argument string) error {
 	if err != nil {
 		return err
 	}
-	request := workspace.HeadRequest{Workspace: a.session.current.Workspace.Path, Path: selection.path, LineLimit: selection.lines}
+	request := workspace.HeadRequest{Workspace: a.session.current.Workspace.Ref.Path, Path: selection.path, LineLimit: selection.lines}
 	a.runWorkspaceQuery("loading file preview",
 		func(ctx context.Context) (readerDocument, error) {
 			head, err := a.workspaces.Head(ctx, request)
@@ -127,7 +127,7 @@ func (a *app) SearchWorkspace(argument string) error {
 		return err
 	}
 	request := workspace.SearchRequest{
-		Workspace: a.session.current.Workspace.Path, Query: selection.query, Path: selection.path, Limit: selection.limit,
+		Workspace: a.session.current.Workspace.Ref.Path, Query: selection.query, Path: selection.path, Limit: selection.limit,
 	}
 	a.runWorkspaceQuery("searching workspace",
 		func(ctx context.Context) (readerDocument, error) {
@@ -155,7 +155,7 @@ func (a *app) BrowseWorkspace(argument string) error {
 		return err
 	}
 	request := workspace.FilesRequest{
-		Workspace: a.session.current.Workspace.Path, Path: selection.path, Glob: selection.glob,
+		Workspace: a.session.current.Workspace.Ref.Path, Path: selection.path, Glob: selection.glob,
 		Recursive: selection.recursive, IncludeIgnored: selection.includeIgnored,
 	}
 	a.runWorkspaceQuery("browsing workspace",
@@ -208,7 +208,7 @@ func (a *app) ReadWorkspaceFile(argument string) error {
 		return err
 	}
 	request := workspace.ReadRequest{
-		Workspace: a.session.current.Workspace.Path, Path: selection.path,
+		Workspace: a.session.current.Workspace.Ref.Path, Path: selection.path,
 		Range: selection.lineRange, ByteLimit: selection.byteLimit,
 	}
 	a.runWorkspaceQuery("reading workspace file",

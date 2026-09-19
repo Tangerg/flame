@@ -62,7 +62,6 @@ func (w WaitingContinuation) Clone() WaitingContinuation {
 	for index := range w.Members {
 		w.Members[index].DrainedTools = slices.Clone(w.Members[index].DrainedTools)
 	}
-	w.Checkpoint = w.Checkpoint.Clone()
 	w.Capabilities = w.Capabilities.Clone()
 	return w
 }
@@ -98,14 +97,14 @@ func (w WaitingSubtreeCancellationRequest) Validate() error {
 
 func waitingContinuationFromPending(
 	pending Pending,
-	checkpoint ExecutorCheckpoint,
+	checkpoint run.Checkpoint,
 ) (WaitingContinuation, error) {
 	if err := pending.Validate(); err != nil {
 		return WaitingContinuation{}, err
 	}
 	return NewWaitingContinuation(WaitingContinuation{
 		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
-		RootRunID: pending.RootRunID, Members: waitingMembersFromPending(pending), Checkpoint: checkpoint.Clone(),
+		RootRunID: pending.RootRunID, Members: waitingMembersFromPending(pending), Checkpoint: checkpoint,
 		Capabilities:             pending.Capabilities,
 		ChildRunAdmissionEnabled: pending.Capabilities.ChildRuns,
 	})

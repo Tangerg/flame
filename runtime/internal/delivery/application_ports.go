@@ -34,7 +34,7 @@ type sessionUseCases interface {
 	ForkView(ctx context.Context, spec sessions.ForkSpec) (sessions.View, error)
 	ListViewPage(ctx context.Context, filter session.CatalogFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[sessions.View], error)
 	ExportSession(ctx context.Context, sessionID string) (sessions.ExportResult, error)
-	MaterialSnapshot(ctx context.Context, sessionID string) (sessions.MaterialSnapshot, error)
+	MaterialSnapshot(ctx context.Context, sessionID string) (sessions.SnapshotView, error)
 	RestorePortableSession(ctx context.Context, snapshot sessions.PortableSnapshot) (sessions.View, error)
 	Rollback(ctx context.Context, spec sessions.RollbackSpec) (sessions.RollbackResult, error)
 	UpdateView(ctx context.Context, id string, patch sessions.Patch) (sessions.View, error)

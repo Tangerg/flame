@@ -7307,6 +7307,11 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "Session",
+              "type": "Session",
+              "tag": "json:\"session\""
+            },
+            {
               "name": "Items",
               "type": "[]Item",
               "tag": "json:\"items\""

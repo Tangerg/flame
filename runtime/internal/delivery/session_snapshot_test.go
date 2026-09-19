@@ -103,6 +103,9 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetSessionSnapshot: %v", err)
 	}
+	if snapshot.Session.ID != "ses_1" || snapshot.Session.Status != protocol.SessionStatusWaiting || snapshot.Session.Revision == 0 {
+		t.Fatalf("Session = %+v, want metadata and activity from the material read", snapshot.Session)
+	}
 	if len(snapshot.Items) != 2 || snapshot.Items[0].ID != "item_question" ||
 		snapshot.Items[1].ID != "item_approved_tool" ||
 		snapshot.Items[1].ApprovalDecision != protocol.ApprovalApprove {

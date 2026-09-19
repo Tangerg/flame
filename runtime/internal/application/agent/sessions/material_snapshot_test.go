@@ -238,3 +238,20 @@ func validApprovalMaterialSnapshot() MaterialSnapshot {
 	}}
 	return snapshot
 }
+
+func TestMaterialSnapshotDerivesSessionViewWithoutIndependentStateReads(t *testing.T) {
+	snapshot := validMaterialSnapshot()
+	coordinator := &Coordinator{
+		materialSnapshots: fixedMaterialSnapshotReader{snapshot: snapshot},
+		paths:             testWorkspaceResolver{},
+	}
+	view, err := coordinator.MaterialSnapshot(t.Context(), snapshot.Session.ID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Session.ID != snapshot.Session.ID() || view.Session.Revision != snapshot.Session.Revision() ||
+		view.Session.Title != snapshot.Session.Title() || view.Session.Activity != ActivityWaiting ||
+		view.Session.Provider != snapshot.Session.Selection().Provider() || view.Session.Model != snapshot.Session.Selection().Model() {
+		t.Fatalf("mounted Session = %+v, want the stored Session and waiting Runs", view.Session)
+	}
+}

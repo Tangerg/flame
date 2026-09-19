@@ -66,10 +66,10 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	}
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_child_opening"), child,
-		nil, nil, "", nil, []runs.EventCommit{{
+		nil, nil, "", nil, []runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 			RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
 			Items: []transcript.Item{spawningItem},
-		}},
+		})},
 	)
 	if commitOpeningErr := effects.CommitOpening(t.Context(), opening); commitOpeningErr != nil {
 		t.Fatalf("CommitOpening: %v", commitOpeningErr)
@@ -118,10 +118,10 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	rolledBackChild.CreatedAt = time.Unix(5, 0)
 	rolledBackOpening := mustAdmissionOpening(
 		t, testCommitID("run_commit_child_failure"), rolledBackChild,
-		nil, nil, "", nil, []runs.EventCommit{{
+		nil, nil, "", nil, []runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 			RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
 			Items: []transcript.Item{rolledBackItem},
-		}},
+		})},
 	)
 	err = failingEffects.CommitOpening(t.Context(), rolledBackOpening)
 	if !errors.Is(err, rollbackErr) {
@@ -200,10 +200,10 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	if reserveChildRunStartErr := effects.ReserveChildRunStart(ctx, reservation); reserveChildRunStartErr != nil {
 		t.Fatalf("ReserveChildRunStart: %v", reserveChildRunStartErr)
 	}
-	openingEvents := []runs.EventCommit{{
+	openingEvents := []runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 		RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
 		Items: []transcript.Item{spawningItem},
-	}}
+	})}
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_child_started"), child,
 		nil, nil, "", nil, openingEvents,

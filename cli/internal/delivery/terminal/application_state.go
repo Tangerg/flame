@@ -11,7 +11,7 @@ import (
 // sessionState owns the active Runtime projection and the lease that prevents
 // work started for an older Session from mutating its replacement.
 type sessionState struct {
-	current         agent.Session
+	current         protocol.Session
 	context         *sessionContextLease
 	invalidated     bool
 	draftTransition *sessionDraftTransition

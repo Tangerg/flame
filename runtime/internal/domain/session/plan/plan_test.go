@@ -114,32 +114,9 @@ func TestCurrentDistinguishesUnwrittenFromCommittedClear(t *testing.T) {
 	}
 }
 
-func TestCurrentAndVersionRejectContradictoryState(t *testing.T) {
-	now := time.Now().UTC()
-
+func TestCurrentRejectsUnconstructedState(t *testing.T) {
 	if _, err := CurrentOf(State{}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("CurrentOf zero State error = %v, want ErrInvalid", err)
-	}
-
-	for _, test := range []struct {
-		name    string
-		version Version
-	}{
-		{name: "committed without revision", version: Version{committed: true}},
-		{name: "unwritten with revision", version: Version{revision: exactint.First()}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if err := test.version.Validate(); !errors.Is(err, ErrInvalid) {
-				t.Fatalf("Validate error = %v, want ErrInvalid", err)
-			}
-			valid, restoreErr := Restore(Snapshot{Revision: 1, UpdatedAt: now})
-			if restoreErr != nil {
-				t.Fatal(restoreErr)
-			}
-			if err := test.version.AdvancesTo(valid); !errors.Is(err, ErrInvalid) {
-				t.Fatalf("AdvancesTo error = %v, want ErrInvalid", err)
-			}
-		})
 	}
 }
 

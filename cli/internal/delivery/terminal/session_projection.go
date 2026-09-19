@@ -12,10 +12,7 @@ import (
 )
 
 func (a *app) restore(snapshot agent.SessionSnapshot) {
-	if err := a.execution.conversation.RestoreSnapshot(snapshot); err != nil {
-		a.fail(err)
-		return
-	}
+	a.execution.conversation.RestoreSnapshot(snapshot)
 	if err := presentSnapshot(a.transcript, snapshot, a.registry); err != nil {
 		a.fail(err)
 		return
@@ -53,15 +50,12 @@ func (s sessionProjection) close() {
 }
 
 func (a *app) projectSession(snapshot agent.SessionSnapshot, attached *agent.SegmentStream) (sessionProjection, error) {
-	if err := snapshot.Validate(); err != nil {
-		return sessionProjection{}, err
-	}
 	conversation := agent.NewConversation()
 	var err error
 	if active, ok := snapshot.ActiveRun(); attached != nil && ok && active.Status == protocol.RunStatusRunning {
 		err = conversation.RestoreAttachedSnapshot(snapshot, *attached)
 	} else {
-		err = conversation.RestoreSnapshot(snapshot)
+		conversation.RestoreSnapshot(snapshot)
 	}
 	if err != nil {
 		return sessionProjection{}, err
@@ -177,7 +171,7 @@ func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
 	}
 }
 
-func (a *app) showRecoveredRunStatus(activity string, run agent.Run) {
+func (a *app) showRecoveredRunStatus(activity string, run protocol.RunRef) {
 	a.status.observeRun(run)
 	a.status.progress(agent.RunProgress{Activity: activity})
 }
@@ -190,20 +184,18 @@ func (a *app) observeCurrentRunStatus() {
 }
 
 func (a *app) settleCurrentRunStatus() {
-	run, _ := a.execution.conversation.CurrentRun()
-	run.Outcome = a.execution.conversation.Outcome()
-	run.Usage = a.execution.conversation.Usage()
-	a.status.settled(run)
+	a.observeCurrentRunStatus()
+	a.status.settled(a.execution.conversation.Outcome(), a.execution.conversation.Usage())
 }
 
-func displayTitle(session agent.Session) string {
+func displayTitle(session protocol.Session) string {
 	if strings.TrimSpace(session.Title) == "" {
 		return "untitled"
 	}
 	return session.Title
 }
 
-func (a *app) setActiveSession(session agent.Session) {
+func (a *app) setActiveSession(session protocol.Session) {
 	a.session.current = session
 	a.header.SetSession(session)
 	a.brand.SetSession(session)
