@@ -186,6 +186,7 @@ func buildAssemblyCore(
 		State:               cfg.Stores.Runs,
 		RunProgress:         cfg.Stores.Runs,
 		ExecutorCheckpoints: cfg.Stores.ExecutorCheckpoints,
+		ExecutionTrees:      cfg.Stores.ExecutorCheckpoints,
 		ChildRunStarts:      cfg.Stores.ChildRunStarts,
 		Tx:                  segment.Transactor(cfg.Stores.Transactor),
 	}

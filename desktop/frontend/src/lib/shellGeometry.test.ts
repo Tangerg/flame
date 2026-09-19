@@ -71,10 +71,10 @@ describe("dock geometry", () => {
     expect(dockWidthFromRatio(Number.NaN, 1440)).toBe(maxDockWidth(1440));
   });
 
-  it("opens at the widest measure every claim allows", () => {
-    expect(defaultDockWidth(1440, 900)).toBe(940);
-    expect(defaultDockWidth(1440, 500)).toBe(800);
-    expect(defaultDockWidth(800, 900)).toBe(448);
-    expect(defaultDockWidth(500, 900)).toBe(DOCK_MIN_WIDTH_PX);
+  it("keeps the automatic dock subordinate as the reading area grows", () => {
+    expect(defaultDockWidth(1440)).toBe(480);
+    expect(defaultDockWidth(2000)).toBe(480);
+    expect(defaultDockWidth(800)).toBe(448);
+    expect(defaultDockWidth(500)).toBe(DOCK_MIN_WIDTH_PX);
   });
 });

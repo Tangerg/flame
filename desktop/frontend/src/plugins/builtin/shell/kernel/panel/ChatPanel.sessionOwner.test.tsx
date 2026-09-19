@@ -3,7 +3,6 @@ import { useState, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceViewSpec } from "@/plugins/sdk";
 import { ChatPanel } from "./ChatPanel";
-import { dockWidthFromRatio } from "@/lib/shellGeometry";
 
 const model = vi.hoisted(() => ({
   setWidth: vi.fn(),
@@ -193,8 +192,7 @@ it("measures dock availability when returning from a promoted main view", () => 
     expect(
       screen.getByRole<HTMLButtonElement>("button", { name: "Open right workspace" }).disabled,
     ).toBe(false);
-    expect(model.setWidth).toHaveBeenCalledOnce();
-    expect(dockWidthFromRatio(model.setWidth.mock.calls[0]![0], rowWidth)).toBe(940);
+    expect(model.setWidth).not.toHaveBeenCalled();
   } finally {
     cleanup();
     width.mockRestore();

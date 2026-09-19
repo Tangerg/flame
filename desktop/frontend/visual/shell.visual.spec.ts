@@ -114,6 +114,23 @@ test("an overflowing Session title reveals its remaining text and full identity"
   await expect(page.getByRole("tooltip").filter({ hasText: title })).toBeVisible();
 });
 
+test("session renaming owns focus without nesting an input in a navigation button", async ({
+  page,
+}) => {
+  await openShell(page, { theme: "light", state: "populated" });
+  await waitForWorkIndexState(page, "populated");
+  const row = page.getByRole("button", { name: /Refine Runtime protocol/ });
+  await row.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Rename", exact: true }).click();
+  const editor = page.getByRole("textbox", { name: "Session title" });
+  await expect(editor).toBeFocused();
+  expect(await editor.evaluate((node) => node.closest("button"))).toBeNull();
+  await editor.fill("新的标题");
+  await editor.press("Escape");
+  await expect(editor).toHaveCount(0);
+  await expect(row).toBeFocused();
+});
+
 test("destructive session dialog traps, dismisses, and returns focus", async ({ page }) => {
   await openShell(page, { theme: "light", state: "populated" });
   await waitForWorkIndexState(page, "populated");

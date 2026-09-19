@@ -57,7 +57,7 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	sequence, err := fixture.executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, fixture.executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}

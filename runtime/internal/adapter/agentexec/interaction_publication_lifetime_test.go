@@ -37,7 +37,7 @@ func TestExecutionWaitsForSlowDurableReceipts(t *testing.T) {
 				t.Error(err)
 			}
 		}()
-		events, err := executor.Observe(t.Context(), ref)
+		events, err := observeTestInteraction(t, executor, t.Context(), ref)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -46,16 +46,11 @@ func TestExecutionWaitsForSlowDurableReceipts(t *testing.T) {
 		}
 		delayed, completed := 0, false
 		for event := range events {
-			if lookup, ok := event.Payload.(runs.ResultPublicationLookup); ok {
-				time.Sleep(time.Minute)
-				delayed++
-				lookup.Complete(false, nil)
-				continue
-			}
+
 			if commit, ok := event.Payload.(runs.ExecutionFactCommit); ok {
 				switch commit.Fact().(type) {
 				case runs.ModelCallCompleted, runs.ToolResultsCommitted:
-					time.Sleep(time.Minute)
+					time.Sleep(executionTreeCommitTimeout / 2)
 					delayed++
 				}
 				commit.Complete(nil)
@@ -68,7 +63,7 @@ func TestExecutionWaitsForSlowDurableReceipts(t *testing.T) {
 				completed = true
 			}
 		}
-		if delayed != 4 || !completed {
+		if delayed != 3 || !completed {
 			t.Fatalf("delayed=%v completed=%v", delayed, completed)
 		}
 	})
@@ -95,7 +90,7 @@ func TestObservedFactSurvivesExecutionCancellationUntilRelease(t *testing.T) {
 			t.Fatal("canceled admission entered publication")
 		default:
 		}
-		time.Sleep(time.Minute)
+		time.Sleep(executionTreeCommitTimeout / 2)
 		select {
 		case err := <-result:
 			t.Fatalf("abandoned known fact before release: %v", err)

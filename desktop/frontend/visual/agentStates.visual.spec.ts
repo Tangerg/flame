@@ -629,11 +629,11 @@ test("model capabilities drive the picker and image admission together", async (
   const attach = page.getByRole("button", { name: "Attach image" });
   const effort = page.getByRole("button", { name: "Switch reasoning effort" });
   await expect(attach).toBeEnabled();
+  await page.getByRole("button", { name: "Switch model" }).click();
   await expect(effort).toHaveText("medium");
   await effort.click();
   await page.getByRole("menuitem", { name: "high", exact: true }).click();
   await expect(effort).toHaveText("high");
-  await page.getByRole("button", { name: "Switch model" }).click();
   await expect(page.getByRole("option", { name: GPT_5_6_SOL_CAPABILITY_NAME })).toBeVisible();
   await page.getByPlaceholder("Search models…").fill("Qwen MT Plus");
   await page.getByRole("option", { name: QWEN_MT_PLUS_CAPABILITY_NAME }).click();
@@ -1329,7 +1329,7 @@ for (const { state, inputSurface } of [
       if (!scroller || !input) return null;
       scroller.scrollTop = scroller.scrollHeight;
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const tail = scroller.firstElementChild?.lastElementChild;
+      const tail = Array.from(scroller.querySelectorAll("[data-turn-id]")).at(-1);
       if (!tail) return null;
       return {
         clearance: Math.round(

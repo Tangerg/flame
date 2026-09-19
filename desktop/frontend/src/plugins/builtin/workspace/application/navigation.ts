@@ -148,10 +148,6 @@ export function openWorkspaceDiffForFile(path: string): void {
   workspaceNavigation().openViewInDock("diff");
 }
 
-export function focusWorkspaceFile(path: string): void {
-  workspaceNavigation().focusFile(path);
-}
-
 export function openWorkspaceFile(path: string, line?: number): void {
   workspaceNavigation().openFile(path, line);
 }

@@ -85,8 +85,8 @@ export const fx = stylex.create({
     flexDirection: "column",
     paddingTop: space.s10,
     paddingInline: {
-      default: "var(--density-column-gutter)",
-      "@media (min-width: 640px)": "var(--density-column-gutter-wide)",
+      default: "var(--reading-gutter)",
+      "@media (min-width: 640px)": "var(--reading-gutter-wide)",
     },
   },
   heading: {
@@ -121,9 +121,9 @@ export const fx = stylex.create({
 
   editorBox: {
     minHeight: "calc(var(--spacing) * 20)",
-    paddingInline: "var(--density-composer-editor-start)",
-    paddingTop: "var(--density-composer-editor-top)",
-    paddingBottom: "var(--density-composer-editor-bottom)",
+    paddingInline: "var(--composer-editor-start)",
+    paddingTop: "var(--composer-editor-top)",
+    paddingBottom: "var(--composer-editor-bottom)",
     lineHeight: leading.relaxed,
     color: color.fg,
   },
@@ -131,8 +131,8 @@ export const fx = stylex.create({
     display: "flex",
     alignItems: "center",
     gap: space.s1,
-    paddingInline: "var(--density-composer-footer)",
-    paddingBottom: "var(--density-composer-footer)",
+    paddingInline: "var(--composer-footer)",
+    paddingBottom: "var(--composer-footer)",
   },
   minRail: { minWidth: space.s2, flex: 1 },
   minField: { minHeight: space.s8, flex: 1 },

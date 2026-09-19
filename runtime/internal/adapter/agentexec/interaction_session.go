@@ -25,11 +25,12 @@ import (
 )
 
 type interactionSession struct {
-	ref        runs.ExecutorRef
-	scope      runs.ExecutionScope
-	deployment agent.Deployment
-	input      agent.Payload
-	engine     *agent.Engine
+	executionTrees runs.ExecutionTreeStore
+	ref            runs.ExecutorRef
+	scope          runs.ExecutionScope
+	deployment     agent.Deployment
+	input          agent.Payload
+	engine         *agent.Engine
 
 	lifetime            interactionLifetime
 	state               interactionState
@@ -112,7 +113,8 @@ func newInteractionSession(
 	policy interactionExecutionPolicy,
 ) *interactionSession {
 	return &interactionSession{
-		ref: ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
+		executionTrees: config.ExecutionTrees,
+		ref:            ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
 		state: interactionState{
 			pendingSteers:    make(map[agent.SignalID]pendingInteractionSteer),
 			delegateCalls:    make(map[delegateCallIdentity]*managedDelegateCall),
@@ -365,7 +367,7 @@ func (i *interactionSession) commitFact(
 	// the product owner releases the session and stops consuming publication.
 	owner := i.lifetime.execution
 	switch fact.(type) {
-	case runs.ModelCallCompleted, runs.ModelCallFailed, runs.ToolResultsCommitted,
+	case runs.ModelCallCompleted, runs.ModelCallFailed, runs.ToolResultsCommitted, runs.ExecutionTreeSettled,
 		runs.AssistantMessageCompleted, runs.SegmentEnded:
 		owner = i.lifetime.releasing
 	}
@@ -584,8 +586,8 @@ func (i *interactionSession) await() {
 	joinCtx, cancelJoin := i.lifetime.publicationContext(i.lifetime.execution)
 	defer cancelJoin()
 	result, err := i.state.process.Await(joinCtx)
-	if err == nil {
-		err = i.state.process.Join(joinCtx)
+	if joinErr := i.state.process.Join(joinCtx); joinErr != nil {
+		err = errors.Join(err, joinErr)
 	}
 	i.stopReconciliation()
 	if err == nil {
@@ -616,7 +618,7 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 		}
 		switch output.Source {
 		case interaction.CompletionSourceDirectToolResults:
-			// ResultCommitter has already published these exact ordered results.
+			// The durable tree boundary has already published these exact results.
 		case interaction.CompletionSourceModelResponse:
 			if output.ModelResponse == nil || output.ModelResponse.Output == nil || output.ModelResponse.Output.Message == nil {
 				return errors.New("agentexec: Interaction output has no assistant message")
@@ -657,6 +659,14 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 }
 
 func (i *interactionSession) publishProjectionFailure(cause error) {
+	var stopped *agent.RuntimeError
+	if errors.As(cause, &stopped) {
+		if err := i.publishRuntimeFailure(cause); err == nil {
+			return
+		} else {
+			cause = errors.Join(cause, err)
+		}
+	}
 	member := runs.ExecutorMember{}
 	i.state.mu.Lock()
 	if i.state.admittedProcessID.Valid() {
@@ -686,7 +696,8 @@ func (i *interactionSession) release(ctx context.Context) error {
 	workersStarted := i.state.workersStarted
 	i.state.mu.Unlock()
 	if process != nil {
-		if err := process.Kill(ctx, interactionReleaseReason); err != nil && !errors.Is(err, agent.ErrProcessFinished) {
+		var stopped *agent.RuntimeError
+		if err := process.Kill(ctx, interactionReleaseReason); err != nil && !errors.Is(err, agent.ErrProcessFinished) && !errors.As(err, &stopped) {
 			return fmt.Errorf("agentexec: kill Interaction execution: %w", err)
 		}
 	}
@@ -701,7 +712,8 @@ func (i *interactionSession) release(ctx context.Context) error {
 	// Projection may have failed before await joined the tree. Its completion
 	// cannot stand in for Scope's proof that descendants have stopped.
 	if process != nil {
-		if err := process.Join(ctx); err != nil {
+		var stopped *agent.RuntimeError
+		if err := process.Join(ctx); err != nil && !errors.As(err, &stopped) {
 			return fmt.Errorf("agentexec: join Interaction execution: %w", err)
 		}
 	}
@@ -745,8 +757,7 @@ func segmentEndFromTermination(termination agent.Termination, duration time.Dura
 	switch termination.Cause() {
 	case agent.TerminationCauseCompletion:
 		end.reason = run.OutcomeCompleted
-	case agent.TerminationCauseProcessDeadline,
-		agent.TerminationCauseParentDeadline,
+	case agent.TerminationCauseParentDeadline,
 		agent.TerminationCauseHostDeadline:
 		end.reason = run.OutcomeTimedOut
 		failure := run.Failure{

@@ -230,6 +230,7 @@ type ConversationStore interface {
 
 // Config bundles the Effects dependencies.
 type Config struct {
+	ExecutionTrees      runs.ExecutionTreeStore
 	Interrupts          InterruptStore
 	ResumeClaims        ResumeClaimStore
 	Sessions            SessionStore
@@ -252,6 +253,7 @@ type Config struct {
 // Effects coordinates run-segment side effects. It is stateless beyond its
 // dependencies and safe to share.
 type Effects struct {
+	executionTrees      runs.ExecutionTreeStore
 	interrupts          InterruptStore
 	resumeClaims        ResumeClaimStore
 	sessions            SessionStore
@@ -303,6 +305,7 @@ func New(cfg Config) (*Effects, error) {
 		{"run store", cfg.State},
 		{"run progress writer", cfg.RunProgress},
 		{"executor checkpoint store", cfg.ExecutorCheckpoints},
+		{"execution tree store", cfg.ExecutionTrees},
 		{"child run start store", cfg.ChildRunStarts},
 		{"schedule store", cfg.Schedules},
 		{"goal run recorder", cfg.GoalRuns},
@@ -330,6 +333,7 @@ func New(cfg Config) (*Effects, error) {
 		runState:            cfg.State,
 		runProgress:         cfg.RunProgress,
 		executorCheckpoints: cfg.ExecutorCheckpoints,
+		executionTrees:      cfg.ExecutionTrees,
 		childRunStarts:      cfg.ChildRunStarts,
 		tx:                  cfg.Tx,
 	}, nil

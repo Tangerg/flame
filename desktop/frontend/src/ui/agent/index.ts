@@ -14,13 +14,11 @@ export {
   AgentDockTabs,
   type AgentDockTab,
 } from "./context-dock";
-export { AgentRow } from "./navigation-row";
+export { AgentRow, AgentRowEditor } from "./navigation-row";
 export { AgentStatusPill } from "./status-pill";
 export { ToolText } from "./tool-text";
 export { AgentDockToggle, AgentSurfaceHeader } from "./surface-header";
-export {
-  AgentWorkspaceView,
-} from "./workspace-view";
+export { AgentWorkspaceView } from "./workspace-view";
 export {
   AgentWorkIndexBody,
   AgentWorkIndexFooter,

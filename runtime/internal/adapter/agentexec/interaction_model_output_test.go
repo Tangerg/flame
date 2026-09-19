@@ -93,7 +93,7 @@ func TestFailedStreamRetainsPrefixWhenPreviewQueueIsFull(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sequence, err := executor.Observe(t.Context(), ref)
+	sequence, err := observeTestInteraction(t, executor, t.Context(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}

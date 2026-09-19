@@ -53,14 +53,6 @@ func (c *concurrentToolExecutor) Observe(
 			ToolCallFinished{CallID: "tool_first", ModelResult: &corechat.ToolResult{ID: "provider_first", Name: "first", Output: corechat.NewTextToolOutput("first-result")}, Result: toolStringResult("first-result")},
 			ToolCallFinished{CallID: "tool_second", ModelResult: &corechat.ToolResult{ID: "provider_second", Name: "second", Output: corechat.NewTextToolOutput("second-result")}, Result: toolStringResult("second-result")},
 		)
-		lookup, err := NewResultPublicationLookup(batch.Publication)
-		if err != nil || !yield(ExecutorEvent{Member: member, Payload: lookup}) {
-			return
-		}
-		if found, err := lookup.Await(ctx); err != nil || found {
-			c.failures <- errors.Join(err, errors.New("unpublished result already has a receipt"))
-			return
-		}
 		commit, receipt, err := NewExecutionFactCommit(batch)
 		if err != nil || !yield(ExecutorEvent{Member: member, Payload: commit}) {
 			return
@@ -72,14 +64,6 @@ func (c *concurrentToolExecutor) Observe(
 			return
 		}
 
-		lookup, err = NewResultPublicationLookup(batch.Publication)
-		if err != nil || !yield(ExecutorEvent{Member: member, Payload: lookup}) {
-			return
-		}
-		if found, err := lookup.Await(ctx); err != nil || !found {
-			c.failures <- errors.Join(err, errors.New("committed result has no receipt"))
-			return
-		}
 		c.failures <- nil
 		yield(ExecutorEvent{Member: member, Payload: SegmentEnded{Reason: run.OutcomeCompleted}})
 	}, nil
@@ -492,9 +476,15 @@ func TestTerminalTransactionFailurePreservesRunningToolsForAtomicRecovery(t *tes
 }
 
 func testToolPublication(starts []ToolCallStarted, results ...ToolCallFinished) ToolResultsCommitted {
+	var modelResults []corechat.ToolResult
+	for _, result := range results {
+		if result.ModelResult != nil {
+			modelResults = append(modelResults, result.ModelResult.Clone())
+		}
+	}
 	return ToolResultsCommitted{
 		Publication: ResultPublication{ID: "publication_" + starts[0].CallID, Digest: "sha256:" + strings.Repeat("a", 64)},
-		Starts:      starts, Results: results,
+		Starts:      starts, Results: results, ModelResults: modelResults,
 	}
 }
 
@@ -513,4 +503,34 @@ func testDelegatePublication(sourceID string, result ToolCallFinished) Execution
 	}
 	result.ModelResult = &corechat.ToolResult{ID: sourceID, Name: "delegate_task", Output: corechat.NewTextToolOutput(text), IsError: result.Failure != nil}
 	return testPublicationPayload(testToolPublication([]ToolCallStarted{{CallID: result.CallID, SourceCallID: sourceID, ToolName: "delegate_task", ModelCallSequence: 1, Arguments: `{}`}}, result))
+}
+
+func TestSparseSettlementPersistsBeforeCanonicalModelRound(t *testing.T) {
+	reducer := newReducer(testReducerConfig())
+	first := ToolCallStarted{CallID: "tool_first", SourceCallID: "provider_first", ModelCallSequence: 1, ToolCallIndex: 0, ToolName: "first", Arguments: `{}`}
+	second := ToolCallStarted{CallID: "tool_second", SourceCallID: "provider_second", ModelCallSequence: 1, ToolCallIndex: 1, ToolName: "second", Arguments: `{}`}
+	firstResult := corechat.ToolResult{ID: first.SourceCallID, Name: first.ToolName, Output: corechat.NewTextToolOutput("exact first\n")}
+	secondResult := corechat.ToolResult{ID: second.SourceCallID, Name: second.ToolName, Output: corechat.NewTextToolOutput("exact second\n")}
+	sparse := testToolPublication([]ToolCallStarted{second}, ToolCallFinished{CallID: second.CallID, ModelResult: &secondResult, Result: toolStringResult("second preview")})
+	sparse.ModelResults = nil
+	settled, err := reducer.finishToolResults(sparse)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(settled.toolInvocations) != 1 || settled.toolInvocations[0].State != ToolInvocationCompleted || len(settled.conversationMessages) != 0 {
+		t.Fatalf("sparse result did not settle independently: %+v", settled)
+	}
+	complete := testToolPublication([]ToolCallStarted{first}, ToolCallFinished{CallID: first.CallID, ModelResult: &firstResult, Result: toolStringResult("first preview")})
+	complete.ModelResults = []corechat.ToolResult{firstResult, secondResult}
+	settled, err = reducer.finishToolResults(complete)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(settled.toolInvocations) != 1 || len(settled.conversationMessages) != 1 {
+		t.Fatalf("completed round = %+v", settled)
+	}
+	message := settled.conversationMessages[0]
+	if len(message.Parts) != 2 || message.Parts[0].ToolResult.ID != first.SourceCallID || message.Parts[1].ToolResult.ID != second.SourceCallID {
+		t.Fatalf("model order = %+v", message)
+	}
 }

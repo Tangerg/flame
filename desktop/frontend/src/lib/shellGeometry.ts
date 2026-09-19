@@ -6,9 +6,7 @@ const SIDEBAR_READING_MIN_WIDTH_PX = 240;
 export const DOCK_MIN_WIDTH_PX = 320;
 /** Reserved for the CONVERSATION, not the flank, before the flank may claim anything. */
 export const DOCK_SAFE_AREA_PX = 352;
-const DOCK_PREFERRED_WIDTH_PX = 640;
-const DOCK_PREFERRED_SAFE_AREA_PX = 500;
-const DOCK_ASPECT_RATIO = 16 / 10;
+export const DOCK_PREFERRED_WIDTH_PX = 480;
 
 export function canPresentDock(rowWidth: number): boolean {
   return rowWidth >= DOCK_MIN_WIDTH_PX + DOCK_SAFE_AREA_PX;
@@ -54,16 +52,7 @@ export function dockRatioFromWidth(width: number, rowWidth: number): number {
   return clamp01((clampDockWidth(width, rowWidth) - DOCK_MIN_WIDTH_PX) / (max - DOCK_MIN_WIDTH_PX));
 }
 
-/** Widest measure that all three claims allow: the floor, a share of the window's HEIGHT
- *  (so a tall narrow window does not open a full-height flank), and the preferred width. */
-export function defaultDockWidth(rowWidth: number, shellHeight: number): number {
-  return Math.max(
-    DOCK_MIN_WIDTH_PX,
-    Math.min(shellHeight * DOCK_ASPECT_RATIO, rowWidth - DOCK_PREFERRED_SAFE_AREA_PX),
-    Math.min(DOCK_PREFERRED_WIDTH_PX, rowWidth - DOCK_SAFE_AREA_PX),
-  );
-}
-
-export function defaultDockRatio(rowWidth: number, shellHeight: number): number {
-  return dockRatioFromWidth(defaultDockWidth(rowWidth, shellHeight), rowWidth);
+/** Automatic layout reserves new space for the conversation, not a larger dock. */
+export function defaultDockWidth(rowWidth: number): number {
+  return clampDockWidth(DOCK_PREFERRED_WIDTH_PX, rowWidth);
 }

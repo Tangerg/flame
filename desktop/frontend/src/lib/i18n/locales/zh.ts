@@ -479,7 +479,7 @@ export const zh: Record<string, string> = {
   "settings.radius": "圆角",
   "settings.radius.sub": "全局圆角大小。",
   "settings.density": "密度",
-  "settings.density.sub": "界面留白程度。影响行高、栏距与输入区内边距。",
+  "settings.density.sub": "导航列表的行高和间距。",
   "settings.density.compact": "紧凑",
   "settings.density.comfortable": "适中",
   "settings.density.spacious": "宽松",

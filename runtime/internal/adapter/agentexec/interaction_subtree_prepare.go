@@ -139,7 +139,7 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
 	canceled, paused := i.partitionCapturedSubtree(stagedTree, targetID)
-	resultingTree, err := i.engine.CaptureTree(ctx, rootID)
+	resultingTree, err := i.committedTree(ctx, rootID)
 	if err != nil {
 		i.failSubtreePreparation(preparedSignal)
 		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(

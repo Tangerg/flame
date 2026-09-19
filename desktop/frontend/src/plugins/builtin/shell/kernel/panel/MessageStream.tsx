@@ -4,12 +4,8 @@ import type { BlockCtx } from "@/plugins/builtin/chat/message/public/rendering";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { AnimatePresence, motion } from "motion/react";
-import { memo, useEffect, useImperativeHandle, useLayoutEffect, useRef, type Ref } from "react";
-import {
-  StickToBottom,
-  useStickToBottomContext,
-  type StickToBottomContext,
-} from "use-stick-to-bottom";
+import { memo, useEffect } from "react";
+import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import { enterUp } from "@/lib/motion";
 import { cn } from "@/lib/classNames";
 import { dayKey, formatDay } from "@/lib/i18n/relativeTime";
@@ -42,11 +38,6 @@ interface Props {
   rows: readonly TranscriptRow[];
   ctx: BlockCtx;
   sessionId: string;
-  controllerRef?: Ref<MessageStreamController>;
-}
-
-export interface MessageStreamController {
-  settleInitialBottom(): void;
 }
 
 function ControlsRelay() {
@@ -95,8 +86,9 @@ function transcriptDayBreaks(rows: readonly TranscriptRow[]): readonly boolean[]
 // distance decided here in Tailwind's alphabet stops existing the day that alphabet does.
 const TURN_GAP = stylex.create({
   none: {},
-  sameSpeaker: { marginTop: space.s1 },
-  newSpeaker: { marginTop: space.s4 },
+  continuation: { marginTop: space.s2 },
+  answer: { marginTop: space.s5 },
+  turn: { marginTop: space.s6 },
 });
 
 interface TurnProps {
@@ -155,59 +147,16 @@ const TranscriptTurn = memo(function TranscriptTurn({
   );
 });
 
-export function MessageStream({ rows, ctx, sessionId, controllerRef }: Props) {
+export function MessageStream({ rows, ctx, sessionId }: Props) {
   const currentRoot = useCurrentRootMaterial();
   const running = currentRoot.running;
   const terminalTurnIndex = currentRoot.terminalTurnIndex(rows);
-  const stickContextRef = useRef<StickToBottomContext>(null);
-
-  useLayoutEffect(() => {
-    const stickContext = stickContextRef.current;
-    const viewport = stickContext?.scrollRef.current;
-    const content = viewport?.firstElementChild;
-    if (!stickContext || !viewport || !content) return;
-
-    const reconcileFollowingTail = () => {
-      const current = stickContextRef.current;
-      const currentViewport = current?.scrollRef.current;
-      if (!current?.state.isAtBottom || !currentViewport) return;
-      currentViewport.scrollTop = current.state.calculatedTargetScrollTop;
-    };
-    const mutationObserver = new MutationObserver(reconcileFollowingTail);
-    const borderBoxObserver = new ResizeObserver(reconcileFollowingTail);
-    mutationObserver.observe(content, { childList: true, characterData: true, subtree: true });
-    borderBoxObserver.observe(content, { box: "border-box" });
-    return () => {
-      mutationObserver.disconnect();
-      borderBoxObserver.disconnect();
-    };
-  }, [sessionId]);
-
-  useImperativeHandle(
-    controllerRef,
-    () => ({
-      settleInitialBottom() {
-        const stickContext = stickContextRef.current;
-        const viewport = stickContext?.scrollRef.current;
-        if (!viewport) return;
-
-        viewport.scrollTop = stickContext.state.calculatedTargetScrollTop;
-        void stickContext.scrollToBottom({
-          animation: "instant",
-          ignoreEscapes: true,
-        });
-      },
-    }),
-    [],
-  );
-
   const dayBreaks = transcriptDayBreaks(rows);
   const scroller = stylex.props(ms.scroller);
 
   return (
     <StickToBottom
       key={sessionId}
-      contextRef={stickContextRef}
       {...scroller}
       className={cn("panel-scroll", scroller.className)}
       initial="instant"
@@ -220,11 +169,11 @@ export function MessageStream({ rows, ctx, sessionId, controllerRef }: Props) {
           "panel-scroll msg-scroll-viewport",
           stylex.props(ms.viewport).className,
         )}
-        className={stylex.props(rc.box, rc.clearance, ms.content).className}
+        className={stylex.props(rc.box, ms.content).className}
       >
         <AnimatePresence initial={false}>
           {rows.map((row, index) => {
-            const previousRole = index > 0 ? rows[index - 1]?.message.role : undefined;
+            const previous = rows[index - 1]?.message;
             return (
               <TranscriptTurn
                 key={row.message.id}
@@ -237,16 +186,19 @@ export function MessageStream({ rows, ctx, sessionId, controllerRef }: Props) {
                 terminalRun={index === terminalTurnIndex ? currentRoot : null}
                 opensDay={dayBreaks[index] ?? false}
                 gap={
-                  previousRole === undefined
+                  previous === undefined
                     ? "none"
-                    : previousRole === row.message.role
-                      ? "sameSpeaker"
-                      : "newSpeaker"
+                    : row.message.phase === "finalAnswer" && previous.runId === row.message.runId
+                      ? "answer"
+                      : previous.role === row.message.role && previous.runId === row.message.runId
+                        ? "continuation"
+                        : "turn"
                 }
               />
             );
           })}
         </AnimatePresence>
+        <div aria-hidden {...stylex.props(rc.clearance)} />
       </StickToBottom.Content>
       <ControlsRelay />
     </StickToBottom>

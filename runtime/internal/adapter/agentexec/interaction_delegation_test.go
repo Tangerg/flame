@@ -62,7 +62,7 @@ func TestPositiveOrDefaultRefusesAnUnusableDefault(t *testing.T) {
 
 func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	model := newDelegatingStubModel()
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-delegate-test-build",
@@ -76,7 +76,7 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session_1", Title: "delegate", Workspace: testsupport.MustWorkspace(workspace),
 	})}
-	projection := newDelegateProjection()
+	projection := newDelegateProjection(t)
 	runIDs := []string{"run_root", "run_child"}
 	segmentIDs := []string{"segment_root", "segment_child"}
 	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
@@ -198,7 +198,7 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 
 func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *testing.T) {
 	model := newCancelableDelegateModel()
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-running-cancel-test-build",
@@ -212,7 +212,7 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session_1", Title: "running cancellation", Workspace: testsupport.MustWorkspace(workspace),
 	})}
-	projection := newDelegateProjection()
+	projection := newDelegateProjection(t)
 	runIDs := []string{"run_root", "run_child"}
 	segmentIDs := []string{"segment_root", "segment_child"}
 	cancelAccepted := make(chan struct{})
@@ -559,7 +559,7 @@ func startDelegateTreeWithCompactor(t *testing.T, model chat.Model, input string
 	if compactor != nil {
 		contextState = emptyInteractionModelContextState{}
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-delegate-tree-test-build",
@@ -574,7 +574,7 @@ func startDelegateTreeWithCompactor(t *testing.T, model chat.Model, input string
 	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session_tree", Title: "delegate tree", Workspace: testsupport.MustWorkspace(workspace),
 	})}
-	projection := newDelegateProjection()
+	projection := newDelegateProjection(t)
 	var identityMu sync.Mutex
 	runSequence, segmentSequence := 0, 0
 	coordinator := mustNewRunCoordinator(t, runs.Dependencies{

@@ -8,7 +8,7 @@ import { color, leading, motion, radius, space, surface, weight } from "@/styles
  * system, because a size is the design's vocabulary and this file is only the arrangement.
  */
 export const viewStyles = stylex.create({
-  gutter: { paddingInline: "var(--density-column-gutter-wide)" },
+  gutter: { paddingInline: "var(--reading-gutter-wide)" },
 
   rowPad: { paddingBlock: space.s2 },
   rowPadTall: { paddingBlock: space.s2_5 },
@@ -213,9 +213,9 @@ export const timelineStyles = stylex.create({
     backgroundColor: surface.sunken,
     marginInline: space.s2,
     paddingBlock: space.s2,
-    paddingLeft: "calc(var(--density-column-gutter-wide) - var(--spacing) * 2)",
+    paddingLeft: "calc(var(--reading-gutter-wide) - var(--spacing) * 2)",
     paddingRight:
-      "calc(var(--density-column-gutter-wide) - var(--spacing) * 2 - (var(--control-height-md) - var(--icon-md)) / 2)",
+      "calc(var(--reading-gutter-wide) - var(--spacing) * 2 - (var(--control-height-md) - var(--icon-md)) / 2)",
   },
   runDetail: {
     marginTop: space.s0_5,

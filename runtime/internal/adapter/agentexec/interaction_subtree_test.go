@@ -60,7 +60,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 		t.Fatal(err)
 	}
 	assertPreparedWaitingCancellation(t, prepared, targetMemberID, cancelPrepare)
-	sequence, err := fixture.executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, fixture.executor, context.Background(), ref)
 	if err != nil {
 		cancelPrepare()
 		t.Fatal(err)

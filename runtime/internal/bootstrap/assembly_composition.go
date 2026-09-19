@@ -308,6 +308,7 @@ func buildExecutionComposition(
 	maxConcurrentToolCalls := 8
 	interactionConfig := agentexec.InteractionExecutorConfig{
 		Lifetime:               lifetime.context,
+		ExecutionTrees:         cfg.Stores.ExecutorCheckpoints,
 		BuildID:                cfg.BuildID,
 		ChatResolver:           cfg.ChatResolver,
 		ImplementationIdentity: cfg.BuildID,

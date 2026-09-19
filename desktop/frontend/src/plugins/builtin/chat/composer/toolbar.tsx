@@ -6,7 +6,7 @@ import { type as typeStep } from "@/styles/tokens.stylex";
 import { toolbarStyles } from "./toolbarStyles";
 import { AgentComposerChip } from "@/ui/agent";
 import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
-import { useSelectedModel, useSelectedModelSelection } from "./public/selectedModel";
+import { useSelectedModel } from "./public/selectedModel";
 import {
   APPROVAL_MODES,
   DEFAULT_APPROVAL_MODE,
@@ -19,57 +19,7 @@ import { contributeLayout, notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { definePlugin } from "@/plugins/sdk";
 import { useAddComposerImageFiles } from "./public/attachments";
-import { useSetComposerModelPreference } from "./public/modelPreference";
 import { ModelPicker } from "./ui/ModelPicker";
-
-function ReasoningEffortPicker() {
-  const t = useT();
-  const selection = useSelectedModelSelection();
-  const setModel = useSetComposerModelPreference();
-  if (!selection || selection.model.reasoningLevels.length === 0) return null;
-
-  const { model, reasoningEffort } = selection;
-  const selectedEffort = reasoningEffort ?? model.reasoningLevelOrDefault();
-  if (!selectedEffort) return null;
-
-  return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger
-        render={
-          <AgentComposerChip
-            aria-label={t("composer.switchReasoningEffort")}
-            className={stylex.props(toolbarStyles.capitalize).className}
-            leading={
-              <Icon name="sparkle" size="sm" className={stylex.props(vocab.faint).className} />
-            }
-            label={selectedEffort}
-          />
-        }
-      />
-      <DropdownMenu.Content align="start" sideOffset={6}>
-        {model.reasoningLevels.map((effort) => (
-          <DropdownMenu.Item
-            key={effort}
-            onClick={() =>
-              setModel({
-                kind: "explicit",
-                provider: model.provider,
-                model: model.id,
-                reasoningEffort: effort,
-              })
-            }
-            layout="pickPlain"
-          >
-            <span {...stylex.props(vocab.truncate, toolbarStyles.capitalize)}>{effort}</span>
-            {effort === selectedEffort && (
-              <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
-            )}
-          </DropdownMenu.Item>
-        ))}
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
-  );
-}
 
 function AttachButton() {
   const t = useT();
@@ -128,6 +78,7 @@ function ApprovalModePill() {
             // glyph beside a label does.
             leading={<Icon name={full ? "alert" : "shield"} size="sm" full />}
             label={t(current.labelKey)}
+            labelVisibility={full ? "always" : "wide"}
           />
         }
       />
@@ -171,18 +122,13 @@ export const composerToolbar = definePlugin({
     });
     contributeLayout(ctx, "composer.toolbar.start", {
       id: "approval",
-      order: 1,
+      order: 2,
       component: ApprovalModePill,
     });
     contributeLayout(ctx, "composer.toolbar.start", {
       id: "model",
-      order: 2,
+      order: 1,
       component: ModelPicker,
-    });
-    contributeLayout(ctx, "composer.toolbar.start", {
-      id: "reasoning-effort",
-      order: 3,
-      component: ReasoningEffortPicker,
     });
   },
 });

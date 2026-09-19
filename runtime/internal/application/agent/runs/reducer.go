@@ -740,11 +740,11 @@ func (r *reducer) finishToolResults(batch ToolResultsCommitted) (factReduction, 
 	}
 	var reduced factReduction
 	for index, start := range batch.Starts {
-		if start.ModelCallSequence != sequence || start.ToolCallIndex != uint32(index) || start.CallID != batch.Results[index].CallID {
+		if start.ModelCallSequence != sequence || (index > 0 && start.ToolCallIndex <= batch.Starts[index-1].ToolCallIndex) || start.CallID != batch.Results[index].CallID {
 			return factReduction{}, errors.New("runs: result publication call set is not in declared order")
 		}
 		if ref, open := r.tools.get(start.CallID); open {
-			if ref.modelCallSequence != sequence || ref.toolCallIndex != uint32(index) || ref.sourceCallID != start.SourceCallID || ref.name != start.ToolName {
+			if ref.modelCallSequence != sequence || ref.toolCallIndex != start.ToolCallIndex || ref.sourceCallID != start.SourceCallID || ref.name != start.ToolName {
 				return factReduction{}, errors.New("runs: result publication differs from its open call")
 			}
 			continue
@@ -757,7 +757,6 @@ func (r *reducer) finishToolResults(batch ToolResultsCommitted) (factReduction, 
 		// this same transaction.
 		reduced.events = append(reduced.events, started.events...)
 	}
-	var results []corechat.ToolResult
 	for _, result := range batch.Results {
 		finished, err := r.finishToolCall(result)
 		if err != nil {
@@ -765,17 +764,12 @@ func (r *reducer) finishToolResults(batch ToolResultsCommitted) (factReduction, 
 		}
 		reduced.events = append(reduced.events, finished.events...)
 		reduced.toolInvocations = append(reduced.toolInvocations, finished.toolInvocations...)
-		for _, message := range finished.conversationMessages {
-			for _, part := range message.Parts {
-				results = append(results, part.ToolResult.Clone())
-			}
-		}
 	}
 	if len(reduced.toolInvocations) != len(batch.Results) {
 		return factReduction{}, errors.New("runs: result publication did not settle its entire call set")
 	}
-	if len(results) > 0 {
-		reduced.conversationMessages = []corechat.Message{corechat.NewToolMessage(results...)}
+	if len(batch.ModelResults) > 0 {
+		reduced.conversationMessages = r.rootConversationMessages(corechat.NewToolMessage(batch.ModelResults...))
 	}
 	reduced.resultPublication = &batch.Publication
 	return reduced, nil

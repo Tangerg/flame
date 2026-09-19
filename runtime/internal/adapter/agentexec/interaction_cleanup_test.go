@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 
@@ -92,15 +93,14 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 		entered, proceed := make(chan struct{}), make(chan struct{})
 		unblock := sync.OnceFunc(func() { close(proceed) })
 		defer unblock()
-		var once sync.Once
+		writer, _ := state.tree.IncarnationID()
+		if err := session.executionTrees.SaveExecutionTree(t.Context(), runs.ExecutionTreeUpdate{Head: runs.ExecutionTreeHead{SessionID: start.SessionID, RootID: state.tree.RootID().String(), Writer: writer.String(), Digest: state.tree.Digest().String(), Payload: state.tree.JSON()}}); err != nil {
+			t.Fatal(err)
+		}
+		durability := &blockingCheckpointDurability{interactionSession: session, entered: entered, proceed: proceed}
 		session.engine, err = agent.NewEngine(agent.EngineConfig{
 			DeploymentResolver: session.state.deployments,
-			EventListeners: []agent.EventListener{agent.EventListenerFunc(func(_ context.Context, event agent.Event) {
-				if _, terminal := event.ProcessFinished(); terminal {
-					once.Do(func() { close(entered) })
-					<-proceed
-				}
-			})},
+			TreeDurability:     durability,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -110,6 +110,7 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 			t.Fatal(err)
 		}
 		session.state.setProcess(process)
+		durability.armed.Store(true)
 		discarded := make(chan error, 1)
 		go func() { discarded <- executor.discardInteraction(session) }()
 		<-entered
@@ -135,4 +136,18 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 			t.Fatalf("shutdown did not close recovered engine: %v", err)
 		}
 	})
+}
+
+type blockingCheckpointDurability struct {
+	*interactionSession
+	armed            atomic.Bool
+	entered, proceed chan struct{}
+}
+
+func (b *blockingCheckpointDurability) CommitCheckpoint(ctx context.Context, checkpoint agent.TreeCheckpoint) error {
+	if b.armed.CompareAndSwap(true, false) {
+		close(b.entered)
+		<-b.proceed
+	}
+	return b.interactionSession.CommitCheckpoint(ctx, checkpoint)
 }

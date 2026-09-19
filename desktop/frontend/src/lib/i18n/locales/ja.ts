@@ -343,7 +343,7 @@ export const ja: Record<string, string> = {
   "settings.radius": "角丸",
   "settings.radius.sub": "全体の角丸サイズ。",
   "settings.density": "密度",
-  "settings.density.sub": "UI の余白量。行の高さ、余白、入力欄の内側の余白に影響します。",
+  "settings.density.sub": "ナビゲーションの行の高さと間隔。",
   "settings.density.compact": "コンパクト",
   "settings.density.comfortable": "標準",
   "settings.density.spacious": "ゆったり",

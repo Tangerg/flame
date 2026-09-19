@@ -5,10 +5,10 @@ import { color, space, surface, weight } from "@/styles/tokens.stylex";
  *  `AgentComposerSurface`; what is here is where the editor sits inside it. */
 export const composerStyles = stylex.create({
   editorInset: {
-    paddingTop: "var(--density-composer-editor-top)",
-    paddingRight: "var(--density-composer-editor-end)",
-    paddingBottom: "var(--density-composer-editor-bottom)",
-    paddingLeft: "var(--density-composer-editor-start)",
+    paddingTop: "var(--composer-editor-top)",
+    paddingRight: "var(--composer-editor-end)",
+    paddingBottom: "var(--composer-editor-bottom)",
+    paddingLeft: "var(--composer-editor-start)",
   },
   // `lh` so the bounds are a number of LINES: the editor grows from one line to six of whatever
   // size and leading the reader has chosen, rather than to a pixel height that means six lines

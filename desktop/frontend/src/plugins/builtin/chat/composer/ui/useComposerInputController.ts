@@ -12,7 +12,7 @@ import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useFileMentions } from "@/plugins/builtin/chat/composer/public/fileMentions";
 import { useIsCurrentRootRunning } from "@/plugins/builtin/agent/public/run";
-import { COMPOSER_KEY_BINDING, lookupExtensionByKey } from "@/plugins/sdk";
+import { COMPOSER_KEY_BINDING, lookupExtensionByKey, notifyError } from "@/plugins/sdk";
 import { submitComposer } from "@/plugins/builtin/chat/composer/public/submit";
 import { setComposerFocusTarget } from "../application/focus";
 import { useT } from "@/lib/i18n";
@@ -146,12 +146,16 @@ export function useComposerInputController({
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>): void => {
     compositionCommittedAtRef.current = null;
     const files = imageFiles(event.clipboardData?.files);
-    const text = files.length > 0 ? "" : (event.clipboardData?.getData("text") ?? "");
-    const intent = composerPasteIntent(files, text);
+    const text = event.clipboardData?.getData("text") ?? "";
+    const intent = composerPasteIntent(files, text, acceptsImages);
+    if (files.length > 0 && !acceptsImages) notifyError(t("composer.attachImage.unsupported"));
     switch (intent.kind) {
       case "images":
         event.preventDefault();
-        if (acceptsImages) onAddImages(intent.files);
+        onAddImages(intent.files);
+        break;
+      case "unsupported-images":
+        event.preventDefault();
         break;
       case "large-text":
         event.preventDefault();
@@ -162,7 +166,11 @@ export function useComposerInputController({
 
   const handleDrop = (files: File[]): void => {
     compositionCommittedAtRef.current = null;
-    if (files.length === 0 || !acceptsImages) return;
+    if (files.length === 0) return;
+    if (!acceptsImages) {
+      notifyError(t("composer.attachImage.unsupported"));
+      return;
+    }
     onAddImages(files);
   };
 

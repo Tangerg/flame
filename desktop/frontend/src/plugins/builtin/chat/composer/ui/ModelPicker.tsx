@@ -1,12 +1,15 @@
 import { useMemo } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { type as typeStep } from "@/styles/tokens.stylex";
+import { toolbarStyles } from "../toolbarStyles";
 import { composerStyles } from "./composerStyles";
 
 import { fmtTokens } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import {
   Button,
+  DropdownMenu,
+  vocab,
   Icon,
   ProviderIcon,
   RailCatalogPicker,
@@ -22,6 +25,55 @@ import { useRecentModelsStore, type RecentModel } from "../adapters/recentModels
 import { AgentComposerChip } from "@/ui/agent";
 import { useSetComposerModelPreference } from "../public/modelPreference";
 import { useSelectedModelSelection } from "../public/selectedModel";
+
+function ReasoningEffortPicker() {
+  const t = useT();
+  const selection = useSelectedModelSelection();
+  const setModel = useSetComposerModelPreference();
+  if (!selection || selection.model.reasoningLevels.length === 0) return null;
+
+  const { model, reasoningEffort } = selection;
+  const selectedEffort = reasoningEffort ?? model.reasoningLevelOrDefault();
+  if (!selectedEffort) return null;
+
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        render={
+          <AgentComposerChip
+            aria-label={t("composer.switchReasoningEffort")}
+            className={stylex.props(toolbarStyles.capitalize).className}
+            leading={
+              <Icon name="sparkle" size="sm" className={stylex.props(vocab.faint).className} />
+            }
+            label={selectedEffort}
+          />
+        }
+      />
+      <DropdownMenu.Content align="start" sideOffset={6}>
+        {model.reasoningLevels.map((effort) => (
+          <DropdownMenu.Item
+            key={effort}
+            onClick={() =>
+              setModel({
+                kind: "explicit",
+                provider: model.provider,
+                model: model.id,
+                reasoningEffort: effort,
+              })
+            }
+            layout="pickPlain"
+          >
+            <span {...stylex.props(vocab.truncate, toolbarStyles.capitalize)}>{effort}</span>
+            {effort === selectedEffort && (
+              <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
+            )}
+          </DropdownMenu.Item>
+        ))}
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
+  );
+}
 
 function modelItemId(model: SelectableModel): string {
   return JSON.stringify([model.provider, model.id]);
@@ -177,6 +229,7 @@ export function ModelPicker() {
   return (
     <RailCatalogPicker
       groups={groups}
+      footer={selected.reasoningLevels.length > 0 ? <ReasoningEffortPicker /> : undefined}
       openAtGroupId={
         groups.some((group) => group.id === selected.provider) ? selected.provider : groups[0]?.id
       }

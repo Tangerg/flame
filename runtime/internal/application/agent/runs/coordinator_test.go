@@ -586,21 +586,6 @@ func (f *fakeEffects) CommitOpening(_ context.Context, opening OpeningCommit) er
 	return nil
 }
 
-func (f *fakeEffects) ResultPublicationCommitted(_ context.Context, sessionID, runID, segmentID string, publication ResultPublication) (bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	for _, commit := range f.commits {
-		if commit.ResultPublication == nil || commit.ResultPublication.ID != publication.ID {
-			continue
-		}
-		if commit.SessionID != sessionID || commit.RunID != runID || commit.SegmentID != segmentID || *commit.ResultPublication != publication {
-			return false, errors.New("result publication conflicts with stored content or owner")
-		}
-		return true, nil
-	}
-	return false, nil
-}
-
 func (f *fakeEffects) CommitEvent(ctx context.Context, commit EventCommit) error {
 	if f.commitAlwaysPanics != nil {
 		panic(f.commitAlwaysPanics)
@@ -3006,4 +2991,13 @@ func TestRootBoundaryWaitsForEveryLiveChildBeforeItCommits(t *testing.T) {
 			t.Fatalf("Run %q terminal = %v/%v, want canceled", event.RunID, outcome, terminal)
 		}
 	}
+}
+
+func (f *fakeEffects) CommitExecutionTree(ctx context.Context, update ExecutionTreeUpdate, commits []EventCommit) error {
+	for _, commit := range commits {
+		if err := f.CommitEvent(ctx, commit); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -569,7 +569,11 @@ export async function installVisualWorkspaceFixture(
     sidebarCollapsed: false,
     sidebarWidth: SIDEBAR_DEFAULT_WIDTH_PX,
     dockWidthRatio:
-      state === "dock-review" ? VISUAL_REVIEW_DOCK_WIDTH_RATIO : VISUAL_DOCK_WIDTH_RATIO,
+      state === "dock-catalog"
+        ? null
+        : state === "dock-review"
+          ? VISUAL_REVIEW_DOCK_WIDTH_RATIO
+          : VISUAL_DOCK_WIDTH_RATIO,
   });
 
   await loadVisualPlugins([

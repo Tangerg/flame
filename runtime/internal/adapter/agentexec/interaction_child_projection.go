@@ -68,7 +68,7 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 	for _, managed := range calls {
 		managed.mu.Lock()
 		processID := managed.childProcessID
-		done := managed.parentToolFinished
+		done := managed.segmentProjected
 
 		managed.mu.Unlock()
 		if done || !processID.Valid() {

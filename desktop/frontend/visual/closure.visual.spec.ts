@@ -409,6 +409,8 @@ const INTERACTION_SURFACES: readonly {
     name: `the composer's ${control} popup`,
     route: { fixture: "workspace" as const, state: "dock-light" },
     open: async (page: Page) => {
+      if (control === "Switch reasoning effort")
+        await page.getByRole("button", { name: "Switch model" }).click();
       await page.getByRole("button", { name: control }).first().click();
       await expect(
         page.locator('[role="menu"], [role="listbox"], [role="dialog"]').first(),
@@ -1323,6 +1325,8 @@ for (const overlay of OVERLAYS) {
   for (const theme of ["light", "dark"] as const) {
     test(`WCAG audit ${overlay.label} ${theme}`, async ({ page }) => {
       await openFixture(page, { ...overlay.route, theme });
+      if (overlay.open === "Switch reasoning effort")
+        await page.getByRole("button", { name: "Switch model" }).click();
       const trigger = page.getByRole("button", { name: overlay.open }).first();
       if (overlay.by === "hover") await trigger.hover();
       else await trigger.click();

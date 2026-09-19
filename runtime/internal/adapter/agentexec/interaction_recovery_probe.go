@@ -34,7 +34,7 @@ func unresumable(
 // publishing or registering a live executor. Invalid, incompatible, or
 // unknown-effect state returns false; assembly/probe I/O failures remain errors
 // so startup never mutates facts after an inconclusive read. It deliberately
-// executes the same restoration and product-member rebinding used by resume.
+// validates deployment state and product bindings without acquiring a writer.
 func (i *InteractionExecutor) CanResumeWaitingExecution(
 	ctx context.Context,
 	continuation runs.WaitingContinuation,
@@ -66,6 +66,17 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	if err != nil || state.tree.RootID() != rootID {
 		return unresumable(ctx, continuation, "checkpoint root member does not own its tree", err)
 	}
+	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, rootID.String())
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return unresumable(ctx, continuation, "execution tree head is missing", nil)
+	}
+	state.tree, err = decodeExecutionTree(head, rootID)
+	if err != nil {
+		return false, err
+	}
 	snapshots := state.tree.ProcessSnapshots()
 	if len(snapshots) == 0 || snapshots[0].ProcessID() != rootID ||
 		!isInteractionWaitingBoundary(snapshots[0].Status()) {
@@ -93,37 +104,10 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 			err = errors.Join(err, cleanupErr)
 		}
 	}()
-	process, err := assembled.engine.RestoreTree(ctx, assembled.deployment, state.tree)
-	if err != nil {
-		return unresumable(ctx, continuation, "executor tree cannot be restored", err)
+	if err := assembled.validateWaitingTree(ctx, continuation, state); err != nil {
+		return unresumable(ctx, continuation, "waiting tree validation failed", err)
 	}
-	assembled.state.setProcess(process)
-	if initializeRestoredContinuationErr := assembled.initializeRestoredContinuation(
-		process,
-		continuation,
-		state,
-		interactionBoundaryWaiting,
-	); initializeRestoredContinuationErr != nil {
-		return unresumable(
-			ctx, continuation,
-			"restored continuation cannot be rebound to its product members",
-			initializeRestoredContinuationErr,
-		)
-	}
-	unknown, readable := assembled.unknownEffectIDs(ctx)
-	if !readable {
-		return false, errors.New("agentexec: Interaction checkpoint tree cannot be inspected")
-	}
-	if len(unknown) > 0 {
-		return unresumable(ctx, continuation, "checkpoint retains unresolved Effects", nil)
-	}
-	interruptions, err := assembled.pendingInterruptions(state.tree)
-	if err != nil {
-		return unresumable(ctx, continuation, "checkpoint interruptions cannot be read", err)
-	}
-	if len(interruptions) == 0 {
-		return unresumable(ctx, continuation, "checkpoint has no interruption to resume", nil)
-	}
+
 	return true, nil
 }
 

@@ -19,7 +19,7 @@ function expectDefaults(written: Readonly<Record<string, string>>) {
 describe("the stylesheet's defaults and the values TypeScript writes", () => {
   it("agree on every density property", () => {
     const written = densityCssVariables(DEFAULT_UI_DENSITY);
-    expect(Object.keys(written).length).toBeGreaterThan(10);
+    expect(written).toHaveProperty("--density-row-height");
     expect(expectDefaults(written)).toEqual([]);
   });
 
@@ -65,8 +65,8 @@ describe("the stylesheet's defaults and the values TypeScript writes", () => {
     expect(declaredInBlock(":root", "--color-on-media")).toBe("#ffffff");
   });
   it("keeps one reading edge for the chat gutter, the dock rows and the tab strip", () => {
-    expect(declaredInBlock(":root", "--density-column-gutter-wide")).toBe("20px");
-    expect(densityCssVariables("compact")["--density-column-gutter-wide"]).toBe("17px");
-    expect(densityCssVariables("spacious")["--density-column-gutter-wide"]).toBe("23px");
+    expect(declaredInBlock(":root", "--reading-gutter-wide")).toBe("20px");
+    expect(densityCssVariables("compact")["--reading-gutter-wide"]).toBeUndefined();
+    expect(densityCssVariables("spacious")["--reading-gutter-wide"]).toBeUndefined();
   });
 });

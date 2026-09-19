@@ -8,13 +8,12 @@ export const readingColumn = stylex.create({
   // message's box then hugs its text, where paint containment slices the action bar's inset.
   gutter: {
     paddingInline: {
-      default: "var(--density-column-gutter)",
-      "@media (min-width: 640px)": "var(--density-column-gutter-wide)",
+      default: "var(--reading-gutter)",
+      "@container conversation (min-width: 640px)": "var(--reading-gutter-wide)",
     },
   },
-  // The extra pixel absorbs integer `scrollTop` rounding when the overlay and the transcript
-  // paint on fractional CSS pixels — without it the last message cannot be scrolled clear.
-  clearance: { paddingBottom: "calc(var(--composer-overlay, 0px) + 1rem + 1px)" },
+  // A child contributes to the observed content box; padding on that box does not.
+  clearance: { height: "calc(var(--composer-overlay, 0px) + 1rem)", flexShrink: 0 },
 });
 
 /** The property the composer measures itself into, read by `clearance` above. Kept beside it

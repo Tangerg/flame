@@ -124,37 +124,43 @@ export interface WorkspaceMethods {
     list: (signal?: AbortSignal) => Promise<Page<WorkspaceFileChange>>;
   };
   diff: {
-    get: (params?: Omit<GetDiffRequest, "workspace">) => Promise<Diff>;
+    get: (params?: Omit<GetDiffRequest, "workspace">, signal?: AbortSignal) => Promise<Diff>;
   };
   files: {
-    head: (params: Omit<GetFileHeadRequest, "workspace">) => Promise<FileHead>;
-    search: (params: Omit<GrepRequest, "workspace">) => Promise<GrepResult>;
+    head: (
+      params: Omit<GetFileHeadRequest, "workspace">,
+      signal?: AbortSignal,
+    ) => Promise<FileHead>;
+    search: (params: Omit<GrepRequest, "workspace">, signal?: AbortSignal) => Promise<GrepResult>;
     list: (
       params?: Omit<ListFilesRequest, "workspace">,
       signal?: AbortSignal,
     ) => AutoPagingPromise<Page<FileEntry>>;
-    read: (params: Omit<ReadFileRequest, "workspace">) => Promise<FileContent>;
+    read: (
+      params: Omit<ReadFileRequest, "workspace">,
+      signal?: AbortSignal,
+    ) => Promise<FileContent>;
   };
   recipes: {
-    list: () => Promise<Page<Recipe>>;
+    list: (signal?: AbortSignal) => Promise<Page<Recipe>>;
   };
   hooks: {
-    list: () => Promise<HooksListResult>;
+    list: (signal?: AbortSignal) => Promise<HooksListResult>;
   };
   // Taken from the BINDING, not the caller: otherwise a decision can name one workspace
   // while its source list named another.
   skills: {
-    listDiscovered: () => Promise<Page<Skill>>;
-    listProposals: () => Promise<Page<SkillProposal>>;
+    listDiscovered: (signal?: AbortSignal) => Promise<Page<Skill>>;
+    listProposals: (signal?: AbortSignal) => Promise<Page<SkillProposal>>;
     approveProposal: (ref: Omit<SkillProposalRef, "workspace">) => MutationPromise<void>;
     rejectProposal: (ref: Omit<SkillProposalRef, "workspace">) => MutationPromise<void>;
   };
   agentDocs: {
-    list: () => Promise<Page<AgentDoc>>;
+    list: (signal?: AbortSignal) => Promise<Page<AgentDoc>>;
   };
   knowledge: {
-    list: () => Promise<Page<KnowledgeEntry>>;
-    get: (scope: KnowledgeScope) => Promise<KnowledgeEntry>;
+    list: (signal?: AbortSignal) => Promise<Page<KnowledgeEntry>>;
+    get: (scope: KnowledgeScope, signal?: AbortSignal) => Promise<KnowledgeEntry>;
     update: (params: {
       scope: KnowledgeScope;
       content: string;
@@ -162,7 +168,7 @@ export interface WorkspaceMethods {
     }) => MutationPromise<KnowledgeEntry>;
   };
   agentMemory: {
-    list: () => Promise<AgentMemoryList>;
+    list: (signal?: AbortSignal) => Promise<AgentMemoryList>;
     add: (content: string) => MutationPromise<AgentMemoryItem>;
   };
 }
@@ -192,7 +198,11 @@ export interface Methods {
     // `session_busy` while a run is in flight. `restoreType` files|both also restores the
     // working tree, gated on `features.checkpoints`.
     rollback: (params: RollbackSessionRequest) => MutationPromise<RollbackSessionResponse>;
-    export: (sessionId: SessionId, format?: "md" | "json") => Promise<ExportSessionResponse>;
+    export: (
+      sessionId: SessionId,
+      format?: "md" | "json",
+      signal?: AbortSignal,
+    ) => Promise<ExportSessionResponse>;
     // Rebuilds under the artifact's ORIGINAL id, so it is idempotent.
     import: (artifact: SessionArtifact) => MutationPromise<ImportSessionResponse>;
   };
@@ -268,7 +278,7 @@ export interface Methods {
     resolve: (ref?: WorkspaceRef, signal?: AbortSignal) => Promise<WorkspaceInfo>;
     list: (signal?: AbortSignal) => Promise<Page<WorkspaceSummary>>;
     /** Resolves the runtime default when `ref` is omitted. */
-    open: (ref?: WorkspaceRef) => Promise<WorkspaceMethods>;
+    open: (ref?: WorkspaceRef, signal?: AbortSignal) => Promise<WorkspaceMethods>;
   };
   /** Bind ONCE; every resource operation inherits the identity. */
   workspace: (ref: WorkspaceRef) => WorkspaceMethods;
@@ -286,20 +296,20 @@ export interface Methods {
   // Workspace-INDEPENDENT: a managed skill is addressed by name alone, and archive and
   // restore never delete.
   skills: {
-    listLibrary: () => Promise<Page<ManagedSkill>>;
+    listLibrary: (signal?: AbortSignal) => Promise<Page<ManagedSkill>>;
     archive: (name: string) => MutationPromise<void>;
     restore: (name: string) => MutationPromise<void>;
   };
   mcp: {
     // One resource carries durable configuration AND live state. `update` is
     // omission=preserve, which is why it is distinct from `create`.
-    list: () => Promise<Page<MCPServer>>;
+    list: (signal?: AbortSignal) => Promise<Page<MCPServer>>;
     create: (params: MCPServerCandidate) => MutationPromise<MCPServer>;
     update: (params: UpdateMCPServerRequest) => MutationPromise<MCPServer>;
     delete: (server: string) => MutationPromise<void>;
     // NOT persisted; a failed probe is `{ ok:false, error }`, not an RPC error.
-    test: (params: MCPServerCandidate) => Promise<MCPTestResult>;
-    listTools: (server?: string) => Promise<Page<MCPTool>>;
+    test: (params: MCPServerCandidate, signal?: AbortSignal) => Promise<MCPTestResult>;
+    listTools: (server?: string, signal?: AbortSignal) => Promise<Page<MCPTool>>;
     reconnect: (server: string) => MutationPromise<void>;
     authorizationAttempts: {
       // An asynchronous RESOURCE, not a command ack: `get` observes the outcome across
@@ -309,17 +319,17 @@ export interface Methods {
     };
   };
   providers: {
-    list: () => Promise<Page<Provider>>;
+    list: (signal?: AbortSignal) => Promise<Page<Provider>>;
     update: (params: UpdateProviderRequest) => MutationPromise<Provider>;
-    test: (provider: string) => Promise<ProviderTestResult>;
+    test: (provider: string, signal?: AbortSignal) => Promise<ProviderTestResult>;
   };
   models: {
-    list: (provider?: string) => Promise<Page<Model>>;
+    list: (provider?: string, signal?: AbortSignal) => Promise<Page<Model>>;
     // An EMPTY model means unset, so maintenance work runs on the main turn model.
-    getUtilityRole: () => Promise<UtilityRole>;
+    getUtilityRole: (signal?: AbortSignal) => Promise<UtilityRole>;
     setUtilityRole: (params: UtilityRole) => MutationPromise<UtilityRole>;
     // An EMPTY model leaves Agent Memory on keyword ranking.
-    getEmbeddingRole: () => Promise<EmbeddingRole>;
+    getEmbeddingRole: (signal?: AbortSignal) => Promise<EmbeddingRole>;
     setEmbeddingRole: (params: EmbeddingRole) => MutationPromise<EmbeddingRole>;
   };
   usage: {
@@ -329,7 +339,7 @@ export interface Methods {
   // The HITL review surface over the agent's SELF-maintained memory. Distinct from the
   // FLAME.md cascade; `capability_not_negotiated` when the store is not wired.
   agentMemory: {
-    list: (target: AgentMemoryTarget) => Promise<AgentMemoryList>;
+    list: (target: AgentMemoryTarget, signal?: AbortSignal) => Promise<AgentMemoryList>;
     review: (id: string, decision: "approve" | "reject") => MutationPromise<void>;
     update: (params: {
       id: string;
@@ -365,17 +375,17 @@ export interface Methods {
   };
   // Approval runtime control (B9) — global stance + remember management. Not gated.
   approval: {
-    getMode: () => Promise<ApprovalModeResult>;
+    getMode: (signal?: AbortSignal) => Promise<ApprovalModeResult>;
     setMode: (mode: ApprovalMode) => MutationPromise<ApprovalModeResult>;
     // Rules visible from the session: its session rules + its project's rules
     // + all global rules (the runtime resolves the session cwd).
-    listRules: (sessionId: SessionId) => Promise<ListApprovalRulesResult>;
+    listRules: (sessionId: SessionId, signal?: AbortSignal) => Promise<ListApprovalRulesResult>;
     forgetRule: (id: string) => MutationPromise<void>;
   };
   // Scheduled runs (§7.9): cron-triggered headless runs of a saved prompt,
   // fired by the runtime's scheduler worker while serving.
   schedules: {
-    list: (query?: PageQuery) => AutoPagingPromise<Page<Schedule>>;
+    list: (query?: PageQuery, signal?: AbortSignal) => AutoPagingPromise<Page<Schedule>>;
     create: (params: CreateScheduleRequest) => MutationPromise<Schedule>;
     update: (params: UpdateScheduleRequest) => MutationPromise<Schedule>;
     delete: (id: string) => MutationPromise<void>;
@@ -395,38 +405,40 @@ function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
         call("workspace.changes.list", { workspace }, signal ? { signal } : undefined),
     },
     diff: {
-      get: (params) => call("workspace.diff.get", { ...params, workspace }),
+      get: (params, signal) => call("workspace.diff.get", { ...params, workspace }, { signal }),
     },
     files: {
-      head: (params) => call("workspace.files.head", { ...params, workspace }),
-      search: (params) => call("workspace.files.search", { ...params, workspace }),
+      head: (params, signal) => call("workspace.files.head", { ...params, workspace }, { signal }),
+      search: (params, signal) =>
+        call("workspace.files.search", { ...params, workspace }, { signal }),
       list: (params, signal) =>
         call("workspace.files.list", { ...params, workspace }, signal ? { signal } : undefined),
-      read: (params) => call("workspace.files.read", { ...params, workspace }),
+      read: (params, signal) => call("workspace.files.read", { ...params, workspace }, { signal }),
     },
     recipes: {
-      list: () => call("recipes.list", { workspace }),
+      list: (signal) => call("recipes.list", { workspace }, { signal }),
     },
     hooks: {
-      list: () => call("hooks.list", { workspace }),
+      list: (signal) => call("hooks.list", { workspace }, { signal }),
     },
     skills: {
-      listDiscovered: () => call("skills.discovered.list", { workspace }),
-      listProposals: () => call("skills.proposals.list", { workspace }),
+      listDiscovered: (signal) => call("skills.discovered.list", { workspace }, { signal }),
+      listProposals: (signal) => call("skills.proposals.list", { workspace }, { signal }),
       approveProposal: (ref) => call("skills.proposals.approve", { ...ref, workspace }),
       rejectProposal: (ref) => call("skills.proposals.reject", { ...ref, workspace }),
     },
     agentDocs: {
-      list: () => call("agentDocs.list", { workspace }),
+      list: (signal) => call("agentDocs.list", { workspace }, { signal }),
     },
     knowledge: {
-      list: () => call("knowledge.list", { workspace }),
-      get: (scope) => call("knowledge.get", { scope, ...knowledgeWorkspace(scope, workspace) }),
+      list: (signal) => call("knowledge.list", { workspace }, { signal }),
+      get: (scope, signal) =>
+        call("knowledge.get", { scope, ...knowledgeWorkspace(scope, workspace) }, { signal }),
       update: (params) =>
         call("knowledge.update", { ...params, ...knowledgeWorkspace(params.scope, workspace) }),
     },
     agentMemory: {
-      list: () => call("agentMemory.list", { scope: "project", workspace }),
+      list: (signal) => call("agentMemory.list", { scope: "project", workspace }, { signal }),
       add: (content) => call("agentMemory.add", { scope: "project", workspace, content }),
     },
   };
@@ -440,17 +452,14 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
 
   const { call, perform, openMutation } = createWireCallPath(client, options);
 
-  let defaultWorkspaceRef: Promise<WorkspaceRef> | undefined;
-  const openWorkspace = async (ref?: WorkspaceRef): Promise<WorkspaceMethods> => {
-    if (ref) return bindWorkspace(call, ref);
-    if (!defaultWorkspaceRef) {
-      const pending = call("workspaces.resolve", {}).then((resolved) => resolved.ref);
-      defaultWorkspaceRef = pending;
-      void pending.catch(() => {
-        if (defaultWorkspaceRef === pending) defaultWorkspaceRef = undefined;
-      });
-    }
-    return bindWorkspace(call, await defaultWorkspaceRef);
+  const openWorkspace = async (
+    ref?: WorkspaceRef,
+    signal?: AbortSignal,
+  ): Promise<WorkspaceMethods> => {
+    signal?.throwIfAborted();
+    const resolved = ref ?? (await call("workspaces.resolve", {}, { signal })).ref;
+    signal?.throwIfAborted();
+    return bindWorkspace(call, resolved);
   };
 
   return {
@@ -471,7 +480,8 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       delete: (sessionId) => call("sessions.delete", { sessionId }),
       fork: (params) => call("sessions.fork", params),
       rollback: (params) => call("sessions.rollback", params),
-      export: (sessionId, format) => call("sessions.export", { sessionId, format }),
+      export: (sessionId, format, signal) =>
+        call("sessions.export", { sessionId, format }, { signal }),
       import: (artifact) =>
         call("sessions.import", {
           artifact,
@@ -581,17 +591,17 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         }),
     },
     skills: {
-      listLibrary: () => call("skills.library.list", {}),
+      listLibrary: (signal) => call("skills.library.list", {}, { signal }),
       archive: (name) => call("skills.library.archive", { name }),
       restore: (name) => call("skills.library.restore", { name }),
     },
     mcp: {
-      list: () => call("mcp.servers.list", {}),
+      list: (signal) => call("mcp.servers.list", {}, { signal }),
       create: (params) => call("mcp.servers.create", params),
       update: (params) => call("mcp.servers.update", params),
       delete: (server) => call("mcp.servers.delete", { server }),
-      test: (params) => call("mcp.servers.test", params),
-      listTools: (server) => call("mcp.tools.list", server ? { server } : {}),
+      test: (params, signal) => call("mcp.servers.test", params, { signal }),
+      listTools: (server, signal) => call("mcp.tools.list", server ? { server } : {}, { signal }),
       reconnect: (server) => call("mcp.servers.reconnect", { server }),
       authorizationAttempts: {
         create: (server, signal) =>
@@ -601,15 +611,15 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       },
     },
     providers: {
-      list: () => call("providers.list", {}),
+      list: (signal) => call("providers.list", {}, { signal }),
       update: (params) => call("providers.update", params),
-      test: (provider) => call("providers.test", { provider }),
+      test: (provider, signal) => call("providers.test", { provider }, { signal }),
     },
     models: {
-      list: (provider) => call("models.list", provider ? { provider } : {}),
-      getUtilityRole: () => call("models.getUtilityRole", {}),
+      list: (provider, signal) => call("models.list", provider ? { provider } : {}, { signal }),
+      getUtilityRole: (signal) => call("models.getUtilityRole", {}, { signal }),
       setUtilityRole: (params) => call("models.setUtilityRole", params),
-      getEmbeddingRole: () => call("models.getEmbeddingRole", {}),
+      getEmbeddingRole: (signal) => call("models.getEmbeddingRole", {}, { signal }),
       setEmbeddingRole: (params) => call("models.setEmbeddingRole", params),
     },
     usage: {
@@ -617,7 +627,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       summary: (params, signal) => call("usage.summary", params ?? {}, { signal }),
     },
     agentMemory: {
-      list: (params) => call("agentMemory.list", params ?? {}),
+      list: (params, signal) => call("agentMemory.list", params ?? {}, { signal }),
       review: (id, decision) =>
         call("agentMemory.review", {
           id,
@@ -639,13 +649,13 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       create: (params) => call("feedback.create", params),
     },
     approval: {
-      getMode: () => call("approval.getMode", {}),
+      getMode: (signal) => call("approval.getMode", {}, { signal }),
       setMode: (mode) => call("approval.setMode", { mode }),
-      listRules: (sessionId) => call("approval.listRules", { sessionId }),
+      listRules: (sessionId, signal) => call("approval.listRules", { sessionId }, { signal }),
       forgetRule: (id) => call("approval.forgetRule", { id }),
     },
     schedules: {
-      list: (query) => call("schedules.list", query ?? {}),
+      list: (query, signal) => call("schedules.list", query ?? {}, { signal }),
       create: (params) => call("schedules.create", params),
       update: (params) => call("schedules.update", params),
       delete: (id) => call("schedules.delete", { id }),

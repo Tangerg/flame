@@ -3,6 +3,7 @@ import {
   type ModelInvocationQuery,
 } from "@/plugins/builtin/agent/public/run";
 import type { ApprovalRulesQuery } from "@/plugins/builtin/agent/public/approvalPolicy";
+import { basename } from "@/lib/path";
 import { emptyListIfUngated } from "@/lib/rpcErrors";
 import {
   APPROVAL_MODE_KEY,
@@ -91,7 +92,7 @@ class RuntimeProviderRead {
   }
 
   workspace(cwd?: string) {
-    return this.client.workspaces.open(cwd ? { path: cwd } : undefined);
+    return this.client.workspaces.open(cwd ? { path: cwd } : undefined, this.signal);
   }
 }
 
@@ -145,7 +146,7 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     fetcher: async (read, params) => {
       const { cwd, ...query } = requiredParams<WorkspaceDiffQuery>(WORKSPACE_DIFF_KEY, params);
       const resources = await read.workspace(cwd);
-      const diff = await resources.diff.get({ ...query, format: "rows" });
+      const diff = await resources.diff.get({ ...query, format: "rows" }, read.signal);
       return { files: diff.files ?? [], truncated: diff.truncated } satisfies WorkspaceDiff;
     },
   });
@@ -153,7 +154,7 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     key: WORKSPACE_GREP_KEY,
     fetcher: async (read, params) => {
       const { cwd, ...query } = requiredParams<WorkspaceGrepQuery>(WORKSPACE_GREP_KEY, params);
-      return (await read.workspace(cwd)).files.search(query);
+      return (await read.workspace(cwd)).files.search(query, read.signal);
     },
   });
   contribute({
@@ -164,7 +165,7 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
         params,
       );
       const resources = await read.workspace(cwd);
-      return (await resources.files.head(query)).lines;
+      return (await resources.files.head(query, read.signal)).lines;
     },
   });
   contribute({
@@ -172,56 +173,60 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     fetcher: async (read, params) => {
       const query = requiredParams<WorkspaceCatalogQuery>(WORKSPACE_SKILLS_KEY, params);
       const resources = await read.workspace(query.cwd);
-      return (await pageData(resources.skills.listDiscovered()).catch(emptyListIfUngated)).map(
-        (s) => ({
-          name: s.name,
-          description: s.description ?? "",
-          scope: s.scope,
-        }),
-      );
+      return (
+        await pageData(resources.skills.listDiscovered(read.signal)).catch(emptyListIfUngated)
+      ).map((s) => ({
+        name: s.name,
+        description: s.description ?? "",
+        scope: s.scope,
+      }));
     },
   });
   contribute({
     key: WORKSPACE_MANAGED_SKILLS_KEY,
     fetcher: async (read) =>
-      (await pageData(read.client.skills.listLibrary()).catch(emptyListIfUngated)).map((s) => ({
-        name: s.name,
-        description: s.description ?? "",
-        lifecycle: s.lifecycle,
-      })),
+      (await pageData(read.client.skills.listLibrary(read.signal)).catch(emptyListIfUngated)).map(
+        (s) => ({
+          name: s.name,
+          description: s.description ?? "",
+          lifecycle: s.lifecycle,
+        }),
+      ),
   });
   contribute({
     key: WORKSPACE_SKILL_PROPOSALS_KEY,
     fetcher: async (read, params) => {
       const query = requiredParams<WorkspaceCatalogQuery>(WORKSPACE_SKILL_PROPOSALS_KEY, params);
       const resources = await read.workspace(query.cwd);
-      return (await pageData(resources.skills.listProposals()).catch(emptyListIfUngated)).map(
-        (p) => ({
-          workspace: resources.ref.path,
-          name: p.name,
-          revision: p.revision,
-          scope: p.scope,
-          description: p.description,
-          instructions: p.instructions,
-          // Absent means the agent decided on its own to distil this.
-          origin: p.origin ?? "mined",
-          revises: p.revises === true,
-          sourceSession: p.sourceSession ?? "",
-        }),
-      );
+      return (
+        await pageData(resources.skills.listProposals(read.signal)).catch(emptyListIfUngated)
+      ).map((p) => ({
+        workspace: resources.ref.path,
+        name: p.name,
+        revision: p.revision,
+        scope: p.scope,
+        description: p.description,
+        instructions: p.instructions,
+        // Absent means the agent decided on its own to distil this.
+        origin: p.origin ?? "mined",
+        revises: p.revises === true,
+        sourceSession: p.sourceSession ?? "",
+      }));
     },
   });
   contribute({
     key: WORKSPACE_KNOWLEDGE_KEY,
     fetcher: async (read, params) => {
       const resources = await read.workspace(optionalParams<WorkspaceKnowledgeQuery>(params)?.cwd);
-      return (await pageData(resources.knowledge.list()).catch(emptyListIfUngated)).map((m) => ({
-        scope: m.scope,
-        path: m.path,
-        content: m.content,
-        revision: m.revision,
-        updatedAt: m.updatedAt,
-      }));
+      return (await pageData(resources.knowledge.list(read.signal)).catch(emptyListIfUngated)).map(
+        (m) => ({
+          scope: m.scope,
+          path: m.path,
+          content: m.content,
+          revision: m.revision,
+          updatedAt: m.updatedAt,
+        }),
+      );
     },
   });
   contribute({
@@ -231,8 +236,10 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
       if (!runtimeCapability("agentMemory")) return [];
       const result =
         q.scope === "user"
-          ? await read.client.agentMemory.list({ scope: "user" })
-          : await read.workspace(q.cwd).then((resources) => resources.agentMemory.list());
+          ? await read.client.agentMemory.list({ scope: "user" }, read.signal)
+          : await read
+              .workspace(q.cwd)
+              .then((resources) => resources.agentMemory.list(read.signal));
       return result.items.map((m) => ({
         id: m.id,
         scope: m.scope,
@@ -252,11 +259,13 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     fetcher: async (read, params) => {
       const query = requiredParams<WorkspaceCatalogQuery>(WORKSPACE_AGENT_DOCS_KEY, params);
       const resources = await read.workspace(query.cwd);
-      return (await pageData(resources.agentDocs.list()).catch(emptyListIfUngated)).map((d) => ({
-        path: d.path,
-        title: d.title ?? "",
-        scope: d.scope,
-      }));
+      return (await pageData(resources.agentDocs.list(read.signal)).catch(emptyListIfUngated)).map(
+        (d) => ({
+          path: d.path,
+          title: basename(d.path),
+          scope: d.scope,
+        }),
+      );
     },
   });
   contribute({
@@ -264,13 +273,13 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     // Aggregate models across Runtime-configured providers only; catalog-only providers
     // cannot run and would produce dead composer-picker options.
     fetcher: async (read) => {
-      const configured = (await pageData(read.client.providers.list())).filter(
+      const configured = (await pageData(read.client.providers.list(read.signal))).filter(
         (provider) => provider.configured,
       );
       // Runtime owns model discovery. A rejected models.list is a failure,
       // not an empty catalog; preserve it so consumers can render it honestly.
       const lists = await Promise.all(
-        configured.map((provider) => pageData(read.client.models.list(provider.id))),
+        configured.map((provider) => pageData(read.client.models.list(provider.id, read.signal))),
       );
       return lists.flat().map(
         (m) =>
@@ -295,39 +304,40 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
   contribute({
     key: PROVIDERS_KEY,
     fetcher: async (read) =>
-      (await pageData(read.client.providers.list())).map((provider) =>
+      (await pageData(read.client.providers.list(read.signal))).map((provider) =>
         ProviderConfiguration.restore(provider),
       ),
   });
   contribute({
     key: APPROVAL_MODE_KEY,
-    fetcher: async (read) => (await read.client.approval.getMode()).mode,
+    fetcher: async (read) => (await read.client.approval.getMode(read.signal)).mode,
   });
   contribute({
     key: UTILITY_ROLE_KEY,
-    fetcher: (read) => read.client.models.getUtilityRole(),
+    fetcher: (read) => read.client.models.getUtilityRole(read.signal),
   });
   contribute({
     key: EMBEDDING_ROLE_KEY,
-    fetcher: (read) => read.client.models.getEmbeddingRole(),
+    fetcher: (read) => read.client.models.getEmbeddingRole(read.signal),
   });
   contribute({
     key: APPROVAL_RULES_KEY,
     fetcher: async (read, params) => {
       const query = requiredParams<ApprovalRulesQuery>(APPROVAL_RULES_KEY, params);
-      return (await read.client.approval.listRules(asSessionId(query.sessionId))).rules;
+      return (await read.client.approval.listRules(asSessionId(query.sessionId), read.signal))
+        .rules;
     },
   });
   contribute({
     key: HOOKS_KEY,
     fetcher: async (read, params) =>
-      (await read.workspace(optionalParams<HooksQuery>(params)?.cwd)).hooks.list(),
+      (await read.workspace(optionalParams<HooksQuery>(params)?.cwd)).hooks.list(read.signal),
   });
   contribute({
     key: WORKSPACE_RECIPES_KEY,
     fetcher: async (read, params) => {
       const resources = await read.workspace(optionalParams<WorkspaceRecipesQuery>(params)?.cwd);
-      return pageData(resources.recipes.list()).catch(emptyListIfUngated);
+      return pageData(resources.recipes.list(read.signal)).catch(emptyListIfUngated);
     },
   });
   contribute({
@@ -353,7 +363,7 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
         WORKSPACE_READ_FILE_KEY,
         params,
       );
-      const r = await (await read.workspace(cwd)).files.read(query);
+      const r = await (await read.workspace(cwd)).files.read(query, read.signal);
       return {
         content: r.content,
         startLine: r.startLine ?? 1,

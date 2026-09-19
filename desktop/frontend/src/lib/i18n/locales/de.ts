@@ -354,8 +354,7 @@ export const de: Record<string, string> = {
   "settings.radius": "Ecken",
   "settings.radius.sub": "Globaler Eckenradius.",
   "settings.density": "Dichte",
-  "settings.density.sub":
-    "Wie viel Luft die Oberfläche erhält – Zeilenhöhen, Abstände und Eingabefeld-Innenabstände.",
+  "settings.density.sub": "Zeilenhöhe und Abstände der Navigation.",
   "settings.density.compact": "Kompakt",
   "settings.density.comfortable": "Ausgewogen",
   "settings.density.spacious": "Weit",

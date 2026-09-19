@@ -1263,6 +1263,7 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 		State:               state,
 		RunProgress:         runProgressFor(state),
 		ExecutorCheckpoints: stores,
+		ExecutionTrees:      stores,
 		ChildRunStarts:      stores,
 		Schedules:           inertSegmentSchedules{},
 		GoalRuns:            inertSegmentGoalRuns{},
@@ -1484,4 +1485,14 @@ type emptyModelInvocations struct{}
 
 func (emptyModelInvocations) PageModelInvocations(context.Context, string, int64, string, int) ([]runs.ModelInvocationCommit, error) {
 	return nil, nil
+}
+
+func (inertRuntimeStores) LoadExecutionTree(context.Context, string, string) (runs.ExecutionTreeHead, bool, error) {
+	return runs.ExecutionTreeHead{}, false, errors.New("unused execution tree store")
+}
+func (inertRuntimeStores) SaveExecutionTree(context.Context, runs.ExecutionTreeUpdate) error {
+	return errors.New("unused execution tree store")
+}
+func (inertRuntimeStores) ExecutionResultCommitted(context.Context, string, runs.ResultPublication) (bool, error) {
+	return false, errors.New("unused execution tree store")
 }

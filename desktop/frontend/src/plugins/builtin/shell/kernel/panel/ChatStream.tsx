@@ -15,7 +15,7 @@ import { ComposerSurface } from "./ComposerSurface";
 import { ComposerStack, FloatingComposer } from "./FloatingComposer";
 import { COMPOSER_OVERLAY_PROPERTY, readingColumn as rc } from "./readingColumn";
 import { CwdMissingBanner } from "./CwdMissingBanner";
-import { MessageStream, type MessageStreamController } from "./MessageStream";
+import { MessageStream } from "./MessageStream";
 import { RunErrorBanner } from "./RunErrorBanner";
 import { EmptyChatHeading } from "./ProjectSelector";
 import {
@@ -120,7 +120,6 @@ export function ChatStream({ onSend }: Props) {
 
   const paneRef = useRef<HTMLDivElement>(null);
   const composerOverlayRef = useRef<HTMLDivElement>(null);
-  const messageStreamRef = useRef<MessageStreamController>(null);
 
   useLayoutEffect(() => {
     if (!started) return;
@@ -133,7 +132,6 @@ export function ChatStream({ onSend }: Props) {
     };
 
     publishHeight();
-    messageStreamRef.current?.settleInitialBottom();
     const observer = new ResizeObserver(([entry]) => {
       const borderBox = entry?.borderBoxSize[0];
       publishHeight(borderBox?.blockSize);
@@ -184,12 +182,7 @@ export function ChatStream({ onSend }: Props) {
         </div>
         <div {...stylex.props(sh.paneAnchored)}>
           <ChatErrorBoundary resetKey={sessionId} label={`session:${sessionId}`}>
-            <MessageStream
-              rows={rows}
-              ctx={ctx}
-              sessionId={sessionId}
-              controllerRef={messageStreamRef}
-            />
+            <MessageStream rows={rows} ctx={ctx} sessionId={sessionId} />
           </ChatErrorBoundary>
         </div>
 

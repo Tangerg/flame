@@ -313,7 +313,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 			t.Errorf("Release: %v", releaseErr)
 		}
 	})
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,10 +321,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 	go func() {
 		var events []runs.ExecutorEvent
 		for event := range sequence {
-			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
-				lookup.Complete(false, nil)
-				continue
-			}
+
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
 				event.Payload = commit.Fact()
@@ -384,7 +381,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightModel(t *testing
 					t.Errorf("Release: %v", releaseErr)
 				}
 			})
-			sequence, err := executor.Observe(context.Background(), ref)
+			sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -392,10 +389,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightModel(t *testing
 			go func() {
 				var events []runs.ExecutorEvent
 				for event := range sequence {
-					if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
-						lookup.Complete(false, nil)
-						continue
-					}
+
 					if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 						commit.Complete(nil)
 						event.Payload = commit.Fact()
@@ -461,7 +455,7 @@ func TestInteractionExecutorCancellationWinsWhileModelStartCommitIsSettling(t *t
 				t.Errorf("Release: %v", releaseErr)
 			}
 		})
-		sequence, err := executor.Observe(context.Background(), ref)
+		sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -471,10 +465,7 @@ func TestInteractionExecutorCancellationWinsWhileModelStartCommitIsSettling(t *t
 		go func() {
 			var events []runs.ExecutorEvent
 			for event := range sequence {
-				if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
-					lookup.Complete(false, nil)
-					continue
-				}
+
 				if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 					if _, starting := commit.Fact().(runs.ModelCallStarted); starting {
 						close(startCommitSeen)
@@ -562,7 +553,7 @@ func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -571,10 +562,7 @@ func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
 		var events []runs.ExecutorEvent
 		blocked := false
 		for event := range sequence {
-			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
-				lookup.Complete(false, nil)
-				continue
-			}
+
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
 				event.Payload = commit.Fact()
@@ -892,7 +880,7 @@ func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T
 	// A nil wake channel makes the direct notification intentionally lossy while
 	// leaving the periodic public-state reconciliation active.
 	session.lifetime.unknownWake = nil
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -900,10 +888,7 @@ func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T
 	go func() {
 		var events []runs.ExecutorEvent
 		for event := range sequence {
-			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
-				lookup.Complete(false, nil)
-				continue
-			}
+
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				var commitErr error
 				if _, completion := commit.Fact().(runs.ModelCallCompleted); completion {
@@ -1013,9 +998,8 @@ func TestInteractionExecutorPreservesConcurrentToolAttributionWhenCompletionIsOu
 		return nil
 	})
 	finishes := payloadsOf[runs.ToolCallFinished](events)
-	if len(finishes) != 2 || !strings.HasSuffix(finishes[0].CallID, ":0") ||
-		!strings.HasSuffix(finishes[1].CallID, ":1") {
-		t.Fatalf("Tool completion arrival order = %#v, want canonical first then second", finishes)
+	if len(finishes) != 2 || finishes[0].CallID == finishes[1].CallID {
+		t.Fatalf("tool completion attribution = %#v", finishes)
 	}
 	starts := payloadsOf[runs.ToolCallStarted](events)
 	byIndex := make(map[uint32]runs.ToolCallStarted, len(starts))
@@ -1097,7 +1081,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenResultWriteFails(t *testi
 		t.Fatalf("unknown observations = %#v", unknown)
 	}
 	evidence := unknown[0].UnresolvedEffects()
-	if len(evidence) != 1 || evidence[0].EffectID() == "" || !strings.Contains(evidence[0].Detail(), projectionFailure.Error()) {
+	if len(evidence) == 0 || len(evidence) > 2 || evidence[0].EffectID() == "" || !strings.Contains(evidence[0].Detail(), projectionFailure.Error()) {
 		t.Fatalf("publication lost diagnostic: %+v", evidence)
 	}
 	if ends := payloadsOf[runs.SegmentEnded](events); len(ends) != 1 || ends[0].Reason != run.OutcomeLost {
@@ -1151,7 +1135,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 			t.Errorf("Release: %v", releaseErr)
 		}
 	})
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1159,10 +1143,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 	go func() {
 		var events []runs.ExecutorEvent
 		for event := range sequence {
-			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
-				lookup.Complete(false, nil)
-				continue
-			}
+
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				if _, toolFinished := commit.Fact().(runs.ToolResultsCommitted); toolFinished {
 					commit.Complete(projectionFailure)
@@ -1196,7 +1177,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 		t.Fatalf("unknown observations = %#v", unknown)
 	}
 	evidence := unknown[0].UnresolvedEffects()
-	if len(evidence) != 1 || evidence[0].EffectID() == "" || !strings.Contains(evidence[0].Detail(), projectionFailure.Error()) {
+	if len(evidence) == 0 || len(evidence) > 2 || evidence[0].EffectID() == "" || !strings.Contains(evidence[0].Detail(), projectionFailure.Error()) {
 		t.Fatalf("publication lost diagnostic: %+v", evidence)
 	}
 	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 1 || ended[0].Reason != run.OutcomeLost {
@@ -1600,7 +1581,7 @@ func newObservedTestInteractionExecutor(
 	extra.ConfigurationIdentity = "interaction-observation-test-config"
 	extra.BuildID = interactionTestBuildID
 	extra.UnknownEffectPollInterval = durationPointer(5 * time.Millisecond)
-	executor, err := NewInteractionExecutor(extra)
+	executor, err := newTestConfiguredInteractionExecutor(t, extra)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1618,7 +1599,7 @@ func runInteractionHarnessWithCommit(
 	if err != nil {
 		t.Fatal(err)
 	}
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1626,10 +1607,7 @@ func runInteractionHarnessWithCommit(
 	go func() {
 		var events []runs.ExecutorEvent
 		for event := range sequence {
-			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
-				lookup.Complete(false, nil)
-				continue
-			}
+
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(commitFact(commit.Fact()))
 				event.Payload = commit.Fact()

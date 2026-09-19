@@ -71,6 +71,7 @@ describe("ResizeHandle", () => {
     const handle = screen.getByRole("separator", { name: "Resize panel" });
 
     fireEvent.pointerDown(handle, { button: 0, clientX: 320 });
+    fireEvent(window, new MouseEvent("pointermove", { clientX: 320 }));
     fireEvent(window, new MouseEvent("pointerup"));
 
     expect(onCommit).not.toHaveBeenCalled();

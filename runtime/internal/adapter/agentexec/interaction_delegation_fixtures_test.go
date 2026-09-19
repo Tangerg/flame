@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -212,7 +213,7 @@ func (*delegateSessionStore) ApplyClaimedRunLost(
 }
 
 type delegateProjection struct {
-	publications []runs.EventCommit
+	trees        *testExecutionTrees
 	mu           sync.Mutex
 	openings     []runs.OpeningCommit
 	barriers     []runs.TreeBarrierCommit
@@ -223,8 +224,9 @@ type delegateProjection struct {
 	items        map[string]transcript.Item
 }
 
-func newDelegateProjection() *delegateProjection {
+func newDelegateProjection(t *testing.T) *delegateProjection {
 	return &delegateProjection{
+		trees:        testTrees(t),
 		reservations: make(map[string]runs.ChildRunStartReservation),
 		outcomes:     make(map[string]runs.ChildRunStartOutcome),
 		runs:         make(map[string]run.Run),
@@ -301,25 +303,6 @@ func (d *delegateProjection) AbortChildRunStart(
 	}
 	d.outcomes[memberID] = runs.ChildRunStartAborted
 	return nil
-}
-
-func (d *delegateProjection) ResultPublicationCommitted(_ context.Context, sessionID, runID, segmentID string, publication runs.ResultPublication) (bool, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	value, found := d.runs[runID]
-	if !found || value.SessionID() != sessionID || value.ActiveSegmentID() != segmentID {
-		return false, errors.New("result publication has no active Segment")
-	}
-	for _, commit := range d.publications {
-		if commit.ResultPublication.ID != publication.ID {
-			continue
-		}
-		if commit.SessionID != sessionID || commit.RunID != runID || commit.SegmentID != segmentID || *commit.ResultPublication != publication {
-			return false, errors.New("result publication conflicts with stored content or owner")
-		}
-		return true, nil
-	}
-	return false, nil
 }
 
 func (d *delegateProjection) CommitEvent(
@@ -431,9 +414,6 @@ func (d *delegateProjection) applyOpening(opening runs.OpeningCommit) {
 }
 
 func (d *delegateProjection) applyCommit(commit runs.EventCommit) {
-	if commit.ResultPublication != nil {
-		d.publications = append(d.publications, commit)
-	}
 	for _, message := range commit.ConversationMessages {
 		d.conversation = append(d.conversation, message.Clone())
 	}
@@ -458,4 +438,19 @@ func (d *delegateProjection) applyCommit(commit runs.EventCommit) {
 			d.runs[commit.RunID] = advanced
 		}
 	}
+}
+
+func (d *delegateProjection) CommitExecutionTree(ctx context.Context, update runs.ExecutionTreeUpdate, commits []runs.EventCommit) error {
+	if err := d.trees.SaveExecutionTree(ctx, update); err != nil {
+		return err
+	}
+	for _, commit := range commits {
+		if err := d.CommitEvent(ctx, commit); err != nil {
+			return err
+		}
+		if commit.ResultPublication != nil {
+			d.trees.record(*commit.ResultPublication)
+		}
+	}
+	return nil
 }

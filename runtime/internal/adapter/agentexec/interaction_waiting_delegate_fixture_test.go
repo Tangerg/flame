@@ -35,7 +35,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: identity + "-build",
@@ -55,7 +55,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session_1", Title: "waiting delegate", Workspace: testsupport.MustWorkspace(workspace),
 	})}
-	projection := newDelegateProjection()
+	projection := newDelegateProjection(t)
 	runIDs := []string{"run_root", "run_child"}
 	segmentIDs := []string{"segment_root", "segment_child"}
 	coordinator := mustNewRunCoordinator(t, runs.Dependencies{

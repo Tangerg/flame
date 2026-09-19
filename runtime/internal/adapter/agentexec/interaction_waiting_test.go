@@ -111,7 +111,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	sequence, err := executor.Observe(context.Background(), restored)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), restored)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	)); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
 	}
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +295,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 	if _, stageContinuationErr := executor.StageContinuation(t.Context(), continuation); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
 	}
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +360,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 	if _, stageContinuationErr := executor.StageContinuation(t.Context(), continuation); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
 	}
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -435,7 +435,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 	if _, stageContinuationErr := executor.StageContinuation(t.Context(), continuation); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
 	}
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -527,7 +527,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	)); stageContinuationErr != nil {
 		t.Fatal(stageContinuationErr)
 	}
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -712,7 +712,7 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 		model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 			return nil, errors.New("model must not be called while restoring")
 		})
-		executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+		executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 			Lifetime:     t.Context(),
 			ChatResolver: staticInteractionChatResolver(model), BuildID: interactionTestBuildID,
 			ImplementationIdentity: "interaction-observation-test-build",
@@ -782,17 +782,14 @@ func TestInteractionExecutorTerminatesWithoutReplayingUnknownEffect(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
 	unknownReady := make(chan struct{})
 	go func() {
 		for event := range sequence {
-			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
-				lookup.Complete(false, nil)
-				continue
-			}
+
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				var commitErr error
 				if _, completed := commit.Fact().(runs.ModelCallCompleted); completed {
@@ -838,7 +835,7 @@ func TestInteractionExecutorAppliesSteerAtNextModelBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -893,7 +890,7 @@ func TestInteractionExecutorDoesNotCallNextModelWhenAppliedSteerCommitFails(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -901,10 +898,7 @@ func TestInteractionExecutorDoesNotCallNextModelWhenAppliedSteerCommitFails(t *t
 	go func() {
 		var events []runs.ExecutorEvent
 		for event := range sequence {
-			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
-				lookup.Complete(false, nil)
-				continue
-			}
+
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commitErr := error(nil)
 				if _, applied := commit.Fact().(runs.SteerMessagesApplied); applied {
@@ -1023,7 +1017,7 @@ func observeInteractionUntilWaiting(
 	begin func() error,
 ) ([]runs.ExecutorEvent, runs.TreeInterrupted) {
 	t.Helper()
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1035,10 +1029,7 @@ func observeInteractionUntilWaiting(
 	go func() {
 		var value result
 		sequence(func(event runs.ExecutorEvent) bool {
-			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
-				lookup.Complete(false, nil)
-				return true
-			}
+
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
 				event.Payload = commit.Fact()
@@ -1067,10 +1058,7 @@ func collectInteractionEvents(sequence func(func(runs.ExecutorEvent) bool)) <-ch
 	go func() {
 		var events []runs.ExecutorEvent
 		sequence(func(event runs.ExecutorEvent) bool {
-			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
-				lookup.Complete(false, nil)
-				return true
-			}
+
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
 				event.Payload = commit.Fact()

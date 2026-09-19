@@ -492,7 +492,8 @@ func (e *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, 
 				return err
 			}
 		}
-		return nil
+		_, err = conn(ctx, e.db).ExecContext(ctx, `DELETE FROM execution_trees WHERE session_id = ?`, sessionID)
+		return err
 	})
 }
 

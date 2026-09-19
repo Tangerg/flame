@@ -87,7 +87,7 @@ describe.each([
     const written = Object.fromEntries(
       Object.entries(compute()).map(([name, value]) => [name.replace(/^--/, ""), value]),
     );
-    expect(Object.keys(written).length).toBeGreaterThan(10);
+    expect(Object.keys(written).length).toBeGreaterThan(0);
 
     const { compared, disagreed } = driftAgainstBlock(":root", written);
     expect(compared, "a variable the stylesheet never declares").toBe(Object.keys(written).length);

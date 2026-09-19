@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
-import { useState } from "react";
-import { AgentRow } from "@/ui/agent";
+import { useRef, useState } from "react";
+import { AgentRow, AgentRowEditor } from "@/ui/agent";
 import { ConfirmDialog, ContextMenu, Icon, TextField, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { formatRelative } from "@/lib/i18n/relativeTime";
@@ -50,13 +50,18 @@ function SessionTitleField({
 }: {
   title: string;
   onCommit: (next: string) => void;
-  onSettle: () => void;
+  onSettle: (restoreFocus: boolean) => void;
 }) {
   const t = useT();
-  const commit = (value: string) => {
-    const next = value.trim();
-    if (next && next !== title) onCommit(next);
-    onSettle();
+  const settled = useRef(false);
+  const settle = (restoreFocus: boolean, value?: string) => {
+    if (settled.current) return;
+    settled.current = true;
+    if (value !== undefined) {
+      const next = value.trim();
+      if (next && next !== title) onCommit(next);
+    }
+    onSettle(restoreFocus);
   };
 
   return (
@@ -69,12 +74,14 @@ function SessionTitleField({
       autoFocus
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
-        if (e.nativeEvent.isComposing) return;
+        if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
         e.stopPropagation();
-        if (e.key === "Escape") onSettle();
-        if (e.key === "Enter") commit(e.currentTarget.value);
+        if (e.key === "Escape" || e.key === "Enter") {
+          e.preventDefault();
+          settle(true, e.key === "Enter" ? e.currentTarget.value : undefined);
+        }
       }}
-      onBlur={(e) => commit(e.currentTarget.value)}
+      onBlur={(e) => settle(false, e.currentTarget.value)}
       className={stylex.props(vocab.grow).className}
     />
   );
@@ -91,6 +98,7 @@ export function SessionRow({
   onDelete,
   onToggleFavorite,
 }: Props) {
+  const rowRef = useRef<HTMLButtonElement>(null);
   const [renaming, setRenaming] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const t = useT();
@@ -106,17 +114,29 @@ export function SessionRow({
 
   const row = (
     <div {...stylex.props(sr.host)}>
-      <AgentRow
-        onClick={() => onSelect(session.id)}
-        data-chrome-focus=""
-        aria-current={active ? "page" : undefined}
-        aria-label={`${title} — ${accessibleStatus}`}
-        active={active}
-        indent={indented ? "nested" : "none"}
-        revealOverflow={!renaming}
-        look="quiet"
-        trailing={
-          renaming ? undefined : (
+      {renaming ? (
+        <AgentRowEditor indent={indented ? "nested" : "none"}>
+          <SessionTitleField
+            title={title}
+            onCommit={(next) => onRename?.(session.id, session.revision, next)}
+            onSettle={(restoreFocus) => {
+              setRenaming(false);
+              if (restoreFocus) requestAnimationFrame(() => rowRef.current?.focus());
+            }}
+          />
+        </AgentRowEditor>
+      ) : (
+        <AgentRow
+          ref={rowRef}
+          onClick={() => onSelect(session.id)}
+          data-chrome-focus=""
+          aria-current={active ? "page" : undefined}
+          aria-label={`${title} — ${accessibleStatus}`}
+          active={active}
+          indent={indented ? "nested" : "none"}
+          revealOverflow
+          look="quiet"
+          trailing={
             <span {...stylex.props(sr.trailing)}>
               {session.favorite && (
                 <Icon name="star" size="xs" className={stylex.props(sr.favorite).className} />
@@ -140,19 +160,11 @@ export function SessionRow({
                 showTime && <span {...stylex.props(sr.stamp, typeStep.ui2xs)}>{when}</span>
               )}
             </span>
-          )
-        }
-      >
-        {renaming ? (
-          <SessionTitleField
-            title={title}
-            onCommit={(next) => onRename?.(session.id, session.revision, next)}
-            onSettle={() => setRenaming(false)}
-          />
-        ) : (
-          title
-        )}
-      </AgentRow>
+          }
+        >
+          {title}
+        </AgentRow>
+      )}
     </div>
   );
 

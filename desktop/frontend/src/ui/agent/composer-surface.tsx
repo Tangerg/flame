@@ -5,6 +5,8 @@ import { cn } from "@/lib/classNames";
 
 const styles = stylex.create({
   surface: {
+    containerType: "inline-size",
+    containerName: "composer",
     overflow: "hidden",
     borderRadius: "var(--shape-composer)",
     transitionProperty: "box-shadow",
@@ -16,9 +18,9 @@ const styles = stylex.create({
     flexWrap: "nowrap",
     alignItems: "center",
     gap: space.s1_5,
-    paddingRight: "var(--density-composer-footer-end)",
-    paddingBottom: "var(--density-composer-footer)",
-    paddingLeft: "var(--density-composer-footer)",
+    paddingRight: "var(--composer-footer-end)",
+    paddingBottom: "var(--composer-footer)",
+    paddingLeft: "var(--composer-footer)",
   },
 });
 
@@ -41,26 +43,10 @@ export function AgentComposerSurface({
   );
 }
 
-/** The chip row under the input. Owns the density padding and the control-size overrides the
- *  chips read, so a chip stays the composer's size wherever it is contributed from. `labelled`
- *  is the fitted state; its `data-measuring` companion is toggled on the ref for the length of
- *  the measuring reflow, which is why that one is not a prop. */
-export function AgentComposerFooter({
-  labelled,
-  ref,
-  children,
-}: {
-  labelled: boolean;
-  ref?: Ref<HTMLDivElement>;
-  children: ReactNode;
-}) {
+export function AgentComposerFooter({ children }: { children: ReactNode }) {
   return (
     <div
-      ref={ref}
       data-slot="composer-footer"
-      data-labelled={labelled ? "" : undefined}
-      // `agent-composer-footer` is the measuring key: `globals.css` holds the chips still for
-      // one reflow through it, so it is a mechanism binding rather than a style.
       className={cn("agent-composer-footer", stylex.props(styles.footer).className)}
     >
       {children}

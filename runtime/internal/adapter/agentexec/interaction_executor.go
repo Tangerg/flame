@@ -54,6 +54,7 @@ type InteractionExecutorConfig struct {
 	// executor. Request contexts may bound staging and commands, but accepted
 	// execution must outlive the request that created it.
 	Lifetime                  context.Context
+	ExecutionTrees            runs.ExecutionTreeStore
 	BuildID                   string
 	ChatResolver              InteractionChatResolver
 	ImplementationIdentity    string
@@ -101,6 +102,9 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	}
 	if dependency.Missing(config.ChatResolver) {
 		return nil, errors.New("agentexec: Interaction requires a chat resolver")
+	}
+	if dependency.Missing(config.ExecutionTrees) {
+		return nil, errors.New("agentexec: execution tree store is required")
 	}
 	if dependency.Missing(config.ModelContextCompactor) !=
 		dependency.Missing(config.ModelContextState) {
@@ -270,6 +274,7 @@ func (i *InteractionExecutor) assembleInteraction(
 		return nil, installDeploymentsErr
 	}
 	engine, err := agent.NewEngine(agent.EngineConfig{
+		TreeDurability:                           session,
 		DeploymentResolver:                       deployments,
 		ProcessAdmitter:                          agent.ProcessAdmitterFunc(session.admitProcess),
 		ProcessInitializationOutcomeAcknowledger: agent.ProcessInitializationOutcomeAcknowledgerFunc(session.acknowledgeProcessInitializationOutcome),
@@ -570,6 +575,17 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	if err != nil || checkpoint.tree.RootID() != rootID {
 		return fmt.Errorf("%w: checkpoint root differs from its tree", runs.ErrExecutorStateLost)
 	}
+	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, rootID.String())
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("%w: execution tree head is missing", runs.ErrExecutorStateLost)
+	}
+	checkpoint.tree, err = decodeExecutionTree(head, rootID)
+	if err != nil {
+		return err
+	}
 	processSnapshots := checkpoint.tree.ProcessSnapshots()
 	if len(processSnapshots) == 0 || processSnapshots[0].ProcessID() != rootID ||
 		!isInteractionWaitingBoundary(processSnapshots[0].Status()) {
@@ -594,6 +610,9 @@ func (i *InteractionExecutor) restoreWaitingTree(
 			err = errors.Join(err, i.discardInteraction(session))
 		}
 	}()
+	if err := session.validateWaitingTree(ctx, continuation, checkpoint); err != nil {
+		return fmt.Errorf("%w: validate waiting tree: %w", runs.ErrExecutorStateLost, err)
+	}
 	process, err := session.engine.RestoreTree(
 		runExecutionContext(session.lifetime.execution, session.scope, session.start),
 		session.deployment,

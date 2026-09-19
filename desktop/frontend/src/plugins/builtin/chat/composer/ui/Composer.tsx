@@ -15,7 +15,6 @@ import { Slot } from "@/plugins/host/Slot";
 import { ComposerAttachments } from "./ComposerAttachments";
 import { ComposerImageDrop } from "./ComposerImageDrop";
 import { useComposerInputController } from "./useComposerInputController";
-import { useToolbarLabels } from "./useToolbarLabels";
 import { useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
 
@@ -50,7 +49,6 @@ export function Composer({
   // What both suggestion panels are anchored to. They portal, so this ref is the only thing
   // tying them to the composer's position — there is no positioned ancestor to inherit.
   const surfaceRef = useRef<HTMLDivElement>(null);
-  const { ref: toolbarRef, labelled: toolbarLabelled } = useToolbarLabels();
   const recordHistory = useRecordComposerHistory();
   const {
     inputRef,
@@ -124,7 +122,7 @@ export function Composer({
           className={stylex.props(composerStyles.editor).className}
         />
       </div>
-      <AgentComposerFooter ref={toolbarRef} labelled={toolbarLabelled}>
+      <AgentComposerFooter>
         <Slot name="composer.toolbar.start" />
         <div {...stylex.props(composerStyles.toolbarSpacer)} />
         <Slot name="composer.toolbar.end" />

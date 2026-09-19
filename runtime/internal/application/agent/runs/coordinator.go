@@ -392,14 +392,13 @@ func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Even
 		subscription.Cancel()
 		publicationErr = errors.Join(publicationErr, s.treeOwner.rejectActivation(publicationErr))
 	}
-	if publicationErr == nil && !s.spec.DetachActivation {
-		s.beginExecution()
+	// Durable activation may synchronously await a fact receipt from the pump.
+	// Consume events during activation; the owner gate still orders cancellation.
+	if publicationErr == nil {
+		go s.beginExecution()
 	}
 	go func() {
 		defer s.releaseTask()
-		if publicationErr == nil && s.spec.DetachActivation {
-			s.beginExecution()
-		}
 		s.coordinator.pump(
 			s.runContext,
 			s.taskContext,
@@ -412,6 +411,9 @@ func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Even
 	}()
 	if publicationErr != nil {
 		return nil, publicationErr
+	}
+	if !s.spec.DetachActivation {
+		<-s.treeOwner.activation.done
 	}
 	return openingStream(requestContext, subscription), nil
 }
@@ -447,17 +449,21 @@ func (s *segmentStartup) markSegmentsStarted() {
 }
 
 func (s *segmentStartup) beginExecution() {
-	canceled, err := s.treeOwner.beginExecution(
-		s.taskContext,
-		s.spec.BeginExecution,
-	)
-	if err != nil {
-		cause := fmt.Errorf("runs: begin execution: %w", err)
-		trace.SpanFromContext(s.taskContext).RecordError(cause)
-		s.routes.abortUnfinished(cause)
-		s.cancelRun()
-		return
-	}
+	canceled, _ := s.treeOwner.beginExecution(s.taskContext, func(ctx context.Context) error {
+		if s.spec.BeginExecution == nil {
+			return nil
+		}
+		err := s.spec.BeginExecution(ctx)
+		if err != nil {
+			cause := fmt.Errorf("runs: begin execution: %w", err)
+			trace.SpanFromContext(s.taskContext).RecordError(cause)
+			s.treeOwner.observation.Lock()
+			s.routes.abortUnfinished(cause)
+			s.treeOwner.observation.Unlock()
+			s.cancelRun()
+		}
+		return err
+	})
 	if canceled {
 		s.cancelRun()
 	}

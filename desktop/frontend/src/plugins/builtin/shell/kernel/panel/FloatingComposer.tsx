@@ -26,7 +26,9 @@ const fc = stylex.create({
   // Transparent to the pointer so the transcript scrolls under it; the composer inside is not.
   overlay: { pointerEvents: "none", position: "absolute", insetInline: 0, bottom: 0, zIndex: 2 },
   holder: { pointerEvents: "auto", position: "relative" },
-  floor: { paddingBottom: { default: space.s3, "@media (min-width: 640px)": space.s4 } },
+  floor: {
+    paddingBottom: { default: space.s3, "@container conversation (min-width: 640px)": space.s4 },
+  },
 });
 
 function RuntimeConnectionNotice() {

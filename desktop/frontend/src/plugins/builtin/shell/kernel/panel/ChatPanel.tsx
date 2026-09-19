@@ -49,7 +49,7 @@ import { HeaderDiffStat } from "./HeaderDiffStat";
 import { ViewPlacementProvider } from "@/plugins/builtin/workspace/public/viewPlacement";
 import { WorkspaceViewBody } from "./WorkspaceViewBody";
 import { useT } from "@/lib/i18n";
-import { canPresentDock, defaultDockRatio } from "@/lib/shellGeometry";
+import { canPresentDock } from "@/lib/shellGeometry";
 import { shellStyles as sh } from "../shellStyles";
 
 interface Props {
@@ -149,7 +149,7 @@ export function ChatPanel({ onSend }: Props) {
   const dock = useWorkspaceDock();
   const catalog = useContextDockCatalog();
   const views = useWorkspaceViews();
-  const { width: dockWidthRatio, setWidth: setDockWidthRatio } = useDockWidth();
+  const { width: dockWidthRatio } = useDockWidth();
   const { isLoading } = useAgentSessions();
   const activeSession = useActiveSession();
   const activeSessionId = useActiveSessionId();
@@ -165,51 +165,34 @@ export function ChatPanel({ onSend }: Props) {
 
   // Activity detaches this row when a promoted view hides the conversation.
   // The observer follows the DOM lifetime, including a later reattachment.
-  const dockRowRef = useCallback(
-    (row: HTMLDivElement | null) => {
-      if (!row) return;
-      const reconcile = () => {
-        const available = canPresentDock(row.clientWidth);
-        setDockAvailable((current) => (current === available ? current : available));
-        if (!available && dockOpen) collapseWorkspaceDock();
-        if (dockWidthRatio === null && available) {
-          setDockWidthRatio(defaultDockRatio(row.clientWidth, window.innerHeight));
-        }
-      };
-      reconcile();
-      // Deferred out of the observer callback by a frame. Reconciling writes store state, the
-      // re-render changes layout, and that lands more resize notifications in the SAME frame as
-      // the ones being delivered — with ten observers in the shell, the total exceeded Chrome's
-      // per-frame delivery budget and it reported `ResizeObserver loop completed with undelivered
-      // notifications` as an unhandled window error. Measured: the callback itself converges in
-      // three runs at a constant width, so this is cascade depth rather than a runaway loop.
-      // The FIRST delivery stays synchronous. `observe()` fires immediately, and when the ref attaches
-      // the row may still be pre-layout at zero width — so that first notification is what
-      // establishes the ratio, and deferring it moved the dock a fraction of a pixel and shifted
-      // one row's text antialiasing by 270 pixels of golden. Measured separately: the error never
-      // occurred on load, only on resize, so the first delivery is not where the cost is.
-      let delivered = false;
-      let queued = 0;
-      const observer = new ResizeObserver(() => {
-        if (!delivered) {
-          delivered = true;
-          reconcile();
-          return;
-        }
-        if (queued) return;
-        queued = requestAnimationFrame(() => {
-          queued = 0;
-          reconcile();
-        });
+  const dockRowRef = useCallback((row: HTMLDivElement | null) => {
+    if (!row) return;
+    const reconcile = () => {
+      const available = canPresentDock(row.clientWidth);
+      setDockAvailable((current) => (current === available ? current : available));
+    };
+    reconcile();
+    // Defer resize-driven React layout to avoid cascading observer deliveries.
+    let delivered = false;
+    let queued = 0;
+    const observer = new ResizeObserver(() => {
+      if (!delivered) {
+        delivered = true;
+        reconcile();
+        return;
+      }
+      if (queued) return;
+      queued = requestAnimationFrame(() => {
+        queued = 0;
+        reconcile();
       });
-      observer.observe(row);
-      return () => {
-        if (queued) cancelAnimationFrame(queued);
-        observer.disconnect();
-      };
-    },
-    [dockOpen, dockWidthRatio, setDockWidthRatio],
-  );
+    });
+    observer.observe(row);
+    return () => {
+      if (queued) cancelAnimationFrame(queued);
+      observer.disconnect();
+    };
+  }, []);
 
   if (!shellVisible) return null;
 
@@ -253,8 +236,12 @@ export function ChatPanel({ onSend }: Props) {
         </SessionOwnedWorkspaceState>
       )}
       <Activity mode={activeMainView === null ? "visible" : "hidden"}>
-        <AgentDockRow ref={dockRowRef} open={dockOpen} style={dockWidthRow(dockWidthRatio ?? 1)}>
-          <div {...stylex.props(sh.paneNarrow)}>
+        <AgentDockRow
+          ref={dockRowRef}
+          open={dockOpen && dockAvailable}
+          style={dockWidthRow(dockWidthRatio)}
+        >
+          <div {...stylex.props(sh.paneNarrow, conversationPane.container)}>
             <AgentSurfaceHeader corner="window">
               <SessionIdentity
                 sessionId={activeSessionId}
@@ -269,7 +256,7 @@ export function ChatPanel({ onSend }: Props) {
             <ChatStream onSend={onSend} />
             <RunAnnouncer />
           </div>
-          {dockOpen && <DockResizer />}
+          {dockOpen && dockAvailable && <DockResizer />}
           <SessionOwnedWorkspaceState sessionId={activeSessionId}>
             <AgentContextDock>
               {hasDockOwner && (
@@ -299,7 +286,7 @@ export function ChatPanel({ onSend }: Props) {
           </SessionOwnedWorkspaceState>
           {hasDockOwner && (
             <AgentDockToggle
-              open={dockOpen}
+              open={dockOpen && dockAvailable}
               onToggle={dockOpen ? collapseWorkspaceDock : showWorkspaceDock}
               showLabel={t("dock.action.show")}
               hideLabel={t("dock.action.hide")}
@@ -312,3 +299,7 @@ export function ChatPanel({ onSend }: Props) {
     </AgentContentCard>
   );
 }
+
+const conversationPane = stylex.create({
+  container: { containerType: "inline-size", containerName: "conversation" },
+});

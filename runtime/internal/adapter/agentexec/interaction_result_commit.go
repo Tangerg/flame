@@ -1,7 +1,7 @@
 package agentexec
 
 import (
-	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -89,88 +89,47 @@ func (i *interactionSession) rememberToolMetadata(metadata toolResultMetadata) e
 	return nil
 }
 
-func (i *interactionSession) CommitResults(ctx context.Context, batch interaction.ResultBatch) (interaction.ResultReceipt, error) {
-	member, found := i.executorMemberByProcessID(batch.Relation().ProcessID())
-	if !found {
-		return interaction.ResultReceipt{}, errors.New("agentexec: result batch has no calling member")
-	}
-	if _, durable := batch.TreeIncarnationID(); durable {
-		return interaction.ResultReceipt{}, errors.New("agentexec: durable Scope writers require a TreeDurability integration")
-	}
-	receipt := batch.Receipt()
-	if err := receipt.Validate(); err != nil {
-		return interaction.ResultReceipt{}, err
-	}
-	entries := batch.Entries()
-	identities := make([]runtimeidentity.EffectID, len(entries))
-	for index, entry := range entries {
-		identity, err := logicalToolCallID(batch.Relation().ProcessID(), batch.ModelCallSequence(), entry.ToolCallIndex, entry.Call.ID, entry.Call.Name)
-		if err != nil {
-			return interaction.ResultReceipt{}, err
-		}
-		identities[index] = identity
-	}
-	publication := runs.ResultPublication{ID: receipt.EffectID.String(), Digest: receipt.Digest.String()}
-	lookup, err := runs.NewResultPublicationLookup(publication)
+func (i *interactionSession) toolResultProjection(relation agent.ProcessRelation, sequence uint64, entry interaction.ResultEntry) (runs.ExecutorEvent, error) {
+	member := i.executorMember(relation)
+	identity, err := logicalToolCallID(relation.ProcessID(), sequence, entry.ToolCallIndex, entry.Call.ID, entry.Call.Name)
 	if err != nil {
-		return interaction.ResultReceipt{}, err
+		return runs.ExecutorEvent{}, err
 	}
-	projectionCtx, cancel := i.lifetime.publicationContext(ctx)
-	defer cancel()
-	if err := i.lifetime.sendAuthoritative(projectionCtx, runs.ExecutorEvent{Member: member, Payload: lookup}); err != nil {
-		return interaction.ResultReceipt{}, err
-	}
-	committed, err := lookup.Await(projectionCtx)
+	publication, err := resultPublication(identity, entry)
 	if err != nil {
-		return interaction.ResultReceipt{}, fmt.Errorf("agentexec: verify result publication: %w", err)
-	}
-	if committed {
-		i.retirePublishedToolMetadata(identities)
-		return receipt, nil
-	}
-	// Child terminal facts precede their parent's first result publication.
-	if _, err := i.reconcileCompletedDelegateChildren(projectionCtx); err != nil {
-		return interaction.ResultReceipt{}, err
+		return runs.ExecutorEvent{}, err
 	}
 	fact := runs.ToolResultsCommitted{Publication: publication}
-	for index, entry := range entries {
-		identity := identities[index]
-		i.state.mu.Lock()
-		metadata, prepared := i.state.toolMetadata[identity.String()]
-		i.state.mu.Unlock()
-		start := runs.ToolCallStarted{
-			CallID: identity.String(), SourceCallID: entry.Call.ID, ModelCallSequence: batch.ModelCallSequence(),
-			ToolCallIndex: entry.ToolCallIndex, ToolName: entry.Call.Name, ArgumentsText: entry.Call.Arguments,
-		}
-		end := runs.ToolCallFinished{CallID: identity.String(), ModelResult: new(entry.Result.Clone())}
-		if prepared {
-			if metadata.MemberID != member.MemberID {
-				return interaction.ResultReceipt{}, errors.New("agentexec: result metadata belongs to another member")
-			}
-			start = metadata.Start
-			end.Arguments, end.Result, end.Offload = metadata.Arguments, metadata.Result, metadata.Offload
-			end.OutputText, end.MutatedPaths, end.Failure = metadata.OutputText, metadata.MutatedPaths, metadata.Failure
-		} else if entry.Disposition != interaction.ResultRejected {
-			return interaction.ResultReceipt{}, fmt.Errorf("agentexec: known Tool result %q lost its product metadata", entry.Call.ID)
-		}
-		if end.Result == nil {
-			if result, present := runtimeToolResult(entry.Result.Output); present {
-				end.Result = &result
-			}
-		}
-		if entry.Result.IsError && end.Failure == nil {
-			detail, _ := entry.Result.Output.Text()
-			end.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: detail}
-		}
-		fact.Starts = append(fact.Starts, start)
-		fact.Results = append(fact.Results, end)
+	i.state.mu.Lock()
+	metadata, prepared := i.state.toolMetadata[identity.String()]
+	i.state.mu.Unlock()
+	start := runs.ToolCallStarted{
+		CallID: identity.String(), SourceCallID: entry.Call.ID, ModelCallSequence: sequence,
+		ToolCallIndex: entry.ToolCallIndex, ToolName: entry.Call.Name, ArgumentsText: entry.Call.Arguments,
 	}
-	if err := i.commitFact(projectionCtx, member, fact); err != nil {
-		i.lifetime.wakeUnknown()
-		return interaction.ResultReceipt{}, fmt.Errorf("agentexec: commit exact Tool results: %w", err)
+	end := runs.ToolCallFinished{CallID: identity.String(), ModelResult: new(entry.Result.Clone())}
+	if prepared {
+		if metadata.MemberID != member.MemberID {
+			return runs.ExecutorEvent{}, errors.New("agentexec: result metadata belongs to another member")
+		}
+		start = metadata.Start
+		end.Arguments, end.Result, end.Offload = metadata.Arguments, metadata.Result, metadata.Offload
+		end.OutputText, end.MutatedPaths, end.Failure = metadata.OutputText, metadata.MutatedPaths, metadata.Failure
+	} else if entry.Disposition != interaction.ResultRejected {
+		return runs.ExecutorEvent{}, fmt.Errorf("agentexec: known Tool result %q lost its product metadata", entry.Call.ID)
 	}
-	i.retirePublishedToolMetadata(identities)
-	return receipt, nil
+	if end.Result == nil {
+		if result, present := runtimeToolResult(entry.Result.Output); present {
+			end.Result = &result
+		}
+	}
+	if entry.Result.IsError && end.Failure == nil {
+		detail, _ := entry.Result.Output.Text()
+		end.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: detail}
+	}
+	fact.Starts = append(fact.Starts, start)
+	fact.Results = append(fact.Results, end)
+	return runs.ExecutorEvent{Member: member, Payload: fact}, nil
 }
 
 func (i *interactionSession) retirePublishedToolMetadata(identities []runtimeidentity.EffectID) {
@@ -208,4 +167,12 @@ func decodeToolMetadata(values []toolResultMetadata, processes map[agent.Process
 		metadata[previous] = value.clone()
 	}
 	return metadata, nil
+}
+
+func resultPublication(identity runtimeidentity.EffectID, entry interaction.ResultEntry) (runs.ResultPublication, error) {
+	data, err := json.Marshal(entry)
+	if err != nil {
+		return runs.ResultPublication{}, err
+	}
+	return runs.ResultPublication{ID: identity.String(), Digest: agent.ComputeDigest(data).String()}, nil
 }

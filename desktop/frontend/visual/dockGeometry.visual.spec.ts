@@ -1,10 +1,15 @@
 import { expect, test } from "./test";
-import { DOCK_MIN_WIDTH_PX, dockWidthFromRatio, maxDockWidth } from "../src/lib/shellGeometry";
+import {
+  DOCK_MIN_WIDTH_PX,
+  defaultDockWidth,
+  dockWidthFromRatio,
+  maxDockWidth,
+} from "../src/lib/shellGeometry";
 import { dockWidthRow } from "../src/plugins/builtin/shell/kernel/panel/dockWidth";
 
 async function cssMeasure(
   page: import("@playwright/test").Page,
-  ratio: number,
+  ratio: number | null,
   rowWidth: number,
 ): Promise<number> {
   return page.evaluate(
@@ -47,6 +52,12 @@ test.describe("the dock measure agrees between TypeScript and CSS", () => {
           `row ${rowWidth}px at ratio ${ratio}: CSS painted ${measured}, drag assumed ${expected}`,
         ).toBeLessThan(1);
       }
+    }
+  });
+
+  test("automatically leaves widening space to the conversation", async ({ page }) => {
+    for (const rowWidth of ROW_WIDTHS) {
+      expect(Math.round(await cssMeasure(page, null, rowWidth))).toBe(defaultDockWidth(rowWidth));
     }
   });
 

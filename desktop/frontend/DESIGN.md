@@ -20,16 +20,13 @@ is a decision to make, not a rule to apply.
 
 The whole system reduces to five decisions. Everything below elaborates them.
 
-1. **Tool windows around one reading plane** (revised 2026-08; supersedes both
-   "flush background delta" and "card over drawer"). Three opaque materials — the
-   plane you read on, the chrome columns that frame it, the cards placed on it —
-   separated by VALUE, with **a single device pixel** over that step at each seam.
-   The plane is the darkest surface on dark and the brightest on light; the chrome
-   steps the other way. Both halves are load-bearing: the step alone measured too
-   small to read, and a line alone draws the columns as a wireframe of pasted
-   rectangles. Which mechanism draws which boundary belongs to the active visual
-   style, not to any call site — this one spells its three seam tokens as hairlines;
-   a spatial style spells the same three as casts and nothing else changes.
+1. **Tool windows around one reading plane.** Permanent regions separate by
+   material value and a short directional cast at the drawer and dock seams.
+   Chrome headers do not draw a bottom line. Cards group independently readable
+   content through fill; ordinary tool activity stays linear. Only floating
+   menus and popovers receive an optical ring and elevation. The composer is
+   an input surface with one real border, accented on focus. Boundary mechanisms
+   belong to the visual style, never individual call sites.
 2. **Near-monochrome, one restrained accent** — overall black/white/grey; the
    accent (a calm **blue**, user-selectable) marks live state, progress, focus,
    links, and the one primary action per surface. It is the CTA fill too: this
@@ -62,8 +59,7 @@ Light and dark are **equal first-class themes**; the default follows the OS (`pr
 **Reference** — the direction is the JetBrains tool-window language: an editor you
 are _inside_, framed by opaque panels, with the technical layer set in mono.
 
-- **Region model**: three materials, each seam a half-pixel hairline over a value
-  step. The reading plane is the one surface that is not chrome.
+- **Region model**: three materials separated by value and directional casts. The reading plane is the one surface that is not chrome.
 - **Density**: short chrome bars, two-line index rows, borderless cards.
 - **Voice**: sans for language, mono for data — and the mono is load-bearing, not
   decorative, because most of what an agent transcript reports IS data.
@@ -298,7 +294,7 @@ all. Banners and composer take the same gutters, so the three stay on one axis.
 ### Chat measure
 
 - Message stream + composer both cap at **`--content-max`**, centered between the
-  rails, with a `--density-column-gutter` inset.
+  rails, with a `--reading-gutter` inset.
 - A turn is a caption line over a full-width body, not an avatar gutter beside a
   narrowed one: who is speaking is read once, the measure is inhabited for the
   whole turn, and a 38px gutter was taking it from every code block and table.
@@ -328,9 +324,16 @@ Flame is a **product UI**, not a marketing site. Spacing comes from the `space` 
 - Inline gaps: 8px to 12px.
 - Nothing reaches marketing-band spacing — no 96px section break, no 192px band —
   outside the welcome screen, where the page IS the band.
-- The chrome's own rhythm is not free-hand: row height, gutters and composer
-  insets are `--density-*`, a third axis beside type and shape, so the Density
-  setting moves all of them together.
+- Density controls navigation row heights, gaps and gutters only. Reading gutters
+  and composer insets have independent static tokens. Conversation container
+  queries determine reading insets, including when the dock narrows a wide window.
+- New turns, final answers and same-run continuations have distinct spacing.
+- The automatic dock starts at an auxiliary width and never persists a preference.
+  Only user resizing stores a ratio. Narrow windows temporarily hide the dock;
+  navigation retains its target and restores it when space returns.
+- The composer prioritizes input, model and send. Reasoning belongs in the model
+  panel. Normal approval labels yield on narrow containers; high-risk approval
+  remains explicit. Label length never controls a JavaScript layout mode.
 
 ## 5. Elevation & Depth
 
@@ -519,7 +522,7 @@ When in doubt: **does this surface convey "the agent is alive and live"?** If ye
 - **Don't use ALL-CAPS labels with letter-spacing.** Section labels / eyebrows / table heads are **sentence-case** (mono for dense technical labels like `args` / `attrs`); the ALL-CAPS + wide-tracking eyebrow is the rejected Sonance vocabulary.
 - **Don't use pill-radius CTAs** (`9999px`, `500px`, `100px` on a button). Buttons are `sm`, through `--button-radius`.
 - **Don't use weight 700+ for display.** 600 is the ceiling, Linear and Vercel both forbid this.
-- **Don't add panel / card drop shadows.** The layout is flush — depth is the surface step + hairlines. Stacked-subtle shadow is for truly-floating overlays (Level 4) only, in BOTH schemes. No cards-on-canvas, no gutters.
+- **Don't add panel / card drop shadows.** The layout is flush — depth is the surface step plus a directional seam cast. Stacked-subtle shadow is for truly-floating overlays (Level 4) only, in BOTH schemes. No cards-on-canvas, no gutters.
 - **Don't use pure `#000000` or a harsh near-black canvas.** Dark canvas is `--color-bg`, a soft grey, not a black.
 - **Don't flash a bright accent ring/halo on focus or click.** Keyboard focus is one thin stroke; inputs/composer just strengthen their border. The loud glow read as cheap.
 - **Don't introduce a second chromatic accent.** Flame has one accent + four semantic colors. No more.

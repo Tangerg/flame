@@ -163,47 +163,47 @@ export function DiffWorkspaceSurface() {
           </div>
         }
       />
-        <ScrollArea ref={scrollRef} className={stylex.props(df.scroller).className}>
-          <DataView
-            items={gitEnabled ? files : []}
-            isLoading={isLoading}
-            failure={notARepo ? undefined : error}
-            onRetry={retry}
-            skeletonCount={10}
-            empty={
-              !gitEnabled
-                ? gitOffEmpty("diff")
-                : notARepo
-                  ? notARepoEmpty("diff")
-                  : {
-                      icon: "diff" as const,
-                      title: t("diff.empty.title"),
-                      sub: t("diff.empty.sub"),
-                    }
-            }
-            error={{
-              title: mode === "base" ? t("diff.error.noBaseline") : t("diff.error.loadFailed"),
-              sub: mode === "base" ? t("diff.error.noBaselineSub") : t("diff.error.loadFailedSub"),
-            }}
-          >
-            {(fileDiffs) => (
-              <>
-                {fileDiffs.map((file) => (
-                  <FileCard
-                    key={file.path}
-                    file={file}
-                    layout={layout}
-                    collapsed={collapsedFiles.has(file.path)}
-                    onToggle={() => toggleFile(file.path)}
-                  />
-                ))}
-                {view.truncated && (
-                  <p {...stylex.props(cs.note, typeStep.uiSm)}>{t("diff.truncated")}</p>
-                )}
-              </>
-            )}
-          </DataView>
-        </ScrollArea>
+      <ScrollArea ref={scrollRef} className={stylex.props(df.scroller).className}>
+        <DataView
+          items={gitEnabled ? files : []}
+          isLoading={isLoading}
+          failure={notARepo ? undefined : error}
+          onRetry={retry}
+          skeletonCount={10}
+          empty={
+            !gitEnabled
+              ? gitOffEmpty("diff")
+              : notARepo
+                ? notARepoEmpty("diff")
+                : {
+                    icon: "diff" as const,
+                    title: t("diff.empty.title"),
+                    sub: t("diff.empty.sub"),
+                  }
+          }
+          error={{
+            title: mode === "base" ? t("diff.error.noBaseline") : t("diff.error.loadFailed"),
+            sub: mode === "base" ? t("diff.error.noBaselineSub") : t("diff.error.loadFailedSub"),
+          }}
+        >
+          {(fileDiffs) => (
+            <>
+              {fileDiffs.map((file) => (
+                <FileCard
+                  key={file.path}
+                  file={file}
+                  layout={layout}
+                  collapsed={collapsedFiles.has(file.path)}
+                  onToggle={() => toggleFile(file.path)}
+                />
+              ))}
+              {view.truncated && (
+                <p {...stylex.props(cs.note, typeStep.uiSm)}>{t("diff.truncated")}</p>
+              )}
+            </>
+          )}
+        </DataView>
+      </ScrollArea>
     </AgentWorkspaceView>
   );
 }

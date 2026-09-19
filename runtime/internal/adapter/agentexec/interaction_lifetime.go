@@ -96,8 +96,8 @@ func (i *interactionLifetime) start(
 
 func (i *interactionLifetime) beginRelease() {
 	i.releaseOnce.Do(func() {
-		i.stopExecution()
 		i.stopRelease()
+		i.stopExecution()
 	})
 }
 
@@ -138,6 +138,9 @@ func (i *interactionLifetime) sendAuthoritative(
 func (i *interactionLifetime) publicationContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	bound, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	stop := context.AfterFunc(i.releasing, cancel)
+	if i.releasing.Err() != nil {
+		cancel()
+	}
 	return bound, func() {
 		stop()
 		cancel()

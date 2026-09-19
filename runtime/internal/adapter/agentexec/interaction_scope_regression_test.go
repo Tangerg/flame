@@ -67,73 +67,97 @@ func TestCanceledToolRetainsEvidenceAfterRootAwait(t *testing.T) {
 	}
 }
 
-func TestStreamConsumerLimitIsNotCancellation(t *testing.T) {
-	model := streamingObservationModel{chunks: 20, streamed: make(chan struct{})}
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: true})
-	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
-	if err != nil {
-		t.Fatal(err)
-	}
-	session, err := executor.session(ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Replace only the public Dispatcher resource policy; keep Flame's real model
-	// projection and external-boundary tracker around it.
-	deployment := session.deployment
-	definition := deployment.Definition().(*interaction.Definition)
-	observed, err := newObservedInteractionModel(model, model, session)
-	if err != nil {
-		t.Fatal(err)
-	}
-	dispatcher, err := interaction.NewDispatcher(definition, interaction.DispatcherConfig{Streamer: observed, MaxResponseBytes: 512, ResultCommitter: session, ModelContextReducer: newInteractionModelContextReducer(nil, nil, session, session.start, nil, nil)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	replacement, err := agent.NewDeployment(agent.DeploymentConfig{Definition: definition, Dispatcher: &interactionDispatcher{inner: dispatcher, session: session}, ImplementationDigest: agent.ComputeDigest([]byte("stream-limit")), ConfigurationDigest: agent.ComputeDigest([]byte("stream-limit"))})
-	if err != nil {
-		t.Fatal(err)
-	}
-	session.deployment = replacement
-	session.state.deployments.root = replacement
-	session.state.deployments.byRef[replacement.DeploymentRef()] = replacement
-	sequence, err := executor.Observe(t.Context(), ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ready := make(chan []runs.ExecutorEvent, 1)
-	go func() {
-		var events []runs.ExecutorEvent
-		for event := range sequence {
-			if commit, ok := event.Payload.(runs.ExecutionFactCommit); ok {
-				event.Payload = commit.Fact()
-				commit.Complete(nil)
+func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		limit      int
+		beforeCall bool
+		outcome    run.Outcome
+	}{
+		{name: "stream exceeds budget", limit: 512, outcome: run.OutcomeLost},
+		{name: "minimum response cannot fit", limit: 64, beforeCall: true, outcome: run.OutcomeFailed},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			model := streamingObservationModel{chunks: 20, streamed: make(chan struct{})}
+			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: true})
+			ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+			if err != nil {
+				t.Fatal(err)
 			}
-			events = append(events, event)
-		}
-		ready <- events
-	}()
-	if err := executor.BeginRoot(t.Context(), ref); err != nil {
-		t.Fatal(err)
-	}
-	events := <-ready
-	ends := payloadsOf[runs.SegmentEnded](events)
-	if len(ends) != 1 || ends[0].Reason != run.OutcomeLost {
-		t.Fatalf("resource rejection = %+v", ends)
-	}
-	effects := ends[0].UnresolvedEffects()
-	if len(effects) != 1 || !strings.Contains(effects[0].Detail(), interaction.ErrModelResponseTooLarge.Error()) {
-		t.Fatalf("resource cause lost: %+v", effects)
-	}
-	if err := executor.Release(t.Context(), ref); err != nil {
-		t.Fatal(err)
+			session, err := executor.session(ref)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Replace only the public Dispatcher resource policy; keep Flame's real model
+			// projection and external-boundary tracker around it.
+			deployment := session.deployment
+			definition := deployment.Definition().(*interaction.Definition)
+			observed, err := newObservedInteractionModel(model, model, session)
+			if err != nil {
+				t.Fatal(err)
+			}
+			dispatcher, err := interaction.NewDispatcher(definition, interaction.DispatcherConfig{Streamer: observed, MaxResponseBytes: test.limit, ModelContextReducer: newInteractionModelContextReducer(nil, nil, session, session.start, nil, nil)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			replacement, err := agent.NewDeployment(agent.DeploymentConfig{Definition: definition, Dispatcher: &interactionDispatcher{inner: dispatcher, session: session}, ImplementationDigest: agent.ComputeDigest([]byte("stream-limit")), ConfigurationDigest: agent.ComputeDigest([]byte("stream-limit"))})
+			if err != nil {
+				t.Fatal(err)
+			}
+			session.deployment = replacement
+			session.state.deployments.root = replacement
+			session.state.deployments.byRef[replacement.DeploymentRef()] = replacement
+			sequence, err := observeTestInteraction(t, executor, t.Context(), ref)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ready := make(chan []runs.ExecutorEvent, 1)
+			go func() {
+				var events []runs.ExecutorEvent
+				for event := range sequence {
+					if commit, ok := event.Payload.(runs.ExecutionFactCommit); ok {
+						event.Payload = commit.Fact()
+						commit.Complete(nil)
+					}
+					events = append(events, event)
+				}
+				ready <- events
+			}()
+			if err := executor.BeginRoot(t.Context(), ref); err != nil {
+				t.Fatal(err)
+			}
+			events := <-ready
+			ends := payloadsOf[runs.SegmentEnded](events)
+			if len(ends) != 1 || ends[0].Reason != test.outcome {
+				t.Fatalf("resource rejection = %+v", ends)
+			}
+			effects := ends[0].UnresolvedEffects()
+			if test.beforeCall {
+				if len(effects) != 0 || len(payloadsOf[runs.ModelCallStarted](events)) != 0 {
+					t.Fatalf("pre-call rejection recorded external work: effects=%+v events=%+v", effects, events)
+				}
+				if ends[0].Failure() == nil || !strings.Contains(ends[0].Failure().Detail, interaction.ErrModelResponseTooLarge.Error()) {
+					t.Fatalf("pre-call rejection lost its cause: %+v", ends[0])
+				}
+				select {
+				case <-model.streamed:
+					t.Fatal("provider was dispatched without a usable response budget")
+				default:
+				}
+			} else if len(effects) != 1 || !strings.Contains(effects[0].Detail(), interaction.ErrModelResponseTooLarge.Error()) {
+				t.Fatalf("resource cause lost: %+v", effects)
+			}
+			if err := executor.Release(t.Context(), ref); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 
 func scopeTestCoordinator(t *testing.T, executor *InteractionExecutor) *runs.Coordinator {
 	t.Helper()
 	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{ID: "session_1", Title: "scope", Workspace: testsupport.MustWorkspace(t.TempDir())})}
-	projection := newDelegateProjection()
+	projection := newDelegateProjection(t)
 	var id int
 	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
 		RootStarts: executor, Observations: executor, Releases: executor, RootCancellation: executor,
@@ -386,6 +410,13 @@ func TestCancellationPreservesSettledPrefixAndDoesNotStartTail(t *testing.T) {
 	batches := payloadsOf[runs.ToolResultsCommitted](events)
 	if len(batches) != 1 || len(batches[0].Results) != 1 {
 		t.Fatalf("settled prefix was lost: %+v", batches)
+	}
+	known := batches[0].Results[0].ModelResult
+	if known == nil || known.ID != "first" || known.IsError {
+		t.Fatalf("settled prefix changed its result: %+v", known)
+	}
+	if output, ok := known.Output.Text(); !ok || output != "confirmed" {
+		t.Fatalf("settled output = %q, %t", output, ok)
 	}
 	ends := payloadsOf[runs.SegmentEnded](events)
 	if len(ends) != 1 || ends[0].Reason != run.OutcomeCanceled {

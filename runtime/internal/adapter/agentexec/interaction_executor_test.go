@@ -59,7 +59,7 @@ func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return interactionTextResponse("unused"), nil
 	})
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config",
@@ -71,7 +71,7 @@ func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 }
 
 func TestInteractionExecutorRequiresChatResolver(t *testing.T) {
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config",
@@ -218,7 +218,7 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 		return interactionTextResponse("unused"), nil
 	})
 	var resolved []modelref.Selection
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime: t.Context(),
 		ChatResolver: interactionChatResolverFunc(func(_ context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error) {
 			resolved = append(resolved, selection)
@@ -404,7 +404,7 @@ func TestInteractionExecutorMapsStreamingModelFailure(t *testing.T) {
 		Err: errors.New("stream rate limited"),
 	}
 	model := failingInteractionStream{cause: cause}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-executor-test-build",
@@ -526,7 +526,6 @@ func TestInteractionTerminationMappingIsComplete(t *testing.T) {
 		hasFailure                  bool
 	}{
 		{name: "completion", status: "completed", cause: "completion", wantOutcome: run.OutcomeCompleted},
-		{name: "process deadline", status: "timed_out", cause: "process_deadline", reason: "process deadline", wantOutcome: run.OutcomeTimedOut, wantFailure: run.FailureTimeout, hasFailure: true},
 		{name: "parent deadline", status: "timed_out", cause: "parent_deadline", reason: "parent deadline", wantOutcome: run.OutcomeTimedOut, wantFailure: run.FailureTimeout, hasFailure: true},
 		{name: "host deadline", status: "timed_out", cause: "host_deadline", reason: "host deadline", wantOutcome: run.OutcomeTimedOut, wantFailure: run.FailureTimeout, hasFailure: true},
 		{name: "parent cancellation", status: "canceled", cause: "parent_cancellation", reason: "parent canceled", wantOutcome: run.OutcomeCanceled},
@@ -595,7 +594,7 @@ func newTestInteractionExecutorWithLifetime(
 	model chat.Model,
 ) *InteractionExecutor {
 	t.Helper()
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:               lifetime,
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-executor-test-build",
@@ -632,7 +631,7 @@ func runInteractionHarness(
 			t.Errorf("Release: %v", releaseErr)
 		}
 	})
-	sequence, err := executor.Observe(context.Background(), ref)
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -640,10 +639,7 @@ func runInteractionHarness(
 	go func() {
 		var events []runs.ExecutorEvent
 		for event := range sequence {
-			if lookup, checking := event.Payload.(runs.ResultPublicationLookup); checking {
-				lookup.Complete(false, nil)
-				continue
-			}
+
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
 				event.Payload = commit.Fact()
@@ -719,7 +715,7 @@ func TestInteractionExecutorRefusesATypedNilCapability(t *testing.T) {
 		return interactionTextResponse("unused"), nil
 	})
 	var absent *typedNilToolPresenter
-	_, err := NewInteractionExecutor(InteractionExecutorConfig{
+	_, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(model),
 		ImplementationIdentity: "interaction-typed-nil-build",

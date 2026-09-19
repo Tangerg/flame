@@ -580,7 +580,7 @@
   --dock-tab-height: 28px;
   --composer-attachment-radius: max(
     0px,
-    calc(var(--shape-composer) - var(--density-composer-editor-start))
+    calc(var(--shape-composer) - var(--composer-editor-start))
   );
   --composer-control-height: 28px;
   --composer-control-icon: 16px;
@@ -594,14 +594,14 @@
   --density-navigation-gutter: 12px;
   --density-navigation-section-gap: 18px;
   --density-navigation-group-gap: 10px;
-  --density-column-gutter: 12px;
-  --density-column-gutter-wide: 20px;
-  --density-composer-editor-top: 12px;
-  --density-composer-editor-bottom: 8px;
-  --density-composer-editor-start: 12px;
-  --density-composer-editor-end: 14px;
-  --density-composer-footer: 6px;
-  --density-composer-footer-end: 8px;
+  --reading-gutter: 12px;
+  --reading-gutter-wide: 20px;
+  --composer-editor-top: 12px;
+  --composer-editor-bottom: 8px;
+  --composer-editor-start: 12px;
+  --composer-editor-end: 14px;
+  --composer-footer: 6px;
+  --composer-footer-end: 8px;
 
   --motion-scale: 1;
   --dur-color-base: 100ms;
@@ -726,7 +726,7 @@
 
   --content-max: 768px;
   --content-max-wide: 1024px;
-  --reading-column-max: calc(var(--content-max) + 2 * var(--density-column-gutter-wide));
+  --reading-column-max: calc(var(--content-max) + 2 * var(--reading-gutter-wide));
   --reading-rail-width: 176px;
 }
 
@@ -1205,11 +1205,7 @@ html.theme-dark {
   flex-shrink: 0;
   align-items: center;
   gap: 8px;
-  /* The two literals here were exactly these variables' comfortable values, breakpoint and
-     all — the density vocabulary was written for this strip and the strip spelled it out
-     instead, so the shell chrome was the one part of the window that never answered the
-     Appearance density setting. */
-  padding-inline: var(--density-column-gutter);
+  padding-inline: var(--reading-gutter);
   background-color: var(--app-header-surface);
   -webkit-app-region: drag;
   --wails-draggable: drag;
@@ -1222,7 +1218,7 @@ html.theme-dark {
 }
 @media (min-width: 640px) {
   .agent-surface-header {
-    padding-inline: var(--density-column-gutter-wide);
+    padding-inline: var(--reading-gutter-wide);
   }
 }
 
@@ -1308,30 +1304,13 @@ html.theme-dark {
 
 .agent-context-dock > .agent-surface-header:first-child {
   gap: 4px;
-  padding-inline: calc(var(--density-column-gutter-wide) - 8px) var(--dock-control-span);
+  padding-inline: calc(var(--reading-gutter-wide) - 8px) var(--dock-control-span);
   background: var(--app-dock-tabstrip-surface);
 }
 
 .agent-composer-footer {
   --control-height-md: var(--composer-control-height);
   --icon-sm: var(--composer-control-icon);
-}
-
-/* A chip keeps its glyph, its chevron and its tooltip; what it gives up is the label, whole,
-   rather than the two characters an ellipsis would leave. `data-measuring` is on for the
-   length of one synchronous reflow: labels back on AND shrinking off, because a flex row
-   whose items have already shrunk reports no overflow at all and would measure as fitting. */
-.agent-composer-footer:not([data-labelled]):not([data-measuring])
-  [data-slot="composer-chip-label"] {
-  display: none;
-}
-.agent-composer-footer[data-measuring] > * {
-  /* `!important` on purpose, and the only one of its kind: measuring is a state that lasts one
-     reflow and has to outrank whatever the chips themselves say about shrinking. Since the chips
-     became StyleX their `flex-shrink` carries `:not(#\#)` specificity, which a plain rule cannot
-     reach — and losing here does not misplace a pixel, it makes the row measure as fitting and
-     the labels never go. */
-  flex-shrink: 0 !important;
 }
 
 .agent-dock-tabs {

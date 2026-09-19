@@ -96,11 +96,11 @@ describe("methods factory", () => {
     expect(call).toHaveBeenCalledWith(
       "agentMemory.list",
       { scope: "project", workspace: { path: "/repo" } },
-      undefined,
+      { signal: undefined },
     );
   });
 
-  it("resolves and caches the default workspace when opening an omitted ref", async () => {
+  it("resolves the default workspace in each caller-owned read lifetime", async () => {
     const call = vi.fn(async (method: string) => {
       if (method === "workspaces.resolve") {
         return {
@@ -118,12 +118,70 @@ describe("methods factory", () => {
     await second.changes.list();
 
     expect(first.ref).toEqual({ path: "/default" });
-    expect(call.mock.calls.filter(([method]) => method === "workspaces.resolve")).toHaveLength(1);
+    expect(call.mock.calls.filter(([method]) => method === "workspaces.resolve")).toHaveLength(2);
     expect(call).toHaveBeenLastCalledWith(
       "workspace.changes.list",
       { workspace: { path: "/default" } },
       undefined,
     );
+  });
+
+  it("keeps concurrent default-workspace reads independently cancellable", async () => {
+    const call = vi.fn(
+      (_method: string, _params: unknown, options?: { signal?: AbortSignal }) =>
+        new Promise((resolve, reject) => {
+          options?.signal?.addEventListener("abort", () => reject(options.signal?.reason), {
+            once: true,
+          });
+          if (!options?.signal) resolve({ ref: { path: "/default" } });
+        }),
+    );
+    const methods = createMethods({ call } as unknown as RpcClient);
+    const controller = new AbortController();
+    const retired = methods.workspaces
+      .open(undefined, controller.signal)
+      .catch((error: unknown) => error);
+    const surviving = methods.workspaces.open();
+    controller.abort();
+    await expect(retired).resolves.toMatchObject({ name: "AbortError" });
+    await expect(surviving).resolves.toMatchObject({ ref: { path: "/default" } });
+    expect(call).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a cancelled read before binding or starting its next stage", async () => {
+    const controller = new AbortController();
+    const call = vi.fn(async () => {
+      controller.abort();
+      return { ref: { path: "/default" } };
+    });
+    const methods = createMethods({ call } as unknown as RpcClient);
+    await expect(methods.workspaces.open(undefined, controller.signal)).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    await expect(
+      methods.workspaces.open({ path: "/explicit" }, controller.signal),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(call).toHaveBeenCalledTimes(1);
+  });
+
+  it("carries the read lifetime to every workspace resource", async () => {
+    const call = vi.fn().mockResolvedValue({ data: [] });
+    const workspace = createMethods({ call } as unknown as RpcClient).workspace({ path: "/repo" });
+    const signal = new AbortController().signal;
+    await workspace.diff.get(undefined, signal);
+    await workspace.files.head({ path: "a.ts" }, signal);
+    await workspace.files.search({ query: "name" }, signal);
+    await workspace.files.read({ path: "a.ts" }, signal);
+    await workspace.recipes.list(signal);
+    await workspace.hooks.list(signal);
+    await workspace.skills.listDiscovered(signal);
+    await workspace.skills.listProposals(signal);
+    await workspace.agentDocs.list(signal);
+    await workspace.knowledge.list(signal);
+    await workspace.knowledge.get("home", signal);
+    await workspace.agentMemory.list(signal);
+    expect(call).toHaveBeenCalledTimes(12);
+    for (const invocation of call.mock.calls) expect(invocation[2]).toEqual({ signal });
   });
 
   it("forwards cancellation when resolving a workspace", async () => {

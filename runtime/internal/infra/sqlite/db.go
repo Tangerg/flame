@@ -77,6 +77,8 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 	firstExactInteger := exactint.First().Value()
 	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS execution_trees (root_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, writer TEXT NOT NULL, digest TEXT NOT NULL, payload BLOB NOT NULL)`,
+		`CREATE INDEX IF NOT EXISTS idx_execution_trees_session ON execution_trees(session_id)`,
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS sessions (
 			id          TEXT    PRIMARY KEY,
 			title       TEXT    NOT NULL,

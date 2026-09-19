@@ -342,7 +342,7 @@ export const ko: Record<string, string> = {
   "settings.radius": "모서리",
   "settings.radius.sub": "전체 모서리 반경.",
   "settings.density": "밀도",
-  "settings.density.sub": "UI 여백의 양. 행 높이, 여백, 입력창 내부 간격에 적용됩니다.",
+  "settings.density.sub": "탐색 목록의 행 높이와 간격입니다.",
   "settings.density.compact": "좁게",
   "settings.density.comfortable": "보통",
   "settings.density.spacious": "넓게",

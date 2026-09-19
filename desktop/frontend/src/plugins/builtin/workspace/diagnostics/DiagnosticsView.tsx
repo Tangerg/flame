@@ -30,7 +30,7 @@ const logColumns = stylex.create({
 const d = stylex.create({
   page: {
     gap: space.s3,
-    paddingInline: "var(--density-column-gutter-wide)",
+    paddingInline: "var(--reading-gutter-wide)",
     paddingBlock: space.s3,
   },
   // Prose and a control cluster cannot share one row in a dock: the controls refuse to shrink

@@ -118,7 +118,7 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     await expect(view).toContainText("7 runs");
     await expect(view).toContainText("parent run_child");
     await expect(view).toContainText("Tool started");
-    for (const status of ["Canceled", "Error", "Limit reached", "Finished"]) {
+    for (const status of ["Canceled", "Error", "Finished"]) {
       await expect(view.getByText(status, { exact: true }).first()).toBeVisible();
     }
     return;
@@ -212,9 +212,11 @@ test("collapse and reopen preserve the dock workspace", async ({ page }) => {
 test("an unsafe narrow row folds the dock without forgetting its tabs", async ({ page }) => {
   await page.setViewportSize({ width: 1120, height: 720 });
   await openWorkspace(page, { state: "dock-light" });
+  const location = page.url();
+  const historyLength = await page.evaluate(() => history.length);
   await starveTheRow(page);
 
-  await expect(page.getByTestId("dock-open")).toHaveText("false");
+  await expect(page.getByTestId("dock-open")).toHaveText("true");
   await expect
     .poll(() =>
       page
@@ -239,28 +241,22 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
     page.getByRole("button", { name: "Widen the window to open the right workspace" }),
   ).toBeDisabled();
   await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,search,plan,timeline");
+  expect(page.url()).toBe(location);
+  expect(await page.evaluate(() => history.length)).toBe(historyLength);
+  await page.setViewportSize({ width: 1520, height: 900 });
+  await expect(page.locator(".agent-dock-row")).toHaveAttribute("data-dock", "open");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("plan");
+  await expect(page.getByRole("tab", { name: "Plan" })).toBeVisible();
 });
 
-test("the composer's chips drop their labels whole rather than ellipse them", async ({ page }) => {
+test("the model remains readable when the dock narrows the composer", async ({ page }) => {
   await openWorkspace(page, { state: "dock-review" });
-
-  const footer = page.locator(".agent-composer-footer");
-  const labels = footer.locator('[data-slot="composer-chip-label"]');
   const model = page.getByRole("button", { name: "Switch model" });
-
-  await page.setViewportSize({ width: 1800, height: 1000 });
-  await expect(footer).toHaveAttribute("data-labelled", "");
-  await expect(labels.first()).toBeVisible();
-  const clipped = await labels.evaluateAll((nodes) =>
-    nodes.filter((node) => node.scrollWidth > Math.ceil(node.getBoundingClientRect().width)),
-  );
-  expect(clipped).toHaveLength(0);
-
-  await page.setViewportSize({ width: 1120, height: 720 });
-  await expect(footer).not.toHaveAttribute("data-labelled", "");
-  await expect(labels.first()).toBeHidden();
-  await expect(model).toHaveAttribute("title", /GPT/);
-  await expect(model).toBeVisible();
+  for (const width of [1800, 1120]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(model.locator('[data-slot="composer-chip-label"]')).toBeVisible();
+    await expect(model).toHaveAttribute("title", /GPT/);
+  }
 });
 
 test("closing tabs selects a neighbor without collapsing the workspace", async ({ page }) => {
@@ -406,6 +402,21 @@ test("file and timeline tabs render through their production view plugins", asyn
   await expect(page.getByText("run_root", { exact: true })).toBeVisible();
 });
 
+test("automatic dock sizing never records a user preference", async ({ page }) => {
+  await page.setViewportSize({ width: 1120, height: 800 });
+  await openWorkspace(page, { state: "dock-catalog" });
+  const preference = page.getByTestId("persisted-dock-ratio");
+  const dock = page.locator(".agent-context-dock");
+  for (const width of [1120, 1800, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(preference).toHaveText("");
+    await expect.poll(async () => Math.round((await dock.boundingBox())!.width)).toBe(480);
+  }
+  await page.getByRole("separator", { name: "Resize right workspace" }).focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(preference).not.toHaveText("");
+});
+
 test("all dock views share one stable user-owned width", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
@@ -474,7 +485,7 @@ test("window clamping does not overwrite the dock preference", async ({ page }) 
 
   await page.setViewportSize({ width: 1120, height: 720 });
   await starveTheRow(page);
-  await expect(page.getByTestId("dock-open")).toHaveText("false");
+  await expect(page.getByTestId("dock-open")).toHaveText("true");
   await expect(separator).toHaveCount(0);
   await expect(persistedRatio).toHaveText(String(VISUAL_DOCK_WIDTH_RATIO));
 });

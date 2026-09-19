@@ -11,20 +11,27 @@ const image = new File(["image"], "shot.png", { type: "image/png" });
 
 describe("composerPasteIntent", () => {
   it("prefers pasted images over clipboard text", () => {
-    expect(composerPasteIntent([image], "x".repeat(LARGE_PASTE_CHARS))).toEqual({
+    expect(composerPasteIntent([image], "x".repeat(LARGE_PASTE_CHARS), true)).toEqual({
       kind: "images",
       files: [image],
     });
   });
 
+  it("rejects unsupported images without discarding usable clipboard text", () => {
+    expect(composerPasteIntent([image], "", false)).toEqual({ kind: "unsupported-images" });
+    expect(composerPasteIntent([image], "caption", false)).toEqual({ kind: "native" });
+    const text = "x".repeat(LARGE_PASTE_CHARS);
+    expect(composerPasteIntent([image], text, false)).toEqual({ kind: "large-text", text });
+  });
+
   it("collapses large pasted text into a paste attachment", () => {
     const text = "x".repeat(LARGE_PASTE_CHARS);
 
-    expect(composerPasteIntent([], text)).toEqual({ kind: "large-text", text });
+    expect(composerPasteIntent([], text, false)).toEqual({ kind: "large-text", text });
   });
 
   it("leaves small text to the browser paste path", () => {
-    expect(composerPasteIntent([], "small snippet")).toEqual({ kind: "native" });
+    expect(composerPasteIntent([], "small snippet", false)).toEqual({ kind: "native" });
   });
 });
 

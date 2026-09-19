@@ -2,15 +2,23 @@ import { normalizeCombo } from "@/lib/combo";
 import { isLargePaste } from "../domain/largePaste";
 
 export type ComposerPasteIntent =
-  { kind: "images"; files: File[] } | { kind: "large-text"; text: string } | { kind: "native" };
+  | { kind: "images"; files: File[] }
+  | { kind: "large-text"; text: string }
+  | { kind: "native" }
+  | { kind: "unsupported-images" };
 
 export interface TransferItemLike {
   kind: string;
   type: string;
 }
 
-export function composerPasteIntent(files: File[], text: string): ComposerPasteIntent {
-  if (files.length > 0) return { kind: "images", files };
+export function composerPasteIntent(
+  files: File[],
+  text: string,
+  acceptsImages: boolean,
+): ComposerPasteIntent {
+  if (files.length > 0 && acceptsImages) return { kind: "images", files };
+  if (files.length > 0 && !text) return { kind: "unsupported-images" };
   if (isLargePaste(text)) return { kind: "large-text", text };
   return { kind: "native" };
 }

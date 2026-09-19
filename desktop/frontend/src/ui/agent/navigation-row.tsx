@@ -10,6 +10,7 @@ import { AgentOverflowLabel } from "./overflow-label";
 // The agent row's own shape, composed INTO the button rather than layered over it: every one of
 // these replaces a property the button declared, which a class list beside it could not do.
 const rowStyles = stylex.create({
+  editor: { display: "flex", alignItems: "center", width: "100%" },
   base: {
     height: "var(--density-row-height)",
     gap: "var(--density-row-gap)",
@@ -203,6 +204,22 @@ export function AgentRow({
       >
         {action}
       </span>
+    </div>
+  );
+}
+
+export function AgentRowEditor({
+  children,
+  indent = "none",
+}: {
+  children: ReactNode;
+  indent?: "none" | "nested";
+}) {
+  return (
+    <div
+      {...stylex.props(rowStyles.base, rowStyles.editor, indent === "nested" && rowStyles.nested)}
+    >
+      {children}
     </div>
   );
 }

@@ -1,19 +1,15 @@
-import { createRef, type MutableRefObject, type PropsWithChildren } from "react";
-import { act, render, screen } from "@testing-library/react";
+import { type PropsWithChildren } from "react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import type { BlockCtx } from "@/plugins/builtin/chat/message/public/rendering";
 
-const { root, stick } = vi.hoisted(() => ({
+const { root } = vi.hoisted(() => ({
   root: {
     current: {
       running: true,
       terminalTurnIndex: () => -1,
     },
-  },
-  stick: {
-    presentationAtBottom: true,
-    lockedToBottom: true,
   },
 }));
 
@@ -44,45 +40,17 @@ vi.mock("motion/react", () => ({
 }));
 
 vi.mock("use-stick-to-bottom", () => {
-  const context = {
-    get isAtBottom() {
-      return stick.presentationAtBottom;
-    },
-    scrollRef: { current: null as HTMLDivElement | null },
-    scrollToBottom: vi.fn(),
-    state: {
-      get isAtBottom() {
-        return stick.lockedToBottom;
-      },
-      get calculatedTargetScrollTop() {
-        const viewport = context.scrollRef.current;
-        return viewport ? Math.max(viewport.scrollHeight - viewport.clientHeight - 1, 0) : 0;
-      },
-    },
-  };
-  const StickToBottom = Object.assign(
-    ({
-      children,
-      contextRef,
-    }: PropsWithChildren<{ contextRef?: MutableRefObject<typeof context | null> }>) => {
-      if (contextRef) contextRef.current = context;
-      return <div>{children}</div>;
-    },
-    {
-      Content: ({ children, scrollClassName }: PropsWithChildren<{ scrollClassName?: string }>) => (
-        <div ref={(node) => (context.scrollRef.current = node)} className={scrollClassName}>
-          {children}
-        </div>
-      ),
-    },
-  );
+  const context = { isAtBottom: true, scrollToBottom: vi.fn() };
+  const StickToBottom = Object.assign(({ children }: PropsWithChildren) => <div>{children}</div>, {
+    Content: ({ children }: PropsWithChildren) => <div>{children}</div>,
+  });
   return {
     StickToBottom,
     useStickToBottomContext: () => context,
   };
 });
 
-import { MessageStream, type MessageStreamController } from "./MessageStream";
+import { MessageStream } from "./MessageStream";
 
 const CTX: BlockCtx = {
   expandedIds: new Set(),
@@ -173,82 +141,5 @@ describe("MessageStream terminal footer materialization", () => {
     expect(screen.getByTestId("root-run-outcome").closest("[data-turn-id]")?.dataset.turnId).toBe(
       "assistant-terminal-footer",
     );
-  });
-});
-
-describe("MessageStream initial bottom reconciliation", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-    stick.presentationAtBottom = true;
-    stick.lockedToBottom = true;
-  });
-
-  it("does not take the transcript back after the reader scrolls away", () => {
-    vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame", "performance"] });
-    const controllerRef = createRef<MessageStreamController>();
-
-    render(
-      <MessageStream
-        rows={[transcriptRow("running")]}
-        ctx={CTX}
-        sessionId="session-reader-scroll"
-        controllerRef={controllerRef}
-      />,
-    );
-
-    const viewport = document.querySelector<HTMLDivElement>(".msg-scroll-viewport");
-    expect(viewport).not.toBeNull();
-    Object.defineProperties(viewport, {
-      clientHeight: { configurable: true, value: 400 },
-      scrollHeight: { configurable: true, value: 1_000 },
-      scrollTop: { configurable: true, value: 0, writable: true },
-    });
-
-    act(() => controllerRef.current?.settleInitialBottom());
-    expect(viewport?.scrollTop).toBe(599);
-
-    if (viewport) viewport.scrollTop = 240;
-    act(() => vi.advanceTimersToNextFrame());
-
-    expect(viewport?.scrollTop).toBe(240);
-  });
-
-  it("does not confuse the near-bottom presentation state with the reader-owned follow lock", () => {
-    const mutationCallbacks: MutationCallback[] = [];
-    class ControlledMutationObserver implements MutationObserver {
-      constructor(callback: MutationCallback) {
-        mutationCallbacks.push(callback);
-      }
-
-      disconnect() {}
-      observe() {}
-      takeRecords(): MutationRecord[] {
-        return [];
-      }
-    }
-    vi.stubGlobal("MutationObserver", ControlledMutationObserver);
-
-    render(
-      <MessageStream
-        rows={[transcriptRow("running")]}
-        ctx={CTX}
-        sessionId="session-wheel-escape"
-      />,
-    );
-
-    const viewport = document.querySelector<HTMLDivElement>(".msg-scroll-viewport");
-    expect(viewport).not.toBeNull();
-    Object.defineProperties(viewport, {
-      clientHeight: { configurable: true, value: 400 },
-      scrollHeight: { configurable: true, value: 1_000 },
-      scrollTop: { configurable: true, value: 540, writable: true },
-    });
-
-    stick.presentationAtBottom = true;
-    stick.lockedToBottom = false;
-    mutationCallbacks[0]?.([], {} as MutationObserver);
-
-    expect(viewport?.scrollTop).toBe(540);
   });
 });

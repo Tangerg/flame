@@ -61,7 +61,7 @@ export type AgentItem =
       /** Absent only on the provisional item.started shell. */
       phase?: AgentMessagePhase;
       runId: string;
-      status: "running" | "completed";
+      status: AgentItemStatus;
     }
   | {
       type: "reasoning";
@@ -69,7 +69,7 @@ export type AgentItem =
       id: string;
       redacted?: boolean;
       runId: string;
-      status: "running" | "completed";
+      status: AgentItemStatus;
       text?: string;
     }
   | {

@@ -343,7 +343,7 @@ export const zhTW: Record<string, string> = {
   "settings.radius": "圓角",
   "settings.radius.sub": "全域圓角大小。",
   "settings.density": "密度",
-  "settings.density.sub": "介面留白程度。影響列高、欄距與輸入區內邊距。",
+  "settings.density.sub": "導覽清單的列高與間距。",
   "settings.density.compact": "緊湊",
   "settings.density.comfortable": "適中",
   "settings.density.spacious": "寬鬆",

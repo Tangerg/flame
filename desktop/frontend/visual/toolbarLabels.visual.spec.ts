@@ -1,60 +1,62 @@
 import { expect, test } from "./test";
 
-const ROUTE = "/visual/?fixture=agent&state=idle&theme=light";
-
-const SQUEEZED_PX = 340;
-
-test("a toolbar with no room drops its labels rather than ellipsing them", async ({ page }) => {
-  await page.setViewportSize({ width: 1120, height: 800 });
-  await page.goto(ROUTE);
+test("the composer preserves the model and lets secondary labels yield without measurement", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/visual/?fixture=agent&state=idle&theme=light");
   await page.locator("html[data-visual-ready]").waitFor();
-  await page.locator(".agent-composer-footer").waitFor();
-  await page.waitForTimeout(400);
+  const composer = page.locator('[data-slot="composer-root"]');
+  const model = page.getByRole("button", { name: "Switch model" });
+  const approval = page.getByRole("button", { name: "Approval mode" });
+  await expect(model.locator('[data-slot="composer-chip-label"]')).toBeVisible();
+  await expect(approval.locator('[data-slot="composer-chip-label"]')).toBeVisible();
+  await composer.evaluate((node) => {
+    node.style.width = "320px";
+  });
+  await expect(model.locator('[data-slot="composer-chip-label"]')).toBeVisible();
+  await expect(approval.locator('[data-slot="composer-chip-label"]')).toBeHidden();
+  await model.locator('[data-slot="composer-chip-label"]').evaluate((node) => {
+    node.textContent = "A much longer model label changed without resizing the window";
+  });
+  expect(await composer.evaluate((node) => node.scrollWidth - node.clientWidth)).toBeLessThan(2);
+  await model.click();
+  await expect(page.getByRole("button", { name: "Switch reasoning effort" })).toBeVisible();
+});
 
-  const read = () =>
-    page.evaluate(() => {
-      const footer = document.querySelector(".agent-composer-footer") as HTMLElement | null;
-      if (!footer) return null;
-      const labels = [...footer.querySelectorAll('[data-slot="composer-chip-label"]')];
-      footer.dataset.measuring = "";
-      const natural = footer.scrollWidth;
-      delete footer.dataset.measuring;
-      return {
-        labelled: footer.hasAttribute("data-labelled"),
-        shown: labels.filter((label) => (label as HTMLElement).offsetParent !== null).length,
-        natural,
-        available: footer.clientWidth,
-        overflow: footer.scrollWidth - footer.clientWidth,
-        ellipsed: [...footer.querySelectorAll("*")]
-          .filter((node) => {
-            const style = getComputedStyle(node);
-            return node.scrollWidth - node.clientWidth > 1 && style.textOverflow === "ellipsis";
-          })
-          .map((node) => (node.textContent ?? "").trim().slice(0, 24)),
-      };
-    });
+test("high-risk approval remains explicit in a narrow composer", async ({ page }) => {
+  await page.goto("/visual/?fixture=agent&state=idle&theme=light");
+  await page.locator("html[data-visual-ready]").waitFor();
+  const approval = page.getByRole("button", { name: "Approval mode" });
+  await approval.click();
+  await page.getByRole("menuitem", { name: "Auto Run everything without asking." }).click();
+  const composer = page.locator('[data-slot="composer-root"]');
+  await composer.evaluate((node) => {
+    node.style.width = "280px";
+  });
+  await expect(approval.locator('[data-slot="composer-chip-label"]')).toBeVisible();
+  await expect(approval).toHaveText("Auto");
+  expect(await composer.evaluate((node) => node.scrollWidth - node.clientWidth)).toBeLessThan(2);
+});
 
-  const roomy = await read();
-  expect(roomy, "the composer has to render its toolbar").not.toBeNull();
-  expect(roomy!.shown, "the toolbar has to have labels to give up").toBeGreaterThan(1);
-  expect(roomy!.labelled).toBe(true);
-  expect(roomy!.ellipsed, "nothing should be ellipsed while there is room").toEqual([]);
-
-  await page.evaluate((width) => {
-    const footer = document.querySelector(".agent-composer-footer") as HTMLElement | null;
-    if (footer) footer.style.maxWidth = `${width}px`;
-  }, SQUEEZED_PX);
-  await page.waitForTimeout(400);
-
-  const squeezed = await read();
-  expect(
-    squeezed!.natural,
-    `the labelled row measured ${squeezed!.natural}px inside ${SQUEEZED_PX}px — either the ` +
-      `squeeze is too wide, or the chips are shrinking while being measured`,
-  ).toBeGreaterThan(SQUEEZED_PX);
-
-  expect(squeezed!.labelled, "the toolbar kept claiming it had room").toBe(false);
-  expect(squeezed!.shown, "labels that stayed to be ellipsed instead of dropping").toBe(0);
-  expect(squeezed!.ellipsed, "chips ellipsed rather than the row dropping its labels").toEqual([]);
-  expect(squeezed!.overflow, "the row still does not fit once the labels are gone").toBeLessThan(2);
+test("navigation density does not rescale reading or input geometry", async ({ page }) => {
+  const measures = [];
+  for (const density of ["compact", "spacious"]) {
+    await page.goto(`/visual/?fixture=agent&state=idle&theme=light&density=${density}`);
+    await page.locator("html[data-visual-ready]").waitFor();
+    measures.push(
+      await page.evaluate(() => {
+        const root = getComputedStyle(document.documentElement);
+        const input = document.querySelector('[data-slot="composer-root"]')!;
+        return {
+          row: root.getPropertyValue("--density-row-height"),
+          reading: root.getPropertyValue("--reading-gutter-wide"),
+          input: input.getBoundingClientRect().height,
+        };
+      }),
+    );
+  }
+  expect(measures[0]!.row).not.toBe(measures[1]!.row);
+  expect(measures[0]!.reading).toBe(measures[1]!.reading);
+  expect(measures[0]!.input).toBe(measures[1]!.input);
 });

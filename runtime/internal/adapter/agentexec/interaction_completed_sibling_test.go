@@ -93,7 +93,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime: t.Context(), ChatResolver: staticInteractionChatResolver(model),
 		ImplementationIdentity: "completed-sibling-build", ConfigurationIdentity: "completed-sibling-config",
 		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
@@ -108,7 +108,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
 		ID: "session_1", Title: "completed sibling", Workspace: testsupport.MustWorkspace(t.TempDir()),
 	})}
-	projection := newDelegateProjection()
+	projection := newDelegateProjection(t)
 	runSequence, segmentSequence := 0, 0
 	coordinator := mustNewRunCoordinator(t, runs.Dependencies{
 		RootStarts: executor, Observations: executor, Releases: executor, Conversation: delegateConversation{},
@@ -168,16 +168,17 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	if _, err := toolProcess.Await(ctx); err != nil {
 		t.Fatal(err)
 	}
-	execution.state.mu.Lock()
-	var known toolResultMetadata
-	for _, metadata := range execution.state.toolMetadata {
-		if metadata.Offload != nil {
-			known = metadata.clone()
+	projection.mu.Lock()
+	var known transcript.Item
+	for _, item := range projection.items {
+		if invocation, ok := item.ToolInvocation(); ok && invocation.Offload != nil {
+			known = item
 		}
 	}
-	execution.state.mu.Unlock()
-	if known.Offload == nil || known.Arguments != `{"value":"edited"}` || offloads.calls != 1 {
-		t.Fatalf("pending metadata: %+v", known)
+	projection.mu.Unlock()
+	knownInvocation, found := known.ToolInvocation()
+	if !found || knownInvocation.Arguments.Canonical() != `{"value":"edited"}` || knownInvocation.Offload == nil || offloads.calls != 1 {
+		t.Fatalf("completed tool was not durably projected: %+v", known)
 	}
 	close(releaseA)
 	fixture := &waitingDelegateFixture{executor: executor, coordinator: coordinator, projection: projection}
@@ -185,13 +186,8 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	<-eventsReady
 	pending := barrier.Pending()
 	checkpoint := barrier.Checkpoint()
-	if len(checkpoint.ToolResultIDs) != 1 || checkpoint.ToolResultIDs[0] != known.Offload.ID {
-		t.Fatalf("checkpoint lost body ownership: %v", checkpoint.ToolResultIDs)
-	}
-	invalid := checkpoint.Clone()
-	invalid.ToolResultIDs = nil
-	if _, err := decodeExecutorCheckpoint(invalid); err == nil {
-		t.Fatal("checkpoint accepted missing body ownership")
+	if len(checkpoint.ToolResultIDs) != 0 {
+		t.Fatalf("checkpoint retained already published result bodies: %v", checkpoint.ToolResultIDs)
 	}
 	if len(pending.Continuations) != 2 || len(pending.Bindings) != 1 {
 		t.Fatalf("waiting tree includes a completed sibling: %+v", pending)
@@ -208,7 +204,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	if err != nil {
 		t.Fatalf("restore completed sibling beside a waiting member: %v", err)
 	}
-	sequence, err := executor.Observe(t.Context(), ref)
+	sequence, err := observeTestInteraction(t, executor, t.Context(), ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,16 +257,14 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 			}
 		}
 	}
-	if restoredMetadata == nil || restoredMetadata.CallID != known.Start.CallID || restoredMetadata.Arguments != known.Arguments ||
-		!reflect.DeepEqual(restoredMetadata.Offload, known.Offload) || !reflect.DeepEqual(restoredMetadata.Result, known.Result) || writes.Load() != 1 || offloads.calls != 1 {
-		t.Fatalf("known Tool changed or reran across restore: result=%+v writes=%d offloads=%d", restoredMetadata, writes.Load(), offloads.calls)
+	projection.mu.Lock()
+	retained := projection.items[known.ID()]
+	projection.mu.Unlock()
+	if restoredMetadata != nil || !reflect.DeepEqual(retained, known) || writes.Load() != 1 || offloads.calls != 1 {
+		t.Fatalf("known tool changed or reran across restore: repeated=%+v writes=%d offloads=%d", restoredMetadata, writes.Load(), offloads.calls)
 	}
-	expectedStarts := []string{"delegate_a", "delegate_b"}
-	expectedResults := []string{"ordinary_c", "delegate_a", "delegate_b"}
-	if splitBatch {
-		expectedStarts = []string{"delegate_a"}
-		expectedResults = []string{"delegate_b", "ordinary_c", "delegate_a"}
-	}
+	expectedStarts := []string{"delegate_a"}
+	expectedResults := []string{"delegate_a"}
 	if !slices.Equal(parentStarts, expectedStarts) || !slices.Equal(parentResults, expectedResults) ||
 		childEnds != 1 || rootEnds != 1 || modelCalls.Load() != 5 {
 		t.Fatalf("restored tree starts=%v results=%v childEnds=%d rootEnds=%d modelCalls=%d",

@@ -207,7 +207,7 @@
 }
 
 .md-table-container {
-  --md-table-gutter: var(--density-column-gutter);
+  --md-table-gutter: var(--reading-gutter);
   --md-table-bleed: calc(100% + 2 * var(--md-table-gutter));
   position: relative;
   width: var(--md-table-bleed);
@@ -224,7 +224,7 @@
 }
 @media (min-width: 640px) {
   .md-table-container {
-    --md-table-gutter: var(--density-column-gutter-wide);
+    --md-table-gutter: var(--reading-gutter-wide);
   }
 }
 .md-table-scroller {

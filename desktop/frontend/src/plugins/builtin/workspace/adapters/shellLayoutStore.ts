@@ -46,7 +46,7 @@ export const useShellLayoutStore = create<ShellLayoutState & ShellLayoutActions>
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
       migrate: discardOlderVersions,
       merge: rehydrateOrDefault(STORAGE_KEY, shellLayoutPersistSchema),
     },

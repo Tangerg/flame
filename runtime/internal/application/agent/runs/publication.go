@@ -152,52 +152,9 @@ func (t treePublisher) publishAuthoritativeAtomically(
 	if batch.parkCommit != nil {
 		return reductionPublication{}, errors.New("runs: authoritative fact unexpectedly produced a park boundary")
 	}
-	combined := EventCommit{
-		RunID: route.runID, SessionID: t.rootSpec.SessionID, SegmentID: route.segmentID,
-		CommitID: newRunCommitID(),
-	}
-	for index, reduced := range batch.events {
-		if reduced.Event.Terminal() {
-			return reductionPublication{}, fmt.Errorf(
-				"runs: authoritative fact unexpectedly produced terminal event[%d]",
-				index,
-			)
-		}
-		if reduced.Commit == nil {
-			continue
-		}
-		if reduced.Commit.State != StateUnchanged || reduced.Commit.Run != nil || reduced.Commit.GoalRun != nil {
-			return reductionPublication{}, fmt.Errorf(
-				"runs: authoritative fact event[%d] carries a lifecycle transition",
-				index,
-			)
-		}
-		if reduced.Commit.ResultPublication != nil {
-			if combined.ResultPublication != nil {
-				return reductionPublication{}, errors.New("runs: repeated result publication")
-			}
-			combined.ResultPublication = new(*reduced.Commit.ResultPublication)
-		}
-		combined.Items = append(combined.Items, reduced.Commit.Items...)
-		combined.ConversationMessages = appendClonedMessages(
-			combined.ConversationMessages,
-			reduced.Commit.ConversationMessages...,
-		)
-		combined.ModelInvocations = append(
-			combined.ModelInvocations,
-			reduced.Commit.ModelInvocations...,
-		)
-		combined.ToolInvocations = append(
-			combined.ToolInvocations,
-			reduced.Commit.ToolInvocations...,
-		)
-		if reduced.Commit.Progress != nil {
-			if combined.Progress != nil {
-				return reductionPublication{}, errors.New("runs: authoritative fact repeats Run progress")
-			}
-			progress := *reduced.Commit.Progress
-			combined.Progress = &progress
-		}
+	combined, err := combineAuthoritativeCommit(route, t.rootSpec.SessionID, batch)
+	if err != nil {
+		return reductionPublication{}, err
 	}
 	if !combined.isEmpty() {
 		if err := combined.Validate(); err != nil {
@@ -561,4 +518,55 @@ func (t treePublisher) append(route *executorRoute, reduced reduction) error {
 		t.publications.nudge(reduced.Nudge.WorkspaceCWD, reduced.Nudge.Paths)
 	}
 	return nil
+}
+
+func combineAuthoritativeCommit(route *executorRoute, sessionID string, batch reductionBatch) (EventCommit, error) {
+	combined := EventCommit{
+		RunID: route.runID, SessionID: sessionID, SegmentID: route.segmentID,
+		CommitID: newRunCommitID(),
+	}
+	for index, reduced := range batch.events {
+		if reduced.Event.Terminal() {
+			return EventCommit{}, fmt.Errorf(
+				"runs: authoritative fact unexpectedly produced terminal event[%d]",
+				index,
+			)
+		}
+		if reduced.Commit == nil {
+			continue
+		}
+		if reduced.Commit.State != StateUnchanged || reduced.Commit.Run != nil || reduced.Commit.GoalRun != nil {
+			return EventCommit{}, fmt.Errorf(
+				"runs: authoritative fact event[%d] carries a lifecycle transition",
+				index,
+			)
+		}
+		if reduced.Commit.ResultPublication != nil {
+			if combined.ResultPublication != nil {
+				return EventCommit{}, errors.New("runs: repeated result publication")
+			}
+			combined.ResultPublication = new(*reduced.Commit.ResultPublication)
+		}
+		combined.Items = append(combined.Items, reduced.Commit.Items...)
+		combined.ConversationMessages = appendClonedMessages(
+			combined.ConversationMessages,
+			reduced.Commit.ConversationMessages...,
+		)
+		combined.ModelInvocations = append(
+			combined.ModelInvocations,
+			reduced.Commit.ModelInvocations...,
+		)
+		combined.ToolInvocations = append(
+			combined.ToolInvocations,
+			reduced.Commit.ToolInvocations...,
+		)
+		if reduced.Commit.Progress != nil {
+			if combined.Progress != nil {
+				return EventCommit{}, errors.New("runs: authoritative fact repeats Run progress")
+			}
+			progress := *reduced.Commit.Progress
+			combined.Progress = &progress
+		}
+	}
+	return combined, combined.Validate()
 }

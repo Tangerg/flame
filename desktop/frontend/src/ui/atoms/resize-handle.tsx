@@ -127,6 +127,7 @@ export function ResizeHandle({
       const move = (moveEvent: PointerEvent) => {
         const pane = paneRef.current;
         const delta = edge === "end" ? moveEvent.clientX - startX : startX - moveEvent.clientX;
+        if (delta === 0 && !moved) return;
         if (delta !== 0) moved = true;
         const containerWidth = element.clientWidth;
         width = clampWidth(

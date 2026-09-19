@@ -69,8 +69,7 @@ func (i *interactionSession) captureHumanInputBarrier(
 	if root == nil {
 		return agent.TreeSnapshot{}, nil, false, runs.ErrExecutorNotLive
 	}
-	// CaptureTree freezes dispatch while awaiting in-flight effects. An internal
-	// Delegate join can still need another child to start before an effect returns.
+	// Inspect live scheduling first; only the persisted head is a recovery cut.
 	inspection, readable := i.inspectTree(ctx)
 	if !readable {
 		return agent.TreeSnapshot{}, nil, false, nil
@@ -86,7 +85,7 @@ func (i *interactionSession) captureHumanInputBarrier(
 		return agent.TreeSnapshot{}, nil, false, nil
 	}
 	for {
-		tree, err := i.engine.CaptureTree(ctx, root.Relation().RootID())
+		tree, err := i.committedTree(ctx, root.Relation().RootID())
 		if err != nil {
 			return agent.TreeSnapshot{}, nil, false, err
 		}
@@ -112,14 +111,22 @@ func (i *interactionSession) captureHumanInputBarrier(
 			// Either way the tree moved under the cut, so the barrier asks again
 			// rather than treating its own stale reading as a fault.
 			if err := process.Pause(ctx, interactionBarrierPauseReason); err != nil &&
-				!errors.Is(err, agent.ErrProcessFinished) &&
-				!errors.Is(err, agent.ErrProcessNotRunning) {
+				!errors.Is(err, agent.ErrProcessFinished) {
 				return agent.TreeSnapshot{}, nil, false, fmt.Errorf("pause Interaction member %s: %w", snapshot.ProcessID(), err)
 			}
 			paused = true
 		}
 		if paused {
 			continue
+		}
+		current, readable := i.inspectTree(ctx)
+		if !readable || current.CommitPending || current.HeadDigest != tree.Digest() {
+			return agent.TreeSnapshot{}, nil, false, nil
+		}
+		for _, process := range current.Processes {
+			if process.Work != agent.ProcessWorkIdle {
+				return agent.TreeSnapshot{}, nil, false, nil
+			}
 		}
 		return tree, interruptions, true, nil
 	}
@@ -263,9 +270,29 @@ func (i *interactionSession) pausedProcessIDs() ([]agent.ProcessID, error) {
 	if err != nil {
 		return nil, err
 	}
+	parents := capturedParents(tree)
 	paused := make([]agent.ProcessID, 0)
 	for _, snapshot := range tree.ProcessSnapshots() {
-		if snapshot.Status() == agent.StatusPaused {
+		if snapshot.Status() != agent.StatusPaused {
+			continue
+		}
+		// A committed subtree cancellation can still be draining in this cut.
+		// Its product owner has retired the member and never resumes its descendants.
+		retired := false
+		for id := snapshot.ProcessID(); id.Valid(); id = parents[id] {
+			i.state.mu.Lock()
+			managed := i.state.delegateChildren[id]
+			i.state.mu.Unlock()
+			if managed != nil {
+				managed.mu.Lock()
+				retired = managed.segmentProjected
+				managed.mu.Unlock()
+				if retired {
+					break
+				}
+			}
+		}
+		if !retired {
 			paused = append(paused, snapshot.ProcessID())
 		}
 	}
@@ -287,7 +314,7 @@ func (i *interactionSession) resumePausedProcesses(
 	for index, processID := range processIDs {
 		member, inspected := inspection.Process(processID)
 		if !inspected || member.Snapshot.Status() != agent.StatusPaused {
-			return fmt.Errorf("agentexec: Interaction member %s left its paused boundary", processID)
+			return fmt.Errorf("agentexec: Interaction member %s left its paused boundary (status=%s, inspected=%t, root=%s)", processID, member.Snapshot.Status(), inspected, inspection.RootID)
 		}
 		process, found := i.engine.Process(processID)
 		if !found {

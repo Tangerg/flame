@@ -10,6 +10,7 @@ import { Pressable } from "./pressable";
 import { vocab } from "./vocabulary";
 
 const styles = stylex.create({
+  footer: { display: "flex", alignItems: "center", padding: space.s2 },
   emptyFlush: { padding: { default: null, ":is([data-empty])": 0 } },
   // A row with nothing in it takes no space. `:empty` and `[data-empty]` are two different
   // questions — one asks whether the element has children, the other whether the LIST it heads
@@ -358,6 +359,7 @@ export function CatalogPicker({
  */
 export function RailCatalogPicker({
   groups,
+  footer,
   openAtGroupId,
   label,
   placeholder,
@@ -370,6 +372,7 @@ export function RailCatalogPicker({
   align = "end",
 }: CatalogSurfaceProps & {
   groups: CatalogPickerGroup[];
+  footer?: ReactNode;
   /** Where the rail opens — the group holding what is in force, which only the caller knows. */
   openAtGroupId?: string;
 }) {
@@ -506,6 +509,7 @@ export function RailCatalogPicker({
             </ComboboxPrimitive.List>
           </div>
         </ComboboxPrimitive.Root>
+        {footer && <div {...stylex.props(styles.footer)}>{footer}</div>}
       </Popover.Content>
     </Popover.Root>
   );

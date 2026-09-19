@@ -508,8 +508,7 @@ export const en: Record<string, string> = {
   "settings.radius": "Corners",
   "settings.radius.sub": "Global corner radius.",
   "settings.density": "Density",
-  "settings.density.sub":
-    "How much air the chrome gets. Row heights, gutters, and composer insets.",
+  "settings.density.sub": "Navigation row height and spacing.",
   "settings.density.compact": "Compact",
   "settings.density.comfortable": "Comfortable",
   "settings.density.spacious": "Spacious",

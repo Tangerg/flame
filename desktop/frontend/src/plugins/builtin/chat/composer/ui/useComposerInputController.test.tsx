@@ -11,7 +11,6 @@ vi.mock("@/plugins/builtin/agent/public/run", () => ({ useIsCurrentRootRunning: 
 vi.mock("@/plugins/builtin/chat/composer/public/fileMentions", () => ({
   useFileMentions: () => ({ handleKeyDown: () => false, open: false }),
 }));
-vi.mock("@/plugins/builtin/chat/composer/public/input", () => ({ imageFiles: () => [] }));
 vi.mock("@/plugins/builtin/chat/composer/public/submit", () => ({
   submitComposer: () => submitted(),
 }));
@@ -20,16 +19,18 @@ vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
   runtimeCommandsAvailable: () => true,
 }));
 vi.mock("@/plugins/sdk", () => ({
+  notifyError: vi.fn(),
   COMPOSER_KEY_BINDING: "composer-key-binding",
   lookupExtensionByKey: (_point: unknown, key: string) =>
     key === "enter" ? { handler: ({ submit }: { submit: () => boolean }) => submit() } : undefined,
 }));
 
+import { notifyError } from "@/plugins/sdk";
 import { useComposerInputController } from "./useComposerInputController";
 
 type Controller = ReturnType<typeof useComposerInputController>;
 
-function mount() {
+function mount(options: Partial<Parameters<typeof useComposerInputController>[0]> = {}) {
   return renderHook(() =>
     useComposerInputController({
       value: "你好",
@@ -42,6 +43,7 @@ function mount() {
       onAddImages: () => {},
       onAddPaste: () => {},
       acceptsImages: true,
+      ...options,
     }),
   );
 }
@@ -130,5 +132,45 @@ describe("useComposerInputController — Enter after an IME commit", () => {
         c.handleKeyDown(enterKey());
       }),
     ).toBe(0);
+  });
+});
+
+describe("clipboard image admission", () => {
+  it.each([true, false])("preserves the draft when image support is %s", (acceptsImages) => {
+    vi.mocked(notifyError).mockClear();
+    const onAddImages = vi.fn();
+    const onClear = vi.fn();
+    const onChange = vi.fn();
+    const { result } = mount({ acceptsImages, onAddImages, onClear, onChange });
+    const image = new File(["image"], "image.png", { type: "image/png" });
+    const preventDefault = vi.fn();
+    act(() =>
+      result.current.handlePaste({
+        clipboardData: { files: [image], getData: () => "" },
+        preventDefault,
+      } as never),
+    );
+    expect(preventDefault).toHaveBeenCalledOnce();
+    expect(onAddImages).toHaveBeenCalledTimes(acceptsImages ? 1 : 0);
+    expect(notifyError).toHaveBeenCalledTimes(acceptsImages ? 0 : 1);
+    expect(onClear).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("lets mixed clipboard text use native insertion when images are unsupported", () => {
+    const onAddImages = vi.fn();
+    const { result } = mount({ acceptsImages: false, onAddImages });
+    const preventDefault = vi.fn();
+    act(() =>
+      result.current.handlePaste({
+        clipboardData: {
+          files: [new File(["image"], "a.png", { type: "image/png" })],
+          getData: () => "caption",
+        },
+        preventDefault,
+      } as never),
+    );
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(onAddImages).not.toHaveBeenCalled();
   });
 });

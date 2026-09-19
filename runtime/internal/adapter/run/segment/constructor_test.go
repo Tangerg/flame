@@ -2,6 +2,8 @@ package segment
 
 import (
 	"context"
+	"errors"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"strings"
 	"testing"
 	"time"
@@ -62,6 +64,9 @@ func TestNewFinalizerRejectsPartialTitleMaintenance(t *testing.T) {
 }
 
 func mustNewEffects(cfg Config) *Effects {
+	if dependency.Missing(cfg.ExecutionTrees) {
+		cfg.ExecutionTrees = unusedExecutionTrees{}
+	}
 	if dependency.Missing(cfg.Schedules) {
 		cfg.Schedules = inertSchedules{}
 	}
@@ -205,3 +210,15 @@ func (inertToolResults) Bind(context.Context, string, string, string, toolresult
 	return nil
 }
 func (inertToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }
+
+type unusedExecutionTrees struct{}
+
+func (unusedExecutionTrees) SaveExecutionTree(context.Context, runs.ExecutionTreeUpdate) error {
+	return errors.New("unexpected execution tree write")
+}
+func (unusedExecutionTrees) LoadExecutionTree(context.Context, string, string) (runs.ExecutionTreeHead, bool, error) {
+	return runs.ExecutionTreeHead{}, false, errors.New("unexpected execution tree read")
+}
+func (unusedExecutionTrees) ExecutionResultCommitted(context.Context, string, runs.ResultPublication) (bool, error) {
+	return false, errors.New("unexpected result read")
+}

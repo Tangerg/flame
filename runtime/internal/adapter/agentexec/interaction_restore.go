@@ -1,6 +1,7 @@
 package agentexec
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"maps"
@@ -12,6 +13,33 @@ import (
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
+
+func (i *interactionSession) validateWaitingTree(ctx context.Context, continuation runs.WaitingContinuation, checkpoint interactionCheckpointState) error {
+
+	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot)
+	for _, snapshot := range checkpoint.tree.ProcessSnapshots() {
+		snapshots[snapshot.ProcessID()] = snapshot
+		if len(snapshot.UnknownEffectIDs()) != 0 {
+			return errors.New("waiting tree contains unresolved effects")
+		}
+		deployment, err := i.state.deployments.Resolve(snapshot.DeploymentRef())
+		if err != nil {
+			return err
+		}
+		if _, err := deployment.Definition().Restore(ctx, snapshot.CommittedExecutionState()); err != nil {
+			return err
+		}
+	}
+	members, err := i.restoredWaitingMembers(continuation, snapshots, checkpoint.tree.RootID())
+	if err != nil {
+		return err
+	}
+	if _, _, err := restoreInteractionAccounting(continuation.Checkpoint.Usage, checkpoint, members); err != nil {
+		return err
+	}
+	_, _, err = i.restoreDelegateCalls(snapshots, members)
+	return err
+}
 
 func (i *interactionSession) initializeRestoredContinuation(
 	root *agent.Process,
