@@ -470,6 +470,13 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 	return nil
 }
 
+func (e *Effects) ResultPublicationCommitted(ctx context.Context, sessionID, runID, segmentID string, publication runs.ResultPublication) (bool, error) {
+	if err := publication.Validate(); err != nil {
+		return false, err
+	}
+	return e.runState.ResultPublicationCommitted(ctx, sessionID, runID, segmentID, publication.ID, publication.Digest)
+}
+
 // CommitEvent applies one run event's durable parts atomically: the
 // transcript item/run projections and the run-state transition in one
 // transaction. A tree interruption is deliberately excluded: it must use
