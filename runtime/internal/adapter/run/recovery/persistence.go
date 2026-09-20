@@ -234,7 +234,7 @@ func (p *Persistence) LoadExecutorCheckpoint(
 // transaction. The adapter deliberately does not reinterpret ownership or
 // resumability; it only preserves the ordering encoded in the plan.
 func (p *Persistence) CommitRecovery(ctx context.Context, commit runs.RecoveryCommit) error {
-	if commit.IsZero() {
+	if commit.Validate() != nil {
 		return errors.New("recovery: recovery commit is required")
 	}
 	return p.tx(ctx, func(ctx context.Context) error { return p.applyRecovery(ctx, commit) })

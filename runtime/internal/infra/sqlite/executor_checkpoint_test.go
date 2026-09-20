@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -30,7 +29,7 @@ func newExecutorCheckpointStorage(t *testing.T) (*sql.DB, *persistence.ExecutorC
 	return db, persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 }
 
-func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.ExecutorCheckpoint {
+func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) run.CheckpointState {
 	selection, err := modelref.NewWithReasoningEffort("anthropic", "claude", "high")
 	if err != nil {
 		panic(err)
@@ -39,11 +38,11 @@ func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.Exec
 	if err != nil {
 		panic(err)
 	}
-	return runs.ExecutorCheckpoint{
+	return run.CheckpointState{
 		RootMemberID: rootMemberID,
 		Payload:      []byte(payload),
 		BuildID:      testsupport.BuildID,
-		Scope: runs.ExecutionScope{
+		Scope: run.ExecutionScope{
 			SessionID:         sessionID,
 			CWD:               "/workspace/" + sessionID,
 			Isolated:          true,
@@ -70,12 +69,12 @@ func TestExecutorCheckpointStoreReplacesOneRootOwnedAggregate(t *testing.T) {
 	db, store := newExecutorCheckpointStorage(t)
 	ctx := t.Context()
 	first := storedExecutorCheckpoint("member_root", "session-1", `{"tree":"first"}`)
-	if err := store.SaveCheckpoint(ctx, first); err != nil {
+	if err := store.SaveCheckpoint(ctx, testsupport.MustCheckpoint(first)); err != nil {
 		t.Fatalf("SaveCheckpoint(first): %v", err)
 	}
 	replacement := storedExecutorCheckpoint("member_root", first.Scope.SessionID, `{"tree":"replacement","children":["opaque"]}`)
 	replacement.Usage.Models[0].Calls = 2
-	if err := store.SaveCheckpoint(ctx, replacement); err != nil {
+	if err := store.SaveCheckpoint(ctx, testsupport.MustCheckpoint(replacement)); err != nil {
 		t.Fatalf("SaveCheckpoint(replacement): %v", err)
 	}
 
@@ -83,7 +82,7 @@ func TestExecutorCheckpointStoreReplacesOneRootOwnedAggregate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadCheckpoint: %v", err)
 	}
-	if !reflect.DeepEqual(got, replacement) {
+	if !reflect.DeepEqual(got.State(), replacement) {
 		t.Fatalf("checkpoint = %+v, want %+v", got, replacement)
 	}
 	var rows int
@@ -93,63 +92,53 @@ func TestExecutorCheckpointStoreReplacesOneRootOwnedAggregate(t *testing.T) {
 }
 
 func TestExecutorCheckpointStorageRejectsMissingModelIdentity(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	err = sqlite.NewExecutorCheckpointStore(db).SaveCheckpoint(t.Context(), sqlite.ExecutorCheckpointRecord{
-		RootMemberID: "member_root",
-		Payload:      []byte("opaque"),
-		BuildID:      testsupport.BuildID,
-		Scope:        sqlite.ExecutorScopeRecord{SessionID: "session-1"},
-	})
-	if !errors.Is(err, sqlite.ErrInvalidExecutorCheckpointRecord) || !strings.Contains(err.Error(), "model selection is required") {
-		t.Fatalf("SaveCheckpoint without model identity error = %v", err)
+	state := storedExecutorCheckpoint("member_root", "session-1", "opaque")
+	state.ModelSelection = modelref.Selection{}
+	if _, err := run.NewCheckpoint(state); !errors.Is(err, run.ErrInvalidCheckpoint) {
+		t.Fatalf("missing model identity: %v", err)
 	}
 }
 
 func TestExecutorCheckpointStoreRejectsImmutablePolicyReplacement(t *testing.T) {
 	_, store := newExecutorCheckpointStorage(t)
 	first := storedExecutorCheckpoint("member_root", "session-1", `{"tree":"first"}`)
-	if err := store.SaveCheckpoint(t.Context(), first); err != nil {
+	if err := store.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(first)); err != nil {
 		t.Fatalf("SaveCheckpoint(first): %v", err)
 	}
 	mutations := []struct {
 		name   string
-		mutate func(*runs.ExecutorCheckpoint)
+		mutate func(*run.CheckpointState)
 	}{
-		{name: "build", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.BuildID = testsupport.AlternateBuildID }},
-		{name: "cwd", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.CWD = "/other" }},
-		{name: "isolation", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.Isolated = false }},
-		{name: "goal incarnation", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other-lease" }},
-		{name: "provider", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
+		{name: "build", mutate: func(checkpoint *run.CheckpointState) { checkpoint.BuildID = testsupport.AlternateBuildID }},
+		{name: "cwd", mutate: func(checkpoint *run.CheckpointState) { checkpoint.Scope.CWD = "/other" }},
+		{name: "isolation", mutate: func(checkpoint *run.CheckpointState) { checkpoint.Scope.Isolated = false }},
+		{name: "goal incarnation", mutate: func(checkpoint *run.CheckpointState) { checkpoint.Scope.GoalIncarnationID = "other-lease" }},
+		{name: "provider", mutate: func(checkpoint *run.CheckpointState) {
 			checkpoint.ModelSelection, _ = modelref.New("openai", "claude")
 		}},
-		{name: "model", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
+		{name: "model", mutate: func(checkpoint *run.CheckpointState) {
 			checkpoint.ModelSelection, _ = modelref.New("anthropic", "claude-sonnet")
 		}},
-		{name: "reasoning effort", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
+		{name: "reasoning effort", mutate: func(checkpoint *run.CheckpointState) {
 			checkpoint.ModelSelection, _ = modelref.NewWithReasoningEffort("anthropic", "claude", "medium")
 		}},
-		{name: "capabilities", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
+		{name: "capabilities", mutate: func(checkpoint *run.CheckpointState) {
 			checkpoint.Capabilities.ChildRuns = false
 		}},
 	}
 	for _, mutation := range mutations {
 		t.Run(mutation.name, func(t *testing.T) {
-			replacement := first.Clone()
+			replacement := testsupport.MustCheckpoint(first).State()
 			replacement.Payload = []byte(`{"tree":"replacement"}`)
 			mutation.mutate(&replacement)
-			if err := store.SaveCheckpoint(t.Context(), replacement); !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
-				t.Fatalf("SaveCheckpoint error = %v, want ErrInvalidExecutorCheckpoint", err)
+			if err := store.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(replacement)); !errors.Is(err, run.ErrInvalidCheckpoint) {
+				t.Fatalf("SaveCheckpoint error = %v, want ErrInvalidCheckpoint", err)
 			}
 			stored, err := store.LoadCheckpoint(t.Context(), first.RootMemberID)
 			if err != nil {
 				t.Fatalf("LoadCheckpoint: %v", err)
 			}
-			if !reflect.DeepEqual(stored, first) {
+			if !reflect.DeepEqual(stored.State(), first) {
 				t.Fatalf("checkpoint after rejected replacement = %+v, want %+v", stored, first)
 			}
 		})
@@ -160,20 +149,20 @@ func TestExecutorCheckpointStoreRejectsCumulativeUsageRegression(t *testing.T) {
 	_, store := newExecutorCheckpointStorage(t)
 	first := storedExecutorCheckpoint("member_root", "session-1", `{"tree":"first"}`)
 	first.Usage.Models[0].Calls = 2
-	if err := store.SaveCheckpoint(t.Context(), first); err != nil {
+	if err := store.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(first)); err != nil {
 		t.Fatalf("SaveCheckpoint(first): %v", err)
 	}
-	replacement := first.Clone()
+	replacement := testsupport.MustCheckpoint(first).State()
 	replacement.Payload = []byte(`{"tree":"stale"}`)
 	replacement.Usage.Models[0].Calls = 1
-	if err := store.SaveCheckpoint(t.Context(), replacement); !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
-		t.Fatalf("SaveCheckpoint(regression) error = %v, want ErrInvalidExecutorCheckpoint", err)
+	if err := store.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(replacement)); !errors.Is(err, run.ErrInvalidCheckpoint) {
+		t.Fatalf("SaveCheckpoint(regression) error = %v, want ErrInvalidCheckpoint", err)
 	}
 	stored, err := store.LoadCheckpoint(t.Context(), first.RootMemberID)
 	if err != nil {
 		t.Fatalf("LoadCheckpoint: %v", err)
 	}
-	if !reflect.DeepEqual(stored, first) {
+	if !reflect.DeepEqual(stored.State(), first) {
 		t.Fatalf("checkpoint after usage regression = %+v, want %+v", stored, first)
 	}
 }
@@ -181,18 +170,18 @@ func TestExecutorCheckpointStoreRejectsCumulativeUsageRegression(t *testing.T) {
 func TestExecutorCheckpointStoreRejectsOwnerReassignment(t *testing.T) {
 	_, store := newExecutorCheckpointStorage(t)
 	first := storedExecutorCheckpoint("member_root", "session-1", `{"tree":"first"}`)
-	if err := store.SaveCheckpoint(t.Context(), first); err != nil {
+	if err := store.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(first)); err != nil {
 		t.Fatalf("SaveCheckpoint(first): %v", err)
 	}
 	replacement := storedExecutorCheckpoint(first.RootMemberID, "session-2", `{"tree":"replacement"}`)
-	if err := store.SaveCheckpoint(t.Context(), replacement); !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
-		t.Fatalf("SaveCheckpoint(reassignment) error = %v, want ErrInvalidExecutorCheckpoint", err)
+	if err := store.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(replacement)); !errors.Is(err, run.ErrInvalidCheckpoint) {
+		t.Fatalf("SaveCheckpoint(reassignment) error = %v, want ErrInvalidCheckpoint", err)
 	}
 	stored, err := store.LoadCheckpoint(t.Context(), first.RootMemberID)
 	if err != nil {
 		t.Fatalf("LoadCheckpoint: %v", err)
 	}
-	if stored.Scope.SessionID != first.Scope.SessionID || !bytes.Equal(stored.Payload, first.Payload) {
+	if stored.Scope().SessionID != first.Scope.SessionID || !bytes.Equal(stored.Payload(), first.Payload) {
 		t.Fatalf("checkpoint after rejected reassignment = %+v, want original owner and payload", stored)
 	}
 }
@@ -200,34 +189,34 @@ func TestExecutorCheckpointStoreRejectsOwnerReassignment(t *testing.T) {
 func TestExecutorCheckpointStoreTreatsPayloadAsOpaqueBytes(t *testing.T) {
 	_, store := newExecutorCheckpointStorage(t)
 	checkpoint := storedExecutorCheckpoint("member_root", "session-1", "\x00not-json\xff")
-	if err := store.SaveCheckpoint(t.Context(), checkpoint); err != nil {
+	if err := store.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(checkpoint)); err != nil {
 		t.Fatalf("SaveCheckpoint: %v", err)
 	}
 	got, err := store.LoadCheckpoint(t.Context(), checkpoint.RootMemberID)
 	if err != nil {
 		t.Fatalf("LoadCheckpoint: %v", err)
 	}
-	if !bytes.Equal(got.Payload, checkpoint.Payload) {
-		t.Fatalf("payload = %q, want exact opaque bytes %q", got.Payload, checkpoint.Payload)
+	if !bytes.Equal(got.Payload(), checkpoint.Payload) {
+		t.Fatalf("payload = %q, want exact opaque bytes %q", got.Payload(), checkpoint.Payload)
 	}
 }
 
 func TestExecutorCheckpointStoreRoundTripsApplicationEnvelope(t *testing.T) {
 	_, store := newExecutorCheckpointStorage(t)
 	want := storedExecutorCheckpoint("member_root", "session-1", `{"opaque":true}`)
-	if err := store.SaveCheckpoint(t.Context(), want); err != nil {
+	if err := store.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(want)); err != nil {
 		t.Fatalf("SaveCheckpoint: %v", err)
 	}
 	got, err := store.LoadCheckpoint(t.Context(), want.RootMemberID)
 	if err != nil {
 		t.Fatalf("LoadCheckpoint: %v", err)
 	}
-	if got.RootMemberID != want.RootMemberID ||
-		got.BuildID != want.BuildID ||
-		got.Scope != want.Scope ||
-		got.ModelSelection != want.ModelSelection ||
-		!reflect.DeepEqual(got.Capabilities, want.Capabilities) ||
-		!reflect.DeepEqual(got.Usage, want.Usage) {
+	if got.RootMemberID() != want.RootMemberID ||
+		got.BuildID() != want.BuildID ||
+		got.Scope() != want.Scope ||
+		got.ModelSelection() != want.ModelSelection ||
+		!reflect.DeepEqual(got.Capabilities(), want.Capabilities) ||
+		!reflect.DeepEqual(got.Usage(), want.Usage) {
 		t.Fatalf("application envelope = %+v, want %+v", got, want)
 	}
 }
@@ -254,7 +243,7 @@ func TestExecutorCheckpointStoreRejectsRetiredOrMalformedPolicy(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db, store := newExecutorCheckpointStorage(t)
 			checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"opaque":true}`)
-			if err := store.SaveCheckpoint(t.Context(), checkpoint); err != nil {
+			if err := store.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(checkpoint)); err != nil {
 				t.Fatalf("SaveCheckpoint: %v", err)
 			}
 			var policy string
@@ -274,8 +263,8 @@ func TestExecutorCheckpointStoreRejectsRetiredOrMalformedPolicy(t *testing.T) {
 			); err != nil {
 				t.Fatalf("corrupt policy: %v", err)
 			}
-			if _, err := store.LoadCheckpoint(t.Context(), checkpoint.RootMemberID); !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
-				t.Fatalf("LoadCheckpoint error = %v, want ErrInvalidExecutorCheckpoint", err)
+			if _, err := store.LoadCheckpoint(t.Context(), checkpoint.RootMemberID); !errors.Is(err, run.ErrInvalidCheckpoint) {
+				t.Fatalf("LoadCheckpoint error = %v, want ErrInvalidCheckpoint", err)
 			}
 		})
 	}
@@ -284,17 +273,16 @@ func TestExecutorCheckpointStoreRejectsRetiredOrMalformedPolicy(t *testing.T) {
 func TestExecutorCheckpointStoreMissingUsesDomainSentinel(t *testing.T) {
 	_, store := newExecutorCheckpointStorage(t)
 	_, err := store.LoadCheckpoint(t.Context(), "missing")
-	if !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+	if !errors.Is(err, run.ErrCheckpointNotFound) {
 		t.Fatalf("LoadCheckpoint error = %v, want ErrExecutorCheckpointNotFound", err)
 	}
 }
 
 func TestExecutorCheckpointStoreRejectsInvalidEnvelopeBeforeMutation(t *testing.T) {
 	db, store := newExecutorCheckpointStorage(t)
-	checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"opaque":true}`)
-	checkpoint.BuildID = ""
-	if err := store.SaveCheckpoint(t.Context(), checkpoint); !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
-		t.Fatalf("SaveCheckpoint error = %v, want ErrInvalidExecutorCheckpoint", err)
+	checkpoint := run.Checkpoint{}
+	if err := store.SaveCheckpoint(t.Context(), checkpoint); !errors.Is(err, run.ErrInvalidCheckpoint) {
+		t.Fatalf("SaveCheckpoint error = %v, want ErrInvalidCheckpoint", err)
 	}
 	var rows int
 	if err := db.QueryRowContext(t.Context(), `SELECT count(*) FROM executor_checkpoints`).Scan(&rows); err != nil || rows != 0 {
@@ -305,19 +293,19 @@ func TestExecutorCheckpointStoreRejectsInvalidEnvelopeBeforeMutation(t *testing.
 func TestExecutorCheckpointStoreDeletesExactAggregates(t *testing.T) {
 	_, store := newExecutorCheckpointStorage(t)
 	ctx := t.Context()
-	for _, checkpoint := range []runs.ExecutorCheckpoint{
+	for _, checkpoint := range []run.CheckpointState{
 		storedExecutorCheckpoint("root-a", "session-a", `{"root":"a"}`),
 		storedExecutorCheckpoint("root-b", "session-a", `{"root":"b"}`),
 		storedExecutorCheckpoint("root-c", "session-b", `{"root":"c"}`),
 	} {
-		if err := store.SaveCheckpoint(ctx, checkpoint); err != nil {
+		if err := store.SaveCheckpoint(ctx, testsupport.MustCheckpoint(checkpoint)); err != nil {
 			t.Fatalf("SaveCheckpoint(%s): %v", checkpoint.RootMemberID, err)
 		}
 	}
 	if err := store.DeleteCheckpoints(ctx, "session-a", []string{"root-b", "unknown"}); err != nil {
 		t.Fatalf("DeleteCheckpoints: %v", err)
 	}
-	if _, err := store.LoadCheckpoint(ctx, "root-b"); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+	if _, err := store.LoadCheckpoint(ctx, "root-b"); !errors.Is(err, run.ErrCheckpointNotFound) {
 		t.Fatalf("deleted root-b = %v", err)
 	}
 	for _, rootID := range []string{"root-a", "root-c"} {
@@ -336,13 +324,13 @@ func TestExecutorCheckpointStoreDeletesExactAggregates(t *testing.T) {
 func TestExecutorCheckpointStoreRejectsForeignSessionDeletion(t *testing.T) {
 	_, store := newExecutorCheckpointStorage(t)
 	checkpoint := storedExecutorCheckpoint("root-a", "session-a", `{"root":"a"}`)
-	if err := store.SaveCheckpoint(t.Context(), checkpoint); err != nil {
+	if err := store.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(checkpoint)); err != nil {
 		t.Fatalf("SaveCheckpoint: %v", err)
 	}
 
 	err := store.DeleteCheckpoints(t.Context(), "session-b", []string{checkpoint.RootMemberID})
-	if !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
-		t.Fatalf("DeleteCheckpoints error = %v, want ErrInvalidExecutorCheckpoint", err)
+	if !errors.Is(err, run.ErrInvalidCheckpoint) {
+		t.Fatalf("DeleteCheckpoints error = %v, want ErrInvalidCheckpoint", err)
 	}
 	if _, err := store.LoadCheckpoint(t.Context(), checkpoint.RootMemberID); err != nil {
 		t.Fatalf("foreign checkpoint was deleted: %v", err)
@@ -352,21 +340,21 @@ func TestExecutorCheckpointStoreRejectsForeignSessionDeletion(t *testing.T) {
 func TestExecutorCheckpointStoreDeletesByApplicationOwnership(t *testing.T) {
 	_, store := newExecutorCheckpointStorage(t)
 	ctx := context.Background()
-	for _, checkpoint := range []runs.ExecutorCheckpoint{
+	for _, checkpoint := range []run.CheckpointState{
 		storedExecutorCheckpoint("keep", "session-a", `{"root":"keep"}`),
 		storedExecutorCheckpoint("drop-session", "session-b", `{"root":"drop-session"}`),
 	} {
-		if err := store.SaveCheckpoint(ctx, checkpoint); err != nil {
+		if err := store.SaveCheckpoint(ctx, testsupport.MustCheckpoint(checkpoint)); err != nil {
 			t.Fatalf("SaveCheckpoint(%s): %v", checkpoint.RootMemberID, err)
 		}
 	}
 	if err := store.DeleteSessionCheckpoints(ctx, "session-b"); err != nil {
 		t.Fatalf("DeleteSessionCheckpoints: %v", err)
 	}
-	if _, err := store.LoadCheckpoint(ctx, "drop-session"); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+	if _, err := store.LoadCheckpoint(ctx, "drop-session"); !errors.Is(err, run.ErrCheckpointNotFound) {
 		t.Fatalf("stale checkpoint = %v", err)
 	}
-	if got, err := store.LoadCheckpoint(ctx, "keep"); err != nil || got.RootMemberID != "keep" {
+	if got, err := store.LoadCheckpoint(ctx, "keep"); err != nil || got.RootMemberID() != "keep" {
 		t.Fatalf("preserved checkpoint = (%+v, %v)", got, err)
 	}
 }

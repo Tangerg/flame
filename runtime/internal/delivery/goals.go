@@ -1,6 +1,8 @@
 package delivery
 
 import (
+	"context"
+
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -17,31 +19,55 @@ func registerGoals(registry *Registry) {
 	registry.command(MethodMeta{
 		Name: GoalsStart, Errors: []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureGoals),
-	}, (*Handler).StartGoal)
+	}, func(service interface {
+		StartGoal(context.Context, protocol.StartGoalRequest) (*protocol.Goal, error)
+	}, ctx context.Context, request protocol.StartGoalRequest) (*protocol.Goal, error) {
+		return service.StartGoal(ctx, request)
+	})
 
 	registry.command(MethodMeta{
 		Name: GoalsUpdate, Errors: []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureGoals),
-	}, (*Handler).UpdateGoal)
+	}, func(service interface {
+		UpdateGoal(context.Context, protocol.UpdateGoalRequest) (*protocol.Goal, error)
+	}, ctx context.Context, request protocol.UpdateGoalRequest) (*protocol.Goal, error) {
+		return service.UpdateGoal(ctx, request)
+	})
 
 	registry.commandAck(MethodMeta{
 		Name: GoalsClear, Errors: []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureGoals),
-	}, (*Handler).ClearGoal)
+	}, func(service interface {
+		ClearGoal(context.Context, protocol.GoalRequest) error
+	}, ctx context.Context, request protocol.GoalRequest) error {
+		return service.ClearGoal(ctx, request)
+	})
 
 	registry.query(MethodMeta{
 		Name: GoalsGet, Errors: []string{protocol.ErrSessionNotFound.Error()},
 		// A session with no goal is not an error, so the published result admits null.
 		ResultNullable: true, CapabilityRules: requires(protocol.FeatureGoals),
-	}, (*Handler).GetGoal)
+	}, func(service interface {
+		GetGoal(context.Context, protocol.GoalRequest) (*protocol.Goal, error)
+	}, ctx context.Context, request protocol.GoalRequest) (*protocol.Goal, error) {
+		return service.GetGoal(ctx, request)
+	})
 
 	registry.command(MethodMeta{
 		Name: GoalsStop, Errors: []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureGoals),
-	}, (*Handler).StopGoal)
+	}, func(service interface {
+		StopGoal(context.Context, protocol.GoalRequest) (*protocol.Goal, error)
+	}, ctx context.Context, request protocol.GoalRequest) (*protocol.Goal, error) {
+		return service.StopGoal(ctx, request)
+	})
 
 	registry.command(MethodMeta{
 		Name: GoalsResume, Errors: []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureGoals),
-	}, (*Handler).ResumeGoal)
+	}, func(service interface {
+		ResumeGoal(context.Context, protocol.GoalRequest) (*protocol.Goal, error)
+	}, ctx context.Context, request protocol.GoalRequest) (*protocol.Goal, error) {
+		return service.ResumeGoal(ctx, request)
+	})
 }

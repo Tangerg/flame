@@ -31,7 +31,7 @@ type waitingSubtreeCancellationState struct {
 	RootRun          rundomain.Run
 	ExpectedPending  Pending
 	RemainingPending *Pending
-	Checkpoint       ExecutorCheckpoint
+	Checkpoint       rundomain.Checkpoint
 	TerminalRuns     []rundomain.Replacement
 	TerminalItems    []transcript.Replacement
 	Resume           *rundomain.TreeResumeDraft
@@ -49,7 +49,7 @@ func NewParkedSubtreeCancellationCommit(
 	rootRun rundomain.Run,
 	expectedPending Pending,
 	remainingPending Pending,
-	checkpoint ExecutorCheckpoint,
+	checkpoint rundomain.Checkpoint,
 	terminalRuns []rundomain.Replacement,
 	terminalItems []transcript.Replacement,
 ) (WaitingSubtreeCancellationCommit, error) {
@@ -69,7 +69,7 @@ func NewResumingSubtreeCancellationCommit(
 	targetRunID string,
 	rootRun rundomain.Run,
 	expectedPending Pending,
-	checkpoint ExecutorCheckpoint,
+	checkpoint rundomain.Checkpoint,
 	terminalRuns []rundomain.Replacement,
 	terminalItems []transcript.Replacement,
 	resume rundomain.TreeResumeDraft,
@@ -93,7 +93,6 @@ func newWaitingSubtreeCancellationCommit(
 		remaining := state.RemainingPending.Clone()
 		state.RemainingPending = &remaining
 	}
-	state.Checkpoint = state.Checkpoint.Clone()
 	state.TerminalRuns = slices.Clone(state.TerminalRuns)
 	state.TerminalItems = slices.Clone(state.TerminalItems)
 	if state.Resume != nil {
@@ -139,8 +138,8 @@ func (w WaitingSubtreeCancellationCommit) RemainingPending() (Pending, bool) {
 }
 
 // Checkpoint returns an isolated executor checkpoint for the surviving tree.
-func (w WaitingSubtreeCancellationCommit) Checkpoint() ExecutorCheckpoint {
-	return w.state.Checkpoint.Clone()
+func (w WaitingSubtreeCancellationCommit) Checkpoint() rundomain.Checkpoint {
+	return w.state.Checkpoint
 }
 
 // TerminalRuns returns the canceled subtree's canonical Run replacements.
@@ -266,11 +265,11 @@ func validateWaitingCancellationBoundary(c waitingSubtreeCancellationState) erro
 	if err := c.Checkpoint.ValidateOwnership(rootContinuation.MemberID, c.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation checkpoint ownership: %w", err)
 	}
-	if c.Checkpoint.Scope.GoalIncarnationID != c.ExpectedPending.GoalIncarnationID ||
-		!c.Checkpoint.ModelSelection.Equal(rootContinuation.ModelSelection) {
+	if c.Checkpoint.Scope().GoalIncarnationID != c.ExpectedPending.GoalIncarnationID ||
+		!c.Checkpoint.ModelSelection().Equal(rootContinuation.ModelSelection) {
 		return fmt.Errorf(
 			"runs: waiting cancellation checkpoint differs from root continuation: %w",
-			ErrInvalidExecutorCheckpoint,
+			rundomain.ErrInvalidCheckpoint,
 		)
 	}
 	return nil

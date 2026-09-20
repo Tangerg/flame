@@ -15,13 +15,15 @@ func TestReplacementOwnsOneExactGoalVersionAdvance(t *testing.T) {
 		t.Fatal(err)
 	}
 	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
-	state := testGoalFor(t, "ses_1", "inc_1")
-	state.capabilities = capabilities.Normalized()
+	state, err := New("ses_1", "objective", testSelection(t), capabilities, "inc_1", time.Unix(10, 0).UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
 	replacement, err := NewReplacement(expected.Version(), state)
 	if err != nil {
 		t.Fatalf("NewReplacement: %v", err)
 	}
-	state.capabilities.InterruptKinds[0] = interrupt.Approval
+	capabilities.InterruptKinds[0] = interrupt.Approval
 	owned := replacement.State()
 	read := owned.Capabilities()
 	read.InterruptKinds[0] = interrupt.Approval

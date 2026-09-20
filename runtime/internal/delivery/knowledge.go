@@ -1,6 +1,8 @@
 package delivery
 
 import (
+	"context"
+
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -16,14 +18,22 @@ func registerKnowledge(registry *Registry) {
 			protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrPathOutsideRoot.Error(),
 		},
 		CapabilityRules: requires(protocol.FeatureKnowledge),
-	}, (*Handler).ListKnowledge)
+	}, func(service interface {
+		ListKnowledge(context.Context, protocol.WorkspaceQuery) (*protocol.Page[protocol.KnowledgeEntry], error)
+	}, ctx context.Context, request protocol.WorkspaceQuery) (*protocol.Page[protocol.KnowledgeEntry], error) {
+		return service.ListKnowledge(ctx, request)
+	})
 
 	registry.query(MethodMeta{
 		Name: KnowledgeGet, Errors: []string{
 			protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrPathOutsideRoot.Error(),
 		},
 		CapabilityRules: requires(protocol.FeatureKnowledge),
-	}, (*Handler).GetKnowledge)
+	}, func(service interface {
+		GetKnowledge(context.Context, protocol.GetKnowledgeRequest) (*protocol.KnowledgeEntry, error)
+	}, ctx context.Context, request protocol.GetKnowledgeRequest) (*protocol.KnowledgeEntry, error) {
+		return service.GetKnowledge(ctx, request)
+	})
 
 	registry.command(MethodMeta{
 		Name: KnowledgeUpdate, Errors: []string{
@@ -31,5 +41,9 @@ func registerKnowledge(registry *Registry) {
 			protocol.ErrRevisionConflict.Error(),
 		},
 		CapabilityRules: requires(protocol.FeatureKnowledge),
-	}, (*Handler).UpdateKnowledge)
+	}, func(service interface {
+		UpdateKnowledge(context.Context, protocol.UpdateKnowledgeRequest) (*protocol.KnowledgeEntry, error)
+	}, ctx context.Context, request protocol.UpdateKnowledgeRequest) (*protocol.KnowledgeEntry, error) {
+		return service.UpdateKnowledge(ctx, request)
+	})
 }

@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -168,7 +169,6 @@ func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID stri
 		}
 		var currentGoal *goal.Goal
 		if stored, found := current.Goal(); found {
-			stored = stored.Clone()
 			currentGoal = &stored
 		}
 		snapshot = sessions.MaterialSnapshot{
@@ -219,8 +219,8 @@ func (s *SessionStores) ReadSnapshot(ctx context.Context, sessionID string) (ses
 // ApplyFork persists the Domain-derived child Session and the complete visible
 // history/Plan boundary in one transaction.
 func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (session.Session, error) {
-	if err := fork.Validate(); err != nil {
-		return session.Session{}, fmt.Errorf("persistence: invalid fork plan: %w", err)
+	if fork.IsZero() {
+		return session.Session{}, errors.New("persistence: invalid fork plan")
 	}
 	snapshot := fork.Snapshot()
 	child := fork.Child()
@@ -258,8 +258,8 @@ func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (
 
 // ApplyRollback persists one resolved rollback plan atomically.
 func (s *SessionStores) ApplyRollback(ctx context.Context, rollback sessions.RollbackPlan) error {
-	if err := rollback.Validate(); err != nil {
-		return fmt.Errorf("persistence: invalid rollback plan: %w", err)
+	if rollback.IsZero() {
+		return errors.New("persistence: invalid rollback plan")
 	}
 	sessionID := rollback.SessionID()
 	dropRunIDs := rollback.DropRunIDs()
@@ -319,8 +319,8 @@ func (s *SessionStores) deleteRolledBackRuns(ctx context.Context, sessionID stri
 // ApplyRestore replaces every durable projection for a restored session in one
 // transaction.
 func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.RestorePlan) error {
-	if err := restore.Validate(); err != nil {
-		return fmt.Errorf("persistence: invalid restore plan: %w", err)
+	if restore.IsZero() {
+		return errors.New("persistence: invalid restore plan")
 	}
 	sessionReplacement := restore.SessionReplacement()
 	snapshot := restore.Snapshot()
@@ -402,8 +402,8 @@ func (s *SessionStores) restoreToolResults(ctx context.Context, blobs []toolresu
 
 // ApplyDelete removes all durable state for the addressed session.
 func (s *SessionStores) ApplyDelete(ctx context.Context, deletion sessions.DeletePlan) error {
-	if err := deletion.Validate(); err != nil {
-		return fmt.Errorf("persistence: invalid delete plan: %w", err)
+	if deletion.IsZero() {
+		return errors.New("persistence: invalid delete plan")
 	}
 	sessionID := deletion.SessionID()
 	return s.tx(ctx, func(ctx context.Context) error {

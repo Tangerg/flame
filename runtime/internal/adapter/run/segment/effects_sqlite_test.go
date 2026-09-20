@@ -1071,9 +1071,9 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 	); startToolInvocationErr != nil {
 		t.Fatalf("start Tool invocation: %v", startToolInvocationErr)
 	}
-	checkpoint := executorCheckpoint(t, rootMemberID, "opaque waiting checkpoint", runs.ExecutorCheckpoint{
+	checkpoint := executorCheckpoint(t, rootMemberID, "opaque waiting checkpoint", run.CheckpointState{
 		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: "ses_1"},
+		Scope:          run.ExecutionScope{SessionID: "ses_1"},
 		ModelSelection: mustEffectSelection(t, "anthropic", "claude"),
 		Usage:          accounting.Snapshot{},
 	})
@@ -1146,7 +1146,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		t.Fatalf("barrier marker matched=%t err=%v, want true/nil", matched, err)
 	}
 
-	if stored, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, rootMemberID); loadCheckpointErr != nil || stored.RootMemberID != rootMemberID {
+	if stored, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, rootMemberID); loadCheckpointErr != nil || stored.RootMemberID() != rootMemberID {
 		t.Fatalf("stored executor checkpoint = (%+v, %v)", stored, loadCheckpointErr)
 	}
 	var toolState string
@@ -1179,9 +1179,9 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 	parkedAt := time.Unix(2, 0).UTC()
 	const rootMemberID = "member_rollback"
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
-	checkpoint := executorCheckpoint(t, rootMemberID, "opaque rollback checkpoint", runs.ExecutorCheckpoint{
+	checkpoint := executorCheckpoint(t, rootMemberID, "opaque rollback checkpoint", run.CheckpointState{
 		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: "ses_rollback"},
+		Scope:          run.ExecutionScope{SessionID: "ses_rollback"},
 		ModelSelection: mustEffectSelection(t, "anthropic", "claude"),
 		Usage:          accounting.Snapshot{},
 	})
@@ -1223,7 +1223,7 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("CommitTreeBarrier succeeded without an admitted Run")
 	}
-	if _, loadErr := checkpointStore.LoadCheckpoint(ctx, rootMemberID); !errors.Is(loadErr, runs.ErrExecutorCheckpointNotFound) {
+	if _, loadErr := checkpointStore.LoadCheckpoint(ctx, rootMemberID); !errors.Is(loadErr, run.ErrCheckpointNotFound) {
 		t.Fatalf("checkpoint survived failed tree barrier: %v", loadErr)
 	}
 	if _, found, getErr := interruptStore.Get(ctx, pending.RootRunID); getErr != nil || found {
@@ -1264,13 +1264,13 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		t.Fatalf("seed question Item: %v", appendItemErr)
 	}
 	root, _ := pending.RootContinuation()
-	checkpoint := runs.ExecutorCheckpoint{
+	checkpoint := testsupport.MustCheckpoint(run.CheckpointState{
 		RootMemberID:   root.MemberID,
 		Payload:        []byte(`{"opaque":"tree"}`),
 		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: pending.SessionID},
+		Scope:          run.ExecutionScope{SessionID: pending.SessionID},
 		ModelSelection: root.ModelSelection,
-	}
+	})
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
 	}
@@ -1354,7 +1354,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	if _, getFound, getErr := interruptStore.Get(ctx, pending.RootRunID); getErr != nil || getFound {
 		t.Fatalf("open interrupt after claim = found:%t err:%v, want hidden", getFound, getErr)
 	}
-	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, root.MemberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
+	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, root.MemberID); !errors.Is(loadCheckpointErr, run.ErrCheckpointNotFound) {
 		t.Fatalf("checkpoint after claim = %v, want not found", loadCheckpointErr)
 	}
 	answeredItem, found, err := transcriptStore.Item(ctx, questionItem.ID())
@@ -1450,11 +1450,11 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 		t.Fatalf("seed ToolCall: %v", appendItemErr)
 	}
 	root, _ := pending.RootContinuation()
-	checkpoint := runs.ExecutorCheckpoint{
+	checkpoint := testsupport.MustCheckpoint(run.CheckpointState{
 		RootMemberID: root.MemberID, Payload: []byte(`{"opaque":"tree"}`),
-		BuildID: checkpointBuildID, Scope: runs.ExecutionScope{SessionID: pending.SessionID},
+		BuildID: checkpointBuildID, Scope: run.ExecutionScope{SessionID: pending.SessionID},
 		ModelSelection: root.ModelSelection,
-	}
+	})
 	if saveCheckpointErr := checkpoints.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
 	}
@@ -1527,7 +1527,7 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	if _, found, err := interrupts.Get(ctx, pending.RootRunID); err != nil || found {
 		t.Fatalf("Pending after commit = found:%t err:%v", found, err)
 	}
-	if _, err := checkpoints.LoadCheckpoint(ctx, root.MemberID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+	if _, err := checkpoints.LoadCheckpoint(ctx, root.MemberID); !errors.Is(err, run.ErrCheckpointNotFound) {
 		t.Fatalf("checkpoint after commit = %v, want not found", err)
 	}
 	requireSQLiteHealthy(t, ctx, db)
@@ -1596,7 +1596,7 @@ func TestClaimResumeRollsBackWhenCommitMarkerFails(t *testing.T) {
 	if err != nil || !found || !reflect.DeepEqual(gotPending, fixture.pending) {
 		t.Fatalf("interrupt after marker rollback = found:%t value:%+v err:%v", found, gotPending, err)
 	}
-	gotCheckpoint, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.checkpoint.RootMemberID)
+	gotCheckpoint, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.checkpoint.RootMemberID())
 	if err != nil || !executorCheckpointValuesEqual(gotCheckpoint, fixture.checkpoint) {
 		t.Fatalf("checkpoint after marker rollback = %+v err=%v", gotCheckpoint, err)
 	}
@@ -1627,7 +1627,7 @@ type resumeClaimSQLiteFixture struct {
 	pending     runs.Pending
 	answers     []runs.InterruptAnswer
 	claim       runs.ResumeClaimCommit
-	checkpoint  runs.ExecutorCheckpoint
+	checkpoint  run.Checkpoint
 	question    transcript.Item
 	interrupts  *persistence.InterruptStore
 	checkpoints *persistence.ExecutorCheckpointStore
@@ -1677,13 +1677,13 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 	if !found {
 		t.Fatal("fixture Pending has no root continuation")
 	}
-	checkpoint := runs.ExecutorCheckpoint{
+	checkpoint := testsupport.MustCheckpoint(run.CheckpointState{
 		RootMemberID:   root.MemberID,
 		Payload:        []byte(`{"opaque":"tree"}`),
 		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: pending.SessionID},
+		Scope:          run.ExecutionScope{SessionID: pending.SessionID},
 		ModelSelection: root.ModelSelection,
-	}
+	})
 	if saveCheckpointErr := checkpoints.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
 	}
@@ -1744,7 +1744,7 @@ func assertResumeClaimCommitted(t *testing.T, fixture resumeClaimSQLiteFixture) 
 	if _, found, err := fixture.interrupts.Get(fixture.ctx, fixture.pending.RootRunID); err != nil || found {
 		t.Fatalf("open interrupt after claim = found:%t err:%v, want hidden", found, err)
 	}
-	if _, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.checkpoint.RootMemberID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+	if _, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.checkpoint.RootMemberID()); !errors.Is(err, run.ErrCheckpointNotFound) {
 		t.Fatalf("checkpoint after claim = %v, want not found", err)
 	}
 	answeredItem, found, err := fixture.transcript.Item(fixture.ctx, fixture.question.ID())
@@ -1757,15 +1757,7 @@ func assertResumeClaimCommitted(t *testing.T, fixture resumeClaimSQLiteFixture) 
 	}
 }
 
-func executorCheckpointValuesEqual(left, right runs.ExecutorCheckpoint) bool {
-	return left.RootMemberID == right.RootMemberID &&
-		slices.Equal(left.Payload, right.Payload) &&
-		left.BuildID == right.BuildID &&
-		left.Scope == right.Scope &&
-		left.ModelSelection == right.ModelSelection &&
-		left.Capabilities.Equal(right.Capabilities) &&
-		slices.Equal(left.Usage.Models, right.Usage.Models)
-}
+func executorCheckpointValuesEqual(left, right run.Checkpoint) bool { return left.Equal(right) }
 
 func TestCommitTerminalOwnsExecutorCheckpointDeletion(t *testing.T) {
 	for _, test := range []struct {
@@ -1829,9 +1821,9 @@ func newTerminalCheckpointFixture(
 	}
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(database))
 	const rootMemberID = "member_terminal"
-	if err := checkpointStore.SaveCheckpoint(ctx, executorCheckpoint(t, rootMemberID, "opaque terminal checkpoint", runs.ExecutorCheckpoint{
+	if err := checkpointStore.SaveCheckpoint(ctx, executorCheckpoint(t, rootMemberID, "opaque terminal checkpoint", run.CheckpointState{
 		BuildID: checkpointBuildID,
-		Scope:   runs.ExecutionScope{SessionID: "ses_terminal"},
+		Scope:   run.ExecutionScope{SessionID: "ses_terminal"},
 		Usage:   accounting.Snapshot{},
 	})); err != nil {
 		t.Fatalf("seed checkpoint: %v", err)
@@ -1930,7 +1922,7 @@ func assertTerminalCheckpointCommit(t *testing.T, fixture terminalCheckpointFixt
 	if commitError != nil {
 		t.Fatalf("CommitEvent: %v", commitError)
 	}
-	if _, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.rootMemberID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+	if _, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.rootMemberID); !errors.Is(err, run.ErrCheckpointNotFound) {
 		t.Fatalf("terminal checkpoint survived: %v", err)
 	}
 	var remaining int
@@ -2121,8 +2113,8 @@ type waitingCancellationSQLiteFixture struct {
 	grandchildRun         run.Run
 	parentItem            transcript.Item
 	originalItems         []transcript.Item
-	originalCheckpoint    runs.ExecutorCheckpoint
-	replacementCheckpoint runs.ExecutorCheckpoint
+	originalCheckpoint    run.Checkpoint
+	replacementCheckpoint run.Checkpoint
 	commit                runs.WaitingSubtreeCancellationCommit
 }
 
@@ -2132,7 +2124,7 @@ type waitingCancellationCommitDraft struct {
 	rootRun          run.Run
 	expectedPending  runs.Pending
 	remainingPending *runs.Pending
-	checkpoint       runs.ExecutorCheckpoint
+	checkpoint       run.Checkpoint
 	terminalRuns     []run.Replacement
 	terminalItems    []transcript.Replacement
 	resume           *run.TreeResumeDraft
@@ -2479,9 +2471,9 @@ func newWaitingCancellationSQLiteFixtureAt(
 
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 	const rootMemberID = "member_root"
-	originalCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint before cancellation", runs.ExecutorCheckpoint{
+	originalCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint before cancellation", run.CheckpointState{
 		BuildID: testsupport.AlternateBuildID,
-		Scope:   runs.ExecutionScope{SessionID: rootRun.SessionID()},
+		Scope:   run.ExecutionScope{SessionID: rootRun.SessionID()},
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
 			Model:      "test-model",
 			TokenUsage: accounting.TokenUsage{PromptTokens: 3, CompletionTokens: 2},
@@ -2529,9 +2521,9 @@ func newWaitingCancellationSQLiteFixtureAt(
 			}},
 		}
 	}
-	replacementCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint after cancellation", runs.ExecutorCheckpoint{
+	replacementCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint after cancellation", run.CheckpointState{
 		BuildID: testsupport.AlternateBuildID,
-		Scope:   runs.ExecutionScope{SessionID: rootRun.SessionID()},
+		Scope:   run.ExecutionScope{SessionID: rootRun.SessionID()},
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
 			Model:      "test-model",
 			TokenUsage: accounting.TokenUsage{PromptTokens: 8, CompletionTokens: 5},
@@ -2590,18 +2582,15 @@ func executorCheckpoint(
 	t *testing.T,
 	rootMemberID string,
 	payload string,
-	checkpoint runs.ExecutorCheckpoint,
-) runs.ExecutorCheckpoint {
+	checkpoint run.CheckpointState,
+) run.Checkpoint {
 	t.Helper()
 	checkpoint.RootMemberID = rootMemberID
 	checkpoint.Payload = []byte(payload)
 	if !checkpoint.ModelSelection.Configured() {
 		checkpoint.ModelSelection = testsupport.DefaultModelSelection()
 	}
-	if err := checkpoint.Validate(); err != nil {
-		t.Fatalf("executor checkpoint: %v", err)
-	}
-	return checkpoint
+	return testsupport.MustCheckpoint(checkpoint)
 }
 
 type sqliteOpeningStores struct {

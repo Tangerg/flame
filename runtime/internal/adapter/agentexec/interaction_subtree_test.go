@@ -13,7 +13,7 @@ import (
 func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplicateProjection(
 	t *testing.T,
 ) {
-	fixture := newWaitingDelegateFixture(t)
+	fixture := newWaitingDelegateFixture(t, t.Name())
 	started := fixture.start(t)
 	initialEventsReady := make(chan []runs.Event, 1)
 	go func() { initialEventsReady <- slices.Collect(started.Events) }()

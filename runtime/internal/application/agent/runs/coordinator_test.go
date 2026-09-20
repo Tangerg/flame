@@ -498,7 +498,7 @@ func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (C
 	if err := claim.Validate(); err != nil {
 		return ClaimedResume{}, err
 	}
-	checkpoint := testExecutorCheckpoint()
+	checkpoint := testExecutorCheckpoint().State()
 	pending := claim.Pending()
 	root, _ := pending.RootContinuation()
 	checkpoint.RootMemberID = root.MemberID
@@ -509,7 +509,7 @@ func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (C
 	checkpoint.ModelSelection = root.ModelSelection
 	claimed := ClaimedResume{
 		Pending: pending, Answers: claim.Answers(),
-		Checkpoint: checkpoint,
+		Checkpoint: testsupport.MustCheckpoint(checkpoint),
 	}
 	if f.mutateClaim != nil {
 		f.mutateClaim(&claimed)
@@ -546,12 +546,12 @@ func testProjectionPorts(ports completeTestProjectionPorts) ProjectionPorts {
 func (f *fakeEffects) ReadWaitingCheckpoint(
 	_ context.Context,
 	rootMemberID string,
-) (ExecutorCheckpoint, error) {
-	checkpoint := testExecutorCheckpoint()
+) (run.Checkpoint, error) {
+	checkpoint := testExecutorCheckpoint().State()
 	checkpoint.RootMemberID = rootMemberID
 	checkpoint.Scope.CWD = "/work"
 	checkpoint.Scope.WorkspaceCWD = "/work"
-	return checkpoint, nil
+	return run.NewCheckpoint(checkpoint)
 }
 
 type blockingChildOpeningEffects struct {

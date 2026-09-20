@@ -1,6 +1,8 @@
 package delivery
 
 import (
+	"context"
+
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -13,9 +15,17 @@ func registerHooks(registry *Registry) {
 	registry.query(MethodMeta{
 		Name:   HooksList,
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
-	}, (*Handler).ListHooks)
+	}, func(service interface {
+		ListHooks(context.Context, protocol.ListHooksRequest) (*protocol.HooksListResult, error)
+	}, ctx context.Context, request protocol.ListHooksRequest) (*protocol.HooksListResult, error) {
+		return service.ListHooks(ctx, request)
+	})
 
 	registry.commandAck(MethodMeta{
 		Name: HooksSetTrust,
-	}, (*Handler).SetHookTrust)
+	}, func(service interface {
+		SetHookTrust(context.Context, protocol.SetHookTrustRequest) error
+	}, ctx context.Context, request protocol.SetHookTrustRequest) error {
+		return service.SetHookTrust(ctx, request)
+	})
 }

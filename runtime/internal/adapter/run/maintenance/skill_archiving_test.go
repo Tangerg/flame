@@ -28,7 +28,7 @@ func (f *fakeIdleSkillArchiver) ArchiveIdle(_ context.Context, now time.Time, _ 
 
 func mustNewIdleSkillArchiver(t *testing.T, skills idleSkillArchiver) *IdleSkillArchiver {
 	t.Helper()
-	archiver, err := NewIdleSkillArchiver(skills)
+	archiver, err := NewIdleSkillArchiver(skills, SkillArchivePolicyValues{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestIdleSkillArchiverRateLimitsChecks(t *testing.T) {
 		t.Fatalf("calls within the window = %d, want 1", store.calls)
 	}
 	// Past CheckInterval: fires again.
-	skillArchiver.now = func() time.Time { return base.Add(skillArchiveCheckInterval + time.Second) }
+	skillArchiver.now = func() time.Time { return base.Add(defaultSkillArchiveCheckInterval + time.Second) }
 	if err := skillArchiver.ArchiveIfDue(t.Context()); err != nil {
 		t.Fatal(err)
 	}

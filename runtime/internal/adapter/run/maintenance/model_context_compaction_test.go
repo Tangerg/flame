@@ -55,7 +55,7 @@ func TestModelContextCompactionRewritesDurableHistoryAndPreservesPendingInput(t 
 	)
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
-	result, err := compactor.compactModelContext(t.Context(), request, testInputLimits(t, threshold))
+	result, err := compactAtTokenThreshold(t, compactor, t.Context(), request, threshold)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,9 +122,9 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 		return true, nil
 	}
 
-	below, err := compactor.compactModelContext(
+	below, err := compactAtTokenThreshold(t, compactor,
 		t.Context(),
-		durableContextRequest(t, sessionID, history, 0, preCompact), testInputLimits(t, threshold),
+		durableContextRequest(t, sessionID, history, 0, preCompact), threshold,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -140,9 +140,9 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 	if writeErr := store.Write(t.Context(), sessionID, current); writeErr != nil {
 		t.Fatal(writeErr)
 	}
-	atThreshold, err := compactor.compactModelContext(
+	atThreshold, err := compactAtTokenThreshold(t, compactor,
 		t.Context(),
-		durableContextRequest(t, sessionID, history, 1, preCompact), testInputLimits(t, threshold),
+		durableContextRequest(t, sessionID, history, 1, preCompact), threshold,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -163,9 +163,9 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 		t.Fatalf("protected threshold message = %q, want %q", stored[len(stored)-1].Text(), current.Text())
 	}
 
-	after, err := compactor.compactModelContext(
+	after, err := compactAtTokenThreshold(t, compactor,
 		t.Context(),
-		durableContextRequest(t, sessionID, stored, 0, preCompact), testInputLimits(t, threshold),
+		durableContextRequest(t, sessionID, stored, 0, preCompact), threshold,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -239,7 +239,7 @@ func TestModelContextCompactionCountsMediaButDoesNotCompactBelowProviderThreshol
 	}
 	compactor := mustNewCompactor(t, store, constClient(summaryClient), nil)
 
-	result, err := compactor.compactModelContext(t.Context(), request, testInputLimits(t, threshold))
+	result, err := compactAtTokenThreshold(t, compactor, t.Context(), request, threshold)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -292,7 +292,7 @@ func TestModelContextCompactionCountFailureLeavesDurableStateUntouched(t *testin
 	}
 	compactor := mustNewCompactor(t, store, constClient(summaryClient), nil)
 
-	if _, compactErr := compactor.compactModelContext(t.Context(), request, testInputLimits(t, 10_000)); !errors.Is(compactErr, countErr) {
+	if _, compactErr := compactAtTokenThreshold(t, compactor, t.Context(), request, 10_000); !errors.Is(compactErr, countErr) {
 		t.Fatalf("error = %v, want provider count failure", compactErr)
 	}
 	after, err := store.Read(t.Context(), sessionID)
@@ -348,7 +348,7 @@ func TestModelContextCompactionCompactsMediaOnlyAtProviderThreshold(t *testing.T
 	}
 	compactor := mustNewCompactor(t, store, constClient(summaryClient), nil)
 
-	result, err := compactor.compactModelContext(t.Context(), request, testInputLimits(t, threshold))
+	result, err := compactAtTokenThreshold(t, compactor, t.Context(), request, threshold)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -419,9 +419,9 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 		nil,
 	)
 
-	below, err := compactor.compactModelContext(
+	below, err := compactAtTokenThreshold(t, compactor,
 		t.Context(),
-		durableContextRequest(t, sessionID, history, 0, nil), testInputLimits(t, rawEstimate+100),
+		durableContextRequest(t, sessionID, history, 0, nil), rawEstimate+100,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -433,7 +433,7 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 		)
 	}
 
-	atThreshold, err := compactor.compactModelContext(
+	atThreshold, err := compactAtTokenThreshold(t, compactor,
 		t.Context(),
 		durableContextRequestWithCalibration(
 			t,
@@ -442,7 +442,7 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 			0,
 			calibration,
 			nil,
-		), testInputLimits(t, rawEstimate+100),
+		), rawEstimate+100,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -641,7 +641,7 @@ func TestFirstModelContextCompactionPreservesCurrentUserMessageVerbatim(t *testi
 	)
 	request := durableContextRequest(t, sessionID, history, 1, nil)
 
-	result, err := compactor.compactModelContext(t.Context(), request, testInputLimits(t, threshold))
+	result, err := compactAtTokenThreshold(t, compactor, t.Context(), request, threshold)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -671,7 +671,7 @@ func TestModelContextCompactionFailsClosedWhenProtectedInputCannotFit(t *testing
 	)
 	request := durableContextRequest(t, sessionID, []chat.Message{current}, 1, nil)
 
-	if _, compactErr := compactor.compactModelContext(t.Context(), request, testInputLimits(t, 1_000)); !errors.Is(compactErr, ErrModelContextCannotFit) {
+	if _, compactErr := compactAtTokenThreshold(t, compactor, t.Context(), request, 1_000); !errors.Is(compactErr, ErrModelContextCannotFit) {
 		t.Fatalf("error = %v, want ErrModelContextCannotFit", compactErr)
 	}
 	if len(model.requests) != 0 {
@@ -718,7 +718,7 @@ func TestRequiredModelContextCompactionRequiresLifecyclePermission(t *testing.T)
 			request := durableContextRequest(t, sessionID, history, 0, func(context.Context) (bool, error) {
 				return false, test.resolveErr
 			})
-			if _, err := compactor.compactModelContext(t.Context(), request, testInputLimits(t, threshold)); !errors.Is(err, test.wantErr) {
+			if _, err := compactAtTokenThreshold(t, compactor, t.Context(), request, threshold); !errors.Is(err, test.wantErr) {
 				t.Fatalf("error = %v, want %v", err, test.wantErr)
 			}
 			if store.rewrites != 0 {
@@ -945,7 +945,8 @@ func TestFailedCompactionCommitPreservesSessionContextAuthority(t *testing.T) {
 	}
 	invalidator := new(recordingSessionContextInvalidator)
 	compactor := mustNewCompactor(t, store, constClient(client), nil,
-		CompactionPolicyValues{MaxTokens: intPointer(contextTokenEstimate(t, history))}, invalidator)
+		invalidator)
+	compactor.policy = compactionPolicy{maxTokens: contextTokenEstimate(t, history), maxTokensExplicit: true}
 	request := durableContextRequest(t, sessionID, history, 0, nil)
 	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, cause) {
 		t.Fatalf("CompactModelContext = %v, want commit failure", err)
@@ -1009,7 +1010,8 @@ func TestDurableModelContextCompactionTrimsInPlaceWithoutSummarizing(t *testing.
 	}
 	contextState := new(recordingSessionContextInvalidator)
 	compactor := mustNewCompactor(t, store, unexpectedClient, nil,
-		CompactionPolicyValues{MaxTokens: intPointer(threshold)}, contextState)
+		contextState)
+	compactor.policy = compactionPolicy{maxTokens: threshold, maxTokensExplicit: true}
 
 	result, err := compactor.CompactModelContext(
 		t.Context(), durableContextRequest(t, sessionID, history, 0, nil),
@@ -1017,9 +1019,9 @@ func TestDurableModelContextCompactionTrimsInPlaceWithoutSummarizing(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Changed() || result.Summarized() || result.Summary() != "" {
+	if !!reflect.DeepEqual(result.Messages(), history) || result.Summarized() || result.Summary() != "" {
 		t.Fatalf("result = changed:%t summarized:%t summary:%q",
-			result.Changed(), result.Summarized(), result.Summary())
+			!reflect.DeepEqual(result.Messages(), history), result.Summarized(), result.Summary())
 	}
 	before, after := result.MessageCounts()
 	if before != len(history) || after != len(history) {
@@ -1081,8 +1083,8 @@ func TestDurableProtectedTailSpanningEphemeralProtectsTheSameHistory(t *testing.
 		if err != nil {
 			t.Fatal(err)
 		}
-		compactor := mustNewCompactor(t, store, constClient(client), nil,
-			CompactionPolicyValues{MaxTokens: intPointer(contextTokenEstimate(t, candidate))})
+		compactor := mustNewCompactor(t, store, constClient(client), nil)
+		compactor.policy = compactionPolicy{maxTokens: contextTokenEstimate(t, candidate), maxTokensExplicit: true}
 		result, err := compactor.CompactModelContext(
 			t.Context(), durableContextRequest(t, sessionID, candidate, protectedTail, nil),
 		)

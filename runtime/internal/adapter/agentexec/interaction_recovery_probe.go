@@ -22,7 +22,7 @@ func unresumable(
 	cause error,
 ) (bool, error) {
 	slog.WarnContext(ctx, "agentexec: waiting execution is not resumable",
-		"session.id", continuation.Checkpoint.Scope.SessionID,
+		"session.id", continuation.Checkpoint.Scope().SessionID,
 		"executor.id", continuation.ExecutorID,
 		"reason", reason,
 		"error", cause,
@@ -49,20 +49,20 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		return unresumable(ctx, continuation, "continuation is malformed", err)
 	}
 	checkpoint := continuation.Checkpoint
-	if !i.acceptsBuild(checkpoint.BuildID) {
+	if !i.acceptsBuild(checkpoint.BuildID()) {
 		return unresumable(ctx, continuation, "checkpoint belongs to another build", nil)
 	}
-	if checkpoint.Scope.Isolated {
+	if checkpoint.Scope().Isolated {
 		return unresumable(ctx, continuation, "isolated workspace does not survive executor loss", nil)
 	}
-	if err := i.validateRestoreScope(checkpoint.Scope); err != nil {
+	if err := i.validateRestoreScope(checkpoint.Scope()); err != nil {
 		return unresumable(ctx, continuation, "restore workspace is unavailable", err)
 	}
 	state, err := decodeExecutorCheckpoint(checkpoint)
 	if err != nil {
 		return unresumable(ctx, continuation, "checkpoint payload cannot be decoded", err)
 	}
-	rootID, err := agent.ParseProcessID(checkpoint.RootMemberID)
+	rootID, err := agent.ParseProcessID(checkpoint.RootMemberID())
 	if err != nil || state.tree.RootID() != rootID {
 		return unresumable(ctx, continuation, "checkpoint root member does not own its tree", err)
 	}
@@ -83,12 +83,12 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		return unresumable(ctx, continuation, "checkpoint tree is not at a waiting boundary", nil)
 	}
 	start := runs.RootExecutionStart{
-		SessionID:                checkpoint.Scope.SessionID,
-		CWD:                      checkpoint.Scope.CWD,
-		WorkspaceCWD:             checkpoint.Scope.WorkspaceCWD,
-		Isolated:                 checkpoint.Scope.Isolated,
-		GoalIncarnationID:        checkpoint.Scope.GoalIncarnationID,
-		ModelSelection:           checkpoint.ModelSelection,
+		SessionID:                checkpoint.Scope().SessionID,
+		CWD:                      checkpoint.Scope().CWD,
+		WorkspaceCWD:             checkpoint.Scope().WorkspaceCWD,
+		Isolated:                 checkpoint.Scope().Isolated,
+		GoalIncarnationID:        checkpoint.Scope().GoalIncarnationID,
+		ModelSelection:           checkpoint.ModelSelection(),
 		InterruptKinds:           continuation.Capabilities.InterruptKinds,
 		ChildRunAdmissionEnabled: continuation.ChildRunAdmissionEnabled,
 		WorkingContext:           cloneChatMessages(state.instructions),

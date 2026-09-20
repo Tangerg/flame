@@ -521,8 +521,8 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 				return nil, fmt.Errorf("runs: invalid opening event for Run %q", route.runID)
 			}
 			if reduced.Commit != nil {
-				commit, err := NewEventCommit(*reduced.Commit)
-				if err != nil {
+				commit := reduced.Commit.clone()
+				if err := commit.Validate(); err != nil {
 					return nil, err
 				}
 				events = append(events, commit)

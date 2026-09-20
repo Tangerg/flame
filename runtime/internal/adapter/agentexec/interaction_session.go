@@ -1,7 +1,6 @@
 package agentexec
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -27,7 +26,7 @@ import (
 type interactionSession struct {
 	executionTrees runs.ExecutionTreeStore
 	ref            runs.ExecutorRef
-	scope          runs.ExecutionScope
+	scope          run.ExecutionScope
 	deployment     agent.Deployment
 	input          agent.Payload
 	engine         *agent.Engine
@@ -67,7 +66,7 @@ type interactionState struct {
 	finished                   bool
 	boundary                   interactionBoundary
 	dispatchReady              chan struct{}
-	waitingCheckpoint          runs.ExecutorCheckpoint
+	waitingCheckpoint          run.Checkpoint
 	subtreeChange              *interactionWaitingSubtreeChange
 	subtreePrepared            chan struct{}
 	unknownReported            bool
@@ -484,7 +483,7 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	}
 	i.state.boundary = interactionBoundaryWaiting
 	i.state.dispatchReady = make(chan struct{})
-	i.state.waitingCheckpoint = checkpoint.Clone()
+	i.state.waitingCheckpoint = checkpoint
 	i.state.mu.Unlock()
 	published := i.lifetime.send(runs.ExecutorEvent{
 		Member:  i.executorMember(process.Relation()),
@@ -502,9 +501,9 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	return published
 }
 
-func (i *interactionSession) stageContinuation(checkpoint runs.ExecutorCheckpoint) error {
-	if err := checkpoint.Validate(); err != nil {
-		return err
+func (i *interactionSession) stageContinuation(checkpoint run.Checkpoint) error {
+	if checkpoint.IsZero() {
+		return run.ErrInvalidCheckpoint
 	}
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
@@ -515,7 +514,7 @@ func (i *interactionSession) stageContinuation(checkpoint runs.ExecutorCheckpoin
 		return runs.ErrExecutionClaimed
 	}
 	if !executorCheckpointsEqual(i.state.waitingCheckpoint, checkpoint) {
-		return fmt.Errorf("%w: live Interaction checkpoint differs from the claimed waiting boundary", runs.ErrInvalidExecutorCheckpoint)
+		return fmt.Errorf("%w: live Interaction checkpoint differs from the claimed waiting boundary", run.ErrInvalidCheckpoint)
 	}
 	i.state.boundary = interactionBoundaryContinuationStaged
 	return nil
@@ -550,17 +549,12 @@ func (i *interactionSession) continuationAccepted() {
 // replacement product Segment owns their projections. The caller holds mu.
 func (i *interactionState) continueExecution() {
 	i.boundary = interactionBoundaryInactive
-	i.waitingCheckpoint = runs.ExecutorCheckpoint{}
+	i.waitingCheckpoint = run.Checkpoint{}
 	close(i.dispatchReady)
 	i.dispatchReady = nil
 }
 
-func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
-	return slices.Equal(left.ToolResultIDs, right.ToolResultIDs) && left.RootMemberID == right.RootMemberID && left.BuildID == right.BuildID &&
-		left.Scope == right.Scope && left.ModelSelection.Equal(right.ModelSelection) &&
-		slices.Equal(left.Usage.Models, right.Usage.Models) &&
-		bytes.Equal(left.Payload, right.Payload)
-}
+func executorCheckpointsEqual(left, right run.Checkpoint) bool { return left.Equal(right) }
 
 func (i *interactionSession) reportUnknownEffects() bool {
 	ctx := i.lifetime.reconciling

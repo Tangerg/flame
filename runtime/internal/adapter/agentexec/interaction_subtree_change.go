@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	agent "github.com/Tangerg/scope/agent"
 )
@@ -14,7 +16,7 @@ type interactionWaitingSubtreeChange struct {
 	mu sync.Mutex
 
 	session    *interactionSession
-	checkpoint runs.ExecutorCheckpoint
+	checkpoint run.Checkpoint
 	targetID   agent.ProcessID
 	reason     string
 	canceled   []agent.ProcessID
@@ -227,7 +229,7 @@ func (i *interactionSession) commitSubtreeApplication(
 	}
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
-	i.state.waitingCheckpoint = change.checkpoint.Clone()
+	i.state.waitingCheckpoint = change.checkpoint
 }
 
 func (i *interactionSession) finishSubtreeApplication(

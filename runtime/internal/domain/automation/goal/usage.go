@@ -161,5 +161,5 @@ func (g Goal) RecordRun(record RunRecord) (Goal, error) {
 			return Goal{}, err
 		}
 	}
-	return next, next.ValidateSnapshot()
+	return next, next.validateInitialState()
 }

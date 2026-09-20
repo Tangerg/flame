@@ -339,10 +339,11 @@ func TestCompositeCommitsRejectNestedTopLevelEventIdentity(t *testing.T) {
 
 	pending := testApprovalPending("member_root", createdAt)
 	waiting := runForPending(pending)
-	checkpoint := testExecutorCheckpoint()
+	checkpointState := testExecutorCheckpoint().State()
 	root, _ := pending.RootContinuation()
-	checkpoint.ModelSelection = root.ModelSelection
-	checkpoint.Capabilities = pending.Capabilities
+	checkpointState.ModelSelection = root.ModelSelection
+	checkpointState.Capabilities = pending.Capabilities
+	checkpoint := testsupport.MustCheckpoint(checkpointState)
 	_, err := NewTreeBarrierCommit(
 		testCommitID("run_commit_barrier_parent"),
 		pending,
@@ -361,10 +362,11 @@ func TestTreeBarrierCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	createdAt := time.Date(2026, 9, 5, 1, 2, 3, 0, time.UTC)
 	pending := testApprovalPending("member_root", createdAt)
 	waiting := runForPending(pending)
-	checkpoint := testExecutorCheckpoint()
+	checkpointState := testExecutorCheckpoint().State()
 	root, _ := pending.RootContinuation()
-	checkpoint.ModelSelection = root.ModelSelection
-	checkpoint.Capabilities = pending.Capabilities
+	checkpointState.ModelSelection = root.ModelSelection
+	checkpointState.Capabilities = pending.Capabilities
+	checkpoint := testsupport.MustCheckpoint(checkpointState)
 	commits := []EventCommit{{
 		RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_root",
 		State: StateSuspend, Run: &waiting,
@@ -383,7 +385,7 @@ func TestTreeBarrierCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	pending.Bindings[0].MemberID = "member_changed"
 	commits[0].Run = nil
 	commits[0].ConversationMessages[0].Parts[0].Text = "changed"
-	checkpoint.Payload[0] = 'x'
+	checkpoint.Payload()[0] = 'x'
 
 	projectedPending := barrier.Pending()
 	projectedPending.Bindings[0].MemberID = "member_projected"
@@ -391,7 +393,7 @@ func TestTreeBarrierCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	projectedRuns[0].Run = nil
 	projectedRuns[0].ConversationMessages[0].Parts[0].Text = "projected"
 	projectedCheckpoint := barrier.Checkpoint()
-	projectedCheckpoint.Payload[0] = 'y'
+	projectedCheckpoint.Payload()[0] = 'y'
 
 	ownedPending := barrier.Pending()
 	ownedRuns := barrier.Runs()
@@ -402,8 +404,8 @@ func TestTreeBarrierCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	if ownedRuns[0].Run == nil || ownedRuns[0].ConversationMessages[0].Text() != "original" {
 		t.Fatalf("owned Run commit = %+v, want isolated Run and message", ownedRuns[0])
 	}
-	if string(ownedCheckpoint.Payload) != `{"root":"member_root"}` {
-		t.Fatalf("owned checkpoint payload = %q", ownedCheckpoint.Payload)
+	if string(ownedCheckpoint.Payload()) != `{"root":"member_root"}` {
+		t.Fatalf("owned checkpoint payload = %q", ownedCheckpoint.Payload())
 	}
 	if err := barrier.Validate(); err != nil {
 		t.Fatalf("owned barrier no longer validates: %v", err)

@@ -183,7 +183,7 @@ func TestDeleteSession_Cascade(t *testing.T) {
 	if _, ok := history[id]; ok {
 		t.Errorf("conversation messages not cascaded: still present")
 	}
-	release, acquired, err := runtime.admissions.AcquireSession(id)
+	release, acquired, err := runtime.admissions.AcquireSession(t.Context(), id)
 	if err != nil || !acquired {
 		t.Fatalf("session admission after delete = %t, %v", acquired, err)
 	}

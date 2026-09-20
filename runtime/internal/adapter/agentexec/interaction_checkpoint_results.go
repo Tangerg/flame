@@ -4,7 +4,8 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 )
 
@@ -19,12 +20,12 @@ func checkpointToolResultIDs(state interactionCheckpointState) []toolresult.ID {
 	return slices.Compact(ids)
 }
 
-func decodeExecutorCheckpoint(checkpoint runs.ExecutorCheckpoint) (interactionCheckpointState, error) {
-	state, err := decodeInteractionCheckpointPayload(checkpoint.Payload)
+func decodeExecutorCheckpoint(checkpoint run.Checkpoint) (interactionCheckpointState, error) {
+	state, err := decodeInteractionCheckpointPayload(checkpoint.Payload())
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
-	if !slices.Equal(checkpoint.ToolResultIDs, checkpointToolResultIDs(state)) {
+	if !slices.Equal(checkpoint.ToolResultIDs(), checkpointToolResultIDs(state)) {
 		return interactionCheckpointState{}, errors.New("agentexec: checkpoint result ownership differs from its continuation")
 	}
 	return state, nil

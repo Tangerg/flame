@@ -33,7 +33,7 @@ func TestStartRunRejectsWorkingTreeMutation(t *testing.T) {
 	if !errors.Is(err, protocol.ErrSessionBusy) {
 		t.Fatalf("start under working-tree mutation = %v, want ErrSessionBusy", err)
 	}
-	release, acquired, err := rt.admissions.AcquireSession(ses.ID())
+	release, acquired, err := rt.admissions.AcquireSession(t.Context(), ses.ID())
 	if err != nil || !acquired {
 		t.Fatalf("session admission after rejected start = %t, %v", acquired, err)
 	}
@@ -62,7 +62,7 @@ func TestRollbackFilesRejectsWorkingTreeRunAdmission(t *testing.T) {
 	if !errors.Is(err, protocol.ErrSessionBusy) {
 		t.Fatalf("file rollback under run admission = %v, want ErrSessionBusy", err)
 	}
-	release, acquired, err := rt.admissions.AcquireSession(ses.ID())
+	release, acquired, err := rt.admissions.AcquireSession(t.Context(), ses.ID())
 	if err != nil || !acquired {
 		t.Fatalf("session admission after rejected rollback = %t, %v", acquired, err)
 	}

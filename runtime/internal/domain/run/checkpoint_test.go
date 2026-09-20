@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -34,12 +35,7 @@ func TestCheckpointConstructionValidatesHostEnvelope(t *testing.T) {
 			GoalIncarnationID: "lease-1",
 		},
 		ModelSelection: checkpointSelection(t, "anthropic", "claude"),
-		Limits: testsupport.MustRunLimits(run.LimitValues{
-			MaxTotalTokens: testsupport.Pointer[int64](4_096),
-			MaxBudgetUSD:   testsupport.Pointer(1.5),
-			MaxSteps:       testsupport.Pointer(8),
-		}),
-		Usage: accounting.Snapshot{},
+		Usage:          accounting.Snapshot{},
 	}
 	if _, err := run.NewCheckpoint(valid); err != nil {
 		t.Fatalf("Validate: %v", err)
@@ -79,21 +75,25 @@ func TestCheckpointOwnsConstructionAndProjectionData(t *testing.T) {
 	state := run.CheckpointState{
 		RootMemberID: "root", Payload: []byte("payload"), BuildID: testsupport.BuildID,
 		Scope: run.ExecutionScope{SessionID: "session"}, ModelSelection: checkpointSelection(t, "anthropic", "model"),
-		Capabilities: run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
-		Usage:        accounting.Snapshot{Models: []accounting.ModelUsage{{Model: "model", Calls: 1}}},
+		ToolResultIDs: []toolresult.ID{"AB"},
+		Capabilities:  run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
+		Usage:         accounting.Snapshot{Models: []accounting.ModelUsage{{Model: "model", Calls: 1}}},
 	}
 	checkpoint, err := run.NewCheckpoint(state)
 	if err != nil {
 		t.Fatal(err)
 	}
+	state.ToolResultIDs[0] = "CD"
 	state.Payload[0] = 'X'
 	state.Capabilities.InterruptKinds[0] = interrupt.Approval
 	state.Usage.Models[0].Model = "changed"
 	projection := checkpoint.State()
+	projection.ToolResultIDs[0] = "EF"
+	checkpoint.ToolResultIDs()[0] = "GH"
 	projection.Payload[0] = 'Y'
 	projection.Capabilities.InterruptKinds[0] = interrupt.Approval
 	projection.Usage.Models[0].Model = "projection"
-	if string(checkpoint.Payload()) != "payload" || checkpoint.Capabilities().InterruptKinds[0] != interrupt.Question || checkpoint.Usage().Models[0].Model != "model" {
+	if checkpoint.ToolResultIDs()[0] != "AB" || string(checkpoint.Payload()) != "payload" || checkpoint.Capabilities().InterruptKinds[0] != interrupt.Question || checkpoint.Usage().Models[0].Model != "model" {
 		t.Fatal("checkpoint exposes mutable owned data")
 	}
 }
@@ -151,9 +151,6 @@ func TestCheckpointValidatesCrossAggregateOwnership(t *testing.T) {
 		{name: "empty model selection", mutate: func(value *run.CheckpointExpectation) {
 			value.ModelSelection = modelref.Selection{}
 		}},
-		{name: "limits", mutate: func(value *run.CheckpointExpectation) {
-			value.Limits = testsupport.MustRunLimits(run.LimitValues{MaxTotalTokens: testsupport.Pointer[int64](1)})
-		}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -185,14 +182,11 @@ func TestCheckpointRequiresOneExecutionAndMonotonicUsage(t *testing.T) {
 		t.Fatalf("usage regression: %v", err)
 	}
 	for name, mutate := range map[string]func(*run.CheckpointState){
-		"root":      func(state *run.CheckpointState) { state.RootMemberID = "other" },
-		"session":   func(state *run.CheckpointState) { state.Scope.SessionID = "other" },
-		"build":     func(state *run.CheckpointState) { state.BuildID = testsupport.AlternateBuildID },
-		"workspace": func(state *run.CheckpointState) { state.Scope.WorkspaceCWD = "/other" },
-		"model":     func(state *run.CheckpointState) { state.ModelSelection = checkpointSelection(t, "openai", "model") },
-		"limits": func(state *run.CheckpointState) {
-			state.Limits = testsupport.MustRunLimits(run.LimitValues{MaxSteps: testsupport.Pointer(1)})
-		},
+		"root":         func(state *run.CheckpointState) { state.RootMemberID = "other" },
+		"session":      func(state *run.CheckpointState) { state.Scope.SessionID = "other" },
+		"build":        func(state *run.CheckpointState) { state.BuildID = testsupport.AlternateBuildID },
+		"workspace":    func(state *run.CheckpointState) { state.Scope.WorkspaceCWD = "/other" },
+		"model":        func(state *run.CheckpointState) { state.ModelSelection = checkpointSelection(t, "openai", "model") },
 		"capabilities": func(state *run.CheckpointState) { state.Capabilities.ChildRuns = true },
 	} {
 		t.Run(name, func(t *testing.T) {

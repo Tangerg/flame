@@ -24,7 +24,7 @@ func NewRestorePlan(
 	sessionReplacement session.Replacement,
 	planReplacement *plan.Replacement,
 ) (RestorePlan, error) {
-	if sessionReplacement.IsZero() {
+	if sessionReplacement.Validate() != nil {
 		return RestorePlan{}, fmt.Errorf("sessions: session replacement is required")
 	}
 	owned, err := ownWriteSnapshot(snapshot)

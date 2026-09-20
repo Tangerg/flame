@@ -46,8 +46,8 @@ func TestNewBuildsCommittedActiveGoal(t *testing.T) {
 	if !value.Capabilities().Equal(wantCapabilities) {
 		t.Fatalf("capabilities = %v, want %v", value.Capabilities(), wantCapabilities)
 	}
-	if err := value.ValidateSnapshot(); err != nil {
-		t.Fatalf("ValidateSnapshot: %v", err)
+	if err := value.validateInitialState(); err != nil {
+		t.Fatalf("validateInitialState: %v", err)
 	}
 }
 

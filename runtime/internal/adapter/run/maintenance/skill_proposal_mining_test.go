@@ -91,7 +91,7 @@ func skillRevisionMinerFixture(t *testing.T, source skillSource, replies ...scri
 		t.Fatal(err)
 	}
 	proposals := &fakeProposalSubmitter{}
-	skillMiner, err := NewSkillProposalMiner(messages, proposals, source, constClient(client), SkillMiningPolicyValues{ComplexityThreshold: intPointer(1), Cadence: intPointer(1)})
+	skillMiner, err := NewSkillProposalMiner(messages, proposals, source, constClient(client), SkillMiningPolicyValues{ComplexityThreshold: new(1), Cadence: new(1)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestSkillMiningPolicyPreservesOptionalPresence(t *testing.T) {
 }
 
 func TestSkillMinerBelowComplexityThresholdDoesNotMine(t *testing.T) {
-	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD, SkillMiningPolicyValues{ComplexityThreshold: intPointer(5), Cadence: intPointer(1)})
+	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD, SkillMiningPolicyValues{ComplexityThreshold: new(5), Cadence: new(1)})
 	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 4); err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestSkillMinerBelowComplexityThresholdDoesNotMine(t *testing.T) {
 }
 
 func TestSkillMinerCadenceGatesMining(t *testing.T) {
-	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD, SkillMiningPolicyValues{ComplexityThreshold: intPointer(2), Cadence: intPointer(2)})
+	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD, SkillMiningPolicyValues{ComplexityThreshold: new(2), Cadence: new(2)})
 	// A routine Run must not advance the cadence counter.
 	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 1); err != nil {
 		t.Fatal(err)
@@ -154,7 +154,7 @@ func TestSkillMinerCadenceGatesMining(t *testing.T) {
 }
 
 func TestSkillMinerSubmitsUserProposalWithMinedProvenance(t *testing.T) {
-	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD, SkillMiningPolicyValues{ComplexityThreshold: intPointer(1), Cadence: intPointer(1)})
+	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD, SkillMiningPolicyValues{ComplexityThreshold: new(1), Cadence: new(1)})
 	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 3); err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +186,7 @@ func TestSkillMinerSubmitsUserProposalWithMinedProvenance(t *testing.T) {
 }
 
 func TestSkillMinerNoSkillProducesNoProposal(t *testing.T) {
-	skillMiner, proposals, model := skillProposalMinerFixture(t, "NO_SKILL", SkillMiningPolicyValues{ComplexityThreshold: intPointer(1), Cadence: intPointer(1)})
+	skillMiner, proposals, model := skillProposalMinerFixture(t, "NO_SKILL", SkillMiningPolicyValues{ComplexityThreshold: new(1), Cadence: new(1)})
 	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 3); err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestSkillMinerNoSkillProducesNoProposal(t *testing.T) {
 }
 
 func TestSkillMinerUnparseableReplyIsDroppedNotErrored(t *testing.T) {
-	skillMiner, proposals, _ := skillProposalMinerFixture(t, "here is a skill but no frontmatter block", SkillMiningPolicyValues{ComplexityThreshold: intPointer(1), Cadence: intPointer(1)})
+	skillMiner, proposals, _ := skillProposalMinerFixture(t, "here is a skill but no frontmatter block", SkillMiningPolicyValues{ComplexityThreshold: new(1), Cadence: new(1)})
 	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 3); err != nil {
 		t.Fatalf("unparseable reply surfaced an error: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestSkillMinerUnparseableReplyIsDroppedNotErrored(t *testing.T) {
 
 func TestSkillMinerFencedReplyStillParses(t *testing.T) {
 	fenced := "```markdown\n" + sampleSkillMD + "\n```"
-	skillMiner, proposals, _ := skillProposalMinerFixture(t, fenced, SkillMiningPolicyValues{ComplexityThreshold: intPointer(1), Cadence: intPointer(1)})
+	skillMiner, proposals, _ := skillProposalMinerFixture(t, fenced, SkillMiningPolicyValues{ComplexityThreshold: new(1), Cadence: new(1)})
 	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 3); err != nil {
 		t.Fatal(err)
 	}
@@ -324,7 +324,7 @@ func TestMineDocumentReadsTheSentinelNotTheDocument(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			skillMiner, _, _ := skillProposalMinerFixture(t, test.reply, SkillMiningPolicyValues{
-				ComplexityThreshold: intPointer(1), Cadence: intPointer(1),
+				ComplexityThreshold: new(1), Cadence: new(1),
 			})
 			got, err := skillMiner.mineDocument(t.Context(), skillMinerPrompt, "conversation")
 			if err != nil {

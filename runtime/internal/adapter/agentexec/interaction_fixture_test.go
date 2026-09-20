@@ -14,7 +14,7 @@ func newInteractionTestExecutor(t testing.TB, cfg InteractionExecutorConfig) (*I
 
 func interactionTestCapabilities(t testing.TB, cfg InteractionExecutorConfig) InteractionExecutorConfig {
 	t.Helper()
-	context := mustWorkingContextComposer(t, WorkingContextConfig{})
+	context := mustWorkingContextComposer(t, WorkingContextConfig{UserHome: t.TempDir()})
 	if cfg.ToolResolver == nil {
 		cfg.ToolResolver = staticInteractionTools{}
 	}
@@ -26,9 +26,6 @@ func interactionTestCapabilities(t testing.TB, cfg InteractionExecutorConfig) In
 	}
 	if cfg.ToolAuthorizer == nil {
 		cfg.ToolAuthorizer = allowInteractionTools{}
-	}
-	if cfg.ToolHooks == nil {
-		cfg.ToolHooks = context
 	}
 	if cfg.MCPToolAutoApproved == nil {
 		cfg.MCPToolAutoApproved = func(string, string) bool { return false }
@@ -62,7 +59,6 @@ func TestInteractionRequiresCompleteCapabilities(t *testing.T) {
 		"tool resolver":    func(cfg *InteractionExecutorConfig) { cfg.ToolResolver = nil },
 		"tool interpreter": func(cfg *InteractionExecutorConfig) { cfg.ToolInterpreter = nil },
 		"tool authorizer":  func(cfg *InteractionExecutorConfig) { cfg.ToolAuthorizer = nil },
-		"tool hooks":       func(cfg *InteractionExecutorConfig) { cfg.ToolHooks = nil },
 		"compactor":        func(cfg *InteractionExecutorConfig) { cfg.ModelContextCompactor = nil },
 		"context state":    func(cfg *InteractionExecutorConfig) { cfg.ModelContextState = nil },
 		"maintenance":      func(cfg *InteractionExecutorConfig) { cfg.Maintenance = nil },

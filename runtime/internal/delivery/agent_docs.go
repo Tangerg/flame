@@ -1,6 +1,8 @@
 package delivery
 
 import (
+	"context"
+
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -10,5 +12,9 @@ func registerAgentDocs(registry *Registry) {
 	registry.query(MethodMeta{
 		Name:   AgentDocsList,
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
-	}, (*Handler).ListAgentDocs)
+	}, func(service interface {
+		ListAgentDocs(context.Context, protocol.WorkspaceQuery) (*protocol.Page[protocol.AgentDoc], error)
+	}, ctx context.Context, request protocol.WorkspaceQuery) (*protocol.Page[protocol.AgentDoc], error) {
+		return service.ListAgentDocs(ctx, request)
+	})
 }

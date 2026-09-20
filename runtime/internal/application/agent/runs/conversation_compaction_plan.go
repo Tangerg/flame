@@ -47,7 +47,7 @@ func (p ConversationCompactionPlan) Validate() error {
 	}
 	seen := make(map[string]struct{}, len(p.runs))
 	for _, replacement := range p.runs {
-		if replacement.IsZero() {
+		if replacement.Validate() != nil {
 			return fmt.Errorf("runs: run replacement is required")
 		}
 		expected := replacement.Expected()

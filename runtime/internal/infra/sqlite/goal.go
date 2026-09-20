@@ -244,8 +244,8 @@ func (g *GoalStore) ClearIf(ctx context.Context, sessionID string, expected goal
 	}
 	incarnationID, committed := expected.IncarnationID()
 	revision, revisionCommitted := expected.Revision()
-	if err := expected.Validate(); err != nil || !committed || !revisionCommitted || expected.SessionID() != sessionID {
-		return false, fmt.Errorf("sqlite: clear Goal with invalid version: %w", errors.Join(err, goal.ErrInvalid))
+	if expected.IsZero() || !committed || !revisionCommitted || expected.SessionID() != sessionID {
+		return false, fmt.Errorf("sqlite: clear Goal with invalid version: %w", goal.ErrInvalid)
 	}
 	res, err := conn(ctx, g.db).ExecContext(ctx,
 		`DELETE FROM goals WHERE session_id = ? AND incarnation_id = ? AND revision = ?`, sessionID, incarnationID, revision)

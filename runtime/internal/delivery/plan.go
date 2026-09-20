@@ -1,6 +1,8 @@
 package delivery
 
 import (
+	"context"
+
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -13,5 +15,9 @@ func registerPlan(registry *Registry) {
 		Name:            PlanGet,
 		Errors:          []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: requires(protocol.FeaturePlan),
-	}, (*Handler).GetPlan)
+	}, func(service interface {
+		GetPlan(context.Context, protocol.GetPlanRequest) (*protocol.Plan, error)
+	}, ctx context.Context, request protocol.GetPlanRequest) (*protocol.Plan, error) {
+		return service.GetPlan(ctx, request)
+	})
 }

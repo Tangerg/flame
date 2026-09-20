@@ -75,6 +75,7 @@ func memoryConsolidationFixture(t *testing.T, replies ...scriptedReply) (*Memory
 		messages,
 		memoryCuration,
 		func(context.Context) (*chatclient.Client, error) { return &client, nil },
+		MemoryCurationPolicyValues{},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -120,8 +121,8 @@ func TestMemoryConsolidatorAppendsDailyLedgerAndCuratesItems(t *testing.T) {
 		t.Fatalf("model calls = %d, want extraction + curation", len(model.requests))
 	}
 	for index, request := range model.requests {
-		if request.Options.MaxOutputTokens == nil || *request.Options.MaxOutputTokens != memoryCurationMaxTokens {
-			t.Errorf("model request %d MaxOutputTokens = %v, want %d", index, request.Options.MaxOutputTokens, memoryCurationMaxTokens)
+		if request.Options.MaxOutputTokens == nil || *request.Options.MaxOutputTokens != defaultMemoryCurationMaxTokens {
+			t.Errorf("model request %d MaxOutputTokens = %v, want %d", index, request.Options.MaxOutputTokens, defaultMemoryCurationMaxTokens)
 		}
 	}
 	curationPrompt := model.requests[1].Messages[1].Text()
@@ -179,18 +180,23 @@ func TestMemoryConsolidatorLeavesWatermarkOnCurationFailureThenRecovers(t *testi
 }
 
 func TestCurationGateAndTokenEstimate(t *testing.T) {
+	policy, err := newMemoryCurationPolicy(MemoryCurationPolicyValues{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	consolidator := &MemoryConsolidator{policy: policy}
 	now := time.Date(2026, 7, 19, 10, 0, 0, 0, time.UTC)
 	state := agentmemory.State{Watermark: 1, UpdatedAt: now}
-	if memoryCurationDue(state, memoryCurationMinPending-1, now) {
+	if consolidator.curationDue(state, defaultMemoryCurationMinPending-1, now) {
 		t.Fatal("small fresh backlog should not curate")
 	}
-	if !memoryCurationDue(state, memoryCurationMinPending, now) {
+	if !consolidator.curationDue(state, defaultMemoryCurationMinPending, now) {
 		t.Fatal("fact threshold should curate")
 	}
-	if !memoryCurationDue(state, 1, now.Add(memoryCurationMaxAge)) {
+	if !consolidator.curationDue(state, 1, now.Add(defaultMemoryCurationMaxAge)) {
 		t.Fatal("age threshold should curate")
 	}
-	if !memoryCurationDue(agentmemory.State{}, 1, now) {
+	if !consolidator.curationDue(agentmemory.State{}, 1, now) {
 		t.Fatal("first generation should curate immediately")
 	}
 
@@ -202,7 +208,7 @@ func TestCurationGateAndTokenEstimate(t *testing.T) {
 func TestMemoryConsolidatorDoesNotAdvanceWatermarkForOversizedCuration(t *testing.T) {
 	consolidator, memory, _ := memoryConsolidationFixture(t,
 		scriptedReply{text: "- durable fact"},
-		scriptedReply{text: strings.Repeat("界", memoryCurationMaxTokens+1)},
+		scriptedReply{text: strings.Repeat("界", defaultMemoryCurationMaxTokens+1)},
 	)
 	if err := consolidator.Consolidate(t.Context(), "ses_1", "/repo"); err == nil || !strings.Contains(err.Error(), "limit is 2048") {
 		t.Fatalf("oversized curation error = %v", err)

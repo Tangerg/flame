@@ -20,14 +20,14 @@ func NewPreparedWaitingSubtreeCancellation(
 	canceledMemberIDs []string,
 	pausedMemberIDs []string,
 	pendingInterruptions []MemberInterruption,
-	checkpoint ExecutorCheckpoint,
+	checkpoint rundomain.Checkpoint,
 	change WaitingSubtreeChange,
 ) (PreparedWaitingSubtreeCancellation, error) {
 	prepared := PreparedWaitingSubtreeCancellation{
 		canceledMemberIDs:    slices.Clone(canceledMemberIDs),
 		pausedMemberIDs:      slices.Clone(pausedMemberIDs),
 		pendingInterruptions: cloneMemberInterruptions(pendingInterruptions),
-		checkpoint:           checkpoint.Clone(),
+		checkpoint:           checkpoint,
 		change:               change,
 	}
 	if err := prepared.Validate(); err != nil {
@@ -52,8 +52,8 @@ func (p PreparedWaitingSubtreeCancellation) PendingInterruptions() []MemberInter
 }
 
 // Checkpoint returns an ownership-independent resulting executor snapshot.
-func (p PreparedWaitingSubtreeCancellation) Checkpoint() ExecutorCheckpoint {
-	return p.checkpoint.Clone()
+func (p PreparedWaitingSubtreeCancellation) Checkpoint() rundomain.Checkpoint {
+	return p.checkpoint
 }
 
 // Apply installs the committed product disposition in the prepared executor tree.
@@ -86,8 +86,8 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 	if dependency.Missing(p.change) {
 		return errors.New("runs: prepared waiting subtree cancellation has no executor change")
 	}
-	if err := p.checkpoint.Validate(); err != nil {
-		return err
+	if p.checkpoint.IsZero() {
+		return rundomain.ErrInvalidCheckpoint
 	}
 	if len(p.canceledMemberIDs) == 0 {
 		return errors.New("runs: prepared waiting subtree cancellation has no canceled members")
@@ -149,7 +149,7 @@ type waitingCancellationTransformation struct {
 	terminalItems  []transcript.Replacement
 	remaining      *Pending
 	continuation   *treeContinuation
-	checkpoint     ExecutorCheckpoint
+	checkpoint     rundomain.Checkpoint
 	root           rundomain.Run
 	targetRunID    string
 	canceledRunIDs []string
@@ -212,7 +212,7 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 		terminalItems:  terminalItems,
 		remaining:      remaining,
 		continuation:   continuation,
-		checkpoint:     w.prepared.checkpoint.Clone(),
+		checkpoint:     w.prepared.checkpoint,
 		root:           w.plan.root.run,
 		targetRunID:    w.plan.target.run.ID(),
 		canceledRunIDs: canceledRunIDs,
@@ -248,20 +248,20 @@ func (w waitingCancellationBuilder) validate() error {
 	); err != nil {
 		return fmt.Errorf("runs: invalid prepared waiting subtree checkpoint ownership: %w", err)
 	}
-	if w.prepared.checkpoint.Scope.GoalIncarnationID != w.plan.pending.GoalIncarnationID {
+	if w.prepared.checkpoint.Scope().GoalIncarnationID != w.plan.pending.GoalIncarnationID {
 		return fmt.Errorf(
 			"runs: prepared waiting subtree checkpoint goal incarnation %q does not match Pending %q: %w",
-			w.prepared.checkpoint.Scope.GoalIncarnationID,
+			w.prepared.checkpoint.Scope().GoalIncarnationID,
 			w.plan.pending.GoalIncarnationID,
-			ErrInvalidExecutorCheckpoint,
+			rundomain.ErrInvalidCheckpoint,
 		)
 	}
-	if !w.prepared.checkpoint.ModelSelection.Equal(rootContinuation.ModelSelection) {
+	if !w.prepared.checkpoint.ModelSelection().Equal(rootContinuation.ModelSelection) {
 		return fmt.Errorf(
 			"runs: prepared waiting subtree checkpoint model %q does not match root continuation %q: %w",
-			w.prepared.checkpoint.ModelSelection,
+			w.prepared.checkpoint.ModelSelection(),
 			rootContinuation.ModelSelection,
-			ErrInvalidExecutorCheckpoint,
+			rundomain.ErrInvalidCheckpoint,
 		)
 	}
 	return nil

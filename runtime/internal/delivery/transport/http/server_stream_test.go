@@ -3,39 +3,25 @@ package http_test
 import (
 	"bytes"
 	"context"
-	"iter"
 	netHTTP "net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	flametransport "github.com/Tangerg/flame/runtime/internal/delivery/transport"
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-// StartRun lets the fake drive the streamable path: it returns a runId ack plus
-// a finite RunEvent sequence so a POST runs.start exercises serveStream
-// end-to-end.
-func (f *fakeRuntime) StartRun(_ context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
-	events := seq2(
-		protocol.RunEvent{
-			RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000001", Timestamp: time.Unix(1, 0).UTC(),
-			Event: protocol.StreamEvent{Type: protocol.StreamSegmentStarted, Run: &protocol.RunRef{
-				RunSummary: protocol.RunSummary{
-					ID: "run_x", SessionID: in.SessionID, Provider: "mock", Model: "balanced",
-					Status: protocol.RunStatusRunning, CreatedAt: time.Unix(1, 0).UTC(),
-				},
-				ActiveSegmentID: "seg_x",
-			}},
-		},
-		protocol.RunEvent{
-			RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000002", Timestamp: time.Unix(2, 0).UTC(),
-			Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Outcome: &protocol.SegmentOutcome{Type: protocol.SegmentOutcomeType(protocol.OutcomeCompleted)}, Metrics: &protocol.RunMetrics{}, ContextTokens: new(int64(0))},
-		},
-	)
-	return &protocol.StartRunResponse{
-		RunID: "run_x", SegmentID: "seg_x", UserItemID: "item_x",
-	}, events, nil
+func (f *fakeRuns) Start(_ context.Context, in runs.StartCommand) (runs.StartResult, error) {
+	started := testsupport.MustRestoreRun(run.Snapshot{ID: "run_x", SessionID: in.SessionID, State: run.Running, ActiveSegmentID: "seg_x", CreatedAt: time.Unix(1, 0).UTC()})
+	finished := testsupport.MustRestoreRun(run.Snapshot{ID: "run_x", SessionID: in.SessionID, State: run.Completed, CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC()})
+	events := slices.Values([]runs.Event{
+		{RunID: "run_x", SegmentID: "seg_x", Cursor: "00000000001", Timestamp: time.Unix(1, 0).UTC(), Payload: runs.SegmentStarted{Run: started}},
+		{RunID: "run_x", SegmentID: "seg_x", Cursor: "00000000002", Timestamp: time.Unix(2, 0).UTC(), Payload: runs.SegmentFinished{Run: finished}},
+	})
+	return runs.StartResult{RunID: "run_x", SegmentID: "seg_x", SessionID: in.SessionID, UserItemID: "item_x", Events: events}, nil
 }
 
 type sseFrame struct{ id, data string }
@@ -106,12 +92,10 @@ func TestStreamableRunStart(t *testing.T) {
 	}
 }
 
-// SubscribeRun records the reconnect cursor so the test below can assert the
-// transport plumbed the Last-Event-Id header onto the dispatch ctx.
-func (f *fakeRuntime) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
-	f.gotLastEventID = flametransport.LastEventIDFrom(ctx)
-	return &protocol.SubscribeRunResponse{RunID: in.RunID, SegmentID: in.SegmentID},
-		seq2[protocol.RunEvent](), nil
+// Subscribe observes the cursor after Handler removes its wire framing.
+func (f *fakeRuns) Subscribe(_ context.Context, in runs.SubscribeRequest) (runs.Subscription, error) {
+	f.gotLastEventID = in.Cursor
+	return runs.Subscription{Record: runs.Record{ID: in.RunID, SegmentID: in.SegmentID}, Events: slices.Values([]runs.Event{})}, nil
 }
 
 // TestSubscribeCarriesLastEventID confirms the transport lifts the
@@ -136,18 +120,7 @@ func TestSubscribeCarriesLastEventID(t *testing.T) {
 	}
 	_ = resp.Body.Close()
 
-	if api.gotLastEventID != "evt_00000000042" {
-		t.Fatalf("SubscribeRun saw Last-Event-Id %q, want evt_00000000042", api.gotLastEventID)
-	}
-}
-
-// seq2 presents a finite event slice as the error-carrying stream contract.
-func seq2[Event any](events ...Event) iter.Seq2[Event, error] {
-	return func(yield func(Event, error) bool) {
-		for _, event := range events {
-			if !yield(event, nil) {
-				return
-			}
-		}
+	if api.gotLastEventID != "00000000042" {
+		t.Fatalf("SubscribeRun saw Last-Event-Id %q, want 00000000042", api.gotLastEventID)
 	}
 }

@@ -679,7 +679,6 @@ func (s stubLifecycleStores) ReadMaterialSnapshot(ctx context.Context, id string
 		}
 		stored, found := current.Goal()
 		if found {
-			stored = stored.Clone()
 			currentGoal = &stored
 		}
 	}
@@ -690,8 +689,8 @@ func (s stubLifecycleStores) ReadMaterialSnapshot(ctx context.Context, id string
 }
 
 func (s stubLifecycleStores) ApplyFork(ctx context.Context, plan sessions.ForkPlan) (session.Session, error) {
-	if err := plan.Validate(); err != nil {
-		return session.Session{}, err
+	if plan.IsZero() {
+		return session.Session{}, errors.New("unconstructed fork plan")
 	}
 	child := plan.Child()
 	snapshot := plan.Snapshot()
@@ -759,8 +758,8 @@ func (s stubLifecycleStores) ApplyRollback(ctx context.Context, plan sessions.Ro
 }
 
 func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.RestorePlan) error {
-	if err := plan.Validate(); err != nil {
-		return err
+	if plan.IsZero() {
+		return errors.New("unconstructed restore plan")
 	}
 	sessionReplacement := plan.SessionReplacement()
 	snapshot := plan.Snapshot()
@@ -1078,10 +1077,10 @@ func (inertRuntimeStores) MarkToolInvocationIncomplete(context.Context, string, 
 	return nil
 }
 
-func (inertRuntimeStores) SaveCheckpoint(context.Context, runs.ExecutorCheckpoint) error { return nil }
+func (inertRuntimeStores) SaveCheckpoint(context.Context, run.Checkpoint) error { return nil }
 
-func (inertRuntimeStores) LoadCheckpoint(context.Context, string) (runs.ExecutorCheckpoint, error) {
-	return runs.ExecutorCheckpoint{}, runs.ErrExecutorCheckpointNotFound
+func (inertRuntimeStores) LoadCheckpoint(context.Context, string) (run.Checkpoint, error) {
+	return run.Checkpoint{}, run.ErrCheckpointNotFound
 }
 func (inertRuntimeStores) DeleteCheckpoints(context.Context, string, []string) error { return nil }
 func (inertRuntimeStores) Reserve(context.Context, sqlite.ChildRunStartReservationRecord) error {

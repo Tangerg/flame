@@ -31,7 +31,7 @@ type RecoveryStore interface {
 	ListOpenToolInvocations(ctx context.Context) ([]OpenToolInvocation, error)
 	SessionByID(ctx context.Context, sessionID string) (session.Session, error)
 	ListTranscript(ctx context.Context, sessionID string) ([]transcript.Item, error)
-	LoadExecutorCheckpoint(ctx context.Context, rootMemberID string) (ExecutorCheckpoint, error)
+	LoadExecutorCheckpoint(ctx context.Context, rootMemberID string) (rundomain.Checkpoint, error)
 	ReadMessages(ctx context.Context, sessionID string) ([]corechat.Message, error)
 	CountMessages(ctx context.Context, sessionID string) (int, error)
 	CommitRecovery(ctx context.Context, commit RecoveryCommit) error
@@ -57,7 +57,7 @@ type RecoveryAdmissions interface {
 // child-before-parent replacement. Checkpoint and callback cleanup name only
 // Sessions whose writer lease was acquired.
 type RecoveryCommit struct {
-	state RecoveryCommitInput
+	state *RecoveryCommitInput
 }
 
 // RecoveryCommitInput is the unvalidated material [NewRecoveryCommit] freezes.

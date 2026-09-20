@@ -6,93 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
-<<<<<<< HEAD
-var (
-	ErrExecutorCheckpointRecordNotFound = errors.New("sqlite: executor checkpoint record not found")
-	ErrInvalidExecutorCheckpointRecord  = errors.New("sqlite: invalid executor checkpoint record")
-)
-
-// ExecutorScopeRecord is the SQLite mechanism's storage representation of an
-// executor scope. It has no lifecycle behavior; the Application adapter owns
-// translation to and from the authoritative runs.ExecutionScope value.
-type ExecutorScopeRecord struct {
-	SessionID         string
-	CWD               string
-	WorkspaceCWD      string
-	Isolated          bool
-	GoalIncarnationID string
-}
-
-// ExecutorCheckpointRecord is the technical record persisted by SQLite.
-// Payload remains opaque. Product ownership and recovery policy stay in
-// application/agent/runs and are validated again by the consuming adapter.
-type ExecutorCheckpointRecord struct {
-	ToolResultIDs  []toolresult.ID
-	RootMemberID   string
-	Payload        []byte
-	BuildID        string
-	Scope          ExecutorScopeRecord
-	ModelSelection modelref.Selection
-	Capabilities   run.Capabilities
-	Usage          accounting.Snapshot
-}
-
-func (e ExecutorCheckpointRecord) validate() error {
-	if err := toolresult.ValidateReferences(e.ToolResultIDs); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpointRecord, err)
-	}
-	if err := runtimeidentity.ValidateMember(e.RootMemberID); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpointRecord, err)
-	}
-	if len(e.Payload) == 0 {
-		return fmt.Errorf("%w: payload is empty", ErrInvalidExecutorCheckpointRecord)
-	}
-	if _, err := runtimeidentity.ParseBuild(e.BuildID); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpointRecord, err)
-	}
-	if err := e.Scope.validate(); err != nil {
-		return err
-	}
-	if err := e.ModelSelection.ValidateExact(); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpointRecord, err)
-	}
-	if err := e.Capabilities.Validate(); err != nil {
-		return fmt.Errorf("%w: capabilities: %w", ErrInvalidExecutorCheckpointRecord, err)
-	}
-	if err := e.Usage.Validate(); err != nil {
-		return fmt.Errorf("%w: usage: %w", ErrInvalidExecutorCheckpointRecord, err)
-	}
-	return nil
-}
-
-func (e ExecutorScopeRecord) validate() error {
-	if err := resourceid.ValidateSession(e.SessionID); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpointRecord, err)
-	}
-	if e.CWD != strings.TrimSpace(e.CWD) {
-		return fmt.Errorf("%w: invalid working dir", ErrInvalidExecutorCheckpointRecord)
-	}
-	if e.WorkspaceCWD != strings.TrimSpace(e.WorkspaceCWD) {
-		return fmt.Errorf("%w: invalid workspace dir", ErrInvalidExecutorCheckpointRecord)
-	}
-	if _, _, err := goalref.ParseOptionalIncarnation(e.GoalIncarnationID); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpointRecord, err)
-	}
-	return nil
-}
-
-=======
->>>>>>> codex/converge-production-modes
 // ExecutorCheckpointStore persists one opaque checkpoint aggregate per
 // executor tree root.
 // Payload interpretation and all executor-member topology belong exclusively to
@@ -193,29 +114,19 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 }
 
 // LoadCheckpoint returns one complete opaque executor checkpoint.
-<<<<<<< HEAD
-func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (ExecutorCheckpointRecord, error) {
-	var checkpoint ExecutorCheckpointRecord
+func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (run.Checkpoint, error) {
+	var checkpoint run.Checkpoint
 	err := RunInTx(ctx, e.db, func(ctx context.Context) error {
 		var err error
 		checkpoint, err = e.loadCheckpoint(ctx, rootMemberID)
 		return err
 	})
-	if err != nil {
-		return ExecutorCheckpointRecord{}, err
-	}
-	return checkpoint, nil
+	return checkpoint, err
 }
 
-// The payload and its body references must be read from the same snapshot.
-func (e *ExecutorCheckpointStore) loadCheckpoint(ctx context.Context, rootMemberID string) (ExecutorCheckpointRecord, error) {
-	if err := runtimeidentity.ValidateMember(rootMemberID); err != nil {
-		return ExecutorCheckpointRecord{}, fmt.Errorf("sqlite: load executor checkpoint: %w", err)
-=======
-func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (run.Checkpoint, error) {
+func (e *ExecutorCheckpointStore) loadCheckpoint(ctx context.Context, rootMemberID string) (run.Checkpoint, error) {
 	if _, err := runtimeidentity.ParseMember(rootMemberID); err != nil {
 		return run.Checkpoint{}, fmt.Errorf("sqlite: load executor checkpoint: %w", err)
->>>>>>> codex/converge-production-modes
 	}
 	var owner, buildID, policyData, usageData string
 	var payload []byte
@@ -258,17 +169,12 @@ func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 	checkpoint.Payload = payload
 	checkpoint.BuildID = buildID
 	checkpoint.Usage = usage
-<<<<<<< HEAD
 	checkpoint.ToolResultIDs, err = e.toolResultReferences(ctx, rootMemberID)
 	if err != nil {
-		return ExecutorCheckpointRecord{}, err
+		return run.Checkpoint{}, err
 	}
-	if err := checkpoint.validate(); err != nil {
-		return ExecutorCheckpointRecord{}, fmt.Errorf("sqlite: load executor checkpoint %q: %w", rootMemberID, err)
-=======
 	if checkpoint.Scope.SessionID != owner {
 		return run.Checkpoint{}, fmt.Errorf("sqlite: checkpoint owner differs from policy: %w", run.ErrInvalidCheckpoint)
->>>>>>> codex/converge-production-modes
 	}
 	restored, err := run.NewCheckpoint(checkpoint)
 	if err != nil {
@@ -303,50 +209,21 @@ func encodeExecutorPolicy(checkpoint run.CheckpointState) ([]byte, error) {
 	})
 }
 
-<<<<<<< HEAD
-func decodeExecutorPolicy(data string) (ExecutorCheckpointRecord, error) {
+func decodeExecutorPolicy(data string) (run.CheckpointState, error) {
 	var wire executorPolicyWire
 	if err := decodeStoredJSON([]byte(data), &wire); err != nil {
-		return ExecutorCheckpointRecord{}, err
-=======
-func decodeExecutorPolicy(data string) (run.CheckpointState, error) {
-	decoder := json.NewDecoder(strings.NewReader(data))
-	decoder.DisallowUnknownFields()
-	var wire executorPolicyWire
-	if err := decoder.Decode(&wire); err != nil {
 		return run.CheckpointState{}, err
->>>>>>> codex/converge-production-modes
 	}
 	if wire.Capabilities == nil {
 		return run.CheckpointState{}, errors.New("policy capabilities are required")
 	}
-<<<<<<< HEAD
-	scope := ExecutorScopeRecord{
-=======
-	var trailing any
-	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return run.CheckpointState{}, errors.New("policy has a trailing JSON value")
-		}
-		return run.CheckpointState{}, fmt.Errorf("policy trailing JSON: %w", err)
-	}
 	scope := run.ExecutionScope{
->>>>>>> codex/converge-production-modes
 		SessionID:         wire.Scope.SessionID,
 		CWD:               wire.Scope.CWD,
 		WorkspaceCWD:      wire.Scope.WorkspaceCWD,
 		Isolated:          wire.Scope.Isolated,
 		GoalIncarnationID: wire.Scope.GoalIncarnationID,
 	}
-<<<<<<< HEAD
-=======
-	limits, err := runLimitsFromStored(
-		wire.Limits.Type, wire.Limits.MaxTotalTokens, wire.Limits.MaxSteps, wire.Limits.MaxBudgetUSD,
-	)
-	if err != nil {
-		return run.CheckpointState{}, err
-	}
->>>>>>> codex/converge-production-modes
 	capabilities := run.Capabilities{
 		ChildRuns: wire.Capabilities.ChildRuns,
 	}

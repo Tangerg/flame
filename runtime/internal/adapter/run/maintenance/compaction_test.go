@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -58,7 +59,7 @@ func mustNewCompactor(
 	if len(contextStates) == 1 {
 		contextState = contextStates[0]
 	}
-	compactor, err := NewCompactor(store, client, liveState, contextState)
+	compactor, err := NewCompactor(store, client, liveState, CompactionPolicyValues{}, contextState)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +91,7 @@ func TestCompactorTokenTriggerDoesNotExceedCatalogInputLimit(t *testing.T) {
 	if !found {
 		t.Fatal("catalog omitted openai/gpt-5.4-mini")
 	}
-	trigger, err := modelContextTokenTrigger(
+	trigger, err := (compactionPolicy{}).tokenTrigger(
 		testTokenLimits(t, modelref.TokenLimitValues{
 			ContextWindow:   testTokenLimit(model.Limits.ContextWindow),
 			MaxInputTokens:  testTokenLimit(model.Limits.MaxInputTokens),
@@ -115,7 +116,7 @@ func TestCompactorTokenTriggerReservesExplicitOutputWindow(t *testing.T) {
 		t.Fatalf("fixture max input = %d, want unknown", model.Limits.MaxInputTokens)
 	}
 	requestedOutput := model.Limits.MaxOutputTokens
-	trigger, err := modelContextTokenTrigger(
+	trigger, err := (compactionPolicy{}).tokenTrigger(
 		testTokenLimits(t, modelref.TokenLimitValues{
 			ContextWindow:   testTokenLimit(model.Limits.ContextWindow),
 			MaxOutputTokens: testTokenLimit(model.Limits.MaxOutputTokens),
@@ -133,7 +134,7 @@ func TestCompactorTokenTriggerReservesExplicitOutputWindow(t *testing.T) {
 
 func TestCompactorTokenTriggerKeepsLimitOwnershipExplicit(t *testing.T) {
 	t.Run("window trigger cannot exceed provider input", func(t *testing.T) {
-		trigger, err := modelContextTokenTrigger(
+		trigger, err := (compactionPolicy{}).tokenTrigger(
 			testTokenLimits(t, modelref.TokenLimitValues{
 				ContextWindow: testTokenLimit(400_000), MaxInputTokens: testTokenLimit(272_000),
 			}),
@@ -148,7 +149,7 @@ func TestCompactorTokenTriggerKeepsLimitOwnershipExplicit(t *testing.T) {
 	})
 
 	t.Run("selected model does not inherit unrelated fallback input", func(t *testing.T) {
-		trigger, err := modelContextTokenTrigger(
+		trigger, err := (compactionPolicy{}).tokenTrigger(
 			testTokenLimits(t, modelref.TokenLimitValues{ContextWindow: testTokenLimit(1_000_000)}),
 			chat.Options{},
 		)
@@ -161,7 +162,7 @@ func TestCompactorTokenTriggerKeepsLimitOwnershipExplicit(t *testing.T) {
 	})
 
 	t.Run("window percentage cannot overflow", func(t *testing.T) {
-		trigger, err := modelContextTokenTrigger(
+		trigger, err := (compactionPolicy{}).tokenTrigger(
 			testTokenLimits(t, modelref.TokenLimitValues{ContextWindow: testTokenLimit(int64(math.MaxInt))}),
 			chat.Options{},
 		)
@@ -261,9 +262,12 @@ func (t *textStubModel) Stream(ctx context.Context, req *chat.Request) iter.Seq2
 	return testsupport.StreamResponse(t.Call(ctx, req))
 }
 
-// Model metadata is the capacity boundary; tests keep the same compaction path
-// while supplying a small model input envelope.
-func testInputLimits(t *testing.T, tokens int) modelref.TokenLimits {
+func compactAtTokenThreshold(t *testing.T, c *Compactor, ctx context.Context, request agentexec.ModelContextCompaction, tokens int) (agentexec.ModelContextCompactionResult, error) {
 	t.Helper()
-	return testTokenLimits(t, modelref.TokenLimitValues{MaxInputTokens: testTokenLimit(int64(tokens))})
+	policy, err := newCompactionPolicy(CompactionPolicyValues{MaxTokens: &tokens})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.policy = policy
+	return c.CompactModelContext(ctx, request)
 }
