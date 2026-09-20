@@ -33,12 +33,6 @@ func NewForkPlan(
 	if err != nil {
 		return ForkPlan{}, fmt.Errorf("sessions: fork plan snapshot: %w", err)
 	}
-	if owned.Session.ParentID() != parent.String() {
-		return ForkPlan{}, errors.New("sessions: fork plan child belongs to a different parent")
-	}
-	if owned.Session.Revision() != 1 {
-		return ForkPlan{}, errors.New("sessions: fork plan child is not at its initial revision")
-	}
 	replacement, err := ownForkPlanReplacement(owned.Plan, planReplacement)
 	if err != nil {
 		return ForkPlan{}, err
@@ -47,6 +41,9 @@ func NewForkPlan(
 	// Snapshot reconstructs the read projection from that owner when requested.
 	owned.Plan = nil
 	fork := ForkPlan{parentID: parent, snapshot: owned, planReplacement: replacement}
+	if err := fork.Validate(); err != nil {
+		return ForkPlan{}, err
+	}
 	return fork, nil
 }
 
@@ -67,8 +64,8 @@ func validateForkPlanReplacement(steps []plan.Step, replacement *plan.Replacemen
 	if replacement == nil {
 		return errors.New("sessions: fork plan inherited steps have no initial replacement")
 	}
-	if replacement.IsZero() {
-		return fmt.Errorf("sessions: fork plan replacement is required")
+	if err := replacement.Validate(); err != nil {
+		return fmt.Errorf("sessions: fork plan replacement: %w", err)
 	}
 	if !replacement.ExpectedVersion().IsUnwritten() {
 		return errors.New("sessions: fork plan replacement does not start from an unwritten Plan")
@@ -79,8 +76,25 @@ func validateForkPlanReplacement(steps []plan.Step, replacement *plan.Replacemen
 	return nil
 }
 
-// IsZero reports whether no fork plan was constructed.
-func (f ForkPlan) IsZero() bool { return f.parentID.String() == "" }
+// Validate proves that the child is an initial fork of the addressed parent and
+// that every durable projection and optional Plan transition agrees with it.
+func (f ForkPlan) Validate() error {
+	if err := f.parentID.Validate(); err != nil {
+		return fmt.Errorf("sessions: fork plan parent: %w", err)
+	}
+	snapshot := f.Snapshot()
+	if err := snapshot.Validate(); err != nil {
+		return fmt.Errorf("sessions: fork plan snapshot: %w", err)
+	}
+	child := snapshot.Session
+	if child.ParentID() != f.parentID.String() {
+		return errors.New("sessions: fork plan child belongs to a different parent")
+	}
+	if child.Revision() != 1 {
+		return errors.New("sessions: fork plan child is not at its initial revision")
+	}
+	return validateForkPlanReplacement(snapshot.Plan, f.planReplacement)
+}
 
 // ParentID returns the canonical parent Session identity.
 func (f ForkPlan) ParentID() string { return f.parentID.String() }

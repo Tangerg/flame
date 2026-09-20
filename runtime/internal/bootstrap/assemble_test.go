@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -257,7 +258,7 @@ func TestAssemblyFailureRollbackContinuesAfterCloseTimeout(t *testing.T) {
 		return toolRuntime, buildErr
 	}
 	lifetime := newRuntimeLifetime(t.Context(), cfg.Resources)
-	lifetime.shutdownWait = time.Millisecond
+	lifetime.shutdownWait = testShutdownWait(t, time.Millisecond)
 
 	failedInstance, err := assemble(t.Context(), cfg, lifetime, buildTools)
 	if failedInstance != nil || !errors.Is(err, context.DeadlineExceeded) {
@@ -396,7 +397,7 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	if pending, listErr := cfg.Stores.Interrupts.List(ctx, sessionID); listErr != nil || len(pending) != 0 {
 		t.Fatalf("pending after assemble = (%+v, %v), want none", pending, listErr)
 	}
-	if _, loadCheckpointErr := cfg.Stores.ExecutorCheckpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, run.ErrCheckpointNotFound) {
+	if _, loadCheckpointErr := cfg.Stores.ExecutorCheckpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("executor checkpoint after assemble = %v, want not found", loadCheckpointErr)
 	}
 	runs, err := cfg.Stores.Runs.ListRuns(ctx, sessionID)

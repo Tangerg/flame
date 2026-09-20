@@ -197,7 +197,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 	}
 
 	resolved, err := runtime.Resolve(t.Context(), workspace.ResolveRequest{Path: "/workspace"})
-	if err != nil || resolved.Ref.Path != "/workspace" || resolved.Availability != protocol.WorkspaceAvailable {
+	if err != nil || resolved.Path != "/workspace" || !resolved.IsAvailable() {
 		t.Fatalf("Resolve = (%+v, %v)", resolved, err)
 	}
 	known, err := runtime.List(t.Context())

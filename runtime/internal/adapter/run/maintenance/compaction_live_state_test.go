@@ -56,8 +56,8 @@ func TestCompactorPreservesUnreadCompletedShell(t *testing.T) {
 
 	history, _ := store.Read(context.Background(), sessID)
 	threshold := mustEstimateModelContextTokens(t, history, nil, chat.Options{}) - 1
-	c := mustNewCompactor(t, store, constClient(client), live)
-	res, err := compactAtTokenThreshold(t, c, context.Background(), durableContextRequest(t, sessID, history, 0, nil), threshold)
+	c := mustNewCompactor(t, store, constClient(client), live, CompactionPolicyValues{MaxTokens: intPointer(threshold)})
+	res, err := c.CompactModelContext(context.Background(), durableContextRequest(t, sessID, history, 0, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,8 +101,8 @@ func TestCompactorSkipsReminderWhenNoLiveState(t *testing.T) {
 	live := func(context.Context, string) LiveStateSnapshot { return LiveStateSnapshot{} }
 	history, _ := store.Read(context.Background(), sessID)
 	threshold := mustEstimateModelContextTokens(t, history, nil, chat.Options{}) - 1
-	c := mustNewCompactor(t, store, constClient(client), live)
-	if _, err := compactAtTokenThreshold(t, c, context.Background(), durableContextRequest(t, sessID, history, 0, nil), threshold); err != nil {
+	c := mustNewCompactor(t, store, constClient(client), live, CompactionPolicyValues{MaxTokens: intPointer(threshold)})
+	if _, err := c.CompactModelContext(context.Background(), durableContextRequest(t, sessID, history, 0, nil)); err != nil {
 		t.Fatal(err)
 	}
 	after, _ := store.Read(context.Background(), sessID)

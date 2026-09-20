@@ -30,8 +30,8 @@ func TestRollbackPlanOwnsResolvedBoundaryAndCheckpointScope(t *testing.T) {
 		t.Fatalf("rollback identities = runs:%v roots:%v", runIDs, rootIDs)
 	}
 	runIDs[0], rootIDs[0] = "run_changed", "member_changed"
-	if rollback.DropRunIDs()[0] != "run_1" || rollback.CheckpointRootIDs()[0] != "member_1" {
-		t.Fatal("returned identities mutated rollback")
+	if err := rollback.Validate(); err != nil || rollback.DropRunIDs()[0] != "run_1" || rollback.CheckpointRootIDs()[0] != "member_1" {
+		t.Fatalf("returned identities mutated rollback: %v", err)
 	}
 
 	unknown, err := NewRollbackPlan("ses_1", transcript.Boundary{
@@ -74,7 +74,7 @@ func TestRollbackPlanRejectsInvalidWriteSets(t *testing.T) {
 			}
 		})
 	}
-	if !(RollbackPlan{}).IsZero() {
+	if err := (RollbackPlan{}).Validate(); err == nil {
 		t.Fatal("zero RollbackPlan is valid")
 	}
 }

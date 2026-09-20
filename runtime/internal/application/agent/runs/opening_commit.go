@@ -128,8 +128,8 @@ func (o OpeningCommit) validateAdmission() error {
 		}
 	}
 	if o.sessionReplacement != nil {
-		if o.sessionReplacement.Validate() != nil {
-			return fmt.Errorf("runs: session replacement is required")
+		if err := o.sessionReplacement.Validate(); err != nil {
+			return fmt.Errorf("runs: invalid opening Session replacement: %w", err)
 		}
 		if o.sessionReplacement.ExpectedRevision() == 0 ||
 			o.sessionReplacement.State().ID() != o.admit.SessionID {
@@ -163,8 +163,8 @@ func (o OpeningCommit) validateEvents() error {
 		if !commit.CommitID.IsZero() {
 			return fmt.Errorf("runs: opening event[%d] carries a top-level event commit identity", index)
 		}
-		if commit.Validate() != nil {
-			return fmt.Errorf("runs: opening event[%d] is required", index)
+		if err := commit.Validate(); err != nil {
+			return fmt.Errorf("runs: opening event[%d]: %w", index, err)
 		}
 		if err := o.validateEventOwner(commit); err != nil {
 			return fmt.Errorf("runs: opening event[%d]: %w", index, err)
@@ -180,7 +180,8 @@ func (o OpeningCommit) validateEvents() error {
 // that can exist before execution begins. Operational observations belong to
 // later authoritative EventCommits, even when they name the same Segment.
 func validateOpeningProjection(commit EventCommit) error {
-	if commit.State != StateUnchanged || commit.Run != nil || commit.GoalRun != nil || commit.ObsoleteCheckpointRootID != "" {
+	if commit.State != StateUnchanged || commit.Outcome != "" || commit.Run != nil ||
+		commit.GoalRun != nil || commit.ObsoleteCheckpointRootID != "" {
 		return errors.New("opening projection carries lifecycle facts")
 	}
 	if len(commit.ModelInvocations) != 0 || len(commit.ToolInvocations) != 0 || commit.Progress != nil {

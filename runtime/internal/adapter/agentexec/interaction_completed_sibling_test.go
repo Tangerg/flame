@@ -186,8 +186,8 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	<-eventsReady
 	pending := barrier.Pending()
 	checkpoint := barrier.Checkpoint()
-	if len(checkpoint.ToolResultIDs()) != 0 {
-		t.Fatalf("checkpoint retained already published result bodies: %v", checkpoint.ToolResultIDs())
+	if len(checkpoint.ToolResultIDs) != 0 {
+		t.Fatalf("checkpoint retained already published result bodies: %v", checkpoint.ToolResultIDs)
 	}
 	if len(pending.Continuations) != 2 || len(pending.Bindings) != 1 {
 		t.Fatalf("waiting tree includes a completed sibling: %+v", pending)

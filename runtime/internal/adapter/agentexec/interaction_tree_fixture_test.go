@@ -34,7 +34,7 @@ func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecut
 	if config.ExecutionTrees == nil {
 		config.ExecutionTrees = testTrees(t)
 	}
-	return NewInteractionExecutor(interactionTestCapabilities(t, config))
+	return NewInteractionExecutor(config)
 }
 func (s *testExecutionTrees) LoadExecutionTree(_ context.Context, sessionID, rootID string) (runs.ExecutionTreeHead, bool, error) {
 	s.mu.Lock()

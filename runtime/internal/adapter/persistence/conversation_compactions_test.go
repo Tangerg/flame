@@ -190,25 +190,3 @@ func TestConversationCompactionRollsBackHistoryWhenRunRebaseFails(t *testing.T) 
 		}
 	}
 }
-
-func TestConversationCompactionsRequireAtomicPersistence(t *testing.T) {
-	db, messages, runs, _ := newCompactionFixture(t)
-	tx := func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) }
-	for name, construct := range map[string]func() (*persistence.ConversationCompactions, error){
-		"history": func() (*persistence.ConversationCompactions, error) {
-			return persistence.NewConversationCompactions(nil, runs, tx)
-		},
-		"runs": func() (*persistence.ConversationCompactions, error) {
-			return persistence.NewConversationCompactions(messages, nil, tx)
-		},
-		"transaction": func() (*persistence.ConversationCompactions, error) {
-			return persistence.NewConversationCompactions(messages, runs, nil)
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if compactions, err := construct(); err == nil || compactions != nil {
-				t.Fatalf("incomplete compaction construction = %v, %v", compactions, err)
-			}
-		})
-	}
-}

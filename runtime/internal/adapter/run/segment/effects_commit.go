@@ -182,7 +182,7 @@ func (e *Effects) ClaimResume(
 	if err != nil {
 		return runs.ClaimedResume{}, err
 	}
-	var checkpoint run.Checkpoint
+	var checkpoint runs.ExecutorCheckpoint
 	err = e.runInTx(ctx, func(ctx context.Context) error {
 		return e.applyResumeClaim(ctx, prepared, &checkpoint)
 	})
@@ -219,7 +219,7 @@ func prepareResumeClaim(claim runs.ResumeClaimCommit) (preparedResumeClaim, erro
 func (e *Effects) applyResumeClaim(
 	ctx context.Context,
 	prepared preparedResumeClaim,
-	checkpoint *run.Checkpoint,
+	checkpoint *runs.ExecutorCheckpoint,
 ) error {
 	pending := prepared.claim.Pending()
 	loaded, err := e.loadResumeCheckpoint(ctx, prepared)
@@ -244,7 +244,7 @@ func (e *Effects) applyResumeClaim(
 	); err != nil {
 		return fmt.Errorf("segment: invalidate claimed executor checkpoint: %w", err)
 	}
-	*checkpoint = loaded
+	*checkpoint = loaded.Clone()
 	if err := e.runState.RecordWaitingRunCommit(
 		ctx, pending.SessionID, pending.RootRunID, prepared.claim.CommitID(),
 	); err != nil {
@@ -256,20 +256,20 @@ func (e *Effects) applyResumeClaim(
 func (e *Effects) loadResumeCheckpoint(
 	ctx context.Context,
 	prepared preparedResumeClaim,
-) (run.Checkpoint, error) {
+) (runs.ExecutorCheckpoint, error) {
 	pending := prepared.claim.Pending()
 	loaded, err := e.executorCheckpoints.LoadCheckpoint(ctx, prepared.root.MemberID)
 	if err != nil {
-		return run.Checkpoint{}, fmt.Errorf("segment: load claimed executor checkpoint: %w", err)
+		return runs.ExecutorCheckpoint{}, fmt.Errorf("segment: load claimed executor checkpoint: %w", err)
 	}
 	if err := loaded.ValidateOwnership(
 		prepared.root.MemberID, pending.SessionID,
 	); err != nil {
-		return run.Checkpoint{}, err
+		return runs.ExecutorCheckpoint{}, err
 	}
-	if !loaded.ModelSelection().Equal(prepared.root.ModelSelection) || loaded.Scope().GoalIncarnationID != pending.GoalIncarnationID {
-		return run.Checkpoint{}, fmt.Errorf(
-			"%w: claimed checkpoint policy differs from Pending", run.ErrInvalidCheckpoint,
+	if !loaded.ModelSelection.Equal(prepared.root.ModelSelection) || loaded.Scope.GoalIncarnationID != pending.GoalIncarnationID {
+		return runs.ExecutorCheckpoint{}, fmt.Errorf(
+			"%w: claimed checkpoint policy differs from Pending", runs.ErrInvalidExecutorCheckpoint,
 		)
 	}
 	return loaded, nil
@@ -295,7 +295,7 @@ func (e *Effects) consumeResumePending(ctx context.Context, claim runs.ResumeCla
 func (e *Effects) reconcileResumeClaim(
 	ctx context.Context,
 	claim runs.ResumeClaimCommit,
-	checkpoint run.Checkpoint,
+	checkpoint runs.ExecutorCheckpoint,
 	commitErr error,
 ) (runs.ClaimedResume, error) {
 	pending := claim.Pending()
@@ -305,11 +305,11 @@ func (e *Effects) reconcileResumeClaim(
 	if !settled {
 		return runs.ClaimedResume{}, errors.Join(commitErr, settleErr)
 	}
-	if checkpoint.IsZero() {
+	if err := checkpoint.Validate(); err != nil {
 		return runs.ClaimedResume{}, errors.Join(
 			commitErr,
 			errors.New("segment: committed resume claim checkpoint is unavailable to this caller"),
-			run.ErrInvalidCheckpoint,
+			err,
 		)
 	}
 	return claimedResumeResult(claim, checkpoint), nil
@@ -347,7 +347,7 @@ func (e *Effects) resolveToolApproval(
 	return e.toolApprovals.ReplaceItem(ctx, change)
 }
 
-func claimedResumeResult(claim runs.ResumeClaimCommit, checkpoint run.Checkpoint) runs.ClaimedResume {
+func claimedResumeResult(claim runs.ResumeClaimCommit, checkpoint runs.ExecutorCheckpoint) runs.ClaimedResume {
 	return runs.ClaimedResume{
 		Pending: claim.Pending(), Answers: claim.Answers(),
 		Checkpoint: checkpoint,
@@ -468,13 +468,6 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 		return fmt.Errorf("segment: accept scheduled occurrence: %w", err)
 	}
 	return nil
-}
-
-func (e *Effects) ResultPublicationCommitted(ctx context.Context, sessionID, runID, segmentID string, publication runs.ResultPublication) (bool, error) {
-	if err := publication.Validate(); err != nil {
-		return false, err
-	}
-	return e.runState.ResultPublicationCommitted(ctx, sessionID, runID, segmentID, publication.ID, publication.Digest)
 }
 
 // CommitEvent applies one run event's durable parts atomically: the

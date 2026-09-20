@@ -193,7 +193,6 @@ func offloadedSnapshot(result string) Snapshot {
 	value := tool.StringResult(result)
 	return Snapshot{
 		Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
-		Runs:    []run.Run{testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_fixture", State: run.Completed, MessageMark: 0})},
 		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", ID: "item_1", Kind: transcript.ToolCall,
 			Status: transcript.ItemCompleted,

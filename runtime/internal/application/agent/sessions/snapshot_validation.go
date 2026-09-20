@@ -2,7 +2,6 @@ package sessions
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
@@ -68,14 +67,16 @@ func (s Snapshot) ValidateToolResults() error {
 	return nil
 }
 
-// NormalizeForRestore validates the complete snapshot and returns a copy whose
-// offloaded transcript results use
+// NormalizeForRestore returns a copy whose offloaded transcript results use
 // their bounded previews. This is the only representation written back to
 // history: full bodies remain in ToolResults and are joined structurally on
 // reads. The source snapshot is not mutated.
 func (s Snapshot) NormalizeForRestore() (Snapshot, error) {
-	if err := s.Validate(); err != nil {
+	if err := s.ValidateToolResults(); err != nil {
 		return Snapshot{}, err
+	}
+	if len(s.ToolResults) == 0 {
+		return s, nil
 	}
 
 	byItem := make(map[string]toolresult.Blob, len(s.ToolResults))
@@ -84,7 +85,7 @@ func (s Snapshot) NormalizeForRestore() (Snapshot, error) {
 	}
 
 	normalized := s
-	normalized.Items = slices.Clone(s.Items)
+	normalized.Items = append([]transcript.Item(nil), s.Items...)
 	for i := range normalized.Items {
 		item := &normalized.Items[i]
 		itemSnapshot := item.Snapshot()

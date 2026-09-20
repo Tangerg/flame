@@ -41,7 +41,7 @@ type InteractionLifecycleHooks interface {
 }
 
 func (i *interactionSession) maintainCompletedRoot() {
-	if i.start.SessionID == "" {
+	if i.maintenance == nil || i.start.SessionID == "" {
 		return
 	}
 	toolCalls := i.accounting.toolCallCount()

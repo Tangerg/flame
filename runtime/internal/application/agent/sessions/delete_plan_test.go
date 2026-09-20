@@ -10,6 +10,9 @@ func TestDeletePlanOwnsCanonicalSessionIdentity(t *testing.T) {
 	if deletion.SessionID() != "ses_1" {
 		t.Fatalf("SessionID = %q, want ses_1", deletion.SessionID())
 	}
+	if err := deletion.Validate(); err != nil {
+		t.Fatalf("DeletePlan became invalid: %v", err)
+	}
 }
 
 func TestDeletePlanRejectsInvalidSessionIdentity(t *testing.T) {
@@ -18,7 +21,7 @@ func TestDeletePlanRejectsInvalidSessionIdentity(t *testing.T) {
 			t.Fatalf("NewDeletePlan(%q) accepted an invalid identity", sessionID)
 		}
 	}
-	if !(DeletePlan{}).IsZero() {
+	if err := (DeletePlan{}).Validate(); err == nil {
 		t.Fatal("zero DeletePlan is valid")
 	}
 }

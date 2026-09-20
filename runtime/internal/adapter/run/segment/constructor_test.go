@@ -3,11 +3,10 @@ package segment
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"

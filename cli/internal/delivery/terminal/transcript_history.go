@@ -3,8 +3,6 @@ package terminal
 import (
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
 	"github.com/Tangerg/oolong/components/headless"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
@@ -15,30 +13,30 @@ import (
 // navigation and presentation from advancing independent run views.
 type transcriptHistory struct {
 	entries  map[string][]headless.BlockID
-	children map[string]bool
+	lineages map[string]agent.RunLineage
 }
 
 func newTranscriptHistory() transcriptHistory {
 	return transcriptHistory{
 		entries:  make(map[string][]headless.BlockID),
-		children: make(map[string]bool),
+		lineages: make(map[string]agent.RunLineage),
 	}
 }
 
 func (h *transcriptHistory) Reset() {
 	clear(h.entries)
-	clear(h.children)
+	clear(h.lineages)
 }
 
-func (h *transcriptHistory) ReplaceRuns(runs []protocol.RunRef) {
-	clear(h.children)
+func (h *transcriptHistory) ReplaceRuns(runs []agent.Run) {
+	clear(h.lineages)
 	for _, run := range runs {
 		h.Observe(run)
 	}
 }
 
-func (h *transcriptHistory) Observe(run protocol.RunRef) {
-	h.children[run.ID] = run.ParentRunID != ""
+func (h *transcriptHistory) Observe(run agent.Run) {
+	h.lineages[run.ID] = run.Lineage
 }
 
 func (h *transcriptHistory) Append(runID string, id headless.BlockID) {
@@ -72,8 +70,8 @@ func (h *transcriptHistory) FirstRetained(
 }
 
 func (h *transcriptHistory) Speaker(block agent.Block) string {
-	child := h.children[block.RunID]
-	if !child {
+	lineage, known := h.lineages[block.RunID]
+	if !known || lineage.IsRoot() {
 		switch block.Kind {
 		case agent.BlockUser:
 			return selfSpeaker

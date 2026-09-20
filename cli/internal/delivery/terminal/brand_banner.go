@@ -3,8 +3,6 @@ package terminal
 import (
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/text"
@@ -53,7 +51,7 @@ func newBrandBanner(
 	theme kit.Theme,
 	glyphs kit.Glyphs,
 	version string,
-	session protocol.Session,
+	session agent.Session,
 	options agent.RunOptions,
 ) *brandBanner {
 	banner := &brandBanner{theme: theme, glyphs: glyphs, version: brandVersion(version)}
@@ -62,7 +60,7 @@ func newBrandBanner(
 	return banner
 }
 
-func (b *brandBanner) SetSession(session protocol.Session) {
+func (b *brandBanner) SetSession(session agent.Session) {
 	if b != nil {
 		b.workspace = displayWorkspace(session.Workspace)
 	}

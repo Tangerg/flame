@@ -223,6 +223,7 @@ func (c summarizingObservationCompactor) CompactModelContext(
 ) (ModelContextCompactionResult, error) {
 	return NewModelContextCompactionResult(
 		request.Candidate(),
+		true,
 		c.summary,
 		len(request.Candidate()),
 		100,
@@ -265,6 +266,7 @@ func (c *calibrationCaptureCompactor) CompactModelContext(
 	}
 	return NewModelContextCompactionResult(
 		request.Candidate(),
+		false,
 		"",
 		len(request.Candidate()),
 		c.estimatedTokens,
@@ -510,7 +512,7 @@ func TestInteractionExecutorBindsResolvedRunScopeToManifestAndToolCalls(t *testi
 	start.Isolated = true
 	start.GoalIncarnationID = "goal_lease"
 	want := rootExecutionScope(start)
-	var toolScope run.ExecutionScope
+	var toolScope runs.ExecutionScope
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
 		Name: "scope", Description: "Return the current execution scope.",
 	}, func(ctx context.Context, _ struct{}) (string, error) {
@@ -1326,7 +1328,7 @@ func (s staticInteractionTools) Manifest(context.Context, domaintool.Group) (too
 
 type scopeRecordingInteractionTools struct {
 	manifest toolset.Manifest
-	scope    run.ExecutionScope
+	scope    runs.ExecutionScope
 	ok       bool
 }
 

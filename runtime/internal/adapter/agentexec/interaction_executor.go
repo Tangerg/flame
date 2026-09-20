@@ -119,23 +119,16 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		{name: "Tool interpreter", value: config.ToolInterpreter},
 		{name: "Tool presenter", value: config.ToolPresenter},
 		{name: "Tool authorizer", value: config.ToolAuthorizer},
+		{name: "Tool hooks", value: config.ToolHooks},
 		{name: "Run maintenance", value: config.Maintenance},
 		{name: "model-context compactor", value: config.ModelContextCompactor},
 		{name: "model-context state", value: config.ModelContextState},
 		{name: "lifecycle hooks", value: config.LifecycleHooks},
+		{name: "Tool-result store", value: config.ToolResultStore},
 	} {
 		if capability.value != nil && dependency.Missing(capability.value) {
 			return nil, fmt.Errorf("agentexec: Interaction %s is typed nil", capability.name)
 		}
-		if dependency.Missing(capability.value) {
-			return nil, fmt.Errorf("agentexec: Interaction %s is required", capability.name)
-		}
-	}
-	if config.ToolHooks != nil && dependency.Missing(config.ToolHooks) {
-		return nil, errors.New("agentexec: Interaction Tool hooks is typed nil")
-	}
-	if config.ToolResultStore != nil && dependency.Missing(config.ToolResultStore) {
-		return nil, errors.New("agentexec: Interaction Tool-result store is typed nil")
 	}
 	implementationIdentity, err := parseDeploymentIdentity("deployment implementation identity", config.ImplementationIdentity)
 	if err != nil {
@@ -494,11 +487,11 @@ func (i *InteractionExecutor) StageContinuation(
 	if err := continuation.Validate(); err != nil {
 		return runs.ExecutorRef{}, err
 	}
-	if !i.acceptsBuild(continuation.Checkpoint.BuildID()) {
+	if !i.acceptsBuild(continuation.Checkpoint.BuildID) {
 		return runs.ExecutorRef{}, fmt.Errorf(
 			"%w: checkpoint build %q does not match %q",
 			runs.ErrExecutorStateLost,
-			continuation.Checkpoint.BuildID(),
+			continuation.Checkpoint.BuildID,
 			i.buildID.String(),
 		)
 	}
@@ -535,11 +528,11 @@ func (i *InteractionExecutor) RestoreWaitingExecution(
 	if err := continuation.Validate(); err != nil {
 		return runs.ExecutorRef{}, err
 	}
-	if !i.acceptsBuild(continuation.Checkpoint.BuildID()) {
+	if !i.acceptsBuild(continuation.Checkpoint.BuildID) {
 		return runs.ExecutorRef{}, fmt.Errorf(
 			"%w: checkpoint build %q does not match %q",
 			runs.ErrExecutorStateLost,
-			continuation.Checkpoint.BuildID(),
+			continuation.Checkpoint.BuildID,
 			i.buildID.String(),
 		)
 	}
@@ -571,14 +564,14 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		return err
 	}
 	defer finishAssembly()
-	if err := i.validateRestoreScope(continuation.Checkpoint.Scope()); err != nil {
+	if err := i.validateRestoreScope(continuation.Checkpoint.Scope); err != nil {
 		return err
 	}
 	checkpoint, err := decodeExecutorCheckpoint(continuation.Checkpoint)
 	if err != nil {
 		return fmt.Errorf("%w: parse Interaction checkpoint: %w", runs.ErrExecutorStateLost, err)
 	}
-	rootID, err := agent.ParseProcessID(continuation.Checkpoint.RootMemberID())
+	rootID, err := agent.ParseProcessID(continuation.Checkpoint.RootMemberID)
 	if err != nil || checkpoint.tree.RootID() != rootID {
 		return fmt.Errorf("%w: checkpoint root differs from its tree", runs.ErrExecutorStateLost)
 	}
@@ -600,9 +593,9 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	}
 	start := runs.RootExecutionStart{
 		SessionID: continuation.SessionID,
-		CWD:       continuation.Checkpoint.Scope().CWD, WorkspaceCWD: continuation.Checkpoint.Scope().WorkspaceCWD,
-		Isolated: continuation.Checkpoint.Scope().Isolated, GoalIncarnationID: continuation.Checkpoint.Scope().GoalIncarnationID,
-		ModelSelection:           continuation.Checkpoint.ModelSelection(),
+		CWD:       continuation.Checkpoint.Scope.CWD, WorkspaceCWD: continuation.Checkpoint.Scope.WorkspaceCWD,
+		Isolated: continuation.Checkpoint.Scope.Isolated, GoalIncarnationID: continuation.Checkpoint.Scope.GoalIncarnationID,
+		ModelSelection:           continuation.Checkpoint.ModelSelection,
 		InterruptKinds:           continuation.Capabilities.InterruptKinds,
 		ChildRunAdmissionEnabled: continuation.ChildRunAdmissionEnabled,
 		WorkingContext:           cloneChatMessages(checkpoint.instructions),
@@ -653,7 +646,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	return nil
 }
 
-func (i *InteractionExecutor) validateRestoreScope(scope run.ExecutionScope) error {
+func (i *InteractionExecutor) validateRestoreScope(scope runs.ExecutionScope) error {
 	if scope.Isolated {
 		return fmt.Errorf("%w: isolated workspaces are not restorable after executor loss", runs.ErrExecutorStateLost)
 	}
@@ -682,8 +675,8 @@ func (i *InteractionExecutor) discardInteraction(session *interactionSession) er
 	return nil
 }
 
-func rootExecutionScope(start runs.RootExecutionStart) run.ExecutionScope {
-	return run.ExecutionScope{
+func rootExecutionScope(start runs.RootExecutionStart) runs.ExecutionScope {
+	return runs.ExecutionScope{
 		SessionID: start.SessionID, CWD: start.CWD, WorkspaceCWD: start.WorkspaceCWD,
 		Isolated: start.Isolated, GoalIncarnationID: start.GoalIncarnationID,
 	}
@@ -691,7 +684,7 @@ func rootExecutionScope(start runs.RootExecutionStart) run.ExecutionScope {
 
 func runExecutionContext(
 	ctx context.Context,
-	scope run.ExecutionScope,
+	scope runs.ExecutionScope,
 	start runs.RootExecutionStart,
 ) context.Context {
 	capabilities := run.Capabilities{

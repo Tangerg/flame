@@ -89,7 +89,7 @@ func TestChildRunStartReservationRejectsMissingAndChangedIdentity(t *testing.T) 
 	}
 }
 
-func TestChildRunStartReservationCleanupIsOwnerScoped(t *testing.T) {
+func TestChildRunStartReservationCleanupIsOwnerScopedAndBootWide(t *testing.T) {
 	db, err := storage.Open(t.Context(), ":memory:")
 	if err != nil {
 		t.Fatalf("Open: %v", err)

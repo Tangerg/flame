@@ -125,6 +125,7 @@ func (c *Compactor) CompactModelContext(
 	effective := slices.Concat(replacement, ephemeral)
 	result, err := agentexec.NewModelContextCompactionResult(
 		effective,
+		true,
 		summary,
 		len(candidate),
 		estimatedTokens,
@@ -157,6 +158,7 @@ func unchangedModelContextResult(
 ) (agentexec.ModelContextCompactionResult, error) {
 	return agentexec.NewModelContextCompactionResult(
 		candidate,
+		false,
 		"",
 		len(candidate),
 		estimatedTokens,

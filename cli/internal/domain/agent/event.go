@@ -3,7 +3,6 @@ package agent
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"slices"
 	"time"
 
@@ -65,7 +64,7 @@ type Event interface {
 
 // SegmentStarted is the authoritative opening fact of every initial or resumed
 // run segment.
-type SegmentStarted struct{ Run runtimeprotocol.RunRef }
+type SegmentStarted struct{ Run Run }
 
 type BlockStarted struct{ Block Block }
 
@@ -88,7 +87,7 @@ type ToolArgumentsDelta struct {
 // occupancy and may decrease after compaction.
 type RunProgress struct {
 	Step          *int
-	Usage         *runtimeprotocol.Usage
+	Usage         *Usage
 	ContextTokens *int64
 	Activity      string
 }
@@ -109,11 +108,11 @@ type PlanChanged struct {
 
 // RunInterrupted closes the current segment and parks the stable logical run.
 // Interactions is the complete pending set that must be answered atomically;
-// Metrics and ContextTokens are the complete durable Run facts committed at that
+// Usage and ContextTokens are the complete durable Run facts committed at that
 // segment boundary.
 type RunInterrupted struct {
 	Interactions  []Interaction
-	Metrics       runtimeprotocol.RunMetrics
+	Usage         Usage
 	ContextTokens int64
 }
 
@@ -121,13 +120,13 @@ type RunInterrupted struct {
 // interrupted. It carries no duplicate interactions; the tree-level pending
 // set is assembled from the member that raised them.
 type RunSuspended struct {
-	Metrics       runtimeprotocol.RunMetrics
+	Usage         Usage
 	ContextTokens int64
 }
 
 type RunFinished struct {
 	Outcome       Outcome
-	Metrics       runtimeprotocol.RunMetrics
+	Usage         Usage
 	ContextTokens int64
 }
 
@@ -145,7 +144,7 @@ func (RunFinished) isEvent()        {}
 
 func (item SegmentStarted) equal(event Event) bool {
 	other, ok := event.(SegmentStarted)
-	return ok && equalRuns(item.Run, other.Run)
+	return ok && item.Run.Equal(other.Run)
 }
 
 func (item BlockStarted) equal(event Event) bool {
@@ -165,7 +164,7 @@ func (item ToolArgumentsDelta) equal(event Event) bool {
 
 func (item RunProgress) equal(event Event) bool {
 	other, ok := event.(RunProgress)
-	return ok && equalOptional(item.Step, other.Step) && reflect.DeepEqual(item.Usage, other.Usage) &&
+	return ok && equalOptional(item.Step, other.Step) && equalOptionalUsage(item.Usage, other.Usage) &&
 		equalOptional(item.ContextTokens, other.ContextTokens) && item.Activity == other.Activity
 }
 
@@ -186,19 +185,19 @@ func (item PlanChanged) equal(event Event) bool {
 
 func (item RunInterrupted) equal(event Event) bool {
 	other, ok := event.(RunInterrupted)
-	return ok && item.ContextTokens == other.ContextTokens && reflect.DeepEqual(item.Metrics, other.Metrics) &&
+	return ok && item.ContextTokens == other.ContextTokens && item.Usage.Equal(other.Usage) &&
 		equalInteractions(item.Interactions, other.Interactions)
 }
 
 func (item RunSuspended) equal(event Event) bool {
 	other, ok := event.(RunSuspended)
-	return ok && item.ContextTokens == other.ContextTokens && reflect.DeepEqual(item.Metrics, other.Metrics)
+	return ok && item.ContextTokens == other.ContextTokens && item.Usage.Equal(other.Usage)
 }
 
 func (item RunFinished) equal(event Event) bool {
 	other, ok := event.(RunFinished)
 	return ok && item.ContextTokens == other.ContextTokens &&
-		item.Outcome.Equal(other.Outcome) && reflect.DeepEqual(item.Metrics, other.Metrics)
+		item.Outcome.Equal(other.Outcome) && item.Usage.Equal(other.Usage)
 }
 
 // ReplayableEvent reports whether the underlying runtime retains this event in
@@ -215,7 +214,7 @@ func ReplayableEvent(event Event) bool {
 func CloneEvent(event Event) Event {
 	switch item := event.(type) {
 	case SegmentStarted:
-		item.Run = CloneRun(item.Run)
+		item.Run = item.Run.Clone()
 		return item
 	case BlockStarted:
 		item.Block = item.Block.Clone()
@@ -229,7 +228,8 @@ func CloneEvent(event Event) Event {
 			item.Step = new(*item.Step)
 		}
 		if item.Usage != nil {
-			item.Usage = CloneRunMetrics(runtimeprotocol.RunMetrics{Usage: item.Usage}).Usage
+			usage := item.Usage.Clone()
+			item.Usage = &usage
 		}
 		if item.ContextTokens != nil {
 			item.ContextTokens = new(*item.ContextTokens)
@@ -246,14 +246,14 @@ func CloneEvent(event Event) Event {
 		return item
 	case RunInterrupted:
 		item.Interactions = CloneInteractions(item.Interactions)
-		item.Metrics = CloneRunMetrics(item.Metrics)
+		item.Usage = item.Usage.Clone()
 		return item
 	case RunSuspended:
-		item.Metrics = CloneRunMetrics(item.Metrics)
+		item.Usage = item.Usage.Clone()
 		return item
 	case RunFinished:
 		item.Outcome = item.Outcome.Clone()
-		item.Metrics = CloneRunMetrics(item.Metrics)
+		item.Usage = item.Usage.Clone()
 		return item
 	default:
 		return nil
@@ -269,6 +269,10 @@ func equalEvent(left, right Event) bool {
 
 func equalOptional[T comparable](left, right *T) bool {
 	return (left == nil) == (right == nil) && (left == nil || *left == *right)
+}
+
+func equalOptionalUsage(left, right *Usage) bool {
+	return (left == nil) == (right == nil) && (left == nil || left.Equal(*right))
 }
 
 func equalInteractions(left, right []Interaction) bool {

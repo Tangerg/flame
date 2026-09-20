@@ -107,16 +107,32 @@ func Unwritten(sessionID string) (Current, error) {
 
 // CurrentOf owns one validated committed Goal as its Session's latest value.
 func CurrentOf(value Goal) (Current, error) {
-	if value.IsZero() {
-		return Current{}, fmt.Errorf("%w: committed Goal is required", ErrInvalid)
+	if err := value.ValidateSnapshot(); err != nil {
+		return Current{}, err
 	}
-	return Current{sessionID: value.sessionID, goal: &value}, nil
+	owned := value.Clone()
+	return Current{sessionID: owned.sessionID, goal: &owned}, nil
 }
 
-// ValidateFor checks the Session relationship of an already-constructed value.
+func (c Current) Validate() error {
+	if err := validateSessionIdentity(c.sessionID); err != nil {
+		return err
+	}
+	if c.goal == nil {
+		return nil
+	}
+	if c.goal.sessionID != c.sessionID {
+		return fmt.Errorf("%w: Current Session identity does not match Goal", ErrInvalid)
+	}
+	return c.goal.ValidateSnapshot()
+}
+
+// ValidateFor verifies the complete current value and its exact expected
+// Session identity. Point reads use it before stored Goal state can influence a
+// use case.
 func (c Current) ValidateFor(expectedSessionID string) error {
-	if c.sessionID == "" {
-		return fmt.Errorf("%w: Current is required", ErrInvalid)
+	if err := c.Validate(); err != nil {
+		return err
 	}
 	if c.sessionID != expectedSessionID {
 		return fmt.Errorf(
@@ -133,7 +149,7 @@ func (c Current) Goal() (Goal, bool) {
 	if c.goal == nil {
 		return Goal{}, false
 	}
-	return *c.goal, true
+	return c.goal.Clone(), true
 }
 
 func (c Current) Version() Version {
@@ -193,16 +209,13 @@ func Restore(snapshot Snapshot) (Goal, error) {
 		createdAt:     canonicalTime(snapshot.CreatedAt),
 		updatedAt:     canonicalTime(snapshot.UpdatedAt),
 	}
-	if err := value.validateInitialState(); err != nil {
+	if err := value.ValidateSnapshot(); err != nil {
 		return Goal{}, err
 	}
 	return value, nil
 }
 
-// IsZero reports whether no committed Goal was constructed.
-func (g Goal) IsZero() bool { return g.sessionID == "" }
-
-func (g Goal) validateInitialState() error {
+func (g Goal) ValidateSnapshot() error {
 	if err := validateSessionIdentity(g.sessionID); err != nil {
 		return err
 	}
@@ -260,6 +273,11 @@ func (g Goal) Snapshot() Snapshot {
 	}
 }
 
+func (g Goal) Clone() Goal {
+	g.capabilities = g.capabilities.Clone()
+	return g
+}
+
 func (g Goal) SessionID() string                  { return g.sessionID }
 func (g Goal) Objective() string                  { return g.objective }
 func (g Goal) Status() Status                     { return g.status }
@@ -281,14 +299,33 @@ func (v Version) SessionID() string             { return v.sessionID }
 func (v Version) IncarnationID() (string, bool) { return v.incarnationID.String(), v.committed }
 func (v Version) Revision() (int64, bool)       { return v.revision, v.committed }
 
-// IsZero reports whether no Session-bound version was constructed.
-func (v Version) IsZero() bool { return v.sessionID == "" }
+func (v Version) Validate() error {
+	if err := validateSessionIdentity(v.sessionID); err != nil {
+		return err
+	}
+	if !v.committed {
+		if v.incarnationID.String() != "" || v.revision != 0 {
+			return fmt.Errorf("%w: unwritten Version carries committed identity", ErrInvalid)
+		}
+		return nil
+	}
+	if err := v.incarnationID.Validate(); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
+	if v.revision <= 0 {
+		return fmt.Errorf("%w: committed Version revision must be positive", ErrInvalid)
+	}
+	return nil
+}
 
 // AdvancesTo accepts revision one for a fresh incarnation and exactly one
 // revision of advancement inside an existing incarnation.
 func (v Version) AdvancesTo(next Goal) error {
-	if v.IsZero() || next.IsZero() {
-		return fmt.Errorf("%w: expected version and replacement Goal are required", ErrInvalid)
+	if err := v.Validate(); err != nil {
+		return err
+	}
+	if err := next.ValidateSnapshot(); err != nil {
+		return err
 	}
 	if next.sessionID != v.sessionID {
 		return fmt.Errorf("%w: replacement belongs to another Session", ErrInvalid)
@@ -324,7 +361,7 @@ func (g Goal) Complete(now time.Time) (Goal, error) {
 		return Goal{}, err
 	}
 	next.status, next.reason = StatusComplete, Reason{}
-	return next, nil
+	return next, next.ValidateSnapshot()
 }
 
 func (g Goal) Pause(code ReasonCode, detail string, now time.Time) (Goal, error) {
@@ -340,7 +377,7 @@ func (g Goal) Pause(code ReasonCode, detail string, now time.Time) (Goal, error)
 		return Goal{}, err
 	}
 	next.status, next.reason = StatusPaused, reason
-	return next, nil
+	return next, next.ValidateSnapshot()
 }
 
 // Stop returns the user-authored paused state after an owned drive has been
@@ -357,7 +394,7 @@ func (g Goal) Stop(now time.Time) (Goal, error) {
 	if err != nil {
 		return Goal{}, err
 	}
-	return next, nil
+	return next, next.ValidateSnapshot()
 }
 
 func (g Goal) Block(code ReasonCode, detail string, now time.Time) (Goal, error) {
@@ -373,7 +410,7 @@ func (g Goal) Block(code ReasonCode, detail string, now time.Time) (Goal, error)
 		return Goal{}, err
 	}
 	next.status, next.reason = StatusBlocked, reason
-	return next, nil
+	return next, next.ValidateSnapshot()
 }
 
 func (g Goal) Resume(now time.Time) (Goal, error) {
@@ -385,7 +422,7 @@ func (g Goal) Resume(now time.Time) (Goal, error) {
 		return Goal{}, err
 	}
 	next.status, next.reason = StatusActive, Reason{}
-	return next, nil
+	return next, next.ValidateSnapshot()
 }
 
 func (g Goal) ReviseObjective(objective, incarnationID string, now time.Time) (Goal, error) {
@@ -419,16 +456,19 @@ func (g Goal) reviseObjective(objective, incarnationID string, resume bool, now 
 	if err != nil {
 		return Goal{}, err
 	}
-	next := g
+	next := g.Clone()
 	next.objective, next.incarnationID = objective, parsedIncarnationID
 	next.revision, next.updatedAt = firstRevision, updatedAt
 	if resume {
 		next.status, next.reason = StatusActive, Reason{}
 	}
-	return next, nil
+	return next, next.ValidateSnapshot()
 }
 
 func (g Goal) next(now time.Time) (Goal, error) {
+	if err := g.ValidateSnapshot(); err != nil {
+		return Goal{}, err
+	}
 	if g.revision == math.MaxInt64 {
 		return Goal{}, fmt.Errorf("%w: revision exhausted", ErrInvalid)
 	}
@@ -436,16 +476,13 @@ func (g Goal) next(now time.Time) (Goal, error) {
 	if err != nil {
 		return Goal{}, err
 	}
-	next := g
+	next := g.Clone()
 	next.revision++
 	next.updatedAt = updatedAt
 	return next, nil
 }
 
 func (g Goal) transitionTime(now time.Time) (time.Time, error) {
-	if g.IsZero() {
-		return time.Time{}, fmt.Errorf("%w: committed Goal is required", ErrInvalid)
-	}
 	now = canonicalTime(now)
 	if now.IsZero() {
 		return time.Time{}, fmt.Errorf("%w: transition time is required", ErrInvalid)

@@ -4,8 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
@@ -31,7 +30,7 @@ func TestOpenCreatesOrRestoresAValidatedSnapshot(t *testing.T) {
 
 func TestOpenPreservesRuntimeErrorIdentity(t *testing.T) {
 	_, err := Open(t.Context(), runtimefixture.New(), "missing", "")
-	if !errors.Is(err, protocol.ErrSessionNotFound) {
+	if !errors.Is(err, agent.ErrSessionNotFound) {
 		t.Fatalf("open error = %v, want session-not-found identity", err)
 	}
 }

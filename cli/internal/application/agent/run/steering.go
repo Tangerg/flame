@@ -81,7 +81,7 @@ func DeliverSteer(
 		return result, err
 	}
 	_, err := mutation.ConfirmAdmitted(ctx, backoff,
-		mutation.ReplayAdmission(policy, pending.Replay()), func(ctx context.Context) (struct{}, error) {
+		mutation.FreshReplayAdmission(policy, pending.Replay()), func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, runtime.SteerRun(ctx, pending.Command())
 		})
 	if err == nil {

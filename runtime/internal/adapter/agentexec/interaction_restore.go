@@ -34,7 +34,7 @@ func (i *interactionSession) validateWaitingTree(ctx context.Context, continuati
 	if err != nil {
 		return err
 	}
-	if _, _, err := restoreInteractionAccounting(continuation.Checkpoint.Usage(), checkpoint, members); err != nil {
+	if _, _, err := restoreInteractionAccounting(continuation.Checkpoint.Usage, checkpoint, members); err != nil {
 		return err
 	}
 	_, _, err = i.restoreDelegateCalls(snapshots, members)
@@ -67,7 +67,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 		return err
 	}
 	usageByProcess, carriedUsage, err := restoreInteractionAccounting(
-		continuation.Checkpoint.Usage(), checkpoint, members,
+		continuation.Checkpoint.Usage, checkpoint, members,
 	)
 	if err != nil {
 		return fmt.Errorf("%w: restore Interaction accounting: %w", runs.ErrExecutorStateLost, err)
@@ -86,7 +86,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 	i.state.begun = true
 	i.state.boundary = boundary
 	i.state.dispatchReady = make(chan struct{})
-	i.state.waitingCheckpoint = continuation.Checkpoint
+	i.state.waitingCheckpoint = continuation.Checkpoint.Clone()
 	i.state.delegateCalls = delegateCalls
 	i.state.delegateChildren = delegateChildren
 	i.state.pendingSteers = checkpoint.pendingSteers

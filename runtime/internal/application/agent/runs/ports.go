@@ -196,7 +196,7 @@ type PreparedWaitingSubtreeCancellation struct {
 	// PendingInterruptions contains the surviving external waiting boundaries.
 	pendingInterruptions []MemberInterruption
 	// Checkpoint is the opaque complete-tree state that Change.Apply installs.
-	checkpoint run.Checkpoint
+	checkpoint ExecutorCheckpoint
 	// Change owns the frozen executor source until Apply or Discard resolves it.
 	change WaitingSubtreeChange
 }
@@ -321,7 +321,7 @@ type WaitingContinuation struct {
 	ExecutorID               string
 	RootRunID                string
 	Members                  []WaitingMember
-	Checkpoint               run.Checkpoint
+	Checkpoint               ExecutorCheckpoint
 	Capabilities             run.Capabilities
 	ChildRunAdmissionEnabled bool
 }

@@ -283,10 +283,10 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 		t.Fatalf("Reserve: %v", reserveErr)
 	}
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
-	checkpoint := testsupport.MustCheckpoint(run.CheckpointState{
+	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: "member_orphan", Payload: []byte(`{"opaque":true}`), BuildID: testsupport.BuildID,
-		Scope: run.ExecutionScope{SessionID: "session_abandoned"}, ModelSelection: testsupport.DefaultModelSelection(),
-	})
+		Scope: runs.ExecutionScope{SessionID: "session_abandoned"}, ModelSelection: testsupport.DefaultModelSelection(),
+	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("SaveCheckpoint: %v", saveCheckpointErr)
 	}
@@ -295,7 +295,6 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 		Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db),
 		Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
 		Transcript: sqlite.NewTranscriptStore(db), Messages: sqlite.NewMessageStore(db),
-		GoalRuns:            sqlite.NewGoalStore(db),
 		ExecutorCheckpoints: checkpointStore,
 		ModelInvocations:    sqlite.NewModelInvocationStore(db),
 		ToolInvocations:     sqlite.NewToolInvocationStore(db),
@@ -325,7 +324,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	if commitRecoveryErr := failingStore.CommitRecovery(ctx, commit); !errors.Is(commitRecoveryErr, cleanupFailure) {
 		t.Fatalf("failed CommitRecovery = %v, want %v", commitRecoveryErr, cleanupFailure)
 	}
-	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID()); loadCheckpointErr != nil {
+	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); loadCheckpointErr != nil {
 		t.Fatalf("cleanup failure did not roll back preceding checkpoint cleanup: %v", loadCheckpointErr)
 	}
 
@@ -333,7 +332,6 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 		Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db),
 		Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
 		Transcript: sqlite.NewTranscriptStore(db), Messages: sqlite.NewMessageStore(db),
-		GoalRuns:            sqlite.NewGoalStore(db),
 		ExecutorCheckpoints: checkpointStore,
 		ModelInvocations:    sqlite.NewModelInvocationStore(db),
 		ToolInvocations:     sqlite.NewToolInvocationStore(db),
@@ -357,7 +355,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	if remaining != 0 {
 		t.Fatalf("child-start reservations after boot recovery = %d, want 0", remaining)
 	}
-	if _, err := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID()); !errors.Is(err, run.ErrCheckpointNotFound) {
+	if _, err := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("orphan checkpoint after successful recovery = %v, want not found", err)
 	}
 }
@@ -448,13 +446,13 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	); startToolInvocationErr != nil {
 		t.Fatalf("start Tool invocation: %v", startToolInvocationErr)
 	}
-	checkpoint := testsupport.MustCheckpoint(run.CheckpointState{
+	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID:   "orphan_checkpoint",
 		Payload:        []byte(`{"opaque":true}`),
 		BuildID:        testsupport.BuildID,
-		Scope:          run.ExecutionScope{SessionID: "session"},
+		Scope:          runs.ExecutionScope{SessionID: "session"},
 		ModelSelection: testsupport.DefaultModelSelection(),
-	})
+	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("SaveCheckpoint: %v", saveCheckpointErr)
 	}
@@ -504,7 +502,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	if err != nil || !found || activeAfterRollback.State() != run.Running {
 		t.Fatalf("Run after rollback = found:%t value:%+v err:%v", found, activeAfterRollback, err)
 	}
-	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID()); loadCheckpointErr != nil {
+	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); loadCheckpointErr != nil {
 		t.Fatalf("checkpoint after rollback: %v", loadCheckpointErr)
 	}
 	var modelState, toolState string
@@ -582,7 +580,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	).Scan(&toolState); !errors.Is(scanErr, sql.ErrNoRows) {
 		t.Fatalf("recovered Tool invocation read = %v, want consumed journal row", scanErr)
 	}
-	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID()); !errors.Is(loadCheckpointErr, run.ErrCheckpointNotFound) {
+	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("orphan checkpoint after recovery = %v", loadCheckpointErr)
 	}
 	currentGoal, err := goalStore.Get(ctx, goalValue.SessionID())
@@ -654,10 +652,10 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	if openErr := interruptStore.Open(ctx, pending); openErr != nil {
 		t.Fatalf("Open Pending: %v", openErr)
 	}
-	checkpoint := testsupport.MustCheckpoint(run.CheckpointState{
+	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: "member_root", Payload: []byte(`{"opaque":true}`), BuildID: testsupport.BuildID,
-		Scope: run.ExecutionScope{SessionID: "session"}, ModelSelection: testsupport.DefaultModelSelection(),
-	})
+		Scope: runs.ExecutionScope{SessionID: "session"}, ModelSelection: testsupport.DefaultModelSelection(),
+	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("SaveCheckpoint: %v", saveCheckpointErr)
 	}
@@ -688,7 +686,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	if err != nil || !found || stored.State() != run.Waiting {
 		t.Fatalf("Run after rejection = found:%t value:%+v err:%v", found, stored, err)
 	}
-	if _, err := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID()); err != nil {
+	if _, err := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); err != nil {
 		t.Fatalf("checkpoint after rejection: %v", err)
 	}
 }

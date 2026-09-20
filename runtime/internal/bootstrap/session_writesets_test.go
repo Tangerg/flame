@@ -118,14 +118,14 @@ func bootstrapClaimedResumeTerminalPlan(
 // bootstrapCheckpoint deliberately treats the executor payload as opaque. These
 // Bootstrap fixtures verify Application write-sets, not Agent Framework wire;
 // only adapter/agentexec may construct or interpret a tree snapshot.
-func bootstrapCheckpoint(rootMemberID, sessionID string) run.Checkpoint {
-	return testsupport.MustCheckpoint(run.CheckpointState{
+func bootstrapCheckpoint(rootMemberID, sessionID string) runsapp.ExecutorCheckpoint {
+	return runsapp.ExecutorCheckpoint{
 		RootMemberID:   rootMemberID,
 		Payload:        []byte("opaque executor checkpoint"),
 		BuildID:        bootstrapCheckpointBuildID,
-		Scope:          run.ExecutionScope{SessionID: sessionID},
+		Scope:          runsapp.ExecutionScope{SessionID: sessionID},
 		ModelSelection: testsupport.DefaultModelSelection(),
-	})
+	}
 }
 
 func bootstrapPending(
@@ -304,9 +304,7 @@ func parkWithGoalLease(
 	}
 	memberID := "member_" + runID
 	checkpoint := bootstrapCheckpoint(memberID, sessionID)
-	checkpointState := checkpoint.State()
-	checkpointState.Scope.GoalIncarnationID = goalIncarnationID
-	checkpoint = testsupport.MustCheckpoint(checkpointState)
+	checkpoint.Scope.GoalIncarnationID = goalIncarnationID
 	if err := checkpoints.SaveCheckpoint(ctx, checkpoint); err != nil {
 		t.Fatalf("save executor checkpoint: %v", err)
 	}
@@ -381,7 +379,7 @@ func TestApplyTerminalDropsInterruptAndTerminalizes(t *testing.T) {
 	if open, _ := ints.List(ctx, "ses_A"); len(open) != 0 {
 		t.Fatalf("interrupt survived cancel: %+v", open)
 	}
-	if _, loadCheckpointErr := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, run.ErrCheckpointNotFound) {
+	if _, loadCheckpointErr := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runsapp.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("executor checkpoint after cancel = %v, want not found", loadCheckpointErr)
 	}
 	// The admission row is terminal, so the session can start a fresh run.
@@ -422,7 +420,7 @@ func TestApplyTerminalRecoversLostParkAtomically(t *testing.T) {
 	if open, _ := ints.List(ctx, "ses_A"); len(open) != 0 {
 		t.Fatalf("interrupt survived run_lost: %+v", open)
 	}
-	if _, loadCheckpointErr := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, run.ErrCheckpointNotFound) {
+	if _, loadCheckpointErr := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runsapp.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("executor checkpoint after run_lost = %v, want not found", loadCheckpointErr)
 	}
 	if admitErr := runs.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: parkCreatedAt.Add(time.Minute)})); admitErr != nil {
@@ -485,7 +483,7 @@ func TestApplyTerminalRecoversClaimedResumeAtomically(t *testing.T) {
 	if requireResumeClaimErr := ints.RequireResumeClaim(ctx, pending.SessionID, pending.RootRunID); requireResumeClaimErr == nil {
 		t.Fatal("claimed Resume interrupt survived terminal write-set")
 	}
-	if _, loadCheckpointErr := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, run.ErrCheckpointNotFound) {
+	if _, loadCheckpointErr := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runsapp.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("executor checkpoint after claimed RunLost = %v, want not found", loadCheckpointErr)
 	}
 	stored, found, err := runs.Run(ctx, pending.RootRunID)
@@ -598,7 +596,7 @@ func TestApplyRollbackDropsRunsAndFreesAdmission(t *testing.T) {
 	if open, _ := ints.List(ctx, "ses_A"); len(open) != 0 {
 		t.Fatalf("dropped run's interrupt survived rollback: %+v", open)
 	}
-	if _, err := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(err, run.ErrCheckpointNotFound) {
+	if _, err := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(err, runsapp.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("executor checkpoint after rollback = %v, want not found", err)
 	}
 	if err := runs.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: parkCreatedAt.Add(time.Minute)})); err != nil {
@@ -809,10 +807,10 @@ func TestApplyDeleteRemovesRunRows(t *testing.T) {
 	if open, _ := ints.List(ctx, "ses_A"); len(open) != 0 {
 		t.Fatalf("interrupt survived delete: %+v", open)
 	}
-	if _, err := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(err, run.ErrCheckpointNotFound) {
+	if _, err := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(err, runsapp.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("executor checkpoint after delete = %v, want not found", err)
 	}
-	if _, err := ss.checkpoints.LoadCheckpoint(ctx, orphanMemberID); !errors.Is(err, run.ErrCheckpointNotFound) {
+	if _, err := ss.checkpoints.LoadCheckpoint(ctx, orphanMemberID); !errors.Is(err, runsapp.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("orphan executor checkpoint after delete = %v, want not found", err)
 	}
 	if _, err := ss.sessions.Get(ctx, "ses_A"); !errors.Is(err, session.ErrNotFound) {

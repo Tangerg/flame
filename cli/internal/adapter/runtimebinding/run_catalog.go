@@ -16,41 +16,42 @@ type runCatalogBinding interface {
 	ListRuns(context.Context, protocol.ListRunsRequest, flameruntime.CallOptions) (*protocol.Page[protocol.RunRef], error)
 }
 
-func (r *Connection) GetRun(ctx context.Context, runID string) (protocol.RunRef, error) {
+func (r *Connection) GetRun(ctx context.Context, runID string) (agent.Run, error) {
 	if err := protocol.ValidateRunID(runID); err != nil {
-		return protocol.RunRef{}, fmt.Errorf("get run: %w", err)
+		return agent.Run{}, fmt.Errorf("get run: %w", err)
 	}
 	value, err := r.runCatalog.GetRun(ctx, protocol.GetRunRequest{RunID: runID}, r.callOptions())
 	if err != nil {
-		return protocol.RunRef{}, classifyError(err)
+		return agent.Run{}, classifyError(err)
 	}
 	if value == nil {
-		return protocol.RunRef{}, runtimeContractViolation("get run returned nil")
+		return agent.Run{}, runtimeContractViolation("get run returned nil")
 	}
-	if err := protocol.ValidateWireTree(*value); err != nil {
-		return protocol.RunRef{}, runtimeContractViolation("get run returned an invalid run: %v", err)
+	projected, err := projectRun(*value)
+	if err != nil {
+		return agent.Run{}, runtimeContractViolation("get run returned an invalid run: %v", err)
 	}
-	if value.ID != runID {
-		return protocol.RunRef{}, runtimeContractViolation("get run returned id %q for %q", value.ID, runID)
+	if projected.ID != runID {
+		return agent.Run{}, runtimeContractViolation("get run returned id %q for %q", projected.ID, runID)
 	}
-	return *value, nil
+	return projected, nil
 }
 
-func (r *Connection) ListRuns(ctx context.Context, query agent.RunQuery) (protocol.Page[protocol.RunRef], error) {
+func (r *Connection) ListRuns(ctx context.Context, query agent.RunQuery) (agent.RunPage, error) {
 	if err := query.Validate(); err != nil {
-		return protocol.Page[protocol.RunRef]{}, err
+		return agent.RunPage{}, err
 	}
 	if query.IncludeDescendants {
 		if err := r.requireFeature(protocol.FeatureSubagents); err != nil {
-			return protocol.Page[protocol.RunRef]{}, err
+			return agent.RunPage{}, err
 		}
 	}
 	limit, err := query.PageSize.Rows()
 	if err != nil {
-		return protocol.Page[protocol.RunRef]{}, err
+		return agent.RunPage{}, err
 	}
 	if err := validateRequestCursor("list runs", query.Cursor); err != nil {
-		return protocol.Page[protocol.RunRef]{}, err
+		return agent.RunPage{}, err
 	}
 	statuses := slices.Clone(query.Statuses)
 	if len(statuses) == 0 {
@@ -61,48 +62,49 @@ func (r *Connection) ListRuns(ctx context.Context, query agent.RunQuery) (protoc
 		PageQuery: protocol.PageQuery{Cursor: query.Cursor, Limit: protocolPositiveInt(limit)},
 	}, r.callOptions())
 	if err != nil {
-		return protocol.Page[protocol.RunRef]{}, classifyError(err)
+		return agent.RunPage{}, classifyError(err)
 	}
 	return projectRunPage(page, query, limit)
 }
 
-func projectRunPage(page *protocol.Page[protocol.RunRef], query agent.RunQuery, limit int) (protocol.Page[protocol.RunRef], error) {
+func projectRunPage(page *protocol.Page[protocol.RunRef], query agent.RunQuery, limit int) (agent.RunPage, error) {
 	if page == nil {
-		return protocol.Page[protocol.RunRef]{}, runtimeContractViolation("list runs returned a nil page")
+		return agent.RunPage{}, runtimeContractViolation("list runs returned a nil page")
 	}
 	if len(page.Data) > limit {
-		return protocol.Page[protocol.RunRef]{}, runtimeContractViolation("list runs returned %d rows for limit %d", len(page.Data), limit)
+		return agent.RunPage{}, runtimeContractViolation("list runs returned %d rows for limit %d", len(page.Data), limit)
 	}
 	if err := validateContinuationCursor("list runs", query.Cursor, page.NextCursor); err != nil {
-		return protocol.Page[protocol.RunRef]{}, err
+		return agent.RunPage{}, err
 	}
-	seen := make(map[string]struct{}, len(page.Data))
-	for index, run := range page.Data {
-		if err := protocol.ValidateWireTree(run); err != nil {
-			return protocol.Page[protocol.RunRef]{}, runtimeContractViolation("list runs returned an invalid run: %v", err)
+	projected := agent.RunPage{Items: make([]agent.Run, 0, len(page.Data)), NextCursor: page.NextCursor}
+	for _, value := range page.Data {
+		run, err := projectRun(value)
+		if err != nil {
+			return agent.RunPage{}, runtimeContractViolation("list runs returned an invalid run: %v", err)
 		}
 		if query.SessionID != "" && run.SessionID != query.SessionID {
-			return protocol.Page[protocol.RunRef]{}, runtimeContractViolation("list runs for session %q returned run %q from %q", query.SessionID, run.ID, run.SessionID)
+			return agent.RunPage{}, runtimeContractViolation("list runs for session %q returned run %q from %q", query.SessionID, run.ID, run.SessionID)
 		}
 		if len(query.Statuses) != 0 && !slices.Contains(query.Statuses, run.Status) {
-			return protocol.Page[protocol.RunRef]{}, runtimeContractViolation("list runs returned run %q with unrequested status %q", run.ID, run.Status)
+			return agent.RunPage{}, runtimeContractViolation("list runs returned run %q with unrequested status %q", run.ID, run.Status)
 		}
-		if !query.IncludeDescendants && run.ParentRunID != "" {
-			return protocol.Page[protocol.RunRef]{}, runtimeContractViolation("list root runs returned child %q", run.ID)
+		if !query.IncludeDescendants && !run.Lineage.IsRoot() {
+			return agent.RunPage{}, runtimeContractViolation("list root runs returned child %q", run.ID)
 		}
-		if index > 0 {
-			previous := page.Data[index-1]
+		if len(projected.Items) != 0 {
+			previous := projected.Items[len(projected.Items)-1]
 			if run.CreatedAt.After(previous.CreatedAt) ||
 				(run.CreatedAt.Equal(previous.CreatedAt) && run.ID > previous.ID) {
-				return protocol.Page[protocol.RunRef]{}, runtimeContractViolation(
+				return agent.RunPage{}, runtimeContractViolation(
 					"list runs returned run %q out of newest-first order after %q", run.ID, previous.ID,
 				)
 			}
 		}
-		if _, exists := seen[run.ID]; exists {
-			return protocol.Page[protocol.RunRef]{}, runtimeContractViolation("list runs repeats id %q", run.ID)
-		}
-		seen[run.ID] = struct{}{}
+		projected.Items = append(projected.Items, run)
 	}
-	return *page, nil
+	if err := projected.Validate(); err != nil {
+		return agent.RunPage{}, runtimeContractViolation("list runs returned an invalid projection: %v", err)
+	}
+	return projected, nil
 }

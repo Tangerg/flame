@@ -33,11 +33,9 @@ func TestStartRunRejectsWorkingTreeMutation(t *testing.T) {
 	if !errors.Is(err, protocol.ErrSessionBusy) {
 		t.Fatalf("start under working-tree mutation = %v, want ErrSessionBusy", err)
 	}
-	release, acquired, err := rt.admissions.AcquireSession(t.Context(), ses.ID())
-	if err != nil || !acquired {
-		t.Fatalf("session admission after rejected start = %t, %v", acquired, err)
+	if rt.admissions.ActiveSessions()[ses.ID()] {
+		t.Fatal("rejected start leaked the session admission claim")
 	}
-	release()
 }
 
 func TestRollbackFilesRejectsWorkingTreeRunAdmission(t *testing.T) {
@@ -62,9 +60,7 @@ func TestRollbackFilesRejectsWorkingTreeRunAdmission(t *testing.T) {
 	if !errors.Is(err, protocol.ErrSessionBusy) {
 		t.Fatalf("file rollback under run admission = %v, want ErrSessionBusy", err)
 	}
-	release, acquired, err := rt.admissions.AcquireSession(t.Context(), ses.ID())
-	if err != nil || !acquired {
-		t.Fatalf("session admission after rejected rollback = %t, %v", acquired, err)
+	if rt.admissions.ActiveSessions()[ses.ID()] {
+		t.Fatal("rejected rollback leaked the session mutation claim")
 	}
-	release()
 }

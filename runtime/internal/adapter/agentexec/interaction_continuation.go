@@ -78,7 +78,7 @@ func (i *interactionSession) prepareContinuationAnswers(
 	answers []runs.InterruptAnswer,
 ) ([]preparedInteractionAnswer, error) {
 	i.state.mu.Lock()
-	checkpoint := i.state.waitingCheckpoint
+	checkpoint := i.state.waitingCheckpoint.Clone()
 	i.state.mu.Unlock()
 	checkpointState, err := decodeExecutorCheckpoint(checkpoint)
 	if err != nil {

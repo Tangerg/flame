@@ -45,7 +45,7 @@ func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 
 	workspace := t.TempDir()
 	profile := steerReplayTestProfile(t, workspace)
-	prepared, err := prepareTestSession(t, t.Context(), Config{
+	prepared, err := prepareSession(t.Context(), Config{
 		Runtime:        runtimefixture.New(),
 		RuntimeProfile: &profile,
 		Workspace:      workspace,
@@ -96,7 +96,7 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 		t.Fatal(err)
 	}
 
-	prepared, err := prepareTestSession(t, t.Context(), Config{
+	prepared, err := prepareSession(t.Context(), Config{
 		Runtime:        runtime,
 		SessionID:      created.ID,
 		Workspace:      workspace,

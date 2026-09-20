@@ -21,7 +21,6 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	infraexec "github.com/Tangerg/flame/runtime/internal/infra/process/exec"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -592,15 +591,15 @@ type promptingInteractionAuthorizer struct {
 }
 
 func rootInteractionWaitingContinuation(
-	checkpoint run.Checkpoint,
+	checkpoint runs.ExecutorCheckpoint,
 	executorID string,
 	capabilities run.Capabilities,
 ) runs.WaitingContinuation {
 	const rootRunID = "run_root"
 
 	metrics := run.Metrics{}
-	if len(checkpoint.Usage().Models) > 0 {
-		total, err := checkpoint.Usage().Total()
+	if len(checkpoint.Usage.Models) > 0 {
+		total, err := checkpoint.Usage.Total()
 		if err != nil {
 			panic(err)
 		}
@@ -610,9 +609,9 @@ func rootInteractionWaitingContinuation(
 				ReasoningTokens: total.ReasoningTokens, CacheReadTokens: total.CacheReadTokens,
 				CacheWriteTokens: total.CacheWriteTokens, CostUSD: total.Cost.OptionalUSD(),
 			},
-			ByModel: make(map[string]accounting.Totals, len(checkpoint.Usage().Models)),
+			ByModel: make(map[string]accounting.Totals, len(checkpoint.Usage.Models)),
 		}
-		for _, model := range checkpoint.Usage().Models {
+		for _, model := range checkpoint.Usage.Models {
 			usage.ByModel[model.Model] = accounting.Totals{
 				InputTokens: model.PromptTokens, OutputTokens: model.CompletionTokens,
 				ReasoningTokens: model.ReasoningTokens, CacheReadTokens: model.CacheReadTokens,
@@ -625,10 +624,10 @@ func rootInteractionWaitingContinuation(
 		}
 	}
 	return runs.WaitingContinuation{
-		SessionID: checkpoint.Scope().SessionID, ExecutorID: executorID, RootRunID: rootRunID,
+		SessionID: checkpoint.Scope.SessionID, ExecutorID: executorID, RootRunID: rootRunID,
 		Members: []runs.WaitingMember{{
-			RunID: rootRunID, MemberID: checkpoint.RootMemberID(),
-			ModelSelection: checkpoint.ModelSelection(), Metrics: metrics,
+			RunID: rootRunID, MemberID: checkpoint.RootMemberID,
+			ModelSelection: checkpoint.ModelSelection, Metrics: metrics,
 		}},
 		Checkpoint: checkpoint, Capabilities: capabilities,
 		ChildRunAdmissionEnabled: capabilities.ChildRuns,
@@ -676,25 +675,24 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
 	for _, test := range []struct {
 		name   string
-		mutate func(*run.CheckpointState)
+		mutate func(*runs.ExecutorCheckpoint)
 	}{
-		{name: "corrupt payload", mutate: func(checkpoint *run.CheckpointState) {
+		{name: "corrupt payload", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.Payload = []byte(`{"tree":null}`)
 		}},
-		{name: "wrong build", mutate: func(checkpoint *run.CheckpointState) {
+		{name: "wrong build", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.BuildID = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 		}},
-		{name: "missing workspace", mutate: func(checkpoint *run.CheckpointState) {
+		{name: "missing workspace", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.Scope.CWD = workspace + "/gone"
 		}},
-		{name: "isolated workspace", mutate: func(checkpoint *run.CheckpointState) {
+		{name: "isolated workspace", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.Scope.Isolated = true
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			state := checkpoint.State()
-			test.mutate(&state)
-			candidate := testsupport.MustCheckpoint(state)
+			candidate := checkpoint.Clone()
+			test.mutate(&candidate)
 			executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 				return nil, errors.New("model must not be called while restoring")
 			}), InteractionExecutorConfig{})
@@ -967,7 +965,7 @@ func (r *runtimeSteerModel) Call(_ context.Context, request *chat.Request) (*cha
 	return interactionUsageTextResponse("revised", 1, 1), nil
 }
 
-func captureInteractionQuestionCheckpoint(t *testing.T, workspace string) run.Checkpoint {
+func captureInteractionQuestionCheckpoint(t *testing.T, workspace string) runs.ExecutorCheckpoint {
 	t.Helper()
 	question := newQuestionCheckpointTool(t)
 	executor := newObservedTestInteractionExecutor(t, &observationScriptModel{responses: []*chat.Response{
@@ -1086,14 +1084,13 @@ func TestUnresumableWaitingExecutionReportsWhy(t *testing.T) {
 
 	workspace := t.TempDir()
 	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
-	foreignState := checkpoint.State()
-	foreignState.BuildID = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	foreign := checkpoint.Clone()
+	foreign.BuildID = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 
 	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(
 		func(context.Context, *chat.Request) (*chat.Response, error) {
 			return nil, errors.New("model must not be called while probing")
 		}), InteractionExecutorConfig{})
-	foreign := testsupport.MustCheckpoint(foreignState)
 	continuation := rootInteractionWaitingContinuation(foreign, "exec_probe", run.Capabilities{})
 
 	resumable, err := executor.CanResumeWaitingExecution(t.Context(), continuation)

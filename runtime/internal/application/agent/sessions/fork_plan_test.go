@@ -29,6 +29,9 @@ func TestForkPlanOwnsTheCompleteChildProjection(t *testing.T) {
 	if got := fork.Snapshot(); got.Messages[0].Parts[0].Text != "remembered" || len(got.Runs) != 0 {
 		t.Fatalf("returned snapshot mutated fork plan: %+v", got)
 	}
+	if err := fork.Validate(); err != nil {
+		t.Fatalf("owned fork plan became invalid: %v", err)
+	}
 }
 
 func TestForkPlanBindsTheInitialPlanReplacement(t *testing.T) {
@@ -91,7 +94,7 @@ func TestForkPlanRejectsIncoherentWriteSets(t *testing.T) {
 			}
 		})
 	}
-	if !(ForkPlan{}).IsZero() {
+	if err := (ForkPlan{}).Validate(); err == nil {
 		t.Fatal("zero ForkPlan is valid")
 	}
 }

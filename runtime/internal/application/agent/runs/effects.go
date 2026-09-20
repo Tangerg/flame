@@ -1,10 +1,6 @@
 package runs
 
-import (
-	"context"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
-)
+import "context"
 
 // Nudge is a non-durable live workspace change notification.
 type Nudge struct {
@@ -39,7 +35,7 @@ type TreeBarrierCommitter interface {
 
 // WaitingCheckpointReader returns one exact opaque waiting-tree recovery point.
 type WaitingCheckpointReader interface {
-	ReadWaitingCheckpoint(ctx context.Context, rootMemberID string) (run.Checkpoint, error)
+	ReadWaitingCheckpoint(ctx context.Context, rootMemberID string) (ExecutorCheckpoint, error)
 }
 
 // WaitingSubtreeCancellationCommitter owns the atomic application write-set for

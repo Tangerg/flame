@@ -425,8 +425,7 @@ func TestMixedInteractionPTYRuntime(t *testing.T) {
 	backend.Instant = true
 	backend.Script = func(string) runtimefixture.Script { return mixedInteractionPTYScript() }
 	if err := terminal.Run(t.Context(), terminal.Config{
-		Runtime: backend, RuntimeProfile: new(scriptedRuntimeProfile(t)), Workspace: t.TempDir(),
-		StateDirectory: t.TempDir(),
+		Runtime: backend, Workspace: t.TempDir(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -495,8 +494,7 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 		}}
 	}
 	if err := terminal.Run(t.Context(), terminal.Config{
-		Runtime: backend, RuntimeProfile: new(scriptedRuntimeProfile(t)), Workspace: t.TempDir(),
-		StateDirectory: t.TempDir(),
+		Runtime: backend, Workspace: t.TempDir(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -800,25 +798,6 @@ func buildTestBinary(t *testing.T) string {
 	return executable
 }
 
-func scriptedRuntimeProfile(t *testing.T) runtimebinding.Profile {
-	t.Helper()
-	discovery := runtimefixture.Discovery()
-	client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{}}
-	for _, feature := range protocol.Features() {
-		discovery.Capabilities.Features[feature.Key] = protocol.FeatureCapability{
-			Enabled: true, ClientOptIn: feature.ClientOptIn, RequiredByRunProtocol: feature.RequiredByRunProtocol,
-		}
-		if feature.ClientOptIn {
-			client.Features[feature.Key] = protocol.FeaturePreference{Enabled: true}
-		}
-	}
-	profile, err := runtimebinding.NewProfile(discovery, client)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return profile
-}
-
 func TestFlameProcess(t *testing.T) {
 	if os.Getenv("FLAME_TEST_PROCESS") != "1" {
 		return
@@ -841,13 +820,13 @@ func TestFlameProcess(t *testing.T) {
 	dependencies := cmd.Dependencies{
 		OpenRuntime: func(context.Context) (cmd.Runtime, *runtimebinding.Profile, error) {
 			announce()
-			return runtime, new(scriptedRuntimeProfile(t)), nil
+			return runtime, nil, nil
 		},
 		StartTerminal: func(ctx context.Context, request cmd.TerminalRequest) error {
 			announce()
 			configured := request.Settings.Clone()
 			return terminal.Run(ctx, terminal.Config{
-				Runtime: runtime, RuntimeProfile: new(scriptedRuntimeProfile(t)), SessionID: request.SessionID, Workspace: request.Workspace,
+				Runtime: runtime, SessionID: request.SessionID, Workspace: request.Workspace,
 				InitialPrompt: request.InitialPrompt, Settings: &configured,
 				StateDirectory: request.StateDirectory,
 			})

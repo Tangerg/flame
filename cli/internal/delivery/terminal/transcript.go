@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -554,7 +552,7 @@ func (t *transcriptView) Reset() {
 	t.toolViews = nil
 }
 
-func (t *transcriptView) SetRuns(runs []protocol.RunRef) {
+func (t *transcriptView) SetRuns(runs []agent.Run) {
 	t.history.ReplaceRuns(runs)
 }
 

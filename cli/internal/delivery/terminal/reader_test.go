@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -177,11 +175,11 @@ func TestSameSessionProjectionReplacementRetiresALiveTranscriptReader(t *testing
 	t.Cleanup(operations.Close)
 	application := &app{
 		operations: operations,
-		session:    sessionState{current: protocol.Session{ID: "session"}},
+		session:    sessionState{current: agent.Session{ID: "session"}},
 		execution:  executionState{conversation: agent.NewConversation()},
 		dialogs:    dialogState{reader: reader},
 	}
-	application.prepareSessionProjectionReplacement(protocol.Session{ID: "session"}, agent.NewConversation())
+	application.prepareSessionProjectionReplacement(agent.Session{ID: "session"}, agent.NewConversation())
 
 	if source.released != 1 {
 		t.Fatalf("live reader source released %d times, want 1", source.released)
@@ -194,11 +192,11 @@ func TestSameSessionProjectionReplacementPreservesAStaticReader(t *testing.T) {
 	reader.Open(readerTarget{document: readerDocument{Title: "authoritative runtime document"}})
 
 	application := &app{
-		session:   sessionState{current: protocol.Session{ID: "session"}},
+		session:   sessionState{current: agent.Session{ID: "session"}},
 		execution: executionState{conversation: agent.NewConversation()},
 		dialogs:   dialogState{reader: reader, runtimeReader: runtimeReaderGoal},
 	}
-	application.prepareSessionProjectionReplacement(protocol.Session{ID: "session"}, agent.NewConversation())
+	application.prepareSessionProjectionReplacement(agent.Session{ID: "session"}, agent.NewConversation())
 
 	if application.dialogs.runtimeReader != runtimeReaderGoal {
 		t.Fatalf("runtime reader mode = %d, want the static reader preserved", application.dialogs.runtimeReader)

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -117,5 +118,5 @@ func (i ImportRequest) Validate() error {
 
 type TransferService interface {
 	ExportSession(context.Context, ExportRequest) (Document, error)
-	ImportSession(context.Context, ImportRequest) (runtimeprotocol.Session, error)
+	ImportSession(context.Context, ImportRequest) (agent.Session, error)
 }

@@ -33,6 +33,9 @@ func buildRunMaintenance(
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build compactor: %w", err)
 	}
+	if cfg.Maintenance != nil {
+		return cfg.Maintenance, compactor, nil
+	}
 	consolidator, err := maintenance.NewMemoryConsolidator(
 		conversationServices.store,
 		memoryCuration,

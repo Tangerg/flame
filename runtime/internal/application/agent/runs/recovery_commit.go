@@ -20,7 +20,7 @@ import (
 // NewRecoveryCommit constructs one complete, immutable boot-recovery write-set.
 func NewRecoveryCommit(input RecoveryCommitInput) (RecoveryCommit, error) {
 	state := cloneRecoveryCommitInput(input)
-	commit := RecoveryCommit{state: &state}
+	commit := RecoveryCommit{state: state}
 	if err := commit.Validate(); err != nil {
 		return RecoveryCommit{}, err
 	}
@@ -96,9 +96,6 @@ func (r RecoveryCommit) DeleteCheckpointSessionIDs() []string {
 // Validate proves that a boot-recovery write-set is self-contained and
 // owner-bound before its transaction begins.
 func (r RecoveryCommit) Validate() error {
-	if r.state == nil {
-		return errors.New("runs: recovery commit is required")
-	}
 	state := r.state
 	lostByID := make(map[string]rundomain.Replacement, len(state.LostRuns))
 	treeMembers := make(map[string][]rundomain.TreeMember)

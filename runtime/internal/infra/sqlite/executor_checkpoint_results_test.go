@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
@@ -23,7 +22,7 @@ func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
 	orphan := stageShellResult(t, results, "session-1", "orphan body")
 	checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"waiting":true}`)
 	checkpoint.ToolResultIDs = []toolresult.ID{retained}
-	if err := checkpoints.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(checkpoint)); err != nil {
+	if err := checkpoints.SaveCheckpoint(t.Context(), checkpoint); err != nil {
 		t.Fatal(err)
 	}
 	if err := results.Discard(t.Context(), "session-1", toolresult.Ref{ID: retained}); err != nil {
@@ -43,7 +42,7 @@ func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
 		t.Fatalf("purge removed=%d err=%v", removed, err)
 	}
 	loaded, err := checkpoints.LoadCheckpoint(t.Context(), checkpoint.RootMemberID)
-	if err != nil || !reflect.DeepEqual(loaded.State(), checkpoint) {
+	if err != nil || !reflect.DeepEqual(loaded, checkpoint) {
 		t.Fatalf("checkpoint changed: %+v %v", loaded, err)
 	}
 	if body, found, err := results.Fetch(t.Context(), "session-1", retained); err != nil || !found || body != "retained body" {
@@ -71,24 +70,24 @@ func TestCheckpointResultReplacementIsAtomicAndSessionScoped(t *testing.T) {
 	foreign := stageShellResult(t, results, "session-2", "foreign")
 	checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"waiting":true}`)
 	checkpoint.ToolResultIDs = []toolresult.ID{owned}
-	if err := checkpoints.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(checkpoint)); err != nil {
+	if err := checkpoints.SaveCheckpoint(t.Context(), checkpoint); err != nil {
 		t.Fatal(err)
 	}
 	for _, id := range []toolresult.ID{foreign, "MISSING"} {
-		replacement := checkpoint
+		replacement := checkpoint.Clone()
 		replacement.Payload = []byte(`{"replacement":true}`)
 		replacement.ToolResultIDs = []toolresult.ID{id}
-		if err := checkpoints.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(replacement)); err == nil {
+		if err := checkpoints.SaveCheckpoint(t.Context(), replacement); err == nil {
 			t.Fatal("invalid ownership accepted")
 		}
 		loaded, err := checkpoints.LoadCheckpoint(t.Context(), checkpoint.RootMemberID)
-		if err != nil || !reflect.DeepEqual(loaded.State(), checkpoint) {
+		if err != nil || !reflect.DeepEqual(loaded, checkpoint) {
 			t.Fatalf("failed save changed checkpoint: %+v %v", loaded, err)
 		}
 	}
-	replacement := checkpoint
+	replacement := checkpoint.Clone()
 	replacement.ToolResultIDs = nil
-	if err := checkpoints.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(replacement)); err != nil {
+	if err := checkpoints.SaveCheckpoint(t.Context(), replacement); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := results.PurgeUnbound(t.Context()); err != nil {
@@ -107,7 +106,7 @@ func TestDeletingCheckpointReleasesUnpublishedResults(t *testing.T) {
 			id := stageShellResult(t, results, "session-1", "pending body")
 			checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"waiting":true}`)
 			checkpoint.ToolResultIDs = []toolresult.ID{id}
-			if err := checkpoints.SaveCheckpoint(t.Context(), testsupport.MustCheckpoint(checkpoint)); err != nil {
+			if err := checkpoints.SaveCheckpoint(t.Context(), checkpoint); err != nil {
 				t.Fatal(err)
 			}
 			var err error

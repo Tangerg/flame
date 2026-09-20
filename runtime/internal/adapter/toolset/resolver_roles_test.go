@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -109,7 +108,7 @@ func TestGoalToolsAreRootOnlyAndOutcomeRequiresGoalRunProvenance(t *testing.T) {
 		t.Fatalf("create_goal: %v", err)
 	}
 	built.Resolver.UseCreateGoalTool(create)
-	goalRunContext := executionctx.WithScope(t.Context(), run.ExecutionScope{
+	goalRunContext := executionctx.WithScope(t.Context(), runs.ExecutionScope{
 		SessionID: "session-goal", GoalIncarnationID: "incarnation-1",
 	})
 

@@ -79,11 +79,12 @@ func (s *sessionReadRecordingRuntime) requestedSessionIDs() []string {
 type replayingStartRuntime struct {
 	*runtimefixture.Runtime
 
-	mu       sync.Mutex
-	attempts int
-	inputs   []agent.StartRun
-	stream   agent.SegmentStream
-	failure  error
+	mu         sync.Mutex
+	attempts   int
+	inputs     []agent.StartRun
+	stream     agent.SegmentStream
+	failure    error
+	afterFirst func()
 }
 
 type idempotentStartRuntime struct {
@@ -103,7 +104,7 @@ type heldCancellationResultRuntime struct {
 func (h *heldCancellationResultRuntime) CancelRun(
 	ctx context.Context,
 	input agent.CancelRun,
-) (protocol.CancelRunResponse, error) {
+) (agent.RunCancellation, error) {
 	result, err := h.Runtime.CancelRun(ctx, input)
 	select {
 	case h.settled <- struct{}{}:
@@ -113,7 +114,7 @@ func (h *heldCancellationResultRuntime) CancelRun(
 	case <-h.release:
 		return result, err
 	case <-ctx.Done():
-		return protocol.CancelRunResponse{}, context.Cause(ctx)
+		return agent.RunCancellation{}, context.Cause(ctx)
 	}
 }
 
@@ -156,19 +157,19 @@ func (i *invalidAcceptedStartRuntime) StartRun(ctx context.Context, input agent.
 	)
 }
 
-func (i *invalidAcceptedStartRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (protocol.CancelRunResponse, error) {
+func (i *invalidAcceptedStartRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (agent.RunCancellation, error) {
 	i.mu.Lock()
 	i.cancellations = append(i.cancellations, input)
 	refuse := i.refuseFirst && len(i.cancellations) == 1
 	i.mu.Unlock()
 	if refuse {
-		return protocol.CancelRunResponse{}, errors.New("temporary malformed-receipt cleanup failure")
+		return agent.RunCancellation{}, errors.New("temporary malformed-receipt cleanup failure")
 	}
 	if i.releaseCancellation != nil {
 		select {
 		case <-i.releaseCancellation:
 		case <-ctx.Done():
-			return protocol.CancelRunResponse{}, context.Cause(ctx)
+			return agent.RunCancellation{}, context.Cause(ctx)
 		}
 	}
 	return i.Runtime.CancelRun(ctx, input)
@@ -204,7 +205,7 @@ func (r *refusingFirstCommandRuntime) StartRun(ctx context.Context, input agent.
 	refused := r.refused
 	r.mu.Unlock()
 	if input.CommandID == refused {
-		return agent.SegmentStream{}, fmt.Errorf("runtime refused start: %w", protocol.ErrSessionHasActiveRun)
+		return agent.SegmentStream{}, fmt.Errorf("runtime refused start: %w", agent.ErrSessionHasActiveRun)
 	}
 	return r.Runtime.StartRun(ctx, input)
 }
@@ -226,7 +227,7 @@ func (a *activeConflictRuntime) StartRun(ctx context.Context, input agent.StartR
 	case a.attempted <- input.Clone():
 	default:
 	}
-	return agent.SegmentStream{}, fmt.Errorf("active run owns session: %w", protocol.ErrSessionHasActiveRun)
+	return agent.SegmentStream{}, fmt.Errorf("active run owns session: %w", agent.ErrSessionHasActiveRun)
 }
 
 func (i *idempotentStartRuntime) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
@@ -275,6 +276,9 @@ func (r *replayingStartRuntime) StartRun(ctx context.Context, input agent.StartR
 		r.mu.Lock()
 		r.stream = opened
 		r.mu.Unlock()
+		if r.afterFirst != nil {
+			r.afterFirst()
+		}
 		failure := r.failure
 		if failure == nil {
 			failure = agent.ErrDisconnected
@@ -325,7 +329,7 @@ func TestStreamRecoveryUsesTheFollowerSessionIdentity(t *testing.T) {
 	runtime := &sessionReadRecordingRuntime{Runtime: runtimefixture.New()}
 	application := &app{
 		runtime: runtime,
-		session: sessionState{current: protocol.Session{ID: "ses_demo_2"}},
+		session: sessionState{current: agent.Session{ID: "ses_demo_2"}},
 	}
 	follower := streamFollower{
 		app: application, ctx: t.Context(), sessionID: "ses_demo_1",
@@ -894,11 +898,14 @@ func TestCommandReplayGuaranteeExpiresAtItsDeadline(t *testing.T) {
 	}
 }
 
-func TestRecoveredStartRejectsAnotherReplayStoreBeforeIO(t *testing.T) {
+func TestRecoveredStartStopsBeforeRetryingOutsideItsReplayStore(t *testing.T) {
 	base := runtimefixture.New()
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
-	profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
+	profile = profileWithReplay(t, profile, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 10*time.Minute)
 	runtime := &replayingStartRuntime{Runtime: base}
+	runtime.afterFirst = func() {
+		profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
+	}
 	command := agent.StartRun{
 		CommandID: "cli_cccccccccccccccccccccccccccccccc", SessionID: "ses_demo_1",
 		Message: agent.Message{Text: "do not replay outside the owning store"}, Options: agent.RunOptions{},
@@ -911,7 +918,7 @@ func TestRecoveredStartRejectsAnotherReplayStoreBeforeIO(t *testing.T) {
 	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
 		t.Fatalf("recovered start error = %v", err)
 	}
-	if attempts := runtime.startAttempts(); len(attempts) != 0 {
+	if attempts := runtime.startAttempts(); len(attempts) != 1 {
 		t.Fatalf("unowned start reached runtime %d times", len(attempts))
 	}
 }

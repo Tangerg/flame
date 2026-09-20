@@ -498,7 +498,7 @@ func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (C
 	if err := claim.Validate(); err != nil {
 		return ClaimedResume{}, err
 	}
-	checkpoint := testExecutorCheckpoint().State()
+	checkpoint := testExecutorCheckpoint()
 	pending := claim.Pending()
 	root, _ := pending.RootContinuation()
 	checkpoint.RootMemberID = root.MemberID
@@ -509,7 +509,7 @@ func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (C
 	checkpoint.ModelSelection = root.ModelSelection
 	claimed := ClaimedResume{
 		Pending: pending, Answers: claim.Answers(),
-		Checkpoint: testsupport.MustCheckpoint(checkpoint),
+		Checkpoint: checkpoint,
 	}
 	if f.mutateClaim != nil {
 		f.mutateClaim(&claimed)
@@ -546,12 +546,12 @@ func testProjectionPorts(ports completeTestProjectionPorts) ProjectionPorts {
 func (f *fakeEffects) ReadWaitingCheckpoint(
 	_ context.Context,
 	rootMemberID string,
-) (run.Checkpoint, error) {
-	checkpoint := testExecutorCheckpoint().State()
+) (ExecutorCheckpoint, error) {
+	checkpoint := testExecutorCheckpoint()
 	checkpoint.RootMemberID = rootMemberID
 	checkpoint.Scope.CWD = "/work"
 	checkpoint.Scope.WorkspaceCWD = "/work"
-	return run.NewCheckpoint(checkpoint)
+	return checkpoint, nil
 }
 
 type blockingChildOpeningEffects struct {
@@ -584,21 +584,6 @@ func (f *fakeEffects) CommitOpening(_ context.Context, opening OpeningCommit) er
 	f.openings = append(f.openings, opening)
 	f.commits = append(f.commits, opening.Events()...)
 	return nil
-}
-
-func (f *fakeEffects) ResultPublicationCommitted(_ context.Context, sessionID, runID, segmentID string, publication ResultPublication) (bool, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	for _, commit := range f.commits {
-		if commit.ResultPublication == nil || commit.ResultPublication.ID != publication.ID {
-			continue
-		}
-		if commit.SessionID != sessionID || commit.RunID != runID || commit.SegmentID != segmentID || *commit.ResultPublication != publication {
-			return false, errors.New("result publication conflicts with stored content or owner")
-		}
-		return true, nil
-	}
-	return false, nil
 }
 
 func (f *fakeEffects) CommitEvent(ctx context.Context, commit EventCommit) error {

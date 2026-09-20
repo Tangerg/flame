@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
@@ -46,8 +44,8 @@ func TestResolveWorkspaceUsesTheCurrentRootForRelativePathsAndRejectsFiles(t *te
 func TestWorkspaceChoicesUseTheFrozenCurrentWorkspace(t *testing.T) {
 	now := time.Now()
 	known := []workspace.Summary{
-		{Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/work/first"}}, Sessions: 2, LastActive: &now},
-		{Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/work/current"}}, Sessions: 1},
+		{Workspace: workspace.Workspace{Path: "/work/first"}, Sessions: 2, LastActive: &now},
+		{Workspace: workspace.Workspace{Path: "/work/current"}, Sessions: 1},
 	}
 	recent := []workbench.Workspace{{Path: "/work/recent", LastOpened: now.Add(time.Hour)}}
 
@@ -68,7 +66,7 @@ type workspaceRecordingRuntime struct {
 	created chan string
 }
 
-func (w *workspaceRecordingRuntime) CreateSession(ctx context.Context, input agent.CreateSession) (protocol.Session, error) {
+func (w *workspaceRecordingRuntime) CreateSession(ctx context.Context, input agent.CreateSession) (agent.Session, error) {
 	w.created <- input.Workspace
 	return w.Runtime.CreateSession(ctx, input)
 }

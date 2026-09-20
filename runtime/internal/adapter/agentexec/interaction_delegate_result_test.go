@@ -69,5 +69,5 @@ func (rejectingChildCompactor) CompactModelContext(_ context.Context, request Mo
 	if !request.Durable() {
 		return ModelContextCompactionResult{}, errors.New(strings.Repeat("worker diagnostic 界", 400))
 	}
-	return NewModelContextCompactionResult(request.Candidate(), "", len(request.Candidate()), 100)
+	return NewModelContextCompactionResult(request.Candidate(), false, "", len(request.Candidate()), 100)
 }

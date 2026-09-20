@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/layout"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -87,7 +88,7 @@ func (a *app) showLocalWorkspaceChoices() error {
 	for _, workspace := range workspaces {
 		choices = append(choices, workspaceChoice{
 			workspace: workspace,
-			current:   samePath(workspace.Path, a.session.current.Workspace.Ref.Path),
+			current:   samePath(workspace.Path, a.session.current.Workspace.Path),
 			available: true,
 		})
 	}
@@ -100,7 +101,7 @@ func (a *app) showLocalWorkspaceChoices() error {
 
 func (a *app) loadWorkspaceChoices() {
 	a.status.note("loading runtime workspaces")
-	currentWorkspace := a.session.current.Workspace.Ref.Path
+	currentWorkspace := a.session.current.Workspace.Path
 	recentWorkspaces := a.workbench.Workspaces()
 	a.runOperation(workspaceQueryOperation, true,
 		func(ctx context.Context) ([]workspaceChoice, error) {
@@ -139,13 +140,13 @@ func mergeWorkspaceChoices(
 			lastOpened = *summary.LastActive
 		}
 		detail := fmt.Sprintf("%d sessions", summary.Sessions)
-		if summary.Workspace.Availability != protocol.WorkspaceAvailable {
+		if !summary.Workspace.IsAvailable() {
 			detail += " · missing"
 		}
-		byPath[summary.Workspace.Ref.Path] = workspaceChoice{
-			workspace: workbench.Workspace{Path: summary.Workspace.Ref.Path, LastOpened: lastOpened},
-			current:   samePath(summary.Workspace.Ref.Path, currentWorkspace),
-			available: summary.Workspace.Availability == protocol.WorkspaceAvailable, detail: detail,
+		byPath[summary.Workspace.Path] = workspaceChoice{
+			workspace: workbench.Workspace{Path: summary.Workspace.Path, LastOpened: lastOpened},
+			current:   samePath(summary.Workspace.Path, currentWorkspace),
+			available: summary.Workspace.IsAvailable(), detail: detail,
 		}
 	}
 	for _, remembered := range recent {
@@ -170,32 +171,32 @@ func mergeWorkspaceChoices(
 }
 
 func (a *app) resolveAndStartWorkspace(requested string) {
-	path, err := resolveWorkspace(a.session.current.Workspace.Ref.Path, requested)
+	path, err := resolveWorkspace(a.session.current.Workspace.Path, requested)
 	if err != nil {
 		a.message(err.Error())
 		return
 	}
 	a.status.note("resolving workspace")
 	a.runOperation(workspaceQueryOperation, true,
-		func(ctx context.Context) (protocol.WorkspaceInfo, error) {
+		func(ctx context.Context) (workspace.Workspace, error) {
 			return a.workspaces.Resolve(ctx, workspace.ResolveRequest{Path: path})
 		},
-		func(resolved protocol.WorkspaceInfo, err error) {
+		func(resolved workspace.Workspace, err error) {
 			if err != nil {
 				a.message("resolve workspace: " + err.Error())
 				return
 			}
-			if resolved.Availability != protocol.WorkspaceAvailable {
-				a.message("workspace is unavailable · " + resolved.Ref.Path)
+			if !resolved.IsAvailable() {
+				a.message("workspace is unavailable · " + resolved.Path)
 				return
 			}
-			a.startSessionInWorkspace(resolved.Ref.Path)
+			a.startSessionInWorkspace(resolved.Path)
 		},
 	)
 }
 
 func (a *app) createSessionInWorkspace(requested string) error {
-	workspace, err := resolveWorkspace(a.session.current.Workspace.Ref.Path, requested)
+	workspace, err := resolveWorkspace(a.session.current.Workspace.Path, requested)
 	if err != nil {
 		return err
 	}
@@ -207,7 +208,7 @@ func (a *app) RelocateSession(requested string) error {
 	if err := a.requireRuntimeFeature(protocol.FeatureRelocate); err != nil {
 		return err
 	}
-	path, err := resolveWorkspace(a.session.current.Workspace.Ref.Path, requested)
+	path, err := resolveWorkspace(a.session.current.Workspace.Path, requested)
 	if err != nil {
 		return err
 	}
@@ -217,26 +218,26 @@ func (a *app) RelocateSession(requested string) error {
 	}
 	a.status.note("resolving workspace")
 	a.runOperation(workspaceQueryOperation, true,
-		func(ctx context.Context) (protocol.WorkspaceInfo, error) {
+		func(ctx context.Context) (workspace.Workspace, error) {
 			return a.workspaces.Resolve(ctx, workspace.ResolveRequest{Path: path})
 		},
-		func(resolved protocol.WorkspaceInfo, err error) {
+		func(resolved workspace.Workspace, err error) {
 			if err != nil {
 				a.message("resolve workspace: " + err.Error())
 				return
 			}
-			if resolved.Availability != protocol.WorkspaceAvailable {
-				a.message("workspace is unavailable · " + resolved.Ref.Path)
+			if !resolved.IsAvailable() {
+				a.message("workspace is unavailable · " + resolved.Path)
 				return
 			}
-			a.relocateSession(resolved.Ref.Path)
+			a.relocateSession(resolved.Path)
 		},
 	)
 	return nil
 }
 
 func (a *app) relocateSession(path string) {
-	if samePath(path, a.session.current.Workspace.Ref.Path) {
+	if samePath(path, a.session.current.Workspace.Path) {
 		a.message("session already uses " + path)
 		return
 	}
@@ -247,7 +248,7 @@ func (a *app) relocateSession(path string) {
 			if err != nil {
 				return agent.SessionSnapshot{}, err
 			}
-			if _, err := a.runtime.UpdateSession(ctx, agent.UpdateSession{
+			if _, err := session.Update(ctx, a.runtime, agent.UpdateSession{
 				SessionID: sessionID, Workspace: &path, ExpectedRevision: latest.Session.Revision,
 			}); err != nil {
 				return agent.SessionSnapshot{}, err

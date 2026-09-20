@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -22,7 +23,7 @@ type failingWaitingCheckpointStore struct {
 	err error
 }
 
-func (f failingWaitingCheckpointStore) SaveCheckpoint(context.Context, run.Checkpoint) error {
+func (f failingWaitingCheckpointStore) SaveCheckpoint(context.Context, runs.ExecutorCheckpoint) error {
 	return f.err
 }
 
@@ -151,26 +152,24 @@ func TestCommitWaitingSubtreeCancellationRejectsStalePendingWithoutMutation(t *t
 }
 
 func TestCommitWaitingSubtreeCancellationRejectsMismatchedCheckpointBindingWithoutMutation(t *testing.T) {
-	for name, mutate := range map[string]func(*run.CheckpointState){
-		"root":             func(checkpoint *run.CheckpointState) { checkpoint.RootMemberID = "other_root" },
-		"session":          func(checkpoint *run.CheckpointState) { checkpoint.Scope.SessionID = "other_session" },
-		"goal incarnation": func(checkpoint *run.CheckpointState) { checkpoint.Scope.GoalIncarnationID = "other_goal" },
-		"provider": func(checkpoint *run.CheckpointState) {
+	for name, mutate := range map[string]func(*runs.ExecutorCheckpoint){
+		"root":             func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.RootMemberID = "other_root" },
+		"session":          func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" },
+		"goal incarnation": func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" },
+		"provider": func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.ModelSelection, _ = modelref.New("openai", "model")
 		},
-		"model": func(checkpoint *run.CheckpointState) {
+		"model": func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.ModelSelection, _ = modelref.New("anthropic", "other-model")
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			fixture := newWaitingCancellationSQLiteFixture(t)
 			draft := waitingCancellationDraft(fixture.commit)
-			state := draft.checkpoint.State()
-			mutate(&state)
-			draft.checkpoint = testsupport.MustCheckpoint(state)
+			mutate(&draft.checkpoint)
 			_, err := draft.build()
-			if !errors.Is(err, run.ErrInvalidCheckpoint) {
-				t.Fatalf("ownership error = %v, want ErrInvalidCheckpoint", err)
+			if !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
+				t.Fatalf("ownership error = %v, want ErrInvalidExecutorCheckpoint", err)
 			}
 			assertWaitingCancellationUnchanged(t, fixture, fixture.commit.ExpectedPending())
 		})
@@ -442,7 +441,7 @@ func assertWaitingCancellationUnchanged(
 
 	checkpoint, err := fixture.checkpoints.LoadCheckpoint(
 		fixture.ctx,
-		fixture.originalCheckpoint.RootMemberID(),
+		fixture.originalCheckpoint.RootMemberID,
 	)
 	if err != nil {
 		t.Fatalf("load executor checkpoint after rollback: %v", err)
@@ -476,11 +475,11 @@ func assertWaitingCancellationUnchanged(
 }
 
 func normalizedExecutorCheckpoint(
-	checkpoint run.Checkpoint,
-) run.Checkpoint {
-	state := checkpoint.State()
-	if len(state.Usage.Models) == 0 {
-		state.Usage.Models = nil
+	checkpoint runs.ExecutorCheckpoint,
+) runs.ExecutorCheckpoint {
+	checkpoint.Usage.Models = slices.Clone(checkpoint.Usage.Models)
+	if len(checkpoint.Usage.Models) == 0 {
+		checkpoint.Usage.Models = nil
 	}
-	return testsupport.MustCheckpoint(state)
+	return checkpoint
 }

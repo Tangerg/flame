@@ -72,13 +72,14 @@ func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, *runtimebinding.Prof
 	if runtime == nil {
 		return nil, nil, errors.New("runtime factory returned no agent runtime")
 	}
-	if profile == nil {
-		return nil, nil, errors.New("runtime factory returned no negotiated profile")
+	if profile != nil {
+		value := *profile
+		if err := value.Validate(); err != nil {
+			return nil, nil, err
+		}
+		profile = &value
 	}
-	if err := profile.Validate(); err != nil {
-		return nil, nil, err
-	}
-	return runtime, new(*profile), nil
+	return runtime, profile, nil
 }
 
 // NewRoot builds an isolated command tree from process-owned dependencies.

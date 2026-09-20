@@ -80,20 +80,20 @@ type interactionCheckpointState struct {
 
 func (i *interactionSession) executorCheckpoint(
 	tree agent.TreeSnapshot,
-) (run.Checkpoint, error) {
+) (runs.ExecutorCheckpoint, error) {
 	payload, err := i.interactionCheckpointPayload(tree)
 	if err != nil {
-		return run.Checkpoint{}, err
+		return runs.ExecutorCheckpoint{}, err
 	}
 	decoded, err := decodeInteractionCheckpointPayload(payload)
 	if err != nil {
-		return run.Checkpoint{}, err
+		return runs.ExecutorCheckpoint{}, err
 	}
 	usage, err := i.accounting.snapshot()
 	if err != nil {
-		return run.Checkpoint{}, err
+		return runs.ExecutorCheckpoint{}, err
 	}
-	return run.NewCheckpoint(run.CheckpointState{
+	checkpoint := runs.ExecutorCheckpoint{
 		ToolResultIDs: checkpointToolResultIDs(decoded),
 		RootMemberID:  tree.RootID().String(), Payload: payload,
 		BuildID: i.buildID.String(), Scope: i.scope,
@@ -103,7 +103,11 @@ func (i *interactionSession) executorCheckpoint(
 			InterruptKinds: slices.Clone(i.start.InterruptKinds),
 		},
 		Usage: usage,
-	})
+	}
+	if err := checkpoint.Validate(); err != nil {
+		return runs.ExecutorCheckpoint{}, err
+	}
+	return checkpoint, nil
 }
 
 func encodeInteractionCheckpointPayload(

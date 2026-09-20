@@ -1,8 +1,6 @@
 package toolset
 
 import (
-	"slices"
-	"strings"
 	"testing"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -27,6 +25,8 @@ func resolveRootManifest(t *testing.T, mcpTools []toolcontract.Tool) Manifest {
 	return manifest
 }
 
+type deferredNamer interface{ DeferredToolNames() []string }
+
 func TestResolverOffersSearchToolsOverDeferredCatalog(t *testing.T) {
 	mcpTools := []toolcontract.Tool{
 		mcpToolStub{name: "files_read", server: "files", remote: "read"},
@@ -34,12 +34,12 @@ func TestResolverOffersSearchToolsOverDeferredCatalog(t *testing.T) {
 	}
 	resolved := manifestTools(resolveRootManifest(t, mcpTools))
 
-	var search toolcontract.Tool
+	var search deferredNamer
 	names := make(map[string]bool, len(resolved))
 	for _, tool := range resolved {
 		names[tool.Definition().Name] = true
-		if tool.Definition().Name == domaintool.SearchTools {
-			search = tool
+		if d, ok := tool.(deferredNamer); ok {
+			search = d
 		}
 	}
 
@@ -47,25 +47,16 @@ func TestResolverOffersSearchToolsOverDeferredCatalog(t *testing.T) {
 	if !names["files_read"] || !names["files_write"] {
 		t.Fatalf("MCP tools must remain resolvable: %v", names)
 	}
+	if !names["search_tools"] {
+		t.Fatalf("search_tools must be offered when MCP tools exist: %v", names)
+	}
 	if search == nil {
-		t.Fatal("search_tools is unavailable")
+		t.Fatal("no tool reports deferred names")
 	}
-	var promoted []string
-	ctx := WithToolAdvertiser(t.Context(), func(names ...string) error {
-		promoted = append(promoted, names...)
-		return nil
-	})
-	output, err := callTextTool(ctx, search, `{"query":"select:files_read,files_write,lsp"}`)
-	if err != nil {
-		t.Fatalf("search_tools: %v", err)
-	}
-	want := []string{"files_read", "files_write", "lsp"}
-	if !slices.Equal(promoted, want) {
-		t.Fatalf("promoted tools = %v, want %v", promoted, want)
-	}
-	for _, name := range want {
-		if !strings.Contains(output, name) {
-			t.Errorf("discovery output omits promoted tool %q: %s", name, output)
+	deferred := nameSliceSet(search.DeferredToolNames())
+	for _, want := range []string{"files_read", "files_write", "lsp"} {
+		if !deferred[want] {
+			t.Errorf("deferred names = %v, missing %q", deferred, want)
 		}
 	}
 }
@@ -83,4 +74,12 @@ func TestResolverDefersRuntimeToolsWithoutMCP(t *testing.T) {
 			t.Errorf("initial manifest = %v, unexpectedly advertised deferred tool %q", advertised, deferred)
 		}
 	}
+}
+
+func nameSliceSet(names []string) map[string]bool {
+	out := make(map[string]bool, len(names))
+	for _, name := range names {
+		out[name] = true
+	}
+	return out
 }

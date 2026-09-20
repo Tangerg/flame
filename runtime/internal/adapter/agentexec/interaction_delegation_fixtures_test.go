@@ -309,8 +309,8 @@ func (d *delegateProjection) CommitEvent(
 	_ context.Context,
 	commit runs.EventCommit,
 ) error {
-	if commit.Validate() != nil {
-		return errors.New("event commit is required")
+	if err := commit.Validate(); err != nil {
+		return err
 	}
 	d.mu.Lock()
 	d.applyCommit(commit)
@@ -337,16 +337,16 @@ func (d *delegateProjection) CommitTreeBarrier(
 func (d *delegateProjection) ReadWaitingCheckpoint(
 	_ context.Context,
 	rootMemberID string,
-) (run.Checkpoint, error) {
+) (runs.ExecutorCheckpoint, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	for index := len(d.barriers) - 1; index >= 0; index-- {
 		checkpoint := d.barriers[index].Checkpoint()
-		if checkpoint.RootMemberID() == rootMemberID {
-			return checkpoint, nil
+		if checkpoint.RootMemberID == rootMemberID {
+			return checkpoint.Clone(), nil
 		}
 	}
-	return run.Checkpoint{}, run.ErrCheckpointNotFound
+	return runs.ExecutorCheckpoint{}, runs.ErrExecutorCheckpointNotFound
 }
 
 func (*delegateProjection) Nudge(string, []string) {}

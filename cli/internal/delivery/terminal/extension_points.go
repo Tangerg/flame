@@ -55,12 +55,12 @@ func builtinPlugin() extensions.Plugin {
 			{Kind: agent.BlockError, Present: presentFailure},
 		}
 		for i, presenter := range presenters {
-			if err := scope.Contribute(BlockPresenters, presenter, extensions.Contribution{Order: i}); err != nil {
+			if _, err := scope.Contribute(BlockPresenters, presenter, extensions.Contribution{Order: i}); err != nil {
 				return err
 			}
 		}
 		for i, presenter := range defaultToolPresenters() {
-			if err := scope.Contribute(ToolPresenters, presenter, extensions.Contribution{Order: i}); err != nil {
+			if _, err := scope.Contribute(ToolPresenters, presenter, extensions.Contribution{Order: i}); err != nil {
 				return err
 			}
 		}

@@ -3,29 +3,28 @@ package segment
 import (
 	"context"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func testRootExecutorCheckpoint() run.Checkpoint {
+func testRootExecutorCheckpoint() runs.ExecutorCheckpoint {
 	const rootMemberID = "member_1"
 
 	selection, err := modelref.New("anthropic", "claude")
 	if err != nil {
 		panic(err)
 	}
-	return testsupport.MustCheckpoint(run.CheckpointState{
+	return runs.ExecutorCheckpoint{
 		RootMemberID:   rootMemberID,
 		Payload:        []byte("opaque root checkpoint"),
 		BuildID:        checkpointBuildID,
-		Scope:          run.ExecutionScope{SessionID: "ses_1"},
+		Scope:          runs.ExecutionScope{SessionID: "ses_1"},
 		ModelSelection: selection,
-	})
+	}
 }
 
 type recordingExecutorCheckpointStore struct {
-	saved     []run.Checkpoint
+	saved     []runs.ExecutorCheckpoint
 	deleted   [][]string
 	saveErr   error
 	deleteErr error
@@ -33,22 +32,22 @@ type recordingExecutorCheckpointStore struct {
 
 func (r *recordingExecutorCheckpointStore) SaveCheckpoint(
 	_ context.Context,
-	checkpoint run.Checkpoint,
+	checkpoint runs.ExecutorCheckpoint,
 ) error {
-	r.saved = append(r.saved, checkpoint)
+	r.saved = append(r.saved, checkpoint.Clone())
 	return r.saveErr
 }
 
 func (r *recordingExecutorCheckpointStore) LoadCheckpoint(
 	_ context.Context,
 	rootMemberID string,
-) (run.Checkpoint, error) {
+) (runs.ExecutorCheckpoint, error) {
 	for index := len(r.saved) - 1; index >= 0; index-- {
-		if r.saved[index].RootMemberID() == rootMemberID {
-			return r.saved[index], nil
+		if r.saved[index].RootMemberID == rootMemberID {
+			return r.saved[index].Clone(), nil
 		}
 	}
-	return run.Checkpoint{}, run.ErrCheckpointNotFound
+	return runs.ExecutorCheckpoint{}, runs.ErrExecutorCheckpointNotFound
 }
 
 func (r *recordingExecutorCheckpointStore) DeleteCheckpoints(

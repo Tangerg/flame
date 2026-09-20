@@ -237,7 +237,7 @@ func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.Effe
 // from a fresh capture, so they describe the same moment the Interrupts did.
 func (i *interactionSession) stagedTree() (agent.TreeSnapshot, error) {
 	i.state.mu.Lock()
-	checkpoint := i.state.waitingCheckpoint
+	checkpoint := i.state.waitingCheckpoint.Clone()
 	i.state.mu.Unlock()
 	state, err := decodeExecutorCheckpoint(checkpoint)
 	if err != nil {

@@ -8883,16 +8883,12 @@
           "items": {
             "$ref": "#/$defs/RunRef"
           }
-        },
-        "session": {
-          "$ref": "#/$defs/Session"
         }
       },
       "required": [
         "interrupts",
         "items",
-        "runs",
-        "session"
+        "runs"
       ]
     },
     "SessionStatus": {

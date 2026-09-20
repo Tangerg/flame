@@ -70,11 +70,15 @@ func NewText(w io.Writer) *Text {
 // Begin binds subsequent live and recovered output to the accepted run. Text
 // does not print the identity, but retaining it prevents a cold read from
 // accidentally selecting a newer run in the same session.
-func (t *Text) Begin(sessionID, runID string, _ agent.RunOptions) error {
+func (t *Text) Begin(run agent.Run, _ agent.RunOptions) error {
 	if t.err != nil {
 		return t.err
 	}
-	if err := t.scope.bindRoot(runID); err != nil {
+	if err := run.Validate(); err != nil {
+		t.err = fmt.Errorf("begin text: %w", err)
+		return t.err
+	}
+	if err := t.scope.bind(run); err != nil {
 		t.err = fmt.Errorf("begin text: %w", err)
 		return t.err
 	}
@@ -118,10 +122,10 @@ func (t *Text) renderEvent(envelope agent.RunEvent) {
 		for _, interaction := range event.Interactions {
 			t.showInteraction(interaction)
 		}
-		t.showUsage(agent.UsageFromMetrics(event.Metrics))
+		t.showUsage(event.Usage)
 	case agent.RunSuspended:
 		if t.scope.isRoot(envelope.RunID) {
-			t.showUsage(agent.UsageFromMetrics(event.Metrics))
+			t.showUsage(event.Usage)
 		}
 	case agent.RunFinished:
 		if t.scope.isRoot(envelope.RunID) {
@@ -208,7 +212,10 @@ func (t *Text) Reconcile(snapshot agent.SessionSnapshot) error {
 	if t.err != nil {
 		return t.err
 	}
-
+	if err := snapshot.Validate(); err != nil {
+		t.err = fmt.Errorf("render text snapshot: %w", err)
+		return t.err
+	}
 	target, err := resolveSnapshotRun(snapshot, t.scope.rootID)
 	if err != nil {
 		t.err = fmt.Errorf("render text snapshot: %w", err)
@@ -232,10 +239,10 @@ func (t *Text) Reconcile(snapshot agent.SessionSnapshot) error {
 		for _, interaction := range snapshot.Interactions {
 			t.showInteraction(interaction)
 		}
-		t.showUsage(agent.UsageFromMetrics(target.Metrics))
+		t.showUsage(target.Usage)
 	}
 	if target.Status == protocol.RunStatusFinished && !t.settled {
-		t.finished(agent.RunFinished{Outcome: agent.OutcomeFromRun(target.Outcome), Metrics: target.Metrics})
+		t.finished(agent.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
 		t.settled = true
 	}
 	return t.err
@@ -498,7 +505,7 @@ func (t *Text) finished(e agent.RunFinished) {
 		}
 		t.line(msg)
 	}
-	t.showUsage(agent.UsageFromMetrics(e.Metrics))
+	t.showUsage(e.Usage)
 }
 
 func (t *Text) showUsage(u agent.Usage) {

@@ -40,7 +40,7 @@ type recoveryStoreStub struct {
 	commit            RecoveryCommit
 	commits           int
 	commitErr         error
-	checkpoint        *rundomain.Checkpoint
+	checkpoint        *ExecutorCheckpoint
 	checkpointErr     error
 	aliasOpen         bool
 	aliasPending      bool
@@ -53,9 +53,9 @@ func invalidRecoveryCommit(
 	commit RecoveryCommit,
 	mutate func(*RecoveryCommitInput),
 ) RecoveryCommit {
-	state := cloneRecoveryCommitInput(*commit.state)
+	state := cloneRecoveryCommitInput(commit.state)
 	mutate(&state)
-	return RecoveryCommit{state: &state}
+	return RecoveryCommit{state: state}
 }
 
 func (r *recoveryStoreStub) ListNonTerminalRuns(context.Context) ([]rundomain.Run, error) {
@@ -269,12 +269,12 @@ func TestRecoveryRejectsActiveOpenToolWithoutItsRunningItem(t *testing.T) {
 func (r *recoveryStoreStub) LoadExecutorCheckpoint(
 	_ context.Context,
 	rootMemberID string,
-) (rundomain.Checkpoint, error) {
+) (ExecutorCheckpoint, error) {
 	if r.checkpointErr != nil {
-		return rundomain.Checkpoint{}, r.checkpointErr
+		return ExecutorCheckpoint{}, r.checkpointErr
 	}
 	if r.checkpoint != nil {
-		return *r.checkpoint, nil
+		return r.checkpoint.Clone(), nil
 	}
 	for _, pending := range r.pending {
 		root, found := pending.RootContinuation()
@@ -285,19 +285,19 @@ func (r *recoveryStoreStub) LoadExecutorCheckpoint(
 		if !found {
 			sess = testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/workspace")})
 		}
-		return testsupport.MustCheckpoint(rundomain.CheckpointState{
+		return ExecutorCheckpoint{
 			RootMemberID: rootMemberID,
 			Payload:      []byte(`{}`),
 			BuildID:      testExecutorBuildID,
-			Scope: rundomain.ExecutionScope{
+			Scope: ExecutionScope{
 				SessionID: pending.SessionID, CWD: sess.Workspace().Path(), WorkspaceCWD: sess.Workspace().Path(),
 				Isolated: sess.Isolated(), GoalIncarnationID: pending.GoalIncarnationID,
 			},
 			ModelSelection: root.ModelSelection,
 			Capabilities:   pending.Capabilities,
-		}), nil
+		}, nil
 	}
-	return rundomain.Checkpoint{}, rundomain.ErrCheckpointNotFound
+	return ExecutorCheckpoint{}, ErrExecutorCheckpointNotFound
 }
 
 func (r *recoveryStoreStub) CommitRecovery(_ context.Context, commit RecoveryCommit) error {
@@ -1171,14 +1171,14 @@ func TestRecoveryPreservesOnlyCoherentInterruptedTree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	wantContinuation, err := waitingContinuationFromPending(pending, testsupport.MustCheckpoint(rundomain.CheckpointState{
+	wantContinuation, err := waitingContinuationFromPending(pending, ExecutorCheckpoint{
 		RootMemberID: "member_root", Payload: []byte(`{}`), BuildID: testExecutorBuildID,
-		Scope: rundomain.ExecutionScope{
+		Scope: ExecutionScope{
 			SessionID: run.SessionID(), CWD: "/workspace", WorkspaceCWD: "/workspace",
 			GoalIncarnationID: pending.GoalIncarnationID,
 		},
 		ModelSelection: run.ModelSelection(), Capabilities: pending.Capabilities,
-	}))
+	})
 	if err != nil {
 		t.Fatalf("waitingContinuationFromPending: %v", err)
 	}
@@ -1295,7 +1295,7 @@ func TestRecoveryTreatsInvalidExecutorCheckpointAsResourceLoss(t *testing.T) {
 		runs:          []rundomain.Run{run},
 		pending:       []Pending{pending},
 		transcripts:   map[string][]transcript.Item{run.SessionID(): {item}},
-		checkpointErr: fmt.Errorf("corrupt durable policy: %w", rundomain.ErrInvalidCheckpoint),
+		checkpointErr: fmt.Errorf("corrupt durable policy: %w", ErrInvalidExecutorCheckpoint),
 	}
 	checkpointCalls := 0
 	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
@@ -1319,33 +1319,33 @@ func TestRecoveryTreatsInvalidExecutorCheckpointAsResourceLoss(t *testing.T) {
 func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *testing.T) {
 	tests := []struct {
 		name   string
-		mutate func(*rundomain.CheckpointState)
+		mutate func(*ExecutorCheckpoint)
 	}{
-		{name: "root member", mutate: func(checkpoint *rundomain.CheckpointState) {
+		{name: "root member", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.RootMemberID = "member_other"
 		}},
-		{name: "session", mutate: func(checkpoint *rundomain.CheckpointState) {
+		{name: "session", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.Scope.SessionID = "session_other"
 		}},
-		{name: "working directory", mutate: func(checkpoint *rundomain.CheckpointState) {
+		{name: "working directory", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.Scope.CWD = "/other/workspace"
 		}},
-		{name: "workspace", mutate: func(checkpoint *rundomain.CheckpointState) {
+		{name: "workspace", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.Scope.WorkspaceCWD = "/other/workspace"
 		}},
-		{name: "isolation", mutate: func(checkpoint *rundomain.CheckpointState) {
+		{name: "isolation", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.Scope.Isolated = true
 		}},
-		{name: "goal incarnation", mutate: func(checkpoint *rundomain.CheckpointState) {
+		{name: "goal incarnation", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.Scope.GoalIncarnationID = "goal_other"
 		}},
-		{name: "provider", mutate: func(checkpoint *rundomain.CheckpointState) {
+		{name: "provider", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.ModelSelection = mustCheckpointSelection("openai", checkpoint.ModelSelection.Model())
 		}},
-		{name: "model", mutate: func(checkpoint *rundomain.CheckpointState) {
+		{name: "model", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.ModelSelection = mustCheckpointSelection(checkpoint.ModelSelection.Provider(), "model_other")
 		}},
-		{name: "capabilities", mutate: func(checkpoint *rundomain.CheckpointState) {
+		{name: "capabilities", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.Capabilities.ChildRuns = true
 		}},
 	}
@@ -1356,21 +1356,19 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 			if !found {
 				t.Fatal("coherent Pending has no root continuation")
 			}
-			checkpoint := testsupport.MustCheckpoint(rundomain.CheckpointState{
+			checkpoint := ExecutorCheckpoint{
 				RootMemberID: root.MemberID,
 				Payload:      []byte(`{}`),
 				BuildID:      testExecutorBuildID,
-				Scope: rundomain.ExecutionScope{
+				Scope: ExecutionScope{
 					SessionID:    run.SessionID(),
 					CWD:          "/workspace",
 					WorkspaceCWD: "/workspace",
 				},
 				ModelSelection: root.ModelSelection,
 				Capabilities:   pending.Capabilities.Clone(),
-			})
-			state := checkpoint.State()
-			test.mutate(&state)
-			checkpoint = testsupport.MustCheckpoint(state)
+			}
+			test.mutate(&checkpoint)
 
 			store := &recoveryStoreStub{
 				runs:        []rundomain.Run{run},

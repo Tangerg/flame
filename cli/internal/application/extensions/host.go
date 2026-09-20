@@ -53,6 +53,7 @@ type Host struct {
 	order       []string
 	activated   bool
 	closed      bool
+	closeErr    error
 }
 
 func NewHost(registry *Registry) (*Host, error) {
@@ -189,7 +190,9 @@ func (h *Host) Reload(id string) ([]LifecycleResult, error) {
 	closure := h.dependentClosureLocked(id)
 	order := slices.Clone(h.order)
 	h.stateMu.Unlock()
-	h.unloadSet(closure)
+	if err := h.unloadSet(closure); err != nil {
+		return nil, fmt.Errorf("reload plugin %q: %w", id, err)
+	}
 	results := make([]LifecycleResult, 0, len(closure))
 	for _, candidate := range order {
 		if closure[candidate] {
@@ -223,8 +226,7 @@ func (h *Host) Unload(id string) error {
 	}
 	closure := h.dependentClosureLocked(id)
 	h.stateMu.Unlock()
-	h.unloadSet(closure)
-	return nil
+	return h.unloadSet(closure)
 }
 
 func (h *Host) dependentClosureLocked(id string) map[string]bool {
@@ -244,23 +246,36 @@ func (h *Host) dependentClosureLocked(id string) map[string]bool {
 	return closure
 }
 
-func (h *Host) unloadSet(ids map[string]bool) {
+type pluginDisposal struct {
+	id     string
+	loaded *Loaded
+}
+
+func (h *Host) unloadSet(ids map[string]bool) error {
 	h.stateMu.Lock()
-	var installations []*Loaded
+	var disposables []pluginDisposal
 	for _, id := range slices.Backward(h.order) {
 		if !ids[id] {
 			continue
 		}
 		if loaded := h.loaded[id]; loaded != nil {
-			installations = append(installations, loaded)
+			disposables = append(disposables, pluginDisposal{id: id, loaded: loaded})
 			delete(h.loaded, id)
 		}
 		h.states[id] = LifecycleResult{PluginID: id, Phase: PluginAvailable}
 	}
 	h.stateMu.Unlock()
-	for _, loaded := range installations {
-		loaded.Dispose()
+	var failures []error
+	for _, disposable := range disposables {
+		if err := disposable.loaded.Dispose(); err != nil {
+			failure := fmt.Errorf("unload plugin %q: %w", disposable.id, err)
+			failures = append(failures, failure)
+			h.stateMu.Lock()
+			h.states[disposable.id] = LifecycleResult{PluginID: disposable.id, Phase: PluginFailed, Err: failure}
+			h.stateMu.Unlock()
+		}
 	}
+	return errors.Join(failures...)
 }
 
 func (h *Host) load(id string) LifecycleResult {
@@ -302,17 +317,19 @@ func (h *Host) load(id string) LifecycleResult {
 	return result
 }
 
-// Close unloads every plugin in reverse dependency order. It is idempotent.
-func (h *Host) Close() {
+// Close unloads every plugin in reverse dependency order. It is idempotent and
+// returns the same joined cleanup error to every caller.
+func (h *Host) Close() error {
 	if h == nil {
-		return
+		return nil
 	}
 	h.lifecycleMu.Lock()
 	defer h.lifecycleMu.Unlock()
 	h.stateMu.Lock()
 	if h.closed {
+		err := h.closeErr
 		h.stateMu.Unlock()
-		return
+		return err
 	}
 	all := make(map[string]bool, len(h.plugins))
 	for id := range h.plugins {
@@ -320,5 +337,9 @@ func (h *Host) Close() {
 	}
 	h.closed = true
 	h.stateMu.Unlock()
-	h.unloadSet(all)
+	err := h.unloadSet(all)
+	h.stateMu.Lock()
+	h.closeErr = err
+	h.stateMu.Unlock()
+	return err
 }

@@ -337,6 +337,7 @@ func (m ModelContextCompaction) AllowsCompaction(ctx context.Context) (bool, err
 // from a coordinate-preserving deterministic trim.
 type ModelContextCompactionResult struct {
 	messages        []corechat.Message
+	changed         bool
 	summary         string
 	messagesBefore  int
 	estimatedTokens int
@@ -345,6 +346,7 @@ type ModelContextCompactionResult struct {
 // NewModelContextCompactionResult validates and freezes one effective suffix.
 func NewModelContextCompactionResult(
 	messages []corechat.Message,
+	changed bool,
 	summary string,
 	messagesBefore int,
 	estimatedTokens int,
@@ -359,6 +361,12 @@ func NewModelContextCompactionResult(
 	if canonicalSummary != summary {
 		return ModelContextCompactionResult{}, fmt.Errorf(
 			"%w: result summary is not canonical",
+			errInvalidModelContextCompaction,
+		)
+	}
+	if canonicalSummary != "" && !changed {
+		return ModelContextCompactionResult{}, fmt.Errorf(
+			"%w: summarized result must be changed",
 			errInvalidModelContextCompaction,
 		)
 	}
@@ -387,6 +395,7 @@ func NewModelContextCompactionResult(
 	}
 	return ModelContextCompactionResult{
 		messages:        cloneChatMessages(messages),
+		changed:         changed,
 		summary:         canonicalSummary,
 		messagesBefore:  messagesBefore,
 		estimatedTokens: estimatedTokens,
@@ -397,6 +406,9 @@ func NewModelContextCompactionResult(
 func (m ModelContextCompactionResult) Messages() []corechat.Message {
 	return cloneChatMessages(m.messages)
 }
+
+// Changed reports whether any candidate content was rewritten.
+func (m ModelContextCompactionResult) Changed() bool { return m.changed }
 
 // Summarized reports whether older messages were replaced by a semantic summary.
 func (m ModelContextCompactionResult) Summarized() bool { return m.summary != "" }

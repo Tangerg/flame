@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -60,7 +59,7 @@ func cloneInterruptAnswers(answers []InterruptAnswer) []InterruptAnswer {
 type ClaimedResume struct {
 	Pending    Pending
 	Answers    []InterruptAnswer
-	Checkpoint run.Checkpoint
+	Checkpoint ExecutorCheckpoint
 }
 
 // ToolApprovalResolution is the exact durable ToolCall fact accepted by one

@@ -96,6 +96,11 @@ func (c *Coordinator) retireSessionResources(sessionID string) error {
 // value this command committed rather than a fresh read, so another mutation
 // cannot interleave between the durable write and the returned result.
 func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, present bool) (View, error) {
+	normalized, err := snapshot.NormalizeForRestore()
+	if err != nil {
+		return View{}, err
+	}
+	snapshot = normalized
 	sessionID := snapshot.Session.ID()
 	admission, err := c.ClaimIdleSession(ctx, sessionID)
 	if err != nil {
