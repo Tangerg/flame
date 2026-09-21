@@ -5681,24 +5681,6 @@
         "data"
       ]
     },
-    "PageOfSkill": {
-      "type": "object",
-      "properties": {
-        "data": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Skill"
-          }
-        },
-        "nextCursor": {
-          "type": "string",
-          "maxLength": 65536
-        }
-      },
-      "required": [
-        "data"
-      ]
-    },
     "PageOfSkillProposal": {
       "type": "object",
       "properties": {
@@ -9018,6 +9000,93 @@
       "required": [
         "name",
         "scope"
+      ]
+    },
+    "SkillDetail": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "scope": {
+          "$ref": "#/$defs/SkillScope"
+        }
+      },
+      "required": [
+        "instructions",
+        "name",
+        "path",
+        "revision",
+        "scope"
+      ]
+    },
+    "SkillDetailRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "workspace": {
+          "$ref": "#/$defs/WorkspaceRef"
+        }
+      },
+      "required": [
+        "name",
+        "workspace"
+      ]
+    },
+    "SkillDiagnostic": {
+      "type": "object",
+      "properties": {
+        "detail": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "detail",
+        "name"
+      ]
+    },
+    "SkillDiscovery": {
+      "type": "object",
+      "properties": {
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SkillDiagnostic"
+          }
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Skill"
+          }
+        }
+      },
+      "required": [
+        "diagnostics",
+        "skills"
       ]
     },
     "SkillLifecycle": {

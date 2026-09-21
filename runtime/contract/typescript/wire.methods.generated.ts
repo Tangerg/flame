@@ -80,7 +80,6 @@ import type {
   PageOfRunRef,
   PageOfSchedule,
   PageOfSession,
-  PageOfSkill,
   PageOfSkillProposal,
   PageOfToolSpec,
   PageOfWorkspaceFileChange,
@@ -106,6 +105,9 @@ import type {
   SessionUsageRequest,
   SetApprovalModeRequest,
   SetHookTrustRequest,
+  SkillDetail,
+  SkillDetailRequest,
+  SkillDiscovery,
   SkillNameRequest,
   SkillProposalRef,
   StartGoalRequest,
@@ -190,6 +192,7 @@ const METHOD_NAMES = [
   "workspace.files.read",
   "runtime.subscribe",
   "skills.discovered.list",
+  "skills.discovered.get",
   "skills.library.list",
   "skills.library.archive",
   "skills.library.restore",
@@ -299,6 +302,7 @@ const VALUE_METHOD_NAMES = [
   "workspace.files.read",
   "runtime.subscribe",
   "skills.discovered.list",
+  "skills.discovered.get",
   "skills.library.list",
   "skills.proposals.list",
   "recipes.list",
@@ -584,6 +588,13 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "skills.discovered.list": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "skills.discovered.get": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1071,6 +1082,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "skills.discovered.list": [
     { requires: ["skills"] },
   ],
+  "skills.discovered.get": [
+    { requires: ["skills"] },
+  ],
   "skills.library.list": [
     { requires: ["skills"] },
   ],
@@ -1208,7 +1222,8 @@ export interface WireShapes {
   "workspace.files.list": { params: ListFilesRequest; result: PageOfFileEntry };
   "workspace.files.read": { params: ReadFileRequest; result: FileContent };
   "runtime.subscribe": { params: RuntimeSubscribeRequest; result: RuntimeSubscribeResponse };
-  "skills.discovered.list": { params: WorkspaceQuery; result: PageOfSkill };
+  "skills.discovered.list": { params: WorkspaceQuery; result: SkillDiscovery };
+  "skills.discovered.get": { params: SkillDetailRequest; result: SkillDetail };
   "skills.library.list": { params: Record<string, never>; result: PageOfManagedSkill };
   "skills.library.archive": { params: SkillNameRequest };
   "skills.library.restore": { params: SkillNameRequest };

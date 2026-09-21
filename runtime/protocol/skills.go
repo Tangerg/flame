@@ -43,3 +43,29 @@ type ManagedSkill struct {
 type SkillNameRequest struct {
 	Name string `json:"name"`
 }
+
+// SkillDiscovery is a bounded complete catalog, with local document failures
+// reported separately from usable entries. It is not a paginated collection.
+type SkillDiscovery struct {
+	Skills      []Skill           `json:"skills"`
+	Diagnostics []SkillDiagnostic `json:"diagnostics"`
+}
+
+type SkillDiagnostic struct {
+	Name   string `json:"name"`
+	Detail string `json:"detail"`
+}
+
+type SkillDetailRequest struct {
+	Workspace WorkspaceRef `json:"workspace"`
+	Name      string       `json:"name"`
+}
+
+// SkillDetail identifies the current resolver-selected document. Revision is
+// the SHA-256 of its exact bytes; it is not a loaded-into-context receipt.
+type SkillDetail struct {
+	Skill
+	Path         string `json:"path"`
+	Revision     string `json:"revision"`
+	Instructions string `json:"instructions"`
+}

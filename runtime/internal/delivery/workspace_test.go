@@ -491,8 +491,8 @@ func TestWorkspaceGrep(t *testing.T) {
 
 type fakeSkillCatalog struct{ skills []workspaceapp.SkillSummary }
 
-func (f fakeSkillCatalog) List(context.Context, string) ([]workspaceapp.SkillSummary, error) {
-	return slices.Clone(f.skills), nil
+func (f fakeSkillCatalog) List(context.Context, string) (workspaceapp.SkillDiscovery, error) {
+	return workspaceapp.SkillDiscovery{Skills: slices.Clone(f.skills)}, nil
 }
 
 type fakeRecipeLister struct{ recipes []workspaceapp.Recipe }
@@ -513,8 +513,8 @@ func TestListDiscoveredSkills(t *testing.T) {
 	if err != nil {
 		t.Fatalf("listSkills: %v", err)
 	}
-	if len(got.Data) != 2 || got.Data[0].Name != "pdf" || got.Data[0].Scope != "project" || got.Data[1].Scope != "user" {
-		t.Fatalf("skills = %+v, want pdf(project) + web(user)", got.Data)
+	if len(got.Skills) != 2 || got.Skills[0].Name != "pdf" || got.Skills[0].Scope != "project" || got.Skills[1].Scope != "user" {
+		t.Fatalf("skills = %+v, want pdf(project) + web(user)", got.Skills)
 	}
 }
 
@@ -672,4 +672,8 @@ func (emptySkillCurator) Archive(context.Context, string) ([]string, error) {
 }
 func (emptySkillCurator) Restore(context.Context, string) ([]string, error) {
 	return nil, skills.ErrNotFound
+}
+
+func (f fakeSkillCatalog) Get(context.Context, string, string) (workspaceapp.SkillDetail, error) {
+	return workspaceapp.SkillDetail{}, nil
 }

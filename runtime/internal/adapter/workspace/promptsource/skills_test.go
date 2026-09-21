@@ -1,6 +1,7 @@
 package promptsource
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,71 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
+
+func TestDiscoveryAndDetailShareExecutionSource(t *testing.T) {
+	workspace, user := t.TempDir(), t.TempDir()
+	project := ProjectSkillDir(workspace)
+	writeRuntimeSkill(t, user, "shared", "user instructions")
+	writeRuntimeSkill(t, project, "shared", "project instructions")
+	catalog := NewSkills(user)
+	detail, err := catalog.Get(t.Context(), workspace, "shared")
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(filepath.Join(project, "shared", sdk.SkillFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	physicalPath, err := filepath.EvalSymlinks(filepath.Join(project, "shared", sdk.SkillFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if detail.Scope != workspaceapp.SkillScopeProject || detail.Path != physicalPath || detail.Revision != fmt.Sprintf("%x", sha256.Sum256(content)) {
+		t.Fatalf("detail source = %+v", detail)
+	}
+	source, err := OverlaySkillSource(workspace, user, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := source.Load(t.Context(), "shared")
+	if err != nil || loaded.Instructions != detail.Instructions {
+		t.Fatalf("model and detail differ: %+v, %v", loaded, err)
+	}
+	writeRuntimeSkill(t, project, "shared", "edited instructions")
+	edited, err := catalog.Get(t.Context(), workspace, "shared")
+	if err != nil || edited.Revision == detail.Revision || edited.Instructions != "edited instructions" {
+		t.Fatalf("detail retained stale content: %+v, %v", edited, err)
+	}
+}
+
+func TestPartialSkillDiscoveryDoesNotExposeShadowedUserBundle(t *testing.T) {
+	workspace, user := t.TempDir(), t.TempDir()
+	project := ProjectSkillDir(workspace)
+	writeRuntimeSkill(t, user, "broken", "must not fall through")
+	writeRuntimeSkill(t, user, "working", "still discoverable")
+	writeRuntimeSkill(t, project, "broken", "invalid content")
+	if err := os.WriteFile(filepath.Join(project, "broken", sdk.SkillFile), []byte("malformed document"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	found, err := ListSkills(t.Context(), workspace, user)
+	if err != nil || len(found.Skills) != 1 || found.Skills[0].Name != "working" || len(found.Diagnostics) != 1 || found.Diagnostics[0].Name != "broken" {
+		t.Fatalf("partial discovery = %+v, %v", found, err)
+	}
+	source, err := OverlaySkillSource(workspace, user, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed, err := source.List(t.Context())
+	if err != nil || len(listed) != 1 || listed[0].Name != "working" {
+		t.Fatalf("model discovery = %+v, %v", listed, err)
+	}
+	if _, err := source.Load(t.Context(), "broken"); !errors.Is(err, sdk.ErrInvalidSkill) {
+		t.Fatalf("model loaded broken or shadowed bundle: %v", err)
+	}
+	if _, err := NewSkills(user).Get(t.Context(), workspace, "broken"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
+		t.Fatalf("detail loaded broken or shadowed bundle: %v", err)
+	}
+}
 
 func writeRuntimeSkill(t *testing.T, root, name, body string) {
 	t.Helper()
@@ -128,7 +194,7 @@ func TestRuntimeSkillSourceCapacityCountsOnlyValidSkills(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListSkills rejected invalid candidates below the raw entry limit: %v", err)
 	}
-	if len(listed) != 0 {
+	if len(listed.Skills) != 0 {
 		t.Fatalf("ListSkills = %+v, want no valid Skills", listed)
 	}
 }
@@ -184,7 +250,7 @@ func TestRuntimeSkillSourcesAllowInWorkspaceAlias(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed) != 1 || listed[0].Name != "inside" || listed[0].Scope != workspaceapp.SkillScopeProject {
+	if len(listed.Skills) != 1 || listed.Skills[0].Name != "inside" || listed.Skills[0].Scope != workspaceapp.SkillScopeProject {
 		t.Fatalf("ListSkills = %+v, want the confined project Skill", listed)
 	}
 }

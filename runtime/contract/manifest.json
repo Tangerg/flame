@@ -457,6 +457,21 @@
       ]
     },
     {
+      "name": "skills.discovered.get",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "workspace_unavailable",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "skills"
+      ]
+    },
+    {
       "name": "skills.library.list",
       "kind": "unary",
       "operation": "query",
@@ -1256,6 +1271,7 @@
           "sessions.rollback",
           "sessions.snapshot",
           "sessions.update",
+          "skills.discovered.get",
           "skills.discovered.list",
           "skills.library.archive",
           "skills.library.list",
@@ -1542,6 +1558,7 @@
           "recipes.list",
           "sessions.create",
           "sessions.update",
+          "skills.discovered.get",
           "skills.discovered.list",
           "tools.invoke",
           "workspace.changes.list",
@@ -1749,6 +1766,16 @@
     },
     {
       "method": "skills.discovered.list",
+      "rules": [
+        {
+          "requires": [
+            "skills"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "skills.discovered.get",
       "rules": [
         {
           "requires": [
@@ -7041,6 +7068,41 @@
         {
           "field": "name",
           "constraint": "pattern(\"\\\\S\")"
+        }
+      ]
+    },
+    {
+      "type": "SkillDetailRequest",
+      "rules": [
+        {
+          "field": "name",
+          "constraint": "pattern(\"\\\\S\")"
+        }
+      ]
+    },
+    {
+      "type": "SkillDiagnostic",
+      "rules": [
+        {
+          "field": "name",
+          "constraint": "pattern(\"\\\\S\")"
+        },
+        {
+          "field": "detail",
+          "constraint": "nonEmpty"
+        }
+      ]
+    },
+    {
+      "type": "SkillDetail",
+      "rules": [
+        {
+          "field": "path",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "revision",
+          "constraint": "pattern(\"^[a-f0-9]{64}$\")"
         }
       ]
     },

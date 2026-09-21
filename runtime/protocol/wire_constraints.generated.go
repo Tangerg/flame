@@ -248,6 +248,12 @@ func (r RuntimeSubscribeRequest) ValidateWire() error {
 	)
 }
 
+func (s SkillDetailRequest) ValidateWire() error {
+	return collectWireViolations("SkillDetailRequest",
+		requiredTextPattern("name", s.Name, "\\S"),
+	)
+}
+
 func (s SkillNameRequest) ValidateWire() error {
 	return collectWireViolations("SkillNameRequest",
 		requiredTextPattern("name", s.Name, "\\S"),
@@ -2278,6 +2284,22 @@ func (u UsageSummary) ValidateWire() error {
 	return collectWireViolations("UsageSummary",
 		nonNegativeNumber("sessions", u.Sessions),
 		nonNegativeNumber("runs", u.Runs),
+	)
+}
+
+func (s SkillDiagnostic) ValidateWire() error {
+	return collectWireViolations("SkillDiagnostic",
+		requiredTextPattern("name", s.Name, "\\S"),
+		requiredText("detail", s.Detail),
+	)
+}
+
+func (s SkillDetail) ValidateWire() error {
+	return collectWireViolations("SkillDetail",
+		requiredText("path", s.Path),
+		requiredTextPattern("revision", s.Revision, "^[a-f0-9]{64}$"),
+		requiredTextPattern("name", s.Name, "\\S"),
+		closedEnum("scope", string(s.Scope), []string{"project", "user"}, false),
 	)
 }
 

@@ -191,7 +191,6 @@ export type WireTypeName =
   | "PageOfRunRef"
   | "PageOfSchedule"
   | "PageOfSession"
-  | "PageOfSkill"
   | "PageOfSkillProposal"
   | "PageOfToolSpec"
   | "PageOfWorkspaceFileChange"
@@ -269,6 +268,10 @@ export type WireTypeName =
   | "SetApprovalModeRequest"
   | "SetHookTrustRequest"
   | "Skill"
+  | "SkillDetail"
+  | "SkillDetailRequest"
+  | "SkillDiagnostic"
+  | "SkillDiscovery"
   | "SkillLifecycle"
   | "SkillNameRequest"
   | "SkillProposal"
@@ -2115,10 +2118,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     data: array(ref(() => CHECKS.Session)),
     nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
-  PageOfSkill: object({
-    data: array(ref(() => CHECKS.Skill)),
-    nextCursor: allOf([text(), maxLength(65536)]),
-  }, ["data"]),
   PageOfSkillProposal: object({
     data: array(ref(() => CHECKS.SkillProposal)),
     nextCursor: allOf([text(), maxLength(65536)]),
@@ -3258,6 +3257,26 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     name: allOf([text(), pattern("\\S")]),
     scope: ref(() => CHECKS.SkillScope),
   }, ["name", "scope"]),
+  SkillDetail: object({
+    description: text(),
+    instructions: text(),
+    name: allOf([text(), pattern("\\S")]),
+    path: allOf([text(), minLength(1)]),
+    revision: allOf([text(), pattern("^[a-f0-9]{64}$")]),
+    scope: ref(() => CHECKS.SkillScope),
+  }, ["instructions", "name", "path", "revision", "scope"]),
+  SkillDetailRequest: object({
+    name: allOf([text(), pattern("\\S")]),
+    workspace: ref(() => CHECKS.WorkspaceRef),
+  }, ["name", "workspace"]),
+  SkillDiagnostic: object({
+    detail: allOf([text(), minLength(1)]),
+    name: allOf([text(), pattern("\\S")]),
+  }, ["detail", "name"]),
+  SkillDiscovery: object({
+    diagnostics: array(ref(() => CHECKS.SkillDiagnostic)),
+    skills: array(ref(() => CHECKS.Skill)),
+  }, ["diagnostics", "skills"]),
   SkillLifecycle: enumOf(["active", "archived"]),
   SkillNameRequest: object({
     name: allOf([text(), pattern("\\S")]),
@@ -3754,7 +3773,8 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "workspace.files.list": ref(() => CHECKS.PageOfFileEntry),
   "workspace.files.read": ref(() => CHECKS.FileContent),
   "runtime.subscribe": ref(() => CHECKS.RuntimeSubscribeResponse),
-  "skills.discovered.list": ref(() => CHECKS.PageOfSkill),
+  "skills.discovered.list": ref(() => CHECKS.SkillDiscovery),
+  "skills.discovered.get": ref(() => CHECKS.SkillDetail),
   "skills.library.list": ref(() => CHECKS.PageOfManagedSkill),
   "skills.library.archive": object({}, []),
   "skills.library.restore": object({}, []),

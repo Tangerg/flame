@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-09-22` · 87 methods
+Protocol `2026-09-22` · 88 methods
 
 ## Methods
 
@@ -43,6 +43,7 @@ Protocol `2026-09-22` · 87 methods
 | `workspace.files.read` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root`, `unsupported_mime` |
 | `runtime.subscribe` | subscription | stream | none | none | none | — | `fileWatch` | `capability_not_negotiated` |
 | `skills.discovered.list` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `capability_not_negotiated` |
+| `skills.discovered.get` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `capability_not_negotiated` |
 | `skills.library.list` | query | unary | none | none | none | — | `skills` | `capability_not_negotiated` |
 | `skills.library.archive` | command | unary | replayResponse | none | none | — | `skills` | `capability_not_negotiated` |
 | `skills.library.restore` | command | unary | replayResponse | none | none | — | `skills` | `capability_not_negotiated` |
@@ -757,6 +758,11 @@ TypeScript validator from this single registry projection.
 | `FeedbackRequest` | `itemId` | `maxLength(256)` |
 | `FeedbackRequest` | `text` | `pattern("\\S")` |
 | `SkillNameRequest` | `name` | `pattern("\\S")` |
+| `SkillDetailRequest` | `name` | `pattern("\\S")` |
+| `SkillDiagnostic` | `name` | `pattern("\\S")` |
+| `SkillDiagnostic` | `detail` | `nonEmpty` |
+| `SkillDetail` | `path` | `nonEmpty` |
+| `SkillDetail` | `revision` | `pattern("^[a-f0-9]{64}$")` |
 | `Skill` | `name` | `pattern("\\S")` |
 | `ManagedSkill` | `name` | `pattern("\\S")` |
 | `SkillProposalRef` | `name` | `pattern("\\S")` |
@@ -1049,6 +1055,7 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `workspace.diff.get` | always | `git` |
 | `runtime.subscribe` | `watches` present | `fileWatch` |
 | `skills.discovered.list` | always | `skills` |
+| `skills.discovered.get` | always | `skills` |
 | `skills.library.list` | always | `skills` |
 | `skills.library.archive` | always | `skills` |
 | `skills.library.restore` | always | `skills` |

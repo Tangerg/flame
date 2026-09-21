@@ -8,8 +8,8 @@ import (
 )
 
 // ListDiscoveredSkills returns precedence-resolved Skills ordered by name.
-func (r *Runtime) ListDiscoveredSkills(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.Skill], error) {
-	return r.invoke[protocol.WorkspaceQuery, *protocol.Page[protocol.Skill]](ctx, delivery.SkillsDiscoveredList, request, callOptions(options))
+func (r *Runtime) ListDiscoveredSkills(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.SkillDiscovery, error) {
+	return r.invoke[protocol.WorkspaceQuery, *protocol.SkillDiscovery](ctx, delivery.SkillsDiscoveredList, request, callOptions(options))
 }
 
 // ListManagedSkills returns user-scope Skills ordered by lifecycle and name.
@@ -40,4 +40,9 @@ func (r *Runtime) ApproveSkillProposal(ctx context.Context, request protocol.Ski
 // RejectSkillProposal rejects one proposed Skill.
 func (r *Runtime) RejectSkillProposal(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error {
 	return r.invokeAck(ctx, delivery.SkillsProposalsReject, request, commandOptions(options))
+}
+
+// GetDiscoveredSkill reads the current precedence-resolved document on demand.
+func (r *Runtime) GetDiscoveredSkill(ctx context.Context, request protocol.SkillDetailRequest, options CallOptions) (*protocol.SkillDetail, error) {
+	return r.invoke[protocol.SkillDetailRequest, *protocol.SkillDetail](ctx, delivery.SkillsDiscoveredGet, request, callOptions(options))
 }

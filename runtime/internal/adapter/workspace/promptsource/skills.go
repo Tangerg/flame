@@ -2,14 +2,18 @@ package promptsource
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 
 	sdk "github.com/Tangerg/scope/skills"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
 const projectSkillsSubdir = ".flame/skills"
@@ -62,48 +66,127 @@ func (l runtimeSkillLayers) overlay(decorateUser func(sdk.ResourceSource) sdk.Re
 	if len(sources) == 0 {
 		return nil
 	}
-	return sdk.Overlay(sources...)
+	return &runtimeSkillOverlay{ResourceSource: sdk.Overlay(sources...), layers: l}
 }
 
 // ListSkills enumerates the skills visible from the selected workspace layered
 // over userDir, project winning on a name collision (the same precedence
 // OverlaySkillSource gives the model). A missing directory contributes nothing
-// rather than erroring. The source projection resolves precedence and preserves
-// encounter order; Application owns public catalog order.
-func ListSkills(ctx context.Context, workspaceRoot, userDir string) ([]workspaceapp.SkillSummary, error) {
+// rather than erroring. Malformed selected documents produce diagnostics;
+// unrelated I/O failures still fail the query.
+func ListSkills(ctx context.Context, workspaceRoot, userDir string) (workspaceapp.SkillDiscovery, error) {
 	layers, err := openRuntimeSkillLayers(workspaceRoot, userDir)
 	if err != nil {
-		return nil, err
+		return workspaceapp.SkillDiscovery{}, err
 	}
 	return layers.list(ctx)
 }
 
-func (l runtimeSkillLayers) list(ctx context.Context) ([]workspaceapp.SkillSummary, error) {
-	seen := make(map[string]struct{})
-	var out []workspaceapp.SkillSummary
+// The SDK owns name precedence. This projection adds partial discovery without
+// advertising a lower-precedence bundle when the selected document is broken.
+type runtimeSkillOverlay struct {
+	sdk.ResourceSource
+	layers runtimeSkillLayers
+}
+
+func (s *runtimeSkillOverlay) List(ctx context.Context) ([]sdk.Summary, error) {
+	catalog, err := s.layers.list(ctx)
+	if err != nil {
+		return nil, err
+	}
+	summaries := make([]sdk.Summary, 0, len(catalog.Skills))
+	for _, entry := range catalog.Skills {
+		summaries = append(summaries, sdk.Summary{Name: entry.Name, Description: entry.Description})
+	}
+	return summaries, nil
+}
+
+type inspectedSkillSource struct {
+	*runtimeSkillSource
+	scope  workspaceapp.SkillScope
+	detail *workspaceapp.SkillDetail
+}
+
+// Capture provenance from the source actually chosen by SDK Load, using the
+// same bounded and version-checked document read as model execution.
+func (s *inspectedSkillSource) Load(ctx context.Context, name string) (*sdk.Skill, error) {
+	skill, content, err := s.document(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	digest := sha256.Sum256(content)
+	s.detail = &workspaceapp.SkillDetail{
+		SkillSummary: workspaceapp.SkillSummary{Name: skill.Name, Description: skill.Description, Scope: s.scope},
+		Path:         filepath.Join(s.root, name, sdk.SkillFile), Revision: fmt.Sprintf("%x", digest), Instructions: skill.Instructions,
+	}
+	return skill, nil
+}
+
+func (l runtimeSkillLayers) get(ctx context.Context, name string) (workspaceapp.SkillDetail, error) {
+	var sources []sdk.ResourceSource
+	var inspected []*inspectedSkillSource
 	for _, layer := range []struct {
 		source *runtimeSkillSource
 		scope  workspaceapp.SkillScope
 	}{
-		{source: l.project, scope: workspaceapp.SkillScopeProject},
-		{source: l.user, scope: workspaceapp.SkillScopeUser},
+		{l.project, workspaceapp.SkillScopeProject}, {l.user, workspaceapp.SkillScopeUser},
 	} {
 		if layer.source == nil {
 			continue
 		}
-		summaries, err := layer.source.List(ctx)
+		source := &inspectedSkillSource{runtimeSkillSource: layer.source, scope: layer.scope}
+		sources = append(sources, source)
+		inspected = append(inspected, source)
+	}
+	if _, err := sdk.Overlay(sources...).Load(ctx, name); err != nil {
+		return workspaceapp.SkillDetail{}, err
+	}
+	for _, source := range inspected {
+		if source.detail != nil {
+			return *source.detail, nil
+		}
+	}
+	return workspaceapp.SkillDetail{}, fmt.Errorf("runtime skill source: resolver returned no document")
+}
+
+func (l runtimeSkillLayers) list(ctx context.Context) (workspaceapp.SkillDiscovery, error) {
+	names := make(map[string]struct{})
+	for _, source := range []*runtimeSkillSource{l.project, l.user} {
+		if source == nil {
+			continue
+		}
+		entries, err := source.directoryEntries(ctx)
 		if err != nil {
-			return nil, err
+			return workspaceapp.SkillDiscovery{}, err
 		}
-		for _, summary := range summaries {
-			if _, duplicate := seen[summary.Name]; duplicate {
-				continue
-			}
-			seen[summary.Name] = struct{}{}
-			out = append(out, workspaceapp.SkillSummary{
-				Name: summary.Name, Description: summary.Description, Scope: layer.scope,
-			})
+		for _, name := range skillCandidateNames(entries) {
+			names[name] = struct{}{}
 		}
+	}
+	out := workspaceapp.SkillDiscovery{Skills: []workspaceapp.SkillSummary{}, Diagnostics: []workspaceapp.SkillDiagnostic{}}
+	counts := make(map[workspaceapp.SkillScope]int)
+	for _, name := range slices.Sorted(maps.Keys(names)) {
+		detail, err := l.get(ctx, name)
+		if context.Cause(ctx) != nil {
+			return workspaceapp.SkillDiscovery{}, context.Cause(ctx)
+		}
+		switch {
+		case errors.Is(err, sdk.ErrInvalidSkill):
+			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "Invalid SKILL.md; repair the selected bundle's frontmatter and name."})
+			continue
+		case errors.Is(err, domainskills.ErrDocumentTooLarge):
+			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "SKILL.md exceeds the 1 MiB document limit; move supporting material into resource files."})
+			continue
+		case errors.Is(err, sdk.ErrSkillNotFound):
+			continue
+		case err != nil:
+			return workspaceapp.SkillDiscovery{}, err
+		}
+		counts[detail.Scope]++
+		if counts[detail.Scope] > domainskills.MaxSkillsPerSource {
+			return workspaceapp.SkillDiscovery{}, fmt.Errorf("%w: selected source exceeds %d Skills", domainskills.ErrLibraryCapacity, domainskills.MaxSkillsPerSource)
+		}
+		out.Skills = append(out.Skills, detail.SkillSummary)
 	}
 	return out, nil
 }

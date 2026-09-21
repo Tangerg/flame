@@ -63,7 +63,7 @@ func TestListUsesCatalogPort(t *testing.T) {
 	if catalog.cwd != "/repo" {
 		t.Fatalf("catalog cwd = %q", catalog.cwd)
 	}
-	if len(got) != 1 || got[0].Name != "lint" {
+	if len(got.Skills) != 1 || got.Skills[0].Name != "lint" {
 		t.Fatalf("skills = %+v", got)
 	}
 }
@@ -79,15 +79,15 @@ func TestListOwnsVisibleSkillOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 || got[0].Name != "alpha" || got[1].Name != "zeta" {
+	if len(got.Skills) != 2 || got.Skills[0].Name != "alpha" || got.Skills[1].Name != "zeta" {
 		t.Fatalf("skills = %+v, want alpha then zeta", got)
 	}
 	if catalog.skills[0].Name != "zeta" {
 		t.Fatal("List reordered adapter-owned storage")
 	}
-	got[0].Name = "caller edit"
+	got.Skills[0].Name = "caller edit"
 	next, err := c.List(t.Context(), "/repo")
-	if err != nil || len(next) != 2 || next[0].Name != "alpha" {
+	if err != nil || len(next.Skills) != 2 || next.Skills[0].Name != "alpha" {
 		t.Fatalf("List after caller reused result = (%+v, %v)", next, err)
 	}
 }
@@ -118,11 +118,11 @@ func TestListRejectsInvalidOrUnboundedCatalog(t *testing.T) {
 	}
 }
 
-func TestListEmptyCatalogReturnsNil(t *testing.T) {
+func TestListEmptyCatalogHasNoSkillsOrDiagnostics(t *testing.T) {
 	c := newSkills(t, newScope(t, "", "", testPaths{}), &fakeSkillCatalog{}, nil, &fakeSkillProposals{}, nil, nil)
 	got, err := c.List(context.Background(), "/repo")
-	if err != nil || got != nil {
-		t.Fatalf("List = %v, %v; want nil, nil", got, err)
+	if err != nil || len(got.Skills) != 0 || len(got.Diagnostics) != 0 {
+		t.Fatalf("List = %v, %v; want an empty catalog", got, err)
 	}
 }
 
@@ -237,9 +237,9 @@ func (testPaths) ResolveExistingInRoot(_, path string) (string, error) {
 	return path, nil
 }
 
-func (f *fakeSkillCatalog) List(_ context.Context, cwd string) ([]SkillSummary, error) {
+func (f *fakeSkillCatalog) List(_ context.Context, cwd string) (SkillDiscovery, error) {
 	f.cwd = cwd
-	return slices.Clone(f.skills), f.err
+	return SkillDiscovery{Skills: slices.Clone(f.skills)}, f.err
 }
 
 func TestManagedSkillsOwnLifecycleAndNameOrder(t *testing.T) {
@@ -292,4 +292,8 @@ func TestManagedSkillsRejectInvalidOrUnboundedCatalog(t *testing.T) {
 			}
 		})
 	}
+}
+
+func (f *fakeSkillCatalog) Get(context.Context, string, string) (SkillDetail, error) {
+	return SkillDetail{}, f.err
 }

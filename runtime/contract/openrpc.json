@@ -2479,7 +2479,7 @@
       "result": {
         "name": "result",
         "schema": {
-          "$ref": "schema.json#/$defs/PageOfSkill"
+          "$ref": "schema.json#/$defs/SkillDiscovery"
         }
       },
       "errors": [
@@ -2512,6 +2512,80 @@
         "allOf": [
           {
             "$ref": "schema.json#/$defs/WorkspaceQuery"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "_meta": {
+                "$ref": "schema.json#/$defs/RequestMeta"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "skills.discovered.get",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "workspace",
+          "required": true,
+          "schema": {
+            "$ref": "schema.json#/$defs/WorkspaceRef"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "schema.json#/$defs/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/SkillDetail"
+        }
+      },
+      "errors": [
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
+        },
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "skills"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "skills"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/SkillDetailRequest"
           },
           {
             "type": "object",

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"unicode/utf8"
 
 	sdk "github.com/Tangerg/scope/skills"
 
@@ -119,28 +120,34 @@ func (r *runtimeSkillSource) Lookup(ctx context.Context, name string) (sdk.Summa
 }
 
 func (r *runtimeSkillSource) Load(ctx context.Context, name string) (*sdk.Skill, error) {
+	skill, _, err := r.document(ctx, name)
+	return skill, err
+}
+
+func (r *runtimeSkillSource) document(ctx context.Context, name string) (*sdk.Skill, []byte, error) {
 	if !validRuntimeSkillName(name) {
-		return nil, fmt.Errorf("%w %q: invalid name", sdk.ErrInvalidSkill, name)
+		return nil, nil, fmt.Errorf("%w %q: invalid name", sdk.ErrInvalidSkill, name)
 	}
 	if err := skillSourceContextError(ctx, "load"); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	source, err := r.openSkillDocument(name)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			_, lookupErr := r.Lookup(ctx, name)
-			return nil, errors.Join(err, lookupErr)
+			return nil, nil, errors.Join(err, lookupErr)
 		}
-		return nil, err
+		return nil, nil, err
 	}
 	content, err := readSkillDocument(ctx, name, source)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := skillSourceContextError(ctx, "load"); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return parseSkillDocument(name, content)
+	skill, err := parseSkillDocument(name, content)
+	return skill, content, err
 }
 
 type openedSkillDocument struct {
@@ -210,6 +217,9 @@ func readSkillDocument(ctx context.Context, name string, source *openedSkillDocu
 }
 
 func parseSkillDocument(name string, content []byte) (*sdk.Skill, error) {
+	if !utf8.Valid(content) {
+		return nil, fmt.Errorf("%w %q: document is not UTF-8", sdk.ErrInvalidSkill, name)
+	}
 	skill, err := sdk.Parse(content)
 	if err != nil {
 		return nil, fmt.Errorf("%w %q: %w", sdk.ErrInvalidSkill, name, err)

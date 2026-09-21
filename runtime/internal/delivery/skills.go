@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	SkillsDiscoveredGet    Name = "skills.discovered.get"
 	SkillsDiscoveredList   Name = "skills.discovered.list"
 	SkillsLibraryList      Name = "skills.library.list"
 	SkillsLibraryArchive   Name = "skills.library.archive"
@@ -22,9 +23,19 @@ func registerSkills(registry *Registry) {
 		Errors:          []string{protocol.ErrWorkspaceUnavailable.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
-		ListDiscoveredSkills(context.Context, protocol.WorkspaceQuery) (*protocol.Page[protocol.Skill], error)
-	}, ctx context.Context, request protocol.WorkspaceQuery) (*protocol.Page[protocol.Skill], error) {
+		ListDiscoveredSkills(context.Context, protocol.WorkspaceQuery) (*protocol.SkillDiscovery, error)
+	}, ctx context.Context, request protocol.WorkspaceQuery) (*protocol.SkillDiscovery, error) {
 		return service.ListDiscoveredSkills(ctx, request)
+	})
+
+	registry.query(MethodMeta{
+		Name:            SkillsDiscoveredGet,
+		Errors:          []string{protocol.ErrWorkspaceUnavailable.Error()},
+		CapabilityRules: requires(protocol.FeatureSkills),
+	}, func(service interface {
+		GetDiscoveredSkill(context.Context, protocol.SkillDetailRequest) (*protocol.SkillDetail, error)
+	}, ctx context.Context, request protocol.SkillDetailRequest) (*protocol.SkillDetail, error) {
+		return service.GetDiscoveredSkill(ctx, request)
 	})
 
 	registry.query(MethodMeta{

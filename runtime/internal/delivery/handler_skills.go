@@ -12,20 +12,39 @@ import (
 
 // ListDiscoveredSkills maps the application-owned, name-ordered visible Skill
 // catalog to the protocol shape.
-func (s *Handler) ListDiscoveredSkills(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.Skill], error) {
+func (s *Handler) ListDiscoveredSkills(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.SkillDiscovery, error) {
 	found, err := s.workspaceSkills.List(ctx, in.Workspace.Path)
 	if err != nil {
 		return nil, wireWorkspaceError(err)
 	}
-	out := make([]protocol.Skill, 0, len(found))
-	for _, skill := range found {
+	out := make([]protocol.Skill, 0, len(found.Skills))
+	for _, skill := range found.Skills {
 		scope, ok := presentWorkspaceSkillScope(skill.Scope)
 		if !ok {
 			return nil, fmt.Errorf("skills.discovered.list: unsupported skill scope %q", skill.Scope)
 		}
 		out = append(out, protocol.Skill{Name: skill.Name, Description: skill.Description, Scope: scope})
 	}
-	return protocol.NewPage(out), nil
+	diagnostics := make([]protocol.SkillDiagnostic, 0, len(found.Diagnostics))
+	for _, diagnostic := range found.Diagnostics {
+		diagnostics = append(diagnostics, protocol.SkillDiagnostic{Name: diagnostic.Name, Detail: diagnostic.Detail})
+	}
+	return &protocol.SkillDiscovery{Skills: out, Diagnostics: diagnostics}, nil
+}
+
+func (s *Handler) GetDiscoveredSkill(ctx context.Context, in protocol.SkillDetailRequest) (*protocol.SkillDetail, error) {
+	detail, err := s.workspaceSkills.Get(ctx, in.Workspace.Path, in.Name)
+	if err != nil {
+		if errors.Is(err, workspace.ErrSkillUnavailable) {
+			return nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		}
+		return nil, wireWorkspaceError(err)
+	}
+	scope, ok := presentWorkspaceSkillScope(detail.Scope)
+	if !ok {
+		return nil, fmt.Errorf("skills.discovered.get: unsupported skill scope %q", detail.Scope)
+	}
+	return &protocol.SkillDetail{Skill: protocol.Skill{Name: detail.Name, Description: detail.Description, Scope: scope}, Path: detail.Path, Revision: detail.Revision, Instructions: detail.Instructions}, nil
 }
 
 func presentWorkspaceSkillScope(scope workspace.SkillScope) (protocol.SkillScope, bool) {
@@ -42,7 +61,7 @@ func presentWorkspaceSkillScope(scope workspace.SkillScope) (protocol.SkillScope
 // ListManagedSkills returns the user self-authored Skill library — active then
 // archived, ordered by name within each lifecycle and tagged with its lifecycle
 // (skills.library.list). The library is small, so it comes back in one page
-// (same as skills.discovered.list).
+// and has no continuation cursor.
 func (s *Handler) ListManagedSkills(ctx context.Context) (*protocol.Page[protocol.ManagedSkill], error) {
 	entries, err := s.workspaceSkills.Managed(ctx)
 	if err != nil {

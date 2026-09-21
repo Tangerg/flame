@@ -191,6 +191,10 @@
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.ApprovalModeResult, error)"
             },
             {
+              "name": "GetDiscoveredSkill",
+              "signature": "func(ctx context.Context, request protocol.SkillDetailRequest, options CallOptions) (*protocol.SkillDetail, error)"
+            },
+            {
               "name": "GetEmbeddingRole",
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.EmbeddingRole, error)"
             },
@@ -264,7 +268,7 @@
             },
             {
               "name": "ListDiscoveredSkills",
-              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.Skill], error)"
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.SkillDiscovery, error)"
             },
             {
               "name": "ListHooks",
@@ -7465,6 +7469,97 @@
             {
               "name": "ValidateWire",
               "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SkillDetail",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Skill",
+              "type": "Skill"
+            },
+            {
+              "name": "Path",
+              "type": "string",
+              "tag": "json:\"path\""
+            },
+            {
+              "name": "Revision",
+              "type": "string",
+              "tag": "json:\"revision\""
+            },
+            {
+              "name": "Instructions",
+              "type": "string",
+              "tag": "json:\"instructions\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SkillDetailRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Workspace",
+              "type": "WorkspaceRef",
+              "tag": "json:\"workspace\""
+            },
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SkillDiagnostic",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Detail",
+              "type": "string",
+              "tag": "json:\"detail\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SkillDiscovery",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Skills",
+              "type": "[]Skill",
+              "tag": "json:\"skills\""
+            },
+            {
+              "name": "Diagnostics",
+              "type": "[]SkillDiagnostic",
+              "tag": "json:\"diagnostics\""
             }
           ]
         },

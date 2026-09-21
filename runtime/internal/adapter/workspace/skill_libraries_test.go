@@ -54,7 +54,7 @@ func TestProjectSkillsWithEmptyUserLibrary(t *testing.T) {
 		t.Fatal(err)
 	}
 	visible, err := useCases.List(t.Context(), projectRoot)
-	if err != nil || len(visible) != 1 || visible[0].Name != ref.Name || visible[0].Scope != workspaceapp.SkillScopeProject {
+	if err != nil || len(visible.Skills) != 1 || visible.Skills[0].Name != ref.Name || visible.Skills[0].Scope != workspaceapp.SkillScopeProject {
 		t.Fatalf("List = (%+v, %v), want approved project skill", visible, err)
 	}
 }

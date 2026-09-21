@@ -921,8 +921,6 @@ export type PageOfSchedule = Page<Schedule>;
 
 export type PageOfSession = Page<Session>;
 
-export type PageOfSkill = Page<Skill>;
-
 export type PageOfSkillProposal = Page<SkillProposal>;
 
 export type PageOfToolSpec = Page<ToolSpec>;
@@ -1392,6 +1390,30 @@ export interface Skill {
   description?: string;
   name: string;
   scope: SkillScope;
+}
+
+export interface SkillDetail {
+  description?: string;
+  instructions: string;
+  name: string;
+  path: string;
+  revision: string;
+  scope: SkillScope;
+}
+
+export interface SkillDetailRequest {
+  name: string;
+  workspace: WorkspaceRef;
+}
+
+export interface SkillDiagnostic {
+  detail: string;
+  name: string;
+}
+
+export interface SkillDiscovery {
+  diagnostics: SkillDiagnostic[];
+  skills: Skill[];
 }
 
 export type SkillLifecycle = "active" | "archived";

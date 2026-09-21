@@ -3,18 +3,25 @@ package workspace
 import (
 	"cmp"
 	"context"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"slices"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
+var ErrSkillUnavailable = errors.New("workspace: skill is unavailable")
+
 // SkillCatalog enumerates skills visible from a working directory. List
 // transfers ownership of the returned summaries to the caller.
 type SkillCatalog interface {
-	List(ctx context.Context, cwd string) ([]SkillSummary, error)
+	List(ctx context.Context, cwd string) (SkillDiscovery, error)
+	Get(ctx context.Context, cwd, name string) (SkillDetail, error)
 }
 
 // SkillCurator manages the one active or archived entry for each user-authored
@@ -73,21 +80,22 @@ func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposa
 
 // List enumerates the one precedence-resolved Skill per name visible from cwd,
 // ordered by name.
-func (s *Skills) List(ctx context.Context, cwd string) ([]SkillSummary, error) {
+func (s *Skills) List(ctx context.Context, cwd string) (SkillDiscovery, error) {
 	root, err := s.scope.root(cwd)
 	if err != nil {
-		return nil, err
+		return SkillDiscovery{}, err
 	}
-	found, err := s.catalog.List(ctx, root)
+	catalog, err := s.catalog.List(ctx, root)
 	if err != nil {
-		return nil, err
+		return SkillDiscovery{}, err
 	}
+	found := catalog.Skills
 	if len(found) > 2*skills.MaxSkillsPerSource {
-		return nil, fmt.Errorf("%w: discovered catalog contains %d Skills", skills.ErrLibraryCapacity, len(found))
+		return SkillDiscovery{}, fmt.Errorf("%w: discovered catalog contains %d Skills", skills.ErrLibraryCapacity, len(found))
 	}
 	for index, entry := range found {
 		if err := validateSkillSummary(entry); err != nil {
-			return nil, fmt.Errorf("workspace: discovered Skill %d is invalid: %w", index+1, err)
+			return SkillDiscovery{}, fmt.Errorf("workspace: discovered Skill %d is invalid: %w", index+1, err)
 		}
 	}
 	slices.SortFunc(found, func(first, second SkillSummary) int {
@@ -95,10 +103,43 @@ func (s *Skills) List(ctx context.Context, cwd string) ([]SkillSummary, error) {
 	})
 	for index := 1; index < len(found); index++ {
 		if found[index].Name == found[index-1].Name {
-			return nil, fmt.Errorf("workspace: discovered Skill catalog repeats visible name %q", found[index].Name)
+			return SkillDiscovery{}, fmt.Errorf("workspace: discovered Skill catalog repeats visible name %q", found[index].Name)
 		}
 	}
-	return found, nil
+	if len(catalog.Diagnostics) > 2*skills.MaxSkillDirectoryEntries {
+		return SkillDiscovery{}, fmt.Errorf("%w: too many discovery diagnostics", skills.ErrLibraryCapacity)
+	}
+	seen := make(map[string]bool, len(found))
+	for _, entry := range found {
+		seen[entry.Name] = true
+	}
+	for _, diagnostic := range catalog.Diagnostics {
+		if strings.TrimSpace(diagnostic.Name) == "" || strings.TrimSpace(diagnostic.Detail) == "" || len(diagnostic.Detail) > 512 || !utf8.ValidString(diagnostic.Detail) || seen[diagnostic.Name] {
+			return SkillDiscovery{}, fmt.Errorf("workspace: invalid or repeated Skill diagnostic %q", diagnostic.Name)
+		}
+		seen[diagnostic.Name] = true
+	}
+	slices.SortFunc(catalog.Diagnostics, func(a, b SkillDiagnostic) int { return cmp.Compare(a.Name, b.Name) })
+	return catalog, nil
+}
+
+func (s *Skills) Get(ctx context.Context, cwd, name string) (SkillDetail, error) {
+	root, err := s.scope.root(cwd)
+	if err != nil {
+		return SkillDetail{}, err
+	}
+	detail, err := s.catalog.Get(ctx, root, name)
+	if err != nil {
+		return SkillDetail{}, err
+	}
+	if err := validateSkillSummary(detail.SkillSummary); err != nil {
+		return SkillDetail{}, err
+	}
+	revision, err := hex.DecodeString(detail.Revision)
+	if err != nil || len(revision) != 32 || detail.Name != name || strings.TrimSpace(detail.Path) == "" || !utf8.ValidString(detail.Instructions) || len(detail.Instructions) > skills.MaxAuthoredSkillDocumentBytes {
+		return SkillDetail{}, fmt.Errorf("workspace: invalid Skill detail %q", name)
+	}
+	return detail, nil
 }
 
 // Managed returns active and archived user-authored Skills, active first and

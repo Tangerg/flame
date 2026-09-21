@@ -249,3 +249,22 @@ type SkillSummary struct {
 	Description string
 	Scope       SkillScope
 }
+
+// SkillDiscovery keeps malformed local bundles distinct from an empty catalog.
+type SkillDiscovery struct {
+	Skills      []SkillSummary
+	Diagnostics []SkillDiagnostic
+}
+
+type SkillDiagnostic struct {
+	Name   string
+	Detail string
+}
+
+// SkillDetail describes the exact document selected by the execution resolver.
+type SkillDetail struct {
+	SkillSummary
+	Path         string
+	Revision     string
+	Instructions string
+}

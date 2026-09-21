@@ -150,7 +150,8 @@ type workspaceSkillUseCases interface {
 	Archive(ctx context.Context, name string) error
 	Managed(ctx context.Context) ([]skills.Entry, error)
 	Proposals(ctx context.Context, cwd string) ([]skills.ProposalReview, error)
-	List(ctx context.Context, cwd string) ([]workspaceapp.SkillSummary, error)
+	List(ctx context.Context, cwd string) (workspaceapp.SkillDiscovery, error)
+	Get(ctx context.Context, cwd, name string) (workspaceapp.SkillDetail, error)
 	ApproveProposal(ctx context.Context, cwd string, ref skills.ProposalRef) error
 	RejectProposal(ctx context.Context, cwd string, ref skills.ProposalRef) error
 	Restore(ctx context.Context, name string) error
