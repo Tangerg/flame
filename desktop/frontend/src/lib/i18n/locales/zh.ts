@@ -591,6 +591,8 @@ export const zh: Record<string, string> = {
   "subagents.title": "子智能体",
   "subagents.active": "进行中",
   "subagents.completed": "已完成",
+  "subagents.count_other": "{{count}} 个子智能体",
+  "subagents.running_other": "{{count}} 个运行中",
   "subagents.empty": "暂无子智能体",
   "subagents.unavailable": "此子智能体已不可用",
   "agent.runTree.delegated.many": "子智能体 {{index}} / {{count}}",

@@ -455,6 +455,8 @@ export const ko: Record<string, string> = {
   "subagents.title": "서브에이전트",
   "subagents.active": "진행 중",
   "subagents.completed": "완료",
+  "subagents.count_other": "서브에이전트 {{count}}개",
+  "subagents.running_other": "{{count}}개 실행 중",
   "subagents.empty": "아직 서브에이전트가 없습니다",
   "subagents.unavailable": "이 서브에이전트는 더 이상 사용할 수 없습니다",
   "agent.runTree.delegated.many": "서브에이전트 {{index}} / {{count}}",

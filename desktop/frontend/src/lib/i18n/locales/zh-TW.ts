@@ -455,6 +455,8 @@ export const zhTW: Record<string, string> = {
   "subagents.title": "子代理",
   "subagents.active": "進行中",
   "subagents.completed": "已完成",
+  "subagents.count_other": "{{count}} 個子智慧體",
+  "subagents.running_other": "{{count}} 個執行中",
   "subagents.empty": "尚無子代理",
   "subagents.unavailable": "此子代理已無法使用",
   "agent.runTree.delegated.many": "子代理 {{index}} / {{count}}",

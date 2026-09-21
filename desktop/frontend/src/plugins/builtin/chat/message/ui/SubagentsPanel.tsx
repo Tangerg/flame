@@ -11,20 +11,11 @@ import {
   useExpandedWorkspaceToolIds,
   useToggleWorkspaceTool,
 } from "@/plugins/builtin/workspace/public/navigation";
-import {
-  EmptyState,
-  Icon,
-  IconButton,
-  SectionLabel,
-  StatusDot,
-  TextButton,
-  toneInk,
-  vocab,
-} from "@/ui";
-import { AgentWorkspaceView } from "@/ui/agent";
+import { EmptyState, Icon, IconButton, SectionLabel, StatusDot, toneInk, vocab } from "@/ui";
+import { AgentSurfaceHeader, AgentWorkspaceView } from "@/ui/agent";
 import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { corner, space, type as typeStep } from "@/styles/tokens.stylex";
+import { corner, face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { subagentEntries, type SubagentEntry } from "../application/subagents";
 import { delegatedRunSummary } from "../application/delegatedRunSummary";
 import { DelegatedRunLink } from "./DelegatedRunLink";
@@ -33,14 +24,11 @@ import { MESSAGE_CONTENT_CLASS } from "./messageContent";
 import { messageStyles as ms } from "./messageStyles";
 
 const styles = stylex.create({
-  header: {
-    display: "flex",
-    alignItems: "center",
-    gap: space.s2,
-    paddingInline: "var(--reading-gutter-wide)",
-    paddingBlock: space.s3,
-    flexShrink: 0,
-  },
+  // The dock's own summary line, in the vocabulary the other ten views open with: muted, mono,
+  // one step down. This view used to open with nothing, or — once a transcript was picked —
+  // with a bespoke header inset to the READING gutter, which put its only control at an
+  // offset no other view's controls share.
+  headLine: { minWidth: 0, flex: 1 },
   scroller: {
     flex: 1,
     minHeight: 0,
@@ -64,16 +52,25 @@ export function SubagentsPanel() {
   const entries = useMemo(() => subagentEntries(rows), [rows]);
   const selectedId = useWorkspaceSubagentRunId();
   const selected = entries.find(({ narrative }) => narrative.run.id === selectedId);
+  const running = entries.filter(({ narrative }) => narrative.run.status !== "finished").length;
   return (
     <AgentWorkspaceView ariaLabel={t("subagents.title")}>
-      {selectedId && (
-        <header {...stylex.props(styles.header)}>
-          <TextButton onClick={() => openWorkspaceSubagentRun(null)}>
-            <Icon name="chevron-left" size="sm" />
-            {t("subagents.title")}
-          </TextButton>
-        </header>
-      )}
+      <AgentSurfaceHeader>
+        <span
+          {...stylex.props(styles.headLine, vocab.truncate, vocab.muted, typeStep.uiSm, face.mono)}
+        >
+          {t("subagents.count", { count: entries.length })}
+          {running > 0 && ` · ${t("subagents.running", { count: running })}`}
+        </span>
+        {selectedId && (
+          <IconButton
+            icon="chevron-left"
+            size="sm"
+            title={t("subagents.title")}
+            onClick={() => openWorkspaceSubagentRun(null)}
+          />
+        )}
+      </AgentSurfaceHeader>
       {selected ? (
         <SubagentTranscript key={selectedId} entry={selected} />
       ) : (

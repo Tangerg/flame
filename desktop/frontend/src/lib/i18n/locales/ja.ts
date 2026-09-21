@@ -456,6 +456,8 @@ export const ja: Record<string, string> = {
   "subagents.title": "サブエージェント",
   "subagents.active": "実行中",
   "subagents.completed": "完了",
+  "subagents.count_other": "サブエージェント {{count}} 件",
+  "subagents.running_other": "{{count}} 件実行中",
   "subagents.empty": "サブエージェントはまだありません",
   "subagents.unavailable": "このサブエージェントは利用できません",
   "agent.runTree.delegated.many": "サブエージェント {{index}} / {{count}}",

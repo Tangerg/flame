@@ -30,6 +30,19 @@ const styles = stylex.create({
     borderRadius: radius.row,
   },
   detail: { display: "flex", flexDirection: "column", gap: space.s0_5, minWidth: 0, flex: 1 },
+  // The NAME takes the slack, so the outcome lands on the row's end rather than wherever the
+  // name happened to stop. Four rows of a fan-out reported their status at four different
+  // offsets, which is the column a reader scans to find the one that needs them.
+  name: { minWidth: 0, flex: 1 },
+  // Held open whether or not the run can be cancelled. The button used to appear only on the
+  // rows that could, so those rows ended 30px short of the ones that could not and the
+  // outcome column zig-zagged down a fan-out.
+  cancelSlot: {
+    display: "flex",
+    flexShrink: 0,
+    justifyContent: "center",
+    width: "var(--control-height-sm)",
+  },
 });
 
 export function DelegatedRunLink({
@@ -61,7 +74,7 @@ export function DelegatedRunLink({
         </span>
         <span {...stylex.props(styles.detail)}>
           <span {...stylex.props(vocab.line, typeStep.uiSm)}>
-            <span title={model.label} {...stylex.props(vocab.truncate)}>
+            <span title={model.label} {...stylex.props(styles.name, vocab.truncate)}>
               {model.label}
             </span>
             <StatusDot tone={model.dotTone} />
@@ -77,19 +90,21 @@ export function DelegatedRunLink({
           data-reveal="hover"
           {...stylex.props(vocab.firstLine, typeStep.uiSm, reveal.shown, styles.openHint)}
         >
-          <Icon name="panel-r" size="xs" />
+          <Icon name="panel-r" size="sm" />
         </span>
       </Pressable>
-      {model.cancelable && (
-        <IconButton
-          icon="stop"
-          size="sm"
-          quiet
-          disabled={!available}
-          title={t("agent.runTree.action.cancel")}
-          onClick={() => cancelSessionRun({ sessionId: run.sessionId, runId: run.id })}
-        />
-      )}
+      <span {...stylex.props(styles.cancelSlot)}>
+        {model.cancelable && (
+          <IconButton
+            icon="stop"
+            size="sm"
+            quiet
+            disabled={!available}
+            title={t("agent.runTree.action.cancel")}
+            onClick={() => cancelSessionRun({ sessionId: run.sessionId, runId: run.id })}
+          />
+        )}
+      </span>
     </div>
   );
 }
