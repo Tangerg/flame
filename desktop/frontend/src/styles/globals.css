@@ -1438,6 +1438,10 @@ html.theme-dark {
   border: 2px solid transparent;
   background-clip: content-box;
   transition: background-color var(--dur-fast) ease;
+  /* A thumb is proportional to how much is off screen, so a long log shrinks it to a couple of
+     pixels and it stops being something a pointer can catch. */
+  min-height: 32px;
+  min-width: 32px;
 }
 .panel-scroll:hover::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
