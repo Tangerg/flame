@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -79,7 +80,7 @@ func (w *workspaceServiceStub) Diff(_ context.Context, request workspace.DiffReq
 	w.mu.Lock()
 	w.diffRequest = request
 	w.mu.Unlock()
-	return workspace.Diff{Patch: "diff --git a/main.go b/main.go\n+var current = true"}, nil
+	return workspace.Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineMergeBase, Commit: strings.Repeat("1", 40)}, Patch: "diff --git a/main.go b/main.go\n+var current = true"}, nil
 }
 
 func (w *workspaceServiceStub) lastDiffRequest() workspace.DiffRequest {
@@ -235,6 +236,7 @@ func TestWorkspaceDiffConsumesModeFormatLimitAndPath(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "Workspace diff")
 	host.Shows(t, "base · rows · dir with spaces/main.go")
+	host.Shows(t, "Merge base "+strings.Repeat("1", 40))
 	request := service.lastDiffRequest()
 	rows, explicit, err := request.RowLimit.Rows()
 	if request.Mode != protocol.DiffModeBase || request.Format != protocol.DiffFormatRows ||

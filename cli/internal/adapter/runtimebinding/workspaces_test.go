@@ -174,7 +174,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 			Name:      "workspace", SessionCount: 2, LastActiveAt: &lastActive,
 		}}),
 		changes: protocol.NewPage([]protocol.WorkspaceFileChange{{Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed}}),
-		diff: &protocol.Diff{Files: []protocol.FileDiff{{
+		diff: &protocol.Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineEmptyTree}, Files: []protocol.FileDiff{{
 			Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed,
 			Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: new("package main")}},
 		}}},

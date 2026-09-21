@@ -331,7 +331,7 @@ func projectChange(value protocol.WorkspaceFileChange) workspace.Change {
 }
 
 func projectDiff(value protocol.Diff) (workspace.Diff, error) {
-	result := workspace.Diff{Patch: value.Patch, Truncated: value.Truncated, Files: make([]workspace.FileDiff, 0, len(value.Files))}
+	result := workspace.Diff{Baseline: value.Baseline, Patch: value.Patch, Truncated: value.Truncated, Files: make([]workspace.FileDiff, 0, len(value.Files))}
 	for _, file := range value.Files {
 		result.Files = append(result.Files, workspace.FileDiff{
 			Change: projectChange(protocol.WorkspaceFileChange{

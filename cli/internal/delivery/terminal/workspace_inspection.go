@@ -80,13 +80,22 @@ func (a *app) ShowWorkspaceDiff(argument string) error {
 				text = "No workspace differences."
 			}
 			detail := string(request.Mode) + " · " + string(request.Format)
+			var baseline string
+			switch diff.Baseline.Type {
+			case protocol.DiffBaselineHead:
+				baseline = "HEAD " + diff.Baseline.Commit + " → working tree, including untracked files"
+			case protocol.DiffBaselineMergeBase:
+				baseline = "Merge base " + diff.Baseline.Commit + " → working tree, tracked files only"
+			case protocol.DiffBaselineEmptyTree:
+				baseline = "Empty tree → working tree, including untracked files"
+			}
 			if request.Path != "" {
 				detail += " · " + request.Path
 			}
 			if diff.Truncated {
 				detail += " · truncated"
 			}
-			return readerDocument{Title: "Workspace diff", Detail: detail, Sections: []ToolSection{{Title: "Changes", Style: toolSectionDiff, Language: "diff", Text: text}}}, nil
+			return readerDocument{Title: "Workspace diff", Detail: detail, Sections: []ToolSection{{Title: "Comparison", Style: toolSectionParagraph, Text: baseline}, {Title: "Changes", Style: toolSectionDiff, Language: "diff", Text: text}}}, nil
 		}, workspaceReaderNone)
 	return nil
 }

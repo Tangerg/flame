@@ -9,7 +9,7 @@ import (
 
 func TestStructuredDiffValidatesAndRendersEveryRow(t *testing.T) {
 	t.Parallel()
-	diff := Diff{Files: []FileDiff{{
+	diff := Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineEmptyTree}, Files: []FileDiff{{
 		Change: Change{Path: "main.go", Status: protocol.FileStatusModified},
 		Rows: []protocol.DiffRow{
 			{Type: protocol.DiffRowHunk, Text: "@@ -1,2 +1,2 @@"},
@@ -37,7 +37,7 @@ func TestStructuredDiffValidatesAndRendersEveryRow(t *testing.T) {
 
 func TestStructuredDiffOwnsPathUniqueness(t *testing.T) {
 	t.Parallel()
-	diff := Diff{Files: []FileDiff{
+	diff := Diff{Baseline: protocol.DiffBaseline{Type: protocol.DiffBaselineEmptyTree}, Files: []FileDiff{
 		{Change: Change{Path: "main.go", Status: protocol.FileStatusModified}},
 		{Change: Change{Path: "main.go", Status: protocol.FileStatusModified}},
 	}}

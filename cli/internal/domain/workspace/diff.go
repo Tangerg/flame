@@ -107,12 +107,16 @@ type FileDiff struct {
 }
 
 type Diff struct {
+	Baseline  protocol.DiffBaseline
 	Files     []FileDiff
 	Patch     string
 	Truncated bool
 }
 
 func (d Diff) Validate() error {
+	if err := protocol.ValidateWireTree(d.Baseline); err != nil {
+		return fmt.Errorf("workspace diff baseline: %w", err)
+	}
 	if d.Patch != "" && len(d.Files) != 0 {
 		return errors.New("workspace diff mixes raw and structured representations")
 	}
