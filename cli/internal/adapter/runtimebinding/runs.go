@@ -16,7 +16,7 @@ type runBinding interface {
 	StartRun(context.Context, protocol.StartRunRequest, flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)
 	ResumeRun(context.Context, protocol.ResumeRunRequest, flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
 	SubscribeRun(context.Context, protocol.SubscribeRunRequest, flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
-	SteerRun(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) error
+	SteerRun(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) (*protocol.SteerRunResponse, error)
 	CancelRun(context.Context, protocol.CancelRunRequest, flameruntime.CommandOptions) (*protocol.CancelRunResponse, error)
 }
 
@@ -247,9 +247,19 @@ func (r *Connection) SteerRun(ctx context.Context, input agent.SteerRun) error {
 	if err != nil {
 		return err
 	}
-	return classifyError(r.runs.SteerRun(ctx, protocol.SteerRunRequest{
+	receipt, err := r.runs.SteerRun(ctx, protocol.SteerRunRequest{
 		RunID: input.RunID, ExpectedSegmentID: input.SegmentID, Input: content,
-	}, options))
+	}, options)
+	if err != nil {
+		return classifyError(err)
+	}
+	if receipt == nil {
+		return runtimeContractViolation("steer run returned nil")
+	}
+	if err := protocol.ValidateWireTree(*receipt); err != nil {
+		return runtimeContractViolation("steer run returned an invalid receipt: %v", err)
+	}
+	return nil
 }
 
 func projectEventStream(source iter.Seq2[protocol.RunEvent, error], streamSegmentID string) agent.EventStream {

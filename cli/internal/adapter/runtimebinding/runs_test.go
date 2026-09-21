@@ -21,12 +21,12 @@ type runBindingStub struct {
 	resume    func(context.Context, protocol.ResumeRunRequest, flameruntime.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
 	subscribe func(context.Context, protocol.SubscribeRunRequest, flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
 	cancel    func(context.Context, protocol.CancelRunRequest, flameruntime.CommandOptions) (*protocol.CancelRunResponse, error)
-	steer     func(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) error
+	steer     func(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) (*protocol.SteerRunResponse, error)
 }
 
-func (r runBindingStub) SteerRun(ctx context.Context, request protocol.SteerRunRequest, options flameruntime.CommandOptions) error {
+func (r runBindingStub) SteerRun(ctx context.Context, request protocol.SteerRunRequest, options flameruntime.CommandOptions) (*protocol.SteerRunResponse, error) {
 	if r.steer == nil {
-		return errors.New("unexpected steer")
+		return nil, errors.New("unexpected steer")
 	}
 	return r.steer(ctx, request, options)
 }
@@ -154,11 +154,11 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 			ProtocolProfile: protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}},
 		}}, nil
 	}
-	stub.steer = func(_ context.Context, _ protocol.SteerRunRequest, options flameruntime.CommandOptions) error {
+	stub.steer = func(_ context.Context, _ protocol.SteerRunRequest, options flameruntime.CommandOptions) (*protocol.SteerRunResponse, error) {
 		if options.IdempotencyKey != string(commandID) || options.IdempotencyNamespace != namespace {
 			t.Fatalf("steer idempotency options = %+v", options)
 		}
-		return nil
+		return &protocol.SteerRunResponse{UserItemID: "item_steer"}, nil
 	}
 	runtime := &Connection{
 		runs: stub, meta: requestMeta("test"),
@@ -229,9 +229,9 @@ func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapab
 					called = true
 					return nil, nil, nil
 				},
-				steer: func(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) error {
+				steer: func(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) (*protocol.SteerRunResponse, error) {
 					called = true
-					return nil
+					return nil, nil
 				},
 			}
 			runtime := &Connection{
@@ -606,14 +606,14 @@ func TestCancelRunRejectsMalformedClosedResults(t *testing.T) {
 
 func TestSteerRunBindsStructuredInputToTheObservedSegment(t *testing.T) {
 	stub := runBindingStub{}
-	stub.steer = func(_ context.Context, request protocol.SteerRunRequest, options flameruntime.CommandOptions) error {
+	stub.steer = func(_ context.Context, request protocol.SteerRunRequest, options flameruntime.CommandOptions) (*protocol.SteerRunResponse, error) {
 		if request.RunID != "run_1" || request.ExpectedSegmentID != "seg_2" || len(request.Input) != 1 || request.Input[0].Text != "focus on the parser" {
 			t.Fatalf("steer request = %+v", request)
 		}
 		if options.IdempotencyKey == "" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
 			t.Fatalf("steer options = %+v", options)
 		}
-		return protocol.ErrStaleSegment
+		return nil, protocol.ErrStaleSegment
 	}
 	runtime := &Connection{runs: stub, meta: requestMeta("test"), loadAttachment: loadAttachmentFile}
 	err := runtime.SteerRun(t.Context(), agent.SteerRun{
