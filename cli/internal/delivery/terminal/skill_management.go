@@ -10,12 +10,30 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func (a *app) ShowDiscoveredSkills() {
+func (a *app) ShowDiscoveredSkills(name string) {
 	if a.skills == nil {
 		a.message("this runtime composition has no skill service")
 		return
 	}
+	if name = strings.TrimSpace(name); name != "" {
+		a.executeRuntimeReaderQuery(a.skillDetailReaderQuery(name))
+		return
+	}
 	a.executeRuntimeReaderQuery(a.discoveredSkillsReaderQuery())
+}
+
+func (a *app) skillDetailReaderQuery(name string) runtimeReaderQuery {
+	workspace := a.session.current.Workspace.Path
+	return runtimeReaderQuery{status: "loading skill detail", mode: runtimeReaderSkillDetail, selection: runtimeReaderSelection{skillName: name}, read: func(ctx context.Context) (readerDocument, error) {
+		detail, err := a.skills.InspectSkill(ctx, workspace, name)
+		if err != nil {
+			return readerDocument{}, err
+		}
+		return readerDocument{Title: detail.Name, Detail: string(detail.Scope) + " · " + detail.Revision, Sections: []ToolSection{
+			{Title: "Source", Style: toolSectionParagraph, Text: detail.Path},
+			{Title: "Instructions", Style: toolSectionParagraph, Text: detail.Instructions},
+		}}, nil
+	}}
 }
 
 func (a *app) discoveredSkillsReaderQuery() runtimeReaderQuery {
@@ -33,7 +51,8 @@ func (a *app) discoveredSkillsReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func discoveredSkillsDocument(workspacePath string, discovered []protocol.Skill) readerDocument {
+func discoveredSkillsDocument(workspacePath string, catalog protocol.SkillDiscovery) readerDocument {
+	discovered := catalog.Skills
 	lines := make([]string, 0, len(discovered))
 	for _, skill := range discovered {
 		line := workspace.DiscoveredSkillKey(skill)
@@ -44,6 +63,9 @@ func discoveredSkillsDocument(workspacePath string, discovered []protocol.Skill)
 	}
 	if len(lines) == 0 {
 		lines = append(lines, "No skills are discoverable for this workspace.")
+	}
+	for _, diagnostic := range catalog.Diagnostics {
+		lines = append(lines, diagnostic.Name+": "+diagnostic.Detail)
 	}
 	return paragraphDocument("Discovered skills", fmt.Sprintf("%d available · %s", len(discovered), workspacePath), lines)
 }

@@ -80,11 +80,11 @@ func newSkillServiceStub() *skillServiceStub {
 	}
 }
 
-func (s *skillServiceStub) Discover(context.Context, string) ([]protocol.Skill, error) {
+func (s *skillServiceStub) Discover(context.Context, string) (protocol.SkillDiscovery, error) {
 	s.reads.Add(1)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return append([]protocol.Skill(nil), s.discovered...), nil
+	return protocol.SkillDiscovery{Skills: append([]protocol.Skill(nil), s.discovered...), Diagnostics: []protocol.SkillDiagnostic{}}, nil
 }
 
 func (s *skillServiceStub) Managed(context.Context) ([]protocol.ManagedSkill, error) {
@@ -154,6 +154,13 @@ func TestSkillCatalogLifecycleAndProposalReviewCommands(t *testing.T) {
 	host.Type("/skills")
 	host.Press(input.Enter)
 	host.Shows(t, "project/release-checks")
+	host.Press(input.Esc)
+	host.Shows(t, "Ask flame")
+
+	host.Type("/skills release-checks")
+	host.Press(input.Enter)
+	host.Shows(t, "Inspect the current document.")
+	host.Shows(t, "/workspace/.flame/skills/release-checks/SKILL.md")
 	host.Press(input.Esc)
 	host.Shows(t, "Ask flame")
 
@@ -306,4 +313,8 @@ func TestSkillLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testi
 		t.Fatalf("managed skills after archive = (%+v, %v)", managed, err)
 	}
 	stop()
+}
+
+func (s *skillServiceStub) InspectSkill(_ context.Context, _ string, name string) (protocol.SkillDetail, error) {
+	return protocol.SkillDetail{Skill: protocol.Skill{Name: name, Scope: protocol.SkillScopeProject}, Path: "/workspace/.flame/skills/" + name + "/SKILL.md", Revision: terminalSkillRevision, Instructions: "Inspect the current document."}, nil
 }

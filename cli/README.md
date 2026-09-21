@@ -28,6 +28,8 @@ The process working directory is never an implicit Runtime configuration source.
 
 Run subscriptions reconnect with bounded backoff until canceled.
 
+In the terminal, `/skills` lists available skills and local discovery diagnostics. `/skills <name>` reads the current resolver-selected document, including source path, revision, and instructions. Open skill readers refresh after Runtime skill-change events.
+
 Provider selection is either an exact provider/model pair or absent. Absence means that Runtime applies the active Session selection; CLI never infers a provider from a model name.
 
 ## Architecture

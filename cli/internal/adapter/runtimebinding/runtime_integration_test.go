@@ -215,10 +215,14 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 	}
 	awaitRuntimeInvalidation(t, events, streamErrors, protocol.TopicSkillsChanged)
 	discovered, err := runtime.Discover(t.Context(), workspace)
-	if err != nil || !slices.ContainsFunc(discovered, func(skill protocol.Skill) bool {
+	if err != nil || !slices.ContainsFunc(discovered.Skills, func(skill protocol.Skill) bool {
 		return skill.Name == "external-observed" && skill.Description == "External skill observation"
 	}) {
 		t.Fatalf("skills after external invalidation = (%+v, %v)", discovered, err)
+	}
+	detail, err := runtime.InspectSkill(t.Context(), workspace, "external-observed")
+	if err != nil || detail.Scope != protocol.SkillScopeProject || detail.Instructions != "# Observe edits" {
+		t.Fatalf("skill detail after edit = (%+v, %v)", detail, err)
 	}
 }
 

@@ -12,7 +12,8 @@ import (
 )
 
 type skillBinding interface {
-	ListDiscoveredSkills(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.Page[protocol.Skill], error)
+	GetDiscoveredSkill(context.Context, protocol.SkillDetailRequest, flameruntime.CallOptions) (*protocol.SkillDetail, error)
+	ListDiscoveredSkills(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.SkillDiscovery, error)
 	ListManagedSkills(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.ManagedSkill], error)
 	ArchiveSkill(context.Context, protocol.SkillNameRequest, flameruntime.CommandOptions) error
 	RestoreSkill(context.Context, protocol.SkillNameRequest, flameruntime.CommandOptions) error
@@ -21,34 +22,58 @@ type skillBinding interface {
 	RejectSkillProposal(context.Context, protocol.SkillProposalRef, flameruntime.CommandOptions) error
 }
 
-func (r *Connection) Discover(ctx context.Context, workspacePath string) ([]protocol.Skill, error) {
+func (r *Connection) Discover(ctx context.Context, workspacePath string) (protocol.SkillDiscovery, error) {
 	query, err := skillWorkspaceQuery(workspacePath)
 	if err != nil {
-		return nil, err
+		return protocol.SkillDiscovery{}, err
 	}
 	page, err := r.skills.ListDiscoveredSkills(ctx, query, r.callOptions())
 	if err != nil {
-		return nil, classifyError(err)
+		return protocol.SkillDiscovery{}, classifyError(err)
 	}
-	found, err := requireCompletePage("list discovered skills", page)
-	if err != nil {
-		return nil, err
+	if page == nil {
+		return protocol.SkillDiscovery{}, runtimeContractViolation("list discovered skills returned no catalog")
 	}
+	if err := protocol.ValidateWireTree(*page); err != nil {
+		return protocol.SkillDiscovery{}, runtimeContractViolation("list discovered skills returned invalid catalog: %v", err)
+	}
+	found := page.Skills
 	if err := requireUniqueIdentities("list discovered skills", found, func(skill protocol.Skill) string {
 		return skill.Name
 	}); err != nil {
-		return nil, err
+		return protocol.SkillDiscovery{}, err
 	}
 	for index := 1; index < len(found); index++ {
 		if found[index].Name < found[index-1].Name {
-			return nil, runtimeContractViolation(
+			return protocol.SkillDiscovery{}, runtimeContractViolation(
 				"list discovered skills returned name %q out of catalog order after %q",
 				found[index].Name,
 				found[index-1].Name,
 			)
 		}
 	}
-	return found, nil
+	return *page, nil
+}
+
+func (r *Connection) InspectSkill(ctx context.Context, workspacePath, name string) (protocol.SkillDetail, error) {
+	query, err := skillWorkspaceQuery(workspacePath)
+	if err != nil {
+		return protocol.SkillDetail{}, err
+	}
+	detail, err := r.skills.GetDiscoveredSkill(ctx, protocol.SkillDetailRequest{Workspace: query.Workspace, Name: name}, r.callOptions())
+	if err != nil {
+		return protocol.SkillDetail{}, classifyError(err)
+	}
+	if detail == nil {
+		return protocol.SkillDetail{}, runtimeContractViolation("get discovered skill returned no detail")
+	}
+	if err := protocol.ValidateWireTree(*detail); err != nil {
+		return protocol.SkillDetail{}, runtimeContractViolation("get discovered skill returned invalid detail: %v", err)
+	}
+	if err := requireIdentity("get discovered skill", detail.Name, name); err != nil {
+		return protocol.SkillDetail{}, err
+	}
+	return *detail, nil
 }
 
 func (r *Connection) Managed(ctx context.Context) ([]protocol.ManagedSkill, error) {

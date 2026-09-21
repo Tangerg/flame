@@ -14,6 +14,7 @@ const (
 	runtimeReaderNone runtimeReaderMode = iota
 	runtimeReaderGoal
 	runtimeReaderDiscoveredSkills
+	runtimeReaderSkillDetail
 	runtimeReaderManagedSkills
 	runtimeReaderSkillProposals
 	runtimeReaderMCPServers
@@ -46,6 +47,7 @@ type runtimeReaderQuery struct {
 // reader after an authoritative change event. It deliberately contains no UI
 // or transport state.
 type runtimeReaderSelection struct {
+	skillName         string
 	knowledgeTarget   workspace.KnowledgeTarget
 	knowledgeEntry    bool
 	agentMemoryTarget agent.MemoryTarget

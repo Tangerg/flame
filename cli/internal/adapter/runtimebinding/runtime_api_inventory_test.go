@@ -354,6 +354,7 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		"UpdateGoal":                    command("goals", "TUI /goal-update"),
 		"ApproveSkillProposal":          command("skills", "TUI /skill-approve"),
 		"ArchiveSkill":                  command("skills", "TUI /skill-archive"),
+		"GetDiscoveredSkill":            command("skills", "TUI /skills <name>"),
 		"ListDiscoveredSkills":          command("skills", "TUI /skills"),
 		"ListManagedSkills":             command("skills", "TUI /skill-library"),
 		"ListSkillProposals":            command("skills", "TUI /skill-proposals"),

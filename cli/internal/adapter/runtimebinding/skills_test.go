@@ -22,18 +22,18 @@ type skillBindingStub struct {
 
 type invalidSkillBindingStub struct {
 	*skillBindingStub
-	discovered *protocol.Page[protocol.Skill]
+	discovered *protocol.SkillDiscovery
 	managed    *protocol.Page[protocol.ManagedSkill]
 	proposals  *protocol.Page[protocol.SkillProposal]
 }
 
-func (s *invalidSkillBindingStub) ListDiscoveredSkills(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Skill], error) {
+func (s *invalidSkillBindingStub) ListDiscoveredSkills(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.SkillDiscovery, error) {
 	s.assertCall(request.Workspace.Path, options.RequestMeta)
 	if s.discovered == nil {
 		return nil, nil
 	}
 	owned := *s.discovered
-	owned.Data = slices.Clone(owned.Data)
+	owned.Skills = slices.Clone(owned.Skills)
 	return &owned, nil
 }
 
@@ -52,9 +52,9 @@ func (s *invalidSkillBindingStub) ListSkillProposals(_ context.Context, request 
 	return s.proposals, nil
 }
 
-func (s *skillBindingStub) ListDiscoveredSkills(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Skill], error) {
+func (s *skillBindingStub) ListDiscoveredSkills(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.SkillDiscovery, error) {
 	s.assertCall(request.Workspace.Path, options.RequestMeta)
-	return protocol.NewPage([]protocol.Skill{{Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject}}), nil
+	return &protocol.SkillDiscovery{Skills: []protocol.Skill{{Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject}}, Diagnostics: []protocol.SkillDiagnostic{}}, nil
 }
 
 func (s *skillBindingStub) ListManagedSkills(_ context.Context, options flameruntime.CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
@@ -126,8 +126,12 @@ func TestSkillAdapterProjectsCatalogsAndExactMutationReferences(t *testing.T) {
 	stub := &skillBindingStub{t: t}
 	runtime := &Connection{skills: stub, meta: requestMeta("test")}
 	discovered, err := runtime.Discover(t.Context(), "/workspace")
-	if err != nil || len(discovered) != 1 || workspace.DiscoveredSkillKey(discovered[0]) != "project/release-checks" {
+	if err != nil || len(discovered.Skills) != 1 || workspace.DiscoveredSkillKey(discovered.Skills[0]) != "project/release-checks" {
 		t.Fatalf("Discover = (%+v, %v)", discovered, err)
+	}
+	detail, err := runtime.InspectSkill(t.Context(), "/workspace", "release-checks")
+	if err != nil || detail.Revision != skillRevision || detail.Instructions != "Read the actual bundle." {
+		t.Fatalf("InspectSkill = (%+v, %v)", detail, err)
 	}
 	managed, err := runtime.Managed(t.Context())
 	if err != nil || len(managed) != 1 || managed[0].Lifecycle != protocol.SkillLifecycleArchived {
@@ -165,9 +169,9 @@ func TestSkillAdapterProjectsCatalogsAndExactMutationReferences(t *testing.T) {
 }
 
 func TestSkillAdapterTransfersOwnedProtocolCatalogs(t *testing.T) {
-	discoveredPage := protocol.NewPage([]protocol.Skill{{
+	discoveredPage := &protocol.SkillDiscovery{Skills: []protocol.Skill{{
 		Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject,
-	}})
+	}}, Diagnostics: []protocol.SkillDiagnostic{}}
 	managedPage := protocol.NewPage([]protocol.ManagedSkill{{
 		Name: "review", Description: "Review code", Lifecycle: protocol.SkillLifecycleActive,
 	}})
@@ -183,9 +187,9 @@ func TestSkillAdapterTransfersOwnedProtocolCatalogs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	discoveredPage.Data[0].Description = "mutated"
+	discoveredPage.Skills[0].Description = "mutated"
 	managedPage.Data[0].Description = "mutated"
-	if discovered[0].Description != "Release safely" || managed[0].Description != "Review code" {
+	if discovered.Skills[0].Description != "Release safely" || managed[0].Description != "Review code" {
 		t.Fatal("skill projections alias runtime catalog storage")
 	}
 }
@@ -198,20 +202,20 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 	}{
 		{
 			name: "shadowed discovered name",
-			stub: &invalidSkillBindingStub{discovered: protocol.NewPage([]protocol.Skill{
+			stub: &invalidSkillBindingStub{discovered: &protocol.SkillDiscovery{Skills: []protocol.Skill{
 				{Name: "review", Scope: protocol.SkillScopeProject},
 				{Name: "review", Scope: protocol.SkillScopeUser},
-			})},
+			}, Diagnostics: []protocol.SkillDiagnostic{}}},
 			read: func(runtime *Connection) error {
 				_, err := runtime.Discover(t.Context(), "/workspace")
 				return err
 			},
 		}, {
 			name: "out-of-order discovered catalog",
-			stub: &invalidSkillBindingStub{discovered: protocol.NewPage([]protocol.Skill{
+			stub: &invalidSkillBindingStub{discovered: &protocol.SkillDiscovery{Skills: []protocol.Skill{
 				{Name: "zeta", Scope: protocol.SkillScopeProject},
 				{Name: "alpha", Scope: protocol.SkillScopeUser},
-			})},
+			}, Diagnostics: []protocol.SkillDiagnostic{}}},
 			read: func(runtime *Connection) error {
 				_, err := runtime.Discover(t.Context(), "/workspace")
 				return err
@@ -294,4 +298,9 @@ func TestProfileAnswersOptionalAdapterAvailability(t *testing.T) {
 	if runtime.AgentMemory() == nil || runtime.Knowledge() == nil {
 		t.Fatal("context adapter accessor returned a nil pointer a consumer cannot detect")
 	}
+}
+
+func (s *skillBindingStub) GetDiscoveredSkill(_ context.Context, request protocol.SkillDetailRequest, options flameruntime.CallOptions) (*protocol.SkillDetail, error) {
+	s.assertCall(request.Workspace.Path, options.RequestMeta)
+	return &protocol.SkillDetail{Skill: protocol.Skill{Name: request.Name, Scope: protocol.SkillScopeProject}, Path: "/workspace/.flame/skills/" + request.Name + "/SKILL.md", Revision: skillRevision, Instructions: "Read the actual bundle."}, nil
 }

@@ -98,6 +98,8 @@ func (a *app) refreshSkillReader(affected bool) {
 	switch a.dialogs.runtimeReader {
 	case runtimeReaderDiscoveredSkills:
 		a.refreshRuntimeReader(a.discoveredSkillsReaderQuery())
+	case runtimeReaderSkillDetail:
+		a.refreshRuntimeReader(a.skillDetailReaderQuery(a.dialogs.runtimeSelection.skillName))
 	case runtimeReaderManagedSkills:
 		a.refreshRuntimeReader(a.managedSkillsReaderQuery())
 	case runtimeReaderSkillProposals:
