@@ -269,7 +269,9 @@ export const codeStyles = stylex.create({
   // declaration, and a generic signature or a long identifier has nowhere to break. Only the
   // break — the header's whitespace is already whatever the diff sent.
   hunk: {
-    marginTop: space.s2_5,
+    // The gap separates one hunk from the one above it; the first has the file header there
+    // instead, and took both — an 18px empty band under every card header.
+    marginTop: { default: space.s2_5, ":first-child": 0 },
     borderWidth: 0,
     backgroundColor: surface.sunken,
     paddingInline: space.s3,
