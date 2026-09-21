@@ -1020,6 +1020,8 @@ export const es: Record<string, string> = {
     "Una herramienta falló durante la ejecución: revisa la línea de tiempo para ver qué informó.",
   "rpcError.tool_canceled": "La llamada a la herramienta se canceló antes de terminar.",
   "rpcError.child_run_canceled": "Se canceló una ejecución delegada.",
+  "rpcError.idempotency_in_progress":
+    "El resultado del comando aún no se conoce. Revisa la sesión antes de enviarlo de nuevo; una nueva solicitud podría repetir una acción ya completada.",
   "rpcError.internal_error":
     "Algo falló dentro del runtime — reintenta y revisa los diagnósticos si se repite.",
   "rpcError.run_lost":

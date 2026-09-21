@@ -1002,6 +1002,8 @@ export const de: Record<string, string> = {
     "Ein Tool ist bei der Ausführung fehlgeschlagen — sieh in der Zeitleiste nach, was es gemeldet hat.",
   "rpcError.tool_canceled": "Der Tool-Aufruf wurde vor dem Ende abgebrochen.",
   "rpcError.child_run_canceled": "Ein delegierter Lauf wurde abgebrochen.",
+  "rpcError.idempotency_in_progress":
+    "Das Ergebnis des Befehls ist noch unklar. Prüfe die Sitzung vor erneutem Senden; eine neue Anfrage könnte eine bereits ausgeführte Aktion wiederholen.",
   "rpcError.internal_error":
     "In der Runtime ist etwas schiefgelaufen — versuche es erneut und sieh in die Diagnose, falls es bleibt.",
   "rpcError.run_lost":

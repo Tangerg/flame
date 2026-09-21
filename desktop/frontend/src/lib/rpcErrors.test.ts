@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-contract/validate";
+import { RpcError } from "@/rpc";
 import { en } from "./i18n/locales/en";
-import { MAPPED_TYPES, describeErrorType, describeProblem, isUnsupportedMethod } from "./rpcErrors";
+import {
+  MAPPED_TYPES,
+  describeErrorType,
+  describeProblem,
+  isUnsupportedMethod,
+  rpcErrorText,
+} from "./rpcErrors";
 
 function isWireProblemType(type: string): boolean {
   return !validateWire("ProblemData", { type }).some(
@@ -10,6 +17,13 @@ function isWireProblemType(type: string): boolean {
 }
 
 describe("the protocol error copy table", () => {
+  it("explains an unresolved receipt without treating it as a rejected command", () => {
+    const error = new RpcError({
+      message: "receipt pending",
+      data: { type: "idempotency_in_progress", retryAfterSeconds: 1 },
+    });
+    expect(rpcErrorText(error)).toBe(en["rpcError.idempotency_in_progress"]);
+  });
   it("names only symbols the wire can actually send", () => {
     const phantom = MAPPED_TYPES.filter((type) => !isWireProblemType(type));
     expect(phantom).toEqual([]);

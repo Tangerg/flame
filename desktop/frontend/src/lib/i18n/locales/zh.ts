@@ -930,6 +930,8 @@ export const zh: Record<string, string> = {
   "rpcError.tool_failed": "工具执行失败——在时间线里查看它报告了什么。",
   "rpcError.tool_canceled": "工具调用在完成前被取消。",
   "rpcError.child_run_canceled": "一个委派的运行被取消。",
+  "rpcError.idempotency_in_progress":
+    "这条命令的结果仍待核对。请先检查会话，不要重新发送同一操作；新请求可能重复执行已经完成的动作。",
   "rpcError.internal_error": "运行时内部出错 —— 重试一次，若反复出现请看诊断。",
   "rpcError.run_lost": "这次运行的进程已消失 —— 它在结果落库前就结束了。重新发起一次。",
   "rpcError.mcp_authorization_required": "该服务器需要先登录才能使用。",

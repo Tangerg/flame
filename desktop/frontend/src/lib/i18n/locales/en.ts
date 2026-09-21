@@ -993,6 +993,8 @@ export const en: Record<string, string> = {
   "rpcError.tool_failed": "A tool failed while running — check the timeline for what it reported.",
   "rpcError.tool_canceled": "The tool call was canceled before it finished.",
   "rpcError.child_run_canceled": "A delegated run was canceled.",
+  "rpcError.idempotency_in_progress":
+    "The command outcome is not yet known. Check the session before sending again; a new request could repeat an action that already completed.",
   "rpcError.internal_error":
     "Something broke inside the runtime — retry, and check diagnostics if it keeps happening.",
   "rpcError.run_lost":

@@ -1030,6 +1030,8 @@ export const fr: Record<string, string> = {
     "Un outil a échoué pendant son exécution — consultez la chronologie pour voir ce qu'il a signalé.",
   "rpcError.tool_canceled": "L'appel de l'outil a été annulé avant la fin.",
   "rpcError.child_run_canceled": "Une exécution déléguée a été annulée.",
+  "rpcError.idempotency_in_progress":
+    "Le résultat de la commande reste inconnu. Vérifiez la session avant de la renvoyer ; une nouvelle requête pourrait répéter une action déjà effectuée.",
   "rpcError.internal_error":
     "Quelque chose a cassé dans le runtime — réessaie, et regarde les diagnostics si ça persiste.",
   "rpcError.run_lost":

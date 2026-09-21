@@ -170,6 +170,8 @@ Protocol `2026-09-22` replaces the empty steer acknowledgement. Upgrade Runtime,
 
 A successful start commits the Run, first Segment, and opening user Item. Resume commits the accepted interrupt responses and the new Segment opening. Neither promises a provider call has completed. Cancel is a settlement barrier: it returns the authoritative settled result, including a natural completion that won the race. Steer admission is described above. A missing receipt is an unknown command outcome, not permission to repeat it with a new identity.
 
+Abrupt process-exit tests exercise claim, business commit, and receipt commit separately against a temporary SQLite database. A committed receipt replays the same identity without executing again. A claim without a receipt remains unresolved, including when the business effect committed: restart and elapsed time do not prove success or failure. Keep the original key and store namespace, inspect authoritative session state, and do not issue a fresh command to bypass the reservation. There is no general automatic reconciliation across command receipts and arbitrary business or external effects.
+
 For an existing Session, omitting both provider and model uses that Session's stored selection. An explicit pair overrides it for the Run. Global defaults do not silently replace an existing Session's selection.
 
 | Change | Effective boundary |

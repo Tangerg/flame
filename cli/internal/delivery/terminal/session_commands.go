@@ -194,7 +194,7 @@ func (a *app) deleteSessionFromCenter(id string) {
 					a.message("delete session failed: " + err.Error())
 					return
 				}
-				a.message("delete session outcome is unknown; it will be reconciled on restart: " + err.Error())
+				a.message("delete session outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + err.Error())
 				return
 			case mutation.Confirmed:
 			default:

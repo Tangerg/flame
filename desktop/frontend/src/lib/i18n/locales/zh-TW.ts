@@ -932,6 +932,8 @@ export const zhTW: Record<string, string> = {
   "rpcError.tool_failed": "工具執行失敗——在時間軸裡查看它回報了什麼。",
   "rpcError.tool_canceled": "工具呼叫在完成前被取消。",
   "rpcError.child_run_canceled": "一個委派的執行被取消。",
+  "rpcError.idempotency_in_progress":
+    "這條命令的結果仍待核對。請先檢查會話，不要重新傳送同一操作；新請求可能重複執行已經完成的動作。",
   "rpcError.internal_error": "執行階段內部出錯 —— 重試一次，若反覆出現請看診斷。",
   "rpcError.run_lost": "這次執行的程序已消失 —— 它在結果寫入前就結束了。重新發起一次。",
   "rpcError.mcp_authorization_required": "這個伺服器需要先登入才能使用。",

@@ -952,6 +952,8 @@ export const ko: Record<string, string> = {
   "rpcError.tool_failed": "도구 실행에 실패했습니다. 타임라인에서 보고 내용을 확인하세요.",
   "rpcError.tool_canceled": "도구 호출이 완료되기 전에 취소되었습니다.",
   "rpcError.child_run_canceled": "위임된 실행이 취소되었습니다.",
+  "rpcError.idempotency_in_progress":
+    "명령의 결과를 아직 확인할 수 없습니다. 다시 보내기 전에 세션을 확인하세요. 새 요청은 이미 완료된 작업을 중복 실행할 수 있습니다.",
   "rpcError.internal_error":
     "런타임 내부에서 오류가 발생했습니다 — 다시 시도하고, 계속되면 진단을 확인하세요.",
   "rpcError.run_lost":

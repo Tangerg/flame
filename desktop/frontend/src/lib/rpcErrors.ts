@@ -38,6 +38,7 @@ export const MAPPED_TYPES: readonly string[] = [
   "tool_canceled",
   "child_run_canceled",
   // Carry no per-occurrence detail, so the words are ours to supply.
+  "idempotency_in_progress",
   "internal_error",
   "run_lost",
   // Inline verdicts: they ride a result rather than failing the call, symbol only.

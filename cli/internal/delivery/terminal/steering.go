@@ -100,7 +100,7 @@ func (a *app) settleSteer(result runworkflow.SteerResult, deliveryErr error, run
 		a.draftState.Reset(a.session.current.ID, recovered)
 		a.message("steer run failed: " + deliveryErr.Error())
 	case mutation.Unknown:
-		a.message("steer outcome is unknown; it will be reconciled on restart: " + deliveryErr.Error())
+		a.message("steer outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + deliveryErr.Error())
 	default:
 		a.message("steer settlement returned an invalid outcome")
 	}

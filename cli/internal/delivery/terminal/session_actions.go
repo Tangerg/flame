@@ -179,7 +179,7 @@ func (a *app) applyRollbackSettlement(settlement rollbackSettlement) error {
 		a.message("rollback session failed: " + settlement.err.Error())
 		return nil
 	case mutation.Unknown:
-		a.message("rollback outcome is unknown; it will be reconciled on restart: " + settlement.err.Error())
+		a.message("rollback outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + settlement.err.Error())
 		return nil
 	case mutation.Confirmed:
 	default:

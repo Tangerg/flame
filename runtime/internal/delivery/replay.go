@@ -98,7 +98,7 @@ func (r *replayStore) invoke(
 	}
 	if !claimed {
 		if len(record.Payload) == 0 {
-			return failed(NewFailure(protocol.ErrIdempotencyInProgress, "the first execution has not completed"))
+			return failed(NewFailure(protocol.ErrIdempotencyInProgress, "command outcome is not yet known; retain the original request identity"))
 		}
 		return r.replay(ctx, method, record.Payload, target)
 	}

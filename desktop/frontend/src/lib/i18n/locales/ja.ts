@@ -964,6 +964,8 @@ export const ja: Record<string, string> = {
   "rpcError.tool_failed": "ツールの実行に失敗しました。タイムラインで内容を確認してください。",
   "rpcError.tool_canceled": "ツール呼び出しが完了前にキャンセルされました。",
   "rpcError.child_run_canceled": "委任された実行がキャンセルされました。",
+  "rpcError.idempotency_in_progress":
+    "コマンドの結果はまだ確認できません。再送信する前にセッションを確認してください。新しいリクエストは、完了済みの操作を重複して実行する可能性があります。",
   "rpcError.internal_error":
     "ランタイム内部でエラーが発生しました — 再試行し、繰り返す場合は診断を確認してください。",
   "rpcError.run_lost":
