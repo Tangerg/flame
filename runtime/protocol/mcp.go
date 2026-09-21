@@ -157,7 +157,8 @@ type MCPServerCandidate struct {
 	AutoApproveTools []string            `json:"autoApproveTools,omitempty"`
 }
 
-// UpdateMCPServerRequest — mcp.servers.update body. Omitted members preserve
+// UpdateMCPServerRequest saves configuration; enabled servers then connect in
+// the background. Saving does not prove connection readiness. Omitted members preserve
 // their current value; present empty strings, collections, and zeroes clear it.
 // Name is immutable and addressed by Server.
 type UpdateMCPServerRequest struct {

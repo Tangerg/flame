@@ -744,17 +744,18 @@ export const zhTW: Record<string, string> = {
   "providers.fromEnv": "來自環境變數",
   "providers.utility.title": "輔助模型",
   "providers.utility.desc":
-    "用於背景工作的較便宜模型 —— 摘要、標題、事實抽取。未設定時回退到主模型。",
+    "用於背景工作的較便宜模型 —— 摘要、標題、事實抽取。未設定時回退到主模型。 對新的執行生效。",
   "providers.utility.main": "使用主模型",
   "providers.utility.error": "無法設定輔助模型。",
   "providers.embedding.title": "Embedding 模型",
   "providers.embedding.desc":
-    "可選擇改善 Agent Memory 排序。請選擇支援 embedding 的供應商；關閉時 Memory 仍使用關鍵字比對。",
+    "可選擇改善 Agent Memory 排序。請選擇支援 embedding 的供應商；關閉時 Memory 仍使用關鍵字比對。 對後續搜尋生效。",
   "providers.embedding.off": "關閉",
   "providers.embedding.none":
     "尚未設定任何支援 embedding 的供應商 —— 請先在上方新增一個（例如 OpenAI）。",
   "providers.embedding.error": "無法設定 embedding 模型。",
   "mcp.add": "新增伺服器",
+  "mcp.saveEffect": "儲存後，已啟用的伺服器會在背景連線；是否就緒請查看伺服器狀態。",
   "mcp.save": "儲存",
   "mcp.saving": "正在儲存…",
   "mcp.delete": "刪除",
@@ -822,6 +823,7 @@ export const zhTW: Record<string, string> = {
   "skillLibrary.sub": "{{active}} 個啟用 · {{archived}} 個已歸檔",
   "skillLibrary.section.active": "啟用中",
   "skillLibrary.section.archived": "已歸檔",
+  "skillLibrary.archiveEffect": "封存影響後續技能解析，不會移除對話中已有的指令。",
   "skillLibrary.archive": "歸檔",
   "skillLibrary.restore": "還原",
   "skillLibrary.empty.title": "還沒有技能",

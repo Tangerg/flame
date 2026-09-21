@@ -744,17 +744,19 @@ export const ja: Record<string, string> = {
   "providers.fromEnv": "環境変数から",
   "providers.utility.title": "補助モデル",
   "providers.utility.desc":
-    "バックグラウンド作業向けの安価なモデル — 要約、タイトル、事実抽出。未設定時はメインモデルにフォールバックします。",
+    "バックグラウンド作業向けの安価なモデル — 要約、タイトル、事実抽出。未設定時はメインモデルにフォールバックします。 新しい実行に適用されます。",
   "providers.utility.main": "メインモデルを使う",
   "providers.utility.error": "補助モデルを設定できませんでした。",
   "providers.embedding.title": "埋め込みモデル",
   "providers.embedding.desc":
-    "Agent Memory のランキングを必要に応じて改善します。オフの場合も Memory はキーワード照合を続けます。",
+    "Agent Memory のランキングを必要に応じて改善します。オフの場合も Memory はキーワード照合を続けます。 以降の検索に適用されます。",
   "providers.embedding.off": "オフ",
   "providers.embedding.none":
     "埋め込み対応のプロバイダーがまだ設定されていません — 上で追加してください（例：OpenAI）。",
   "providers.embedding.error": "埋め込みモデルを設定できませんでした。",
   "mcp.add": "サーバーを追加",
+  "mcp.saveEffect":
+    "保存後、有効なサーバーはバックグラウンドで接続します。準備状況はサーバーの状態を確認してください。",
   "mcp.save": "保存",
   "mcp.saving": "保存中…",
   "mcp.delete": "削除",
@@ -827,6 +829,8 @@ export const ja: Record<string, string> = {
   "skillLibrary.sub": "{{active}} 件有効 · {{archived}} 件アーカイブ済み",
   "skillLibrary.section.active": "有効",
   "skillLibrary.section.archived": "アーカイブ済み",
+  "skillLibrary.archiveEffect":
+    "アーカイブは以降のスキル解決に適用され、会話に含まれる指示は削除されません。",
   "skillLibrary.archive": "アーカイブ",
   "skillLibrary.restore": "復元",
   "skillLibrary.empty.title": "スキルはまだありません",

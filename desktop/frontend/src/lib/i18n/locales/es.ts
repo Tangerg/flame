@@ -792,17 +792,19 @@ export const es: Record<string, string> = {
   "providers.fromEnv": "del entorno",
   "providers.utility.title": "Modelo auxiliar",
   "providers.utility.desc":
-    "Modelo para resúmenes, títulos y extracción de hechos. Si no se configura, se usa el modelo principal.",
+    "Modelo para resúmenes, títulos y extracción de hechos. Si no se configura, se usa el modelo principal. Se aplica a las nuevas ejecuciones.",
   "providers.utility.main": "Usar el modelo principal",
   "providers.utility.error": "No se pudo establecer el modelo auxiliar.",
   "providers.embedding.title": "Modelo de embeddings",
   "providers.embedding.desc":
-    "Mejora opcionalmente la clasificación de Agent Memory. Si se desactiva, Memory sigue usando coincidencias por palabras clave.",
+    "Mejora opcionalmente la clasificación de Agent Memory. Si se desactiva, Memory sigue usando coincidencias por palabras clave. Se aplica a las búsquedas posteriores.",
   "providers.embedding.off": "Desactivado",
   "providers.embedding.none":
     "Todavía no hay ningún proveedor con embeddings configurado: añade uno arriba (por ejemplo OpenAI).",
   "providers.embedding.error": "No se pudo establecer el modelo de embeddings.",
   "mcp.add": "Añadir servidor",
+  "mcp.saveEffect":
+    "Tras guardar, los servidores activados se conectan en segundo plano. Consulta su estado para comprobar la conexión.",
   "mcp.save": "Guardar",
   "mcp.saving": "Guardando…",
   "mcp.delete": "Eliminar",
@@ -880,6 +882,8 @@ export const es: Record<string, string> = {
   "skillLibrary.sub": "{{active}} activas · {{archived}} archivadas",
   "skillLibrary.section.active": "Activas",
   "skillLibrary.section.archived": "Archivadas",
+  "skillLibrary.archiveEffect":
+    "Archivar afecta a la resolución futura de habilidades; las instrucciones ya presentes en una conversación permanecen.",
   "skillLibrary.archive": "Archivar",
   "skillLibrary.restore": "Restaurar",
   "skillLibrary.empty.title": "Aún no hay habilidades",

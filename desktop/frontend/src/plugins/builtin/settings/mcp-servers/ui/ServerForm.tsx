@@ -93,6 +93,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
 
   return (
     <Surface className={stylex.props(ss.stack).className}>
+      <p {...stylex.props(typeStep.uiSm, vocab.muted)}>{t("mcp.saveEffect")}</p>
       <div {...stylex.props(ss.nameGrid)}>
         <TextField
           type="text"

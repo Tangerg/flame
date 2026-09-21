@@ -58,7 +58,8 @@ type HooksListResult struct {
 }
 
 // SetHookTrustRequest — hooks.setTrust body: trust (or revoke) a
-// project's hooks. ProjectRoot is the value HooksListResult reported.
+// project's hooks. Changes are read at the next Run opening, not waiting resume.
+// ProjectRoot is the value HooksListResult reported.
 type SetHookTrustRequest struct {
 	ProjectRoot string `json:"projectRoot"`
 	Trusted     bool   `json:"trusted"`

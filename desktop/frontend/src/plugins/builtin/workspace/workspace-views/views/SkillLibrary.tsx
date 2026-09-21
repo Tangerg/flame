@@ -23,6 +23,9 @@ export function SkillLibrary() {
       <div {...stylex.props(vs.gutter, vs.rowPad, typeStep.uiSm, vocab.muted)}>
         {t("skillLibrary.sub", { active: activeCount, archived: skills.length - activeCount })}
       </div>
+      <p {...stylex.props(vs.gutter, typeStep.uiSm, vocab.muted)}>
+        {t("skillLibrary.archiveEffect")}
+      </p>
       <DataView
         items={skills}
         isLoading={isLoading}

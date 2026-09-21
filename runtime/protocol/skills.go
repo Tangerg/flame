@@ -38,7 +38,8 @@ type ManagedSkill struct {
 }
 
 // SkillNameRequest names the skill a skills.library.archive / restore call
-// acts on.
+// acts on. Archiving affects subsequent resolution; it cannot remove instructions
+// already injected into an existing model conversation.
 type SkillNameRequest struct {
 	Name string `json:"name"`
 }

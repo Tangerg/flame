@@ -41,7 +41,8 @@ type RunSummary struct {
 	ParentRunID string `json:"parentRunId,omitempty"`
 	RootRunID   string `json:"rootRunId,omitempty"`
 	// Model is the model id this run ran against (Model.id). Admission resolves
-	// the runtime default before persistence so every Run remains self-describing.
+	// the explicit selection or Session selection before persistence, so every
+	// Run remains self-describing.
 	Model string `json:"model"`
 	// Provider is the provider id this run ran against (Provider.id), paired
 	// with Model. It is stamped before execution so usage.summary attributes spend by provider without
@@ -222,7 +223,7 @@ type StartRunRequest struct {
 	SessionID string         `json:"sessionId"`
 	Input     []ContentBlock `json:"input"`
 	// Provider + Model select the model for this run. They are paired: send
-	// both to pick a model, or neither to use the runtime's default. Sending
+	// both to pick a model, or neither to use the Session's stored selection. Sending
 	// one without the other is invalid_params — the provider is explicit,
 	// never inferred from the model id. Both are meaningful slugs (no "Id"
 	// suffix, mirroring `model` and Model.provider).

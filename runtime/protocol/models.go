@@ -5,6 +5,7 @@ package protocol
 // on the main Run model. Provider must be configured when the role is assigned.
 // The selection remains stored if credentials later change, so clients that
 // need effective availability join it with providers.list.
+// Saving updates future Runs; it does not replace a live or waiting Run's deployment.
 type UtilityRole struct {
 	Provider string `json:"provider,omitempty"`
 	Model    string `json:"model,omitempty"`
@@ -17,6 +18,7 @@ type UtilityRole struct {
 // change, so clients that need effective availability join it with
 // providers.list. A distinct type from [UtilityRole] (same shape, different
 // domain — under the rule-of-three for sharing).
+// Saving affects subsequent searches, without rewriting earlier search results.
 type EmbeddingRole struct {
 	Provider string `json:"provider,omitempty"`
 	Model    string `json:"model,omitempty"`

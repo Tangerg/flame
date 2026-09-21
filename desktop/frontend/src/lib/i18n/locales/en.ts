@@ -365,18 +365,20 @@ export const en: Record<string, string> = {
   "providers.empty.sub": "The runtime reports no supported LLM providers.",
   "providers.utility.title": "Utility model",
   "providers.utility.desc":
-    "Model for summaries, titles, and fact extraction. Uses the main model when unset.",
+    "Model for summaries, titles, and fact extraction. Uses the main model when unset. Applies to new runs.",
   "providers.utility.main": "Use main model",
   "providers.utility.error": "Couldn't set the utility model.",
   "providers.embedding.title": "Embedding model",
   "providers.embedding.desc":
-    "Optionally improves Agent Memory ranking. Pick an embedding-capable provider; when Off, Memory continues with keyword matching.",
+    "Optionally improves Agent Memory ranking. Pick an embedding-capable provider; when Off, Memory continues with keyword matching. Applies to subsequent searches.",
   "providers.embedding.off": "Off",
   "providers.embedding.none":
     "No embedding-capable provider configured yet — add one (e.g. OpenAI) above.",
   "providers.embedding.error": "Couldn't set the embedding model.",
 
   "mcp.add": "Add server",
+  "mcp.saveEffect":
+    "Saving starts a background connection for enabled servers. Check server status for readiness.",
   "mcp.save": "Save",
   "mcp.saving": "Saving…",
   "mcp.delete": "Delete",
@@ -719,6 +721,8 @@ export const en: Record<string, string> = {
   "skillLibrary.sub": "{{active}} active · {{archived}} archived",
   "skillLibrary.section.active": "Active",
   "skillLibrary.section.archived": "Archived",
+  "skillLibrary.archiveEffect":
+    "Archiving affects future skill resolution; instructions already in a conversation remain.",
   "skillLibrary.archive": "Archive",
   "skillLibrary.restore": "Restore",
   "skillLibrary.empty.title": "No skills yet",

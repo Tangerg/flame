@@ -772,17 +772,19 @@ export const de: Record<string, string> = {
   "providers.fromEnv": "aus Umgebung",
   "providers.utility.title": "Hilfsmodell",
   "providers.utility.desc":
-    "Modell für Zusammenfassungen, Titel und Faktenextraktion. Ohne Auswahl wird das Hauptmodell verwendet.",
+    "Modell für Zusammenfassungen, Titel und Faktenextraktion. Ohne Auswahl wird das Hauptmodell verwendet. Gilt für neue Ausführungen.",
   "providers.utility.main": "Hauptmodell verwenden",
   "providers.utility.error": "Hilfsmodell konnte nicht gesetzt werden.",
   "providers.embedding.title": "Embedding-Modell",
   "providers.embedding.desc":
-    "Verbessert optional das Ranking des Agent Memory. Bei Aus arbeitet Memory weiterhin mit Stichwortabgleich.",
+    "Verbessert optional das Ranking des Agent Memory. Bei Aus arbeitet Memory weiterhin mit Stichwortabgleich. Gilt für nachfolgende Suchen.",
   "providers.embedding.off": "Aus",
   "providers.embedding.none":
     "Noch kein Anbieter mit Embedding-Unterstützung konfiguriert — füge oben einen hinzu (z. B. OpenAI).",
   "providers.embedding.error": "Embedding-Modell konnte nicht gesetzt werden.",
   "mcp.add": "Server hinzufügen",
+  "mcp.saveEffect":
+    "Nach dem Speichern verbinden sich aktivierte Server im Hintergrund. Der Serverstatus zeigt die Bereitschaft an.",
   "mcp.save": "Speichern",
   "mcp.saving": "Speichern…",
   "mcp.delete": "Löschen",
@@ -858,6 +860,8 @@ export const de: Record<string, string> = {
   "skillLibrary.sub": "{{active}} aktiv · {{archived}} archiviert",
   "skillLibrary.section.active": "Aktiv",
   "skillLibrary.section.archived": "Archiviert",
+  "skillLibrary.archiveEffect":
+    "Archivieren betrifft die künftige Skill-Auflösung; vorhandene Anweisungen im Gespräch bleiben erhalten.",
   "skillLibrary.archive": "Archivieren",
   "skillLibrary.restore": "Wiederherstellen",
   "skillLibrary.empty.title": "Noch keine Skills",

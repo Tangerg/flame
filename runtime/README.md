@@ -163,3 +163,19 @@ Structured diff code rows always carry `code`, including `""` for a blank line; 
 `runs.steer` and `Runtime.SteerRun` return `userItemId`, the identity reserved for that input. Success proves admission to the addressed active Segment, not model consumption. Only the matching committed user Item proves application at a model boundary. Clients reconcile by identity, including when the Item arrives before its receipt; identical text or attachments do not identify a command. A rejected steer must not silently become a new Run.
 
 Protocol `2026-09-22` replaces the empty steer acknowledgement. Upgrade Runtime, Desktop, and CLI together. Waiting execution snapshots containing pending steer inputs now require their reserved Item identities; older pending-steer snapshots are rejected, never guessed or replayed. Finish those executions before upgrading. Completed history is unchanged.
+
+## Command completion and configuration boundaries
+
+A successful start commits the Run, first Segment, and opening user Item. Resume commits the accepted interrupt responses and the new Segment opening. Neither promises a provider call has completed. Cancel is a settlement barrier: it returns the authoritative settled result, including a natural completion that won the race. Steer admission is described above. A missing receipt is an unknown command outcome, not permission to repeat it with a new identity.
+
+For an existing Session, omitting both provider and model uses that Session's stored selection. An explicit pair overrides it for the Run. Global defaults do not silently replace an existing Session's selection.
+
+| Change | Effective boundary |
+| --- | --- |
+| Utility model | Future Run deployment; live and waiting execution retains its deployment |
+| Embedding model | Subsequent semantic searches |
+| MCP configuration | Persisted first; enabled servers connect in the background, and resource status reports readiness |
+| Project hook trust | Next Run opening; waiting resume is not a new Run |
+| Skill archive/restore | Subsequent resolution; existing conversation context is not erased |
+
+Saving configuration is not a universal live-reload guarantee. Restart recovery validates the retained model and tool deployment; it does not silently reinterpret an existing execution using arbitrary current settings.

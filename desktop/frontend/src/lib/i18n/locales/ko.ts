@@ -738,17 +738,19 @@ export const ko: Record<string, string> = {
   "providers.fromEnv": "환경 변수에서",
   "providers.utility.title": "보조 모델",
   "providers.utility.desc":
-    "백그라운드 작업용 저렴한 모델 — 요약, 제목, 사실 추출. 없으면 주 모델로 돌아갑니다.",
+    "백그라운드 작업용 저렴한 모델 — 요약, 제목, 사실 추출. 없으면 주 모델로 돌아갑니다. 새 실행에 적용됩니다.",
   "providers.utility.main": "주 모델 사용",
   "providers.utility.error": "보조 모델을 설정할 수 없습니다.",
   "providers.embedding.title": "임베딩 모델",
   "providers.embedding.desc":
-    "Agent Memory 순위를 선택적으로 개선합니다. 꺼도 Memory는 키워드 일치를 계속 사용합니다.",
+    "Agent Memory 순위를 선택적으로 개선합니다. 꺼도 Memory는 키워드 일치를 계속 사용합니다. 이후 검색에 적용됩니다.",
   "providers.embedding.off": "끄기",
   "providers.embedding.none":
     "임베딩을 지원하는 제공자가 아직 없습니다 — 위에서 하나 추가하세요(예: OpenAI).",
   "providers.embedding.error": "임베딩 모델을 설정할 수 없습니다.",
   "mcp.add": "서버 추가",
+  "mcp.saveEffect":
+    "저장 후 활성화된 서버가 백그라운드에서 연결됩니다. 준비 여부는 서버 상태를 확인하세요.",
   "mcp.save": "저장",
   "mcp.saving": "저장 중…",
   "mcp.delete": "삭제",
@@ -821,6 +823,8 @@ export const ko: Record<string, string> = {
   "skillLibrary.sub": "{{active}}개 활성 · {{archived}}개 보관",
   "skillLibrary.section.active": "활성",
   "skillLibrary.section.archived": "보관됨",
+  "skillLibrary.archiveEffect":
+    "보관은 이후 스킬 확인에 적용되며 대화에 이미 포함된 지침은 제거하지 않습니다.",
   "skillLibrary.archive": "보관",
   "skillLibrary.restore": "복원",
   "skillLibrary.empty.title": "아직 스킬이 없습니다",
