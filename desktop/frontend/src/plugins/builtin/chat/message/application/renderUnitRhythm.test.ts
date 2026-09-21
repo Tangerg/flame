@@ -11,18 +11,24 @@ const block = (kind: ContentBlock["kind"]): MessageRenderUnit => ({
 });
 
 describe("unitVoice", () => {
-  it("reads a fold and a tool group as process", () => {
+  it("reads a fold, a tool group and anything else the turn DID as process", () => {
     expect(unitVoice({ kind: "wave", units: [] })).toBe("process");
     expect(unitVoice({ kind: "toolGroup", tools: [], superseded: false })).toBe("process");
-    expect(unitVoice(block("tool"))).toBe("process");
-    expect(unitVoice(block("reasoning"))).toBe("process");
+    for (const kind of ["tool", "reasoning", "compaction"] as const) {
+      expect(unitVoice(block(kind))).toBe("process");
+    }
   });
 
   it("reads text as prose and everything asking for the reader as a panel", () => {
     expect(unitVoice(block("text"))).toBe("prose");
-    for (const kind of ["approval", "question", "compaction", "image"] as const) {
+    for (const kind of ["approval", "question", "image"] as const) {
       expect(unitVoice(block(kind))).toBe("panel");
     }
+  });
+
+  it("spaces a compaction notice like the activity rows it renders as", () => {
+    expect(unitSeam(block("tool"), block("compaction"))).toBe("tight");
+    expect(unitSeam(block("compaction"), block("tool"))).toBe("tight");
   });
 });
 
