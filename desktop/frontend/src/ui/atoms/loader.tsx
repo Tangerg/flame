@@ -10,10 +10,14 @@ const styles = stylex.create({
     display: "inline-block",
     fontWeight: weight.regular,
     // The gradient is the visible text: it is clipped to the glyphs, which are transparent.
-    backgroundImage: `linear-gradient(90deg, ${color.fgMuted} 35%, ${color.fg} 50%, ${color.fgMuted} 65%)`,
+    //
+    // SOLID ink with a faded band passing through it, which is the direction zcode's own
+    // thinking label takes and the legible one: the label sits on screen for the length of the
+    // turn, so the state it rests in is the state it is read in, and resting muted spends that
+    // whole time below the contrast of the words around it.
+    backgroundImage: `linear-gradient(90deg, ${color.fg} 35%, ${color.fgMuted} 50%, ${color.fg} 65%)`,
     backgroundSize: "200% 100%",
-    // The one window that clears the gradient's ink band. Stated so that a word whose sweep is
-    // not playing is the same muted word the cadence rests on.
+    // The window outside the band, so a word whose sweep is not playing is solid.
     backgroundPosition: "150% 0",
     backgroundClip: "text",
     color: "transparent",

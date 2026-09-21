@@ -10,7 +10,8 @@ import { face, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { messageStyles as ms } from "../messageStyles";
 
 const FOLLOW_SLACK = 24;
-const GLIMPSE_LEAD = "24px";
+// zcode softens its own glimpse over 16px; a shorter ramp keeps more of the line readable.
+const GLIMPSE_LEAD = "16px";
 
 /** The last line the model has written. Empty while it is between paragraphs. */
 function currentThought(text: string): string | undefined {
@@ -58,7 +59,7 @@ const rb = stylex.create({
     borderLeftWidth: "var(--control-edge-width)",
     borderLeftStyle: "solid",
     borderLeftColor: surface.field,
-    paddingTop: space.s0_5,
+    marginTop: space.s3,
     paddingBottom: space.s1_5,
     paddingLeft: space.s3_5,
   },
@@ -72,7 +73,9 @@ const rb = stylex.create({
     overflowY: "hidden",
     paddingRight: space.s2,
   },
-  windowed: { maxHeight: "calc(var(--spacing) * 48)", overflowY: "auto" },
+  // 240px, which is the window zcode gives the same material — a paragraph and a half, enough
+  // to read a conclusion without the rationale taking the turn.
+  windowed: { maxHeight: "calc(var(--spacing) * 60)", overflowY: "auto" },
 });
 
 interface Props {
