@@ -1006,6 +1006,8 @@ export type ProblemData =
   | { type: "session_busy"; detail?: string; docUrl?: string }
   | { type: "session_has_active_run"; activeRun: ActiveRunRef; detail?: string; docUrl?: string }
   | { type: "session_not_found"; detail?: string; docUrl?: string }
+  | { type: "skill_not_found"; detail?: string; docUrl?: string }
+  | { type: "skill_unavailable"; detail?: string; docUrl?: string }
   | { type: "stale_segment"; detail?: string; docUrl?: string }
   | { type: "timeout"; detail?: string; docUrl?: string; retryAfterSeconds?: number }
   | { type: "tool_canceled"; detail?: string; docUrl?: string }

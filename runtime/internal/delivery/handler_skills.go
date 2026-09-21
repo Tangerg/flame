@@ -35,10 +35,7 @@ func (s *Handler) ListDiscoveredSkills(ctx context.Context, in protocol.Workspac
 func (s *Handler) GetDiscoveredSkill(ctx context.Context, in protocol.SkillDetailRequest) (*protocol.SkillDetail, error) {
 	detail, err := s.workspaceSkills.Get(ctx, in.Workspace.Path, in.Name)
 	if err != nil {
-		if errors.Is(err, workspace.ErrSkillUnavailable) {
-			return nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
-		}
-		return nil, wireWorkspaceError(err)
+		return nil, mapSkillError(err)
 	}
 	scope, ok := presentWorkspaceSkillScope(detail.Scope)
 	if !ok {
@@ -97,14 +94,32 @@ func presentSkillLifecycle(lifecycle skills.Lifecycle) (protocol.SkillLifecycle,
 // (skills.library.archive). The application use case publishes the refresh
 // nudge after its durable mutation commits.
 func (s *Handler) ArchiveSkill(ctx context.Context, in protocol.SkillNameRequest) error {
-	return s.workspaceSkills.Archive(ctx, in.Name)
+	return mapSkillError(s.workspaceSkills.Archive(ctx, in.Name))
 }
 
 // RestoreSkill returns an archived skill to active use
 // (skills.library.restore). The application use case publishes the refresh
 // nudge after its durable mutation commits.
 func (s *Handler) RestoreSkill(ctx context.Context, in protocol.SkillNameRequest) error {
-	return s.workspaceSkills.Restore(ctx, in.Name)
+	return mapSkillError(s.workspaceSkills.Restore(ctx, in.Name))
+}
+
+func mapSkillError(err error) error {
+	var kind error
+	var detail string
+	switch {
+	case errors.Is(err, skills.ErrInvalidName):
+		kind, detail = protocol.ErrInvalidParams, "skill name does not satisfy the Agent Skills naming rules"
+	case errors.Is(err, skills.ErrNotFound):
+		kind, detail = protocol.ErrSkillNotFound, "the skill is no longer available in the selected scope"
+	case errors.Is(err, workspace.ErrSkillUnavailable):
+		kind, detail = protocol.ErrSkillUnavailable, "the selected skill document is invalid or exceeds its size limit"
+	default:
+		return wireWorkspaceError(err)
+	}
+	failure := NewFailure(kind, detail)
+	failure.cause = errors.Join(kind, err)
+	return failure
 }
 
 // ListSkillProposals returns the one current proposal per scoped Skill name,

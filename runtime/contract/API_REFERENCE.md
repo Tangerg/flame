@@ -43,10 +43,10 @@ Protocol `2026-09-22` · 88 methods
 | `workspace.files.read` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root`, `unsupported_mime` |
 | `runtime.subscribe` | subscription | stream | none | none | none | — | `fileWatch` | `capability_not_negotiated` |
 | `skills.discovered.list` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `capability_not_negotiated` |
-| `skills.discovered.get` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `capability_not_negotiated` |
+| `skills.discovered.get` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `skill_not_found`, `skill_unavailable`, `capability_not_negotiated` |
 | `skills.library.list` | query | unary | none | none | none | — | `skills` | `capability_not_negotiated` |
-| `skills.library.archive` | command | unary | replayResponse | none | none | — | `skills` | `capability_not_negotiated` |
-| `skills.library.restore` | command | unary | replayResponse | none | none | — | `skills` | `capability_not_negotiated` |
+| `skills.library.archive` | command | unary | replayResponse | none | none | — | `skills` | `skill_not_found`, `capability_not_negotiated` |
+| `skills.library.restore` | command | unary | replayResponse | none | none | — | `skills` | `skill_not_found`, `capability_not_negotiated` |
 | `skills.proposals.list` | query | unary | none | none | none | — | `skills` | `capability_not_negotiated` |
 | `skills.proposals.approve` | command | unary | replayResponse | none | none | — | `skills` | `revision_conflict`, `capability_not_negotiated` |
 | `skills.proposals.reject` | command | unary | replayResponse | none | none | — | `skills` | `revision_conflict`, `capability_not_negotiated` |
@@ -186,6 +186,8 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `session_busy` | — | `detail`, `docUrl` |
 | `session_has_active_run` | `activeRun` | `detail`, `docUrl` |
 | `session_not_found` | — | `detail`, `docUrl` |
+| `skill_not_found` | — | `detail`, `docUrl` |
+| `skill_unavailable` | — | `detail`, `docUrl` |
 | `stale_segment` | — | `detail`, `docUrl` |
 | `timeout` | — | `detail`, `docUrl`, `retryAfterSeconds` |
 | `tool_canceled` | — | `detail`, `docUrl` |

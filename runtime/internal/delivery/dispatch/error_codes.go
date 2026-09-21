@@ -36,4 +36,6 @@ const (
 	codeMCPServerDisabled               = -32031
 	codeMCPAuthorizationAttemptNotFound = -32032
 	codeIdempotencyStoreMismatch        = -32033
+	codeSkillNotFound                   = -32034
+	codeSkillUnavailable                = -32035
 )

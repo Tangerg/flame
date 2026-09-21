@@ -30,7 +30,7 @@ func registerSkills(registry *Registry) {
 
 	registry.query(MethodMeta{
 		Name:            SkillsDiscoveredGet,
-		Errors:          []string{protocol.ErrWorkspaceUnavailable.Error()},
+		Errors:          []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrSkillNotFound.Error(), protocol.ErrSkillUnavailable.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
 		GetDiscoveredSkill(context.Context, protocol.SkillDetailRequest) (*protocol.SkillDetail, error)
@@ -49,6 +49,7 @@ func registerSkills(registry *Registry) {
 
 	registry.commandAck(MethodMeta{
 		Name:            SkillsLibraryArchive,
+		Errors:          []string{protocol.ErrSkillNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
 		ArchiveSkill(context.Context, protocol.SkillNameRequest) error
@@ -58,6 +59,7 @@ func registerSkills(registry *Registry) {
 
 	registry.commandAck(MethodMeta{
 		Name:            SkillsLibraryRestore,
+		Errors:          []string{protocol.ErrSkillNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
 		RestoreSkill(context.Context, protocol.SkillNameRequest) error

@@ -42,8 +42,8 @@ func (w Skills) List(ctx context.Context, cwd string) (workspaceapp.SkillDiscove
 }
 
 func (w Skills) Get(ctx context.Context, cwd, name string) (workspaceapp.SkillDetail, error) {
-	if err := sdk.ValidateName(name); err != nil {
-		return workspaceapp.SkillDetail{}, fmt.Errorf("%w: %w", workspaceapp.ErrSkillUnavailable, err)
+	if err := domainskills.ValidateName(name); err != nil {
+		return workspaceapp.SkillDetail{}, err
 	}
 	layers, err := openRuntimeSkillLayers(cwd, w.userDir)
 	if err != nil {
@@ -53,7 +53,10 @@ func (w Skills) Get(ctx context.Context, cwd, name string) (workspaceapp.SkillDe
 	if context.Cause(ctx) != nil {
 		return workspaceapp.SkillDetail{}, context.Cause(ctx)
 	}
-	if errors.Is(err, sdk.ErrSkillNotFound) || errors.Is(err, sdk.ErrInvalidSkill) || errors.Is(err, domainskills.ErrDocumentTooLarge) {
+	if errors.Is(err, sdk.ErrSkillNotFound) {
+		return workspaceapp.SkillDetail{}, fmt.Errorf("%w: %w", domainskills.ErrNotFound, err)
+	}
+	if errors.Is(err, sdk.ErrInvalidSkill) || errors.Is(err, domainskills.ErrDocumentTooLarge) {
 		return workspaceapp.SkillDetail{}, fmt.Errorf("%w: %w", workspaceapp.ErrSkillUnavailable, err)
 	}
 	return detail, err

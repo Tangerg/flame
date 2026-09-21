@@ -6509,6 +6509,34 @@
             "requiredCapabilities": false,
             "retryAfterSeconds": false,
             "type": {
+              "const": "skill_not_found"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "activeRun": false,
+            "errors": false,
+            "requiredCapabilities": false,
+            "retryAfterSeconds": false,
+            "type": {
+              "const": "skill_unavailable"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "activeRun": false,
+            "errors": false,
+            "requiredCapabilities": false,
+            "retryAfterSeconds": false,
+            "type": {
               "const": "stale_segment"
             }
           },

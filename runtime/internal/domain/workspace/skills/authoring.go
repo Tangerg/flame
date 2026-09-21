@@ -16,6 +16,7 @@ import (
 )
 
 var (
+	ErrInvalidName       = errors.New("skills: invalid name")
 	ErrConflict          = errors.New("skills: destination already exists")
 	ErrProposalChanged   = errors.New("skills: proposal content changed")
 	ErrProposalQueueFull = errors.New("skills: proposal review queue is full")
@@ -25,6 +26,13 @@ var (
 	ErrUsageTooLarge     = errors.New("skills: usage metadata is too large")
 	ErrNotFound          = errors.New("skills: entry not found")
 )
+
+func ValidateName(name string) error {
+	if err := skillspec.ValidateName(name); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidName, err)
+	}
+	return nil
+}
 
 const (
 	// MaxAuthoredSkillDocumentBytes bounds the complete rendered SKILL.md

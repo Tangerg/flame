@@ -124,6 +124,9 @@ func (s *Skills) List(ctx context.Context, cwd string) (SkillDiscovery, error) {
 }
 
 func (s *Skills) Get(ctx context.Context, cwd, name string) (SkillDetail, error) {
+	if err := skills.ValidateName(name); err != nil {
+		return SkillDetail{}, err
+	}
 	root, err := s.scope.root(cwd)
 	if err != nil {
 		return SkillDetail{}, err
@@ -175,6 +178,9 @@ func (s *Skills) Managed(ctx context.Context) ([]skills.Entry, error) {
 
 // Archive removes a Skill from active use without deleting it.
 func (s *Skills) Archive(ctx context.Context, name string) error {
+	if err := skills.ValidateName(name); err != nil {
+		return err
+	}
 	identities, err := s.curator.Archive(ctx, name)
 	s.publishSkillMutation(identities)
 	return err
@@ -182,6 +188,9 @@ func (s *Skills) Archive(ctx context.Context, name string) error {
 
 // Restore returns an archived Skill to active use.
 func (s *Skills) Restore(ctx context.Context, name string) error {
+	if err := skills.ValidateName(name); err != nil {
+		return err
+	}
 	identities, err := s.curator.Restore(ctx, name)
 	s.publishSkillMutation(identities)
 	return err

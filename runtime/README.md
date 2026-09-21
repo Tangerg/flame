@@ -190,6 +190,8 @@ Saving configuration is not a universal live-reload guarantee. Restart recovery 
 
 Discovery, inspection, and model loading use the same Scope resolver. Project bundles own a colliding name even when malformed; they never expose the user copy as a fallback. Invalid or oversized selected documents appear as diagnostics alongside usable entries. Filesystem, confinement, capacity, and cancellation failures remain explicit query failures. Instructions retain the existing 1 MiB document bound and source directories retain their entry bounds. Inspection describes current authored content, not proof that it was loaded into an existing model conversation.
 
+Inspection distinguishes invalid names (`invalid_params`), absent skills (`skill_not_found`), and invalid or oversized selected documents (`skill_unavailable`). Archive and restore also report `skill_not_found` for absent entries. Consumers should refresh a missing resource and offer document correction for an unavailable resource; public errors exclude parser diagnostics and document contents. Proposal revision failures remain `revision_conflict` because the reviewed content must be fetched again before applying it.
+
 ## Integration probes
 
 Provider and MCP probes return sanitized inline verdicts. Provider authentication rejection uses `invalid_api_key`; MCP authentication rejection uses `mcp_authorization_required`; an internal probe deadline uses `timeout`. Unknown integration failures retain `provider_test_failed` or `mcp_dial_failed`. Caller cancellation remains a call error. Clients branch on these problem types, never on raw integration error strings.

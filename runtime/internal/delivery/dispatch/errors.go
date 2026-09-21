@@ -24,6 +24,8 @@ var rpcCodeSpecs = mustRPCCodeSpecs([]rpcCodeSpec{
 	{protocol.ErrRunNotFound.Error(), codeRunNotFound},
 	{protocol.ErrItemNotFound.Error(), codeItemNotFound},
 	{protocol.ErrMCPServerNotFound.Error(), codeMCPServerNotFound},
+	{protocol.ErrSkillNotFound.Error(), codeSkillNotFound},
+	{protocol.ErrSkillUnavailable.Error(), codeSkillUnavailable},
 	{protocol.ErrMCPServerAlreadyExists.Error(), codeMCPServerExists},
 	{protocol.ErrMCPServerDisabled.Error(), codeMCPServerDisabled},
 	{protocol.ErrMCPAuthorizationAttemptNotFound.Error(), codeMCPAuthorizationAttemptNotFound},

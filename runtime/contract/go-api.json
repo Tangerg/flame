@@ -2140,6 +2140,14 @@
           "type": "error"
         },
         {
+          "name": "ErrSkillNotFound",
+          "type": "error"
+        },
+        {
+          "name": "ErrSkillUnavailable",
+          "type": "error"
+        },
+        {
           "name": "ErrStaleSegment",
           "type": "error"
         },
