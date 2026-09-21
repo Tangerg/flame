@@ -21,7 +21,6 @@ import agentBootstrap from "./agent/bootstrap";
 import observability from "./observability";
 import runtime from "./runtime";
 import conversationExport from "./workspace/conversationExport";
-import agentFold from "./agent/bootstrap/foldPlugin";
 import {
   defaultAccents,
   defaultCommands,
@@ -99,11 +98,6 @@ import {
   skillsView,
   timelineView,
 } from "./workspace/workspace-views";
-
-// Agent fold — fold v2 RunEvents (run.* / item.* / state.*) into view state.
-// All semantics (messages, reasoning, tools, plan, questions, HITL) are
-// first-class Items now, so the built-in agent fold owns the whole fold.
-const protocol: AnyPlugin[] = [agentFold];
 
 const infrastructure: AnyPlugin[] = [
   nativeShell,
@@ -224,7 +218,6 @@ const overlays: AnyPlugin[] = [
 ];
 
 export const builtinPlugins: AnyPlugin[] = [
-  ...protocol,
   ...infrastructure,
   ...messageRendering,
   ...toolRenderingPlugins,

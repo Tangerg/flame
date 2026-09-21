@@ -12,8 +12,7 @@ import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 beforeEach(async () => {
-  const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
-  await loadPluginsForTest(spec);
+  await loadPluginsForTest();
 });
 
 type StartableItem = Extract<Item, { type: "agentMessage" | "reasoning" | "toolCall" }>;

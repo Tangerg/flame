@@ -55,6 +55,7 @@ interface AgentRunPumpOptions {
     position: RunStreamPosition,
     signal: AbortSignal,
   ) => Promise<RunStreamReattachment | null>;
+  onSynchronizationFailed?: (error: unknown) => void;
   onIdle?: () => void;
 }
 
@@ -74,6 +75,7 @@ export function createAgentRunPump({
   applyRunSnapshot,
   reattach,
   onIdle,
+  onSynchronizationFailed,
 }: AgentRunPumpOptions): AgentRunPump {
   let currentRunId: RunId | null = null;
   let currentSegmentId: SegmentId | null = null;
@@ -96,22 +98,44 @@ export function createAgentRunPump({
         recovery: "replay",
       };
       activeBatcher?.dispose();
-      const eventBatcher = createRunEventBatcher({
-        readEpoch,
-        apply: applyEvents,
-        onApplied: (event) => {
-          position = { ...position, lastEventId: event.eventId };
-        },
-        onRunFinished: () => {
-          void queryClient.invalidateQueries({ queryKey: [AGENT_SESSION_USAGE_KEY, sessionId] });
-        },
-      });
-      activeBatcher = eventBatcher;
+      let eventBatcher: ReturnType<typeof createRunEventBatcher> | null = null;
+      let projectionRecovered = false;
       let events: AsyncIterable<RunEvent> | null = stream.events;
       try {
         while (events) {
-          const drained = await consume(events, position.segmentId, signal, eventBatcher);
+          const projectionFailure = new AbortController();
+          eventBatcher = createRunEventBatcher({
+            readEpoch,
+            apply: applyEvents,
+            onFailure: (error) => projectionFailure.abort(error),
+            onApplied: (event) => {
+              position = { ...position, lastEventId: event.eventId };
+            },
+            onRunFinished: () => {
+              void queryClient.invalidateQueries({
+                queryKey: [AGENT_SESSION_USAGE_KEY, sessionId],
+              });
+            },
+          });
+          activeBatcher = eventBatcher;
+          const drained = await consume(
+            events,
+            position.segmentId,
+            AbortSignal.any([signal, projectionFailure.signal]),
+            eventBatcher,
+          );
           eventBatcher.flush();
+          eventBatcher.dispose();
+          if (projectionFailure.signal.aborted) {
+            if (projectionRecovered || !reattach) {
+              throw new Error("run synchronization incomplete", {
+                cause: projectionFailure.signal.reason,
+              });
+            }
+            projectionRecovered = true;
+            drained.finished = false;
+            drained.recovery = "cold";
+          }
           if (drained.recovery === "cold") position = { ...position, recovery: "cold" };
           if (
             currentPumpLease !== pumpLease ||
@@ -136,8 +160,12 @@ export function createAgentRunPump({
           currentSegmentId = next.result.segmentId;
           events = next.events;
         }
+      } catch (error) {
+        if (currentPumpLease === pumpLease && !isCancelled() && !signal.aborted)
+          onSynchronizationFailed?.(error);
+        throw error;
       } finally {
-        eventBatcher.flush();
+        eventBatcher?.dispose();
         if (activeBatcher === eventBatcher) activeBatcher = null;
         if (currentPumpLease === pumpLease) {
           // The durable change stream may already have requested a projection

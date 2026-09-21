@@ -55,14 +55,8 @@ export function createRunStreamReattach({
           await recoverProjection(signal);
           return null;
         }
-        if (
-          !isCancelled() &&
-          !signal.aborted &&
-          !(tailErr instanceof RpcConnectionError) &&
-          !agentRuntime().isRunGone(tailErr)
-        )
-          console.warn("[agent] run tail reattach failed:", sessionId, tailErr);
-        return null;
+        if (isCancelled() || signal.aborted || tailErr instanceof RpcConnectionError) return null;
+        throw tailErr;
       }
     };
 

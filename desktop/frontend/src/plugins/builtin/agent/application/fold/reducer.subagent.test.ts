@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type {
   AgentEventEnvelope as RunEvent,
   AgentItem as Item,
@@ -81,8 +81,7 @@ function itemStarted(eventId: string, item: Item, segmentId: string): RunEvent {
 }
 
 beforeEach(async () => {
-  const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
-  await loadPluginsForTest(spec);
+  await loadPluginsForTest();
 });
 
 describe("reducer — source-owned Run tree", () => {
@@ -310,7 +309,6 @@ describe("reducer — source-owned Run tree", () => {
   });
 
   it("does not let duplicate or late segment.started regress a newer Run state", () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const root = runningRun("root", "seg_root");
     const startEvent = started("evt_root_start", root);
     const startedView = reduceAgentEvent(EMPTY_AGENT_SESSION_VIEW, startEvent);
@@ -323,38 +321,23 @@ describe("reducer — source-owned Run tree", () => {
     const terminal = reduceAgentEvent(progressed, finished("evt_root_finish", root.id, "seg_root"));
     expect(reduceAgentEvent(terminal, startEvent)).toBe(terminal);
 
-    const late = reduceAgentEvent(terminal, started("evt_late_start", root));
-    expect(late).toBe(terminal);
-    expect(error).toHaveBeenCalledWith(
-      expect.stringContaining('stream handler "segment.started"'),
-      expect.objectContaining({
-        message: expect.stringContaining("agent.fold.runStatusMismatch"),
-      }),
+    expect(() => reduceAgentEvent(terminal, started("evt_late_start", root))).toThrow(
+      "agent.fold.runStatusMismatch",
     );
-    error.mockRestore();
   });
 
   it("does not let a second segment start while another segment is running", () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const root = runningRun("root", "seg_root");
     const startedView = reduceAgentEvent(EMPTY_AGENT_SESSION_VIEW, started("evt_root_start", root));
-    const conflicting = reduceAgentEvent(
-      startedView,
-      started("evt_conflicting_start", runningRun("root", "seg_other")),
-    );
-
-    expect(conflicting).toBe(startedView);
-    expect(error).toHaveBeenCalledWith(
-      expect.stringContaining('stream handler "segment.started"'),
-      expect.objectContaining({
-        message: expect.stringContaining("agent.fold.segmentMismatch"),
-      }),
-    );
-    error.mockRestore();
+    expect(() =>
+      reduceAgentEvent(
+        startedView,
+        started("evt_conflicting_start", runningRun("root", "seg_other")),
+      ),
+    ).toThrow("agent.fold.segmentMismatch");
   });
 
   it("fails closed when an Item owner disagrees with the event envelope", () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const root = runningRun("root", "seg_root");
     const startedView = reduceAgentEvent(EMPTY_AGENT_SESSION_VIEW, started("evt_root_start", root));
     const foreignItem = {
@@ -366,18 +349,11 @@ describe("reducer — source-owned Run tree", () => {
       content: [],
     } as Item;
 
-    const next = reduceAgentEvent(
-      startedView,
-      envelope("evt_bad_owner", root.id, "seg_root", { type: "item.started", item: foreignItem }),
-    );
-
-    expect(next).toBe(startedView);
-    expect(error).toHaveBeenCalledWith(
-      expect.stringContaining('stream handler "item.started"'),
-      expect.objectContaining({
-        message: expect.stringContaining("agent.fold.itemSourceMismatch"),
-      }),
-    );
-    error.mockRestore();
+    expect(() =>
+      reduceAgentEvent(
+        startedView,
+        envelope("evt_bad_owner", root.id, "seg_root", { type: "item.started", item: foreignItem }),
+      ),
+    ).toThrow("agent.fold.itemSourceMismatch");
   });
 });

@@ -25,8 +25,7 @@ const started = (i: Item): StreamEvent => ({ type: "item.started", item: i });
 const completed = (i: Item): StreamEvent => ({ type: "item.completed", item: i });
 
 beforeEach(async () => {
-  const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
-  await loadPluginsForTest(spec);
+  await loadPluginsForTest();
 });
 
 describe("reducer — timeline accumulator", () => {

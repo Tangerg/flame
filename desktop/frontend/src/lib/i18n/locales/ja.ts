@@ -370,6 +370,8 @@ export const ja: Record<string, string> = {
   "settings.connection.reset": "デフォルトに戻す",
   "settings.connection.status.checking": "Runtime を確認中…",
   "settings.connection.status.reconnecting": "再接続中…",
+  "agent.synchronizationIncomplete":
+    "実行の同期が完了していません。セッションを開き直して再試行してください。",
   "runtime.connection.reconnecting": "Runtime への接続が切れました。再接続しています…",
   "runtime.connection.unavailable": "Runtime を利用できません。Flame は再接続を続けます。",
   "runtime.connection.settings": "接続設定",

@@ -467,3 +467,90 @@ function parkedStream(segmentId: ReturnType<typeof asSegmentId>, signal: AbortSi
     },
   };
 }
+
+describe("failed projection recovery", () => {
+  it.each(["frame", "capacity", "tail"])(
+    "cold-recovers a %s fold failure without acknowledging it",
+    async (trigger) => {
+      let scheduled: (() => void) | undefined;
+      vi.stubGlobal("requestAnimationFrame", (callback: () => void) => {
+        scheduled = callback;
+        return 1;
+      });
+      const applyEvents = vi
+        .fn()
+        .mockImplementationOnce(() => {
+          throw new Error("fold rejected");
+        })
+        .mockReturnValue(true);
+      const reattach = vi.fn(async (_position: RunStreamPosition) => ({
+        ...streamOf([frame("recovered", finished)]),
+        cursor: "snapshot_head",
+      }));
+      const retired = vi.fn();
+      const broken: RunStream = {
+        result: { runId: RUN, segmentId: SEGMENT, headEventId: "before_failure" },
+        events: {
+          [Symbol.asyncIterator]() {
+            let count = 0;
+            return {
+              next: async () => {
+                if (trigger === "frame" && count > 0) {
+                  scheduled?.();
+                  return new Promise<IteratorResult<RunEvent>>(() => {});
+                }
+                if (count++ < (trigger === "capacity" ? 256 : 1))
+                  return { done: false, value: frame(`bad_${count}`, finished) };
+                return { done: true, value: undefined };
+              },
+              return: async () => {
+                retired();
+                return { done: true, value: undefined };
+              },
+            };
+          },
+        },
+      };
+      const pump = createAgentRunPump({
+        sessionId: "ses_1",
+        isCancelled: () => false,
+        readEpoch: () => 0n,
+        applyEvents,
+        reattach,
+      });
+      await pump.pump(broken, new AbortController().signal);
+      expect(reattach).toHaveBeenCalledOnce();
+      expect(reattach.mock.calls[0]?.[0]).toMatchObject({
+        recovery: "cold",
+        lastEventId: "before_failure",
+      });
+      expect(applyEvents).toHaveBeenCalledTimes(2);
+      expect(retired).toHaveBeenCalledTimes(trigger === "tail" ? 0 : 1);
+    },
+  );
+
+  it("reports an incomplete synchronization when the recovered tail also fails", async () => {
+    const failure = new Error("invalid fact");
+    const onSynchronizationFailed = vi.fn();
+    const reattach = vi.fn(async () => ({
+      ...streamOf([frame("bad_again", finished)]),
+      cursor: "head",
+    }));
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => 0n,
+      applyEvents: () => {
+        throw failure;
+      },
+      reattach,
+      onSynchronizationFailed,
+    });
+    await expect(
+      pump.pump(streamOf([frame("bad", finished)]), new AbortController().signal),
+    ).rejects.toThrow("run synchronization incomplete");
+    expect(reattach).toHaveBeenCalledOnce();
+    expect(onSynchronizationFailed).toHaveBeenCalledOnce();
+    expect(pump.isActive()).toBe(false);
+  });
+});

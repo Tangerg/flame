@@ -26,8 +26,7 @@ const delta = (itemId: string, d: Record<string, unknown>): StreamEvent =>
   ({ type: "item.delta", itemId, delta: d }) as StreamEvent;
 
 beforeEach(async () => {
-  const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
-  await loadPluginsForTest(spec);
+  await loadPluginsForTest();
 });
 
 const cmd = (result: Record<string, unknown>) => ({

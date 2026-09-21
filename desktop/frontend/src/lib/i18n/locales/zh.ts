@@ -505,6 +505,7 @@ export const zh: Record<string, string> = {
   "settings.connection.reset": "恢复默认",
   "settings.connection.status.checking": "正在检查 Runtime…",
   "settings.connection.status.reconnecting": "正在重新连接…",
+  "agent.synchronizationIncomplete": "运行同步未完成。请重新打开会话以重试。",
   "runtime.connection.reconnecting": "Runtime 连接已断开，正在重新连接…",
   "runtime.connection.unavailable": "Runtime 暂时不可用，Flame 会继续尝试连接。",
   "runtime.connection.settings": "连接设置",

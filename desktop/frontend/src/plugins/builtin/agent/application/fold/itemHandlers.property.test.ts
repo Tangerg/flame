@@ -72,8 +72,7 @@ function foldAll(events: readonly AgentStreamEvent[]): AgentSessionView {
 let swallowed: string[] = [];
 
 beforeEach(async () => {
-  const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
-  await loadPluginsForTest(spec);
+  await loadPluginsForTest();
   swallowed = [];
   vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
     const first = String(args[0] ?? "");

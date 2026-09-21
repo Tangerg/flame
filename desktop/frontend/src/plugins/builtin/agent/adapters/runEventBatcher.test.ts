@@ -60,6 +60,7 @@ describe("createRunEventBatcher", () => {
     const onRunFinished = vi.fn();
     const frames = frameScheduler();
     const batcher = createRunEventBatcher({
+      onFailure: vi.fn(),
       readEpoch: () => 0n,
       apply: collectBatch(applied),
       onRunFinished,
@@ -89,6 +90,7 @@ describe("createRunEventBatcher", () => {
     const applied: RunEvent[][] = [];
     const frames = frameScheduler();
     const batcher = createRunEventBatcher({
+      onFailure: vi.fn(),
       readEpoch: () => BigInt(epoch),
       apply: collectBatch(applied),
       scheduleFrame: frames.scheduleFrame,
@@ -113,6 +115,7 @@ describe("createRunEventBatcher", () => {
     const onApplied = vi.fn();
     const onRunFinished = vi.fn();
     const batcher = createRunEventBatcher({
+      onFailure: vi.fn(),
       readEpoch: () => 0n,
       apply: () => false,
       onApplied,
@@ -132,6 +135,7 @@ describe("createRunEventBatcher", () => {
     const applied: RunEvent[][] = [];
     const frames = frameScheduler();
     const batcher = createRunEventBatcher({
+      onFailure: vi.fn(),
       readEpoch: () => 0n,
       apply: collectBatch(applied),
       scheduleFrame: frames.scheduleFrame,
@@ -150,6 +154,7 @@ describe("createRunEventBatcher", () => {
     const applied: RunEvent[][] = [];
     const frames = frameScheduler();
     const batcher = createRunEventBatcher({
+      onFailure: vi.fn(),
       readEpoch: () => 0n,
       apply: collectBatch(applied),
       scheduleFrame: frames.scheduleFrame,
@@ -175,6 +180,7 @@ describe("createRunEventBatcher", () => {
     const applied: RunEvent[][] = [];
     const frames = frameScheduler();
     const batcher = createRunEventBatcher({
+      onFailure: vi.fn(),
       readEpoch: () => 0n,
       apply: collectBatch(applied),
       scheduleFrame: frames.scheduleFrame,
@@ -189,5 +195,38 @@ describe("createRunEventBatcher", () => {
     expect(frames.cancelFrame).toHaveBeenCalledWith(1);
     expect(frames.scheduleFrame).toHaveBeenCalledTimes(1);
     expect(applied).toEqual([]);
+  });
+});
+
+describe("projection failure barrier", () => {
+  it.each(["frame", "capacity", "tail"])("retires the batcher after %s failure", (trigger) => {
+    const frames = frameScheduler();
+    const failure = new Error("invalid authoritative fact");
+    const apply = vi.fn(() => {
+      throw failure;
+    });
+    const onFailure = vi.fn();
+    const onApplied = vi.fn();
+    const onRunFinished = vi.fn();
+    const batcher = createRunEventBatcher({
+      readEpoch: () => 0n,
+      apply,
+      onFailure,
+      onApplied,
+      onRunFinished,
+      scheduleFrame: frames.scheduleFrame,
+      cancelFrame: frames.cancelFrame,
+      maximumQueuedEvents: trigger === "capacity" ? 1 : 256,
+    });
+    batcher.enqueue(runFinished());
+    if (trigger === "frame") frames.flushNext();
+    if (trigger === "tail") batcher.flush();
+    batcher.enqueue(runStarted());
+    batcher.flush();
+    frames.flushNext();
+    expect(onFailure).toHaveBeenCalledExactlyOnceWith(failure);
+    expect(apply).toHaveBeenCalledOnce();
+    expect(onApplied).not.toHaveBeenCalled();
+    expect(onRunFinished).not.toHaveBeenCalled();
   });
 });

@@ -8,8 +8,7 @@ import { useAgentStore } from "./agentStore";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 beforeEach(async () => {
-  const { default: spec } = await import("../bootstrap/foldPlugin");
-  await loadPluginsForTest(spec);
+  await loadPluginsForTest();
   useAgentStore.getState().ensureSession("ses_1");
 });
 afterEach(() => {

@@ -28,8 +28,7 @@ const snapshot = (revision: number): StreamEvent => ({
 });
 
 beforeEach(async () => {
-  const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
-  await loadPluginsForTest(spec);
+  await loadPluginsForTest();
 });
 
 describe("handler contract — run.*", () => {
@@ -88,10 +87,11 @@ describe("handler contract — run.*", () => {
     expect(selectCurrentRootRun(out)?.contextTokens).toBe(4200);
   });
 
-  it("segment.progress carrying a subagent envelope runId is an identity no-op", () => {
+  it("rejects progress for an unobserved Run", () => {
     const s = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("root", "s1"));
-    const out = reduce(s, runProgress({ step: 9, activity: "child" }), "sub_run");
-    expect(out).toBe(s);
+    expect(() => reduce(s, runProgress({ step: 9, activity: "child" }), "sub_run")).toThrow(
+      "agent.fold.runMissing",
+    );
   });
 
   it("segment.finished{completed} settles running without disturbing messages / shared", () => {

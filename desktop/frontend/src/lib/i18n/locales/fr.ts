@@ -389,6 +389,8 @@ export const fr: Record<string, string> = {
   "settings.connection.reset": "Réinitialiser",
   "settings.connection.status.checking": "Vérification du runtime…",
   "settings.connection.status.reconnecting": "Reconnexion…",
+  "agent.synchronizationIncomplete":
+    "La synchronisation est incomplète. Rouvrez la session pour réessayer.",
   "runtime.connection.reconnecting": "La connexion au runtime a été interrompue. Reconnexion…",
   "runtime.connection.unavailable":
     "Le runtime est indisponible. Flame continuera de tenter de se reconnecter.",

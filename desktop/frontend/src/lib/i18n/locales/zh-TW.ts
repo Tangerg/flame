@@ -369,6 +369,7 @@ export const zhTW: Record<string, string> = {
   "settings.connection.reset": "恢復預設",
   "settings.connection.status.checking": "正在檢查 Runtime…",
   "settings.connection.status.reconnecting": "正在重新連線…",
+  "agent.synchronizationIncomplete": "執行同步未完成。請重新開啟工作階段以重試。",
   "runtime.connection.reconnecting": "Runtime 連線已中斷，正在重新連線…",
   "runtime.connection.unavailable": "Runtime 暫時無法使用，Flame 會繼續嘗試連線。",
   "runtime.connection.settings": "連線設定",

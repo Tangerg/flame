@@ -58,6 +58,7 @@ function seedInterrupt(kind: "approval" | "question", itemId: string): void {
             item({
               id: itemId,
               type: "toolCall",
+              startedAt: "2026-06-03T00:00:00.000Z",
               tool: { name: "shell", arguments: { command: "rm x" } },
             }),
           )
@@ -128,8 +129,7 @@ const materialToken = () => {
 
 beforeEach(async () => {
   useAgentStore.getState().dropSession(SID);
-  const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
-  await loadPluginsForTest(spec);
+  await loadPluginsForTest();
 });
 
 describe("agentStore projection identity", () => {
@@ -504,6 +504,7 @@ describe("agentStore.resolveInterrupt", () => {
           item({
             id: "t1",
             type: "toolCall",
+            startedAt: "2026-06-03T00:00:00.000Z",
             tool: { name: "shell", arguments: { command: "rm a" } },
           }),
         ),
@@ -511,6 +512,7 @@ describe("agentStore.resolveInterrupt", () => {
           item({
             id: "t2",
             type: "toolCall",
+            startedAt: "2026-06-03T00:00:00.000Z",
             tool: { name: "shell", arguments: { command: "rm b" } },
           }),
         ),
@@ -711,5 +713,21 @@ describe("agentStore.dropMessage", () => {
     const before = view().messages;
     useAgentStore.getState().dropMessage(SID, "nope");
     expect(view().messages).toBe(before);
+  });
+});
+
+describe("authoritative batch admission", () => {
+  it("does not commit a partial batch when a later core fact fails", () => {
+    const store = useAgentStore.getState();
+    store.ensureSession(SID);
+    const before = useAgentStore.getState().sessions[SID];
+    expect(() =>
+      store.applyRunEvents(SID, [
+        fold(runStarted("run_1", SID)),
+        fold(runFinished({ type: "completed" })),
+        fold(runFinished({ type: "canceled" })),
+      ]),
+    ).toThrow("agent.fold.runStatusMismatch");
+    expect(useAgentStore.getState().sessions[SID]).toBe(before);
   });
 });

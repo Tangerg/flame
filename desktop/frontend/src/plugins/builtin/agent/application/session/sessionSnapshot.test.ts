@@ -11,8 +11,7 @@ const LOST_RUN_ID = "run_lost";
 const usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 };
 
 beforeAll(async () => {
-  const { default: foldPlugin } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
-  await loadPluginsForTest(foldPlugin);
+  await loadPluginsForTest();
 });
 
 describe("projectAgentSessionSnapshot", () => {

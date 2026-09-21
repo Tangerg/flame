@@ -1,3 +1,5 @@
+import { t } from "@/lib/i18n";
+import { notifyError } from "@/plugins/sdk";
 import type { AgentDriver, AgentRunStartOptions } from "@/plugins/sdk/types";
 import { asItemId, asRunId, type InterruptResponse } from "@/rpc";
 import { useEffect, useEffectEvent } from "react";
@@ -72,6 +74,8 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
             signal,
           }).then(() => undefined),
       }),
+      onSynchronizationFailed: () =>
+        notifyError(t("agent.synchronizationIncomplete"), { source: "session" }),
       onIdle: () => projectionSynchronization?.liveStreamSettled(),
     });
 

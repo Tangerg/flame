@@ -23,8 +23,7 @@ const run: RunRef = {
 };
 
 beforeEach(async () => {
-  const { default: spec } = await import("./agent/bootstrap/foldPlugin");
-  await loadPluginsForTest(spec);
+  await loadPluginsForTest();
 });
 afterEach(async () => {
   useAgentStore.getState().dropSession(SID);

@@ -381,6 +381,8 @@ export const de: Record<string, string> = {
   "settings.connection.reset": "Auf Standard zurücksetzen",
   "settings.connection.status.checking": "Runtime wird geprüft…",
   "settings.connection.status.reconnecting": "Verbindung wird wiederhergestellt…",
+  "agent.synchronizationIncomplete":
+    "Die Synchronisierung ist unvollständig. Öffnen Sie die Sitzung erneut.",
   "runtime.connection.reconnecting":
     "Die Runtime-Verbindung wurde unterbrochen. Verbindung wird wiederhergestellt…",
   "runtime.connection.unavailable":

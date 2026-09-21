@@ -20,6 +20,7 @@ interface RunEventBatcherOptions {
   readEpoch: () => bigint;
   /** True only when the whole batch was folded into the current projection. */
   apply: (batch: RunEvent[]) => boolean;
+  onFailure: (error: unknown) => void;
   onApplied?: (lastEvent: RunEvent) => void;
   onRunFinished?: () => void;
   scheduleFrame?: ScheduleFrame;
@@ -31,6 +32,7 @@ export function createRunEventBatcher({
   readEpoch,
   apply,
   onApplied,
+  onFailure,
   onRunFinished,
   scheduleFrame = requestAnimationFrame,
   cancelFrame = cancelAnimationFrame,
@@ -54,7 +56,16 @@ export function createRunEventBatcher({
       return;
     }
 
-    if (!apply(batch)) return;
+    try {
+      if (!apply(batch)) {
+        disposed = true;
+        return;
+      }
+    } catch (error) {
+      disposed = true;
+      onFailure(error);
+      return;
+    }
     onApplied?.(batch[batch.length - 1]!);
     if (batch.some((entry) => entry.event.type === "segment.finished")) onRunFinished?.();
   };

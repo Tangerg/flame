@@ -30,8 +30,7 @@ const runStarted = (id: string): StreamEvent => ({
 });
 
 beforeEach(async () => {
-  const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
-  await loadPluginsForTest(spec);
+  await loadPluginsForTest();
 });
 
 const TOOL = "item_run_X_1";

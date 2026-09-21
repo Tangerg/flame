@@ -32,8 +32,7 @@ const runStarted = (id: string, sessionId: string): StreamEvent => ({
 });
 
 beforeEach(async () => {
-  const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
-  await loadPluginsForTest(spec);
+  await loadPluginsForTest();
 });
 
 describe("reducer — run lifecycle", () => {
@@ -69,22 +68,16 @@ describe("reducer — run lifecycle", () => {
   }
 
   it("does not mistake a different outcome at the same instant for a replay", () => {
-    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const started = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
     const finish = testRunEvent(started, runFinished({ type: "completed" }));
     const settled = reduceAgentEvent(started, finish);
-
-    reduceAgentEvent(settled, {
-      ...finish,
-      eventId: "evt_contradiction",
-      event: runFinished({ type: "failed", error: { code: "provider_error", message: "boom" } }),
-    });
-
-    expect(error).toHaveBeenCalledWith(
-      expect.stringContaining('stream handler "segment.finished"'),
-      expect.objectContaining({ message: expect.stringContaining("agent.fold.runStatusMismatch") }),
-    );
-    error.mockRestore();
+    expect(() =>
+      reduceAgentEvent(settled, {
+        ...finish,
+        eventId: "evt_contradiction",
+        event: runFinished({ type: "failed", error: { code: "provider_error", message: "boom" } }),
+      }),
+    ).toThrow("agent.fold.runStatusMismatch");
   });
 
   it("segment.finished{failed} stores the error; a fresh segment.started clears it", () => {
@@ -720,5 +713,25 @@ describe("reducer — interrupt idempotency + terminal cleanup", () => {
     );
     const block = s.messages.flatMap((m) => m.blocks).find((b) => b.kind === "text");
     expect(block).toMatchObject({ kind: "text", text: "hello world", status: "complete" });
+  });
+});
+
+describe("optional event projections", () => {
+  it("isolates optional plugin failures after applying the core fact", async () => {
+    const { contributeForTest } = await import("@/plugins/sdk/testKernel");
+    const { STREAM_EVENT_HANDLER } = await import("@/plugins/sdk");
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await contributeForTest((ctx) =>
+      ctx.contribute(STREAM_EVENT_HANDLER, {
+        eventType: "segment.started",
+        handler: () => {
+          throw new Error("optional view failed");
+        },
+      }),
+    );
+    const next = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
+    expect(next.runsById.run_1?.status).toBe("running");
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
   });
 });

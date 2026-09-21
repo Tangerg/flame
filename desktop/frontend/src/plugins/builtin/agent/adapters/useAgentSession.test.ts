@@ -41,8 +41,7 @@ function parkedDriver(): { driver: AgentDriver; start: ReturnType<typeof vi.fn> 
 }
 
 beforeEach(async () => {
-  const { default: spec } = await import("@/plugins/builtin/agent/bootstrap/foldPlugin");
-  await loadPluginsForTest(spec);
+  await loadPluginsForTest();
   navigator().go({ session: SID });
   useAgentSessionStore.setState({
     draftSessionIds: new Set([SID]),
