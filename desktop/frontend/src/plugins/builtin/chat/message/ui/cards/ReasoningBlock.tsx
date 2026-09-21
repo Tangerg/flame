@@ -2,14 +2,13 @@ import * as stylex from "@stylexjs/stylex";
 import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { MarkdownMessage } from "../markdown/MarkdownMessage";
-import { Icon, Loader, vocab } from "@/ui";
+import { Icon, Loader, scrollEdges, useScrollEdges, vocab } from "@/ui";
 import { AgentActivityDisclosure, useActivityOpenState } from "@/ui/agent";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { face, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { messageStyles as ms } from "../messageStyles";
 
-const FADE = "24px";
 const FOLLOW_SLACK = 24;
 const GLIMPSE_LEAD = "24px";
 
@@ -74,23 +73,6 @@ const rb = stylex.create({
     paddingRight: space.s2,
   },
   windowed: { maxHeight: "calc(var(--spacing) * 48)", overflowY: "auto" },
-  /**
-   * Two absolutely-positioned gradient overlays used to do this, and neither could ever be
-   * seen: `position: absolute; top: 0` inside `overflow-y: auto` anchors to the SCROLLED
-   * content origin, so the top fade scrolled out of view exactly when `edges.scrolled` turned
-   * it on — measured at -200px after a 200px scroll. The bottom one sat at the end of the
-   * text, which is below the viewport whenever `!atBottom` said to show it.
-   *
-   * A mask is painted against the element's own box and does not scroll, so it lands where the
-   * clipping actually happens. It also stops needing to know what is behind it: the overlays
-   * hard-coded `--app-content-surface` as their opaque end, which would have painted the wrong
-   * colour the moment this block sat on any other surface. `truncate-fade` in `globals.css` is
-   * the horizontal sibling of this and already worked this way.
-   */
-  fade: {
-    maskImage: `linear-gradient(to bottom, transparent 0, #000 var(--fade-top, 0px), #000 calc(100% - var(--fade-bottom, 0px)), transparent 100%)`,
-    WebkitMaskImage: `linear-gradient(to bottom, transparent 0, #000 var(--fade-top, 0px), #000 calc(100% - var(--fade-bottom, 0px)), transparent 100%)`,
-  },
 });
 
 interface Props {
@@ -147,54 +129,35 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
     return () => ro.disconnect();
   }, [glimpse]);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = useState({ scrolled: false, atBottom: true, overflowing: false });
-  const measure = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const next = {
-      scrolled: el.scrollTop > 0,
-      atBottom: el.scrollHeight - el.scrollTop - el.clientHeight < 4,
-      overflowing: el.scrollHeight > el.clientHeight,
-    };
-    setEdges((prev) =>
-      prev.scrolled === next.scrolled &&
-      prev.atBottom === next.atBottom &&
-      prev.overflowing === next.overflowing
-        ? prev
-        : next,
-    );
-  }, []);
+  const {
+    port,
+    content,
+    onScroll: measureEdges,
+    style: edgeStyle,
+    overflowing,
+    distanceFromEnd,
+    scrollToEnd,
+  } = useScrollEdges(isOpen);
 
+  // Follows the newest line, and stops the moment the reader scrolls away from it.
   const followingRef = useRef(true);
   const onScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (el) followingRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_SLACK;
-    measure();
-  }, [measure]);
+    followingRef.current = distanceFromEnd() < FOLLOW_SLACK;
+    measureEdges();
+  }, [distanceFromEnd, measureEdges]);
 
   useEffect(() => {
     if (!streaming || !isOpen) return;
-    const scrollEl = scrollRef.current;
-    const contentEl = contentRef.current;
-    if (!scrollEl || !contentEl) return;
+    const contentEl = content.current;
+    if (!contentEl) return;
     const follow = () => {
-      if (followingRef.current) scrollEl.scrollTop = scrollEl.scrollHeight;
-      measure();
+      if (followingRef.current) scrollToEnd();
     };
     follow();
     const ro = new ResizeObserver(follow);
     ro.observe(contentEl);
     return () => ro.disconnect();
-  }, [streaming, isOpen, measure]);
-
-  useEffect(() => {
-    measure();
-  }, [text, isOpen, measure]);
-
-  const showTopFade = isOpen && edges.scrolled;
-  const showBottomFade = isOpen && edges.overflowing && !edges.atBottom;
+  }, [streaming, isOpen, content, scrollToEnd]);
 
   return (
     <AgentActivityDisclosure
@@ -225,20 +188,15 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
       contentClassName={stylex.props(rb.aside).className}
     >
       <div
-        ref={scrollRef}
+        ref={port}
         data-slot="reasoning-scroller"
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-        tabIndex={isOpen && edges.overflowing ? 0 : undefined}
+        tabIndex={overflowing ? 0 : undefined}
         onScroll={onScroll}
-        style={
-          {
-            "--fade-top": showTopFade ? FADE : "0px",
-            "--fade-bottom": showBottomFade ? FADE : "0px",
-          } as CSSProperties
-        }
-        {...stylex.props(rb.scroller, rb.fade, isOpen && rb.windowed)}
+        style={edgeStyle}
+        {...stylex.props(rb.scroller, scrollEdges.fade, isOpen && rb.windowed)}
       >
-        <div ref={contentRef} className={stylex.props(ms.quote, typeStep.uiSm).className}>
+        <div ref={content} className={stylex.props(ms.quote, typeStep.uiSm).className}>
           <MarkdownMessage text={text} streaming={streaming} reveal="smooth" />
           {status === "incomplete" && (
             <div {...stylex.props(rb.note, vocab.faint, typeStep.uiSm, face.mono)}>

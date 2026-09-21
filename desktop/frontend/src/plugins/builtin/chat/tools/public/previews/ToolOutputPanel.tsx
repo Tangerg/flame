@@ -1,11 +1,20 @@
 import * as stylex from "@stylexjs/stylex";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { hasAnsi } from "@/lib/ansi";
 import { cn } from "@/lib/classNames";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { useT } from "@/lib/i18n";
-import { AnsiText, Icon, IconButton, TextButton, Well, reveal } from "@/ui";
+import {
+  AnsiText,
+  Icon,
+  IconButton,
+  TextButton,
+  Well,
+  reveal,
+  scrollEdges,
+  useScrollEdges,
+} from "@/ui";
 import { LinkedText } from "@/plugins/builtin/chat/file-references/public/LinkedText";
 import { PreviewPlaceholder } from "./PreviewPlaceholder";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
@@ -49,23 +58,25 @@ function OutputLine({ text }: { text: string }) {
 
 function ScrollableOutput({ lines }: { lines: string[] }) {
   const t = useT();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const edges = useScrollEdges();
   const rows = useVirtualizer({
     count: lines.length,
-    getScrollElement: () => scrollRef.current,
+    getScrollElement: () => edges.port.current,
     estimateSize: () => 24,
     overscan: 8,
   });
   return (
     <div
-      ref={scrollRef}
+      ref={edges.port}
       role="region"
       aria-label={t("tools.output.label")}
       // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The scroll region needs keyboard scrolling independently of the transcript.
       tabIndex={0}
-      {...stylex.props(op.lines, op.viewport)}
+      onScroll={edges.onScroll}
+      style={edges.style}
+      {...stylex.props(op.lines, op.viewport, scrollEdges.fade)}
     >
-      <div {...stylex.props(op.canvas)} style={{ height: rows.getTotalSize() }}>
+      <div ref={edges.content} {...stylex.props(op.canvas)} style={{ height: rows.getTotalSize() }}>
         {rows.getVirtualItems().map((row) => (
           <div
             key={row.key}
