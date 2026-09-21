@@ -163,6 +163,16 @@ export function DiffWorkspaceSurface() {
           </div>
         }
       />
+      {view.baseline && (
+        <p
+          {...stylex.props(vs.gutter, typeStep.uiSm, vocab.muted)}
+          title={view.baseline.type === "emptyTree" ? undefined : view.baseline.commit}
+        >
+          {t(`diff.baseline.${view.baseline.type}`, {
+            commit: view.baseline.type === "emptyTree" ? "" : view.baseline.commit.slice(0, 12),
+          })}
+        </p>
+      )}
       <ScrollArea ref={scrollRef} className={stylex.props(df.scroller).className}>
         <DataView
           items={gitEnabled ? files : []}

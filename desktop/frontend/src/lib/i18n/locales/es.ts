@@ -638,6 +638,10 @@ export const es: Record<string, string> = {
   "diff.error.loadFailedSub": "El runtime rechazó la petición.",
   "diff.empty.title": "Nada que comparar",
   "diff.empty.sub": "El árbol de trabajo no tiene cambios sin confirmar.",
+  "diff.baseline.head": "HEAD {{commit}} → árbol de trabajo, incluidos archivos sin seguimiento",
+  "diff.baseline.mergeBase":
+    "Base de fusión {{commit}} → árbol de trabajo, solo archivos con seguimiento",
+  "diff.baseline.emptyTree": "Árbol vacío → árbol de trabajo, incluidos archivos sin seguimiento",
   "diff.binary": "Archivo binario",
   "diff.truncated": "Diff truncado al límite de líneas — los archivos restantes no se muestran.",
 

@@ -620,6 +620,9 @@ export const de: Record<string, string> = {
   "diff.error.loadFailedSub": "Die Runtime hat die Anfrage abgelehnt.",
   "diff.empty.title": "Nichts zu vergleichen",
   "diff.empty.sub": "Der Arbeitsbaum hat keine nicht-committeten Änderungen.",
+  "diff.baseline.head": "HEAD {{commit}} → Arbeitsbaum, einschließlich unversionierter Dateien",
+  "diff.baseline.mergeBase": "Merge-Basis {{commit}} → Arbeitsbaum, nur versionierte Dateien",
+  "diff.baseline.emptyTree": "Leerer Baum → Arbeitsbaum, einschließlich unversionierter Dateien",
   "diff.binary": "Binärdatei",
   "diff.truncated":
     "Diff am Zeilenlimit abgeschnitten — die übrigen Dateien werden nicht angezeigt.",

@@ -115,7 +115,10 @@ export interface WorkspaceFileDiff {
   rows: WorkspaceDiffRow[];
 }
 
+type WorkspaceDiffBaseline = { type: "head" | "mergeBase"; commit: string } | { type: "emptyTree" };
+
 export interface WorkspaceDiff {
+  baseline: WorkspaceDiffBaseline;
   files: WorkspaceFileDiff[];
   truncated?: boolean;
 }

@@ -147,7 +147,11 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
       const { cwd, ...query } = requiredParams<WorkspaceDiffQuery>(WORKSPACE_DIFF_KEY, params);
       const resources = await read.workspace(cwd);
       const diff = await resources.diff.get({ ...query, format: "rows" }, read.signal);
-      return { files: diff.files ?? [], truncated: diff.truncated } satisfies WorkspaceDiff;
+      return {
+        baseline: diff.baseline,
+        files: diff.files ?? [],
+        truncated: diff.truncated,
+      } satisfies WorkspaceDiff;
     },
   });
   contribute({

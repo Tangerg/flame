@@ -91,6 +91,7 @@ import {
 const ACTIVE_DIFF_FILE = "desktop/frontend/src/plugins/builtin/shell/kernel/panel/DockResizer.tsx";
 
 const REVIEW_DIFF: WorkspaceDiff = {
+  baseline: { type: "head", commit: "1234567890abcdef1234567890abcdef12345678" },
   files: [
     {
       path: ACTIVE_DIFF_FILE,

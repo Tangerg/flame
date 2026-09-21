@@ -23,6 +23,7 @@ vi.mock("../application/diffViewModel", async (importOriginal) => ({
     isLoading: false,
     notARepo: false,
     view: {
+      baseline: { type: "head", commit: "1234567890abcdef1234567890abcdef12345678" },
       files: projection.files,
       truncated: false,
     },
@@ -70,6 +71,14 @@ afterEach(() => {
 });
 
 describe("DiffWorkspaceSurface", () => {
+  it("shows the resolved baseline and preserves the full object identity", () => {
+    const view = render(<DiffWorkspaceSurface />);
+    expect(
+      view
+        .getByText("HEAD 1234567890ab → working tree, including untracked files")
+        .getAttribute("title"),
+    ).toBe("1234567890abcdef1234567890abcdef12345678");
+  });
   it("locates every file navigation intent while the Diff view stays mounted", () => {
     const view = render(<DiffWorkspaceSurface />);
     expect(scrolledPaths).toEqual(["src/a.ts"]);

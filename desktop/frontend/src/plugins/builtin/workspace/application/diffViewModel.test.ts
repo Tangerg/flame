@@ -25,6 +25,7 @@ describe("workspaceDiffViewModel", () => {
 
   it("totals diff stats across files, counting a missing count as zero", () => {
     const data: WorkspaceDiff = {
+      baseline: { type: "head", commit: "1".repeat(40) },
       files: [
         file({ path: "src/a.ts", added: 3, removed: 1 }),
         file({ path: "src/b.ts", added: undefined, removed: 4 }),
@@ -33,6 +34,7 @@ describe("workspaceDiffViewModel", () => {
     };
 
     expect(workspaceDiffViewModel(data)).toEqual({
+      baseline: data.baseline,
       files: data.files,
       subtext: {
         added: 3,
@@ -44,7 +46,12 @@ describe("workspaceDiffViewModel", () => {
   });
 
   it("reports a complete diff as untruncated", () => {
-    expect(workspaceDiffViewModel({ files: [file({ path: "src/only.ts" })] })).toMatchObject({
+    expect(
+      workspaceDiffViewModel({
+        baseline: { type: "emptyTree" },
+        files: [file({ path: "src/only.ts" })],
+      }),
+    ).toMatchObject({
       truncated: false,
     });
   });

@@ -599,6 +599,9 @@ export const ja: Record<string, string> = {
   "diff.error.loadFailedSub": "ランタイムがこのリクエストを拒否しました。",
   "diff.empty.title": "比較するものがありません",
   "diff.empty.sub": "ワーキングツリーに未コミットの変更はありません。",
+  "diff.baseline.head": "HEAD {{commit}} → 作業ツリー（未追跡ファイルを含む）",
+  "diff.baseline.mergeBase": "マージベース {{commit}} → 作業ツリー（追跡ファイルのみ）",
+  "diff.baseline.emptyTree": "空のツリー → 作業ツリー（未追跡ファイルを含む）",
   "diff.binary": "バイナリファイル",
   "diff.truncated": "Diff が行数制限に達しました — 残りのファイルは表示されていません。",
 

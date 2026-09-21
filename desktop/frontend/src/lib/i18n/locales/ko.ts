@@ -594,6 +594,9 @@ export const ko: Record<string, string> = {
   "diff.error.loadFailedSub": "런타임이 이 요청을 거부했습니다.",
   "diff.empty.title": "비교할 내용 없음",
   "diff.empty.sub": "워킹 트리에 커밋되지 않은 변경 사항이 없습니다.",
+  "diff.baseline.head": "HEAD {{commit}} → 작업 트리, 추적되지 않은 파일 포함",
+  "diff.baseline.mergeBase": "병합 기준 {{commit}} → 작업 트리, 추적된 파일만",
+  "diff.baseline.emptyTree": "빈 트리 → 작업 트리, 추적되지 않은 파일 포함",
   "diff.binary": "바이너리 파일",
   "diff.truncated": "Diff가 행 제한에 도달했습니다 — 나머지 파일은 표시되지 않습니다.",
 

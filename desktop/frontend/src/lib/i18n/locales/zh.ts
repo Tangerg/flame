@@ -768,6 +768,9 @@ export const zh: Record<string, string> = {
   "file.error.sub": "它可能已移动、是二进制文件,或位于工作区之外。",
   "diff.empty.title": "无内容可比较",
   "diff.empty.sub": "工作树中没有未提交的更改。",
+  "diff.baseline.head": "HEAD {{commit}} → 当前工作区，包含未跟踪文件",
+  "diff.baseline.mergeBase": "合并基点 {{commit}} → 当前工作区，仅已跟踪文件",
+  "diff.baseline.emptyTree": "空树 → 当前工作区，包含未跟踪文件",
   "diff.binary": "二进制文件",
   "diff.truncated": "Diff 已达到行数上限 —— 其余文件未显示。",
 

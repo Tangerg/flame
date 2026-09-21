@@ -15,6 +15,7 @@ interface WorkspaceDiffSubtext {
 }
 
 export interface WorkspaceDiffViewModel {
+  baseline?: WorkspaceDiff["baseline"];
   files?: WorkspaceFileDiff[];
   subtext?: WorkspaceDiffSubtext;
   truncated: boolean;
@@ -70,6 +71,7 @@ export function workspaceDiffViewModel(data: WorkspaceDiff | undefined): Workspa
   }
 
   return {
+    baseline: data.baseline,
     files,
     subtext: {
       added,

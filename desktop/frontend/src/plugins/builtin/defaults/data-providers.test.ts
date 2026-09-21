@@ -207,7 +207,7 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
   it("diff: pins format=rows on the wire and defaults files to []", async () => {
     const { value, requests } = await runProvider<WorkspaceDiff>(
       "diff",
-      [["workspace.diff.get", { truncated: true }]],
+      [["workspace.diff.get", { baseline: { type: "emptyTree" }, truncated: true }]],
       { cwd: "/work/auth", path: "src/a.ts", mode: "worktree" },
     );
     expect(requests[0]?.params).toEqual({
@@ -216,7 +216,7 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
       format: "rows",
       workspace: { path: "/work/auth" },
     });
-    expect(value).toEqual({ files: [], truncated: true });
+    expect(value).toEqual({ baseline: { type: "emptyTree" }, files: [], truncated: true });
   });
 
   it("grep: forwards params on the wire and returns matches + total verbatim", async () => {

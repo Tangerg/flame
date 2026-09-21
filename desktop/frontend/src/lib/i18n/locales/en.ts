@@ -878,6 +878,9 @@ export const en: Record<string, string> = {
   "file.error.sub": "It may have moved, be binary, or live outside the workspace.",
   "diff.empty.title": "Nothing to compare",
   "diff.empty.sub": "The working tree has no uncommitted changes.",
+  "diff.baseline.head": "HEAD {{commit}} → working tree, including untracked files",
+  "diff.baseline.mergeBase": "Merge base {{commit}} → working tree, tracked files only",
+  "diff.baseline.emptyTree": "Empty tree → working tree, including untracked files",
   "diff.binary": "Binary file",
   "diff.truncated": "Diff truncated at the row limit — the remaining files are not shown.",
 

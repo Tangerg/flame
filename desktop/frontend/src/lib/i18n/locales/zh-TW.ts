@@ -604,6 +604,9 @@ export const zhTW: Record<string, string> = {
   "file.error.sub": "它可能已移動、是二進位檔,或位於工作區之外。",
   "diff.empty.title": "無內容可比較",
   "diff.empty.sub": "工作樹中沒有未提交的變更。",
+  "diff.baseline.head": "HEAD {{commit}} → 目前工作區，包含未追蹤檔案",
+  "diff.baseline.mergeBase": "合併基點 {{commit}} → 目前工作區，僅已追蹤檔案",
+  "diff.baseline.emptyTree": "空樹 → 目前工作區，包含未追蹤檔案",
   "diff.binary": "二進位檔案",
   "diff.truncated": "Diff 已達行數上限 —— 其餘檔案未顯示。",
 
