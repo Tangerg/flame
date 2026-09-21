@@ -26,7 +26,10 @@ import { AgentComposerChip } from "@/ui/agent";
 import { useSetComposerModelPreference } from "../public/modelPreference";
 import { useSelectedModelSelection } from "../public/selectedModel";
 
-function ReasoningEffortPicker() {
+// A toolbar chip beside the model, not a footer inside the model menu: effort is switched far
+// more often than the model it belongs to, and reaching it through the model picker meant
+// opening one menu to get at another.
+export function ReasoningEffortPicker() {
   const t = useT();
   const selection = useSelectedModelSelection();
   const setModel = useSetComposerModelPreference();
@@ -229,7 +232,6 @@ export function ModelPicker() {
   return (
     <RailCatalogPicker
       groups={groups}
-      footer={selected.reasoningLevels.length > 0 ? <ReasoningEffortPicker /> : undefined}
       openAtGroupId={
         groups.some((group) => group.id === selected.provider) ? selected.provider : groups[0]?.id
       }

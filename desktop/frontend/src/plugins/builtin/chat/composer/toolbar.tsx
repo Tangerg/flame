@@ -19,7 +19,7 @@ import { contributeLayout, notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { definePlugin } from "@/plugins/sdk";
 import { useAddComposerImageFiles } from "./public/attachments";
-import { ModelPicker } from "./ui/ModelPicker";
+import { ModelPicker, ReasoningEffortPicker } from "./ui/ModelPicker";
 
 function AttachButton() {
   const t = useT();
@@ -122,13 +122,18 @@ export const composerToolbar = definePlugin({
     });
     contributeLayout(ctx, "composer.toolbar.start", {
       id: "approval",
-      order: 2,
+      order: 3,
       component: ApprovalModePill,
     });
     contributeLayout(ctx, "composer.toolbar.start", {
       id: "model",
       order: 1,
       component: ModelPicker,
+    });
+    contributeLayout(ctx, "composer.toolbar.start", {
+      id: "reasoning-effort",
+      order: 2,
+      component: ReasoningEffortPicker,
     });
   },
 });
