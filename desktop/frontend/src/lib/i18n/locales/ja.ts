@@ -542,6 +542,10 @@ export const ja: Record<string, string> = {
   "skills.empty.sub": "このプロジェクトの作業ディレクトリで見つかったスキルがここに表示されます。",
   "skills.disabled.title": "スキルはオフです",
   "skills.disabled.sub": "このランタイムはスキル機能を提供していません。",
+  "skills.unreadable_other": "{{count}} 件のスキルを読み込めません",
+  "skills.revision": "内容ハッシュ {{revision}}",
+  "skills.body.empty.title": "本文がありません",
+  "skills.body.empty.sub": "このスキルが解決した文書に本文がありません。",
 
   "knowledge.title": "知識",
   "knowledge.scopes_other": "{{count}} スコープ",

@@ -540,6 +540,10 @@ export const ko: Record<string, string> = {
   "skills.empty.sub": "이 프로젝트의 작업 디렉터리에서 발견된 스킬이 여기에 표시됩니다.",
   "skills.disabled.title": "스킬이 꺼져 있음",
   "skills.disabled.sub": "이 런타임은 스킬 기능을 제공하지 않습니다.",
+  "skills.unreadable_other": "스킬 {{count}}개를 읽을 수 없음",
+  "skills.revision": "내용 해시 {{revision}}",
+  "skills.body.empty.title": "본문 없음",
+  "skills.body.empty.sub": "이 스킬이 가리키는 문서에 본문이 없습니다.",
 
   "knowledge.title": "지식",
   "knowledge.scopes_other": "{{count}}개 스코프",

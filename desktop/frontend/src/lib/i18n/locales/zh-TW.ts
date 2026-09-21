@@ -540,6 +540,10 @@ export const zhTW: Record<string, string> = {
   "skills.empty.sub": "在此專案工作目錄中發現的技能會顯示在這裡。",
   "skills.disabled.title": "技能已關閉",
   "skills.disabled.sub": "此執行時未宣告技能功能。",
+  "skills.unreadable_other": "{{count}} 個技能無法讀取",
+  "skills.revision": "內容雜湊 {{revision}}",
+  "skills.body.empty.title": "沒有內容",
+  "skills.body.empty.sub": "該技能解析到的文件沒有正文。",
 
   "knowledge.title": "知識",
   "knowledge.scopes_other": "{{count}} 個作用域",

@@ -561,6 +561,11 @@ export const de: Record<string, string> = {
   "skills.empty.sub": "Im Arbeitsverzeichnis dieses Projekts entdeckte Skills erscheinen hier.",
   "skills.disabled.title": "Skills sind deaktiviert",
   "skills.disabled.sub": "Diese Runtime bietet die Skills-Funktion nicht an.",
+  "skills.unreadable_one": "{{count}} Skill nicht lesbar",
+  "skills.unreadable_other": "{{count}} Skills nicht lesbar",
+  "skills.revision": "Inhalts-Hash {{revision}}",
+  "skills.body.empty.title": "Keine Anweisungen",
+  "skills.body.empty.sub": "Dieser Skill verweist auf ein Dokument ohne Inhalt.",
 
   "knowledge.title": "Wissen",
   "knowledge.scopes_one": "{{count}} Bereich",

@@ -676,6 +676,10 @@ export const zh: Record<string, string> = {
   "skills.empty.sub": "在此项目工作目录中发现的技能会显示在这里。",
   "skills.disabled.title": "技能已关闭",
   "skills.disabled.sub": "此运行时未声明技能功能。",
+  "skills.unreadable_other": "{{count}} 个技能无法读取",
+  "skills.revision": "内容哈希 {{revision}}",
+  "skills.body.empty.title": "没有内容",
+  "skills.body.empty.sub": "该技能解析到的文档没有正文。",
   "schedules.intro":
     "按计划运行一段存好的 prompt。运行时在线期间,每次触发开一个新会话 —— 在边栏查看输出。",
   "schedules.add": "新建定时任务",

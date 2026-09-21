@@ -1,6 +1,6 @@
 import { useState } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { DataView, Tag, TextButton, Well, vocab } from "@/ui";
+import { Collapsible, DataView, FilePath, SystemMessage, Tag, TextButton, Well, vocab } from "@/ui";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./viewStyles";
 import { useT } from "@/lib/i18n";
@@ -28,16 +28,20 @@ export function AvailableSkills() {
           {t("skills.available", { count: view.count })}
         </div>
       )}
-      {view.enabled &&
-        data?.diagnostics.map((diagnostic) => (
-          <div
-            key={diagnostic.name}
-            role="status"
-            {...stylex.props(vs.gutter, vs.rowPad, typeStep.uiSm)}
-          >
-            {diagnostic.name}: {diagnostic.detail}
-          </div>
-        ))}
+      {view.enabled && data && data.diagnostics.length > 0 && (
+        <div {...stylex.props(vs.gutter, vs.rowPad)}>
+          <SystemMessage variant="warning" shape="form">
+            <div {...stylex.props(vocab.column)}>
+              <div>{t("skills.unreadable", { count: data.diagnostics.length })}</div>
+              {data.diagnostics.map((diagnostic) => (
+                <div key={diagnostic.name} {...stylex.props(typeStep.uiSm)}>
+                  <span {...stylex.props(vs.title)}>{diagnostic.name}</span> — {diagnostic.detail}
+                </div>
+              ))}
+            </div>
+          </SystemMessage>
+        </div>
+      )}
       <DataView
         items={view.rows}
         isLoading={view.enabled && (isLoading || workspace.status === "resolving")}
@@ -71,7 +75,7 @@ export function AvailableSkills() {
                 )}
                 {workspace.status === "ready" && (
                   <SkillInspection
-                    key={JSON.stringify([workspace.cwd, s.name])}
+                    key={`${workspace.cwd ?? ""} ${s.name}`}
                     cwd={workspace.cwd}
                     name={s.name}
                   />
@@ -90,10 +94,21 @@ function SkillInspection({ cwd, name }: { cwd?: string; name: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <TextButton size="sm" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      <TextButton
+        size="sm"
+        className={stylex.props(vocab.afterLine).className}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
         {open ? t("skillProposals.hideBody") : t("skillProposals.readBody")}
       </TextButton>
-      {open && <SkillDetail cwd={cwd} name={name} />}
+      {/* Mounted only once asked: the body is a whole document per skill, and a list of them
+          would fetch every one to render a row nobody opened. */}
+      {open && (
+        <Collapsible open>
+          <SkillDetail cwd={cwd} name={name} />
+        </Collapsible>
+      )}
     </>
   );
 }
@@ -108,15 +123,16 @@ function SkillDetail({ cwd, name }: { cwd?: string; name: string }) {
       failure={error}
       onRetry={refetch}
       skeletonCount={1}
-      empty={{ icon: "sparkle", title: t("skills.empty.title"), sub: t("skills.empty.sub") }}
+      empty={{ icon: "file", title: t("skills.body.empty.title"), sub: t("skills.body.empty.sub") }}
     >
       {(rows) =>
         rows.map((detail) => (
           <div key={detail.revision} {...stylex.props(vocab.column, vocab.afterLine)}>
-            <div {...stylex.props(typeStep.uiSm, vocab.muted)}>{detail.path}</div>
-            <div {...stylex.props(vocab.line)}>
-              <Tag>{detail.scope}</Tag>
-              <Tag title={detail.revision}>{detail.revision.slice(0, 12)}</Tag>
+            <div {...stylex.props(vocab.line, vocab.min)}>
+              <FilePath path={detail.path} />
+              <Tag title={t("skills.revision", { revision: detail.revision })}>
+                {detail.revision.slice(0, 7)}
+              </Tag>
             </div>
             <Well>{detail.instructions}</Well>
           </div>

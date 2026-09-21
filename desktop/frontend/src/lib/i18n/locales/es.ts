@@ -575,6 +575,12 @@ export const es: Record<string, string> = {
     "Las habilidades descubiertas en el directorio de trabajo de este proyecto aparecen aquí.",
   "skills.disabled.title": "Habilidades desactivadas",
   "skills.disabled.sub": "Este runtime no ofrece la funcionalidad de habilidades.",
+  "skills.unreadable_one": "{{count}} habilidad no se puede leer",
+  "skills.unreadable_many": "{{count}} habilidades no se pueden leer",
+  "skills.unreadable_other": "{{count}} habilidades no se pueden leer",
+  "skills.revision": "Hash del contenido {{revision}}",
+  "skills.body.empty.title": "Sin instrucciones",
+  "skills.body.empty.sub": "Esta habilidad apunta a un documento sin cuerpo.",
 
   "knowledge.title": "Conocimiento",
   "knowledge.scopes_one": "{{count}} ámbito",

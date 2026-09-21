@@ -580,6 +580,12 @@ export const fr: Record<string, string> = {
     "Les compétences découvertes dans le répertoire de travail de ce projet apparaissent ici.",
   "skills.disabled.title": "Compétences désactivées",
   "skills.disabled.sub": "Ce runtime ne propose pas la fonctionnalité de compétences.",
+  "skills.unreadable_one": "{{count}} compétence illisible",
+  "skills.unreadable_many": "{{count}} compétences illisibles",
+  "skills.unreadable_other": "{{count}} compétences illisibles",
+  "skills.revision": "Empreinte du contenu {{revision}}",
+  "skills.body.empty.title": "Aucune instruction",
+  "skills.body.empty.sub": "Cette compétence pointe vers un document sans corps.",
 
   "knowledge.title": "Connaissances",
   "knowledge.scopes_one": "{{count}} portée",
