@@ -2821,6 +2821,10 @@
       },
       "errors": [
         {
+          "code": -32005,
+          "message": "workspace_unavailable"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -2905,6 +2909,10 @@
         }
       },
       "errors": [
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
+        },
         {
           "code": -32019,
           "message": "revision_conflict"
@@ -2994,6 +3002,10 @@
         }
       },
       "errors": [
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
+        },
         {
           "code": -32019,
           "message": "revision_conflict"

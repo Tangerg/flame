@@ -525,6 +525,7 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "workspace_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -539,6 +540,7 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "workspace_unavailable",
         "revision_conflict",
         "capability_not_negotiated"
       ],
@@ -554,6 +556,7 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "workspace_unavailable",
         "revision_conflict",
         "capability_not_negotiated"
       ],
@@ -1588,6 +1591,9 @@
           "sessions.update",
           "skills.discovered.get",
           "skills.discovered.list",
+          "skills.proposals.approve",
+          "skills.proposals.list",
+          "skills.proposals.reject",
           "tools.invoke",
           "workspace.changes.list",
           "workspace.diff.get",

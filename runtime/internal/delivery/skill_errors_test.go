@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -55,6 +56,33 @@ func TestSkillCurationReportsMissingResources(t *testing.T) {
 			err := operation(t.Context(), protocol.SkillNameRequest{Name: "absent"})
 			if !errors.Is(err, protocol.ErrSkillNotFound) || !errors.Is(err, skills.ErrNotFound) {
 				t.Fatalf("operation = %v", err)
+			}
+		})
+	}
+}
+
+func TestSkillWorkspaceFailuresMatchPublishedContract(t *testing.T) {
+	workspace := protocol.WorkspaceRef{Path: filepath.Join(t.TempDir(), "missing")}
+	proposal := protocol.SkillProposalRef{Workspace: workspace, Scope: protocol.SkillScopeProject, Name: "example", Revision: strings.Repeat("a", 64)}
+	endpoint := mustNewEndpoint(t, newWorkspaceHandler(t.TempDir()), EndpointConfig{})
+	for _, tc := range []struct {
+		method Name
+		params any
+	}{
+		{SkillsDiscoveredList, protocol.WorkspaceQuery{Workspace: workspace}},
+		{SkillsDiscoveredGet, protocol.SkillDetailRequest{Workspace: workspace, Name: "example"}},
+		{SkillsProposalsList, protocol.WorkspaceQuery{Workspace: workspace}},
+		{SkillsProposalsApprove, proposal},
+		{SkillsProposalsReject, proposal},
+	} {
+		t.Run(string(tc.method), func(t *testing.T) {
+			result := endpoint.Invoke(t.Context(), tc.method, tc.params, Options{})
+			if !errors.Is(result.Failure, protocol.ErrWorkspaceUnavailable) {
+				t.Fatalf("failure = %v, want workspace unavailable", result.Failure)
+			}
+			method, _ := contract.lookup(tc.method)
+			if !slices.Contains(method.Meta.Errors, result.Failure.Problem().Type) {
+				t.Fatalf("returned %q is absent from the published method contract", result.Failure.Problem().Type)
 			}
 		})
 	}

@@ -69,6 +69,7 @@ func registerSkills(registry *Registry) {
 
 	registry.query(MethodMeta{
 		Name:            SkillsProposalsList,
+		Errors:          []string{protocol.ErrWorkspaceUnavailable.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
 		ListSkillProposals(context.Context, protocol.WorkspaceQuery) (*protocol.Page[protocol.SkillProposal], error)
@@ -78,7 +79,7 @@ func registerSkills(registry *Registry) {
 
 	registry.commandAck(MethodMeta{
 		Name:            SkillsProposalsApprove,
-		Errors:          []string{protocol.ErrRevisionConflict.Error()},
+		Errors:          []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
 		ApproveSkillProposal(context.Context, protocol.SkillProposalRef) error
@@ -88,7 +89,7 @@ func registerSkills(registry *Registry) {
 
 	registry.commandAck(MethodMeta{
 		Name:            SkillsProposalsReject,
-		Errors:          []string{protocol.ErrRevisionConflict.Error()},
+		Errors:          []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
 		RejectSkillProposal(context.Context, protocol.SkillProposalRef) error
