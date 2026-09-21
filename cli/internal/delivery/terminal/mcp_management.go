@@ -280,7 +280,7 @@ func (a *app) probeMCPServer(candidate mcp.Candidate) {
 				a.message("MCP candidate is reachable · " + candidate.Name)
 				return
 			}
-			a.message("MCP candidate failed · " + failure.String(result.Error))
+			a.message("MCP candidate failed · " + probeFailureMessage(result.Error))
 		},
 	)
 	if !started {

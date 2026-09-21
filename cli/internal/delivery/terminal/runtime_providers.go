@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/oolong/core/layout"
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -86,7 +85,7 @@ func (a *app) TestConfiguredProvider(providerID string) error {
 				a.message("provider " + providerID + " is reachable")
 				return
 			}
-			a.message("provider " + providerID + " failed: " + failure.String(result.Problem))
+			a.message("provider " + providerID + " failed: " + probeFailureMessage(result.Problem))
 		},
 	)
 	if !started {
