@@ -661,16 +661,13 @@ func (r *reducer) steerMessagesApplied(e SteerMessagesApplied) ([]ProjectionEven
 				)
 			}
 		}
-		if applied.ProjectedItemID != "" {
-			if err := resourceid.ValidateItem(applied.ProjectedItemID); err != nil {
-				return nil, fmt.Errorf("applied steer message %d projected Item: %w", messageIndex, err)
-			}
+		if err := resourceid.ValidateItem(applied.ItemID); err != nil {
+			return nil, fmt.Errorf("applied steer message %d Item: %w", messageIndex, err)
+		}
+		if applied.AlreadyProjected {
 			continue
 		}
-		id, identityErr := r.nextItemID()
-		if identityErr != nil {
-			return nil, identityErr
-		}
+		id := applied.ItemID
 		now := r.now()
 		content := transcript.CloneContent(message)
 		item, err := transcript.NewUserMessage(r.itemIdentity(id, now), content)

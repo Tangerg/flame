@@ -214,14 +214,14 @@ func (i *InteractionExecutor) SubmitSteer(
 	ctx context.Context,
 	ref runs.ExecutorRef,
 	input []transcript.ContentBlock,
-) error {
+) (string, error) {
 	session, err := i.session(ref)
 	if err != nil {
-		return err
+		return "", err
 	}
 	message, err := runs.MaterializeUserMessage(input)
 	if err != nil {
-		return err
+		return "", err
 	}
 	return session.submitSteer(ctx, message, input)
 }

@@ -344,10 +344,10 @@ func (f *fakeExecutionPorts) PrepareWaitingSubtreeCancellation(
 	return f.prepareWaiting(request)
 }
 
-func (f *fakeExecutionPorts) SubmitSteer(_ context.Context, ref ExecutorRef, input []transcript.ContentBlock) error {
+func (f *fakeExecutionPorts) SubmitSteer(_ context.Context, ref ExecutorRef, input []transcript.ContentBlock) (string, error) {
 	f.steered = append(f.steered, ref)
 	f.steerInput = append([]transcript.ContentBlock(nil), input...)
-	return nil
+	return "item_steer", nil
 }
 
 type modelInputAdmissionProbe struct {
@@ -2567,7 +2567,7 @@ func TestSteerHidesExecutorHandle(t *testing.T) {
 	c, _ := liveCoordinator(t, runRecord(run.Running, testSegmentID, ""))
 	c.steering = control
 
-	if err := c.Steer(context.Background(), SteerCommand{
+	if _, err := c.Steer(context.Background(), SteerCommand{
 		RunID:             testRunID,
 		ExpectedSegmentID: testSegmentID,
 		Input: []transcript.ContentBlock{
@@ -2594,7 +2594,7 @@ func TestSteerRejectsInputOutsideSelectedModelCapabilities(t *testing.T) {
 	probe := &modelInputAdmissionProbe{err: errors.New("selected model accepts text only")}
 	c.models = probe
 
-	err := c.Steer(t.Context(), SteerCommand{
+	_, err := c.Steer(t.Context(), SteerCommand{
 		RunID:             testRunID,
 		ExpectedSegmentID: testSegmentID,
 		Input: []transcript.ContentBlock{{

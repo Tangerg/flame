@@ -127,7 +127,7 @@ type WaitingExecutionRestorer interface {
 // The implementation must consume it only at its documented safe boundary and
 // reject an execution that is already waiting or terminal.
 type RunningExecutionSteerer interface {
-	SubmitSteer(ctx context.Context, ref ExecutorRef, input []transcript.ContentBlock) error
+	SubmitSteer(ctx context.Context, ref ExecutorRef, input []transcript.ContentBlock) (string, error)
 }
 
 // RunningSubtreeCanceler submits the Application's already-validated product

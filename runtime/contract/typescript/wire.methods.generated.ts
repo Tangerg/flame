@@ -112,6 +112,7 @@ import type {
   StartRunRequest,
   StartRunResponse,
   SteerRunRequest,
+  SteerRunResponse,
   SubscribeRunRequest,
   SubscribeRunResponse,
   TestProviderRequest,
@@ -282,6 +283,7 @@ const VALUE_METHOD_NAMES = [
   "runs.resume",
   "runs.subscribe",
   "runs.cancel",
+  "runs.steer",
   "runs.get",
   "runs.list",
   "interrupts.list",
@@ -1191,7 +1193,7 @@ export interface WireShapes {
   "runs.resume": { params: ResumeRunRequest; result: ResumeRunResponse };
   "runs.subscribe": { params: SubscribeRunRequest; result: SubscribeRunResponse };
   "runs.cancel": { params: CancelRunRequest; result: CancelRunResponse };
-  "runs.steer": { params: SteerRunRequest };
+  "runs.steer": { params: SteerRunRequest; result: SteerRunResponse };
   "runs.get": { params: GetRunRequest; result: RunRef };
   "runs.list": { params: ListRunsRequest; result: PageOfRunRef };
   "interrupts.list": { params: ListInterruptsRequest; result: PageOfPendingInterruptSet };

@@ -241,6 +241,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 	pendingSteers := make(map[agent.SignalID]pendingInteractionSteer, len(i.state.pendingSteers))
 	for signalID, pending := range i.state.pendingSteers {
 		pendingSteers[signalID] = pendingInteractionSteer{
+			itemID:  pending.itemID,
 			content: transcript.CloneContent(pending.content),
 		}
 	}

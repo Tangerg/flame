@@ -412,7 +412,7 @@
             },
             {
               "name": "SteerRun",
-              "signature": "func(ctx context.Context, request protocol.SteerRunRequest, options CommandOptions) error"
+              "signature": "func(ctx context.Context, request protocol.SteerRunRequest, options CommandOptions) (*protocol.SteerRunResponse, error)"
             },
             {
               "name": "StopGoal",
@@ -1525,7 +1525,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-08-30\""
+          "value": "\"2026-09-22\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -7661,6 +7661,23 @@
               "name": "Input",
               "type": "[]ContentBlock",
               "tag": "json:\"input\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SteerRunResponse",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "UserItemID",
+              "type": "string",
+              "tag": "json:\"userItemId\""
             }
           ],
           "methods": [

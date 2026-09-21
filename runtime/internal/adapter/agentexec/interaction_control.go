@@ -55,27 +55,29 @@ func (i *interactionSession) submitSteer(
 	ctx context.Context,
 	message corechat.Message,
 	content []transcript.ContentBlock,
-) error {
+) (string, error) {
 	if ctx == nil {
-		return errors.New("agentexec: steer context is required")
+		return "", errors.New("agentexec: steer context is required")
 	}
 	if err := ctx.Err(); err != nil {
-		return err
+		return "", err
 	}
 	process := i.state.processHandle()
 	if process == nil {
-		return runs.ErrExecutorNotLive
+		return "", runs.ErrExecutorNotLive
 	}
-	signalID, err := agent.ParseSignalID("steer:" + uuid.NewString())
+	itemID := runs.NewItemID(uuid.NewString())
+	signalID, err := agent.ParseSignalID("steer:" + itemID)
 	if err != nil {
-		return fmt.Errorf("agentexec: construct Interaction steer identity: %w", err)
+		return "", fmt.Errorf("agentexec: construct Interaction steer identity: %w", err)
 	}
 	signal, err := interaction.NewSteerSignal(signalID, message)
 	if err != nil {
-		return fmt.Errorf("agentexec: construct Interaction steer Signal: %w", err)
+		return "", fmt.Errorf("agentexec: construct Interaction steer Signal: %w", err)
 	}
 	i.state.mu.Lock()
 	i.state.pendingSteers[signalID] = pendingInteractionSteer{
+		itemID:  itemID,
 		content: transcript.CloneContent(content),
 	}
 	i.state.mu.Unlock()
@@ -90,13 +92,13 @@ func (i *interactionSession) submitSteer(
 			!errors.Is(deliverErr, context.DeadlineExceeded) {
 			i.removePendingSteer(signalID)
 		}
-		return fmt.Errorf("agentexec: deliver Interaction steer Signal: %w", deliverErr)
+		return "", fmt.Errorf("agentexec: deliver Interaction steer Signal: %w", deliverErr)
 	}
 	if !accepted {
 		i.removePendingSteer(signalID)
-		return errors.New("agentexec: Interaction steer Signal was not accepted")
+		return "", errors.New("agentexec: Interaction steer Signal was not accepted")
 	}
-	return nil
+	return itemID, nil
 }
 
 func (i *interactionSession) removePendingSteer(signalID agent.SignalID) {
@@ -127,6 +129,7 @@ func (i *interactionSession) commitAppliedInputs(
 		}
 		messages = append(messages, runs.AppliedSteerMessage{
 			Content: transcript.CloneContent(pending.content),
+			ItemID:  pending.itemID,
 		})
 	}
 	var continuation pendingInteractionContinuation
@@ -137,8 +140,9 @@ func (i *interactionSession) commitAppliedInputs(
 			content:   transcript.CloneContent(pending.content),
 		}
 		messages = append(messages, runs.AppliedSteerMessage{
-			Content:         transcript.CloneContent(pending.content),
-			ProjectedItemID: pending.itemID,
+			Content:          transcript.CloneContent(pending.content),
+			ItemID:           pending.itemID,
+			AlreadyProjected: true,
 		})
 	}
 	i.state.mu.Unlock()

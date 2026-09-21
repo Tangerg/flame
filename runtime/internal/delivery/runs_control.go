@@ -50,14 +50,18 @@ func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (
 // steered at all, and a run that has moved to a different segment refuses rather
 // than delivering the instruction to work the user never saw. The refusals are
 // the same set a subscribe gets, because both are addressing one live segment.
-func (s *Handler) SteerRun(ctx context.Context, in protocol.SteerRunRequest) error {
+func (s *Handler) SteerRun(ctx context.Context, in protocol.SteerRunRequest) (*protocol.SteerRunResponse, error) {
 	input, err := decodeRunInput(in.Input)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return wireSteerError(s.runs.Steer(ctx, runs.SteerCommand{
+	itemID, err := s.runs.Steer(ctx, runs.SteerCommand{
 		RunID: in.RunID, ExpectedSegmentID: in.ExpectedSegmentID, Input: input,
-	}))
+	})
+	if err != nil {
+		return nil, wireSteerError(err)
+	}
+	return &protocol.SteerRunResponse{UserItemID: itemID}, nil
 }
 
 func wireSteerError(err error) error {

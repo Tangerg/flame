@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-08-30` · 87 methods
+Protocol `2026-09-22` · 87 methods
 
 ## Methods
 
@@ -673,6 +673,9 @@ TypeScript validator from this single registry projection.
 | `SteerRunRequest` | `expectedSegmentId` | `identity` |
 | `SteerRunRequest` | `expectedSegmentId` | `maxLength(256)` |
 | `SteerRunRequest` | `input` | `nonEmptyItems` |
+| `SteerRunResponse` | `userItemId` | `nonEmpty` |
+| `SteerRunResponse` | `userItemId` | `identity` |
+| `SteerRunResponse` | `userItemId` | `maxLength(256)` |
 | `ListRunsRequest` | `sessionId` | `identity` |
 | `ListRunsRequest` | `sessionId` | `maxLength(256)` |
 | `ListRunsRequest` | `statuses` | `nonEmptyItems` |

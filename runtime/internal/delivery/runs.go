@@ -104,7 +104,7 @@ func registerRuns(registry *Registry) {
 	// that has parked, finished or moved to another segment says so, and the client
 	// asks the user again rather than delivering an instruction to work they never
 	// saw.
-	registry.commandAck(MethodMeta{
+	registry.command(MethodMeta{
 		Name: RunsSteer,
 		Errors: []string{
 			protocol.ErrRunNotFound.Error(),
@@ -114,9 +114,9 @@ func registerRuns(registry *Registry) {
 			protocol.ErrStaleSegment.Error(),
 		},
 	}, func(service interface {
-		SteerRun(context.Context, protocol.SteerRunRequest) error
+		SteerRun(context.Context, protocol.SteerRunRequest) (*protocol.SteerRunResponse, error)
 	}, ctx context.Context, request protocol.SteerRunRequest,
-	) error {
+	) (*protocol.SteerRunResponse, error) {
 		return service.SteerRun(ctx, request)
 	})
 

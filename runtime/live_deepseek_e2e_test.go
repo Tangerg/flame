@@ -233,7 +233,7 @@ func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {
 		if steerSent {
 			continue
 		}
-		if err := fixture.runtime.SteerRun(fixture.ctx, protocol.SteerRunRequest{
+		if _, err := fixture.runtime.SteerRun(fixture.ctx, protocol.SteerRunRequest{
 			RunID:             started.RunID,
 			ExpectedSegmentID: started.SegmentID,
 			Input: []protocol.ContentBlock{{

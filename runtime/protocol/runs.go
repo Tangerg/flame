@@ -299,6 +299,12 @@ type SteerRunRequest struct {
 	Input             []ContentBlock `json:"input"`
 }
 
+// SteerRunResponse identifies accepted input. The Item is committed only when
+// execution applies the input; acceptance does not prove model consumption.
+type SteerRunResponse struct {
+	UserItemID string `json:"userItemId"`
+}
+
 // ListRunsRequest is the runs.list body — the whole durable run history, filtered.
 //
 // Every filter is independent and omitting one widens the read rather than

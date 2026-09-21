@@ -14,28 +14,29 @@ import (
 // ([Coordinator.addressLiveSegment]), so "this run is waiting" or "that segment
 // has been replaced" is one answer with one spelling rather than two entry
 // points each guessing from the live registry.
-func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) error {
+func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (string, error) {
 	cmd = cmd.clone()
 	live, err := c.addressLiveSegment(ctx, cmd.RunID, cmd.ExpectedSegmentID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	rec := live.record
 	message, err := MaterializeUserMessage(cmd.Input)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if admitErr := c.models.AdmitInput(rec.ModelSelection, []corechat.Message{message}); admitErr != nil {
-		return fmt.Errorf("%w: %w", ErrUnsupportedMedia, admitErr)
+		return "", fmt.Errorf("%w: %w", ErrUnsupportedMedia, admitErr)
 	}
-	if err := c.steering.SubmitSteer(ctx, ExecutorRef{SessionID: rec.SessionID, ExecutorID: rec.ExecutorID}, cmd.Input); err != nil {
+	itemID, err := c.steering.SubmitSteer(ctx, ExecutorRef{SessionID: rec.SessionID, ExecutorID: rec.ExecutorID}, cmd.Input)
+	if err != nil {
 		if errors.Is(err, ErrExecutorNotLive) {
 			// Execution ended between resolving the record and delivering: the Run is
 			// finishing, which is the same thing the durable record would say a moment
 			// from now.
-			return fmt.Errorf("%w: %w", ErrRunFinished, err)
+			return "", fmt.Errorf("%w: %w", ErrRunFinished, err)
 		}
-		return err
+		return "", err
 	}
-	return nil
+	return itemID, nil
 }

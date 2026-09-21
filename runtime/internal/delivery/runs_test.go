@@ -86,13 +86,13 @@ func TestSteerRun_RefusesASegmentTheRunIsNotExecuting(t *testing.T) {
 	s := newBlockingHandler(t)
 	runID, _ := startLiveRun(t, s, t.TempDir())
 
-	if err := s.SteerRun(context.Background(), protocol.SteerRunRequest{
+	if _, err := s.SteerRun(context.Background(), protocol.SteerRunRequest{
 		RunID: runID, ExpectedSegmentID: "seg_replaced",
 		Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "wait"}},
 	}); !errors.Is(err, protocol.ErrStaleSegment) {
 		t.Fatalf("steer stale segment: err = %v, want ErrStaleSegment", err)
 	}
-	if err := s.SteerRun(context.Background(), protocol.SteerRunRequest{
+	if _, err := s.SteerRun(context.Background(), protocol.SteerRunRequest{
 		RunID: "ghost", ExpectedSegmentID: "seg_1",
 		Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "wait"}},
 	}); !errors.Is(err, protocol.ErrRunNotFound) {

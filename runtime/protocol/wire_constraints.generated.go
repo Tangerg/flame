@@ -2179,6 +2179,14 @@ func (r ResumeRunResponse) ValidateWire() error {
 	)
 }
 
+func (s SteerRunResponse) ValidateWire() error {
+	return collectWireViolations("SteerRunResponse",
+		requiredText("userItemId", s.UserItemID),
+		identity("userItemId", s.UserItemID),
+		maxLength("userItemId", s.UserItemID, 256),
+	)
+}
+
 func (p Plan) ValidateWire() error {
 	return collectWireViolations("Plan",
 		requiredText("sessionId", p.SessionID),

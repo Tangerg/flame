@@ -29,8 +29,8 @@ func (r *Runtime) CancelRun(ctx context.Context, request protocol.CancelRunReque
 }
 
 // SteerRun queues an instruction at the addressed Segment's next safe boundary.
-func (r *Runtime) SteerRun(ctx context.Context, request protocol.SteerRunRequest, options CommandOptions) error {
-	return r.invokeAck(ctx, delivery.RunsSteer, request, commandOptions(options))
+func (r *Runtime) SteerRun(ctx context.Context, request protocol.SteerRunRequest, options CommandOptions) (*protocol.SteerRunResponse, error) {
+	return r.invoke[protocol.SteerRunRequest, *protocol.SteerRunResponse](ctx, delivery.RunsSteer, request, commandOptions(options))
 }
 
 // GetRun returns one Run projection by identity.

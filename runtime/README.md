@@ -157,3 +157,9 @@ Unknown-effect termination closes every unfinished member in Run-tree postorder,
 The concrete local search tools return explicit failed Tool outcomes for unsuccessful queries, including invalid patterns and missing paths, so Scope commits their feedback before model continuation. Cancellation remains execution control. This guarantee applies to these non-mutating searches; the generic Tool observer still preserves unknown external outcomes and host or publication failures.
 
 Structured diff code rows always carry `code`, including `""` for a blank line; hunk rows omit it. The Go binding represents this presence with `DiffRow.Code *string`. Go consumers must migrate string construction and access; JSON consumers retain the existing required-string contract. Missing or null code remains invalid for code rows. No persisted-data migration is needed.
+
+## Steer admission
+
+`runs.steer` and `Runtime.SteerRun` return `userItemId`, the identity reserved for that input. Success proves admission to the addressed active Segment, not model consumption. Only the matching committed user Item proves application at a model boundary. Clients reconcile by identity, including when the Item arrives before its receipt; identical text or attachments do not identify a command. A rejected steer must not silently become a new Run.
+
+Protocol `2026-09-22` replaces the empty steer acknowledgement. Upgrade Runtime, Desktop, and CLI together. Waiting execution snapshots containing pending steer inputs now require their reserved Item identities; older pending-steer snapshots are rejected, never guessed or replayed. Finish those executions before upgrading. Completed history is unchanged.

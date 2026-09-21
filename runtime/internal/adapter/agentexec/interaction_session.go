@@ -78,6 +78,7 @@ type interactionState struct {
 }
 
 type pendingInteractionSteer struct {
+	itemID  string
 	content []transcript.ContentBlock
 }
 

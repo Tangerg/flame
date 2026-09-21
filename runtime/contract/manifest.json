@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-08-30",
+  "protocolVersion": "2026-09-22",
   "features": [
     "reasoning",
     "multimodal",
@@ -6557,6 +6557,23 @@
         {
           "field": "input",
           "constraint": "nonEmptyItems"
+        }
+      ]
+    },
+    {
+      "type": "SteerRunResponse",
+      "rules": [
+        {
+          "field": "userItemId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "userItemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "userItemId",
+          "constraint": "maxLength(256)"
         }
       ]
     },

@@ -104,7 +104,7 @@ func TestSteeringARootMidDelegationLandsAfterTheChildResult(t *testing.T) {
 	}
 	// Accepted while the root is parked on the delegate Tool: a tree with work in
 	// flight is exactly when a user reaches for steering.
-	if steerErr := api.SteerRun(ctx, protocol.SteerRunRequest{
+	if _, steerErr := api.SteerRun(ctx, protocol.SteerRunRequest{
 		RunID:             started.RunID,
 		ExpectedSegmentID: root.ActiveSegmentID,
 		Input:             []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: guidance}},
@@ -150,7 +150,7 @@ func TestSteeringARootMidDelegationLandsAfterTheChildResult(t *testing.T) {
 	if childRunID == "" {
 		t.Fatalf("no child Run appeared in %d events", len(observed))
 	}
-	steerErr := api.SteerRun(ctx, protocol.SteerRunRequest{
+	_, steerErr := api.SteerRun(ctx, protocol.SteerRunRequest{
 		RunID: childRunID, ExpectedSegmentID: "seg_child",
 		Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: guidance}},
 	})

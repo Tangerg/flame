@@ -125,7 +125,7 @@ func TestSubscribeRefusesWithTheReasonTheCallerCanActOn(t *testing.T) {
 			}
 			// A steer addresses the same thing, so it must refuse identically — the two
 			// entry points into a running run cannot disagree about what it is doing.
-			steerErr := c.Steer(t.Context(), SteerCommand{
+			_, steerErr := c.Steer(t.Context(), SteerCommand{
 				RunID:             testRunID,
 				ExpectedSegmentID: test.segmentID,
 				Input:             []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "wait"}},

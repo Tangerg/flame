@@ -277,6 +277,7 @@ export type WireTypeName =
   | "StartRunRequest"
   | "StartRunResponse"
   | "SteerRunRequest"
+  | "SteerRunResponse"
   | "StreamEvent"
   | "StreamEventType"
   | "SubscribeRunRequest"
@@ -3310,6 +3311,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     input: allOf([array(ref(() => CHECKS.ContentBlock)), minItems(1)]),
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["expectedSegmentId", "input", "runId"]),
+  SteerRunResponse: object({
+    userItemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, ["userItemId"]),
   StreamEvent: allOf([
     object({
       contextTokens: allOf([integer(), minimum(0)]),
@@ -3713,7 +3717,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "runs.resume": ref(() => CHECKS.ResumeRunResponse),
   "runs.subscribe": ref(() => CHECKS.SubscribeRunResponse),
   "runs.cancel": ref(() => CHECKS.CancelRunResponse),
-  "runs.steer": object({}, []),
+  "runs.steer": ref(() => CHECKS.SteerRunResponse),
   "runs.get": ref(() => CHECKS.RunRef),
   "runs.list": ref(() => CHECKS.PageOfRunRef),
   "interrupts.list": ref(() => CHECKS.PageOfPendingInterruptSet),

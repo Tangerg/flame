@@ -166,7 +166,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	}
 	steers := payloadsOf[runs.SteerMessagesApplied](events)
 	if len(steers) != 1 || len(steers[0].Messages) != 1 ||
-		steers[0].Messages[0].ProjectedItemID != committedInput.ItemID ||
+		steers[0].Messages[0].ItemID != committedInput.ItemID ||
 		len(steers[0].Messages[0].Content) != 1 || steers[0].Messages[0].Content[0].Text != "also include edge cases" {
 		t.Fatalf("committed continuation input projection = %#v", steers)
 	}
@@ -844,14 +844,16 @@ func TestInteractionExecutorAppliesSteerAtNextModelBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	<-model.started
-	if err := executor.SubmitSteer(t.Context(), ref, []transcript.ContentBlock{{
+	firstID, err := executor.SubmitSteer(t.Context(), ref, []transcript.ContentBlock{{
 		Kind: transcript.TextContent, Text: "add evidence",
-	}}); err != nil {
+	}})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := executor.SubmitSteer(t.Context(), ref, []transcript.ContentBlock{{
-		Kind: transcript.TextContent, Text: "then shorten it",
-	}}); err != nil {
+	secondID, err := executor.SubmitSteer(t.Context(), ref, []transcript.ContentBlock{{
+		Kind: transcript.TextContent, Text: "add evidence",
+	}})
+	if err != nil {
 		t.Fatal(err)
 	}
 	close(model.release)
@@ -862,8 +864,11 @@ func TestInteractionExecutorAppliesSteerAtNextModelBoundary(t *testing.T) {
 	steers := payloadsOf[runs.SteerMessagesApplied](observed)
 	if len(steers) != 1 || len(steers[0].Messages) != 2 ||
 		len(steers[0].Messages[0].Content) != 1 || steers[0].Messages[0].Content[0].Text != "add evidence" ||
-		len(steers[0].Messages[1].Content) != 1 || steers[0].Messages[1].Content[0].Text != "then shorten it" {
+		len(steers[0].Messages[1].Content) != 1 || steers[0].Messages[1].Content[0].Text != "add evidence" {
 		t.Fatalf("steer projections = %#v", steers)
+	}
+	if firstID == secondID || steers[0].Messages[0].ItemID != firstID || steers[0].Messages[1].ItemID != secondID {
+		t.Fatalf("admitted identities %q/%q differ from applied facts: %#v", firstID, secondID, steers)
 	}
 	steerIndex, secondModelIndex := -1, -1
 	modelStarts := 0
@@ -915,7 +920,7 @@ func TestInteractionExecutorDoesNotCallNextModelWhenAppliedSteerCommitFails(t *t
 		t.Fatal(err)
 	}
 	<-model.started
-	if err := executor.SubmitSteer(t.Context(), ref, []transcript.ContentBlock{{
+	if _, err := executor.SubmitSteer(t.Context(), ref, []transcript.ContentBlock{{
 		Kind: transcript.TextContent, Text: "do not lose this",
 	}}); err != nil {
 		t.Fatal(err)

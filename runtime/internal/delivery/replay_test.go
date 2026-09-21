@@ -528,18 +528,12 @@ func TestReplayRejectsUnknownStoredOutcomeFields(t *testing.T) {
 
 type countingSteerService struct{ calls atomic.Int64 }
 
-func (s *countingSteerService) SteerRun(context.Context, protocol.SteerRunRequest) error {
+func (s *countingSteerService) SteerRun(context.Context, protocol.SteerRunRequest) (*protocol.SteerRunResponse, error) {
 	s.calls.Add(1)
-	return nil
+	return &protocol.SteerRunResponse{UserItemID: "item_steer"}, nil
 }
 
-// TestAcknowledgementReplaysWithoutReExecuting covers the replay path of a
-// command that answers with no data. A nil Meta.Result is how the catalog says
-// so — the surface contract derives the binding's error-only signature from it
-// — and decodeStoredValue answers that with the same empty value the live path
-// returns. Nothing else exercised the pair, and reflect.New(nil) is what a
-// mismatch between them reaches on a retry.
-func TestAcknowledgementReplaysWithoutReExecuting(t *testing.T) {
+func TestSteerAdmissionIdentityReplaysWithoutReExecuting(t *testing.T) {
 	service := &countingSteerService{}
 	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: newMemoryIdempotencyStore()})
 	options := Options{IdempotencyKey: "steer-once"}
@@ -548,10 +542,10 @@ func TestAcknowledgementReplaysWithoutReExecuting(t *testing.T) {
 		Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "wait"}},
 	}
 
-	if _, err := endpoint.Call[protocol.SteerRunRequest, struct{}](t.Context(), "runs.steer", request, options); err != nil {
+	if result, err := endpoint.Call[protocol.SteerRunRequest, *protocol.SteerRunResponse](t.Context(), "runs.steer", request, options); err != nil || result.UserItemID != "item_steer" {
 		t.Fatalf("first steer: %v", err)
 	}
-	if _, err := endpoint.Call[protocol.SteerRunRequest, struct{}](t.Context(), "runs.steer", request, options); err != nil {
+	if result, err := endpoint.Call[protocol.SteerRunRequest, *protocol.SteerRunResponse](t.Context(), "runs.steer", request, options); err != nil || result.UserItemID != "item_steer" {
 		t.Fatalf("replayed steer: %v", err)
 	}
 	if calls := service.calls.Load(); calls != 1 {
@@ -664,13 +658,13 @@ type blockingSteerService struct {
 	calls   atomic.Int64
 }
 
-func (b *blockingSteerService) SteerRun(context.Context, protocol.SteerRunRequest) error {
+func (b *blockingSteerService) SteerRun(context.Context, protocol.SteerRunRequest) (*protocol.SteerRunResponse, error) {
 	b.calls.Add(1)
 	b.once.Do(func() {
 		close(b.entered)
 		<-b.release
 	})
-	return nil
+	return &protocol.SteerRunResponse{UserItemID: "item_steer"}, nil
 }
 
 // TestKeyWaitEndsWithItsOwnRequest: the second caller for a key in flight waits
@@ -686,7 +680,7 @@ func TestKeyWaitEndsWithItsOwnRequest(t *testing.T) {
 	}
 	first := make(chan error, 1)
 	go func() {
-		_, err := endpoint.Call[protocol.SteerRunRequest, struct{}](t.Context(), RunsSteer, request, options)
+		_, err := endpoint.Call[protocol.SteerRunRequest, *protocol.SteerRunResponse](t.Context(), RunsSteer, request, options)
 		first <- err
 	}()
 	<-service.entered
@@ -695,7 +689,7 @@ func TestKeyWaitEndsWithItsOwnRequest(t *testing.T) {
 	defer cancelWaiting()
 	second := make(chan error, 1)
 	go func() {
-		_, err := endpoint.Call[protocol.SteerRunRequest, struct{}](waiting, RunsSteer, request, options)
+		_, err := endpoint.Call[protocol.SteerRunRequest, *protocol.SteerRunResponse](waiting, RunsSteer, request, options)
 		second <- err
 	}()
 	select {
@@ -750,5 +744,25 @@ func TestUnpersistedReceiptAfterACommittedOperationIsReported(t *testing.T) {
 	}
 	if !strings.Contains(logged, "runs.cancel") {
 		t.Fatalf("diagnostics = %q, want the operation named", logged)
+	}
+}
+
+type countingDeleteSessionService struct{ calls int }
+
+func (s *countingDeleteSessionService) DeleteSession(context.Context, string) error {
+	s.calls++
+	return nil
+}
+
+func TestAcknowledgementReplaysWithoutReExecuting(t *testing.T) {
+	service := &countingDeleteSessionService{}
+	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: newMemoryIdempotencyStore()})
+	for range 2 {
+		if _, err := endpoint.Call[protocol.DeleteSessionRequest, struct{}](t.Context(), SessionsDelete, protocol.DeleteSessionRequest{SessionID: "ses_1"}, Options{IdempotencyKey: "delete-once"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if service.calls != 1 {
+		t.Fatalf("delete calls = %d", service.calls)
 	}
 }

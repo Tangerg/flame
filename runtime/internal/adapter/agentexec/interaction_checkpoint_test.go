@@ -21,10 +21,10 @@ func TestInteractionPendingSteersRoundTripCanonicalContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	pending := map[agent.SignalID]pendingInteractionSteer{
-		firstID: {content: []transcript.ContentBlock{{
+		firstID: {itemID: "item_first", content: []transcript.ContentBlock{{
 			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte{0, 1, 2},
 		}}},
-		secondID: {content: []transcript.ContentBlock{{
+		secondID: {itemID: "item_second", content: []transcript.ContentBlock{{
 			Kind: transcript.TextContent, Text: "revise",
 		}}},
 	}
@@ -79,40 +79,41 @@ func TestInteractionPendingContinuationRoundTripsCanonicalContent(t *testing.T) 
 func TestDecodeInteractionPendingSteersRejectsNoncanonicalWire(t *testing.T) {
 	validImage := base64.StdEncoding.EncodeToString([]byte{1})
 	tests := map[string][]interactionPendingSteerWire{
+		"missing reserved item": {{SignalID: "steer:01", Content: []interactionContentBlockWire{{Kind: "text", Text: "one"}}}},
 		"unordered": {
-			{SignalID: "steer:02", Content: []interactionContentBlockWire{{Kind: "text", Text: "two"}}},
-			{SignalID: "steer:01", Content: []interactionContentBlockWire{{Kind: "text", Text: "one"}}},
+			{ItemID: "item_steer", SignalID: "steer:02", Content: []interactionContentBlockWire{{Kind: "text", Text: "two"}}},
+			{ItemID: "item_steer", SignalID: "steer:01", Content: []interactionContentBlockWire{{Kind: "text", Text: "one"}}},
 		},
 		"duplicate": {
-			{SignalID: "steer:01", Content: []interactionContentBlockWire{{Kind: "text", Text: "one"}}},
-			{SignalID: "steer:01", Content: []interactionContentBlockWire{{Kind: "text", Text: "again"}}},
+			{ItemID: "item_steer", SignalID: "steer:01", Content: []interactionContentBlockWire{{Kind: "text", Text: "one"}}},
+			{ItemID: "item_steer", SignalID: "steer:01", Content: []interactionContentBlockWire{{Kind: "text", Text: "again"}}},
 		},
-		"empty content": {{SignalID: "steer:01"}},
+		"empty content": {{ItemID: "item_steer", SignalID: "steer:01"}},
 		"mixed text": {{
-			SignalID: "steer:01",
-			Content:  []interactionContentBlockWire{{Kind: "text", Text: "one", MediaType: "text/plain"}},
+			ItemID: "item_steer", SignalID: "steer:01",
+			Content: []interactionContentBlockWire{{Kind: "text", Text: "one", MediaType: "text/plain"}},
 		}},
 		"mixed image": {{
-			SignalID: "steer:01",
+			ItemID: "item_steer", SignalID: "steer:01",
 			Content: []interactionContentBlockWire{{
 				Kind: "image", Text: "caption", MediaType: "image/png", Data: validImage,
 			}},
 		}},
 		"non-image media": {{
-			SignalID: "steer:01",
-			Content:  []interactionContentBlockWire{{Kind: "image", MediaType: "text/plain", Data: validImage}},
+			ItemID: "item_steer", SignalID: "steer:01",
+			Content: []interactionContentBlockWire{{Kind: "image", MediaType: "text/plain", Data: validImage}},
 		}},
 		"invalid base64": {{
-			SignalID: "steer:01",
-			Content:  []interactionContentBlockWire{{Kind: "image", MediaType: "image/png", Data: "*"}},
+			ItemID: "item_steer", SignalID: "steer:01",
+			Content: []interactionContentBlockWire{{Kind: "image", MediaType: "image/png", Data: "*"}},
 		}},
 		"noncanonical base64": {{
-			SignalID: "steer:01",
-			Content:  []interactionContentBlockWire{{Kind: "image", MediaType: "image/png", Data: "A\nQ=="}},
+			ItemID: "item_steer", SignalID: "steer:01",
+			Content: []interactionContentBlockWire{{Kind: "image", MediaType: "image/png", Data: "A\nQ=="}},
 		}},
 		"unknown kind": {{
-			SignalID: "steer:01",
-			Content:  []interactionContentBlockWire{{Kind: "audio", Data: validImage}},
+			ItemID: "item_steer", SignalID: "steer:01",
+			Content: []interactionContentBlockWire{{Kind: "audio", Data: validImage}},
 		}},
 	}
 	for name, values := range tests {

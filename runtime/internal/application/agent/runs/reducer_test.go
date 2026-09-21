@@ -273,8 +273,8 @@ func TestReducerIgnoresStreamingObservationAfterAuthoritativeModelCompletion(t *
 func TestReducerProjectsAppliedSteersAsOneOrderedFact(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	reduced := mustReduce(t, reducer, SteerMessagesApplied{Messages: []AppliedSteerMessage{
-		{Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "first"}}},
-		{Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "second"}}},
+		{ItemID: "item_first", Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "first"}}},
+		{ItemID: "item_second", Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "second"}}},
 	}})
 	if len(reduced) != 2 {
 		t.Fatalf("reductions = %d, want two complete Items", len(reduced))
@@ -286,7 +286,7 @@ func TestReducerProjectsAppliedSteersAsOneOrderedFact(t *testing.T) {
 		}
 	}
 	if len(completed) != 2 || completed[0].Content()[0].Text != "first" ||
-		completed[1].Content()[0].Text != "second" || completed[0].ID() == completed[1].ID() {
+		completed[1].Content()[0].Text != "second" || completed[0].ID() != "item_first" || completed[1].ID() != "item_second" {
 		t.Fatalf("completed steer items = %#v", completed)
 	}
 	conversation := committedConversationMessages(reduced)
@@ -298,8 +298,8 @@ func TestReducerProjectsAppliedSteersAsOneOrderedFact(t *testing.T) {
 func TestReducerAppendsAlreadyProjectedContinuationInputWithoutDuplicatingItem(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	reduced := mustReduce(t, reducer, SteerMessagesApplied{Messages: []AppliedSteerMessage{{
-		Content:         []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "follow up"}},
-		ProjectedItemID: "item_followup",
+		Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "follow up"}},
+		ItemID:  "item_followup", AlreadyProjected: true,
 	}}})
 	if completed := completedItems(reduced); len(completed) != 0 {
 		t.Fatalf("already projected continuation Items = %#v, want none", completed)
@@ -427,8 +427,8 @@ func TestReducerRejectsMalformedAppliedSteerBatch(t *testing.T) {
 			Kind: transcript.TextContent,
 		}}}}},
 		"invalid projected item": {Messages: []AppliedSteerMessage{{
-			Content:         []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "valid"}},
-			ProjectedItemID: " item_1",
+			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "valid"}},
+			ItemID:  " item_1", AlreadyProjected: true,
 		}}},
 	}
 	for name, fact := range tests {

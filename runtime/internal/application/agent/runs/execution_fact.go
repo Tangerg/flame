@@ -452,12 +452,13 @@ type PlanUpdated struct {
 }
 
 // AppliedSteerMessage is one ordered user message first made visible to a model
-// call. ProjectedItemID names the exact transcript Item already committed by a
-// continuation opening; an empty identity asks the reducer to create the Item.
+// call. ItemID was reserved at admission. AlreadyProjected identifies input
+// whose transcript Item was committed by a continuation opening.
 // Both paths still append the message to Conversation at this model boundary.
 type AppliedSteerMessage struct {
-	Content         []transcript.ContentBlock
-	ProjectedItemID string
+	Content          []transcript.ContentBlock
+	ItemID           string
+	AlreadyProjected bool
 }
 
 // SteerMessagesApplied reports one ordered model-boundary batch. The reducer

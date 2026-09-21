@@ -409,6 +409,7 @@ func registerRunValues(s *Shapes) {
 			{Field: "input", Kind: ConstraintNonEmptyItems},
 		}...),
 	})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.SteerRunResponse](), Constraints: requiredResourceIdentity("userItemId")})
 	// An omitted status filter already means "every status", so an empty array is
 	// the one thing it cannot mean, and a repeat asks a set for something a set
 	// does not have.

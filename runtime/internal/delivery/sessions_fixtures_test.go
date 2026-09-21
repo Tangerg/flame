@@ -499,8 +499,8 @@ func (executionStub) PrepareWaitingSubtreeCancellation(
 	return runs.PreparedWaitingSubtreeCancellation{}, errors.New("test execution: waiting subtree cancellation is unavailable")
 }
 
-func (executionStub) SubmitSteer(context.Context, runs.ExecutorRef, []transcript.ContentBlock) error {
-	return nil
+func (executionStub) SubmitSteer(context.Context, runs.ExecutorRef, []transcript.ContentBlock) (string, error) {
+	return "item_steer", nil
 }
 
 type recordingExecutions struct {
@@ -573,7 +573,7 @@ func (s stubRuntime) PrepareWaitingSubtreeCancellation(
 	)
 }
 
-func (s stubRuntime) SubmitSteer(ctx context.Context, ref runs.ExecutorRef, input []transcript.ContentBlock) error {
+func (s stubRuntime) SubmitSteer(ctx context.Context, ref runs.ExecutorRef, input []transcript.ContentBlock) (string, error) {
 	return s.executionController().SubmitSteer(ctx, ref, input)
 }
 

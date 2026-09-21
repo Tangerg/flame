@@ -49,6 +49,7 @@ type interactionModelContextWire struct {
 }
 
 type interactionPendingSteerWire struct {
+	ItemID   string                        `json:"item_id"`
 	SignalID string                        `json:"signal_id"`
 	Content  []interactionContentBlockWire `json:"content"`
 }
@@ -230,6 +231,9 @@ func encodeInteractionPendingSteer(
 	signalID agent.SignalID,
 	steer pendingInteractionSteer,
 ) (interactionPendingSteerWire, error) {
+	if err := resourceid.ValidateItem(steer.itemID); err != nil {
+		return interactionPendingSteerWire{}, err
+	}
 	if !signalID.Valid() {
 		return interactionPendingSteerWire{}, errors.New("pending steer has an invalid Signal identity")
 	}
@@ -245,7 +249,7 @@ func encodeInteractionPendingSteer(
 		content[index] = value
 	}
 	return interactionPendingSteerWire{
-		SignalID: signalID.String(), Content: content,
+		SignalID: signalID.String(), ItemID: steer.itemID, Content: content,
 	}, nil
 }
 
@@ -504,6 +508,9 @@ func (w interactionPendingSteerWire) decode(
 	previousSignalID string,
 ) (agent.SignalID, pendingInteractionSteer, error) {
 	var zeroSignalID agent.SignalID
+	if err := resourceid.ValidateItem(w.ItemID); err != nil {
+		return zeroSignalID, pendingInteractionSteer{}, err
+	}
 	if previousSignalID != "" && w.SignalID <= previousSignalID || len(w.Content) == 0 {
 		return zeroSignalID, pendingInteractionSteer{}, errors.New("not in canonical order")
 	}
@@ -520,7 +527,7 @@ func (w interactionPendingSteerWire) decode(
 			)
 		}
 	}
-	return signalID, pendingInteractionSteer{content: content}, nil
+	return signalID, pendingInteractionSteer{itemID: w.ItemID, content: content}, nil
 }
 
 func decodeInteractionPendingContinuation(

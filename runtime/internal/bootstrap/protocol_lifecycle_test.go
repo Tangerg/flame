@@ -158,7 +158,7 @@ func (p *protocolLifecycleFixture) startAndPark() protocol.Interrupt {
 		p.t.Fatal("timed out waiting for first model call")
 	}
 
-	if steerRunErr := p.api.SteerRun(p.ctx, protocol.SteerRunRequest{
+	if _, steerRunErr := p.api.SteerRun(p.ctx, protocol.SteerRunRequest{
 		RunID:             started.RunID,
 		ExpectedSegmentID: started.SegmentID,
 		Input: []protocol.ContentBlock{{
