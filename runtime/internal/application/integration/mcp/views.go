@@ -128,9 +128,14 @@ type ServerStatus struct {
 }
 
 // TestResult is the semantic outcome of a non-persisting connection probe.
-type TestResult struct {
-	OK bool
-}
+type TestResult string
+
+const (
+	TestSucceeded             TestResult = "succeeded"
+	TestAuthorizationRequired TestResult = "authorization_required"
+	TestTimedOut              TestResult = "timeout"
+	TestFailed                TestResult = "failed"
+)
 
 func connectionView(server mcpserver.Server) Connection {
 	return Connection{

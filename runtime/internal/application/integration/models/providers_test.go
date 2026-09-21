@@ -311,8 +311,8 @@ func TestProviderProbeOwnsASettlementDeadline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestProvider returned deadline as a command error: %v", err)
 	}
-	if outcome != ProviderTestFailed {
-		t.Fatalf("TestProvider outcome = %q, want %q", outcome, ProviderTestFailed)
+	if outcome != ProviderTestTimedOut {
+		t.Fatalf("TestProvider outcome = %q, want %q", outcome, ProviderTestTimedOut)
 	}
 	if ctx.Err() != nil {
 		t.Fatal("provider probe consumed the caller's safety deadline")

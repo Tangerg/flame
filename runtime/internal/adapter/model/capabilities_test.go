@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -158,4 +159,28 @@ func catalogProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provi
 		t.Fatal(err)
 	}
 	return entry
+}
+
+func TestProbeClassifiesRemoteRejections(t *testing.T) {
+	for _, tt := range []struct {
+		status int
+		want   error
+	}{
+		{http.StatusUnauthorized, modelsapp.ErrProviderCredentialsRejected},
+		{http.StatusForbidden, modelsapp.ErrProviderCredentialsRejected},
+		{http.StatusGatewayTimeout, context.DeadlineExceeded},
+	} {
+		t.Run(http.StatusText(tt.status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(`{"error":{"message":"secret-token","type":"probe_error"}}`))
+			}))
+			t.Cleanup(server.Close)
+			err := (Capabilities{}).Probe(t.Context(), catalogProvider(t, "openai-compatible", "test-key", server.URL))
+			if !errors.Is(err, tt.want) {
+				t.Fatalf("probe error = %v; want %v", err, tt.want)
+			}
+		})
+	}
 }

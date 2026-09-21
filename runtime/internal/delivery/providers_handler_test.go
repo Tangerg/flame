@@ -296,3 +296,28 @@ func TestTestProviderUsesConfiguredProvider(t *testing.T) {
 		t.Fatalf("probed = %+v, want anthropic", rt.probed)
 	}
 }
+
+func TestProviderProbeReturnsSanitizedActions(t *testing.T) {
+	for _, tt := range []struct {
+		cause error
+		kind  string
+	}{
+		{errors.Join(models.ErrProviderCredentialsRejected, errors.New("secret-token")), protocol.ProblemInvalidAPIKey},
+		{errors.Join(context.DeadlineExceeded, errors.New("secret-token")), protocol.ProblemTimeout},
+		{errors.New("HTTP 401 secret-token"), protocol.ProblemProviderTestFailed},
+	} {
+		t.Run(tt.kind, func(t *testing.T) {
+			rt := &providerFake{entries: map[string]provider.Provider{"anthropic": serverProvider(t, "anthropic", "secret-key", "")}, probeErr: tt.cause}
+			result, err := handlerWithProviders(rt).TestProvider(t.Context(), "anthropic")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.OK || result.Error == nil || result.Error.Type != tt.kind || result.Error.Detail != "" {
+				t.Fatalf("result = %+v", result)
+			}
+			if err := protocol.ValidateWireTree(*result); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

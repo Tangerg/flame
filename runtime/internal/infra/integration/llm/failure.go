@@ -105,16 +105,7 @@ func classifyModelError(err error) error {
 		return &run.FailureError{Kind: run.FailureTimeout, Err: err}
 	}
 	if status, header, ok := providerHTTPError(err); ok {
-		kind := failureKindForHTTPStatus(status)
-		var delay time.Duration
-		if kind.AllowsRetryAfter() {
-			delay = retryAfter(header, time.Now())
-		}
-		return &run.FailureError{
-			Kind:       kind,
-			RetryAfter: delay,
-			Err:        err,
-		}
+		return classifyHTTPFailure(status, header, err)
 	}
 	if netErr, ok := errors.AsType[net.Error](err); ok {
 		kind := run.FailureProviderUnavailable
@@ -124,6 +115,15 @@ func classifyModelError(err error) error {
 		return &run.FailureError{Kind: kind, Err: err}
 	}
 	return err
+}
+
+func classifyHTTPFailure(status int, header http.Header, err error) error {
+	kind := failureKindForHTTPStatus(status)
+	var delay time.Duration
+	if kind.AllowsRetryAfter() {
+		delay = retryAfter(header, time.Now())
+	}
+	return &run.FailureError{Kind: kind, RetryAfter: delay, Err: err}
 }
 
 func providerHTTPError(err error) (int, http.Header, bool) {

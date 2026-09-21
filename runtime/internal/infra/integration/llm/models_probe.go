@@ -113,7 +113,7 @@ func listRemoteModels(ctx context.Context, baseURL, apiKey string, protocol mode
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("llm: model probe %s: status %d", endpoint, resp.StatusCode)
+		return nil, classifyHTTPFailure(resp.StatusCode, resp.Header, fmt.Errorf("llm: model probe: status %d", resp.StatusCode))
 	}
 
 	document, err := readModelProbeDocument(resp.Body)

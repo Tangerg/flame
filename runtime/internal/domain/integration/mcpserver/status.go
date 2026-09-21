@@ -31,6 +31,8 @@ type ConnectionStatus struct {
 // that was never configured.
 var ErrUnknownServer = errors.New("mcp: unknown server")
 
+var ErrAuthorizationRequired = errors.New("mcp: authorization required")
+
 // AdvertisedTool is one tool advertised by a connected MCP server. The
 // connection adapter is the only producer: it parses each descriptor out of the
 // remote server's reply and owns identity, description, and schema limits at

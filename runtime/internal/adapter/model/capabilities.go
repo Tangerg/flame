@@ -13,6 +13,7 @@ import (
 
 	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
 
@@ -70,7 +71,7 @@ func (Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
 	if inputs.profile.DiscoversModelsAtEndpoint() {
 		models, err := remoteModelIDs(ctx, inputs)
 		if err != nil {
-			return err
+			return probeFailure(err)
 		}
 		if len(models) == 0 {
 			return fmt.Errorf("model: provider %q advertised no models", entry.ID())
@@ -93,6 +94,18 @@ func (Capabilities) Probe(ctx context.Context, entry provider.Provider) error {
 	_, err = client.Call(ctx, &chat.Request{
 		Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart(providerProbePrompt))}, Options: chat.Options{MaxOutputTokens: &maxTokens},
 	})
+	return probeFailure(err)
+}
+
+func probeFailure(err error) error {
+	if failure, ok := errors.AsType[*run.FailureError](err); ok {
+		switch failure.Kind {
+		case run.FailureInvalidCredentials:
+			return errors.Join(modelsapp.ErrProviderCredentialsRejected, err)
+		case run.FailureTimeout:
+			return errors.Join(context.DeadlineExceeded, err)
+		}
+	}
 	return err
 }
 

@@ -363,7 +363,7 @@ func (h *headerRoundTripper) classifyDialError(err error) error {
 		return nil
 	}
 	if h.lastStatus.Load() == http.StatusUnauthorized {
-		return &dialError{kind: dialErrorNeedsAuth, err: err}
+		return errors.Join(mcpserver.ErrAuthorizationRequired, err)
 	}
 	return err
 }

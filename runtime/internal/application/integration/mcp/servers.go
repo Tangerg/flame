@@ -276,17 +276,30 @@ func (c *Coordinator) redialServer(ctx context.Context, srv mcpserver.Server, st
 // connection test that touches neither the registry nor the live set, EXCEPT it
 // reuses an active OAuth sign-in for the same-named server (so an authorized
 // OAuth server tests as connected, not "unauthorized"). Returns the dial /
-// tools-list failure as OK=false; invalid candidates and registry failures
+// tools-list failure as a sanitized outcome; invalid candidates and registry failures
 // are returned as errors.
 func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestResult, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	srv, err := c.validatedServer(ctx, input)
 	if err != nil {
-		return TestResult{}, err
+		return "", err
 	}
-	if err := c.connectionLifecycle.Probe(ctx, srv); err != nil {
-		return TestResult{}, nil
+	probeErr := c.connectionLifecycle.Probe(ctx, srv)
+	if err := ctx.Err(); err != nil {
+		return "", err
 	}
-	return TestResult{OK: true}, nil
+	switch {
+	case probeErr == nil:
+		return TestSucceeded, nil
+	case errors.Is(probeErr, mcpserver.ErrAuthorizationRequired):
+		return TestAuthorizationRequired, nil
+	case errors.Is(probeErr, context.DeadlineExceeded):
+		return TestTimedOut, nil
+	default:
+		return TestFailed, nil
+	}
 }
 
 func (c *Coordinator) validatedServer(ctx context.Context, input ServerInput) (mcpserver.Server, error) {

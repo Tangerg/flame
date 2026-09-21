@@ -157,3 +157,32 @@ func TestListMCPTools(t *testing.T) {
 		t.Fatalf("scoped = %+v, want only git tools", scoped.Data)
 	}
 }
+
+func TestMCPProbeReturnsSanitizedActions(t *testing.T) {
+	for _, tt := range []struct {
+		cause error
+		kind  string
+	}{
+		{errors.Join(mcpserver.ErrAuthorizationRequired, errors.New("secret-token")), protocol.ProblemMCPAuthorizationRequired},
+		{errors.Join(context.DeadlineExceeded, errors.New("secret-token")), protocol.ProblemTimeout},
+		{errors.New("HTTP 401 secret-token"), protocol.ProblemMCPDialFailed},
+	} {
+		t.Run(tt.kind, func(t *testing.T) {
+			h := handlerWithMCP(t, fakeMCPPortsConfig(&fakeMCPPorts{probeErr: tt.cause}))
+			result, err := h.TestMCPServer(t.Context(), protocol.MCPServerCandidate{
+				Name: "probe", Enabled: true,
+				Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStdio, Command: "unused"},
+				HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.OK || result.Error == nil || result.Error.Type != tt.kind || result.Error.Detail != "" {
+				t.Fatalf("result = %+v", result)
+			}
+			if err := protocol.ValidateWireTree(*result); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

@@ -86,10 +86,6 @@ func mcpStatusProblem(state mcpserver.ConnectionState) *protocol.ProblemData {
 	}
 }
 
-func mcpProbeProblem() *protocol.ProblemData {
-	return &protocol.ProblemData{Type: protocol.ProblemMCPDialFailed}
-}
-
 func presentMCPAuthorizationAttempt(attempt mcpapp.AuthorizationAttempt) protocol.MCPAuthorizationAttempt {
 	status := protocol.MCPAuthorizationAttemptStatus{}
 	switch attempt.Status {

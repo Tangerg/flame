@@ -49,10 +49,14 @@ type UpdateProviderCommand struct {
 type ProviderTestOutcome string
 
 const (
-	ProviderTestSucceeded     ProviderTestOutcome = "succeeded"
-	ProviderTestNotConfigured ProviderTestOutcome = "not_configured"
-	ProviderTestFailed        ProviderTestOutcome = "failed"
+	ProviderTestSucceeded          ProviderTestOutcome = "succeeded"
+	ProviderTestNotConfigured      ProviderTestOutcome = "not_configured"
+	ProviderTestFailed             ProviderTestOutcome = "failed"
+	ProviderTestInvalidCredentials ProviderTestOutcome = "invalid_credentials"
+	ProviderTestTimedOut           ProviderTestOutcome = "timeout"
 )
+
+var ErrProviderCredentialsRejected = errors.New("models: provider credentials rejected")
 
 // ListProviders returns the supported-provider set annotated with its current
 // configuration. Registry-only unknown providers are intentionally omitted.
@@ -137,6 +141,12 @@ func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTest
 	}
 	if probeErr != nil {
 		trace.SpanFromContext(ctx).RecordError(probeErr)
+		switch {
+		case errors.Is(probeErr, context.DeadlineExceeded):
+			return ProviderTestTimedOut, nil
+		case errors.Is(probeErr, ErrProviderCredentialsRejected):
+			return ProviderTestInvalidCredentials, nil
+		}
 		return ProviderTestFailed, nil
 	}
 	return ProviderTestSucceeded, nil

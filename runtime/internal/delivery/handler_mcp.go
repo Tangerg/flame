@@ -88,11 +88,20 @@ func (s *Handler) TestMCPServer(ctx context.Context, in protocol.MCPServerCandid
 	if err != nil {
 		return nil, wireMCPError(err)
 	}
-	var problem *protocol.ProblemData
-	if !result.OK {
-		problem = mcpProbeProblem()
+	var kind string
+	switch result {
+	case mcpapp.TestSucceeded:
+		return &protocol.MCPTestResult{OK: true}, nil
+	case mcpapp.TestAuthorizationRequired:
+		kind = protocol.ProblemMCPAuthorizationRequired
+	case mcpapp.TestTimedOut:
+		kind = protocol.ProblemTimeout
+	case mcpapp.TestFailed:
+		kind = protocol.ProblemMCPDialFailed
+	default:
+		return nil, fmt.Errorf("delivery: unknown MCP test outcome %q", result)
 	}
-	return &protocol.MCPTestResult{OK: result.OK, Error: problem}, nil
+	return &protocol.MCPTestResult{Error: &protocol.ProblemData{Type: kind}}, nil
 }
 
 // ListMCPTools lists tools advertised by connected MCP servers in server/name

@@ -93,6 +93,10 @@ func (s *Handler) TestProvider(ctx context.Context, providerID string) (*protoco
 		return &protocol.ProviderTestResult{OK: false, Error: &protocol.ProblemData{
 			Type: protocol.ProblemProviderNotConfigured,
 		}}, nil
+	case modelapp.ProviderTestInvalidCredentials:
+		return &protocol.ProviderTestResult{Error: &protocol.ProblemData{Type: protocol.ProblemInvalidAPIKey}}, nil
+	case modelapp.ProviderTestTimedOut:
+		return &protocol.ProviderTestResult{Error: &protocol.ProblemData{Type: protocol.ProblemTimeout}}, nil
 	case modelapp.ProviderTestFailed:
 		return &protocol.ProviderTestResult{OK: false, Error: &protocol.ProblemData{
 			Type: protocol.ProblemProviderTestFailed,

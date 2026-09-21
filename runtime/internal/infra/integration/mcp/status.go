@@ -16,33 +16,12 @@ var ErrUnknownServer = errors.New("mcp: unknown server")
 // new registry instead of reviving sessions behind the component owner's back.
 var ErrConnectionsClosed = errors.New("mcp: connections closed")
 
-type dialErrorKind uint8
-
-const dialErrorNeedsAuth dialErrorKind = iota + 1
-
-type dialError struct {
-	kind dialErrorKind
-	err  error
-}
-
-func (d *dialError) Error() string { return d.err.Error() }
-func (d *dialError) Unwrap() error { return d.err }
-
 // dialStatus maps a dial error to the connection status: an
 // auth-distinguishable failure becomes "needsAuth" (so the client can prompt
 // for credentials), otherwise "failed".
 func dialStatus(err error) mcpserver.ConnectionState {
-	if isAuthError(err) {
+	if errors.Is(err, mcpserver.ErrAuthorizationRequired) {
 		return mcpserver.ConnectionNeedsAuth
 	}
 	return mcpserver.ConnectionFailed
-}
-
-// isAuthError reports whether the HTTP transport observed an authentication
-// rejection while the MCP SDK was dialing. The SDK turns the response into a
-// plain wrapped error, so our transport records the status before that type
-// information is lost.
-func isAuthError(err error) bool {
-	failure, ok := errors.AsType[*dialError](err)
-	return ok && failure.kind == dialErrorNeedsAuth
 }

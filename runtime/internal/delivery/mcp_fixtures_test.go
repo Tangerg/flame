@@ -21,6 +21,7 @@ type fakeMCPPorts struct {
 	tools         []mcpserver.AdvertisedTool
 	reconnectName string
 	authorizeName string
+	probeErr      error
 }
 
 func (f *fakeMCPPorts) Statuses() []mcpserver.ConnectionStatus { return slices.Clone(f.statuses) }
@@ -48,7 +49,7 @@ func (f *fakeMCPPorts) Authorize(_ context.Context, name mcpserver.ServerName) e
 	return nil
 }
 
-func (*fakeMCPPorts) Probe(context.Context, mcpserver.Server) error     { return nil }
+func (f *fakeMCPPorts) Probe(context.Context, mcpserver.Server) error   { return f.probeErr }
 func (*fakeMCPPorts) Configure(context.Context, mcpserver.Server) error { return nil }
 func (*fakeMCPPorts) Detach(mcpserver.ServerName) error                 { return nil }
 

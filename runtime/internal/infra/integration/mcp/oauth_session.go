@@ -240,7 +240,7 @@ func (i *invalidatingTokenSource) Token() (*oauth2.Token, error) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	if i.invalidated {
-		return nil, &dialError{kind: dialErrorNeedsAuth, err: errStoredOAuthRejected}
+		return nil, errors.Join(mcpserver.ErrAuthorizationRequired, errStoredOAuthRejected)
 	}
 	token, err := i.source.Token()
 	if err == nil || !oauthCredentialRejected(err) {
@@ -248,10 +248,7 @@ func (i *invalidatingTokenSource) Token() (*oauth2.Token, error) {
 	}
 	i.invalidated = true
 	removeErr := i.store.RemoveOAuthSession(i.lifetime, i.server)
-	return nil, &dialError{
-		kind: dialErrorNeedsAuth,
-		err:  errors.Join(errStoredOAuthRejected, err, removeErr),
-	}
+	return nil, errors.Join(mcpserver.ErrAuthorizationRequired, errStoredOAuthRejected, err, removeErr)
 }
 
 func oauthCredentialRejected(err error) bool {

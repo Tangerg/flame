@@ -417,7 +417,7 @@ func TestTestServerUsesLiveRegistryPort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TestServer err = %v", err)
 	}
-	if !result.OK {
+	if result != TestSucceeded {
 		t.Fatalf("TestServer result = %+v, want success", result)
 	}
 	if ports.probe.Name.String() != "fs" || ports.probe.Command != "mcp-fs" || ports.probe.Env["A"] != "1" {
@@ -487,7 +487,7 @@ func TestServerCommandsOwnInputsAfterReturning(t *testing.T) {
 		ports := &fakePorts{}
 
 		result, err := testCoordinator(t, Config{Registry: registry, ConnectionLifecycle: ports}).TestServer(t.Context(), serverInput)
-		if err != nil || !result.OK {
+		if err != nil || result != TestSucceeded {
 			t.Fatalf("TestServer = (%+v, %v), want success", result, err)
 		}
 		serverInput.Connection.Args[0] = "caller-changed"
@@ -566,6 +566,8 @@ type fakePorts struct {
 	authorizeErr     error
 
 	probe         mcpserver.Server
+	probeErr      error
+	onProbe       func()
 	configure     mcpserver.Server
 	configureDone chan struct{}
 	removeName    string
@@ -619,7 +621,10 @@ func (f *fakePorts) Authorize(ctx context.Context, name mcpserver.ServerName) er
 
 func (f *fakePorts) Probe(_ context.Context, cfg mcpserver.Server) error {
 	f.probe = cfg.Clone()
-	return nil
+	if f.onProbe != nil {
+		f.onProbe()
+	}
+	return f.probeErr
 }
 
 func (f *fakePorts) Configure(_ context.Context, cfg mcpserver.Server) error {
@@ -760,4 +765,32 @@ func (t *testRegistry) Remove(_ context.Context, name mcpserver.ServerName) erro
 		<-t.releaseRemove
 	}
 	return nil
+}
+
+func TestProbeClassifiesFailuresAndPreservesCancellation(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		cause error
+		want  TestResult
+	}{
+		{"authorization", errors.Join(mcpserver.ErrAuthorizationRequired, errors.New("secret-token")), TestAuthorizationRequired},
+		{"timeout", context.DeadlineExceeded, TestTimedOut},
+		{"unknown", errors.New("HTTP 401 secret-token"), TestFailed},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := testCoordinator(t, configWithPorts(&fakePorts{probeErr: tt.cause}))
+			got, err := c.TestServer(t.Context(), stdioServerInput(testMCPServerName("probe"), "original"))
+			if err != nil || got != tt.want {
+				t.Fatalf("probe = %q, %v; want %q", got, err, tt.want)
+			}
+		})
+	}
+	t.Run("caller cancellation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		c := testCoordinator(t, configWithPorts(&fakePorts{onProbe: cancel}))
+		got, err := c.TestServer(ctx, stdioServerInput(testMCPServerName("probe"), "original"))
+		if got != "" || !errors.Is(err, context.Canceled) {
+			t.Fatalf("probe = %q, %v", got, err)
+		}
+	})
 }

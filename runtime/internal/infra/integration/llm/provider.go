@@ -96,7 +96,8 @@ func (p ProviderProfile) DiscoversModelsAtEndpoint() bool {
 // the same wire protocol as its chat adapter. The profile owns this distinction
 // so application adapters never have to branch on provider identities.
 func (p ProviderProfile) ListModels(ctx context.Context, baseURL, apiKey string) ([]string, error) {
-	return p.value.chatModels.list(ctx, baseURL, apiKey)
+	models, err := p.value.chatModels.list(ctx, baseURL, apiKey)
+	return models, classifyModelError(err)
 }
 
 func (p ProviderProfile) SupportsEmbeddings() bool { return p.value.embedding != nil }
