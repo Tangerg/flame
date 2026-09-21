@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
@@ -55,11 +56,15 @@ func (s *setter) set(ctx context.Context, args setArgs) (string, error) {
 	if sessionID == "" {
 		return "", errors.New("set_plan: no active session")
 	}
-	state, err := s.plans.Replace(ctx, sessionID, args.steps())
+	steps := args.steps()
+	if err := plandomain.ValidateSteps(steps); err != nil {
+		return "", toolfailure.Definite(err)
+	}
+	state, err := s.plans.Replace(ctx, sessionID, steps)
 	if err != nil {
 		return "", err
 	}
-	steps := state.Steps()
+	steps = state.Steps()
 	if rendered := planpresentation.Render(steps); rendered != "" {
 		return "Plan updated:\n" + rendered, nil
 	}

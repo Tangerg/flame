@@ -2,9 +2,12 @@ package builtin
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -107,5 +110,39 @@ func TestSetArgsMapsSteps(t *testing.T) {
 	want := []plandomain.Step{{Description: "debug failing test", Status: plandomain.StatusInProgress}}
 	if len(steps) != 1 || steps[0] != want[0] {
 		t.Fatalf("steps = %+v, want %+v", steps, want)
+	}
+}
+
+func TestSetPlanRejectsInvalidStepsBeforeReplacement(t *testing.T) {
+	store := &stubStore{}
+	tool, err := newSet(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "session-1"})
+	_, err = callTextTool(ctx, tool, `{"steps":[{"description":"first","status":"in_progress"},{"description":"second","status":"in_progress"}]}`)
+	requireDefiniteFailure(t, err, "multiple active steps")
+	if store.steps != nil {
+		t.Fatal("invalid input reached Plan replacement")
+	}
+}
+
+type failingPlanReplacer struct{ err error }
+
+func (s failingPlanReplacer) Replace(context.Context, string, []plandomain.Step) (plandomain.State, error) {
+	return plandomain.State{}, s.err
+}
+
+func TestSetPlanPreservesUncertainReplacementFailure(t *testing.T) {
+	cause := errors.New("commit outcome unknown")
+	tool, err := newSet(failingPlanReplacer{err: cause})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "session-1"})
+	_, err = callTextTool(ctx, tool, `{"steps":[]}`)
+	var failure *toolcontract.Failure
+	if !errors.Is(err, cause) || errors.As(err, &failure) {
+		t.Fatalf("replacement error = %v", err)
 	}
 }
