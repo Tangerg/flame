@@ -287,8 +287,16 @@ export const codeStyles = stylex.create({
   signMeta: { textAlign: "center", userSelect: "none" },
   targetLine: { backgroundColor: surface.accentWash },
 
-  rowAdded: { backgroundColor: "var(--color-diff-added-tint)" },
-  rowDeleted: { backgroundColor: "var(--color-diff-deleted-tint)" },
+  // The tint has to stay under syntax colour and so stays low; the spine is opaque, carries no
+  // text, and is what makes the row scannable at that alpha.
+  rowAdded: {
+    backgroundColor: "var(--color-diff-added-tint)",
+    boxShadow: "var(--shadow-diff-added-spine)",
+  },
+  rowDeleted: {
+    backgroundColor: "var(--color-diff-deleted-tint)",
+    boxShadow: "var(--shadow-diff-deleted-spine)",
+  },
   metaAdded: { color: "var(--color-diff-added-meta)" },
   metaDeleted: { color: "var(--color-diff-deleted-meta)" },
   metaContext: { color: color.fgFaint },
