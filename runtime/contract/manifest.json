@@ -1586,11 +1586,13 @@
       "tool_failed"
     ],
     "inlineStatusTypes": [
+      "invalid_api_key",
       "mcp_authorization_failed",
       "mcp_authorization_required",
       "mcp_dial_failed",
       "provider_not_configured",
-      "provider_test_failed"
+      "provider_test_failed",
+      "timeout"
     ]
   },
   "capabilityPolicy": [

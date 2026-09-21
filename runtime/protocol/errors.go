@@ -131,12 +131,12 @@ const (
 	// (run outcome:error, RPC error, tool error); the full error rides the span,
 	// never the wire.
 	ProblemInternalError = "internal_error"
-	// Run channel (segment.finished outcome:error) — how a failed run is classified.
+	// Execution failures; invalid_api_key and timeout also classify inline probes.
 	ProblemRunLost             = "run_lost"             // Runtime instance exited before the run reached a durable terminal
 	ProblemAgentStuck          = "agent_stuck"          // the loop's no-forward-progress guard tripped
 	ProblemRateLimited         = "rate_limited"         // provider 429 / quota — retryable
 	ProblemInvalidAPIKey       = "invalid_api_key"      // provider 401 / 403 — not retryable
-	ProblemTimeout             = "timeout"              // provider request timed out / connection failed — retryable
+	ProblemTimeout             = "timeout"              // an execution request or integration probe timed out
 	ProblemProviderUnavailable = "provider_unavailable" // provider 5xx — retryable
 	ProblemProviderRejected    = "provider_rejected"    // provider 400, request rejected as invalid — not retryable
 	// Tool channel (toolCall.error) — how a tool call failed.
@@ -147,7 +147,7 @@ const (
 	// Inline status (MCPServer.status.error, ProviderTestResult.error) — a connection or
 	// probe verdict that rides its own query result instead of failing the call,
 	// so the pane renders it beside the thing it describes.
-	ProblemMCPAuthorizationRequired = "mcp_authorization_required" // an HTTP MCP server needs an interactive sign-in
+	ProblemMCPAuthorizationRequired = "mcp_authorization_required" // an MCP server requires valid authorization
 	ProblemMCPAuthorizationFailed   = "mcp_authorization_failed"   // an interactive MCP sign-in did not complete successfully
 	ProblemMCPDialFailed            = "mcp_dial_failed"            // the MCP connection, or a test of it, did not succeed
 	ProblemProviderNotConfigured    = "provider_not_configured"    // the provider's authentication or endpoint policy is unsatisfied

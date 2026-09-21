@@ -54,8 +54,13 @@ func TestProblemCatalogPublishesExactChannelSemantics(t *testing.T) {
 	}
 
 	inline := ProblemTypesFor(ProblemChannelInlineStatus)
+	for _, kind := range []string{protocol.ProblemInvalidAPIKey, protocol.ProblemTimeout} {
+		if !slices.Contains(inline, kind) || !slices.Contains(execution, kind) {
+			t.Fatalf("shared probe/execution problem %q is not declared on both channels", kind)
+		}
+	}
 	for _, contract := range ProblemContracts() {
-		if !slices.Contains(inline, contract.Type) {
+		if !slices.Equal(contract.Channels, []ProblemChannel{ProblemChannelInlineStatus}) {
 			continue
 		}
 		if len(contract.Required) != 0 || len(contract.Optional) != 0 {

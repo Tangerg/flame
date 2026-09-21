@@ -92,6 +92,8 @@ func mustProblemContracts() []ProblemContract {
 		protocol.ProblemChildRunCanceled,
 	)
 	add(ProblemChannelInlineStatus,
+		protocol.ProblemInvalidAPIKey,
+		protocol.ProblemTimeout,
 		protocol.ProblemMCPAuthorizationRequired,
 		protocol.ProblemMCPAuthorizationFailed,
 		protocol.ProblemMCPDialFailed,
