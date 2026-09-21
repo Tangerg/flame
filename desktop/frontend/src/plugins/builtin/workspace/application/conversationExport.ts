@@ -199,7 +199,9 @@ class ConversationArchiveGeneration {
       await this.#repairSessionList();
       this.#cohort.assertCurrent();
       selectAgentSession(session.id);
-      toast.success(t("convExport.importSuccess", { title: session.title ?? session.id }));
+      toast.success(
+        t("convExport.importSuccess", { title: session.title?.trim() || t("session.untitled") }),
+      );
     } catch (error) {
       if (this.#cohort.retired) return;
       console.error("[import] sessions.import failed:", error);

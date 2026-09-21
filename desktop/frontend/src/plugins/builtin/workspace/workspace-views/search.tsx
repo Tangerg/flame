@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { DataView, Pressable, SearchField, vocab } from "@/ui";
+import { DataView, EmptyState, Pressable, SearchField, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
@@ -31,7 +31,9 @@ export function SearchTab() {
     <WorkspaceViewLayout
       icon="search"
       title="search.title"
-      sub={workspaceSearchSubtext(t, view) ?? t("search.noMatches")}
+      // The count slot holds a COUNT. It used to fall back to a sentence describing the
+      // mechanism, which every sibling view leaves empty when it has nothing to count.
+      sub={workspaceSearchSubtext(t, view)}
     >
       <div {...stylex.props(vs.gutter, vs.statusPad)}>
         <SearchField
@@ -43,7 +45,14 @@ export function SearchTab() {
           spellCheck={false}
         />
       </div>
-      {query === "" ? null : (
+      {query === "" ? (
+        <EmptyState
+          icon="search"
+          size="compact"
+          title={t("search.prompt.title")}
+          sub={t("search.scope")}
+        />
+      ) : (
         <DataView
           items={data ? view.groups : undefined}
           isLoading={isLoading || workspace.status === "resolving"}
