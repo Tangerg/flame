@@ -844,8 +844,12 @@ describe("methods factory", () => {
       input,
     });
 
-    t.inject({ jsonrpc: JSONRPC_VERSION, id: req.id, result: {} } as RpcMessage);
-    await expect(promise).resolves.toBeUndefined();
+    t.inject({
+      jsonrpc: JSONRPC_VERSION,
+      id: req.id,
+      result: { userItemId: "item_steer" },
+    } as RpcMessage);
+    await expect(promise).resolves.toEqual({ userItemId: "item_steer" });
     await client.close();
   });
 

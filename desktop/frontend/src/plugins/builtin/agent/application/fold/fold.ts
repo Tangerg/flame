@@ -1,7 +1,6 @@
 import type { AgentItem } from "@/plugins/sdk";
 import type { BlockStatus, ContentBlock } from "@/plugins/sdk/types/contentBlock";
 import type { AgentSessionView, Message, ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { isOptimisticSteerMessageId } from "../view/optimisticMessageIdentity";
 import {
   argsText,
   contentText,
@@ -189,7 +188,7 @@ export function appendUserMessage(
   state: AgentSessionView,
   item: ItemOf<"userMessage">,
 ): AgentSessionView {
-  // A runs.start ack can relabel the optimistic local bubble to this durable Item id before
+  // Admission can relabel the optimistic local bubble to this durable Item id before
   // the Item itself arrives, so re-seeing the id must still attach the authoritative owner.
   const durable = state.messages.find((message) => message.id === item.id);
   if (durable) {
@@ -199,28 +198,17 @@ export function appendUserMessage(
         : {
             ...state,
             messages: state.messages.map((message) =>
-              message.id === item.id ? { ...message, runId: item.runId } : message,
+              message.id === item.id
+                ? {
+                    ...message,
+                    runId: item.runId,
+                    createdAt: item.createdAt,
+                    blocks: userContentBlocks(item.content),
+                  }
+                : message,
             ),
           };
     return closeAssistantTurn(withOwner, item.runId);
-  }
-  const text = contentText(item.content);
-  // Missing text normalizes to "" so an IMAGE-ONLY bubble reconciles against its
-  // image-only streamed Item, whose `contentText` is also "".
-  const localText = (m: Message): string =>
-    m.blocks.find((b): b is Extract<ContentBlock, { kind: "text" }> => b.kind === "text")?.text ??
-    "";
-  // Only a steer reconciles by CONTENT: its ack carries no Item id, while a fresh start is
-  // relabeled from the mandatory `userItemId` in StartRunResponse.
-  const matches = (m: Message): boolean => m.role === "user" && localText(m) === text;
-  const placeholder = state.messages.findIndex(
-    (m) => isOptimisticSteerMessageId(m.id) && matches(m),
-  );
-  if (placeholder !== -1) {
-    const messages = state.messages.map((m, i) =>
-      i === placeholder ? { ...m, id: item.id, runId: item.runId } : m,
-    );
-    return closeAssistantTurn({ ...state, messages }, item.runId);
   }
   const msg: Message = {
     id: item.id,

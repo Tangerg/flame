@@ -5,6 +5,7 @@ import { foldTestEvent as reduce, runFinished, testRunEvent } from "./reducer.fi
 import { reduceAgentEvent, reduceDurableItem } from "./reducer";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { selectCurrentRootRun, selectVisibleProblem } from "../view/runTree";
+import { reconcileMessageIdentity } from "../view/viewMutations";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 function item(partial: Record<string, unknown>): Item {
@@ -255,7 +256,7 @@ describe("reducer — item fold", () => {
     expect(s.messages[1]!.role).toBe("user");
   });
 
-  it("a durable userMessage reconciles an optimistic steer placeholder", () => {
+  it("identical text never merges messages with different identities", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(
       s,
@@ -280,10 +281,42 @@ describe("reducer — item fold", () => {
         }),
       ),
     );
-    expect(s.messages).toHaveLength(1);
-    expect(s.messages[0]!.id).toBe("item_real");
-    expect(s.messages[0]!.role).toBe("user");
+    expect(s.messages.map((message) => message.id)).toEqual(["local-steer-1", "item_real"]);
   });
+
+  it.each([true, false])(
+    "reconciles image-only input by identity with receipt first=%s",
+    (receiptFirst) => {
+      let state: AgentSessionView = {
+        ...EMPTY_AGENT_SESSION_VIEW,
+        messages: [
+          {
+            id: "local-steer-1",
+            role: "user",
+            runId: null,
+            createdAt: "2026-06-03T00:00:00Z",
+            blocks: [],
+          },
+        ],
+      };
+      const applied = completed(
+        item({
+          id: "item_image",
+          type: "userMessage",
+          status: "completed",
+          content: [{ type: "image", mime: "image/png", data: "aGVsbG8=" }],
+        }),
+      );
+      if (receiptFirst) state = reconcileMessageIdentity(state, "local-steer-1", "item_image");
+      state = reduce(state, applied);
+      if (!receiptFirst) state = reconcileMessageIdentity(state, "local-steer-1", "item_image");
+      expect(state.messages).toHaveLength(1);
+      expect(state.messages[0]).toMatchObject({ id: "item_image", runId: "run_1" });
+      expect(state.messages[0]!.blocks).toEqual([
+        { kind: "image", mime: "image/png", data: "aGVsbG8=" },
+      ]);
+    },
+  );
 
   it("a tool start folds its required invocation", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;

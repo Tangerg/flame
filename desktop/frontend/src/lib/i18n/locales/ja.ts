@@ -370,6 +370,7 @@ export const ja: Record<string, string> = {
   "settings.connection.reset": "デフォルトに戻す",
   "settings.connection.status.checking": "Runtime を確認中…",
   "settings.connection.status.reconnecting": "再接続中…",
+  "agent.inputNotApplied": "未適用",
   "agent.synchronizationIncomplete":
     "実行の同期が完了していません。セッションを開き直して再試行してください。",
   "runtime.connection.reconnecting": "Runtime への接続が切れました。再接続しています…",

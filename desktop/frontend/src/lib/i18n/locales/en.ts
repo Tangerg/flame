@@ -536,6 +536,7 @@ export const en: Record<string, string> = {
   "settings.connection.reset": "Reset to default",
   "settings.connection.status.checking": "Checking runtime…",
   "settings.connection.status.reconnecting": "Reconnecting…",
+  "agent.inputNotApplied": "Not yet applied",
   "agent.synchronizationIncomplete":
     "Run synchronization is incomplete. Reopen the session to retry.",
   "runtime.connection.reconnecting": "Runtime connection was lost. Reconnecting…",

@@ -183,19 +183,20 @@ describe("agentRuntimeGateway", () => {
   });
 
   it("translates structured steering input only at the runtime adapter", async () => {
-    const steer = vi.fn().mockResolvedValue({});
+    const steer = vi.fn().mockResolvedValue({ userItemId: "item_steer" });
     setContainer({
       client: () => ({ runs: { steer } }) as unknown as FlameClient,
     });
     uninstall = installAgentRuntimeGateway();
 
-    await agentRuntime().steerRun("run_1", "seg_1", {
+    const result = await agentRuntime().steerRun("run_1", "seg_1", {
       parts: [
         { kind: "text", text: "compare this" },
         { kind: "image", mime: "image/png", data: "aW1hZ2U=" },
       ],
     });
 
+    expect(result).toEqual({ userItemId: "item_steer" });
     expect(steer).toHaveBeenCalledWith(asRunId("run_1"), asSegmentId("seg_1"), [
       { type: "text", text: "compare this" },
       { type: "image", mime: "image/png", data: "aW1hZ2U=" },

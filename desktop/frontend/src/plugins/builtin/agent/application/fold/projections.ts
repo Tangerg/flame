@@ -75,8 +75,7 @@ export function mapQuestionAnswers(q: AgentQuestion): string[][] | undefined {
 }
 
 // API.md §4.4.2 conventions, NOT wire-enforced. Every reader must tolerate absent or
-// malformed values: a throw here is swallowed by the reducer's try/catch, silently dropping
-// the block or stranding a HITL approval the user can no longer act on.
+// malformed optional presentation values. Required protocol facts are validated upstream.
 
 function asRecord(v: unknown): Record<string, unknown> | undefined {
   return typeof v === "object" && v !== null && !Array.isArray(v)

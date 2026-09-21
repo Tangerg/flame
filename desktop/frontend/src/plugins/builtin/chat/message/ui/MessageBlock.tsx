@@ -23,7 +23,7 @@ import {
   MessageVisibleMaterialProvider,
   useVisibleActionMaterialization,
 } from "./messageVisibleMaterial";
-import { reveal } from "@/ui";
+import { Badge, reveal } from "@/ui";
 import { corner, type as typeStep } from "@/styles/tokens.stylex";
 import { messageStyles } from "./messageStyles";
 
@@ -165,6 +165,7 @@ function MessageBlockInner({
           ) : (
             <MessageContextMenu msg={msg}>{messageContent}</MessageContextMenu>
           )}
+          {isUser && msg.runId === null && <Badge>{t("agent.inputNotApplied")}</Badge>}
           {actionsVisibility !== "absent" && (
             <div
               data-reveal={actionsVisibility === "hover" ? "hover" : undefined}

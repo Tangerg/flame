@@ -149,6 +149,7 @@ function visualAgentRuntimeGateway(state: VisualAgentState): AgentRuntimeGateway
       document.documentElement.dataset.visualSteeredRun = runId;
       document.documentElement.dataset.visualSteeredSegment = segmentId;
       document.documentElement.dataset.visualSentInput = JSON.stringify(input);
+      return { userItemId: "item_visual_steer" };
     },
     isRunGone: () => false,
     isReplayLost: () => false,

@@ -51,6 +51,7 @@ import type {
   ResumeRunRequest,
   ResumeRunResponse,
   StartRunResponse,
+  SteerRunResponse,
   SubscribeRunRequest,
   SubscribeRunResponse,
   RollbackSessionRequest,
@@ -237,7 +238,7 @@ export interface Methods {
       runId: RunId,
       expectedSegmentId: SegmentId,
       input: ContentBlock[],
-    ) => MutationPromise<void>;
+    ) => MutationPromise<SteerRunResponse>;
     get: (runId: RunId, signal?: AbortSignal) => Promise<RunRef>;
     // Omitting `statuses` returns every position; descendants require negotiated
     // `features.subagents`.

@@ -162,6 +162,8 @@ export function installAgentStatePorts(): () => void {
     },
     dropMessage: (sessionId, messageId) =>
       useAgentStore.getState().dropMessage(sessionId, messageId),
+    reconcileMessageIdentity: (sessionId, fromId, toId) =>
+      useAgentStore.getState().reconcileMessageIdentity(sessionId, fromId, toId),
     appendLocalUserMessage: (sessionId, messageId, input) =>
       useAgentStore
         .getState()

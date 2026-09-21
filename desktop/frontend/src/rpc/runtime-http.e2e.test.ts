@@ -2135,7 +2135,7 @@ for await (const line of lines) {
       });
       await within(gate.arrived.promise, "the steer model request");
 
-      await client.runs.steer(
+      const accepted = await client.runs.steer(
         asRunId(started.result.runId),
         asSegmentId(started.result.segmentId),
         [{ type: "text", text: "Include the queued steering instruction." }],
@@ -2155,7 +2155,10 @@ for await (const line of lines) {
               block.type === "text" && block.text === "Include the queued steering instruction.",
           ),
       );
-      expect(steeredMessage).toBeDefined();
+      expect(steeredMessage?.event).toMatchObject({
+        type: "item.completed",
+        item: { id: accepted.userItemId },
+      });
       expect(events.at(-1)?.event).toMatchObject({
         type: "segment.finished",
         outcome: { type: "completed" },

@@ -369,6 +369,7 @@ export const ko: Record<string, string> = {
   "settings.connection.reset": "기본값 복원",
   "settings.connection.status.checking": "Runtime 확인 중…",
   "settings.connection.status.reconnecting": "다시 연결하는 중…",
+  "agent.inputNotApplied": "아직 적용되지 않음",
   "agent.synchronizationIncomplete":
     "실행 동기화가 완료되지 않았습니다. 세션을 다시 열어 재시도하세요.",
   "runtime.connection.reconnecting": "Runtime 연결이 끊겼습니다. 다시 연결하는 중…",

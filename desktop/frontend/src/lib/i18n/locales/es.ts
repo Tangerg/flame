@@ -387,6 +387,7 @@ export const es: Record<string, string> = {
   "settings.connection.reset": "Restaurar predeterminado",
   "settings.connection.status.checking": "Comprobando el runtime…",
   "settings.connection.status.reconnecting": "Reconectando…",
+  "agent.inputNotApplied": "Aún no aplicado",
   "agent.synchronizationIncomplete":
     "La sincronización está incompleta. Vuelve a abrir la sesión para reintentarlo.",
   "runtime.connection.reconnecting": "Se perdió la conexión con el runtime. Reconectando…",

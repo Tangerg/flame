@@ -94,7 +94,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     segmentId: string,
     input: Parameters<AgentRuntimeGateway["steerRun"]>[2],
   ) {
-    await getContainer()
+    return getContainer()
       .client()
       .runs.steer(asRunId(runId), asSegmentId(segmentId), agentInputToContentBlocks(input));
   }
