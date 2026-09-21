@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"path/filepath"
 	"slices"
@@ -139,7 +140,7 @@ func TestPlanStoreRejectsUnknownStoredStepFields(t *testing.T) {
 	}
 
 	_, err = store.State(t.Context(), "ses_plan_codec")
-	if err == nil || !strings.Contains(err.Error(), `unknown field "futureOwner"`) {
+	if !errors.Is(err, json.ErrUnknownName) || !strings.Contains(err.Error(), `"futureOwner"`) {
 		t.Fatalf("State error = %v, want unknown stored Plan field", err)
 	}
 }

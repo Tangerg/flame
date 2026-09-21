@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -392,7 +393,7 @@ func TestInterruptStoreRejectsUnknownExecutorTopologyFields(t *testing.T) {
 	); err != nil {
 		t.Fatalf("inject unknown topology field: %v", err)
 	}
-	if _, _, err := store.Get(t.Context(), pending.RootRunID); err == nil || !strings.Contains(err.Error(), `unknown field "parentProcessId"`) {
+	if _, _, err := store.Get(t.Context(), pending.RootRunID); !errors.Is(err, json.ErrUnknownName) || !strings.Contains(err.Error(), `"parentProcessId"`) {
 		t.Fatalf("Get error = %v, want unknown executor topology field", err)
 	}
 }

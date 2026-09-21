@@ -190,4 +190,12 @@ Saving configuration is not a universal live-reload guarantee. Restart recovery 
 
 Discovery, inspection, and model loading use the same Scope resolver. Project bundles own a colliding name even when malformed; they never expose the user copy as a fallback. Invalid or oversized selected documents appear as diagnostics alongside usable entries. Filesystem, confinement, capacity, and cancellation failures remain explicit query failures. Instructions retain the existing 1 MiB document bound and source directories retain their entry bounds. Inspection describes current authored content, not proof that it was loaded into an existing model conversation.
 
+## Integration probes
+
 Provider and MCP probes return sanitized inline verdicts. Provider authentication rejection uses `invalid_api_key`; MCP authentication rejection uses `mcp_authorization_required`; an internal probe deadline uses `timeout`. Unknown integration failures retain `provider_test_failed` or `mcp_dial_failed`. Caller cancellation remains a call error. Clients branch on these problem types, never on raw integration error strings.
+
+## Stored JSON integrity and snapshot cost
+
+Stored JSON uses the standard library's single-pass strict decoder. Columns require exact field names, valid UTF-8, one complete value, and no duplicate or unknown members, including inside nested values. The persisted representation is unchanged; data written by Runtime needs no migration. Manually edited records with mismatched field casing or invalid UTF-8 are rejected as corrupt rather than normalized.
+
+`GOWORK=off go test ./internal/adapter/persistence -run '^$' -bench BenchmarkSessionMaterialSnapshot -benchmem` measures coherent SQLite material reads and application validation at increasing history sizes. It excludes protocol encoding and client rendering; evaluate those separately before changing snapshot completeness or the subscription fence.

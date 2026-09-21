@@ -1,22 +1,9 @@
 package sqlite
 
-import (
-	"bytes"
-	"encoding/json"
+import json "encoding/json/v2"
 
-	"github.com/Tangerg/flame/runtime/internal/strictjson"
-)
-
-// decodeStoredJSON decodes one stored column under the same rule the executor
-// checkpoint and the wire already use: exactly one JSON value, no member name
-// repeated at any depth, and no field this build does not know. A column that
-// decodes two ways is corrupt however plausible each reading looks, so it costs
-// one validating pass before the decode rather than a silent last-wins result.
+// Persisted columns require one unambiguous value with exact field names. The
+// standard decoder rejects duplicate members at every depth in the same pass.
 func decodeStoredJSON(encoded []byte, target any) error {
-	if err := strictjson.ValidateUniqueMembers(encoded); err != nil {
-		return err
-	}
-	decoder := json.NewDecoder(bytes.NewReader(encoded))
-	decoder.DisallowUnknownFields()
-	return decoder.Decode(target)
+	return json.Unmarshal(encoded, target, json.RejectUnknownMembers(true))
 }

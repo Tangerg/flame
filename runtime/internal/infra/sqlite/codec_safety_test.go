@@ -2,6 +2,8 @@ package sqlite
 
 import (
 	"bytes"
+	json "encoding/json/v2"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -38,7 +40,7 @@ func TestTranscriptCodecRejectsRemovedToolFailureMetadata(t *testing.T) {
 		t.Run(field, func(t *testing.T) {
 			encoded := `{"status":"incomplete","kind":"toolCall","failure":{"kind":"tool_failed",` + metadata + `}}`
 			_, err := decodeTranscriptItem([]byte(encoded))
-			if err == nil || !strings.Contains(err.Error(), `unknown field "`+field+`"`) {
+			if !errors.Is(err, json.ErrUnknownName) || !strings.Contains(err.Error(), `"`+field+`"`) {
 				t.Fatalf("decodeTranscriptItem error = %v, want removed %s rejection", err, field)
 			}
 		})
