@@ -35,6 +35,7 @@ import {
   WORKSPACE_READ_FILE_KEY,
   WORKSPACE_RECIPES_KEY,
   WORKSPACE_SKILLS_KEY,
+  WORKSPACE_SKILL_DETAIL_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
 } from "@/plugins/builtin/workspace/public/queries";
 import {
@@ -96,6 +97,7 @@ function invalidateWorkspaceTargets(
       continue;
     }
     void replaceCachedRead({ queryKey: [QUERY_KEYS[target]] });
+    if (target === "skills") void replaceCachedRead({ queryKey: [WORKSPACE_SKILL_DETAIL_KEY] });
   }
 }
 

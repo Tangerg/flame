@@ -71,7 +71,8 @@ import type {
   Session,
   SessionArtifact,
   SessionSnapshot,
-  Skill,
+  SkillDiscovery,
+  SkillDetail,
   ManagedSkill,
   SkillProposal,
   SkillProposalRef,
@@ -151,7 +152,8 @@ export interface WorkspaceMethods {
   // Taken from the BINDING, not the caller: otherwise a decision can name one workspace
   // while its source list named another.
   skills: {
-    listDiscovered: (signal?: AbortSignal) => Promise<Page<Skill>>;
+    listDiscovered: (signal?: AbortSignal) => Promise<SkillDiscovery>;
+    getDiscovered: (name: string, signal?: AbortSignal) => Promise<SkillDetail>;
     listProposals: (signal?: AbortSignal) => Promise<Page<SkillProposal>>;
     approveProposal: (ref: Omit<SkillProposalRef, "workspace">) => MutationPromise<void>;
     rejectProposal: (ref: Omit<SkillProposalRef, "workspace">) => MutationPromise<void>;
@@ -424,6 +426,8 @@ function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
     },
     skills: {
       listDiscovered: (signal) => call("skills.discovered.list", { workspace }, { signal }),
+      getDiscovered: (name, signal) =>
+        call("skills.discovered.get", { workspace, name }, { signal }),
       listProposals: (signal) => call("skills.proposals.list", { workspace }, { signal }),
       approveProposal: (ref) => call("skills.proposals.approve", { ...ref, workspace }),
       rejectProposal: (ref) => call("skills.proposals.reject", { ...ref, workspace }),

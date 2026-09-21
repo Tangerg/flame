@@ -1809,7 +1809,7 @@ for await (const line of lines) {
       });
       await expect(client.workspace({ path: root }).skills.listDiscovered()).resolves.toMatchObject(
         {
-          data: [],
+          skills: [],
         },
       );
 
@@ -3412,7 +3412,7 @@ for await (const line of lines) {
       data: [expect.objectContaining({ name: managedSkillName, lifecycle: "active" })],
     });
     await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({
-      data: [expect.objectContaining({ name: managedSkillName, scope: "user" })],
+      skills: [expect.objectContaining({ name: managedSkillName, scope: "user" })],
     });
 
     const streamController = new AbortController();
@@ -3432,7 +3432,7 @@ for await (const line of lines) {
     await expect(client.skills.listLibrary()).resolves.toMatchObject({
       data: [expect.objectContaining({ name: managedSkillName, lifecycle: "archived" })],
     });
-    await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({ data: [] });
+    await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({ skills: [] });
 
     await client.skills.restore(managedSkillName);
     await expect(nextRuntimeEvent(runtimeEvents, "skills.changed")).resolves.toMatchObject({
@@ -3442,7 +3442,7 @@ for await (const line of lines) {
       data: [expect.objectContaining({ name: managedSkillName, lifecycle: "active" })],
     });
     await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({
-      data: [expect.objectContaining({ name: managedSkillName, scope: "user" })],
+      skills: [expect.objectContaining({ name: managedSkillName, scope: "user" })],
     });
 
     const projectSkillName = "external-project-skill";
@@ -3456,7 +3456,7 @@ for await (const line of lines) {
       type: "skills.changed",
     });
     await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({
-      data: expect.arrayContaining([
+      skills: expect.arrayContaining([
         expect.objectContaining({ name: projectSkillName, scope: "project" }),
       ]),
     });
@@ -3498,9 +3498,9 @@ for await (const line of lines) {
     };
     try {
       await client.skills.archive(managedSkillName);
-      expect((await workspace.skills.listDiscovered()).data).toContainEqual(projectSkill);
+      expect((await workspace.skills.listDiscovered()).skills).toContainEqual(projectSkill);
       await client.skills.restore(managedSkillName);
-      expect((await workspace.skills.listDiscovered()).data).toContainEqual(projectSkill);
+      expect((await workspace.skills.listDiscovered()).skills).toContainEqual(projectSkill);
     } finally {
       await client.skills.restore(managedSkillName);
     }
@@ -3570,7 +3570,7 @@ for await (const line of lines) {
     });
     await expect(workspace.skills.listProposals()).resolves.toMatchObject({ data: [] });
     await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({
-      data: expect.arrayContaining([
+      skills: expect.arrayContaining([
         expect.objectContaining({ name: projectProposal.name, scope: "project" }),
       ]),
     });

@@ -21,6 +21,22 @@ export interface WorkspaceSkill {
   scope: "project" | "user";
 }
 
+export interface WorkspaceSkillDiscovery {
+  skills: WorkspaceSkill[];
+  diagnostics: { name: string; detail: string }[];
+}
+
+export interface WorkspaceSkillDetail extends WorkspaceSkill {
+  path: string;
+  revision: string;
+  instructions: string;
+}
+
+export interface WorkspaceSkillDetailQuery {
+  cwd?: string;
+  name: string;
+}
+
 // Workspace catalog reads are keyed by the session workspace. Keeping the
 // scope in the query identity prevents a catalog from one open project being
 // reused after the user switches to another.
@@ -200,6 +216,7 @@ export const WORKSPACE_PROJECTS_KEY = "projects";
 export const WORKSPACE_FILES_CHANGED_KEY = "files-changed";
 export const WORKSPACE_DIFF_KEY = "diff";
 export const WORKSPACE_SKILLS_KEY = "skills";
+export const WORKSPACE_SKILL_DETAIL_KEY = "skill-detail";
 export const WORKSPACE_MANAGED_SKILLS_KEY = "managed-skills";
 export const WORKSPACE_SKILL_PROPOSALS_KEY = "skill-proposals";
 export const WORKSPACE_AGENT_MEMORY_KEY = "agent-memory";
@@ -230,8 +247,12 @@ export const useWorkspaceFileHead = createParameterizedDataQuery<
 >(WORKSPACE_FILE_HEAD_KEY);
 export const useWorkspaceSkills = createParameterizedDataQuery<
   WorkspaceCatalogQuery,
-  WorkspaceSkill[]
+  WorkspaceSkillDiscovery
 >(WORKSPACE_SKILLS_KEY);
+export const useWorkspaceSkillDetail = createParameterizedDataQuery<
+  WorkspaceSkillDetailQuery,
+  WorkspaceSkillDetail
+>(WORKSPACE_SKILL_DETAIL_KEY);
 export const useManagedSkills = createDataQuery<ManagedSkill[]>(WORKSPACE_MANAGED_SKILLS_KEY);
 export const useSkillProposals = createParameterizedDataQuery<
   WorkspaceCatalogQuery,

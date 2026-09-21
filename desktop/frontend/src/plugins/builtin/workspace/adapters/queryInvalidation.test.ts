@@ -151,6 +151,7 @@ describe("workspace session projection invalidation", () => {
       "knowledge",
       "agent-docs",
       "skills",
+      "skill-detail",
     ]);
     expect(cancelQueries.mock.calls).toEqual(invalidateQueries.mock.calls);
     expect(synchronizeMountedAgentSessions).not.toHaveBeenCalled();

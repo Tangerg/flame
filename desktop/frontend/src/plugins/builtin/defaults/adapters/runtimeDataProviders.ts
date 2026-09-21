@@ -46,6 +46,8 @@ import {
   WORKSPACE_PROJECTS_KEY,
   WORKSPACE_READ_FILE_KEY,
   WORKSPACE_SKILLS_KEY,
+  WORKSPACE_SKILL_DETAIL_KEY,
+  type WorkspaceSkillDetailQuery,
   WORKSPACE_MANAGED_SKILLS_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
   WORKSPACE_AGENT_MEMORY_KEY,
@@ -177,13 +179,24 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     fetcher: async (read, params) => {
       const query = requiredParams<WorkspaceCatalogQuery>(WORKSPACE_SKILLS_KEY, params);
       const resources = await read.workspace(query.cwd);
-      return (
-        await pageData(resources.skills.listDiscovered(read.signal)).catch(emptyListIfUngated)
-      ).map((s) => ({
-        name: s.name,
-        description: s.description ?? "",
-        scope: s.scope,
-      }));
+      const catalog = await resources.skills.listDiscovered(read.signal);
+      return {
+        skills: catalog.skills.map((s) => ({
+          name: s.name,
+          description: s.description ?? "",
+          scope: s.scope,
+        })),
+        diagnostics: catalog.diagnostics,
+      };
+    },
+  });
+  contribute({
+    key: WORKSPACE_SKILL_DETAIL_KEY,
+    fetcher: async (read, params) => {
+      const query = requiredParams<WorkspaceSkillDetailQuery>(WORKSPACE_SKILL_DETAIL_KEY, params);
+      const resources = await read.workspace(query.cwd);
+      const detail = await resources.skills.getDiscovered(query.name, read.signal);
+      return { ...detail, description: detail.description ?? "" };
     },
   });
   contribute({

@@ -13,6 +13,7 @@ import {
   WORKSPACE_SKILLS_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
   type WorkspaceSkill,
+  type WorkspaceSkillDiscovery,
 } from "./workspaceQueries";
 import { rejected } from "@/test/rejected";
 
@@ -52,9 +53,13 @@ describe("skill curation generation", () => {
       description: "Project review",
       scope: "project",
     };
-    const refreshed = Promise.withResolvers<WorkspaceSkill[]>();
+    const refreshed = Promise.withResolvers<WorkspaceSkillDiscovery>();
     const read = vi.fn(() => refreshed.promise);
-    const discovered = observeCatalog([WORKSPACE_SKILLS_KEY, { cwd: "/repo" }], [project], read);
+    const discovered = observeCatalog(
+      [WORKSPACE_SKILLS_KEY, { cwd: "/repo" }],
+      { skills: [project], diagnostics: [] },
+      read,
+    );
     queryClient.setQueryData(
       [WORKSPACE_MANAGED_SKILLS_KEY],
       [
@@ -72,12 +77,12 @@ describe("skill curation generation", () => {
     const restoring = restoreSkill(project.name);
     try {
       await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
-      expect(discovered.getCurrentResult().data).toEqual([project]);
+      expect(discovered.getCurrentResult().data).toEqual({ skills: [project], diagnostics: [] });
     } finally {
-      refreshed.resolve([project]);
+      refreshed.resolve({ skills: [project], diagnostics: [] });
       await restoring;
     }
-    expect(discovered.getCurrentResult().data).toEqual([project]);
+    expect(discovered.getCurrentResult().data).toEqual({ skills: [project], diagnostics: [] });
   });
 
   it("refreshes a personal proposal in every workspace that listed it", async () => {
@@ -176,7 +181,7 @@ describe("skill curation generation", () => {
     const failure = new Error("catalog unavailable");
     const discovered = observeCatalog(
       [WORKSPACE_SKILLS_KEY, { cwd: "/repo" }],
-      [skill],
+      { skills: [skill], diagnostics: [] },
       async () => {
         throw failure;
       },
@@ -190,7 +195,7 @@ describe("skill curation generation", () => {
     expect(discovered.getCurrentResult()).toMatchObject({
       isError: true,
       error: failure,
-      data: [skill],
+      data: { skills: [skill], diagnostics: [] },
     });
   });
 
@@ -208,10 +213,10 @@ describe("skill curation generation", () => {
       [handle],
       async () => [],
     );
-    const discovered = observeCatalog<WorkspaceSkill[]>(
+    const discovered = observeCatalog<WorkspaceSkillDiscovery>(
       [WORKSPACE_SKILLS_KEY, query],
-      [],
-      async () => [skill],
+      { skills: [], diagnostics: [] },
+      async () => ({ skills: [skill], diagnostics: [] }),
     );
     owner = SkillCurationOwner.install({
       approveProposal: vi.fn().mockResolvedValue(undefined),
@@ -220,7 +225,7 @@ describe("skill curation generation", () => {
     await approveSkillProposal(handle);
 
     expect(proposals.getCurrentResult().data).toEqual([]);
-    expect(discovered.getCurrentResult().data).toEqual([skill]);
+    expect(discovered.getCurrentResult().data).toEqual({ skills: [skill], diagnostics: [] });
   });
 
   it("preserves command failure while refreshing an uncertain durable outcome", async () => {
@@ -240,9 +245,12 @@ describe("skill curation generation", () => {
   });
 
   it("replaces an in-flight first read before publishing the post-command catalog", async () => {
-    const beforeArchive = Promise.withResolvers<WorkspaceSkill[]>();
-    const read = vi.fn().mockReturnValueOnce(beforeArchive.promise).mockResolvedValue([]);
-    const discovered = new QueryObserver<WorkspaceSkill[]>(queryClient, {
+    const beforeArchive = Promise.withResolvers<WorkspaceSkillDiscovery>();
+    const read = vi
+      .fn()
+      .mockReturnValueOnce(beforeArchive.promise)
+      .mockResolvedValue({ skills: [], diagnostics: [] });
+    const discovered = new QueryObserver<WorkspaceSkillDiscovery>(queryClient, {
       queryKey: [WORKSPACE_SKILLS_KEY, { cwd: "/repo" }],
       queryFn: read,
       retry: false,
@@ -256,11 +264,14 @@ describe("skill curation generation", () => {
       await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
       await archiveSkill("review");
       expect(read).toHaveBeenCalledTimes(2);
-      expect(discovered.getCurrentResult().data).toEqual([]);
+      expect(discovered.getCurrentResult().data).toEqual({ skills: [], diagnostics: [] });
     } finally {
-      beforeArchive.resolve([{ name: "review", description: "Old personal skill", scope: "user" }]);
+      beforeArchive.resolve({
+        skills: [{ name: "review", description: "Old personal skill", scope: "user" }],
+        diagnostics: [],
+      });
       await beforeArchive.promise;
     }
-    expect(discovered.getCurrentResult().data).toEqual([]);
+    expect(discovered.getCurrentResult().data).toEqual({ skills: [], diagnostics: [] });
   });
 });

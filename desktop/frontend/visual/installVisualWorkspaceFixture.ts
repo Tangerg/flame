@@ -44,7 +44,7 @@ import {
   type SkillProposal,
   type WorkspaceAgentDoc,
   type WorkspaceKnowledgeEntry,
-  type WorkspaceSkill,
+  type WorkspaceSkillDiscovery,
   type WorkspaceDiff,
   type WorkspaceFileChange,
   type WorkspaceFileContent,
@@ -288,18 +288,21 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
       });
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_SKILLS_KEY,
-        fetcher: async (): Promise<WorkspaceSkill[]> => [
-          {
-            name: "review-diff",
-            description: "Read a change the way a reviewer does, worst risk first.",
-            scope: "project",
-          },
-          {
-            name: "write-commit-message",
-            description: "State why the change exists, not what the diff already says.",
-            scope: "user",
-          },
-        ],
+        fetcher: async (): Promise<WorkspaceSkillDiscovery> => ({
+          skills: [
+            {
+              name: "review-diff",
+              description: "Read a change the way a reviewer does, worst risk first.",
+              scope: "project",
+            },
+            {
+              name: "write-commit-message",
+              description: "State why the change exists, not what the diff already says.",
+              scope: "user",
+            },
+          ],
+          diagnostics: [],
+        }),
       });
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_MANAGED_SKILLS_KEY,

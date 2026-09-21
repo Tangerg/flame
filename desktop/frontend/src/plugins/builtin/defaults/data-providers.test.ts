@@ -73,13 +73,26 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
   });
 
   it("workspace catalogs bind the selected project and retain proposal decision scope", async () => {
-    const { value: skills, requests: skillRequests } = await runProvider<
-      Array<{ name: string; scope: string }>
-    >("skills", [["skills.discovered.list", { data: [{ name: "verify", scope: "project" }] }]], {
-      cwd: "/work/alpha",
-    });
+    const { value: skills, requests: skillRequests } = await runProvider<{
+      skills: Array<{ name: string; scope: string }>;
+      diagnostics: [];
+    }>(
+      "skills",
+      [
+        [
+          "skills.discovered.list",
+          { skills: [{ name: "verify", scope: "project" }], diagnostics: [] },
+        ],
+      ],
+      {
+        cwd: "/work/alpha",
+      },
+    );
     expect(skillRequests[0]?.params).toEqual({ workspace: { path: "/work/alpha" } });
-    expect(skills).toEqual([{ name: "verify", description: "", scope: "project" }]);
+    expect(skills).toEqual({
+      skills: [{ name: "verify", description: "", scope: "project" }],
+      diagnostics: [],
+    });
 
     const { value: proposals, requests: proposalRequests } = await runProvider<
       Array<{ workspace: string; name: string }>
