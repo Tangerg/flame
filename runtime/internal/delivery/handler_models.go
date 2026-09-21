@@ -66,6 +66,11 @@ func mapModelError(err error) error {
 	if err == nil {
 		return nil
 	}
+	if errors.Is(err, modelapp.ErrModelDiscoveryFailed) {
+		failure := NewFailure(protocol.ErrProviderError, "the provider could not supply a valid model catalog; check its configuration and availability")
+		failure.cause = errors.Join(protocol.ErrProviderError, err)
+		return failure
+	}
 	if errors.Is(err, modelapp.ErrProviderUnsupported) ||
 		errors.Is(err, modelapp.ErrProviderBaseURLRequired) ||
 		errors.Is(err, modelapp.ErrProviderUnconfigured) ||

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
@@ -109,6 +110,33 @@ func TestListModelsPreservesEndpointFailure(t *testing.T) {
 	page, err := handler.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "testprov"})
 	if !errors.Is(err, cause) || page != nil || lister.calls != 1 {
 		t.Fatalf("ListModels = (%+v, %v), calls=%d; want endpoint failure", page, err, lister.calls)
+	}
+}
+
+func TestListModelsProjectsDiscoveryFailures(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		lister stubLister
+	}{
+		{"upstream failure", stubLister{err: errors.Join(models.ErrModelDiscoveryFailed, errors.New("remote secret-token"))}},
+		{"invalid identity", stubLister{ids: []string{" secret-token "}}},
+		{"duplicate identity", stubLister{ids: []string{"secret-token", "secret-token"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler := probeHandler(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), &tc.lister)
+			endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
+			page, err := endpoint.Call[protocol.ListModelsRequest, *protocol.Page[protocol.Model]](t.Context(), ModelsList, protocol.ListModelsRequest{Provider: "testprov"}, Options{})
+			if page != nil || !errors.Is(err, protocol.ErrProviderError) {
+				t.Fatalf("ListModels = (%v, %v), want provider failure", page, err)
+			}
+			problem := ProjectError(err).Problem()
+			if strings.Contains(problem.Detail, "secret-token") {
+				t.Fatalf("exposed upstream details: %+v", problem)
+			}
+			if tc.lister.err != nil && !errors.Is(err, tc.lister.err) {
+				t.Fatalf("lost local cause: %v", err)
+			}
+		})
 	}
 }
 

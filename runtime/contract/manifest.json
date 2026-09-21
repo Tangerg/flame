@@ -959,7 +959,10 @@
       "operation": "query",
       "idempotency": "none",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "provider_error"
+      ]
     },
     {
       "name": "models.getUtilityRole",
@@ -1404,7 +1407,10 @@
       {
         "type": "provider_error",
         "code": -32001,
-        "recoveryAction": "promptUser"
+        "recoveryAction": "promptUser",
+        "methods": [
+          "models.list"
+        ]
       },
       {
         "type": "replay_cursor_invalid",

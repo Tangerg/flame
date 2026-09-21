@@ -376,7 +376,7 @@ func TestListModelsPreservesEndpointOutcome(t *testing.T) {
 		metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(t, "test-endpoint", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())},
 		models:   map[string][]Model{"test-endpoint": {catalogModelFixture(t, "test-endpoint", "catalog-only", &Details{})}},
 	}
-	offline := errors.New("offline")
+	offline := errors.Join(ErrModelDiscoveryFailed, errors.New("offline"))
 	for _, tt := range []struct {
 		name    string
 		lister  ProviderModelLister
@@ -397,7 +397,22 @@ func TestListModelsPreservesEndpointOutcome(t *testing.T) {
 			if tt.cause != nil && !errors.Is(err, tt.cause) {
 				t.Fatalf("ListModels error = %v, want cause %v", err, tt.cause)
 			}
+			if tt.wantErr && !errors.Is(err, ErrModelDiscoveryFailed) {
+				t.Fatalf("ListModels error = %v, want discovery failure", err)
+			}
 		})
+	}
+}
+
+func TestListModelsRejectsEnrichmentIdentityChange(t *testing.T) {
+	catalog := testCatalog{
+		metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(t, "test-endpoint", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())},
+		models:   map[string][]Model{"test-endpoint": {catalogModelFixture(t, "other-provider", "local", &Details{})}},
+	}
+	c := newTestCoordinator(Config{Providers: &testProviderRegistry{}, Catalog: catalog, Lister: &fakeLister{ids: []string{"local"}}})
+	got, err := c.ListModels(t.Context(), "test-endpoint")
+	if err == nil || len(got) != 0 || errors.Is(err, ErrModelDiscoveryFailed) {
+		t.Fatalf("ListModels = (%v, %v), want local catalog failure", got, err)
 	}
 }
 

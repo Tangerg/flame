@@ -15,7 +15,7 @@ const (
 )
 
 func registerModels(registry *Registry) {
-	registry.query(MethodMeta{Name: ModelsList},
+	registry.query(MethodMeta{Name: ModelsList, Errors: []string{protocol.ErrProviderError.Error()}},
 		func(service interface {
 			ListModels(context.Context, protocol.ListModelsRequest) (*protocol.Page[protocol.Model], error)
 		}, ctx context.Context, request protocol.ListModelsRequest) (*protocol.Page[protocol.Model], error) {

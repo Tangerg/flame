@@ -194,6 +194,8 @@ Inspection distinguishes invalid names (`invalid_params`), absent skills (`skill
 
 ## Integration probes
 
+`models.list` treats endpoint discovery as authoritative, including an empty catalog. Endpoint failures and malformed or duplicate model identities return a sanitized `provider_error`, rather than `invalid_params` or a successful fallback catalog. Local registry and catalog defects remain internal failures; cancellation preserves its context identity for Go callers. Bundled metadata may enrich a discovered model but cannot change its provider/model identity.
+
 Provider and MCP probes return sanitized inline verdicts. Provider authentication rejection uses `invalid_api_key`; MCP authentication rejection uses `mcp_authorization_required`; an internal probe deadline uses `timeout`. Unknown integration failures retain `provider_test_failed` or `mcp_dial_failed`. Caller cancellation remains a call error. Clients branch on these problem types, never on raw integration error strings.
 
 ## Stored JSON integrity and snapshot cost

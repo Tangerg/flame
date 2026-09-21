@@ -132,7 +132,11 @@ func remoteModelIDs(ctx context.Context, inputs providerClientInputs) ([]string,
 	if _, _, err := llm.BuildChat(ctx, spec); err != nil {
 		return nil, err
 	}
-	return inputs.profile.ListModels(ctx, baseURL, inputs.apiKey())
+	ids, err := inputs.profile.ListModels(ctx, baseURL, inputs.apiKey())
+	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		return nil, fmt.Errorf("%w: %w", modelsapp.ErrModelDiscoveryFailed, err)
+	}
+	return ids, err
 }
 
 func providerMetadata(value llm.ProviderProfile) modelsapp.ProviderMetadata {

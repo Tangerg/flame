@@ -49,6 +49,23 @@ func TestListModelsPreservesMissingCredentialCause(t *testing.T) {
 	}
 }
 
+func TestListModelsClassifiesRemoteFailures(t *testing.T) {
+	for _, status := range []int{http.StatusUnauthorized, http.StatusInternalServerError, http.StatusOK} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(status)
+				_, _ = w.Write([]byte(`not-json secret-token`))
+			}))
+			t.Cleanup(server.Close)
+			models, err := (Capabilities{}).ListModels(t.Context(), catalogProvider(t, "openai-compatible", "test-key", server.URL))
+			if models != nil || !errors.Is(err, modelsapp.ErrModelDiscoveryFailed) {
+				t.Fatalf("ListModels = (%v, %v), want discovery failure", models, err)
+			}
+		})
+	}
+}
+
 func TestProbeUsesRemoteModelsForProviderWithoutCatalogDefault(t *testing.T) {
 	var requests int
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {

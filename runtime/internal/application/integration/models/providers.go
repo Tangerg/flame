@@ -58,6 +58,8 @@ const (
 
 var ErrProviderCredentialsRejected = errors.New("models: provider credentials rejected")
 
+var ErrModelDiscoveryFailed = errors.New("models: model discovery failed")
+
 // ListProviders returns the supported-provider set annotated with its current
 // configuration. Registry-only unknown providers are intentionally omitted.
 func (c *Coordinator) ListProviders(ctx context.Context) ([]ProviderSummary, error) {
@@ -181,14 +183,23 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 	for _, id := range ids {
 		model, err := NewModel(providerID, id, nil)
 		if err != nil {
-			return nil, fmt.Errorf("models: discover provider %q: %w", providerID, err)
-		}
-		if known, ok := c.catalog.LookupModel(providerID, id); ok {
-			model = known
+			return nil, fmt.Errorf("%w: provider %q: %w", ErrModelDiscoveryFailed, providerID, err)
 		}
 		out = append(out, model)
 	}
-	return orderedModels(providerID, out)
+	out, err = orderedModels(providerID, out)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrModelDiscoveryFailed, err)
+	}
+	for i, model := range out {
+		if known, ok := c.catalog.LookupModel(providerID, model.ID()); ok {
+			if known.Provider() != providerID || known.ID() != model.ID() {
+				return nil, errors.New("models: catalog enrichment changed model identity")
+			}
+			out[i] = known
+		}
+	}
+	return out, nil
 }
 
 func (c *Coordinator) supportedProviders() []ProviderMetadata {

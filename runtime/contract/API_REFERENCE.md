@@ -81,7 +81,7 @@ Protocol `2026-09-22` · 88 methods
 | `providers.list` | query | unary | none | none | none | — | — | — |
 | `providers.update` | command | unary | replayResponse | none | none | — | — | — |
 | `providers.test` | query | unary | none | none | none | — | — | — |
-| `models.list` | query | unary | none | none | none | — | — | — |
+| `models.list` | query | unary | none | none | none | — | — | `provider_error` |
 | `models.getUtilityRole` | query | unary | none | none | none | — | — | — |
 | `models.setUtilityRole` | command | unary | replayResponse | none | none | — | — | — |
 | `models.getEmbeddingRole` | query | unary | none | none | none | — | — | — |

@@ -5262,6 +5262,12 @@
           "$ref": "schema.json#/$defs/PageOfModel"
         }
       },
+      "errors": [
+        {
+          "code": -32001,
+          "message": "provider_error"
+        }
+      ],
       "x-flame-kind": "unary",
       "x-flame-operation": "query",
       "x-flame-idempotency": "none",
