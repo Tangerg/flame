@@ -120,9 +120,19 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
           <Icon name={STATUS_MARK[entry.status].icon} size="xs" />
         </span>
       )}
-      {entry.kind === "tool" && entry.status !== undefined && (
-        <span title={t("timeline.executionDuration")} {...stylex.props(ts.stamp, typeStep.uiXs)}>
-          {tool?.durationMillis === undefined ? "—" : fmtDuration(tool.durationMillis)}
+      {/* Held open for any row that carries a mark, so the mark itself keeps one edge: a run
+          boundary has an outcome and no duration, and letting its slot collapse moved the
+          glyph half an inch away from the column of glyphs above it. */}
+      {entry.status !== undefined && (
+        <span
+          title={entry.kind === "tool" ? t("timeline.executionDuration") : undefined}
+          {...stylex.props(ts.stamp, ts.duration, typeStep.uiXs)}
+        >
+          {entry.kind !== "tool"
+            ? ""
+            : tool?.durationMillis === undefined
+              ? "—"
+              : fmtDuration(tool.durationMillis)}
         </span>
       )}
       <time

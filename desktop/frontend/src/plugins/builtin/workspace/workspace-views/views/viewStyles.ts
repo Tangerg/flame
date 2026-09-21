@@ -204,6 +204,10 @@ export const timelineStyles = stylex.create({
     fontFamily: "var(--font-mono)",
     color: color.fgFaint,
   },
+  // A measure wide enough for the durations a tool call produces, so the status mark to its
+  // left lands on one edge down the list. Without it every row placed its own trailing cluster:
+  // `42ms` and `120ms` differ by a character, and the glyph before them moved with it.
+  duration: { minWidth: "calc(var(--spacing) * 12)", textAlign: "right" },
   runHeader: {
     display: "flex",
     minHeight: space.s10,
