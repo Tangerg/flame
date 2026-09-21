@@ -19,6 +19,21 @@ func testID(value string) transport.ID {
 	return id
 }
 
+func TestMetadataExtractionCannotNormalizeInvalidParameters(t *testing.T) {
+	for _, raw := range []string{
+		`{"_meta":{},"provider":"\ud800"}`,
+		"{\"_meta\":{},\"provider\":\"\xff\"}",
+		`{"_meta":{"ProtocolVersion":"ignored"},"provider":"deepseek"}`,
+		`{"_meta":{},"provider":"deepseek","APIKEY":null}`,
+	} {
+		request := &transport.Request{ID: testID("strict"), Method: "providers.update", Params: json.RawMessage(raw)}
+		failure := dispatchMetadataFailure(t, request)
+		if failure == nil || failure.Code != codeInvalidParams {
+			t.Fatalf("invalid parameters accepted: %q: %+v", raw, failure)
+		}
+	}
+}
+
 func TestExtractRequestMetaStripsTransportMember(t *testing.T) {
 	req := &transport.Request{
 		ID:     testID("1"),
@@ -236,7 +251,7 @@ func TestExtractRequestMetaRejectsUnknownFields(t *testing.T) {
 	if err := json.Unmarshal(rpcErr.Data, &problem); err != nil {
 		t.Fatalf("decode problem: %v", err)
 	}
-	if !strings.Contains(problem.Detail, `unknown field "capabilities"`) {
+	if !strings.Contains(problem.Detail, `unknown object member name "capabilities"`) {
 		t.Fatalf("detail = %q, want unknown metadata field", problem.Detail)
 	}
 }

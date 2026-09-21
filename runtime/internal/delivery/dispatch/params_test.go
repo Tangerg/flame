@@ -34,9 +34,9 @@ func TestDecodeParamsRejectsDriftedRequests(t *testing.T) {
 		detail string
 	}{
 		{name: "null", raw: `null`, detail: "must be an object"},
-		{name: "unknown field", raw: `{"sessionId":"ses_1","input":[],"context":[]}`, detail: `unknown field "context"`},
-		{name: "wrong type", raw: `{"sessionId":1,"input":[]}`, detail: "cannot unmarshal number"},
-		{name: "multiple values", raw: `{"sessionId":"ses_1"} {}`, detail: "exactly one JSON object"},
+		{name: "unknown field", raw: `{"sessionId":"ses_1","input":[],"context":[]}`, detail: `unknown object member name "context"`},
+		{name: "wrong type", raw: `{"sessionId":1,"input":[]}`, detail: "cannot unmarshal JSON number"},
+		{name: "multiple values", raw: `{"sessionId":"ses_1"} {}`, detail: "after top-level value"},
 	}
 
 	for _, tt := range tests {
@@ -65,6 +65,20 @@ func TestDecodeParamsAcceptsEmptyAndKnownFields(t *testing.T) {
 	}
 	if start.SessionID != "ses_1" || len(start.Input) != 1 {
 		t.Fatalf("decoded request = %+v", start)
+	}
+}
+
+func TestDecodeParamsRequiresExactFieldNames(t *testing.T) {
+	for _, raw := range []string{
+		`{"Provider":"deepseek"}`,
+		`{"provider":"deepseek","APIKEY":null}`,
+		`{"provider":"deepseek","apiKey":{"Type":"clear"}}`,
+		`{"provider":"deepseek","apiKey":{"type":"set","Value":"secret-token"}}`,
+	} {
+		var got protocol.UpdateProviderRequest
+		if err := decodeParams(json.RawMessage(raw), &got); err == nil {
+			t.Fatalf("accepted non-contract field spelling: %s", raw)
+		}
 	}
 }
 
@@ -273,7 +287,7 @@ func TestDecodeAcceptsRequestsWithoutConstraints(t *testing.T) {
 func TestGoalStartRejectsUnknownFields(t *testing.T) {
 	var request protocol.StartGoalRequest
 	err := decodeParams(json.RawMessage(`{"sessionId":"ses_1","objective":"finish","unexpected":true}`), &request)
-	if err == nil || !strings.Contains(err.Error(), `unknown field "unexpected"`) {
+	if err == nil || !strings.Contains(err.Error(), `unknown object member name "unexpected"`) {
 		t.Fatalf("unknown field = %v", err)
 	}
 }

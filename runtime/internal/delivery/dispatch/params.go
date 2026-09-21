@@ -3,9 +3,9 @@ package dispatch
 import (
 	"bytes"
 	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"maps"
 	"reflect"
 	"slices"
@@ -20,13 +20,8 @@ func decodeParams(raw json.RawMessage, dst any) error {
 	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
 		return errors.New("params must be an object, got null")
 	}
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(dst); err != nil {
+	if err := jsonv2.Unmarshal(raw, dst, jsonv2.RejectUnknownMembers(true)); err != nil {
 		return fmt.Errorf("decode params: %w", err)
-	}
-	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return errors.New("params must contain exactly one JSON object")
 	}
 	if err := rejectExplicitNulls(raw, reflect.TypeOf(dst).Elem(), "params"); err != nil {
 		return err
