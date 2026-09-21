@@ -5,7 +5,7 @@ import { useT } from "@/lib/i18n";
 import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { openWorkspaceSubagentRun } from "@/plugins/builtin/workspace/public/navigation";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { motion, radius, space, type as typeStep } from "@/styles/tokens.stylex";
+import { motion, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { delegatedRunSummary } from "../application/delegatedRunSummary";
 
 const styles = stylex.create({
@@ -28,6 +28,13 @@ const styles = stylex.create({
     paddingBlock: space.s2,
     paddingInline: space.s2,
     borderRadius: radius.row,
+    // The row is the view's main affordance and answered the pointer with nothing — measured,
+    // its background stayed transparent on hover while every other dock list washed at 5%.
+    // A row that opens something has to look like it does.
+    backgroundColor: { default: null, ":hover": surface.hover },
+    transitionProperty: "background-color",
+    transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
   },
   detail: { display: "flex", flexDirection: "column", gap: space.s0_5, minWidth: 0, flex: 1 },
   // The NAME takes the slack, so the outcome lands on the row's end rather than wherever the
