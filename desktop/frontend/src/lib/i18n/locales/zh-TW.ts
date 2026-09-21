@@ -1057,6 +1057,7 @@ export const zhTW: Record<string, string> = {
   "tool.meta.files_other": "{{count}} 個檔案",
   "tool.meta.exit": "結束碼 {{code}}",
   "tool.state.denied": "已拒絕",
+  "tool.state.failed": "失敗",
   "tool.group.read": "讀取 {{count}}",
   "tool.group.search": "搜尋 {{count}}",
   "tool.group.lookup": "查找 {{count}}",

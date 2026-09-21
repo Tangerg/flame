@@ -21,17 +21,21 @@ const tool = ({ runId = "run_1", ...overrides }: Partial<ToolCall> = {}): ToolCa
 });
 
 describe("toolCardModel", () => {
-  it("lets an error message own the collapsed detail line", () => {
-    expect(
-      toolCardModel(
-        t,
-        tool({
-          status: "err",
-          error: "permission denied",
-          args: '{"cmd":"rm"}',
-        }),
-      ),
-    ).toMatchObject({ detail: { kind: "prose", value: "permission denied" } });
+  it("keeps the subject of a failed call and reports the failure beside it", () => {
+    const model = toolCardModel(
+      t,
+      tool({ status: "err", error: "permission denied", command: "rm -rf /" }),
+    );
+
+    // The row still says WHICH call failed. The error used to take this slot, which is a
+    // single truncating line — so it hid the subject and could not be read in full itself.
+    expect(model.detail).toMatchObject({ value: "rm -rf /" });
+    expect(model.error).toBe("permission denied");
+  });
+
+  it("carries no failure for a call that did not fail", () => {
+    expect(toolCardModel(t, tool({ status: "ok" })).error).toBeUndefined();
+    expect(toolCardModel(t, tool({ status: "denied", error: "refused" })).error).toBeUndefined();
   });
 
   it("projects lifecycle flags and presentation data", () => {

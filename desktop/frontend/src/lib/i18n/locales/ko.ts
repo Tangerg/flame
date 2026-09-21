@@ -1081,6 +1081,7 @@ export const ko: Record<string, string> = {
   "tool.meta.files_other": "파일 {{count}}개",
   "tool.meta.exit": "종료 코드 {{code}}",
   "tool.state.denied": "거부됨",
+  "tool.state.failed": "실패",
   "tool.group.read": "읽기 {{count}}",
   "tool.group.search": "검색 {{count}}",
   "tool.group.lookup": "조회 {{count}}",

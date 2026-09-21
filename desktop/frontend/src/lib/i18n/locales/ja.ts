@@ -1094,6 +1094,7 @@ export const ja: Record<string, string> = {
   "tool.meta.files_other": "{{count}} 個のファイル",
   "tool.meta.exit": "終了コード {{code}}",
   "tool.state.denied": "拒否",
+  "tool.state.failed": "失敗",
   "tool.group.read": "読み取り {{count}}",
   "tool.group.search": "検索 {{count}}",
   "tool.group.lookup": "参照 {{count}}",

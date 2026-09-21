@@ -1140,6 +1140,7 @@ export const de: Record<string, string> = {
   "tool.meta.files_other": "{{count}} Dateien",
   "tool.meta.exit": "Exit {{code}}",
   "tool.state.denied": "abgelehnt",
+  "tool.state.failed": "fehlgeschlagen",
   "tool.group.read": "{{count}} gelesen",
   "tool.group.search": "{{count}} gesucht",
   "tool.group.lookup": "{{count}} nachgesehen",

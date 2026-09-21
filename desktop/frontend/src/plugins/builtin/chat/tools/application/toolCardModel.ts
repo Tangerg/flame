@@ -15,12 +15,13 @@ export interface ToolCardModel {
   denied: boolean;
   intent: ToolIntent;
   detail?: ToolDetail;
+  /** The failure, for a slot that can hold all of it. Never the row's `detail`. */
+  error?: string;
   diffStat?: { added: number; removed: number };
   metaItems: ToolMetaItem[];
 }
 
 export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
-  const isError = tool.status === "err";
   const intent = toolIntent(t, tool);
   const metaItems = toolMetaItems(t, tool);
   const diffStat = toolDiffStat(tool);
@@ -28,8 +29,12 @@ export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
     running: tool.status === "running",
     denied: tool.status === "denied",
     intent,
-    // Always `text`: a failure is prose, never a path, so it must not be left-truncated.
-    detail: isError && tool.error ? { kind: "prose", value: tool.error } : intent.detail,
+    // The SUBJECT, whatever the outcome. A failure used to take this slot, which cost the row
+    // the one thing that says which call failed — and bought the error nothing, because the
+    // slot is a single truncating line, so a message longer than the row was unreadable and
+    // uncopyable. It travels beside the row now, where it can be read in full.
+    detail: intent.detail,
+    ...(tool.status === "err" && tool.error ? { error: tool.error } : {}),
     diffStat,
     metaItems,
   };

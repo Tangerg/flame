@@ -1055,6 +1055,7 @@ export const zh: Record<string, string> = {
   "tool.meta.files_other": "{{count}} 个文件",
   "tool.meta.exit": "退出码 {{code}}",
   "tool.state.denied": "已拒绝",
+  "tool.state.failed": "失败",
   "tool.group.read": "读取 {{count}}",
   "tool.group.search": "搜索 {{count}}",
   "tool.group.lookup": "查找 {{count}}",
