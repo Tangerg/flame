@@ -1742,6 +1742,9 @@
     "Diff": {
       "type": "object",
       "properties": {
+        "baseline": {
+          "$ref": "#/$defs/DiffBaseline"
+        },
         "files": {
           "type": "array",
           "items": {
@@ -1754,7 +1757,65 @@
         "truncated": {
           "type": "boolean"
         }
-      }
+      },
+      "required": [
+        "baseline"
+      ]
+    },
+    "DiffBaseline": {
+      "type": "object",
+      "properties": {
+        "commit": {
+          "type": "string",
+          "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "type": {
+          "$ref": "#/$defs/DiffBaselineType"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "type": {
+              "const": "head"
+            }
+          },
+          "required": [
+            "commit",
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "mergeBase"
+            }
+          },
+          "required": [
+            "commit",
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "commit": false,
+            "type": {
+              "const": "emptyTree"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      ]
+    },
+    "DiffBaselineType": {
+      "type": "string",
+      "enum": [
+        "head",
+        "mergeBase",
+        "emptyTree"
+      ]
     },
     "DiffFormat": {
       "type": "string",

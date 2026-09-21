@@ -55,49 +55,73 @@ type DiffFile struct {
 	Rows         []Row
 }
 
+type BaselineType string
+
+const (
+	BaselineHead      BaselineType = "head"
+	BaselineMergeBase BaselineType = "mergeBase"
+	BaselineEmptyTree BaselineType = "emptyTree"
+)
+
+type Baseline struct {
+	Type   BaselineType
+	Commit string
+}
+
+type DiffResult struct {
+	Baseline  Baseline
+	Files     []DiffFile
+	Truncated bool
+}
+
+type RawDiffResult struct {
+	Baseline Baseline
+	Patch    string
+}
+
 // Diff returns a whole-file parsed projection for dir under the given mode,
 // optionally scoped to relPath (relative to dir). Worktree mode includes
 // untracked files through Git's no-index patch semantics. maxFiles, maxRows,
 // and maxBytes are hard pre-materialization boundaries; truncated reports a
 // complete-file cut. Repository and process sentinels remain distinguishable.
-func Diff(ctx context.Context, dir, relPath string, mode Mode, maxFiles, maxRows, maxBytes int) ([]DiffFile, bool, error) {
-	patch, untracked, err := completeDiff(ctx, dir, relPath, mode, maxBytes)
+func Diff(ctx context.Context, dir, relPath string, mode Mode, maxFiles, maxRows, maxBytes int) (DiffResult, error) {
+	patch, untracked, baseline, err := completeDiff(ctx, dir, relPath, mode, maxBytes)
 	if err != nil {
-		return nil, false, err
+		return DiffResult{}, err
 	}
 	files, truncated, err := parseUnifiedDiff(patch, maxFiles, maxRows)
 	if err != nil {
-		return nil, false, err
+		return DiffResult{}, err
 	}
 	for index := range files {
 		if _, ok := untracked[files[index].Path]; ok {
 			files[index].Status = StatusUntracked
 		}
 	}
-	return files, truncated, nil
+	return DiffResult{Baseline: baseline, Files: files, Truncated: truncated}, nil
 }
 
 // RawDiff returns at most maxBytes of complete raw unified patch text. Worktree
 // mode appends per-untracked no-index patches so the raw view matches the
 // parsed one; an oversized aggregate fails instead of returning a partial patch.
-func RawDiff(ctx context.Context, dir, relPath string, mode Mode, maxBytes int) (string, error) {
-	patch, _, err := completeDiff(ctx, dir, relPath, mode, maxBytes)
+func RawDiff(ctx context.Context, dir, relPath string, mode Mode, maxBytes int) (RawDiffResult, error) {
+	patch, _, baseline, err := completeDiff(ctx, dir, relPath, mode, maxBytes)
 	if err != nil {
-		return "", err
+		return RawDiffResult{}, err
 	}
-	return string(patch), nil
+	return RawDiffResult{Baseline: baseline, Patch: string(patch)}, nil
 }
 
-func completeDiff(ctx context.Context, dir, relPath string, mode Mode, maxBytes int) ([]byte, map[string]struct{}, error) {
+func completeDiff(ctx context.Context, dir, relPath string, mode Mode, maxBytes int) ([]byte, map[string]struct{}, Baseline, error) {
 	if maxBytes <= 0 {
-		return nil, nil, fmt.Errorf("%w: diff requires a positive byte limit", ErrResultTooLarge)
+		return nil, nil, Baseline{}, fmt.Errorf("%w: diff requires a positive byte limit", ErrResultTooLarge)
 	}
-	patch, untrackedPaths, err := diffSources(ctx, dir, relPath, mode)
+	patch, untrackedPaths, baseline, err := diffSources(ctx, dir, relPath, mode)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, Baseline{}, err
 	}
 	if len(patch) > maxBytes {
-		return nil, nil, fmt.Errorf("%w: aggregate diff exceeds %d bytes", ErrResultTooLarge, maxBytes)
+		return nil, nil, Baseline{}, fmt.Errorf("%w: aggregate diff exceeds %d bytes", ErrResultTooLarge, maxBytes)
 	}
 	untracked := make(map[string]struct{}, len(untrackedPaths))
 	for _, path := range untrackedPaths {
@@ -111,14 +135,14 @@ func completeDiff(ctx context.Context, dir, relPath string, mode Mode, maxBytes 
 			"diff", "--no-index", "--no-ext-diff", "--no-textconv", "--no-color", "--", os.DevNull, path,
 		)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, Baseline{}, err
 		}
 		patch, err = appendDiffPatch(patch, out, maxBytes)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, Baseline{}, err
 		}
 	}
-	return patch, untracked, nil
+	return patch, untracked, baseline, nil
 }
 
 func appendDiffPatch(existing, addition []byte, maxBytes int) ([]byte, error) {

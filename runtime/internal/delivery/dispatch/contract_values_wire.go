@@ -501,6 +501,10 @@ func registerWorkspaceValues(s *Shapes) {
 		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: workspaceChangeConstraints})
 	}
 	s.valueConstraint(FieldConstraintSpec{
+		GoType:      typeOf[protocol.DiffBaseline](),
+		Constraints: []FieldConstraint{{Field: "commit", Kind: ConstraintPattern, Value: `^([0-9a-f]{40}|[0-9a-f]{64})$`}},
+	})
+	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.DiffRow](),
 		Constraints: []FieldConstraint{
 			{Field: "leftLine", Kind: ConstraintPositive},

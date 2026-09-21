@@ -38,12 +38,12 @@ func (VCS) StructuredDiff(
 	base bool,
 	maxFiles, maxRows, maxBytes int,
 ) (workspaceapp.StructuredDiffResult, error) {
-	files, truncated, err := Diff(ctx, root, path, base, maxFiles, maxRows, maxBytes)
+	result, err := Diff(ctx, root, path, base, maxFiles, maxRows, maxBytes)
 	if err != nil {
 		return workspaceapp.StructuredDiffResult{}, vcsError(err)
 	}
-	out := make([]workspaceapp.FileDiff, 0, len(files))
-	for _, file := range files {
+	out := make([]workspaceapp.FileDiff, 0, len(result.Files))
+	for _, file := range result.Files {
 		status, ok := fileStatus(file.Status)
 		if !ok {
 			return workspaceapp.StructuredDiffResult{}, fmt.Errorf("workspace: unsupported git status %q", file.Status)
@@ -63,12 +63,18 @@ func (VCS) StructuredDiff(
 			Binary: file.Binary, Added: file.Added, Removed: file.Removed, Rows: rows,
 		})
 	}
-	return workspaceapp.StructuredDiffResult{Files: out, Truncated: truncated}, nil
+	return workspaceapp.StructuredDiffResult{
+		Baseline: workspaceapp.DiffBaseline{Type: workspaceapp.DiffBaselineType(result.Baseline.Type), Commit: result.Baseline.Commit},
+		Files:    out, Truncated: result.Truncated,
+	}, nil
 }
 
-func (VCS) RawDiff(ctx context.Context, root, path string, base bool, maxBytes int) (string, error) {
-	patch, err := RawDiff(ctx, root, path, base, maxBytes)
-	return patch, vcsError(err)
+func (VCS) RawDiff(ctx context.Context, root, path string, base bool, maxBytes int) (workspaceapp.RawDiffResult, error) {
+	result, err := RawDiff(ctx, root, path, base, maxBytes)
+	return workspaceapp.RawDiffResult{
+		Baseline: workspaceapp.DiffBaseline{Type: workspaceapp.DiffBaselineType(result.Baseline.Type), Commit: result.Baseline.Commit},
+		Patch:    result.Patch,
+	}, vcsError(err)
 }
 
 func fileStatus(status git.Status) (workspaceapp.FileStatus, bool) {

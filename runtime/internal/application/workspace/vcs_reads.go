@@ -3,10 +3,12 @@ package workspace
 import (
 	"cmp"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"slices"
+
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 const (
@@ -83,10 +85,45 @@ type FileDiff struct {
 	Rows         []DiffRow
 }
 
-// StructuredDiffResult carries an honestly bounded whole-file projection.
+type DiffBaselineType string
+
+const (
+	DiffBaselineHead      DiffBaselineType = "head"
+	DiffBaselineMergeBase DiffBaselineType = "mergeBase"
+	DiffBaselineEmptyTree DiffBaselineType = "emptyTree"
+)
+
+// DiffBaseline identifies the immutable Git object used by the comparison.
+type DiffBaseline struct {
+	Type   DiffBaselineType
+	Commit string
+}
+
+func (b DiffBaseline) Validate() error {
+	switch b.Type {
+	case DiffBaselineEmptyTree:
+		if b.Commit == "" {
+			return nil
+		}
+	case DiffBaselineHead, DiffBaselineMergeBase:
+		if len(b.Commit) == 40 || len(b.Commit) == 64 {
+			if _, err := hex.DecodeString(b.Commit); err == nil {
+				return nil
+			}
+		}
+	}
+	return errors.New("workspace: invalid diff baseline")
+}
+
 type StructuredDiffResult struct {
+	Baseline  DiffBaseline
 	Files     []FileDiff
 	Truncated bool
+}
+
+type RawDiffResult struct {
+	Baseline DiffBaseline
+	Patch    string
 }
 
 // GitReader is the application-owned port for working-tree status and diff
@@ -95,7 +132,7 @@ type StructuredDiffResult struct {
 type GitReader interface {
 	Changes(ctx context.Context, root string, maxChanges int) ([]FileChange, error)
 	StructuredDiff(ctx context.Context, root, path string, base bool, maxFiles, maxRows, maxBytes int) (StructuredDiffResult, error)
-	RawDiff(ctx context.Context, root, path string, base bool, maxBytes int) (string, error)
+	RawDiff(ctx context.Context, root, path string, base bool, maxBytes int) (RawDiffResult, error)
 }
 
 // DiffInput selects a working-tree or merge-base diff, optionally as raw text.
@@ -142,6 +179,7 @@ func (l DiffRowLimit) Rows() (int, error) {
 
 // Diff is a structured or raw workspace diff.
 type Diff struct {
+	Baseline  DiffBaseline
 	Patch     string
 	Files     []FileDiff
 	Truncated bool
@@ -186,14 +224,17 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		}
 	}
 	if input.Raw {
-		patch, rawDiffErr := v.git.RawDiff(ctx, root, path, input.Base, MaxWorkspaceDiffBytes)
+		result, rawDiffErr := v.git.RawDiff(ctx, root, path, input.Base, MaxWorkspaceDiffBytes)
 		if rawDiffErr != nil {
 			return Diff{}, rawDiffErr
 		}
-		if len(patch) > MaxWorkspaceDiffBytes {
+		if len(result.Patch) > MaxWorkspaceDiffBytes {
 			return Diff{}, fmt.Errorf("%w: raw diff exceeds %d bytes", ErrVCSResultTooLarge, MaxWorkspaceDiffBytes)
 		}
-		return Diff{Patch: patch}, nil
+		if err := result.Baseline.Validate(); err != nil {
+			return Diff{}, err
+		}
+		return Diff{Baseline: result.Baseline, Patch: result.Patch}, nil
 	}
 	rowLimit, err := input.RowLimit.Rows()
 	if err != nil {
@@ -211,6 +252,9 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 	if err != nil {
 		return Diff{}, err
 	}
+	if err := result.Baseline.Validate(); err != nil {
+		return Diff{}, err
+	}
 	files, truncated := limitDiffFiles(result.Files, MaxWorkspaceDiffFiles, rowLimit, MaxWorkspaceDiffBytes)
 	paths := make(map[string]struct{}, len(files))
 	for _, file := range files {
@@ -219,7 +263,7 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		}
 		paths[file.Path] = struct{}{}
 	}
-	return Diff{Files: files, Truncated: result.Truncated || truncated}, nil
+	return Diff{Baseline: result.Baseline, Files: files, Truncated: result.Truncated || truncated}, nil
 }
 
 func limitDiffFiles(files []FileDiff, maxFiles, maxRows, maxBytes int) ([]FileDiff, bool) {

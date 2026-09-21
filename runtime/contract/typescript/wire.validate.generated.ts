@@ -63,6 +63,8 @@ export type WireTypeName =
   | "DeleteScheduleRequest"
   | "DeleteSessionRequest"
   | "Diff"
+  | "DiffBaseline"
+  | "DiffBaselineType"
   | "DiffFormat"
   | "DiffMode"
   | "DiffRow"
@@ -877,10 +879,30 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
   Diff: object({
+    baseline: ref(() => CHECKS.DiffBaseline),
     files: array(ref(() => CHECKS.FileDiff)),
     patch: text(),
     truncated: flag(),
-  }, []),
+  }, ["baseline"]),
+  DiffBaseline: allOf([
+    object({
+      commit: allOf([text(), pattern("^([0-9a-f]{40}|[0-9a-f]{64})$")]),
+      type: ref(() => CHECKS.DiffBaselineType),
+    }, []),
+    oneOf([
+      fields({
+        type: literal("head"),
+      }, ["commit", "type"]),
+      fields({
+        type: literal("mergeBase"),
+      }, ["commit", "type"]),
+      fields({
+        commit: absent(),
+        type: literal("emptyTree"),
+      }, ["type"]),
+    ]),
+  ]),
+  DiffBaselineType: enumOf(["head", "mergeBase", "emptyTree"]),
   DiffFormat: enumOf(["rows", "raw"]),
   DiffMode: enumOf(["worktree", "base"]),
   DiffRow: allOf([

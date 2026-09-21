@@ -411,6 +411,14 @@ Forbidden on every variant: `durable`.
 | `toolCall` | `id`, `runId`, `status`, `startedAt`, `tool` | `finishedAt`, `durationMillis`, `safetyClass`, `approvalDecision`, `error` |
 | `compaction` | `id`, `runId`, `status`, `createdAt`, `summary` | `droppedMessages` |
 
+### `DiffBaseline`
+
+| tag | required | optional |
+| --- | --- | --- |
+| `head` | `commit` | — |
+| `mergeBase` | `commit` | — |
+| `emptyTree` | — | — |
+
 ### `DiffRow`
 
 | tag | required | optional |
@@ -721,6 +729,7 @@ TypeScript validator from this single registry projection.
 | `WorkspaceFileChange` | `path` | `nonEmpty` |
 | `WorkspaceFileChange` | `added` | `nonNegative` |
 | `WorkspaceFileChange` | `removed` | `nonNegative` |
+| `DiffBaseline` | `commit` | `pattern("^([0-9a-f]{40}|[0-9a-f]{64})$")` |
 | `DiffRow` | `leftLine` | `positive` |
 | `DiffRow` | `rightLine` | `positive` |
 | `GetDiffRequest` | `limit` | `positive` |

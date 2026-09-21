@@ -60,14 +60,15 @@ func (s *Handler) GetWorkspaceDiff(ctx context.Context, in protocol.GetDiffReque
 	if err != nil {
 		return nil, wireWorkspaceError(err)
 	}
+	baseline := protocol.DiffBaseline{Type: protocol.DiffBaselineType(diff.Baseline.Type), Commit: diff.Baseline.Commit}
 	if in.Format == protocol.DiffFormatRaw {
-		return &protocol.Diff{Patch: diff.Patch}, nil
+		return &protocol.Diff{Baseline: baseline, Patch: diff.Patch}, nil
 	}
 	files, err := presentDiffFiles(diff.Files)
 	if err != nil {
 		return nil, err
 	}
-	return &protocol.Diff{Files: files, Truncated: diff.Truncated}, nil
+	return &protocol.Diff{Baseline: baseline, Files: files, Truncated: diff.Truncated}, nil
 }
 
 func presentDiffFiles(files []workspaceapp.FileDiff) ([]protocol.FileDiff, error) {

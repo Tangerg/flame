@@ -36,6 +36,7 @@ var wireEnums = map[reflect.Type][]string{
 	reflect.TypeFor[protocol.ContentBlockType]():                  {string(protocol.ContentBlockText), string(protocol.ContentBlockImage)},
 	reflect.TypeFor[protocol.SuppressibleRunEventType]():          {string(protocol.SuppressibleRunSegmentProgress), string(protocol.SuppressibleRunItemDelta)},
 	reflect.TypeFor[protocol.DiffFormat]():                        {string(protocol.DiffFormatRows), string(protocol.DiffFormatRaw)},
+	reflect.TypeFor[protocol.DiffBaselineType]():                  {string(protocol.DiffBaselineHead), string(protocol.DiffBaselineMergeBase), string(protocol.DiffBaselineEmptyTree)},
 	reflect.TypeFor[protocol.DiffMode]():                          {string(protocol.DiffModeWorktree), string(protocol.DiffModeBase)},
 	reflect.TypeFor[protocol.DiffRowType]():                       {string(protocol.DiffRowHunk), string(protocol.DiffRowContext), string(protocol.DiffRowAdded), string(protocol.DiffRowDeleted)},
 	reflect.TypeFor[protocol.ExportFormat]():                      {string(protocol.ExportFormatMarkdown), string(protocol.ExportFormatJSON)},

@@ -29,14 +29,30 @@ type GetDiffRequest struct {
 	Limit     *int         `json:"limit,omitempty"`
 }
 
+// DiffBaseline names the exact comparison source. An unborn repository compares
+// against the empty tree; head and mergeBase carry resolved commit identities.
+type DiffBaselineType string
+
+const (
+	DiffBaselineHead      DiffBaselineType = "head"
+	DiffBaselineMergeBase DiffBaselineType = "mergeBase"
+	DiffBaselineEmptyTree DiffBaselineType = "emptyTree"
+)
+
+type DiffBaseline struct {
+	Type   DiffBaselineType `json:"type"`
+	Commit string           `json:"commit,omitempty"`
+}
+
 // Diff is the workspace.diff.get result: a sum type where Files is
 // populated for format=rows (per-file structured diff), Patch for format=raw
 // (the unified patch string). Truncated self-describes a row-limit cut at a
 // file boundary, so a caller can distinguish a partial result from a complete diff.
 type Diff struct {
-	Files     []FileDiff `json:"files,omitempty"`
-	Patch     string     `json:"patch,omitempty"`
-	Truncated bool       `json:"truncated,omitempty"`
+	Baseline  DiffBaseline `json:"baseline"`
+	Files     []FileDiff   `json:"files,omitempty"`
+	Patch     string       `json:"patch,omitempty"`
+	Truncated bool         `json:"truncated,omitempty"`
 }
 
 // FileStatus is the past-tense working-tree status vocabulary shared by

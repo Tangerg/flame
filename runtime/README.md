@@ -158,6 +158,8 @@ The concrete local search tools return explicit failed Tool outcomes for unsucce
 
 Structured diff code rows always carry `code`, including `""` for a blank line; hunk rows omit it. The Go binding represents this presence with `DiffRow.Code *string`. Go consumers must migrate string construction and access; JSON consumers retain the existing required-string contract. Missing or null code remains invalid for code rows. No persisted-data migration is needed.
 
+Workspace diff responses require `baseline`: `head` and `mergeBase` include the exact resolved commit; `emptyTree` identifies an unborn repository. The comparison uses that resolved object, even if a branch reference moves later. Worktree mode includes untracked files; base mode compares tracked working-tree contents against the merge base. Neither mode attributes all edits to an Agent or provides an atomic snapshot of concurrent filesystem edits. Update consumers together; no stored diff migration is needed.
+
 ## Steer admission
 
 `runs.steer` and `Runtime.SteerRun` return `userItemId`, the identity reserved for that input. Success proves admission to the addressed active Segment, not model consumption. Only the matching committed user Item proves application at a model boundary. Clients reconcile by identity, including when the Item arrives before its receipt; identical text or attachments do not identify a command. A rejected steer must not silently become a new Run.

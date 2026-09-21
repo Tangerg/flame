@@ -314,10 +314,18 @@ export interface DeleteSessionRequest {
 }
 
 export interface Diff {
+  baseline: DiffBaseline;
   files?: FileDiff[];
   patch?: string;
   truncated?: boolean;
 }
+
+export type DiffBaseline =
+  | { type: "head"; commit: string }
+  | { type: "mergeBase"; commit: string }
+  | { type: "emptyTree" };
+
+export type DiffBaselineType = "head" | "mergeBase" | "emptyTree";
 
 export type DiffFormat = "rows" | "raw";
 
@@ -1665,6 +1673,7 @@ export const WIRE_ENUMS = {
   CapabilityRequirementType: ["feature", "interruptType", "runtimeTopic"],
   ChangeStatus: ["added", "deleted", "modified", "moved"],
   ContentBlockType: ["text", "image"],
+  DiffBaselineType: ["head", "mergeBase", "emptyTree"],
   DiffFormat: ["rows", "raw"],
   DiffMode: ["worktree", "base"],
   DiffRowType: ["hunk", "context", "added", "deleted"],

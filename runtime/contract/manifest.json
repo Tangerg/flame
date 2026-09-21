@@ -3577,6 +3577,27 @@
       ]
     },
     {
+      "type": "DiffBaseline",
+      "discriminator": "type",
+      "variants": [
+        {
+          "tag": "head",
+          "required": [
+            "commit"
+          ]
+        },
+        {
+          "tag": "mergeBase",
+          "required": [
+            "commit"
+          ]
+        },
+        {
+          "tag": "emptyTree"
+        }
+      ]
+    },
+    {
       "type": "DiffRow",
       "discriminator": "type",
       "variants": [
@@ -6848,6 +6869,15 @@
         {
           "field": "removed",
           "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "DiffBaseline",
+      "rules": [
+        {
+          "field": "commit",
+          "constraint": "pattern(\"^([0-9a-f]{40}|[0-9a-f]{64})$\")"
         }
       ]
     },

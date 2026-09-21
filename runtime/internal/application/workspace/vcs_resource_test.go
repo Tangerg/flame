@@ -29,11 +29,11 @@ func (r *resourceGitReader) StructuredDiff(_ context.Context, _, _ string, _ boo
 	for index := range files {
 		files[index].Rows = slices.Clone(files[index].Rows)
 	}
-	return StructuredDiffResult{Files: files}, nil
+	return StructuredDiffResult{Baseline: DiffBaseline{Type: DiffBaselineEmptyTree}, Files: files}, nil
 }
 
-func (r *resourceGitReader) RawDiff(context.Context, string, string, bool, int) (string, error) {
-	return r.patch, nil
+func (r *resourceGitReader) RawDiff(context.Context, string, string, bool, int) (RawDiffResult, error) {
+	return RawDiffResult{Baseline: DiffBaseline{Type: DiffBaselineEmptyTree}, Patch: r.patch}, nil
 }
 
 func TestNewVCSRequiresCompleteDependencies(t *testing.T) {

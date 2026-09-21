@@ -19,6 +19,7 @@ func TestBaseDiffUsesExactBranchReferences(t *testing.T) {
 				gitTestCommand(t, dir, "update-ref", "refs/remotes/origin/trunk", "HEAD")
 				gitTestCommand(t, dir, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/trunk")
 			}
+			expectedBase := strings.TrimSpace(gitTestCommandOutput(t, dir, "rev-parse", "HEAD"))
 			gitTestCommand(t, dir, "checkout", "-b", "feature")
 			write(t, dir, "a.txt", "feature change\n")
 			gitTestCommand(t, dir, "commit", "-am", "feature")
@@ -35,8 +36,11 @@ func TestBaseDiffUsesExactBranchReferences(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(patch, "+feature change") {
-				t.Fatalf("base diff used a shadowing ref: %q", patch)
+			if patch.Baseline.Type != BaselineMergeBase || patch.Baseline.Commit != expectedBase {
+				t.Fatalf("baseline = %+v, want merge base %s", patch.Baseline, expectedBase)
+			}
+			if !strings.Contains(patch.Patch, "+feature change") {
+				t.Fatalf("base diff used a shadowing ref: %q", patch.Patch)
 			}
 			files, err := testDiff(t.Context(), dir, "", Base)
 			if err != nil || len(files) != 1 || files[0].Path != "a.txt" {
@@ -102,4 +106,44 @@ func TestBaseDiffKeepsExpectedMissingBaseOutcomes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDiffReportsExactHeadAndUnbornBaseline(t *testing.T) {
+	t.Run("head", func(t *testing.T) {
+		root := initRepo(t)
+		expected := strings.TrimSpace(gitTestCommandOutput(t, root, "rev-parse", "HEAD"))
+		write(t, root, "a.txt", "changed\n")
+		result, err := Diff(t.Context(), root, "", Worktree, 100, 100, testMaxDiffBytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.Baseline != (Baseline{Type: BaselineHead, Commit: expected}) {
+			t.Fatalf("baseline = %+v", result.Baseline)
+		}
+	})
+	t.Run("unborn staged and untracked", func(t *testing.T) {
+		root := t.TempDir()
+		gitTestCommand(t, root, "init", "-q")
+		write(t, root, "staged.txt", "staged\n")
+		gitTestCommand(t, root, "add", "staged.txt")
+		write(t, root, "untracked.txt", "untracked\n")
+		result, err := Diff(t.Context(), root, "", Worktree, 100, 100, testMaxDiffBytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.Baseline != (Baseline{Type: BaselineEmptyTree}) {
+			t.Fatalf("baseline = %+v", result.Baseline)
+		}
+		statuses := map[string]Status{}
+		for _, file := range result.Files {
+			statuses[file.Path] = file.Status
+		}
+		if len(statuses) != 2 || statuses["staged.txt"] != StatusAdded || statuses["untracked.txt"] != StatusUntracked {
+			t.Fatalf("files = %+v", result.Files)
+		}
+		raw, err := RawDiff(t.Context(), root, "", Worktree, testMaxDiffBytes)
+		if err != nil || raw.Baseline != result.Baseline || !strings.Contains(raw.Patch, "staged.txt") || !strings.Contains(raw.Patch, "untracked.txt") {
+			t.Fatalf("raw = %+v, %v", raw, err)
+		}
+	})
 }

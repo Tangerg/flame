@@ -1603,6 +1603,16 @@ func (a ArtifactItem) ValidateWire() error {
 	)
 }
 
+func (d DiffBaseline) ValidateWire() error {
+	return collectWireViolations("DiffBaseline",
+		optionalTextPattern("commit", d.Commit, "^([0-9a-f]{40}|[0-9a-f]{64})$"),
+		closedEnum("type", string(d.Type), []string{"head", "mergeBase", "emptyTree"}, false),
+		requiredWhen(wireFieldEquals(d, "type", "head"), "commit", d),
+		requiredWhen(wireFieldEquals(d, "type", "mergeBase"), "commit", d),
+		forbiddenWhen(wireFieldEquals(d, "type", "emptyTree"), "commit", d),
+	)
+}
+
 func (d DiffRow) ValidateWire() error {
 	return collectWireViolations("DiffRow",
 		optionalPositiveScalarNumber("leftLine", d.LeftLine),

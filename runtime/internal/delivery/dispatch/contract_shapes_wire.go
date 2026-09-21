@@ -492,6 +492,11 @@ func registerArtifactUnions(s *Shapes) {
 }
 
 func registerDiffUnions(s *Shapes) {
+	s.union(UnionSpec{GoType: typeOf[protocol.DiffBaseline](), Discriminator: "type", Variants: []VariantSpec{
+		{Tag: "head", Required: []string{"commit"}},
+		{Tag: "mergeBase", Required: []string{"commit"}},
+		{Tag: "emptyTree"},
+	}})
 	// A diff row's godoc has always described a union — a hunk carries text, a context
 	// row carries both line numbers, an added row only the right one — and clients
 	// modeled it as one. Nothing said so on the wire, so the generated shape permitted

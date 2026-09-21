@@ -10,13 +10,13 @@ import (
 
 // diffSources runs the tracked-changes git diff for the mode and returns the
 // patch text plus the untracked file list (worktree mode only).
-func diffSources(ctx context.Context, dir, relPath string, mode Mode) (patch []byte, untracked []string, err error) {
+func diffSources(ctx context.Context, dir, relPath string, mode Mode) (patch []byte, untracked []string, baseline Baseline, err error) {
 	repository, err := IsRepo(ctx, dir)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, Baseline{}, err
 	}
 	if !repository {
-		return nil, nil, ErrNotRepo
+		return nil, nil, Baseline{}, ErrNotRepo
 	}
 
 	args := []string{"diff", "--no-ext-diff", "--no-textconv", "--no-color", "-M", "--relative"}
@@ -24,37 +24,45 @@ func diffSources(ctx context.Context, dir, relPath string, mode Mode) (patch []b
 	case Base:
 		base, berr := mergeBase(ctx, dir)
 		if berr != nil {
-			return nil, nil, berr
+			return nil, nil, Baseline{}, berr
 		}
+		baseline = Baseline{Type: BaselineMergeBase, Commit: base}
 		args = append(args, base)
 	default: // Worktree
 		head, headErr := runAllowingExitCode(ctx, dir, 1, "rev-parse", "--verify", "--quiet", "HEAD")
 		if headErr != nil {
-			return nil, nil, headErr
+			return nil, nil, Baseline{}, headErr
 		}
-		if len(bytes.TrimSpace(head)) == 0 {
-			untracked, err = untrackedPaths(ctx, dir, relPath)
-			return nil, untracked, err
+		commit := strings.TrimSpace(string(head))
+		if commit == "" {
+			empty, emptyErr := run(ctx, dir, "hash-object", "-t", "tree", "--stdin")
+			if emptyErr != nil {
+				return nil, nil, Baseline{}, emptyErr
+			}
+			baseline = Baseline{Type: BaselineEmptyTree}
+			args = append(args, strings.TrimSpace(string(empty)))
+		} else {
+			baseline = Baseline{Type: BaselineHead, Commit: commit}
+			args = append(args, commit)
 		}
-		args = append(args, "HEAD")
 	}
 	scopePath, err := gitPathRelativeToWorkspace(dir, relPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, Baseline{}, err
 	}
 	args = append(args, "--", scopePath)
 	patch, err = run(ctx, dir, args...)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, Baseline{}, err
 	}
 
 	if mode == Worktree {
 		untracked, err = untrackedPaths(ctx, dir, relPath)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, Baseline{}, err
 		}
 	}
-	return patch, untracked, nil
+	return patch, untracked, baseline, nil
 }
 
 func gitPathRelativeToWorkspace(dir, path string) (string, error) {

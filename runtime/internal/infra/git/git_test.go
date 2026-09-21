@@ -52,8 +52,8 @@ func testChanges(ctx context.Context, dir string) ([]FileChange, error) {
 const testMaxDiffBytes = 64 << 20
 
 func testDiff(ctx context.Context, dir, path string, mode Mode) ([]DiffFile, error) {
-	files, _, err := Diff(ctx, dir, path, mode, 5_000, 5_000, testMaxDiffBytes)
-	return files, err
+	result, err := Diff(ctx, dir, path, mode, 5_000, 5_000, testMaxDiffBytes)
+	return result.Files, err
 }
 
 func TestRepositoryReadsPreserveCancellation(t *testing.T) {
@@ -98,8 +98,8 @@ func TestWorktreeDiffKeepsUnbornRepositorySemantics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RawDiff: %v", err)
 	}
-	if !strings.Contains(patch, "new.txt") {
-		t.Fatalf("RawDiff = %q, want new.txt", patch)
+	if !strings.Contains(patch.Patch, "new.txt") {
+		t.Fatalf("RawDiff = %q, want new.txt", patch.Patch)
 	}
 }
 
