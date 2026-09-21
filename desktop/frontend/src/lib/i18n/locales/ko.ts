@@ -844,6 +844,8 @@ export const ko: Record<string, string> = {
   "skillProposals.hideBody": "지침 숨기기",
   "skillProposals.empty.title": "검토할 제안이 없습니다",
   "skillProposals.empty.sub": "에이전트가 제안한 스킬이 승인 대기 상태로 여기에 도착합니다.",
+  "skillProposals.conflict":
+    "이 제안은 검토 당시 상태로 적용할 수 없습니다. 현재 제안을 다시 검토한 후 결정하세요.",
   "skillProposals.error": "제안을 처리할 수 없습니다.",
   "workspace.view.title.agentMemory": "에이전트 메모리",
   "agentMemory.title": "에이전트 메모리",

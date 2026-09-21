@@ -742,6 +742,8 @@ export const en: Record<string, string> = {
   "skillProposals.hideBody": "Hide instructions",
   "skillProposals.empty.title": "No proposals to review",
   "skillProposals.empty.sub": "Skills the agent proposes land here for your approval.",
+  "skillProposals.conflict":
+    "This proposal can no longer be applied as reviewed. Review the current proposal before deciding again.",
   "skillProposals.error": "Couldn't act on the proposal.",
   "workspace.view.title.agentMemory": "Agent memory",
   "agentMemory.title": "Agent memory",

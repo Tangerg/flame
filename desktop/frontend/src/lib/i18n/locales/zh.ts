@@ -871,6 +871,7 @@ export const zh: Record<string, string> = {
   "skillProposals.hideBody": "收起指令",
   "skillProposals.empty.title": "没有待审阅的提案",
   "skillProposals.empty.sub": "智能体提出的技能会落在这里等你批准。",
+  "skillProposals.conflict": "此提案已无法按原审阅状态应用。请重新审阅当前提案后再决定。",
   "skillProposals.error": "无法处理该提案。",
   "workspace.view.title.agentMemory": "智能体记忆",
   "agentMemory.title": "智能体记忆",

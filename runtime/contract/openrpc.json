@@ -2816,6 +2816,10 @@
       },
       "errors": [
         {
+          "code": -32019,
+          "message": "revision_conflict"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -2900,6 +2904,10 @@
         }
       },
       "errors": [
+        {
+          "code": -32019,
+          "message": "revision_conflict"
+        },
         {
           "code": -32006,
           "message": "capability_not_negotiated"

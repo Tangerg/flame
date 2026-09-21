@@ -47,8 +47,8 @@ Protocol `2026-09-22` · 87 methods
 | `skills.library.archive` | command | unary | replayResponse | none | none | — | `skills` | `capability_not_negotiated` |
 | `skills.library.restore` | command | unary | replayResponse | none | none | — | `skills` | `capability_not_negotiated` |
 | `skills.proposals.list` | query | unary | none | none | none | — | `skills` | `capability_not_negotiated` |
-| `skills.proposals.approve` | command | unary | replayResponse | none | none | — | `skills` | `capability_not_negotiated` |
-| `skills.proposals.reject` | command | unary | replayResponse | none | none | — | `skills` | `capability_not_negotiated` |
+| `skills.proposals.approve` | command | unary | replayResponse | none | none | — | `skills` | `revision_conflict`, `capability_not_negotiated` |
+| `skills.proposals.reject` | command | unary | replayResponse | none | none | — | `skills` | `revision_conflict`, `capability_not_negotiated` |
 | `recipes.list` | query | unary | none | none | none | — | — | `workspace_unavailable` |
 | `agentDocs.list` | query | unary | none | none | none | — | — | `workspace_unavailable` |
 | `mcp.servers.list` | query | unary | none | none | none | — | `mcp` | `capability_not_negotiated` |

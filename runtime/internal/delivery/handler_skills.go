@@ -188,12 +188,8 @@ func mapSkillProposalErr(err error) error {
 	switch {
 	case err == nil:
 		return nil
-	case errors.Is(err, skills.ErrConflict):
-		return fmt.Errorf("%w: a Skill with that name already exists", protocol.ErrInvalidParams)
-	case errors.Is(err, skills.ErrProposalChanged):
-		return fmt.Errorf("%w: the stored proposal changed", protocol.ErrInvalidParams)
-	case errors.Is(err, skills.ErrNotFound):
-		return fmt.Errorf("%w: no such proposal", protocol.ErrInvalidParams)
+	case errors.Is(err, skills.ErrConflict), errors.Is(err, skills.ErrProposalChanged), errors.Is(err, skills.ErrNotFound):
+		return fmt.Errorf("%w: proposal review is stale: %w", protocol.ErrRevisionConflict, err)
 	default:
 		return wireWorkspaceError(err)
 	}

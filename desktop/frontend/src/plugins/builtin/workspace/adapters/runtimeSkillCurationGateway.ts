@@ -1,7 +1,10 @@
 import { getContainer } from "@/main/container";
-import type { FlameClient } from "@/rpc";
+import { isErrorType, type FlameClient } from "@/rpc";
 import { SkillCurationOwner } from "../application/skillCuration";
-import type { SkillCurationGateway } from "../application/ports/skillCurationGateway";
+import {
+  SkillProposalRevisionConflictError,
+  type SkillCurationGateway,
+} from "../application/ports/skillCurationGateway";
 
 function runtimeSkillCurationGateway(client: FlameClient): SkillCurationGateway {
   return {
@@ -10,12 +13,24 @@ function runtimeSkillCurationGateway(client: FlameClient): SkillCurationGateway 
     async approveProposal(handle) {
       const { workspace, ...ref } = handle;
       const resources = await client.workspaces.open({ path: workspace });
-      await resources.skills.approveProposal(ref);
+      try {
+        await resources.skills.approveProposal(ref);
+      } catch (error) {
+        if (isErrorType(error, "revision_conflict"))
+          throw new SkillProposalRevisionConflictError(error);
+        throw error;
+      }
     },
     async rejectProposal(handle) {
       const { workspace, ...ref } = handle;
       const resources = await client.workspaces.open({ path: workspace });
-      await resources.skills.rejectProposal(ref);
+      try {
+        await resources.skills.rejectProposal(ref);
+      } catch (error) {
+        if (isErrorType(error, "revision_conflict"))
+          throw new SkillProposalRevisionConflictError(error);
+        throw error;
+      }
     },
   };
 }

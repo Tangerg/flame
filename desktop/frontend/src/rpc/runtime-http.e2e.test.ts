@@ -3578,7 +3578,8 @@ for await (const line of lines) {
       readFile(join(workspaceRoot, ".flame", "skills", projectProposal.name, "SKILL.md"), "utf8"),
     ).resolves.toContain(projectProposal.instructions);
     await expect(workspace.skills.approveProposal(projectRef)).rejects.toSatisfy(
-      (error: unknown) => error instanceof RpcError && errorType(error.data) === "invalid_params",
+      (error: unknown) =>
+        error instanceof RpcError && errorType(error.data) === "revision_conflict",
     );
 
     const userSession = await client.sessions.create({

@@ -843,6 +843,7 @@ export const zhTW: Record<string, string> = {
   "skillProposals.hideBody": "收起指令",
   "skillProposals.empty.title": "沒有待審閱的提案",
   "skillProposals.empty.sub": "代理提出的技能會落在這裡等你核准。",
+  "skillProposals.conflict": "此提案已無法依原審閱狀態套用。請重新審閱目前提案後再決定。",
   "skillProposals.error": "無法處理該提案。",
   "workspace.view.title.agentMemory": "代理記憶",
   "agentMemory.title": "代理記憶",

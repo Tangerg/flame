@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { SkillProposalRevisionConflictError } from "@/plugins/builtin/workspace/application/ports/skillCurationGateway";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useCallback, useRef, useState } from "react";
 import { Badge, Collapsible, DataView, PillButton, Tag, TextButton, vocab, Well } from "@/ui";
@@ -44,7 +45,10 @@ export function SkillProposals() {
         {(rows) => (
           <div {...stylex.props(vocab.column, vs.padBlockSm)}>
             {rows.map((proposal) => (
-              <SkillProposalRow key={`${proposal.name} ${proposal.revision}`} proposal={proposal} />
+              <SkillProposalRow
+                key={JSON.stringify([proposal.workspace, proposal.scope, proposal.name])}
+                proposal={proposal}
+              />
             ))}
           </div>
         )}
@@ -68,9 +72,17 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
         await run();
       } catch (error) {
         if (!wasGenerationRetired(error)) {
-          notifyError(error instanceof Error ? error.message : t("skillProposals.error"), {
-            source: "skills",
-          });
+          if (error instanceof SkillProposalRevisionConflictError) setReading(true);
+          notifyError(
+            error instanceof SkillProposalRevisionConflictError
+              ? t("skillProposals.conflict")
+              : error instanceof Error
+                ? error.message
+                : t("skillProposals.error"),
+            {
+              source: "skills",
+            },
+          );
         }
       } finally {
         actionPending.current = false;

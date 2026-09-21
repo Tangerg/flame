@@ -24,7 +24,9 @@ type SkillProposal struct {
 }
 
 // SkillProposalRef identifies the exact proposal and workspace review context
-// that an approve or reject operation acts on.
+// that an approve or reject operation acts on. A changed, removed, or no longer
+// applicable proposal returns revision_conflict; clients must read and review
+// current content before issuing a new decision.
 type SkillProposalRef struct {
 	Workspace WorkspaceRef `json:"workspace"`
 	Name      string       `json:"name"`

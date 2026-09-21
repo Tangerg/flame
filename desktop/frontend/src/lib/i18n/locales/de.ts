@@ -882,6 +882,8 @@ export const de: Record<string, string> = {
   "skillProposals.hideBody": "Anweisungen ausblenden",
   "skillProposals.empty.title": "Keine Vorschläge zu prüfen",
   "skillProposals.empty.sub": "Skills, die der Agent vorschlägt, landen hier zur Freigabe.",
+  "skillProposals.conflict":
+    "Dieser Vorschlag kann nicht mehr wie geprüft angewendet werden. Bitte den aktuellen Vorschlag erneut prüfen.",
   "skillProposals.error": "Vorschlag konnte nicht bearbeitet werden.",
   "workspace.view.title.agentMemory": "Agent-Gedächtnis",
   "agentMemory.title": "Agent-Gedächtnis",

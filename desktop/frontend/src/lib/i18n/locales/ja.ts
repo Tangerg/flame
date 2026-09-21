@@ -850,6 +850,8 @@ export const ja: Record<string, string> = {
   "skillProposals.hideBody": "手順を隠す",
   "skillProposals.empty.title": "レビューする提案はありません",
   "skillProposals.empty.sub": "エージェントが提案したスキルは、承認待ちとしてここに届きます。",
+  "skillProposals.conflict":
+    "この提案は確認時の状態では適用できません。最新の提案を再度確認してから判断してください。",
   "skillProposals.error": "提案を処理できませんでした。",
   "workspace.view.title.agentMemory": "エージェントメモリ",
   "agentMemory.title": "エージェントメモリ",

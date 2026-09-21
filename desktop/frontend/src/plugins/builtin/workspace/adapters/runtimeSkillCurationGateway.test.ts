@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resetContainer, setContainer } from "@/main/container";
-import type { FlameClient } from "@/rpc";
+import { RpcError, type FlameClient } from "@/rpc";
 import {
   approveSkillProposal,
   archiveSkill,
   rejectSkillProposal,
   restoreSkill,
 } from "../application/skillCuration";
+import { SkillProposalRevisionConflictError } from "../application/ports/skillCurationGateway";
 import { installSkillCurationGateway } from "./runtimeSkillCurationGateway";
 
 let installation: ReturnType<typeof installSkillCurationGateway> | undefined;
@@ -47,6 +48,34 @@ describe("runtimeSkillCurationGateway", () => {
       expect(
         decision === "approveProposal" ? approveProposal : rejectProposal,
       ).toHaveBeenCalledWith(expected);
+    },
+  );
+
+  it.each(["approveProposal", "rejectProposal"] as const)(
+    "translates %s conflicts without retrying a newer revision",
+    async (decision) => {
+      const cause = new RpcError({
+        code: -32009,
+        message: "stale proposal",
+        data: { type: "revision_conflict" },
+      });
+      const command = vi.fn().mockRejectedValue(cause);
+      const open = vi.fn().mockResolvedValue({ skills: { [decision]: command } });
+      setContainer({ client: () => ({ workspaces: { open } }) as unknown as FlameClient });
+      installation = installSkillCurationGateway();
+      await expect(
+        (decision === "approveProposal" ? approveSkillProposal : rejectSkillProposal)({
+          workspace: "/repo",
+          name: "verify",
+          scope: "project",
+          revision: "reviewed",
+        }),
+      ).rejects.toBeInstanceOf(SkillProposalRevisionConflictError);
+      expect(command).toHaveBeenCalledExactlyOnceWith({
+        name: "verify",
+        scope: "project",
+        revision: "reviewed",
+      });
     },
   );
 

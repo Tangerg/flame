@@ -11,3 +11,10 @@ export interface SkillCurationGateway {
   approveProposal(handle: SkillProposalHandle): Promise<void>;
   rejectProposal(handle: SkillProposalHandle): Promise<void>;
 }
+
+export class SkillProposalRevisionConflictError extends Error {
+  constructor(cause: Error) {
+    super(cause.message, { cause });
+    this.name = "SkillProposalRevisionConflictError";
+  }
+}

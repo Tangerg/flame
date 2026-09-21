@@ -14,6 +14,7 @@ import (
 type stubSkillProposals struct {
 	list       []skills.ProposalReview
 	approveErr error
+	rejectErr  error
 	approved   []skills.ProposalRef
 	rejected   []skills.ProposalRef
 	root       string
@@ -39,6 +40,9 @@ func (s *stubSkillProposals) ApproveProposal(_ context.Context, root string, ref
 
 func (s *stubSkillProposals) RejectProposal(_ context.Context, root string, ref skills.ProposalRef) ([]string, error) {
 	s.root = root
+	if s.rejectErr != nil {
+		return nil, s.rejectErr
+	}
 	s.rejected = append(s.rejected, ref)
 	return []string{filepath.Join(root, "_proposals", ref.Name, "SKILL.md")}, nil
 }
@@ -104,13 +108,19 @@ func TestSkillProposalApproveRejectValidateAndDelegate(t *testing.T) {
 	}
 }
 
-func TestSkillProposalApproveConflictMapsInvalidParams(t *testing.T) {
-	root := t.TempDir()
-	stub := &stubSkillProposals{approveErr: skills.ErrConflict}
-	s := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Proposals: stub})
-	err := s.ApproveSkillProposal(t.Context(), wireProposalRef(root, skills.NewProposalRef(skills.ScopeProject, "run-tests", []byte("content"))))
-	if !errors.Is(err, protocol.ErrInvalidParams) {
-		t.Fatalf("conflict → %v, want invalid_params", err)
+func TestSkillProposalStaleReviewMapsRevisionConflict(t *testing.T) {
+	for _, cause := range []error{skills.ErrConflict, skills.ErrProposalChanged, skills.ErrNotFound} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			root := t.TempDir()
+			stub := &stubSkillProposals{approveErr: cause, rejectErr: cause}
+			handler := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Proposals: stub})
+			ref := wireProposalRef(root, skills.NewProposalRef(skills.ScopeProject, "run-tests", []byte("content")))
+			for _, err := range []error{handler.ApproveSkillProposal(t.Context(), ref), handler.RejectSkillProposal(t.Context(), ref)} {
+				if !errors.Is(err, protocol.ErrRevisionConflict) || !errors.Is(err, cause) {
+					t.Fatalf("stale review = %v, want revision_conflict preserving %v", err, cause)
+				}
+			}
+		})
 	}
 }
 

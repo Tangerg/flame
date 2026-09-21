@@ -65,6 +65,7 @@ func registerSkills(registry *Registry) {
 
 	registry.commandAck(MethodMeta{
 		Name:            SkillsProposalsApprove,
+		Errors:          []string{protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
 		ApproveSkillProposal(context.Context, protocol.SkillProposalRef) error
@@ -74,6 +75,7 @@ func registerSkills(registry *Registry) {
 
 	registry.commandAck(MethodMeta{
 		Name:            SkillsProposalsReject,
+		Errors:          []string{protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureSkills),
 	}, func(service interface {
 		RejectSkillProposal(context.Context, protocol.SkillProposalRef) error

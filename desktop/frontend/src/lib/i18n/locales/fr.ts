@@ -911,6 +911,8 @@ export const fr: Record<string, string> = {
   "skillProposals.empty.title": "Aucune proposition à examiner",
   "skillProposals.empty.sub":
     "Les compétences proposées par l'agent arrivent ici pour votre approbation.",
+  "skillProposals.conflict":
+    "Cette proposition ne peut plus être appliquée telle que relue. Relisez la proposition actuelle avant de décider.",
   "skillProposals.error": "Impossible de traiter la proposition.",
   "workspace.view.title.agentMemory": "Mémoire de l'agent",
   "agentMemory.title": "Mémoire de l'agent",
