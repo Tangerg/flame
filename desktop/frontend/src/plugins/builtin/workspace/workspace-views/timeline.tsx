@@ -12,6 +12,7 @@ import { fmtDuration } from "@/lib/format";
 import { TIMELINE_WINDOW_SIZE } from "@/plugins/sdk/types/agentTimeline";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { toolIntent, type ToolDetail } from "@/plugins/builtin/agent/public/messagePresentation";
+import { toolCallIconFor } from "@/plugins/builtin/chat/tools/public/toolIcon";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
@@ -77,7 +78,10 @@ function entrySubject(t: Translate, entry: TimelineEntry, tool: ToolCall | undef
 
 function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | undefined }) {
   const t = useT();
-  const icon = KIND_ICON[entry.kind];
+  // The call's OWN glyph, the one the transcript gave it, rather than the generic wrench the
+  // kind would supply: a run of tool rows all carrying the same busy mark says nothing and is
+  // the densest thing on the line at 12px.
+  const icon = entry.kind === "tool" && tool ? toolCallIconFor(tool) : KIND_ICON[entry.kind];
   const subject = entrySubject(t, entry, tool);
   return (
     <div {...stylex.props(vs.rowTop, vs.gutter, vs.groupPad)}>

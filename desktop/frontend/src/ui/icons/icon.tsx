@@ -33,7 +33,7 @@ import {
   Ellipsis,
   Eye,
   File,
-  FileDiff,
+  Diff,
   FileText,
   Flag,
   Folder,
@@ -224,7 +224,10 @@ const ICON_MAP = {
   "skip-back": SkipBack,
   minimize: Minimize,
   maximize: Maximize,
-  diff: FileDiff,
+  // The plain +/- mark, not `FileDiff`: at 12-14px a page outline with a folded corner AND a
+  // sign inside it is three ideas in fourteen pixels and reads as a smudge beside the
+  // single-concept glyphs next to it in the dock tab bar.
+  diff: Diff,
   list: List,
   chart: ChartColumn,
   clock: Clock,
