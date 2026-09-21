@@ -33,6 +33,29 @@ describe("toolCardModel", () => {
     expect(model.error).toBe("permission denied");
   });
 
+  it("withholds a path detail that would name one file out of several", () => {
+    const one = toolCardModel(
+      t,
+      tool({ name: "apply_patch", fn: "a.ts", fnKind: "path", files: 1 }),
+    );
+    const many = toolCardModel(
+      t,
+      tool({ name: "apply_patch", fn: "a.ts", fnKind: "path", files: 3 }),
+    );
+
+    expect(one.detail).toMatchObject({ kind: "path", value: "a.ts" });
+    // The "3 files" count is beside it and the disclosure names them all; one of the three in
+    // the subject slot reads as THE file.
+    expect(many.detail).toBeUndefined();
+    expect(many.metaItems.some((item) => item.id === "files")).toBe(true);
+  });
+
+  it("keeps a detail that is not one of the files", () => {
+    const grep = toolCardModel(t, tool({ name: "grep", fn: "TODO", fnKind: "machine", files: 3 }));
+
+    expect(grep.detail).toMatchObject({ value: "TODO" });
+  });
+
   it("carries no failure for a call that did not fail", () => {
     expect(toolCardModel(t, tool({ status: "ok" })).error).toBeUndefined();
     expect(toolCardModel(t, tool({ status: "denied", error: "refused" })).error).toBeUndefined();

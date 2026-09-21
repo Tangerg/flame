@@ -21,6 +21,10 @@ export interface ToolCardModel {
   metaItems: ToolMetaItem[];
 }
 
+function namesOneOfMany(detail: ToolDetail | undefined, tool: ToolCall): boolean {
+  return detail?.kind === "path" && (tool.files ?? 1) > 1;
+}
+
 export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
   const intent = toolIntent(t, tool);
   const metaItems = toolMetaItems(t, tool);
@@ -33,7 +37,12 @@ export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
     // the one thing that says which call failed — and bought the error nothing, because the
     // slot is a single truncating line, so a message longer than the row was unreadable and
     // uncopyable. It travels beside the row now, where it can be read in full.
-    detail: intent.detail,
+    //
+    // Withheld when it would name ONE of several. A `path` detail is a file, and a call that
+    // reports touching three of them put whichever one it happened to carry beside a "3 files"
+    // count — an arbitrary pick, read as THE file. The count says how many and the disclosure
+    // names them all. Only `path`: a pattern or a URL is not one of the files.
+    detail: namesOneOfMany(intent.detail, tool) ? undefined : intent.detail,
     ...(tool.status === "err" && tool.error ? { error: tool.error } : {}),
     diffStat,
     metaItems,
