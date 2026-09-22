@@ -919,6 +919,8 @@ export const zhTW: Record<string, string> = {
   "mcp.import.hint": '貼上一段 MCP 用戶端設定區塊 —— 在 "mcpServers" 下的一個或多個伺服器。',
 
   "rpcError.session_has_active_run": "該工作階段已有一個進行中的執行 —— 請先介入、回應或取消它。",
+  "runError.activeRun.running": "該工作階段已有進行中的執行——請介入它或取消它。",
+  "runError.activeRun.waiting": "該工作階段有一個執行在等你回覆——請回答它或取消它。",
 
   "rpcError.run_not_root": "該 run 屬於某個更大的 run —— 請改用其根 run。",
   "rpcError.run_waiting": "該 run 正在等待回應 —— 請先回應它。",

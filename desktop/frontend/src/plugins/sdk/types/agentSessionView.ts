@@ -108,6 +108,8 @@ export interface AgentProblem {
   /** Everything that branches on the failure reads THIS, never a derived flag. */
   code?: string;
   retryAfterSeconds?: number;
+  /** Only `session_has_active_run` carries one; its status says which remedy to name. */
+  activeRun?: { runId: string; status: string };
 }
 
 export type AgentRunStatus = "running" | "waiting" | "finished";

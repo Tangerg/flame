@@ -69,6 +69,22 @@ export function errorDetail(data: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * The run a `session_has_active_run` refusal names, and no other type carries.
+ *
+ * The status is the remedy: a running run is steered, a waiting one is answered or cancelled.
+ * Without it a client can only repeat all three back at the person.
+ */
+export function errorActiveRun(data: unknown): { runId: string; status: string } | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const ref = (data as { activeRun?: unknown }).activeRun;
+  if (!ref || typeof ref !== "object") return undefined;
+  const { runId, status } = ref as { runId?: unknown; status?: unknown };
+  if (typeof runId !== "string" || !runId) return undefined;
+  if (typeof status !== "string" || !status) return undefined;
+  return { runId, status };
+}
+
 /** Read a positive provider-requested retry delay without trusting input. */
 export function errorRetryAfterSeconds(data: unknown): number | undefined {
   if (data && typeof data === "object") {

@@ -943,6 +943,10 @@ export const ja: Record<string, string> = {
 
   "rpcError.session_has_active_run":
     "このセッションには実行中のランがあります — 介入・応答・キャンセルのいずれかを先に行ってください。",
+  "runError.activeRun.running":
+    "このセッションは実行中です。その実行に介入するか、キャンセルしてください。",
+  "runError.activeRun.waiting":
+    "このセッションには回答待ちの実行があります。回答するかキャンセルしてください。",
 
   "rpcError.run_not_root": "そのランはより大きなランの一部です — ルートランを指定してください。",
   "rpcError.run_waiting": "そのランは回答を待っています — まず回答してください。",

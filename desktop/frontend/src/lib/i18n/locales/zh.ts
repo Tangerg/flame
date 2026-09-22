@@ -917,6 +917,8 @@ export const zh: Record<string, string> = {
   "agentMemory.error": "无法更新记忆。",
 
   "rpcError.session_has_active_run": "该会话已有一个运行中的任务 —— 请先介入、回应或取消它。",
+  "runError.activeRun.running": "该会话已有运行中的任务——去介入它或取消它。",
+  "runError.activeRun.waiting": "该会话有一个任务在等你回应——回答它或取消它。",
 
   "rpcError.run_not_root": "该 run 属于某个更大的 run —— 请改用其根 run。",
   "rpcError.run_waiting": "该 run 正在等待回应 —— 请先回应它。",

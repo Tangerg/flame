@@ -1007,6 +1007,8 @@ export const es: Record<string, string> = {
 
   "rpcError.session_has_active_run":
     "Esta sesión ya tiene una ejecución en curso: dirígela, respóndela o cancélala primero.",
+  "runError.activeRun.running": "Esta sesión ya está en marcha — dirige ese run o cancélalo.",
+  "runError.activeRun.waiting": "Esta sesión tiene un run esperándote — respóndelo o cancélalo.",
 
   "rpcError.run_not_root": "Esa ejecución pertenece a una mayor: consulta la ejecución raíz.",
   "rpcError.run_waiting": "Esa ejecución espera una respuesta: respóndele primero.",

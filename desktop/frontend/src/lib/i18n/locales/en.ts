@@ -982,6 +982,8 @@ export const en: Record<string, string> = {
 
   "rpcError.session_has_active_run":
     "This session already has a run in flight — steer it, answer it, or cancel it first.",
+  "runError.activeRun.running": "This session is already running — steer that run or cancel it.",
+  "runError.activeRun.waiting": "This session has a run waiting on you — answer it or cancel it.",
   "rpcError.run_not_root": "That run belongs to a larger run — ask for the root run instead.",
   "rpcError.run_waiting": "That run is waiting for an answer — respond to it instead.",
   "rpcError.run_finished": "That run has already finished.",

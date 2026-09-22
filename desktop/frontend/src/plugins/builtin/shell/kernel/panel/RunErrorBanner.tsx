@@ -16,7 +16,7 @@ import {
 } from "@/plugins/builtin/agent/public/run";
 import { useT } from "@/lib/i18n";
 import { disclosureExitTransition, disclosureTransition } from "@/lib/motion";
-import { describeErrorType } from "@/lib/rpcErrors";
+import { describeActiveRunRefusal, describeErrorType } from "@/lib/rpcErrors";
 import {
   openDiagnosticsView,
   openTimelineView,
@@ -110,7 +110,10 @@ export function RunErrorBanner() {
               )}
             </div>
             <div {...stylex.props(sh.bannerBody, typeStep.uiMd)}>
-              {error.message ?? describeErrorType(error.code) ?? t("runError.unknown")}
+              {describeActiveRunRefusal(error) ??
+                error.message ??
+                describeErrorType(error.code) ??
+                t("runError.unknown")}
             </div>
             <div {...stylex.props(sh.bannerActions)}>
               {canRetry && (

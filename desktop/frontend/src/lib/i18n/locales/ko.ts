@@ -936,6 +936,8 @@ export const ko: Record<string, string> = {
 
   "rpcError.session_has_active_run":
     "이 세션에는 이미 진행 중인 실행이 있습니다 — 먼저 개입하거나 응답하거나 취소하세요.",
+  "runError.activeRun.running": "이 세션은 이미 실행 중입니다. 해당 실행에 개입하거나 취소하세요.",
+  "runError.activeRun.waiting": "이 세션에 답변을 기다리는 실행이 있습니다. 답하거나 취소하세요.",
 
   "rpcError.run_not_root": "해당 실행은 더 큰 실행에 속합니다 — 루트 실행을 지정하세요.",
   "rpcError.run_waiting": "해당 실행은 응답을 기다리고 있습니다 — 먼저 응답하세요.",

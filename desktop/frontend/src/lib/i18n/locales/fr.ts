@@ -1016,6 +1016,9 @@ export const fr: Record<string, string> = {
 
   "rpcError.session_has_active_run":
     "Cette session a déjà une exécution en cours — orientez-la, répondez-y ou annulez-la d’abord.",
+  "runError.activeRun.running": "Cette session est déjà en cours — orientez ce run ou annulez-le.",
+  "runError.activeRun.waiting":
+    "Un run de cette session attend votre réponse — répondez-y ou annulez-le.",
 
   "rpcError.run_not_root":
     "Cette exécution appartient à une exécution plus large — demandez l’exécution racine.",

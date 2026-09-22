@@ -982,6 +982,9 @@ export const de: Record<string, string> = {
 
   "rpcError.session_has_active_run":
     "Diese Sitzung hat bereits einen laufenden Durchlauf — steuere, beantworte oder brich ihn zuerst ab.",
+  "runError.activeRun.running": "Diese Session läuft bereits — steuere den Lauf oder brich ihn ab.",
+  "runError.activeRun.waiting":
+    "In dieser Session wartet ein Lauf auf dich — beantworte ihn oder brich ihn ab.",
 
   "rpcError.run_not_root":
     "Dieser Durchlauf gehört zu einem größeren — frage stattdessen den Root-Durchlauf ab.",

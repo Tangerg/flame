@@ -62,6 +62,22 @@ export const MAPPED_TYPES: readonly string[] = [
   "idempotency_conflict",
 ];
 
+/**
+ * The remedy a `session_has_active_run` refusal actually has, read off the run it names.
+ *
+ * The generic line lists all three moves because it cannot know which applies; the refusal
+ * carries the blocking run's status precisely so a client does not have to.
+ */
+export function describeActiveRunRefusal(problem: {
+  code?: string;
+  activeRun?: { status: string };
+}): string | undefined {
+  if (problem.code !== "session_has_active_run") return undefined;
+  if (problem.activeRun?.status === "running") return t("runError.activeRun.running");
+  if (problem.activeRun?.status === "waiting") return t("runError.activeRun.waiting");
+  return undefined;
+}
+
 /** `undefined` for an unmapped type; callers append their own context-specific fallback. */
 export function describeErrorType(type: string | undefined): string | undefined {
   return type && MAPPED_TYPES.includes(type) ? t(`rpcError.${type}`) : undefined;

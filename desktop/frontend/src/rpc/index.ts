@@ -90,5 +90,6 @@ export {
   RPC_METHOD_NOT_FOUND,
   errorType,
   errorDetail,
+  errorActiveRun,
   errorRetryAfterSeconds,
 } from "./types";
