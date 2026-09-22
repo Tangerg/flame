@@ -61,6 +61,8 @@ A Delegate retains its admitted child across a human-input barrier. Each continu
 
 Scope schedules the outer Tool contract. An argument-rewriting hook, authorizer, or approval path makes that contract exclusive; only immutable paths preserve an inner concurrency declaration.
 
+Tool decorators expose their inner Tool through Scope's `Unwrap` contract. Scope binds the complete input validator before execution, including typed decoder constraints beyond JSON Schema. Search concurrency and discovery wrappers preserve this admission boundary: an undecodable argument produces a known rejection and model feedback, rather than entering the executable and leaving an unknown Effect.
+
 Tool continuation uses the executor's stable call identity. Edited approval arguments change the execution input while preserving that identity; a new call with the same name or arguments receives its own Item. One remaining-call index owns whether a suspended Item still needs to resume or settle.
 
 A Question owns its completed prompt Item and answer schema. Its unfinished Tool suspends and resumes through the ordinary Tool continuation path; the prompt retains the handler's semantic input without copying its execution identity.

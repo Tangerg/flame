@@ -138,6 +138,8 @@ func (d *Discovery) Definition() chat.ToolDefinition {
 	return d.inner.Definition()
 }
 
+func (d *Discovery) Unwrap() toolcontract.Tool { return d.inner }
+
 // buildDescription folds the "N tools available but not loaded" reminder into the
 // tool the model always sees, listing names grouped by source so it has the
 // vocabulary to search or select. Only names (never schemas) are listed — that is

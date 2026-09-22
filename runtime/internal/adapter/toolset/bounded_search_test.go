@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -254,6 +255,27 @@ func TestRuntimeSearchRejectsNumericDefaultSentinels(t *testing.T) {
 	for _, name := range []string{"grep", "glob"} {
 		if _, err := callTextTool(t.Context(), namedDirectTool(t, root, name), `{"pattern":"x","max_results":0}`); err == nil {
 			t.Errorf("%s accepted max_results=0 instead of requiring omission", name)
+		}
+	}
+}
+
+func TestRuntimeSearchRejectsUndecodableIntegersAtAdmission(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"grep", "glob"} {
+		binding, err := toolcontract.Bind(namedDirectTool(t, root, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, arguments := range []string{
+			`{"pattern":"x","max_results":1e1}`,
+			`{"pattern":"x","max_results":10.0}`,
+		} {
+			if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: name, Arguments: arguments}); !errors.Is(err, toolcontract.ErrInvalidInvocation) {
+				t.Errorf("%s admitted %s: %v", name, arguments, err)
+			}
+		}
+		if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: name, Arguments: `{"pattern":"x","max_results":10}`}); err != nil {
+			t.Fatalf("%s rejected valid integer: %v", name, err)
 		}
 	}
 }

@@ -71,6 +71,8 @@ type runtimePathSearchResponse struct {
 
 type concurrentSearchTool struct{ toolcontract.Tool }
 
+func (c concurrentSearchTool) Unwrap() toolcontract.Tool { return c.Tool }
+
 func (concurrentSearchTool) ConcurrencyPolicy() func(toolcontract.Invocation) (string, bool) {
 	return func(toolcontract.Invocation) (string, bool) { return "", true }
 }

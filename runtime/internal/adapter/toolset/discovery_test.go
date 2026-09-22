@@ -3,6 +3,7 @@ package toolset_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -181,6 +182,24 @@ func TestArgumentsAreStrictAndBounded(t *testing.T) {
 		if _, err := callTextTool(context.Background(), tool, arguments); err == nil {
 			t.Errorf("Call(%s) succeeded, want contract validation error", arguments)
 		}
+	}
+}
+
+func TestDiscoveryRejectsUndecodableIntegersAtAdmission(t *testing.T) {
+	binding, err := toolcontract.Bind(newSearch(t, catalog()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, arguments := range []string{
+		`{"query":"issue","limit":1e1}`,
+		`{"query":"issue","limit":10.0}`,
+	} {
+		if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: "search_tools", Arguments: arguments}); !errors.Is(err, toolcontract.ErrInvalidInvocation) {
+			t.Errorf("discovery admitted %s: %v", arguments, err)
+		}
+	}
+	if _, err := binding.Contract().Prepare(chat.ToolCall{ID: "search", Name: "search_tools", Arguments: `{"query":"issue","limit":10}`}); err != nil {
+		t.Fatalf("discovery rejected valid integer: %v", err)
 	}
 }
 
