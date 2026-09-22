@@ -726,7 +726,9 @@
   --seam-wash: color-mix(in oklab, var(--shadow-cast) 20%, transparent);
   --boundary-emphasis: color-mix(in oklab, var(--color-text) 28%, var(--color-border-soft));
 
-  --content-max: 768px;
+  /* The reading measure, in characters rather than pixels: at the prose step this is 82 per
+     line, inside the 45–85 a line can be swept without losing its place. 768px measured 94. */
+  --content-max: 672px;
   --content-max-wide: 1024px;
   --reading-column-max: calc(var(--content-max) + 2 * var(--reading-gutter-wide));
   --reading-rail-width: 176px;
