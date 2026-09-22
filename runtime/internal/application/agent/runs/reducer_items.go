@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -201,9 +200,6 @@ func (r *reducer) completeAssistantMessage(
 	if err := message.Validate(); err != nil {
 		return nil, err
 	}
-	if err := conversation.ValidateMessageIdentities(message); err != nil {
-		return nil, err
-	}
 
 	var reasoning strings.Builder
 	content := make([]transcript.ContentBlock, 0, len(message.Parts))
@@ -246,9 +242,6 @@ func (r *reducer) completeModelMessage(
 		return nil, fmt.Errorf("completed model message role is %q, want %q", message.Role, corechat.RoleAssistant)
 	}
 	if err := message.Validate(); err != nil {
-		return nil, err
-	}
-	if err := conversation.ValidateMessageIdentities(message); err != nil {
 		return nil, err
 	}
 	semantic := corechat.Message{Role: message.Role}
@@ -357,17 +350,13 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	if strings.TrimSpace(e.ToolName) == "" || e.ToolName != strings.TrimSpace(e.ToolName) {
 		return nil, errors.New("tool name is required")
 	}
-	_, sourceCallPresent, err := conversation.ParseOptionalToolCallIdentity(e.SourceCallID)
-	if err != nil {
-		return nil, err
-	}
 	if e.Activity != strings.TrimSpace(e.Activity) {
 		return nil, errors.New("tool activity has surrounding whitespace")
 	}
 	if e.ModelCallSequence == 0 && e.ToolCallIndex != 0 {
 		return nil, errors.New("tool call index requires a model call sequence")
 	}
-	if e.ModelCallSequence > 0 && !sourceCallPresent {
+	if e.ModelCallSequence > 0 && e.SourceCallID == "" {
 		return nil, errors.New("model-attributed tool call requires a source call id")
 	}
 	if _, duplicate := r.toolCallIDs[e.CallID]; duplicate {
@@ -482,8 +471,8 @@ func (r *reducer) openToolItemID(callID string) (string, bool) {
 // that Item in the same transaction as the child's lineage edge. Ambiguity is
 // rejected rather than resolved by ordering.
 func (r *reducer) spawningItem(sourceCallID string) (transcript.Item, error) {
-	if _, err := conversation.NewToolCallIdentity(sourceCallID); err != nil {
-		return transcript.Item{}, err
+	if sourceCallID == "" {
+		return transcript.Item{}, errors.New("source call id is required")
 	}
 	var match *openTool
 	for _, candidate := range r.tools.byCallID {

@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
@@ -227,9 +226,6 @@ func (o *observedInteractionTool) attributedInvocation(
 	call := invocation.ToolCall()
 	if call.Name != o.Definition().Name {
 		return interaction.ToolInvocation{}, tool.Arguments{}, "", errors.New("agentexec: Tool invocation differs from its bound executable")
-	}
-	if _, err := conversation.NewToolCallIdentity(call.ID); err != nil {
-		return interaction.ToolInvocation{}, tool.Arguments{}, "", fmt.Errorf("agentexec: Tool invocation: %w", err)
 	}
 	arguments, err := tool.ParseArguments(string(bound.Arguments()))
 	if err != nil {

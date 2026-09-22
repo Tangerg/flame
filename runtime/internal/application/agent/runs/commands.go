@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
@@ -436,9 +435,6 @@ func (r RootExecutionStart) Validate() error {
 	}
 	for index, message := range r.WorkingContext {
 		if err := message.Validate(); err != nil {
-			return fmt.Errorf("runs: working context message[%d]: %w", index, err)
-		}
-		if err := conversation.ValidateMessageIdentities(message); err != nil {
 			return fmt.Errorf("runs: working context message[%d]: %w", index, err)
 		}
 	}

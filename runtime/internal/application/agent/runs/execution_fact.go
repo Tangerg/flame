@@ -21,8 +21,9 @@ import (
 // event. It deliberately carries no Run or Segment identity: mapping executor
 // members onto application Runs belongs to the Coordinator.
 type ExecutorMember struct {
-	MemberID    string
-	ParentID    string
+	MemberID string
+	ParentID string
+	// SpawnCallID is the opaque provider ToolCall ID, not an executor Effect ID.
 	SpawnCallID string
 }
 
@@ -38,9 +39,6 @@ func (e ExecutorMember) Validate() error {
 	}
 	if err := runtimeidentity.ValidateOptionalMember(e.ParentID); err != nil {
 		return fmt.Errorf("runs: executor parent: %w", err)
-	}
-	if err := runtimeidentity.ValidateOptionalEffect(e.SpawnCallID); err != nil {
-		return fmt.Errorf("runs: executor spawn call: %w", err)
 	}
 	if e.MemberID == "" {
 		if e.ParentID != "" || e.SpawnCallID != "" {

@@ -173,13 +173,12 @@ func TestExecutorMemberValidate(t *testing.T) {
 			wantErr: "runs: executor parent: executor member identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
-			name: "spawn call whitespace",
+			name: "opaque provider spawn call",
 			member: ExecutorMember{
 				MemberID:    "member_child",
 				ParentID:    "member_root",
-				SpawnCallID: " call_delegate",
+				SpawnCallID: " call\u200bdelegate\n",
 			},
-			wantErr: "runs: executor spawn call: executor effect identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
 			name: "empty executor member with parent",

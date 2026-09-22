@@ -218,7 +218,7 @@ func (r *reducer) open() (reductionBatch, error) {
 	}
 	if r.cfg.Lineage.IsRoot() && r.cfg.ConversationInput != nil {
 		message := r.cfg.ConversationInput.Clone()
-		if message.Role != corechat.RoleUser || message.Validate() != nil || conversation.ValidateMessageIdentities(message) != nil {
+		if message.Role != corechat.RoleUser || message.Validate() != nil {
 			return reductionBatch{}, fmt.Errorf("%w: opening conversation input is not a valid User message", errReducerInvariant)
 		}
 		if err := r.attachConversationMessages(&batch, []corechat.Message{message}); err != nil {

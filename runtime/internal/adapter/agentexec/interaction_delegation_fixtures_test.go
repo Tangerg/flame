@@ -98,13 +98,14 @@ func (c *cancelableDelegateModel) Stream(
 }
 
 type waitingDelegateModel struct {
-	mu       sync.Mutex
-	calls    int
-	defaults *chat.Options
+	mu             sync.Mutex
+	calls          int
+	defaults       *chat.Options
+	delegateCallID string
 }
 
 func newWaitingDelegateModel() *waitingDelegateModel {
-	return &waitingDelegateModel{defaults: &chat.Options{Model: "stub-waiting-delegate"}}
+	return &waitingDelegateModel{defaults: &chat.Options{Model: "stub-waiting-delegate"}, delegateCallID: "delegate_waiting"}
 }
 
 func (w *waitingDelegateModel) DefaultOptions() chat.Options { return *w.defaults }
@@ -125,7 +126,7 @@ func (w *waitingDelegateModel) Call(
 		return interactionToolResponse(chat.ToolCall{ID: "ask_child", Name: "ask", Arguments: `{}`}, 2, 1), nil
 	case userMessagesContain(request.Messages, "delegate waiting work"):
 		return interactionToolResponse(chat.ToolCall{
-			ID: "delegate_waiting", Name: "delegate_task",
+			ID: w.delegateCallID, Name: "delegate_task",
 			Arguments: `{"summary":"waiting child","instructions":"child needs input"}`,
 		}, 2, 1), nil
 	default:

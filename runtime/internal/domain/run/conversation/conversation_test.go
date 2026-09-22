@@ -1,11 +1,51 @@
 package conversation
 
 import (
+	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/scope/core/chat"
 )
+
+func TestConversationPreservesScopeToolCallIDs(t *testing.T) {
+	for _, id := range []string{" call\u200b1\n", strings.Repeat("界", 513)} {
+		messages := []chat.Message{
+			chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: id, Name: "inspect", Arguments: `{}`})),
+			chat.NewToolMessage(chat.ToolResult{ID: id, Name: "inspect", Output: chat.NewTextToolOutput("contents")}),
+		}
+		for _, message := range messages {
+			if err := message.Validate(); err != nil {
+				t.Fatalf("invalid Scope fixture: %v", err)
+			}
+		}
+		history, err := New(messages)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(history.Messages(), messages) {
+			t.Fatal("conversation changed a provider correlation ID")
+		}
+	}
+}
+
+func TestConversationRejectsMissingScopeToolCallIDs(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		message chat.Message
+		want    error
+	}{
+		{"call", chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{Name: "inspect", Arguments: `{}`})), chat.ErrInvalidToolCall},
+		{"result", chat.NewToolMessage(chat.ToolResult{Name: "inspect", Output: chat.NewTextToolOutput("contents")}), chat.ErrInvalidToolResult},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := New([]chat.Message{test.message}); !errors.Is(err, test.want) {
+				t.Fatalf("New error = %v, want %v", err, test.want)
+			}
+		})
+	}
+}
 
 func TestConversationOwnsSequenceTransitions(t *testing.T) {
 	seed := []chat.Message{

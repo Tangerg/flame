@@ -4,11 +4,37 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+func TestMessageStorePreservesOpaqueProviderCallIDs(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlite.NewMessageStore(db)
+	id := " provider\u200b" + strings.Repeat("界", 513) + "\n"
+	want := []chat.Message{
+		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: id, Name: "inspect", Arguments: `{}`})),
+		chat.NewToolMessage(chat.ToolResult{ID: id, Name: "inspect", Output: chat.NewTextToolOutput("contents")}),
+	}
+	if err := store.Write(t.Context(), "conv", want...); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Read(t.Context(), "conv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatal("stored messages changed a provider correlation ID")
+	}
+}
 
 // TestMessageStore_ReplaceIsTransactional pins the retention-safety fix:
 // Replace sets a conversation's history to exactly the given messages in one

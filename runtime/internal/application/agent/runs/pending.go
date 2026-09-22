@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -570,9 +569,6 @@ func validateDrainedTools(tools []DrainedTool) error {
 
 func (d DrainedTool) validate() error {
 	if err := validateToolIdentity(d.ItemID, d.CallID, d.Name, d.Arguments); err != nil {
-		return err
-	}
-	if _, _, err := conversation.ParseOptionalToolCallIdentity(d.SourceCallID); err != nil {
 		return err
 	}
 	if d.ItemOccurredAt.IsZero() {

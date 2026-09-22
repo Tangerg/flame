@@ -30,9 +30,6 @@ func ValidateMessages(messages []chat.Message) error {
 		if err := message.Validate(); err != nil {
 			return fmt.Errorf("%w: message[%d]: %w", ErrInvalid, index, err)
 		}
-		if err := ValidateMessageIdentities(message); err != nil {
-			return fmt.Errorf("%w: message[%d]: %w", ErrInvalid, index, err)
-		}
 	}
 	return nil
 }

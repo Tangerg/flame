@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 
 func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *testing.T) {
 	fixture := newWaitingDelegateFixture(t, "interaction-waiting-delegate-test")
+	fixture.model.delegateCallID = " provider\u200b" + strings.Repeat("界", 513) + "\n"
 	started := fixture.start(t)
 	initialEventsReady := make(chan []runs.Event, 1)
 	go func() { initialEventsReady <- slices.Collect(started.Events) }()
@@ -28,6 +30,12 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 	}
 
 	continuation := waitingDelegateContinuation(barrier)
+	for _, member := range continuation.Members {
+		if member.RunID == continuation.RootRunID &&
+			(len(member.DrainedTools) != 1 || member.DrainedTools[0].SourceCallID != fixture.model.delegateCallID) {
+			t.Fatalf("checkpoint changed the provider call identity: %#v", member.DrainedTools)
+		}
+	}
 	for _, test := range []struct {
 		name   string
 		change func(*runs.WaitingMember)
@@ -88,6 +96,15 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 		outcomesAfterRestore,
 	)
 	assertRestoredDelegateEventOrder(t, observed, binding.MemberID)
+	var parentResultID string
+	for _, event := range observed {
+		if committed, ok := event.Payload.(runs.ToolResultsCommitted); ok && !event.Member.Child() && len(committed.ModelResults) == 1 {
+			parentResultID = committed.ModelResults[0].ID
+		}
+	}
+	if parentResultID != fixture.model.delegateCallID {
+		t.Fatal("restored Delegate result changed the provider call identity")
+	}
 	if fixture.model.Calls() != 4 {
 		t.Fatalf("provider calls = %d, want 4 without replay", fixture.model.Calls())
 	}

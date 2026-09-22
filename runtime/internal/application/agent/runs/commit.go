@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -318,9 +317,6 @@ func (e EventCommit) Validate() error {
 func (e EventCommit) validateConversationMessages() error {
 	for index, message := range e.ConversationMessages {
 		if err := message.Validate(); err != nil {
-			return fmt.Errorf("runs: event commit conversation message[%d]: %w", index, err)
-		}
-		if err := conversation.ValidateMessageIdentities(message); err != nil {
 			return fmt.Errorf("runs: event commit conversation message[%d]: %w", index, err)
 		}
 	}

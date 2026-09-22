@@ -26,6 +26,7 @@ import (
 )
 
 func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting(t *testing.T) {
+	providerCallID := " provider\u200b" + strings.Repeat("界", 513) + "\n"
 	type echoInput struct {
 		Value string `json:"value"`
 	}
@@ -40,7 +41,7 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
-		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "echo", Arguments: `{"value":"hello"}`}, 7, 2),
+		interactionToolResponse(chat.ToolCall{ID: providerCallID, Name: "echo", Arguments: `{"value":"hello"}`}, 7, 2),
 		interactionUsageTextResponse("done", 11, 3),
 	}}
 	hooks := &recordingInteractionHooks{}
@@ -82,10 +83,10 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 	if len(finishes) == 1 && finishes[0].ModelResult != nil {
 		modelResultText, modelResultTextual = finishes[0].ModelResult.Output.Text()
 	}
-	if len(starts) != 1 || len(finishes) != 1 || starts[0].SourceCallID != "provider_call" ||
+	if len(starts) != 1 || len(finishes) != 1 || starts[0].SourceCallID != providerCallID ||
 		starts[0].Activity != "Echoing value" || starts[0].SafetyClass != domaintool.SafetyClassSafe ||
 		finishes[0].Result == nil || finishes[0].ModelResult == nil ||
-		finishes[0].ModelResult.ID != "provider_call" || finishes[0].ModelResult.Name != "echo" ||
+		finishes[0].ModelResult.ID != providerCallID || finishes[0].ModelResult.Name != "echo" ||
 		!modelResultTextual || modelResultText != "hello" || finishes[0].Failure != nil {
 		t.Fatalf("Tool lifecycle = starts %#v; finishes %#v", starts, finishes)
 	}

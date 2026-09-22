@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -304,9 +303,6 @@ func newModelCallAccountingInput(
 	}
 	var message *corechat.Message
 	if response.Output.Message != nil {
-		if err := conversation.ValidateMessageIdentities(*response.Output.Message); err != nil {
-			return modelCallAccountingInput{}, fmt.Errorf("agentexec: account model call: %w", err)
-		}
 		message = new(response.Output.Message.Clone())
 	}
 	delta := modelUsage(response, selection, pricing)

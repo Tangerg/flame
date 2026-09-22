@@ -343,7 +343,7 @@ func TestReducerAppendsAlreadyProjectedContinuationInputWithoutDuplicatingItem(t
 
 func TestReducerProjectsModelToolContextWithProviderCallIdentity(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
-	call := corechat.ToolCall{ID: "provider_call_1", Name: "inspect", Arguments: `{"path":"README.md"}`}
+	call := corechat.ToolCall{ID: " provider\u200b" + strings.Repeat("界", 513) + "\n", Name: "inspect", Arguments: `{"path":"README.md"}`}
 	message := corechat.NewAssistantMessage(corechat.NewToolCallPart(call))
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	modelBatch := mustReduce(t, reducer, ModelCallCompleted{
@@ -377,26 +377,19 @@ func TestReducerProjectsModelToolContextWithProviderCallIdentity(t *testing.T) {
 	}
 }
 
-func TestReducerRejectsInvalidProviderToolCallIdentityBeforeProjection(t *testing.T) {
-	invalid := []string{
-		" provider_call",
-		"provider\u200bcall",
-		strings.Repeat("x", conversation.MaximumToolCallIdentityCharacters+1),
+func TestReducerRejectsMissingProviderToolCallIDBeforeProjection(t *testing.T) {
+	reducer := newReducer(testReducerConfig())
+	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
+	message := corechat.NewAssistantMessage(corechat.NewToolCallPart(corechat.ToolCall{
+		Name: "inspect", Arguments: `{}`,
+	}))
+	if _, err := reducer.reduce(ModelCallCompleted{
+		CallID: "model_call_1", Message: new(message), Steps: 1,
+	}); !errors.Is(err, errExecutorContract) {
+		t.Fatalf("missing ToolCall ID error = %v, want executor contract failure", err)
 	}
-	for _, identity := range invalid {
-		reducer := newReducer(testReducerConfig())
-		mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-		message := corechat.NewAssistantMessage(corechat.NewToolCallPart(corechat.ToolCall{
-			ID: identity, Name: "inspect", Arguments: `{}`,
-		}))
-		if _, err := reducer.reduce(ModelCallCompleted{
-			CallID: "model_call_1", Message: new(message), Steps: 1,
-		}); !errors.Is(err, errExecutorContract) {
-			t.Errorf("identity %q error = %v, want executor contract failure", identity, err)
-		}
-		if reducer.toolContext.Count() != 0 {
-			t.Errorf("identity %q entered model Tool context", identity)
-		}
+	if reducer.toolContext.Count() != 0 {
+		t.Fatal("invalid ToolCall entered model Tool context")
 	}
 }
 

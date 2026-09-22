@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
@@ -188,9 +187,6 @@ func (i *interactionSession) registerDelegateCalls(
 }
 
 func decodeDelegateCall(call corechat.ToolCall, descriptor agent.Descriptor) (delegateInput, tool.Arguments, error) {
-	if _, err := conversation.NewToolCallIdentity(call.ID); err != nil {
-		return delegateInput{}, tool.Arguments{}, err
-	}
 	erased, err := agent.ParsePayload([]byte(call.Arguments))
 	if err != nil {
 		return delegateInput{}, tool.Arguments{}, err

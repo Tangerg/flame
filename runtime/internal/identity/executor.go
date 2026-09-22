@@ -44,7 +44,7 @@ func ValidateRequest(text string) error { return validate("executor request iden
 
 func ValidateEffect(text string) error { return validate("executor effect identity", text) }
 
-// ValidateOptionalMember and ValidateOptionalEffect accept an absent identity.
+// ValidateOptionalMember accepts an absent identity.
 // A caller that must tell absent from malformed compares against "" itself; no
 // caller has ever needed the distinction returned to it.
 func ValidateOptionalMember(text string) error {
@@ -52,13 +52,6 @@ func ValidateOptionalMember(text string) error {
 		return nil
 	}
 	return ValidateMember(text)
-}
-
-func ValidateOptionalEffect(text string) error {
-	if text == "" {
-		return nil
-	}
-	return ValidateEffect(text)
 }
 
 // MemberID identifies one executor-owned process in a root/child tree.

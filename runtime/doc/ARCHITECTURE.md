@@ -61,6 +61,8 @@ A Delegate retains its admitted child across a human-input barrier. Each continu
 
 The Delegate's Scope Descriptor is the sole input admission contract during registration, start, and restoration. Its generated schema measures summary length in characters and preserves instruction formatting. Runtime does not impose a second byte limit or trim rule after Scope accepts that input.
 
+Scope's chat contract owns provider ToolCall and ToolResult validation. Runtime preserves their opaque correlation IDs exactly in model context, delegation lineage, and recovery. These values are distinct from Runtime's bounded executor Effect IDs; no product character grammar or length limit is imposed on provider call IDs.
+
 Scope schedules the outer Tool contract. An argument-rewriting hook, authorizer, or approval path makes that contract exclusive; only immutable paths preserve an inner concurrency declaration.
 
 Tool decorators expose their inner Tool through Scope's `Unwrap` contract. Scope binds the complete input validator before execution, including typed decoder constraints beyond JSON Schema. Search concurrency and discovery wrappers preserve this admission boundary: an undecodable argument produces a known rejection and model feedback, rather than entering the executable and leaving an unknown Effect. Runtime consumes arguments from Scope's admitted `Invocation`; the attributed `ToolCall` retains the original model proposal. The two need not have identical text because Scope normalizes blank arguments to an empty object before admission.

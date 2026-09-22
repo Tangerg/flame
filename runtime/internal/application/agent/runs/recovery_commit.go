@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -431,14 +430,6 @@ func validateRecoveryClosureMessages(rootID string, messages []corechat.Message)
 	seenToolCalls := make(map[string]struct{})
 	for messageIndex, message := range messages {
 		if err := message.Validate(); err != nil {
-			return fmt.Errorf(
-				"runs: recovery commit conversation transition for root Run %q message[%d]: %w",
-				rootID,
-				messageIndex,
-				err,
-			)
-		}
-		if err := conversation.ValidateMessageIdentities(message); err != nil {
 			return fmt.Errorf(
 				"runs: recovery commit conversation transition for root Run %q message[%d]: %w",
 				rootID,
