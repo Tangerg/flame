@@ -918,6 +918,11 @@ export const ja: Record<string, string> = {
   "schedules.unavailable": "スケジュールは利用できません",
   "schedules.unavailable.sub": "接続中のランタイムはまだスケジュール実行を公開していません。",
   "schedules.error.save": "スケジュールを保存できませんでした。",
+  "schedules.model.default": "Runtime の既定モデル",
+  "schedules.reasoning.default": "モデルの既定値",
+  "schedules.model.hint": "今後のスケジュール実行に適用されます。実行中の処理には影響しません。",
+  "schedules.model.unavailable":
+    "保存済みモデルが現在の一覧にありません。選択を変更するまで設定は保持されます。",
   "schedules.form.title": "タイトル（任意）",
   "schedules.form.instructions": "実行する指示…",
   "schedules.form.cron": "Cron 式",

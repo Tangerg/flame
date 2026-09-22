@@ -7,13 +7,26 @@ export interface ScheduleConfig {
   enabled: boolean;
   provider?: string;
   model?: string;
+  reasoningEffort?: string;
   createdAt?: string;
   nextRunAt?: string;
   lastRunAt?: string;
   revision: number;
 }
 
-export type { ScheduleDraft as ScheduleConfigInput } from "./scheduleDraft";
+export interface ScheduleModelSelection {
+  provider: string;
+  model: string;
+  reasoningEffort?: string;
+}
+
+export interface ScheduleConfigInput {
+  title: string;
+  instructions: string;
+  cron: string;
+  cwd: string;
+  modelSelection?: ScheduleModelSelection | null;
+}
 
 export interface ScheduledRunIdentity {
   sessionId: string;

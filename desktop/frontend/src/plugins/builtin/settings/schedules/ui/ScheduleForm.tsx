@@ -26,6 +26,7 @@ import {
   weight,
 } from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
+import { ScheduleModelFields } from "./ScheduleModelFields";
 
 interface ScheduleFormProps {
   schedule?: ScheduleConfig;
@@ -61,9 +62,8 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
   const [basis] = useState(() =>
     schedule ? { id: schedule.id, revision: schedule.revision } : undefined,
   );
-  const [draft, setDraft] = useState<ScheduleDraft>(() =>
-    initialScheduleDraft(schedule, defaultCwd),
-  );
+  const [original] = useState<ScheduleDraft>(() => initialScheduleDraft(schedule, defaultCwd));
+  const [draft, setDraft] = useState(original);
   const { busy, run } = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: t("schedules.error.save"),
@@ -75,7 +75,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
 
   const onSave = () =>
     run(async () => {
-      const input = scheduleInputFromDraft(draft);
+      const input = scheduleInputFromDraft(draft, original);
       if (basis) {
         await updateSchedule({
           ...input,
@@ -148,6 +148,12 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
         placeholder={t("schedules.form.cwd")}
         aria-label={t("schedules.form.cwd")}
       />
+      <div {...stylex.props(vocab.line)}>
+        <ScheduleModelFields
+          selection={draft.modelSelection}
+          onChange={(selection) => updateDraft("modelSelection", selection)}
+        />
+      </div>
       <div {...stylex.props(vocab.line)}>
         <PillButton
           variant="solid"

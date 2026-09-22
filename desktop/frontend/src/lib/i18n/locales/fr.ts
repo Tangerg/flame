@@ -988,6 +988,12 @@ export const fr: Record<string, string> = {
   "schedules.unavailable.sub":
     "La runtime connectée n'expose pas encore les exécutions planifiées.",
   "schedules.error.save": "Impossible d'enregistrer la planification.",
+  "schedules.model.default": "Modèle par défaut du Runtime",
+  "schedules.reasoning.default": "Valeur par défaut du modèle",
+  "schedules.model.hint":
+    "S’applique aux prochaines exécutions planifiées, sans modifier celles déjà en cours.",
+  "schedules.model.unavailable":
+    "Le modèle enregistré ne figure pas dans le catalogue actuel. La sélection est conservée tant que vous ne la modifiez pas.",
   "schedules.form.title": "Titre (facultatif)",
   "schedules.form.instructions": "Instructions à exécuter…",
   "schedules.form.cron": "Expression cron",

@@ -980,6 +980,12 @@ export const es: Record<string, string> = {
   "schedules.unavailable": "Programaciones no disponibles",
   "schedules.unavailable.sub": "El runtime conectado todavía no expone ejecuciones programadas.",
   "schedules.error.save": "No se pudo guardar la programación.",
+  "schedules.model.default": "Modelo predeterminado del Runtime",
+  "schedules.reasoning.default": "Valor predeterminado del modelo",
+  "schedules.model.hint":
+    "Se aplica a futuras ejecuciones programadas. No afecta a las que ya están en curso.",
+  "schedules.model.unavailable":
+    "El modelo guardado no figura en el catálogo actual. La selección se conserva hasta que la cambies.",
   "schedules.form.title": "Título (opcional)",
   "schedules.form.instructions": "Instrucciones a ejecutar…",
   "schedules.form.cron": "Expresión cron",

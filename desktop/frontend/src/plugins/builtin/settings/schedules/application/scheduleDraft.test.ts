@@ -6,12 +6,40 @@ import {
 } from "./scheduleDraft";
 
 describe("scheduleDraft", () => {
+  it("preserves saved model intent and only patches a deliberate change", () => {
+    const original = initialScheduleDraft({
+      id: "sch_1",
+      title: "Review",
+      instructions: "Review",
+      cron: "0 9 * * 1",
+      enabled: true,
+      revision: 1,
+      provider: "openai",
+      model: "gpt-5",
+      reasoningEffort: "high",
+    });
+    expect(original.modelSelection).toEqual({
+      provider: "openai",
+      model: "gpt-5",
+      reasoningEffort: "high",
+    });
+    expect(scheduleInputFromDraft(original, original)).not.toHaveProperty("modelSelection");
+    expect(
+      scheduleInputFromDraft({ ...original, modelSelection: null }, original).modelSelection,
+    ).toBeNull();
+    const selection = { provider: "deepseek", model: "deepseek-chat" };
+    expect(
+      scheduleInputFromDraft({ ...original, modelSelection: selection }, original).modelSelection,
+    ).toEqual(selection);
+  });
+
   it("initializes new schedules from the active cwd", () => {
     expect(initialScheduleDraft(undefined, "/repo")).toEqual({
       title: "",
       instructions: "",
       cron: "0 9 * * 1-5",
       cwd: "/repo",
+      modelSelection: null,
     });
   });
 
@@ -35,6 +63,7 @@ describe("scheduleDraft", () => {
       instructions: "Summarize changes",
       cron: "0 9 * * 1",
       cwd: "/workspace",
+      modelSelection: null,
     });
   });
 
@@ -62,6 +91,7 @@ describe("scheduleDraft", () => {
         instructions: " Review this repo ",
         cron: " 0 9 * * 1 ",
         cwd: " /repo ",
+        modelSelection: null,
       }),
     ).toEqual({
       title: "Weekly review",

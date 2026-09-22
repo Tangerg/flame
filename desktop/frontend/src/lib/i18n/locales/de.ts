@@ -955,6 +955,12 @@ export const de: Record<string, string> = {
   "schedules.unavailable": "Zeitpläne nicht verfügbar",
   "schedules.unavailable.sub": "Die verbundene Runtime stellt geplante Läufe noch nicht bereit.",
   "schedules.error.save": "Zeitplan konnte nicht gespeichert werden.",
+  "schedules.model.default": "Runtime-Standard",
+  "schedules.reasoning.default": "Modellstandard",
+  "schedules.model.hint":
+    "Gilt für künftige geplante Ausführungen. Bereits laufende Aufgaben bleiben unverändert.",
+  "schedules.model.unavailable":
+    "Das gespeicherte Modell fehlt im aktuellen Katalog. Die Auswahl bleibt erhalten, bis du sie änderst.",
   "schedules.form.title": "Titel (optional)",
   "schedules.form.instructions": "Auszuführende Anweisungen…",
   "schedules.form.cron": "Cron-Ausdruck",

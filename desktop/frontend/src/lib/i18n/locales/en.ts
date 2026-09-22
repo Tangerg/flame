@@ -809,6 +809,12 @@ export const en: Record<string, string> = {
   "schedules.unavailable": "Schedules unavailable",
   "schedules.unavailable.sub": "The connected runtime doesn't expose scheduled runs yet.",
   "schedules.error.save": "Couldn't save the schedule.",
+  "schedules.model.default": "Runtime default",
+  "schedules.reasoning.default": "Model default",
+  "schedules.model.hint":
+    "Applies to future scheduled runs. Changing this does not affect a run already in progress.",
+  "schedules.model.unavailable":
+    "This saved model is not in the current catalog. Its selection is preserved until you change it.",
   "schedules.form.title": "Title (optional)",
   "schedules.form.instructions": "Instructions to run…",
   "schedules.form.cron": "Cron expression",

@@ -12,6 +12,7 @@ function scheduleInput(input: ScheduleConfigInput): CreateScheduleRequest {
     instructions: input.instructions,
     ...(input.cwd ? { workspace: { path: input.cwd } } : {}),
     cron: input.cron,
+    ...input.modelSelection,
   };
 }
 
@@ -39,6 +40,13 @@ function runtimeScheduleGateway(client: FlameClient): ScheduleGateway {
           ...(input.cwd ? {} : { workspaceMode: "default" }),
           id: input.id,
           expectedRevision: input.revision,
+          ...(input.modelSelection !== undefined
+            ? {
+                provider: input.modelSelection?.provider ?? "",
+                model: input.modelSelection?.model ?? "",
+                reasoningEffort: input.modelSelection?.reasoningEffort ?? "",
+              }
+            : {}),
         }),
       );
     },

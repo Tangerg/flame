@@ -911,6 +911,12 @@ export const ko: Record<string, string> = {
   "schedules.unavailable": "일정을 사용할 수 없습니다",
   "schedules.unavailable.sub": "연결된 런타임은 아직 예약 실행을 제공하지 않습니다.",
   "schedules.error.save": "일정을 저장할 수 없습니다.",
+  "schedules.model.default": "Runtime 기본 모델",
+  "schedules.reasoning.default": "모델 기본값",
+  "schedules.model.hint":
+    "이후 예약 실행에 적용되며, 이미 실행 중인 작업에는 영향을 주지 않습니다.",
+  "schedules.model.unavailable":
+    "저장된 모델이 현재 목록에 없습니다. 선택을 변경할 때까지 기존 설정을 유지합니다.",
   "schedules.form.title": "제목 (선택)",
   "schedules.form.instructions": "실행할 지침…",
   "schedules.form.cron": "Cron 식",

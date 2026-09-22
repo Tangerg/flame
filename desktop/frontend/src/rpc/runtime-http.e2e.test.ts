@@ -3062,6 +3062,14 @@ for await (const line of lines) {
       instructions: "Run the annual HTTP E2E check.",
       title: "HTTP schedule lifecycle",
       workspace: { path: root },
+      provider: "openai-compatible",
+      model: "e2e-model",
+      reasoningEffort: "high",
+    });
+    expect(created).toMatchObject({
+      provider: "openai-compatible",
+      model: "e2e-model",
+      reasoningEffort: "high",
     });
     await expect(nextRuntimeEvent(runtimeEvents, "schedules.changed")).resolves.toMatchObject({
       type: "schedules.changed",
@@ -3086,6 +3094,9 @@ for await (const line of lines) {
     expect(firedRun).toMatchObject({
       id: fired.runId,
       sessionId: fired.sessionId,
+      provider: "openai-compatible",
+      model: "e2e-model",
+      reasoningEffort: "high",
       status: "finished",
       outcome: { type: "completed" },
     });
@@ -3103,9 +3114,15 @@ for await (const line of lines) {
       enabled: false,
       title: "HTTP schedule lifecycle updated",
       workspaceMode: "default",
+      provider: "",
+      model: "",
+      reasoningEffort: "",
     });
     expect(updated.revision).toBe(firedSchedule.revision + 1);
     expect(updated.workspace).toBeUndefined();
+    expect(updated.provider).toBeUndefined();
+    expect(updated.model).toBeUndefined();
+    expect(updated.reasoningEffort).toBeUndefined();
     await expect(
       client.schedules.update({
         id: created.id,

@@ -55,6 +55,56 @@ function expectSendable(shape: WireTypeName, call: ReturnType<typeof vi.fn>): vo
 }
 
 describe("runtimeScheduleGateway", () => {
+  it("sends and returns the exact model selection when creating a schedule", async () => {
+    const selection = { provider: "openai", model: "gpt-5", reasoningEffort: "high" };
+    const create = vi.fn().mockResolvedValue({ ...schedule(), ...selection });
+    setContainer({ client: () => ({ schedules: { create } }) as unknown as FlameClient });
+    installation = installScheduleGateway();
+
+    await expect(
+      createSchedule({
+        title: "Review",
+        instructions: "Review changes",
+        cwd: "",
+        cron: "0 9 * * 1",
+        modelSelection: selection,
+      }),
+    ).resolves.toMatchObject(selection);
+    expect(create).toHaveBeenCalledWith({
+      title: "Review",
+      instructions: "Review changes",
+      cron: "0 9 * * 1",
+      ...selection,
+    });
+    expectSendable("CreateScheduleRequest", create);
+  });
+
+  it.each([
+    [null, { provider: "", model: "", reasoningEffort: "" }],
+    [
+      { provider: "deepseek", model: "deepseek-chat" },
+      { provider: "deepseek", model: "deepseek-chat", reasoningEffort: "" },
+    ],
+  ])(
+    "replaces the complete model selection on an intentional edit",
+    async (modelSelection, expected) => {
+      const update = vi.fn().mockResolvedValue(schedule());
+      setContainer({ client: () => ({ schedules: { update } }) as unknown as FlameClient });
+      installation = installScheduleGateway();
+      await updateSchedule({
+        id: "sch_1",
+        title: "Review",
+        instructions: "Review changes",
+        cwd: "",
+        cron: "0 9 * * 1",
+        revision: 7,
+        modelSelection,
+      });
+      expect(update).toHaveBeenCalledWith(expect.objectContaining(expected));
+      expectSendable("UpdateScheduleRequest", update);
+    },
+  );
+
   it("omits workspace when a new schedule deliberately uses the Runtime default", async () => {
     const create = vi.fn().mockResolvedValue(schedule());
     setContainer({ client: () => ({ schedules: { create } }) as unknown as FlameClient });
