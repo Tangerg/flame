@@ -128,8 +128,7 @@ func TestContinuationCodecRejectsAliasesAndDuplicates(t *testing.T) {
 		[]byte(`{"Key":"approval.shell"}`),
 		[]byte(`{"key":"first","key":"second"}`),
 	} {
-		var continuation continuationWire
-		if err := decode(raw, &continuation); err == nil {
+		if _, err := decode[continuationWire](raw); err == nil {
 			t.Errorf("decode(%s) succeeded, want error", raw)
 		}
 	}

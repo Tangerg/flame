@@ -138,12 +138,21 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		}
 		output = failure.Output()
 	}
+	// Offload and presentation transform values before Scope settles them. They
+	// must never turn an invalid external output into an apparently valid result.
+	if err := output.Validate(); err != nil {
+		return corechat.ToolOutput{}, err
+	}
 	modelOutput, offload := o.offload(ctx, call.Name, output, callErr)
 	metadata := toolResultMetadata{
 		MemberID: member.MemberID, Start: start, Arguments: arguments.Canonical(),
 		Offload: offload, MutatedPaths: normalizeMutationPaths(mutatedPaths),
 	}
-	if parsed, present := runtimeToolResult(modelOutput); present {
+	parsed, present, err := runtimeToolResult(modelOutput)
+	if err != nil {
+		return corechat.ToolOutput{}, err
+	}
+	if present {
 		if o.presenter != nil {
 			parsed, metadata.OutputText = o.presenter.Present(call.Name, arguments, parsed)
 		}
@@ -265,15 +274,19 @@ func (o *observedInteractionTool) runAfterToolUseHook(
 		return
 	}
 	hookCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), auxiliaryOperationTimeout)
-	if err := o.hooks.AfterToolUse(hookCtx, InteractionToolHookInput{
-		SessionID: o.start.SessionID, CWD: o.start.CWD, WorkspaceCWD: o.start.WorkspaceCWD,
-		ToolName: name, Arguments: arguments, Result: hookToolOutput(output), CallError: callErr,
-	}); err != nil {
+	defer cancel()
+	result, err := hookToolOutput(output)
+	if err == nil {
+		err = o.hooks.AfterToolUse(hookCtx, InteractionToolHookInput{
+			SessionID: o.start.SessionID, CWD: o.start.CWD, WorkspaceCWD: o.start.WorkspaceCWD,
+			ToolName: name, Arguments: arguments, Result: result, CallError: callErr,
+		})
+	}
+	if err != nil {
 		slog.ErrorContext(hookCtx, "agentexec: post-tool hook failed",
 			"session.id", o.start.SessionID, "tool.name", name, "call.id", callID, "error", err,
 		)
 	}
-	cancel()
 }
 
 func (o *observedInteractionTool) prepare(
@@ -477,6 +490,16 @@ func (o *observedInteractionTool) offload(
 	if callErr != nil {
 		return output, nil
 	}
+	// The blob reader restores a single text body. Rich Content and its parallel
+	// Details, citations, or metadata cannot be reconstructed by that contract.
+	if len(output.Content) > 0 && len(output.Details) > 0 {
+		return output, nil
+	}
+	for _, content := range output.Content {
+		if len(content.Citations) > 0 || len(content.Metadata) > 0 {
+			return output, nil
+		}
+	}
 	text, textual := output.Text()
 	if !textual {
 		return output, nil
@@ -495,41 +518,34 @@ func (o *observedInteractionTool) offload(
 	return corechat.NewTextToolOutput(preview), reference
 }
 
-func runtimeToolResult(output corechat.ToolOutput) (tool.Result, bool) {
+func runtimeToolResult(output corechat.ToolOutput) (tool.Result, bool, error) {
 	if len(output.Content) == 0 && len(output.Details) == 0 {
-		return tool.Result{}, false
+		return tool.Result{}, false, nil
 	}
 	if len(output.Details) > 0 {
-		if parsed, err := tool.ParseResult(output.Details); err == nil {
-			return parsed, true
-		}
+		parsed, err := tool.ParseResult(output.Details)
+		return parsed, true, err
 	}
 	if text, textual := output.Text(); textual {
 		if parsed, err := tool.ParseResult([]byte(text)); err == nil {
-			return parsed, true
+			return parsed, true, nil
 		}
-		return tool.StringResult(text), true
+		return tool.StringResult(text), true, nil
 	}
 	encoded, err := json.Marshal(output)
 	if err != nil {
-		return tool.StringResult("[invalid non-text tool output]"), true
+		return tool.Result{}, false, err
 	}
 	parsed, err := tool.ParseResult(encoded)
-	if err != nil {
-		return tool.StringResult("[non-text tool output]"), true
-	}
-	return parsed, true
+	return parsed, true, err
 }
 
-func hookToolOutput(output corechat.ToolOutput) string {
+func hookToolOutput(output corechat.ToolOutput) (string, error) {
 	if text, textual := output.Text(); textual {
-		return text
+		return text, nil
 	}
 	encoded, err := json.Marshal(output)
-	if err != nil {
-		return "[invalid non-text tool output]"
-	}
-	return string(encoded)
+	return string(encoded), err
 }
 
 func normalizeMutationPaths(paths []string) []string {

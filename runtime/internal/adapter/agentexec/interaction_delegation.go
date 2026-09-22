@@ -52,12 +52,12 @@ func (d *delegatedInteractionDefinition) Descriptor() agent.Descriptor {
 }
 
 func (d *delegatedInteractionDefinition) Start(input agent.Payload) (agent.Execution, error) {
+	if err := d.descriptor.ValidateInput(input); err != nil {
+		return nil, err
+	}
 	task, err := input.Decode[delegateInput]()
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: decode delegated task: %w", err)
-	}
-	if validateErr := task.Validate(); validateErr != nil {
-		return nil, fmt.Errorf("agentexec: invalid delegated task: %w", validateErr)
 	}
 	messages := cloneChatMessages(d.instructions)
 	messages = append(messages, corechat.NewUserMessage(corechat.NewTextPart(task.Instructions)))

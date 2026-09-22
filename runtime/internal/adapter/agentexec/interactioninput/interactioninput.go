@@ -6,7 +6,6 @@ package interactioninput
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
 
@@ -69,8 +69,8 @@ func Restore(ctx context.Context) (Continuation, bool, error) {
 	if !found {
 		return Continuation{}, false, nil
 	}
-	var state continuationWire
-	if err := decode(continuation.State(), &state); err != nil {
+	state, err := decode[continuationWire](continuation.State())
+	if err != nil {
 		return Continuation{}, true, fmt.Errorf("agentexec interaction input: decode continuation: %w", err)
 	}
 	if state.Key == "" || !json.Valid(state.Prompt) {
@@ -152,7 +152,7 @@ func restoredResolution(
 }
 
 func encodeRequirementState(key string, promptJSON json.RawMessage) (json.RawMessage, error) {
-	stateJSON, err := json.Marshal(continuationWire{
+	stateJSON, err := agent.EncodePayload(continuationWire{
 		Key:          key,
 		PromptDigest: promptDigest(promptJSON),
 		Prompt:       promptJSON,
@@ -160,7 +160,7 @@ func encodeRequirementState(key string, promptJSON json.RawMessage) (json.RawMes
 	if err != nil {
 		return nil, fmt.Errorf("agentexec interaction input: encode continuation: %w", err)
 	}
-	return stateJSON, nil
+	return stateJSON.JSON(), nil
 }
 
 func capabilityPolicyFrom(ctx context.Context) (capabilityPolicy, bool) {
@@ -172,5 +172,5 @@ func capabilityPolicyFrom(ctx context.Context) (capabilityPolicy, bool) {
 }
 
 func promptDigest(prompt json.RawMessage) string {
-	return fmt.Sprintf("sha256:%x", sha256.Sum256(prompt))
+	return agent.ComputeDigest(prompt).String()
 }

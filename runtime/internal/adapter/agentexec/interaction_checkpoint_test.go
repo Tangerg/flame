@@ -2,6 +2,8 @@ package agentexec
 
 import (
 	"encoding/base64"
+	"encoding/json/jsontext"
+	"errors"
 	"math"
 	"reflect"
 	"strings"
@@ -136,24 +138,25 @@ func TestDecodeInteractionCheckpointRejectsDuplicateJSONMembers(t *testing.T) {
 	for _, test := range []struct {
 		name    string
 		payload string
-		want    string
+		pointer jsontext.Pointer
 	}{
 		{
 			name:    "root",
 			payload: `{"tree":{},"tree":{}}`,
-			want:    `duplicate JSON member "tree" at $`,
+			pointer: "/tree",
 		},
 		{
 			name:    "nested tree",
 			payload: `{"tree":{"state":"first","state":"second"}}`,
-			want:    `duplicate JSON member "state" at $.tree`,
+			pointer: "/tree/state",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			_, err := decodeInteractionCheckpointPayload([]byte(test.payload))
-			if err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("decode error = %v, want %q", err, test.want)
+			syntax, ok := errors.AsType[*jsontext.SyntacticError](err)
+			if !ok || !errors.Is(err, jsontext.ErrDuplicateName) || syntax.JSONPointer != test.pointer {
+				t.Fatalf("decode error = %v, want duplicate member at %s", err, test.pointer)
 			}
 		})
 	}

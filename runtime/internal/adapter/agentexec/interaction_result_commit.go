@@ -119,7 +119,11 @@ func (i *interactionSession) toolResultProjection(relation agent.ProcessRelation
 		return runs.ExecutorEvent{}, fmt.Errorf("agentexec: known Tool result %q lost its product metadata", entry.Call.ID)
 	}
 	if end.Result == nil {
-		if result, present := runtimeToolResult(entry.Result.Output); present {
+		result, present, err := runtimeToolResult(entry.Result.Output)
+		if err != nil {
+			return runs.ExecutorEvent{}, err
+		}
+		if present {
 			end.Result = &result
 		}
 	}

@@ -217,10 +217,10 @@ func restoreManagedDelegateCall(
 		return nil, fmt.Errorf("delegate child %s has no surviving run binding", child.ProcessID())
 	}
 	target, managed := deployments.delegateTarget(parentSnapshot.DeploymentRef(), child.ToolCall().Name)
-	if !managed || target != childSnapshot.DeploymentRef() {
+	if !managed || target.DeploymentRef() != childSnapshot.DeploymentRef() {
 		return nil, fmt.Errorf("delegate child %s changed exact deployment", child.ProcessID())
 	}
-	input, arguments, err := decodeDelegateCall(child.ToolCall())
+	input, arguments, err := decodeDelegateCall(child.ToolCall(), target.Descriptor())
 	if err != nil {
 		return nil, fmt.Errorf("decode Delegate child %s input: %w", child.ProcessID(), err)
 	}
@@ -257,7 +257,7 @@ func restoreManagedDelegateCall(
 	return &managedDelegateCall{
 		identity:          delegateCallIdentity{parentID: parentID, childKey: child.ChildKey()},
 		parentRelation:    parentSnapshot.Relation(),
-		target:            target,
+		target:            target.DeploymentRef(),
 		call:              child.ToolCall(),
 		input:             input,
 		arguments:         arguments,

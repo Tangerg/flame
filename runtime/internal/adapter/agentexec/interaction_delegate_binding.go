@@ -146,7 +146,7 @@ func (i *interactionSession) registerDelegateCalls(
 			toolCallIndex++
 			continue
 		}
-		input, arguments, err := decodeDelegateCall(call)
+		input, arguments, err := decodeDelegateCall(call, target.Descriptor())
 		if err != nil {
 			// Agent Framework applies the same Descriptor contract before creating a child
 			// Effect and returns an ordinary Tool error for malformed input.
@@ -167,7 +167,7 @@ func (i *interactionSession) registerDelegateCalls(
 			return err
 		}
 		managedCall := &managedDelegateCall{
-			identity: identity, parentRelation: invocation.Relation(), target: target,
+			identity: identity, parentRelation: invocation.Relation(), target: target.DeploymentRef(),
 			call: call, input: input, arguments: arguments,
 			modelCallSequence: invocation.ModelCallSequence(), toolCallIndex: toolCallIndex,
 			callID: callID,
@@ -187,24 +187,20 @@ func (i *interactionSession) registerDelegateCalls(
 	return nil
 }
 
-func decodeDelegateCall(call corechat.ToolCall) (delegateInput, tool.Arguments, error) {
+func decodeDelegateCall(call corechat.ToolCall, descriptor agent.Descriptor) (delegateInput, tool.Arguments, error) {
 	if _, err := conversation.NewToolCallIdentity(call.ID); err != nil {
 		return delegateInput{}, tool.Arguments{}, err
 	}
-	rawArguments := strings.TrimSpace(call.Arguments)
-	if rawArguments == "" {
-		rawArguments = "{}"
-	}
-	erased, err := agent.ParsePayload([]byte(rawArguments))
+	erased, err := agent.ParsePayload([]byte(call.Arguments))
 	if err != nil {
+		return delegateInput{}, tool.Arguments{}, err
+	}
+	if err := descriptor.ValidateInput(erased); err != nil {
 		return delegateInput{}, tool.Arguments{}, err
 	}
 	input, err := erased.Decode[delegateInput]()
 	if err != nil {
 		return delegateInput{}, tool.Arguments{}, err
-	}
-	if validateErr := input.Validate(); validateErr != nil {
-		return delegateInput{}, tool.Arguments{}, validateErr
 	}
 	arguments, err := tool.ParseArguments(string(erased.JSON()))
 	if err != nil {

@@ -1,9 +1,9 @@
 package agentexec
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"slices"
@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/strictjson"
 	agent "github.com/Tangerg/scope/agent"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -376,13 +375,8 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 }
 
 func decodeInteractionCheckpointWire(payload []byte) (interactionCheckpointPayloadWire, error) {
-	if err := strictjson.ValidateUniqueMembers(payload); err != nil {
-		return interactionCheckpointPayloadWire{}, fmt.Errorf("agentexec: decode Interaction checkpoint: %w", err)
-	}
 	var wire interactionCheckpointPayloadWire
-	decoder := json.NewDecoder(bytes.NewReader(payload))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&wire); err != nil {
+	if err := jsonv2.Unmarshal(payload, &wire, jsonv2.RejectUnknownMembers(true)); err != nil {
 		return interactionCheckpointPayloadWire{}, fmt.Errorf("agentexec: decode Interaction checkpoint: %w", err)
 	}
 	return wire, nil

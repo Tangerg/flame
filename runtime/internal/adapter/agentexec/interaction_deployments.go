@@ -52,9 +52,9 @@ func (i *interactionDeploymentSet) toolChild(reference agent.DeploymentRef) bool
 func (i *interactionDeploymentSet) delegateTarget(
 	parent agent.DeploymentRef,
 	name string,
-) (agent.DeploymentRef, bool) {
+) (agent.Deployment, bool) {
 	target, found := i.delegatesByParent[parent][name]
-	return target, found
+	return i.byRef[target], found
 }
 
 func (i *InteractionExecutor) buildInteractionDeployments(

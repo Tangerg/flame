@@ -19,7 +19,13 @@ import (
 )
 
 func TestProtocolContinuesWaitingTreeBesideCompletedSiblingAfterRestart(t *testing.T) {
-	waiting := chat.ToolCall{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"waiting sibling A"}`}
+	waitingArguments, err := json.Marshal(map[string]string{
+		"summary": strings.Repeat("界", 80), "instructions": "\nwaiting sibling A\n",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiting := chat.ToolCall{ID: "delegate_a", Name: "delegate_task", Arguments: string(waitingArguments)}
 	completed := chat.ToolCall{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"completed sibling B"}`}
 	separator := chat.ToolCall{ID: "rejected_between_batches", Name: "unavailable", Arguments: `{}`}
 	for _, test := range []struct {

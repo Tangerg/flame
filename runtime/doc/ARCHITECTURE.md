@@ -59,13 +59,19 @@ Delegates adapt only Runtime's task input to Scope Interaction. Their executions
 
 A Delegate retains its admitted child across a human-input barrier. Each continuation opens fresh Segments, so the executor observation reopens the parent Tool attempt before forwarding child results. Application reuses the durable Tool Item identity; continuation does not admit another child or repeat its completed work.
 
+The Delegate's Scope Descriptor is the sole input admission contract during registration, start, and restoration. Its generated schema measures summary length in characters and preserves instruction formatting. Runtime does not impose a second byte limit or trim rule after Scope accepts that input.
+
 Scope schedules the outer Tool contract. An argument-rewriting hook, authorizer, or approval path makes that contract exclusive; only immutable paths preserve an inner concurrency declaration.
 
 Tool decorators expose their inner Tool through Scope's `Unwrap` contract. Scope binds the complete input validator before execution, including typed decoder constraints beyond JSON Schema. Search concurrency and discovery wrappers preserve this admission boundary: an undecodable argument produces a known rejection and model feedback, rather than entering the executable and leaving an unknown Effect. Runtime consumes arguments from Scope's admitted `Invocation`; the attributed `ToolCall` retains the original model proposal. The two need not have identical text because Scope normalizes blank arguments to an empty object before admission.
 
+Runtime validates native Tool output before transforming it for storage or presentation. Text offloading applies only when the blob reader can recover the complete text body; parallel structured details, citations, metadata, and media remain intact in Scope's output and the durable model result. Invalid external output retains Scope's unknown-effect semantics instead of becoming a successful text placeholder.
+
 Tool continuation uses the executor's stable call identity. Edited approval arguments change the execution input while preserving that identity; a new call with the same name or arguments receives its own Item. One remaining-call index owns whether a suspended Item still needs to resume or settle.
 
 A Question owns its completed prompt Item and answer schema. Its unfinished Tool suspends and resumes through the ordinary Tool continuation path; the prompt retains the handler's semantic input without copying its execution identity.
+
+Human-input prompts, resolutions, and continuation state use Scope Payload's canonical encoding and strict typed decoding. Scope computes their digests. Runtime owns the approval and question meanings, validates their product constraints, and binds each resolution to the exact waiting prompt.
 
 A child's terminal projection precedes the waiting barrier even when an earlier sibling still needs input. Only parent Tool results wait for the model's declared call order. Completed children leave the product continuation set; the restored Scope tree retains their pending parent Tool results until that order can advance. Application supplies each waiting member's drained Tool identities so restoration does not reopen a parent result that was already committed.
 
@@ -92,6 +98,8 @@ Runtime uses Scope's unlimited cumulative quotas for Interaction model calls, pr
 SQLite stores current Application and Domain state, not live framework objects, goroutines, contexts, SDK clients, or transport connections. Aggregate decoding is strict: unknown fields, invalid states, truncated values, and trailing content are rejected.
 
 Checkpoint and waiting facts commit in the Application order required to recover the same logical Run. Terminalization and checkpoint cleanup preserve one durable winner. Recovery reconstructs from durable Runtime state and public framework checkpoints; it does not infer state from event delivery or client caches.
+
+Runtime decodes its checkpoint envelope with the standard strict JSON decoder, rejecting duplicate and unknown members, including field-name aliases. Scope alone decodes and validates the enclosed execution tree.
 
 Bootstrap creates one file-lease set from the persistence bundle's data directory and supplies it to Session admission, Goal driving, and ordered Run-then-Goal recovery. Each use case requires its ownership backend at construction, and recovery requires both reconcilers.
 

@@ -1,18 +1,15 @@
 package interactioninput
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
-	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/strictjson"
+	agent "github.com/Tangerg/scope/agent"
 )
 
 // EncodePrompt converts one validated product interrupt to its strict executor
@@ -21,19 +18,19 @@ func EncodePrompt(prompt runs.Interrupt) (json.RawMessage, error) {
 	if err := prompt.Validate(); err != nil {
 		return nil, err
 	}
-	encoded, err := json.Marshal(promptWireFrom(prompt))
+	encoded, err := agent.EncodePayload(promptWireFrom(prompt))
 	if err != nil {
 		return nil, fmt.Errorf("agentexec interaction input codec: encode prompt: %w", err)
 	}
-	return encoded, nil
+	return encoded.JSON(), nil
 }
 
 // DecodePrompt restores an application interrupt from persisted executor input
 // JSON. Field names must match exactly; duplicate, unknown, and trailing values
 // are rejected.
 func DecodePrompt(raw []byte) (runs.Interrupt, error) {
-	var wire interruptWire
-	if err := decode(raw, &wire); err != nil {
+	wire, err := decode[interruptWire](raw)
+	if err != nil {
 		return runs.Interrupt{}, fmt.Errorf("agentexec interaction input codec: decode interrupt: %w", err)
 	}
 	interrupt, err := wire.interrupt()
@@ -50,8 +47,8 @@ func DecodePrompt(raw []byte) (runs.Interrupt, error) {
 // response JSON. It applies the same exact-field and single-value contract as
 // [DecodePrompt].
 func DecodeResolution(raw []byte) (interrupt.Resolution, error) {
-	var wire ResolutionPayload
-	if err := decode(raw, &wire); err != nil {
+	wire, err := decode[ResolutionPayload](raw)
+	if err != nil {
 		return interrupt.Resolution{}, fmt.Errorf("agentexec interaction input codec: decode resolution: %w", err)
 	}
 	return wire.Resolution()
@@ -64,110 +61,23 @@ func EncodeResolution(resolution interrupt.Resolution) (json.RawMessage, error) 
 		return nil, fmt.Errorf("agentexec interaction input codec: unknown remember scope %q", resolution.RememberScope)
 	}
 	approved := resolution.Approved
-	encoded, err := json.Marshal(ResolutionPayload{
+	encoded, err := agent.EncodePayload(ResolutionPayload{
 		Approved: &approved, Arguments: resolution.Arguments, Answers: resolution.Answers,
 		Reason: resolution.Reason, RememberScope: resolution.RememberScope,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("agentexec interaction input codec: encode resolution: %w", err)
 	}
-	return encoded, nil
+	return encoded.JSON(), nil
 }
 
-func decode(raw []byte, target any) error {
-	if err := validateExactJSONFieldNames(raw, reflect.TypeOf(target)); err != nil {
-		return err
+func decode[T any](raw []byte) (T, error) {
+	payload, err := agent.ParsePayload(raw)
+	if err != nil {
+		var zero T
+		return zero, err
 	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(target); err != nil {
-		return err
-	}
-	return nil
-}
-
-func validateExactJSONFieldNames(raw []byte, targetType reflect.Type) error {
-	if err := strictjson.ValidateUniqueMembers(raw); err != nil {
-		return err
-	}
-	var value any
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.UseNumber()
-	if err := decoder.Decode(&value); err != nil {
-		return err
-	}
-	return validateJSONFieldNames(value, targetType, "$")
-}
-
-func validateJSONFieldNames(value any, targetType reflect.Type, path string) error {
-	targetType = dereferenceJSONType(targetType)
-	if value == nil || targetType == reflect.TypeFor[json.RawMessage]() {
-		return nil
-	}
-	switch targetType.Kind() {
-	case reflect.Struct:
-		return validateJSONObjectFields(value, targetType, path)
-	case reflect.Slice, reflect.Array:
-		return validateJSONArrayElements(value, targetType.Elem(), path)
-	}
-	return nil
-}
-
-func dereferenceJSONType(targetType reflect.Type) reflect.Type {
-	for targetType.Kind() == reflect.Pointer {
-		targetType = targetType.Elem()
-	}
-	return targetType
-}
-
-func validateJSONObjectFields(value any, targetType reflect.Type, path string) error {
-	object, ok := value.(map[string]any)
-	if !ok {
-		return nil
-	}
-	fields := jsonFieldTypes(targetType)
-	for name, child := range object {
-		fieldType, found := fields[name]
-		if !found {
-			return fmt.Errorf("field %q at %s does not match the exact JSON contract", name, path)
-		}
-		if err := validateJSONFieldNames(child, fieldType, path+"."+name); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func jsonFieldTypes(structType reflect.Type) map[string]reflect.Type {
-	fields := make(map[string]reflect.Type, structType.NumField())
-	for index := range structType.NumField() {
-		field := structType.Field(index)
-		if !field.IsExported() {
-			continue
-		}
-		name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
-		if name == "-" {
-			continue
-		}
-		if name == "" {
-			name = field.Name
-		}
-		fields[name] = field.Type
-	}
-	return fields
-}
-
-func validateJSONArrayElements(value any, elementType reflect.Type, path string) error {
-	values, ok := value.([]any)
-	if !ok {
-		return nil
-	}
-	for index, child := range values {
-		if err := validateJSONFieldNames(child, elementType, fmt.Sprintf("%s[%d]", path, index)); err != nil {
-			return err
-		}
-	}
-	return nil
+	return payload.Decode[T]()
 }
 
 type interruptWire struct {
