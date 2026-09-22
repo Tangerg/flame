@@ -48,6 +48,18 @@ export const MAPPED_TYPES: readonly string[] = [
   "provider_not_configured",
   "provider_test_failed",
   "mcp_authorization_attempt_not_found",
+  // Outcomes a person acts on, each distinct from the generic fallback the reader used to get.
+  "skill_not_found",
+  "skill_unavailable",
+  "revision_conflict",
+  "mcp_server_not_found",
+  "mcp_server_already_exists",
+  "mcp_server_disabled",
+  "schedule_not_found",
+  "path_outside_root",
+  "unsupported_mime",
+  "interrupt_not_open",
+  "idempotency_conflict",
 ];
 
 /** `undefined` for an unmapped type; callers append their own context-specific fallback. */

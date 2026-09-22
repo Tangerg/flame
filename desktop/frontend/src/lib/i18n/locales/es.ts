@@ -1050,6 +1050,18 @@ export const es: Record<string, string> = {
   "rpcError.provider_not_configured": "Completa primero la configuración del proveedor.",
   "rpcError.provider_test_failed":
     "No se pudo contactar al proveedor, o rechazó la petición de prueba.",
+  "rpcError.skill_not_found": "Esa habilidad ya no está en la biblioteca.",
+  "rpcError.skill_unavailable":
+    "No se puede leer el documento de esa habilidad — revisa el archivo al que apunta.",
+  "rpcError.revision_conflict": "Alguien lo cambió antes — recarga y vuelve a intentarlo.",
+  "rpcError.mcp_server_not_found": "Ese servidor ya no está configurado.",
+  "rpcError.mcp_server_already_exists": "Ya hay un servidor configurado con ese nombre.",
+  "rpcError.mcp_server_disabled": "Ese servidor está apagado — actívalo primero.",
+  "rpcError.schedule_not_found": "Esa programación ya no existe.",
+  "rpcError.path_outside_root": "Esa ruta está fuera del directorio de trabajo de la sesión.",
+  "rpcError.unsupported_mime": "Ese tipo de archivo no se admite aquí.",
+  "rpcError.interrupt_not_open": "Esa solicitud ya no espera respuesta.",
+  "rpcError.idempotency_conflict": "La misma solicitud ya se envió con un contenido distinto.",
   "session.error.create": "No se pudo crear la sesión.",
   "session.error.chooseWorkingDirectory": "No se pudo abrir el selector de carpetas.",
   "session.error.delete": "No se pudo borrar la sesión.",

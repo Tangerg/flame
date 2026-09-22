@@ -1060,6 +1060,18 @@ export const fr: Record<string, string> = {
   "rpcError.provider_not_configured": "Terminez d'abord la configuration du fournisseur.",
   "rpcError.provider_test_failed":
     "Le fournisseur était injoignable, ou il a refusé la requête de test.",
+  "rpcError.skill_not_found": "Cette compétence n'est plus dans la bibliothèque.",
+  "rpcError.skill_unavailable":
+    "Le document de cette compétence est illisible — vérifiez le fichier visé.",
+  "rpcError.revision_conflict": "Quelqu'un a modifié ceci avant vous — rechargez puis réessayez.",
+  "rpcError.mcp_server_not_found": "Ce serveur n'est plus configuré.",
+  "rpcError.mcp_server_already_exists": "Un serveur portant ce nom est déjà configuré.",
+  "rpcError.mcp_server_disabled": "Ce serveur est désactivé — activez-le d'abord.",
+  "rpcError.schedule_not_found": "Cette planification n'existe plus.",
+  "rpcError.path_outside_root": "Ce chemin est hors du répertoire de travail de la session.",
+  "rpcError.unsupported_mime": "Ce type de fichier n'est pas pris en charge ici.",
+  "rpcError.interrupt_not_open": "Cette demande n'attend plus de réponse.",
+  "rpcError.idempotency_conflict": "La même requête a déjà été envoyée avec un contenu différent.",
   "session.error.create": "Impossible de créer la session.",
   "session.error.chooseWorkingDirectory": "Impossible d’ouvrir le sélecteur de dossiers.",
   "session.error.delete": "Impossible de supprimer la session.",

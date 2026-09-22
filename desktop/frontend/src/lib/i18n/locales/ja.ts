@@ -987,6 +987,18 @@ export const ja: Record<string, string> = {
   "rpcError.provider_not_configured": "先にプロバイダーの設定を完了してください。",
   "rpcError.provider_test_failed":
     "プロバイダーに接続できないか、テストリクエストが拒否されました。",
+  "rpcError.skill_not_found": "そのスキルはライブラリにありません。",
+  "rpcError.skill_unavailable":
+    "そのスキルの文書を読み込めません。解決先のファイルを確認してください。",
+  "rpcError.revision_conflict": "先に別の変更が入りました。再読み込みしてやり直してください。",
+  "rpcError.mcp_server_not_found": "そのサーバーは設定にありません。",
+  "rpcError.mcp_server_already_exists": "同じ名前のサーバーが既に設定されています。",
+  "rpcError.mcp_server_disabled": "そのサーバーは無効です。先に有効にしてください。",
+  "rpcError.schedule_not_found": "そのスケジュールはもうありません。",
+  "rpcError.path_outside_root": "そのパスはセッションの作業ディレクトリの外です。",
+  "rpcError.unsupported_mime": "ここではこのファイル形式に対応していません。",
+  "rpcError.interrupt_not_open": "その要求はもう回答を待っていません。",
+  "rpcError.idempotency_conflict": "同じ要求が別の内容で既に送信されています。",
   "session.error.create": "セッションを作成できませんでした。",
   "session.error.chooseWorkingDirectory": "フォルダー選択を開けませんでした。",
   "session.error.delete": "セッションを削除できませんでした。",

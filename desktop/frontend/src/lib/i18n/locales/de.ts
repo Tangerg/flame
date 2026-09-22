@@ -1030,6 +1030,19 @@ export const de: Record<string, string> = {
   "rpcError.provider_not_configured": "Schließe zuerst die Provider-Konfiguration ab.",
   "rpcError.provider_test_failed":
     "Der Anbieter war nicht erreichbar oder hat die Testanfrage abgelehnt.",
+  "rpcError.skill_not_found": "Dieser Skill ist nicht mehr in der Bibliothek.",
+  "rpcError.skill_unavailable":
+    "Das Dokument dieses Skills ist nicht lesbar — prüfe die Datei, auf die es verweist.",
+  "rpcError.revision_conflict": "Jemand war schneller — neu laden und erneut versuchen.",
+  "rpcError.mcp_server_not_found": "Dieser Server ist nicht mehr konfiguriert.",
+  "rpcError.mcp_server_already_exists": "Ein Server mit diesem Namen ist bereits konfiguriert.",
+  "rpcError.mcp_server_disabled": "Dieser Server ist deaktiviert — aktiviere ihn zuerst.",
+  "rpcError.schedule_not_found": "Diesen Zeitplan gibt es nicht mehr.",
+  "rpcError.path_outside_root":
+    "Dieser Pfad liegt außerhalb des Arbeitsverzeichnisses der Session.",
+  "rpcError.unsupported_mime": "Dieser Dateityp wird hier nicht unterstützt.",
+  "rpcError.interrupt_not_open": "Diese Anfrage wartet nicht mehr auf eine Antwort.",
+  "rpcError.idempotency_conflict": "Dieselbe Anfrage wurde bereits mit anderem Inhalt gestellt.",
   "session.error.create": "Sitzung konnte nicht erstellt werden.",
   "session.error.chooseWorkingDirectory": "Ordnerauswahl konnte nicht geöffnet werden.",
   "session.error.delete": "Sitzung konnte nicht gelöscht werden.",

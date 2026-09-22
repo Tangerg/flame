@@ -1017,6 +1017,18 @@ export const en: Record<string, string> = {
   "rpcError.provider_not_configured": "Finish configuring the provider first.",
   "rpcError.provider_test_failed":
     "The provider couldn't be reached, or it rejected the test request.",
+  "rpcError.skill_not_found": "That skill is no longer in the library.",
+  "rpcError.skill_unavailable":
+    "That skill's document can't be read — check the file it resolves to.",
+  "rpcError.revision_conflict": "Someone changed this first — reload and try again.",
+  "rpcError.mcp_server_not_found": "That server is no longer configured.",
+  "rpcError.mcp_server_already_exists": "A server with that name is already configured.",
+  "rpcError.mcp_server_disabled": "That server is turned off — enable it first.",
+  "rpcError.schedule_not_found": "That schedule no longer exists.",
+  "rpcError.path_outside_root": "That path is outside the session's working directory.",
+  "rpcError.unsupported_mime": "That file type isn't supported here.",
+  "rpcError.interrupt_not_open": "That request is no longer waiting for an answer.",
+  "rpcError.idempotency_conflict": "The same request was already made with different contents.",
   "session.error.create": "Couldn't create the session.",
   "session.error.chooseWorkingDirectory": "Couldn't open the folder chooser.",
   "session.error.delete": "Couldn't delete the session.",
