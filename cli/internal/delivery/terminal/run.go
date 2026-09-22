@@ -92,7 +92,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 
 	var active *app
 	queue := promptqueue.New()
-	err = program.Run(ctx, program.Config{
+	programConfig := program.Config{
 		Root: func(loop *program.Runtime) program.Component {
 			active = newApp(loop, appConfig{
 				context: ctx, runtime: cfg.Runtime, runtimeProfile: prepared.runtimeProfile,
@@ -116,7 +116,23 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 		},
 		Terminal: term.Features{Probe: true, Mouse: prepared.settings.UI.Mouse, Focus: true, Keyboard: term.KeyboardCompatible},
 		Host:     cfg.Host,
-	})
+	}
+	if err := programConfig.Validate(); err != nil {
+		return err
+	}
+	if programConfig.Host == nil {
+		host, err := term.Open(programConfig.TerminalConfig())
+		if errors.Is(err, term.ErrNotTerminal) {
+			return terminalUnavailableError{cause: err}
+		}
+		if err != nil {
+			return err
+		}
+		// Images must be released before the terminal drains and closes its writer.
+		defer func() { runErr = errors.Join(runErr, host.Close()) }()
+		programConfig.Host = localTerminalHost{host}
+	}
+	err = program.Run(ctx, programConfig)
 	if active != nil {
 		err = errors.Join(err, active.Close(ctx))
 	}
@@ -125,6 +141,15 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 	}
 	return err
 }
+
+type localTerminalHost struct{ *term.Terminal }
+
+func (h localTerminalHost) Writer() program.FrameWriter { return h.Terminal.Writer() }
+func (h localTerminalHost) Input() program.EventSource  { return localTerminalInput{h.Terminal} }
+
+type localTerminalInput struct{ *term.Terminal }
+
+func (i localTerminalInput) Err() error { return i.InputErr() }
 
 type terminalUnavailableError struct{ cause error }
 

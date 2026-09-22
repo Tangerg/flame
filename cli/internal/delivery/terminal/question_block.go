@@ -54,11 +54,11 @@ func (q *questionBlock) accept(question agent.Question) {
 	q.setQuestion(question)
 }
 
-func (q *questionBlock) Measure(width int) int {
+func (q *questionBlock) HeightForWidth(width int) int {
 	if !q.answered() {
 		return 0
 	}
-	return q.message.Measure(width)
+	return q.message.HeightForWidth(width)
 }
 
 func (q *questionBlock) Draw(view grid.View) {

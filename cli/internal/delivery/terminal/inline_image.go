@@ -2,7 +2,6 @@ package terminal
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -19,44 +18,45 @@ import (
 
 type terminalImagePresenter struct {
 	transport terminalImageTransport
-	cache     map[[sha256.Size]byte]graphics.Image
 }
 
 type terminalImageTransport interface {
 	Protocol() graphics.Protocol
 	CellSize() (image.Point, bool)
 	Transmit([]byte) (graphics.Image, error)
+	Release(graphics.Image) error
 }
 
 func newTerminalImagePresenter(transport terminalImageTransport) *terminalImagePresenter {
-	return &terminalImagePresenter{transport: transport, cache: make(map[[sha256.Size]byte]graphics.Image)}
+	return &terminalImagePresenter{transport: transport}
 }
 
 func (t *terminalImagePresenter) Present(theme kit.Theme, image agent.InlineImage) headless.Block {
 	fallback := fallbackInlineImage(theme, image)
-	if t == nil || t.transport.Protocol() == graphics.None {
+	if t == nil || !t.transport.Protocol().Supports(graphics.Live) {
 		return fallback
 	}
 	_, available := t.transport.CellSize()
 	if !available {
 		return fallback
 	}
-	key := sha256.Sum256(image.Data)
-	handle, cached := t.cache[key]
-	if !cached {
-		data, err := normalizePNG(image.Data)
-		if err != nil {
-			return fallback
-		}
-		handle, err = t.transport.Transmit(data)
-		if err != nil {
-			return fallback
-		}
-		t.cache[key] = handle
+	data, err := normalizePNG(image.Data)
+	if err != nil {
+		return presentError(theme, fmt.Sprintf("%s: %v", inlineImageLabel(image), err))
 	}
-	return &terminalImageBlock{
-		transport: t.transport, handle: handle, alt: inlineImageLabel(image), theme: theme,
+	block, err := t.transmit(theme, data, inlineImageLabel(image))
+	if err != nil {
+		return presentError(theme, err.Error())
 	}
+	return block
+}
+
+func (t *terminalImagePresenter) transmit(theme kit.Theme, data []byte, alt string) (*terminalImageBlock, error) {
+	handle, err := t.transport.Transmit(data)
+	if err != nil {
+		return nil, fmt.Errorf("transmit %s: %w", alt, err)
+	}
+	return &terminalImageBlock{transport: t.transport, handle: handle, alt: alt, theme: theme}, nil
 }
 
 type terminalImageBlock struct {
@@ -66,9 +66,18 @@ type terminalImageBlock struct {
 	theme     kit.Theme
 }
 
-func (t *terminalImageBlock) Measure(width int) int { return t.view().Measure(width) }
+func (t *terminalImageBlock) HeightForWidth(width int) int { return t.view().HeightForWidth(width) }
 
 func (t *terminalImageBlock) Draw(view grid.View) { t.view().Draw(view) }
+
+func (t *terminalImageBlock) Close() error {
+	if t.handle.ID == 0 {
+		return nil
+	}
+	err := t.transport.Release(t.handle)
+	t.handle = graphics.Image{}
+	return err
+}
 
 func (t *terminalImageBlock) view() kit.Image {
 	cell, _ := t.transport.CellSize()

@@ -13,7 +13,7 @@ import (
 func TestUserMessageBlockUsesAQuietSurfaceWithoutChangingCopiedText(t *testing.T) {
 	theme := kit.Dark()
 	block := newUserMessageBlock(theme, selfSpeaker, "first line\nsecond line")
-	width, height := 28, block.Measure(28)
+	width, height := 28, block.HeightForWidth(28)
 	surface := grid.NewSurface(width, height)
 	block.Draw(surface.View())
 
@@ -43,7 +43,7 @@ func TestUserMessageBlockUsesAQuietSurfaceWithoutChangingCopiedText(t *testing.T
 func TestUserMessageBlockDegradesWithoutLosingTextAtMinimalWidth(t *testing.T) {
 	block := newUserMessageBlock(kit.Dark(), selfSpeaker, "x")
 	for _, width := range []int{1, 2} {
-		height := block.Measure(width)
+		height := block.HeightForWidth(width)
 		surface := grid.NewSurface(width, height)
 		block.Draw(surface.View())
 		if rows := block.Rows(width); len(rows) != height {
@@ -95,7 +95,7 @@ func TestPendingQuestionPresenterHasNoVisibleInteractionSurface(t *testing.T) {
 	if !ok {
 		t.Fatalf("presented question = %T", rendered[0])
 	}
-	if height := block.Measure(40); height != 0 || len(block.Rows(40)) != 0 {
+	if height := block.HeightForWidth(40); height != 0 || len(block.Rows(40)) != 0 {
 		t.Fatalf("pending question occupies %d rows with copyable content %+v", height, block.Rows(40))
 	}
 }

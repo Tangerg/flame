@@ -94,7 +94,7 @@ func (m *mcpFormFlow) progress() (int, int, string) {
 func (m *mcpFormFlow) clearSecrets() {
 	m.draft.authorization, m.draft.headers, m.draft.environment = "", "", ""
 	for _, field := range m.secretFields {
-		field.Editor().SetText("")
+		field.SetText("")
 	}
 	clear(m.secretFields)
 	m.secretFields = nil

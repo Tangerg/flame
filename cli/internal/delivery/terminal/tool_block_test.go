@@ -279,7 +279,7 @@ func TestCompletedToolWithoutDetailsCannotExpand(t *testing.T) {
 	if block.ToggleExpanded() || block.Expanded() {
 		t.Fatal("detail-free completed tool accepted an expansion request")
 	}
-	if got := block.Measure(48); got != 2 {
+	if got := block.HeightForWidth(48); got != 2 {
 		t.Fatalf("detail-free tool height = %d, want header plus gap", got)
 	}
 	toggle, _, _, _ := block.header()
@@ -297,7 +297,7 @@ func TestToolBlockDrawsALocaleSafeStatusRailThroughExpandedDetails(t *testing.T)
 		ID: "test", Kind: agent.BlockTool, Tool: &call,
 	})
 	block.SetExpanded(true)
-	width, height := 48, block.Measure(48)
+	width, height := 48, block.HeightForWidth(48)
 	surface := grid.NewSurface(width, height)
 	block.Draw(surface.View())
 
@@ -390,7 +390,7 @@ func requireLinkedParagraph(t *testing.T, body headless.Block) {
 }
 
 func drawToolBlock(block *toolBlock, width int) string {
-	surface := grid.NewSurface(width, block.Measure(width))
+	surface := grid.NewSurface(width, block.HeightForWidth(width))
 	block.Draw(surface.View())
 	return strings.Join(surface.Rows(), "\n")
 }

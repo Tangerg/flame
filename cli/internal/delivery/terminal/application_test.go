@@ -37,6 +37,26 @@ func runUI(t *testing.T, plugins ...extensions.Plugin) (*programtest.Host, func(
 
 var terminalControlSequence = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]`)
 
+type handoverTestHost struct{ *programtest.Host }
+
+func (handoverTestHost) Hand(run func() error) error { return run() }
+
+// Runtime and storage progress can leave the visible frame unchanged.
+func awaitState(t *testing.T, description string, ready func() bool) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	tick := time.NewTicker(10 * time.Millisecond)
+	defer tick.Stop()
+	for !ready() {
+		select {
+		case <-tick.C:
+		case <-ctx.Done():
+			t.Fatal("timed out waiting for " + description)
+		}
+	}
+}
+
 func showsPlain(t *testing.T, host *programtest.Host, expected string) {
 	t.Helper()
 	host.Until(t, "the interface to show "+expected, func() bool {
@@ -71,7 +91,7 @@ func runUIFromConfig(t *testing.T, config Config) (*programtest.Host, func()) {
 	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	config.Host = host
+	config.Host = handoverTestHost{host}
 	go func() {
 		done <- Run(ctx, config)
 	}()
@@ -119,7 +139,7 @@ func runUIWithState(t *testing.T, backend Runtime, workspace, sessionID, stateDi
 	go func() {
 		done <- Run(ctx, Config{
 			Runtime: backend, Workspace: workspace, SessionID: sessionID,
-			StateDirectory: stateDirectory, Host: host,
+			StateDirectory: stateDirectory, Host: handoverTestHost{host},
 		})
 	}()
 	var once sync.Once
@@ -842,8 +862,8 @@ func TestRejectedApprovalResumePreservesTheReviewAndUsesANewIdentity(t *testing.
 	host.Press(input.Tab)
 	host.Type("KEEP_REJECTED_REVIEW")
 	host.Press(input.Enter)
-	host.Until(t, "the refused resume to return ownership to the review", func() bool {
-		return len(runtime.resumeAttempts()) == 1 && host.Repaint()
+	awaitState(t, "the refused resume to return ownership to the review", func() bool {
+		return len(runtime.resumeAttempts()) == 1
 	})
 	host.Shows(t, "KEEP_REJECTED_REVIEW")
 
@@ -1001,13 +1021,13 @@ func TestAcceptedQuestionResumeSettlementRetriesTheExactDurableDecision(t *testi
 	if err := os.Rename(backupPath, statePath); err != nil {
 		t.Fatal(err)
 	}
-	host.Until(t, "the accepted resume to settle locally", func() bool {
+	awaitState(t, "the accepted resume to settle locally", func() bool {
 		store, openErr := openSessionWorkbench(stateDirectory)
 		if openErr != nil {
 			return false
 		}
 		_, exists := store.PendingResume("ses_demo_1")
-		return !exists && host.Repaint()
+		return !exists
 	})
 	if attempts := runtime.resumeAttempts(); len(attempts) != 1 {
 		t.Fatalf("local settlement replayed the accepted resume: %+v", attempts)
@@ -1080,7 +1100,7 @@ func TestMisdirectedAcceptedResumeReceiptCancelsAndSettlesTheRequestedRun(t *tes
 	host.Press(input.Enter)
 	host.Shows(t, "does not match")
 	release()
-	host.Until(t, "the misdirected resume receipt cleanup", func() bool {
+	awaitState(t, "the misdirected resume receipt cleanup", func() bool {
 		resumes, cancellations := runtime.attempts()
 		if len(resumes) != 1 || len(cancellations) != 1 {
 			return false
@@ -1090,7 +1110,7 @@ func TestMisdirectedAcceptedResumeReceiptCancelsAndSettlesTheRequestedRun(t *tes
 			return false
 		}
 		_, exists := store.PendingResume("ses_demo_1")
-		return !exists && host.Repaint()
+		return !exists
 	})
 	resumes, cancellations := runtime.attempts()
 	if resumes[0].CommandID == "" || cancellations[0].CommandID == "" ||
@@ -1147,8 +1167,8 @@ func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T)
 	host.Shows(t, "Corrupt accepted projection")
 	host.Press(input.Enter)
 	host.Shows(t, "project accepted interaction answers")
-	host.Until(t, "the unprojectable continuation to be canceled", func() bool {
-		return len(runtime.cancellationAttempts()) == 1 && host.Repaint()
+	awaitState(t, "the unprojectable continuation to be canceled", func() bool {
+		return len(runtime.cancellationAttempts()) == 1
 	})
 	select {
 	case <-runtime.tailRead:
@@ -1867,7 +1887,7 @@ func TestDraftClearWaitsForDurableRetirement(t *testing.T) {
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
 	host.Hides(t, "clear only after commit")
 	host.Shows(t, "draft cleared; repeat ctrl+c to cancel")
-	host.Until(t, "the cleared draft to remain retired", func() bool {
+	awaitState(t, "the cleared draft to remain retired", func() bool {
 		_, found, err := storedDraft(stateDirectory, "ses_demo_1")
 		return err == nil && !found
 	})
@@ -2822,10 +2842,7 @@ func TestSessionChangeOwnsTheComposerUntilItsSnapshotIsInstalled(t *testing.T) {
 	host.Type("do not orphan this prompt")
 	host.Press(input.Enter)
 	host.Shows(t, "wait for the current session change")
-	host.Until(t, "the rejected prompt to remain durable", func() bool {
-		if !host.Repaint() {
-			return false
-		}
+	awaitState(t, "the rejected prompt to remain durable", func() bool {
 		store, err := openSessionWorkbench(stateDirectory)
 		if err != nil {
 			return false
@@ -2945,9 +2962,9 @@ func TestSessionChangeDoesNotInstallAfterAnInFlightDraftSaveFailure(t *testing.T
 	host.Shows(t, "saved before transition plus input during transition")
 	host.Shows(t, "workbench:")
 	close(backend.releaseChange)
-	host.Until(t, "failed session transition to settle", func() bool {
+	awaitState(t, "failed session transition to settle", func() bool {
 		page, listSessionsErr := base.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
-		return listSessionsErr == nil && len(page.Items) == 4 && host.Repaint()
+		return listSessionsErr == nil && len(page.Items) == 4
 	})
 	host.Shows(t, "saved before transition plus input during transition")
 	host.Shows(t, "Flaky cache expiry test")
@@ -3089,10 +3106,10 @@ func TestRelocateMovesTheCurrentSessionAndRebindsWorkspaceState(t *testing.T) {
 	}
 	sessionID := firstRuntimeSession(t, backend)
 	var snapshot agent.SessionSnapshot
-	host.Until(t, "the current session to relocate", func() bool {
+	awaitState(t, "the current session to relocate", func() bool {
 		var readErr error
 		snapshot, readErr = backend.GetSession(t.Context(), sessionID)
-		return readErr == nil && snapshot.Session.Workspace.Path == want && host.Repaint()
+		return readErr == nil && snapshot.Session.Workspace.Path == want
 	})
 	if snapshot.Session.Workspace.Path != want {
 		t.Fatalf("relocated workspace = %q, want %q", snapshot.Session.Workspace.Path, want)
@@ -4641,8 +4658,8 @@ func TestCancelBeforeRunIdentityDoesNotBlockTheNextRun(t *testing.T) {
 	host.Shows(t, "Ask flame")
 	host.Type("first request waits before returning a stream")
 	host.Press(input.Enter)
-	host.Until(t, "the first runtime handshake to block", func() bool {
-		return runtime.starts.Load() == 1 && host.Repaint()
+	awaitState(t, "the first runtime handshake to block", func() bool {
+		return runtime.starts.Load() == 1
 	})
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
 	host.Shows(t, "canceled")

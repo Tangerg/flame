@@ -84,11 +84,11 @@ func (p *promptView) Focus(has bool) {
 	p.syncFocus()
 }
 
-func (p *promptView) Measure(width int) int {
+func (p *promptView) HeightForWidth(width int) int {
 	if p.compact {
 		return 1
 	}
-	return p.rows.Measure(width)
+	return p.rows.HeightForWidth(width)
 }
 
 func (p *promptView) SetCompact(compact bool) {

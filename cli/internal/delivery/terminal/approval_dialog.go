@@ -61,8 +61,8 @@ func (a *approvalPane) Draw(frame headless.Frame) {
 	if width <= 0 || height <= 0 || form == nil {
 		return
 	}
-	formRows := min(form.Measure(width), max(height-1, 0))
-	detailRows := min(a.detail.Measure(width), min(4, max(height-formRows-1, 0)))
+	formRows := min(form.HeightForWidth(width), max(height-1, 0))
+	detailRows := min(a.detail.HeightForWidth(width), min(4, max(height-formRows-1, 0)))
 	rows := frame.Subs((layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
 		{Size: layout.Fixed(1)},
 		{Size: layout.Fixed(detailRows)},
@@ -115,6 +115,7 @@ func (a *app) setApprovalForm(initial approvalAction) {
 	rememberable := a.dialogs.approval == nil || a.dialogs.approval.Rememberable
 	draft.choice = initial.Normalize(rememberable)
 	choice := &headless.Select[approvalAction]{
+		Same:  headless.Equal[approvalAction],
 		Label: "How should flame proceed?", Value: headless.Bind(&draft.choice), Rows: 3,
 	}
 	choice.SetOptions(approvalOptions(rememberable))
@@ -122,7 +123,7 @@ func (a *app) setApprovalForm(initial approvalAction) {
 		Label: "Denial feedback (optional)", Placeholder: "Explain what should change before retrying",
 		Value: headless.Bind(&draft.reason),
 	}
-	reason.Editor().Clipboard = a.loop.Clipboard()
+	reason.Clipboard = a.loop.Clipboard()
 	keys := headless.DefaultFormKeys()
 	a.dialogs.approvalForm = headless.NewForm(choice, reason)
 	a.dialogs.approvalForm.Keys = keys

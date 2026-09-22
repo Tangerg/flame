@@ -1,12 +1,16 @@
 package terminal
 
 import (
+	"errors"
+	"strings"
+
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/layout"
 	"github.com/Tangerg/oolong/core/text"
 	"github.com/Tangerg/oolong/highlight"
+	"github.com/Tangerg/oolong/latex"
 	"github.com/Tangerg/oolong/markdown"
 )
 
@@ -44,9 +48,9 @@ func newUserMessageBlock(theme kit.Theme, speaker, body string) *userMessageBloc
 	}
 }
 
-func (u *userMessageBlock) Measure(width int) int {
+func (u *userMessageBlock) HeightForWidth(width int) int {
 	innerWidth, _ := u.geometry(width)
-	return u.message.Measure(innerWidth)
+	return u.message.HeightForWidth(innerWidth)
 }
 
 func (u *userMessageBlock) Draw(view grid.View) {
@@ -76,13 +80,54 @@ func (u *userMessageBlock) geometry(width int) (innerWidth, inset int) {
 }
 
 type markdownBlock struct {
-	theme   kit.Theme
-	speaker string
-	doc     markdown.Doc
+	theme      kit.Theme
+	speaker    string
+	doc        markdown.Doc
+	source     string
+	look       markdown.Look
+	diagnostic *text.Block
+	cancel     func()
+	images     []*terminalImageBlock
 }
 
-func (m *markdownBlock) Measure(width int) int {
-	return layout.Sum(1, m.doc.Measure(max(width-2, 1)), 1)
+func (m *markdownBlock) setSource(source string, look markdown.Look) {
+	m.source, m.look = source, look
+	m.setBlocks(markdown.Render(source, look))
+}
+
+func (m *markdownBlock) setBlocks(blocks []markdown.Block, err error) {
+	m.doc.SetBlocks(blocks)
+	m.diagnostic = nil
+	if err != nil {
+		var lines []text.Line
+		for line := range strings.SplitSeq(err.Error(), "\n") {
+			lines = append(lines, text.Of(line, m.theme.Danger))
+		}
+		m.diagnostic = text.NewBlock(text.BlockConfig{Lines: lines, Wrap: true})
+	}
+}
+
+func (m *markdownBlock) Close() error {
+	if m.cancel != nil {
+		m.cancel()
+		m.cancel = nil
+	}
+	m.doc.SetBlocks(nil)
+	var err error
+	for _, image := range m.images {
+		err = errors.Join(err, image.Close())
+	}
+	m.images = nil
+	return err
+}
+
+func (m *markdownBlock) HeightForWidth(width int) int {
+	innerWidth := max(width-2, 1)
+	rows := layout.Sum(1, m.doc.HeightForWidth(innerWidth), 1)
+	if m.diagnostic != nil {
+		rows = layout.Sum(rows, m.diagnostic.HeightForWidth(innerWidth))
+	}
+	return rows
 }
 
 func (m *markdownBlock) Draw(view grid.View) {
@@ -92,18 +137,26 @@ func (m *markdownBlock) Draw(view grid.View) {
 	}
 	view.Text(0, 0, m.speaker, m.theme.Muted)
 	m.doc.Draw(view.Sub(grid.Rect(2, 1, max(width-2, 0), max(height-2, 0))))
+	if m.diagnostic != nil {
+		y := 1 + m.doc.HeightForWidth(max(width-2, 1))
+		m.diagnostic.Draw(view.Sub(grid.Rect(2, y, max(width-2, 0), max(height-y-1, 0))))
+	}
 }
 
 func (m *markdownBlock) Rows(width int) []text.Row {
 	rows := []text.Row{{Text: m.speaker}}
-	for _, row := range m.doc.Rows(max(width-2, 1)) {
+	body := m.doc.Rows(max(width-2, 1))
+	if m.diagnostic != nil {
+		body = append(body, m.diagnostic.Rows(max(width-2, 1))...)
+	}
+	for _, row := range body {
 		row.Offset += 2
 		rows = append(rows, row)
 	}
 	return append(rows, text.Row{})
 }
 
-func markdownLook(theme kit.Theme, glyphs kit.Glyphs, syntax highlight.Renderer) markdown.Look {
+func markdownLook(theme kit.Theme, glyphs kit.Glyphs, locale string, syntax highlight.Renderer) markdown.Look {
 	look := markdown.Look{
 		Text: theme.Text, Headings: []grid.Style{theme.Heading, theme.Strong},
 		Strong: theme.Strong, Emphasis: grid.Style{Attr: grid.Italic},
@@ -115,7 +168,11 @@ func markdownLook(theme kit.Theme, glyphs kit.Glyphs, syntax highlight.Renderer)
 			Checked: glyphs.Taken, Unchecked: glyphs.Free,
 		},
 	}
-	look.SetRenderer(markdown.FencedCode, syntax.Lines)
+	look.SetRenderer(markdown.FencedCode, markdownFences(syntax, nil))
+	look.SetRenderer(markdown.DisplayMath, func(_ string, source string) (grid.Drawable, error) {
+		formula := latex.Render(source, latex.Look{Text: theme.Text, Rule: theme.Subtle, Error: theme.Danger, Glyphs: latex.GlyphsFor(locale)})
+		return formula, formula.Err()
+	})
 	return look
 }
 

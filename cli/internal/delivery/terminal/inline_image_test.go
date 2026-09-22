@@ -38,6 +38,8 @@ func (i *imageTransportStub) Transmit([]byte) (graphics.Image, error) {
 	return graphics.Image{ID: 1, Size: image.Pt(200, 100)}, nil
 }
 
+func (*imageTransportStub) Release(graphics.Image) error { return nil }
+
 func TestTerminalImageBlockReflowsWithTheHostCellSize(t *testing.T) {
 	source := image.NewRGBA(image.Rect(0, 0, 2, 1))
 	var data bytes.Buffer
@@ -49,9 +51,9 @@ func TestTerminalImageBlockReflowsWithTheHostCellSize(t *testing.T) {
 	block := presenter.Present(kit.Dark(), agent.InlineImage{
 		Name: "chart.png", MIMEType: "image/png", Data: data.Bytes(),
 	})
-	before := block.(*terminalImageBlock).Measure(40)
+	before := block.(*terminalImageBlock).HeightForWidth(40)
 	transport.cell = image.Pt(20, 10)
-	after := block.(*terminalImageBlock).Measure(40)
+	after := block.(*terminalImageBlock).HeightForWidth(40)
 	if before == after || transport.transmitted != 1 {
 		t.Fatalf("responsive image = rows %d -> %d, transmissions %d", before, after, transport.transmitted)
 	}

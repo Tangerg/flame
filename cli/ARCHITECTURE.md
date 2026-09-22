@@ -71,6 +71,14 @@ The terminal package owns an explicit UI state tree and cohesive feature control
 
 Oolong owns terminal mode, input decoding, cell measurement, and low-level editing. Flame owns product interaction, including focus, keymaps, mouse press/release matching, overlays, composer behavior, attention signals, and stable stream presentation.
 
+Oolong also owns Markdown parsing and streaming, syntax highlighting, LaTeX layout,
+and Mermaid's bounded browser execution. Flame supplies appearance and message
+lifetime: completed Markdown schedules diagram preparation, the terminal owner
+accepts neutral PNG results, and immutable content snapshots receive distinct image
+handles. A message becomes finished only after its images or diagnostics settle.
+Discard, session replacement, and shutdown cancel workers and release image data;
+the terminal transport stays open until application cleanup finishes.
+
 `/Users/tangerg/Desktop/grok-build` is the visual benchmark for information hierarchy, spacing, presentation density, stable streaming, and immediate interaction feedback. Flame keeps its own vocabulary, state ownership, and Oolong primitives. Compare deterministic renders at representative terminal dimensions so visual changes have reviewable evidence instead of subjective claims.
 
 Long-lived terminal features own their cancellation and settlement locally. The application root coordinates them but does not mirror every feature field or become a general service bag.

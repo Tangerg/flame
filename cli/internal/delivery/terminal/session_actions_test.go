@@ -832,7 +832,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "attached notes.txt")
 	var staged agent.Message
-	host.Until(t, "the attachment draft to become durable", func() bool {
+	awaitState(t, "the attachment draft to become durable", func() bool {
 		var found bool
 		var err error
 		staged, found, err = storedDraft(stateDirectory, sessionID)
@@ -849,7 +849,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("steer did not reach the runtime")
 	}
-	host.Until(t, "the accepted steer draft ownership to be retired", func() bool {
+	awaitState(t, "the accepted steer draft ownership to be retired", func() bool {
 		_, found, err := storedDraft(stateDirectory, sessionID)
 		return err == nil && !found
 	})

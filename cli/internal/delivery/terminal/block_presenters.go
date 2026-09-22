@@ -5,7 +5,6 @@ import (
 
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/markdown"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
@@ -40,7 +39,7 @@ func presentMarkdown(speaker string) func(BlockPresentation, agent.Block) []head
 		if block.Kind == agent.BlockReasoning {
 			look.Text, look.Strong = p.Theme.Muted, p.Theme.Subtle
 		}
-		message.doc.SetBlocks(markdown.Render(block.Text, look))
+		message.setSource(block.Text, look)
 		rendered := []headless.Block{message}
 		for _, image := range block.Images {
 			if p.Image == nil {

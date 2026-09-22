@@ -85,7 +85,7 @@ func TestMCPFormFlowClearsEverySecretProjection(t *testing.T) {
 	flow.draft.environment = `{"TOKEN":"private"}`
 	for range 3 {
 		field := &headless.Text{}
-		field.Editor().SetText("private")
+		field.SetText("private")
 		flow.secretFields = append(flow.secretFields, field)
 	}
 	fields := slices.Clone(flow.secretFields)
@@ -95,7 +95,7 @@ func TestMCPFormFlowClearsEverySecretProjection(t *testing.T) {
 		t.Fatalf("secret state survived cleanup: %+v", flow)
 	}
 	for index, field := range fields {
-		if value := field.Editor().Text(); value != "" {
+		if value := field.Text(); value != "" {
 			t.Fatalf("secret field %d = %q after cleanup", index, value)
 		}
 	}

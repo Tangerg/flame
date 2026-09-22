@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/components/headless"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
@@ -50,5 +51,18 @@ func TestPromptHistoryOwnsAndEnforcesItsRetentionCapacity(t *testing.T) {
 	}
 	if got := history.entries[len(history.entries)-1].Text; got != "prompt 1004" {
 		t.Fatalf("newest retained prompt = %q, want prompt 1004", got)
+	}
+}
+
+func TestCommittedComposerCannotUndoIntoReleasedAttachmentPayloads(t *testing.T) {
+	a := &app{attachmentElements: make(map[uint64]agent.Attachment)}
+	editor := a.composer.Editor()
+	element := editor.InsertElement(fileElement, "@design.md")
+	a.attachmentElements[element.ID] = agent.Attachment{Name: "design.md"}
+	editor.Insert(" inspect this")
+	a.clearComposer()
+	editor.Do(headless.Undo)
+	if !editor.Empty() || len(editor.Elements()) != 0 {
+		t.Fatal("committed draft can resurrect text or released attachments")
 	}
 }

@@ -76,10 +76,11 @@ func (a *app) projectSession(snapshot agent.SessionSnapshot, attached *agent.Seg
 
 func (a *app) newTranscript() *transcriptView {
 	transcript := newTranscriptView(
-		a.transcript.theme, a.transcript.glyphs, a.transcript.wheel, a.syntax,
+		a.transcript.theme, a.transcript.glyphs, a.loop.Environment().Locale(), a.transcript.wheel, a.syntax,
 		a.settings.UI.TranscriptRetain, a.transcript.details, a.transcript.clipboard,
 	)
 	transcript.images = a.transcript.images
+	a.configureMarkdown(transcript)
 	return transcript
 }
 

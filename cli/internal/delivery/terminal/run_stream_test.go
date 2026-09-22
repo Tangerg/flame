@@ -318,8 +318,8 @@ func TestRecoveredSessionRetriesATransientAttachRead(t *testing.T) {
 	}
 	runtime := &sessionReadFailureRuntime{Runtime: base, failureAt: 2}
 	host, stop := runUIWithRuntimeChanges(t, runtime, nil, "ses_demo_1")
-	host.Until(t, "the recovered session attach retry", func() bool {
-		return runtime.reads.Load() >= 4 && host.Repaint()
+	awaitState(t, "the recovered session attach retry", func() bool {
+		return runtime.reads.Load() >= 4
 	})
 	host.Shows(t, "recover attach")
 	stop()
@@ -421,7 +421,7 @@ func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *tes
 
 	var pending []workbench.PendingRun
 	var refused agent.StartRun
-	host.Until(t, "the refused start to return to the durable FIFO", func() bool {
+	awaitState(t, "the refused start to return to the durable FIFO", func() bool {
 		refused = runtime.refusedCommand()
 		if refused.SessionID == "" {
 			return false
@@ -431,7 +431,7 @@ func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *tes
 			return false
 		}
 		pending = store.PendingRuns(refused.SessionID)
-		return host.Repaint() && len(pending) == 1 && pending[0].State == workbench.PendingRunQueued
+		return len(pending) == 1 && pending[0].State == workbench.PendingRunQueued
 	})
 	if refused.CommandID == "" || len(pending) != 1 || pending[0].Command.CommandID == refused.CommandID ||
 		pending[0].Command.Message.Text != "preserve a refused start" {
@@ -459,13 +459,13 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 	host.Press(input.Enter)
 	host.Shows(t, "start segment stream: user item identity is empty")
 	release()
-	host.Until(t, "the malformed accepted start to be canceled", func() bool {
+	awaitState(t, "the malformed accepted start to be canceled", func() bool {
 		starts, cancellations := runtime.attempts()
 		if len(starts) != 1 || len(cancellations) != 1 {
 			return false
 		}
 		reopened, err := openSessionWorkbench(stateDirectory)
-		return err == nil && len(reopened.PendingRuns(starts[0].SessionID)) == 0 && host.Repaint()
+		return err == nil && len(reopened.PendingRuns(starts[0].SessionID)) == 0
 	})
 	starts, cancellations := runtime.attempts()
 	if starts[0].CommandID == "" || cancellations[0].CommandID == "" || cancellations[0].RunID == "" ||
@@ -513,9 +513,9 @@ func TestInvalidAcceptedStartReceiptSettlesTheMemoryOnlyQueue(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "start segment stream: user item identity is empty")
 	release()
-	host.Until(t, "the memory-only malformed start cleanup", func() bool {
+	awaitState(t, "the memory-only malformed start cleanup", func() bool {
 		starts, cancellations := runtime.attempts()
-		return len(starts) == 1 && len(cancellations) == 1 && host.Repaint()
+		return len(starts) == 1 && len(cancellations) == 1
 	})
 	host.Hides(t, "1 queued")
 	host.Shows(t, "canceled")
@@ -563,13 +563,13 @@ func TestRetryingInvalidAcceptedStartCleanupRecoversAuthoritativeProjection(t *t
 	host.Press(input.Enter)
 	host.Shows(t, "could not cancel run: temporary malformed-receipt cleanup failure")
 	host.Press(input.Esc)
-	host.Until(t, "the retried malformed receipt cleanup", func() bool {
+	awaitState(t, "the retried malformed receipt cleanup", func() bool {
 		starts, cancellations := runtime.attempts()
 		if len(starts) != 1 || len(cancellations) != 2 {
 			return false
 		}
 		reopened, err := openSessionWorkbench(stateDirectory)
-		return err == nil && len(reopened.PendingRuns(starts[0].SessionID)) == 0 && host.Repaint()
+		return err == nil && len(reopened.PendingRuns(starts[0].SessionID)) == 0
 	})
 	_, cancellations := runtime.attempts()
 	if cancellations[0].CommandID == "" || cancellations[0].CommandID != cancellations[1].CommandID ||
@@ -686,13 +686,13 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 		t.Fatal("reconciliation did not retry the original command")
 	}
 	var pending []workbench.PendingRun
-	host.Until(t, "the refused command to become an ordinary queued intent", func() bool {
+	awaitState(t, "the refused command to become an ordinary queued intent", func() bool {
 		reopened, openErr := openSessionWorkbench(stateDirectory)
 		if openErr != nil {
 			return false
 		}
 		pending = reopened.PendingRuns(command.SessionID)
-		return host.Repaint() && len(pending) == 1 && pending[0].State == workbench.PendingRunQueued
+		return len(pending) == 1 && pending[0].State == workbench.PendingRunQueued
 	})
 	if len(pending) != 1 || pending[0].State != workbench.PendingRunQueued ||
 		pending[0].Command.CommandID == original || pending[0].Command.Message.Text != command.Message.Text {
@@ -746,9 +746,9 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 		t.Fatalf("unacknowledged cancellation ownership = %+v", held)
 	}
 	release()
-	host.Until(t, "the canceled opening command to leave the durable outbox", func() bool {
+	awaitState(t, "the canceled opening command to leave the durable outbox", func() bool {
 		current, openErr := openSessionWorkbench(stateDirectory)
-		return openErr == nil && len(current.PendingRuns(command.SessionID)) == 0 && host.Repaint()
+		return openErr == nil && len(current.PendingRuns(command.SessionID)) == 0
 	})
 	host.Shows(t, command.Message.Text)
 	if cancelID == "" {
@@ -820,9 +820,9 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 	if err := os.Rename(backupPath, statePath); err != nil {
 		t.Fatal(err)
 	}
-	host.Until(t, "the canceled opening ownership to settle after storage recovers", func() bool {
+	awaitState(t, "the canceled opening ownership to settle after storage recovers", func() bool {
 		reopened, openErr := openSessionWorkbench(stateDirectory)
-		return openErr == nil && len(reopened.PendingRuns(command.SessionID)) == 0 && host.Repaint()
+		return openErr == nil && len(reopened.PendingRuns(command.SessionID)) == 0
 	})
 	host.Hides(t, "workbench:")
 	if cancelID == "" {
@@ -856,9 +856,9 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 
 	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	host.Shows(t, "canceled")
-	host.Until(t, "the invalid recovered start to leave the durable outbox", func() bool {
+	awaitState(t, "the invalid recovered start to leave the durable outbox", func() bool {
 		reopened, openErr := openSessionWorkbench(stateDirectory)
-		return openErr == nil && len(reopened.PendingRuns(command.SessionID)) == 0 && host.Repaint()
+		return openErr == nil && len(reopened.PendingRuns(command.SessionID)) == 0
 	})
 	starts, cancellations := runtime.attempts()
 	if len(starts) != 1 || len(cancellations) != 1 || cancellations[0].RunID == "" ||

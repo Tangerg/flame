@@ -28,6 +28,31 @@ The process working directory is never an implicit Runtime configuration source.
 
 Run subscriptions reconnect with bounded backoff until canceled.
 
+## Markdown, formulas, and diagrams
+
+Assistant and reasoning messages render Markdown through Oolong, including fenced
+code highlighting, tables, lists, quotes, and links. Display formulas use Oolong's
+native terminal LaTeX layout: put `$$` on separate lines or use a `math` code fence.
+Unsupported formulas keep their source and display the rendering diagnostic.
+
+Mermaid code fences become inline diagrams after the message completes. Diagram
+preparation runs asynchronously; incomplete streamed diagrams remain readable
+source. Each message owns its images and pending work, which are released when
+the message is discarded, its session is replaced, or the terminal closes.
+
+Inline diagrams require a terminal supporting the Kitty graphics protocol and
+pixel cell dimensions, plus the official Mermaid CLI (`mmdc`) and its Chromium
+backend. Install the backend separately:
+
+```sh
+npm install -g @mermaid-js/mermaid-cli@11.17.0
+```
+
+Flame uses Oolong's bounded Mermaid renderer and does not download a browser at
+startup. Missing terminal capabilities, a missing backend, or invalid diagram
+syntax leave the source visible with a diagnostic. Scripted text and JSON output
+retain the original content.
+
 In the terminal, `/skills` lists available skills and local discovery diagnostics. `/skills <name>` reads the current resolver-selected document, including source path, revision, and instructions. Open skill readers refresh after Runtime skill-change events.
 
 Provider selection is either an exact provider/model pair or absent. Absence means that Runtime applies the active Session selection; CLI never infers a provider from a model name.

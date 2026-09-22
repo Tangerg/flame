@@ -106,11 +106,11 @@ func (t *toolBlock) ToggleExpanded() bool {
 	return t.expanded
 }
 
-func (t *toolBlock) Measure(width int) int {
+func (t *toolBlock) HeightForWidth(width int) int {
 	rows := 1
 	if t.Expanded() {
 		for _, block := range t.body {
-			rows = layout.Sum(rows, block.Measure(max(width-toolContentInset, 1)))
+			rows = layout.Sum(rows, block.HeightForWidth(max(width-toolContentInset, 1)))
 		}
 	}
 	return layout.Sum(rows, 1)
@@ -122,7 +122,7 @@ func (t *toolBlock) Draw(view grid.View) {
 		return
 	}
 	toggle, label, right, statusStyle := t.header()
-	contentRows := min(t.Measure(width)-1, height)
+	contentRows := min(t.HeightForWidth(width)-1, height)
 	for row := range contentRows {
 		view.Text(0, row, t.glyphs.Vertical, statusStyle)
 	}
@@ -151,7 +151,7 @@ func (t *toolBlock) Draw(view grid.View) {
 	}
 	y, bodyWidth := 1, max(width-toolContentInset, 0)
 	for _, block := range t.body {
-		rows := block.Measure(max(bodyWidth, 1))
+		rows := block.HeightForWidth(max(bodyWidth, 1))
 		if y >= height {
 			return
 		}
@@ -168,7 +168,7 @@ func (t *toolBlock) Rows(width int) []text.Row {
 	if t.Expanded() {
 		bodyWidth := max(width-toolContentInset, 1)
 		for _, block := range t.body {
-			height := block.Measure(bodyWidth)
+			height := block.HeightForWidth(bodyWidth)
 			if copyable, ok := block.(headless.TextProjector); ok {
 				copied := copyable.Rows(bodyWidth)
 				for i := range min(len(copied), height) {

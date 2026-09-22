@@ -125,7 +125,7 @@ func (s *shellView) items(density shellDensity) []headless.Item {
 func (s *shellView) focus(key string) bool {
 	for index, item := range s.rows.Items() {
 		if item.Key == key {
-			return s.rows.Give(index)
+			return s.rows.FocusIndex(index)
 		}
 	}
 	return false

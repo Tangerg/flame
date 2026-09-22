@@ -130,7 +130,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled protocol.Schedul
 	draft := newScheduleFormDraft(mode, scheduled, a.session.current.Workspace.Path)
 	textField := func(label, placeholder string, value *string, check func(string) error) *headless.Text {
 		field := &headless.Text{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check}
-		field.Editor().Clipboard = a.loop.Clipboard()
+		field.Clipboard = a.loop.Clipboard()
 		return field
 	}
 	fields := []headless.Field{
@@ -144,7 +144,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled protocol.Schedul
 		}),
 	}
 	if mode == scheduleFormUpdate {
-		enabled := &headless.Select[bool]{Label: "Lifecycle", Value: headless.Bind(&draft.enabled), Rows: 2}
+		enabled := &headless.Select[bool]{Same: headless.Equal[bool], Label: "Lifecycle", Value: headless.Bind(&draft.enabled), Rows: 2}
 		enabled.SetOptions([]headless.Option[bool]{{Label: "Enabled", Value: true}, {Label: "Disabled", Value: false}})
 		fields = append(fields, enabled)
 	}
@@ -196,7 +196,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled protocol.Schedul
 	dialog = kit.NewDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
 		Title: title, Body: body,
-		Where: layout.Placement{Width: 88, Height: formDialogHeight(body.Measure(84), len(fields), 24)},
+		Where: layout.Placement{Width: 88, Height: formDialogHeight(body.HeightForWidth(84), len(fields), 24)},
 	})
 	a.dialogs.scheduleDialog = dialog
 	dialog.Controller().Show()

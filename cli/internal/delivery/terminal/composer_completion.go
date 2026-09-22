@@ -155,8 +155,8 @@ func (a *app) exactCommandCompletion() bool {
 
 func (a *app) drawCompletion(frame headless.Frame) {
 	width, height := frame.Size()
-	rows := a.completion.Measure(width)
-	promptHeight := a.prompt.Measure(width)
+	rows := a.completion.HeightForWidth(width)
+	promptHeight := a.prompt.HeightForWidth(width)
 	availableHeight := height - promptHeight
 	if width <= 2 || availableHeight <= 2 || rows <= 0 {
 		return

@@ -1,12 +1,12 @@
 package terminal
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
-	"github.com/Tangerg/oolong/markdown"
 
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
@@ -126,10 +126,15 @@ func (t *transcriptView) delta(key string, delta agent.BlockDelta) error {
 }
 
 func (t *transcriptView) updateLiveText(live *liveText, text string) {
-	live.stable = append(live.stable, live.stream.Feed(text)...)
+	stable, feedErr := live.stream.Feed(text)
+	live.stable = append(live.stable, stable...)
+	if feedErr != nil {
+		live.diagnostic = errors.Join(live.diagnostic, feedErr)
+	}
 	blocks := slices.Clone(live.stable)
-	blocks = append(blocks, live.stream.Open()...)
-	live.block.doc.SetBlocks(blocks)
+	open, openErr := live.stream.Open()
+	blocks = append(blocks, open...)
+	live.block.setBlocks(blocks, errors.Join(live.diagnostic, openErr))
 	t.content.Changed(live.id)
 	t.refreshSearch()
 }
@@ -167,9 +172,8 @@ func (t *transcriptView) completeStream(block agent.Block) error {
 	}
 	// The completed value is authoritative. Re-rendering it once also repairs a
 	// transport that intentionally replaced an earlier provisional tail.
-	live.block.doc.SetBlocks(markdown.Render(block.Text, t.lookFor(block.Kind)))
-	t.content.Changed(live.id)
-	t.content.Finish(live.id)
+	live.block.setSource(block.Text, t.lookFor(block.Kind))
+	t.finishMarkdown(live.id, live.block)
 	live.stream.Reset()
 	delete(t.textStreams, key)
 	for _, image := range block.Images {
@@ -219,7 +223,8 @@ func (t *transcriptView) settleLive(outcome agent.Outcome) {
 
 func (t *transcriptView) settleLivePresentation(toolStatus agent.ToolStatus) {
 	for id, live := range t.textStreams {
-		t.content.Finish(live.id)
+		live.block.setSource(live.text.String(), t.lookFor(live.kind))
+		t.finishMarkdown(live.id, live.block)
 		live.stream.Reset()
 		delete(t.textStreams, id)
 	}
@@ -258,7 +263,8 @@ func (t *transcriptView) settleRun(runID string, outcome agent.Outcome) {
 		if live.runID != runID {
 			continue
 		}
-		t.content.Finish(live.id)
+		live.block.setSource(live.text.String(), t.lookFor(live.kind))
+		t.finishMarkdown(live.id, live.block)
 		live.stream.Reset()
 		delete(t.textStreams, id)
 	}

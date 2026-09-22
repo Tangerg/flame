@@ -254,7 +254,7 @@ func (a *app) buildQuestionFields(response *questionResponse) ([]headless.Field,
 
 func (a *app) buildQuestionText(value *string, label, placeholder string, check func(string) error) headless.Field {
 	field := &headless.Text{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check}
-	field.Editor().Clipboard = a.loop.Clipboard()
+	field.Clipboard = a.loop.Clipboard()
 	return field
 }
 
@@ -338,7 +338,7 @@ func (a *app) showQuestionDialog(review *questionnaire, fields []headless.Field)
 	dialog = kit.NewDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
 		Title: review.Title(), Body: dressed,
-		Where: layout.Placement{Width: 88, Height: formDialogHeight(dressed.Measure(80), len(fields), 18)},
+		Where: layout.Placement{Width: 88, Height: formDialogHeight(dressed.HeightForWidth(80), len(fields), 18)},
 	})
 	a.dialogs.questionDialog = dialog
 	dialog.Controller().Show()

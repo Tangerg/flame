@@ -91,14 +91,14 @@ func (t *toolGroupBlock) ToggleExpanded() bool {
 	return t.Expanded()
 }
 
-func (t *toolGroupBlock) Measure(width int) int {
+func (t *toolGroupBlock) HeightForWidth(width int) int {
 	if len(t.tools) == 1 {
-		return t.tools[0].Measure(width)
+		return t.tools[0].HeightForWidth(width)
 	}
 	rows := 1
 	if t.Expanded() {
 		for _, tool := range t.tools {
-			rows = layout.Sum(rows, tool.Measure(max(width-toolContentInset, 1)))
+			rows = layout.Sum(rows, tool.HeightForWidth(max(width-toolContentInset, 1)))
 		}
 	}
 	return layout.Sum(rows, 1)
@@ -117,7 +117,7 @@ func (t *toolGroupBlock) Draw(view grid.View) {
 		return
 	}
 	toggle, label, status, statusStyle := t.header()
-	for row := range min(t.Measure(width)-1, height) {
+	for row := range min(t.HeightForWidth(width)-1, height) {
 		view.Text(0, row, t.glyphs.Vertical, statusStyle)
 	}
 	toggleStyle := t.theme.Muted
@@ -140,7 +140,7 @@ func (t *toolGroupBlock) Draw(view grid.View) {
 	}
 	y, childWidth := 1, max(width-toolContentInset, 1)
 	for _, tool := range t.tools {
-		rows := tool.Measure(childWidth)
+		rows := tool.HeightForWidth(childWidth)
 		if y >= height {
 			return
 		}

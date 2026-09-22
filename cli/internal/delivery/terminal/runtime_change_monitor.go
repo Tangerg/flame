@@ -71,7 +71,7 @@ func (a *app) followRuntimeChanges() {
 func (a *app) applyWorkspaceChanges(changes []workspace.Change) {
 	a.header.SetWorkspaceChanges(len(changes))
 	if a.dialogs.workspaceReader == workspaceReaderChanges {
-		follow := a.dialogs.reader.scroll.AtBottom()
+		follow := a.dialogs.reader.scroll.FollowingEnd()
 		a.dialogs.reader.replace(workspaceChangesDocument(a.session.current.Workspace.Path, changes), true, follow)
 	}
 }

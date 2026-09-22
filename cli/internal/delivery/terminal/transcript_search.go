@@ -152,10 +152,21 @@ func (t *transcriptView) refreshSearch() { t.search.Refresh(&t.content) }
 func (t *transcriptView) SearchResults() <-chan headless.Result { return t.search.Results() }
 
 func (t *transcriptView) AcceptSearch(result headless.Result) (accepted, announce bool) {
-	return t.search.Accept(&t.content, result)
+	accepted, announce = t.search.Accept(&t.content, result)
+	if accepted && announce {
+		t.view.Matches, t.view.Current = t.search.presentation()
+		t.view.RevealMatch(t.view.Current)
+	}
+	return accepted, announce
 }
 
-func (t *transcriptView) StepMatch(delta int) bool { return t.search.Step(&t.content, delta) }
+func (t *transcriptView) StepMatch(delta int) bool {
+	if !t.search.Step(&t.content, delta) {
+		return false
+	}
+	t.view.Matches, t.view.Current = t.search.presentation()
+	return t.view.RevealMatch(t.view.Current)
+}
 
 func (a *app) listenForSearch() {
 	results := a.transcript.SearchResults()

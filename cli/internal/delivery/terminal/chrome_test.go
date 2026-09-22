@@ -24,10 +24,10 @@ func TestSessionHeaderUsesSpaceProgressively(t *testing.T) {
 	})
 	header.SetUsage(agent.Usage{InputTokens: 1_234, OutputTokens: 56_789})
 
-	if got := header.Measure(headerMinWidth - 1); got != 0 {
+	if got := header.HeightForWidth(headerMinWidth - 1); got != 0 {
 		t.Fatalf("narrow header height = %d, want 0", got)
 	}
-	if got := header.Measure(headerMinWidth); got != 2 {
+	if got := header.HeightForWidth(headerMinWidth); got != 2 {
 		t.Fatalf("wide header height = %d, want 2", got)
 	}
 
@@ -67,14 +67,14 @@ func TestSessionHeaderUsesItsReservedSecondRowForGoalState(t *testing.T) {
 	current := testGoal(t, "ship the release safely")
 	header.SetGoal(&current)
 
-	got := drawStatic(t, header, 72, header.Measure(72))
+	got := drawStatic(t, header, 72, header.HeightForWidth(72))
 	for _, want := range []string{"[Goal: active]", "ship the release safely"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("goal header does not contain %q:\n%s", want, got)
 		}
 	}
 	header.SetGoal(nil)
-	if got := drawStatic(t, header, 72, header.Measure(72)); strings.Contains(got, "Goal:") {
+	if got := drawStatic(t, header, 72, header.HeightForWidth(72)); strings.Contains(got, "Goal:") {
 		t.Fatalf("cleared goal remained in header:\n%s", got)
 	}
 }
@@ -194,7 +194,7 @@ func TestActivityViewCentersACompactWindowOnTheActiveStep(t *testing.T) {
 		{Description: "Run quality gates", Status: protocol.PlanStatusPending},
 	})
 
-	got := drawStatic(t, activity, 44, activity.Measure(44))
+	got := drawStatic(t, activity, 44, activity.HeightForWidth(44))
 	for _, want := range []string{"Plan", "step 4/6", "Build prompt", "Refine tools", "Add responsive tests"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("activity does not contain %q:\n%s", want, got)
@@ -203,7 +203,7 @@ func TestActivityViewCentersACompactWindowOnTheActiveStep(t *testing.T) {
 	if strings.Contains(got, "Inspect references") || strings.Contains(got, "Run quality gates") {
 		t.Fatalf("activity did not window its long plan:\n%s", got)
 	}
-	if got := activity.Measure(activityMinWidth - 1); got != 0 {
+	if got := activity.HeightForWidth(activityMinWidth - 1); got != 0 {
 		t.Fatalf("narrow activity height = %d, want 0", got)
 	}
 }
@@ -233,7 +233,7 @@ func TestPromptMovesRunOptionsIntoTheFrameAndChangesContext(t *testing.T) {
 	prompt := newPromptView(kit.Dark(), kit.Unicode(), bindings.editor, &composer, defaultRunOptions(t))
 	prompt.Focus(true)
 
-	idle := drawRoot(t, prompt, 120, prompt.Measure(120))
+	idle := drawRoot(t, prompt, 120, prompt.HeightForWidth(120))
 	for _, want := range []string{"runtime default", "enter", "shift+enter", "ctrl+p"} {
 		if !strings.Contains(idle, want) {
 			t.Errorf("idle prompt does not contain %q:\n%s", want, idle)
@@ -244,7 +244,7 @@ func TestPromptMovesRunOptionsIntoTheFrameAndChangesContext(t *testing.T) {
 	}
 
 	prompt.SetBusy(true)
-	busy := drawRoot(t, prompt, 120, prompt.Measure(120))
+	busy := drawRoot(t, prompt, 120, prompt.HeightForWidth(120))
 	for _, want := range []string{"enter", "queue follow up", "ctrl+c", "shift+enter", "ctrl+o"} {
 		if !strings.Contains(busy, want) {
 			t.Errorf("busy prompt does not contain %q:\n%s", want, busy)

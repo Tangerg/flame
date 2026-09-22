@@ -42,7 +42,7 @@ func TestAdjacentResourceToolsShareOneDisclosureWithoutLosingChildDetails(t *tes
 	}
 
 	first.block.SetExpanded(true)
-	surface := grid.NewSurface(72, first.block.Measure(72))
+	surface := grid.NewSurface(72, first.block.HeightForWidth(72))
 	first.block.Draw(surface.View())
 	drawn := strings.Join(surface.Rows(), "\n")
 	for _, expected := range []string{"2 resource operations", "read · main.go", "package main", "search · TODO", "main.go:8"} {

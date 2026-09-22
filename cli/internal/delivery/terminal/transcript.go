@@ -1,7 +1,9 @@
 package terminal
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"slices"
 
 	"github.com/Tangerg/oolong/components/headless"
@@ -49,6 +51,9 @@ type transcriptView struct {
 	history          transcriptHistory
 	activeToolGroup  *trackedToolGroup
 	images           *terminalImagePresenter
+	media            *markdownMedia
+	onRenderError    func(error)
+	releaseErr       error
 	contentLease     *transcriptContentLease
 	presentedBlocks  headless.Snapshot[transcriptBlockPresentation]
 }
@@ -63,13 +68,14 @@ type liveTool struct {
 }
 
 type liveText struct {
-	runID  string
-	kind   agent.BlockKind
-	text   agent.StreamedText
-	stream markdown.Stream
-	stable []markdown.Block
-	block  *markdownBlock
-	id     headless.BlockID
+	runID      string
+	kind       agent.BlockKind
+	text       agent.StreamedText
+	stream     markdown.Stream
+	stable     []markdown.Block
+	diagnostic error
+	block      *markdownBlock
+	id         headless.BlockID
 }
 
 type trackedTool struct {
@@ -138,6 +144,7 @@ func (t *transcriptView) DetailsLabel() string {
 func newTranscriptView(
 	theme kit.Theme,
 	glyphs kit.Glyphs,
+	locale string,
 	wheel input.Wheel,
 	syntax highlight.Renderer,
 	retain int,
@@ -146,7 +153,7 @@ func newTranscriptView(
 ) *transcriptView {
 	c := &transcriptView{
 		theme: theme, glyphs: glyphs, wheel: wheel,
-		look: markdownLook(theme, glyphs, syntax), syntax: syntax,
+		look: markdownLook(theme, glyphs, locale, syntax), syntax: syntax,
 		search: newTranscriptSearch(), retain: max(retain, 4), details: details,
 		clipboard: clipboard, entries: make(map[headless.BlockID]*transcriptEntry),
 		tools: make(map[string]liveTool), textStreams: make(map[string]*liveText),
@@ -297,8 +304,37 @@ func (t *transcriptView) Scroll(action keymap.Action) bool { return t.scroll.Do(
 
 func (t *transcriptView) Close() {
 	if t != nil {
+		if t.media != nil {
+			t.media.workers.Close()
+		}
+		t.Reset()
 		t.search.Close()
 	}
+}
+
+func (t *transcriptView) releaseEntry(entry *transcriptEntry) {
+	if closer, ok := entry.content.(io.Closer); ok {
+		if err := closer.Close(); err != nil {
+			err = fmt.Errorf("release transcript content: %w", err)
+			t.releaseErr = errors.Join(t.releaseErr, err)
+			if t.onRenderError != nil {
+				t.onRenderError(err)
+			}
+		}
+	}
+}
+
+func (t *transcriptView) finishMarkdown(id headless.BlockID, block *markdownBlock) {
+	if t.media != nil && t.media.start(block, func() {
+		t.content.Changed(id)
+		t.content.Finish(id)
+		t.refreshSearch()
+	}) {
+		t.content.Changed(id)
+		return
+	}
+	t.content.Changed(id)
+	t.content.Finish(id)
 }
 
 func (t *transcriptView) mutateTrackedTool(tracked trackedTool, mutate func(mutableToolBlock)) bool {
@@ -480,7 +516,11 @@ func (t *transcriptView) place(block headless.Block, finished bool) headless.Blo
 	id := t.content.Append(entry)
 	t.entries[id] = entry
 	if finished {
-		t.content.Finish(id)
+		if message, ok := block.(*markdownBlock); ok {
+			t.finishMarkdown(id, message)
+		} else {
+			t.content.Finish(id)
+		}
 	}
 	return id
 }
@@ -508,6 +548,7 @@ func (t *transcriptView) DiscardExcess() {
 	t.toolViews = slices.DeleteFunc(t.toolViews, func(item trackedToolView) bool { return item.id < first })
 	for id := range t.entries {
 		if id < first {
+			t.releaseEntry(t.entries[id])
 			delete(t.entries, id)
 		}
 	}
@@ -531,6 +572,9 @@ func (t *transcriptView) Reset() {
 	t.contentLease.retire()
 	t.contentLease = newTranscriptContentLease()
 	t.content = headless.Transcript{}
+	for _, entry := range t.entries {
+		t.releaseEntry(entry)
+	}
 	t.scroll = headless.Scroll{}
 	t.scroll.Wheel(t.wheel)
 	t.scroll.ToBottom()

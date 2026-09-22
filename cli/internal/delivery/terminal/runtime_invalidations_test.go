@@ -1390,9 +1390,9 @@ func TestRuntimeInvalidationRecoversAReadOnlyProjectionAfterTransientFailures(t 
 	host, stop := runUIWithRuntimeChanges(t, backend, source, "ses_demo_1")
 	host.Shows(t, "Ask flame")
 	awaitSignal(t, source.subscription, "runtime invalidation subscription")
-	host.Until(t, "the initial attach-first session read", func() bool {
-		return backend.reads.Load() >= 2 && host.Repaint()
-	})
+	for backend.reads.Load() < 2 {
+		awaitSignal(t, backend.readSignal, "the initial attach-first session read")
+	}
 
 	snapshot, err := base.GetSession(t.Context(), "ses_demo_1")
 	if err != nil {
@@ -1533,9 +1533,9 @@ func TestRuntimeInvalidationsRefetchTheCurrentAuthoritativeSession(t *testing.T)
 	if !slices.Equal(subscription.Topics, wantTopics) || len(subscription.Watches) != 0 {
 		t.Fatalf("subscription = %+v", subscription)
 	}
-	host.Until(t, "the initial attach-first cold session read", func() bool {
-		return backend.reads.Load() >= 2 && host.Repaint()
-	})
+	for backend.reads.Load() < 2 {
+		awaitSignal(t, backend.readSignal, "the initial attach-first cold session read")
+	}
 
 	snapshot, err := backend.Runtime.GetSession(t.Context(), "ses_demo_1")
 	if err != nil {
@@ -1588,9 +1588,9 @@ func TestDeletedActiveSessionIsReplacedFromItsWorkspace(t *testing.T) {
 	host, stop := runUIWithRuntimeChanges(t, backend, source, "ses_demo_1")
 	host.Shows(t, "Ask flame")
 	awaitSignal(t, source.subscription, "runtime invalidation subscription")
-	host.Until(t, "the attach-first session read", func() bool {
-		return backend.reads.Load() >= 2 && host.Repaint()
-	})
+	for backend.reads.Load() < 2 {
+		awaitSignal(t, backend.readSignal, "the attach-first session read")
+	}
 	if err := backend.DeleteSession(t.Context(), agent.DeleteSession{SessionID: "ses_demo_1"}); err != nil {
 		t.Fatal(err)
 	}

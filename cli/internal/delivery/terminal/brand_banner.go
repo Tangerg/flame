@@ -72,7 +72,7 @@ func (b *brandBanner) SetOptions(options agent.RunOptions) {
 	}
 }
 
-func (b *brandBanner) Measure(width int) int {
+func (b *brandBanner) HeightForWidth(width int) int {
 	if b == nil || width <= 0 {
 		return 0
 	}

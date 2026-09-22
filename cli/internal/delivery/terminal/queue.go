@@ -42,7 +42,7 @@ func (q *queueView) Set(snapshot promptqueue.Snapshot) {
 	q.snapshot = snapshot
 }
 
-func (q *queueView) Measure(width int) int {
+func (q *queueView) HeightForWidth(width int) int {
 	if width < queueMinWidth || len(q.snapshot.Entries) == 0 {
 		return 0
 	}

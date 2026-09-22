@@ -8,10 +8,26 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/oolong/components/headless"
+	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/program"
+	"github.com/Tangerg/oolong/core/programtest"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
+
+func editWithTerminal(t *testing.T, ctx context.Context, editor *draftEditor, workspace, original string) (edited string, err error) {
+	t.Helper()
+	host := handoverTestHost{programtest.New(t, programtest.Config{Width: 40, Height: 4})}
+	runErr := program.Run(t.Context(), program.Config{Host: host, Root: func(loop *program.Runtime) program.Component {
+		loop.Dispatcher().Post(func() {
+			edited, err = editor.Edit(ctx, loop.Session(), workspace, original)
+			loop.Quit()
+		})
+		return headless.NewRoot(&headless.Static{Of: kit.Label{Text: "editor"}})
+	}})
+	return edited, errors.Join(err, runErr)
+}
 
 func TestConfiguredDraftEditorParsesArgumentsWithoutExecutingShellSyntax(t *testing.T) {
 	t.Setenv("FLAME_EDITOR", `code --wait "profile name"`)
@@ -29,7 +45,7 @@ func TestConfiguredDraftEditorParsesArgumentsWithoutExecutingShellSyntax(t *test
 func TestDraftEditorReadsSuccessfulEditsAndReportsFailure(t *testing.T) {
 	workspace := t.TempDir()
 	editor := &draftEditor{command: []string{"sh", "-c", `printf '\nrevised' >> "$0"`}}
-	edited, err := editor.Edit(t.Context(), program.Session{}, workspace, "original")
+	edited, err := editWithTerminal(t, t.Context(), editor, workspace, "original")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +54,7 @@ func TestDraftEditorReadsSuccessfulEditsAndReportsFailure(t *testing.T) {
 	}
 
 	failing := &draftEditor{command: []string{"sh", "-c", "exit 7"}}
-	if _, err := failing.Edit(t.Context(), program.Session{}, workspace, "preserve me"); err == nil || !strings.Contains(err.Error(), "exit status 7") {
+	if _, err := editWithTerminal(t, t.Context(), failing, workspace, "preserve me"); err == nil || !strings.Contains(err.Error(), "exit status 7") {
 		t.Fatalf("failing editor error = %v", err)
 	}
 }
@@ -47,7 +63,7 @@ func TestDraftEditorHonorsApplicationCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	editor := &draftEditor{command: []string{"sh", "-c", "sleep 30"}}
-	if _, err := editor.Edit(ctx, program.Session{}, t.TempDir(), "preserve me"); !errors.Is(err, context.Canceled) {
+	if _, err := editWithTerminal(t, ctx, editor, t.TempDir(), "preserve me"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled editor error = %v, want context.Canceled", err)
 	}
 }
@@ -94,7 +110,7 @@ func TestDraftEditorRejectsInvalidReplacementFiles(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := (&draftEditor{command: test.command}).Edit(t.Context(), program.Session{}, workspace, "original")
+			_, err := editWithTerminal(t, t.Context(), &draftEditor{command: test.command}, workspace, "original")
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("Edit error = %v, want %q", err, test.want)
 			}
@@ -108,7 +124,7 @@ func TestDraftEditorReportsCleanupFailure(t *testing.T) {
 	editor := &draftEditor{command: []string{
 		"sh", "-c", `printf '%s' "$1" > "$0" && rm "$1" && mkdir "$1" && printf 'retained' > "$1/child"`, record,
 	}}
-	_, err := editor.Edit(t.Context(), program.Session{}, workspace, "sensitive prompt")
+	_, err := editWithTerminal(t, t.Context(), editor, workspace, "sensitive prompt")
 	draftPath, readErr := os.ReadFile(record)
 	if readErr != nil {
 		t.Fatal(readErr)

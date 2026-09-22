@@ -141,7 +141,7 @@ func (a *app) openProviderConfig(provider models.Provider) {
 		baseMode = formChangeSet
 	}
 	keyMode, apiKey := formChangeKeep, ""
-	baseChoice := &headless.Select[formChange]{Label: "Endpoint change", Value: headless.Bind(&baseMode), Rows: 3}
+	baseChoice := &headless.Select[formChange]{Same: headless.Equal[formChange], Label: "Endpoint change", Value: headless.Bind(&baseMode), Rows: 3}
 	baseChoice.SetOptions([]headless.Option[formChange]{
 		{Label: "Keep current endpoint", Value: formChangeKeep},
 		{Label: "Set endpoint", Value: formChangeSet},
@@ -156,7 +156,7 @@ func (a *app) openProviderConfig(provider models.Provider) {
 			return nil
 		},
 	}
-	keyChoice := &headless.Select[formChange]{Label: "API key change", Value: headless.Bind(&keyMode), Rows: 3}
+	keyChoice := &headless.Select[formChange]{Same: headless.Equal[formChange], Label: "API key change", Value: headless.Bind(&keyMode), Rows: 3}
 	keyOptions := []headless.Option[formChange]{
 		{Label: "Keep current key", Value: formChangeKeep},
 		{Label: "Set a stored key", Value: formChangeSet},
@@ -179,15 +179,15 @@ func (a *app) openProviderConfig(provider models.Provider) {
 			return nil
 		},
 	}
-	keyField.Editor().SetMask("•")
-	baseField.Editor().Clipboard = a.loop.Clipboard()
-	keyField.Editor().Clipboard = a.loop.Clipboard()
+	keyField.SetMask("•")
+	baseField.Clipboard = a.loop.Clipboard()
+	keyField.Clipboard = a.loop.Clipboard()
 	form := headless.NewForm(baseChoice, baseField, keyChoice, keyField)
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	clearKey := func() {
 		apiKey = ""
-		keyField.Editor().SetText("")
+		keyField.SetText("")
 	}
 	dismiss := func() {
 		clearKey()

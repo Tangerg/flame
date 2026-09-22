@@ -73,7 +73,7 @@ func (a *app) toggleSessionFavorite(session agent.Session) {
 func (a *app) openSessionRename(session agent.Session) {
 	title := displayTitle(session)
 	field := &headless.Text{Label: "Session title", Value: headless.Bind(&title), Check: requiredText}
-	field.Editor().Clipboard = a.loop.Clipboard()
+	field.Clipboard = a.loop.Clipboard()
 	form := headless.NewForm(field)
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
@@ -113,7 +113,7 @@ func (a *app) openSessionDelete(session agent.Session) {
 		return
 	}
 	confirmed := false
-	choice := &headless.Select[bool]{Label: "Delete " + displayTitle(session) + "?", Value: headless.Bind(&confirmed), Rows: 2}
+	choice := &headless.Select[bool]{Same: headless.Equal[bool], Label: "Delete " + displayTitle(session) + "?", Value: headless.Bind(&confirmed), Rows: 2}
 	choice.SetOptions([]headless.Option[bool]{{Label: "Cancel", Value: false}, {Label: "Delete permanently", Value: true}})
 	form := headless.NewForm(choice)
 	form.Keys = headless.DefaultFormKeys()

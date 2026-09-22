@@ -325,6 +325,7 @@ func (a *app) resetComposer() {
 
 func (a *app) clearComposer() {
 	a.composer.Editor().Clear()
+	a.composer.Editor().ForgetHistory()
 	clear(a.attachmentElements)
 	a.confirmation.Reset()
 }

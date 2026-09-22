@@ -68,8 +68,8 @@ func TestReaderLiveTailFollowsOnlyAfterTheReaderMovesToTheBottom(t *testing.T) {
 	wantOffset := reader.scroll.Offset()
 	tool.AppendOutput(strings.Repeat("new row while reading\n", 10))
 	root.Draw(surface.View())
-	if reader.scroll.AtBottom() || reader.scroll.Offset() != wantOffset {
-		t.Fatalf("live update moved reader from offset %d to (%d, bottom=%t)", wantOffset, reader.scroll.Offset(), reader.scroll.AtBottom())
+	if reader.scroll.FollowingEnd() || reader.scroll.Offset() != wantOffset {
+		t.Fatalf("live update moved reader from offset %d to (%d, bottom=%t)", wantOffset, reader.scroll.Offset(), reader.scroll.FollowingEnd())
 	}
 
 	reader.scroll.ToBottom()
@@ -77,8 +77,8 @@ func TestReaderLiveTailFollowsOnlyAfterTheReaderMovesToTheBottom(t *testing.T) {
 	before := reader.scroll.Offset()
 	tool.AppendOutput(strings.Repeat("followed row\n", 10))
 	root.Draw(surface.View())
-	if !reader.scroll.AtBottom() || reader.scroll.Offset() <= before {
-		t.Fatalf("live tail = (offset %d, bottom=%t), want an advancing followed end after %d", reader.scroll.Offset(), reader.scroll.AtBottom(), before)
+	if !reader.scroll.FollowingEnd() || reader.scroll.Offset() <= before {
+		t.Fatalf("live tail = (offset %d, bottom=%t), want an advancing followed end after %d", reader.scroll.Offset(), reader.scroll.FollowingEnd(), before)
 	}
 }
 

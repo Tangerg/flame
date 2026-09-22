@@ -232,7 +232,7 @@ func (a *app) showMCPFormStep(flow *mcpFormFlow) {
 	dialog = kit.NewDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
 		Title: title, Body: body,
-		Where: layout.Placement{Width: 92, Height: formDialogHeight(body.Measure(88), len(fields), 24)},
+		Where: layout.Placement{Width: 92, Height: formDialogHeight(body.HeightForWidth(88), len(fields), 24)},
 	})
 	dialog.Controller().SetDescription(label)
 	a.dialogs.mcpDialog = dialog
@@ -282,7 +282,7 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 	secretFields := make([]*headless.Text, 0, 3)
 	textField := func(label, placeholder string, value *string, check func(string) error) *headless.Text {
 		field := &headless.Text{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check}
-		field.Editor().Clipboard = a.loop.Clipboard()
+		field.Clipboard = a.loop.Clipboard()
 		fields = append(fields, field)
 		return field
 	}
@@ -291,12 +291,12 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 		if flow.mode != mcpFormUpdate {
 			textField("Server name", "docs", &draft.name, requiredText)
 		}
-		enabled := &headless.Select[bool]{Label: "Enabled", Value: headless.Bind(&draft.enabled), Rows: 2}
+		enabled := &headless.Select[bool]{Same: headless.Equal[bool], Label: "Enabled", Value: headless.Bind(&draft.enabled), Rows: 2}
 		enabled.SetOptions([]headless.Option[bool]{{Label: "Enabled", Value: true}, {Label: "Disabled", Value: false}})
 		fields = append(fields, enabled)
 		textField("Description", "Optional description", &draft.description, nil)
 		if flow.mode == mcpFormUpdate {
-			connection := &headless.Select[bool]{Label: "Connection change", Value: headless.Bind(&draft.replaceConnection), Rows: 2}
+			connection := &headless.Select[bool]{Same: headless.Equal[bool], Label: "Connection change", Value: headless.Bind(&draft.replaceConnection), Rows: 2}
 			connection.SetOptions([]headless.Option[bool]{{Label: "Keep current connection", Value: false}, {Label: "Replace connection", Value: true}})
 			fields = append(fields, connection)
 		}
@@ -304,13 +304,13 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 		if flow.mode == mcpFormUpdate {
 			transportLabel = "Replacement transport"
 		}
-		transport := &headless.Select[protocol.MCPTransport]{Label: transportLabel, Value: headless.Bind(&draft.transport), Rows: 2}
+		transport := &headless.Select[protocol.MCPTransport]{Same: headless.Equal[protocol.MCPTransport], Label: transportLabel, Value: headless.Bind(&draft.transport), Rows: 2}
 		transport.SetOptions([]headless.Option[protocol.MCPTransport]{{Label: "Streamable HTTP", Value: protocol.MCPTransportStreamableHTTP}, {Label: "stdio process", Value: protocol.MCPTransportStdio}})
 		fields = append(fields, transport)
 	case mcpFormHTTP:
 		textField("HTTP URL", "https://mcp.example/tools", &draft.url, requiredText)
 		secretOptions := mcpSecretOptions(flow.mode)
-		authorizationMode := &headless.Select[formChange]{Label: "Authorization change", Value: headless.Bind(&draft.authorizationMode), Rows: len(secretOptions)}
+		authorizationMode := &headless.Select[formChange]{Same: headless.Equal[formChange], Label: "Authorization change", Value: headless.Bind(&draft.authorizationMode), Rows: len(secretOptions)}
 		authorizationMode.SetOptions(secretOptions)
 		fields = append(fields, authorizationMode)
 		authorization := textField("Authorization value", "Bearer …", &draft.authorization, func(value string) error {
@@ -319,8 +319,8 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 			}
 			return nil
 		})
-		authorization.Editor().SetMask("•")
-		headersMode := &headless.Select[formChange]{Label: "Headers change", Value: headless.Bind(&draft.headersMode), Rows: len(secretOptions)}
+		authorization.SetMask("•")
+		headersMode := &headless.Select[formChange]{Same: headless.Equal[formChange], Label: "Headers change", Value: headless.Bind(&draft.headersMode), Rows: len(secretOptions)}
 		headersMode.SetOptions(secretOptions)
 		fields = append(fields, headersMode)
 		headers := textField("Headers JSON", `{"X-Key":"secret"}`, &draft.headers, func(value string) error {
@@ -330,7 +330,7 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 			_, err := parseMCPStringMap(value)
 			return err
 		})
-		headers.Editor().SetMask("•")
+		headers.SetMask("•")
 		secretFields = append(secretFields, authorization, headers)
 	case mcpFormStdio:
 		textField("stdio command", "mcp-server", &draft.command, requiredText)
@@ -339,7 +339,7 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 			return err
 		})
 		secretOptions := mcpSecretOptions(flow.mode)
-		environmentMode := &headless.Select[formChange]{Label: "Environment change", Value: headless.Bind(&draft.environmentMode), Rows: len(secretOptions)}
+		environmentMode := &headless.Select[formChange]{Same: headless.Equal[formChange], Label: "Environment change", Value: headless.Bind(&draft.environmentMode), Rows: len(secretOptions)}
 		environmentMode.SetOptions(secretOptions)
 		fields = append(fields, environmentMode)
 		environment := textField("Environment JSON", `{"TOKEN":"secret"}`, &draft.environment, func(value string) error {
@@ -349,7 +349,7 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 			_, err := parseMCPStringMap(value)
 			return err
 		})
-		environment.Editor().SetMask("•")
+		environment.SetMask("•")
 		secretFields = append(secretFields, environment)
 		textField("Working directory", "Optional absolute path", &draft.directory, nil)
 	case mcpFormPolicy:

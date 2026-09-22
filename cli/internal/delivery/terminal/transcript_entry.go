@@ -32,9 +32,9 @@ func newTranscriptEntry(theme kit.Theme, glyphs kit.Glyphs, content headless.Blo
 	return &transcriptEntry{theme: theme, glyphs: glyphs, content: content}
 }
 
-func (t *transcriptEntry) Measure(width int) int {
+func (t *transcriptEntry) HeightForWidth(width int) int {
 	contentWidth, _ := t.geometry(width)
-	return t.content.Measure(contentWidth)
+	return t.content.HeightForWidth(contentWidth)
 }
 
 func (t *transcriptEntry) Draw(view grid.View) {
@@ -61,7 +61,7 @@ func (t *transcriptEntry) Draw(view grid.View) {
 }
 
 func (t *transcriptEntry) Rows(width int) []text.Row {
-	height := t.Measure(width)
+	height := t.HeightForWidth(width)
 	rows := make([]text.Row, height)
 	copyable, ok := t.content.(headless.TextProjector)
 	if !ok {

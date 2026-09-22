@@ -104,7 +104,7 @@ func (r *readerPane) Open(target readerTarget) {
 		r.observingSource = true
 		initial := true
 		r.releaseSource = target.source.Observe(func(document readerDocument) {
-			follow := r.scroll.AtBottom()
+			follow := r.scroll.FollowingEnd()
 			r.replace(document, !initial, follow)
 			initial = false
 		})
@@ -288,10 +288,15 @@ func (r *readerPane) AcceptSearch(result headless.Result) bool {
 		return true
 	}
 	r.problem = ""
+	navigate := r.current < 0
 	r.matches = result.Matches
-	r.current = -1
+	r.current = min(r.current, len(r.matches)-1)
 	if len(r.matches) > 0 {
-		r.current = 0
+		r.current = max(r.current, 0)
+	}
+	r.view.Matches = r.matches
+	if navigate {
+		r.view.RevealMatch(r.current)
 	}
 	return true
 }
@@ -304,7 +309,8 @@ func (r *readerPane) StepMatch(delta int) bool {
 	if r.current < 0 {
 		r.current += len(r.matches)
 	}
-	return true
+	r.view.Matches = r.matches
+	return r.view.RevealMatch(r.current)
 }
 
 func (r *readerPane) SearchResults() <-chan headless.Result { return r.search.Results() }
@@ -353,8 +359,8 @@ func newReaderSectionBlock(theme kit.Theme, title string, content headless.Block
 	return &readerSectionBlock{theme: theme, title: strings.TrimSpace(title), content: content}
 }
 
-func (r *readerSectionBlock) Measure(width int) int {
-	return layout.Sum(r.headingRows(), r.content.Measure(width), 1)
+func (r *readerSectionBlock) HeightForWidth(width int) int {
+	return layout.Sum(r.headingRows(), r.content.HeightForWidth(width), 1)
 }
 
 func (r *readerSectionBlock) Draw(view grid.View) {
@@ -370,14 +376,14 @@ func (r *readerSectionBlock) Draw(view grid.View) {
 }
 
 func (r *readerSectionBlock) Rows(width int) []text.Row {
-	rows := make([]text.Row, 0, r.Measure(width))
+	rows := make([]text.Row, 0, r.HeightForWidth(width))
 	if r.title != "" {
 		rows = append(rows, text.Row{Text: r.title})
 	}
 	if copyable, ok := r.content.(headless.TextProjector); ok {
 		rows = append(rows, copyable.Rows(width)...)
 	} else {
-		rows = append(rows, make([]text.Row, r.content.Measure(width))...)
+		rows = append(rows, make([]text.Row, r.content.HeightForWidth(width))...)
 	}
 	return append(rows, text.Row{})
 }

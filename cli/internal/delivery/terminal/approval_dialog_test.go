@@ -26,7 +26,7 @@ func TestApprovalPaneRoutesInputToTheLastPresentedForm(t *testing.T) {
 	}
 	form := func(done func()) *kit.Form {
 		choice := "only"
-		selectField := &headless.Select[string]{Value: headless.Bind(&choice), Rows: 1}
+		selectField := &headless.Select[string]{Same: headless.Equal[string], Value: headless.Bind(&choice), Rows: 1}
 		selectField.SetOptions([]headless.Option[string]{{Label: "Only", Value: "only"}})
 		controller := headless.NewForm(selectField)
 		controller.Done = done

@@ -92,8 +92,8 @@ func TestAuthoringDocumentsAndRecipeExpansionUseTheUnifiedPromptPath(t *testing.
 		t.Fatal("recipe editor did not survive a minimal viewport")
 	}
 	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
-	host.Until(t, "the expanded recipe to start a run", func() bool {
-		return host.Repaint() && runtime.startCount() > 0
+	awaitState(t, "the expanded recipe to start a run", func() bool {
+		return runtime.startCount() > 0
 	})
 	if got := runtime.startInput().Message.Text; got != "Review alpha.\nContext: alpha beta" {
 		t.Fatalf("recipe prompt = %q", got)

@@ -246,10 +246,10 @@ func TestQueueViewKeepsTheNextPromptAndOverflowVisible(t *testing.T) {
 		{ID: testQueueEntryID(t, 3), Message: agent.Message{Text: "third follow-up"}},
 		{ID: testQueueEntryID(t, 4), Message: agent.Message{Text: "fourth follow-up"}},
 	}})
-	if got := view.Measure(queueMinWidth - 1); got != 0 {
+	if got := view.HeightForWidth(queueMinWidth - 1); got != 0 {
 		t.Fatalf("narrow queue height = %d", got)
 	}
-	if got := view.Measure(80); got != queueMaxRows {
+	if got := view.HeightForWidth(80); got != queueMaxRows {
 		t.Fatalf("queue height = %d", got)
 	}
 	rendered := drawStatic(t, view, 48, queueMaxRows)
@@ -838,13 +838,13 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 	host.Press(input.Enter)
 
 	var pending []workbench.PendingRun
-	host.Until(t, "both runtime commands to become durable", func() bool {
+	awaitState(t, "both runtime commands to become durable", func() bool {
 		store, err := openSessionWorkbench(stateDirectory)
 		if err != nil {
 			return false
 		}
 		pending = store.PendingRuns(first.SessionID)
-		return host.Repaint() && len(pending) == 2 && pending[0].State == workbench.PendingRunDispatching
+		return len(pending) == 2 && pending[0].State == workbench.PendingRunDispatching
 	})
 	if pending[0].Command.CommandID != first.CommandID || pending[1].Command.Message.Text != "SECOND_SETTLEMENT" {
 		t.Fatalf("durable FIFO before settlement = %+v", pending)

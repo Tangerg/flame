@@ -135,7 +135,7 @@ func (t *transcriptView) projectBlockPlacements(width int) []transcriptBlockPlac
 		if width == t.content.Width() {
 			_, height, _ = t.content.Extent(id)
 		} else if entry := t.entries[id]; entry != nil && width > 0 {
-			height = max(entry.Measure(width), 0)
+			height = max(entry.HeightForWidth(width), 0)
 		}
 		placements = append(placements, transcriptBlockPlacement{blockID: id, top: top, height: height})
 		top = layout.Sum(top, height)

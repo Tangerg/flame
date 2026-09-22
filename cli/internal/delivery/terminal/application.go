@@ -120,9 +120,10 @@ type app struct {
 	globalMatcher      keymap.Matcher
 	attention          attentionCenter
 
-	closed   bool
-	closeErr error
-	syntax   highlight.Renderer
+	closed         bool
+	closeErr       error
+	syntax         highlight.Renderer
+	prepareDiagram diagramPreparation
 }
 
 type appConfig struct {
@@ -180,7 +181,7 @@ func newTerminalAppearance(loop *program.Runtime) terminalAppearance {
 func newApp(loop *program.Runtime, cfg appConfig) *app {
 	cfg.keyBindings.setResolver(loop.After)
 	appearance := newTerminalAppearance(loop)
-	transcript := newTranscriptView(appearance.theme, appearance.glyphs, loop.Environment().Wheel(), appearance.syntax, cfg.settings.UI.TranscriptRetain, cfg.settings.UI.ToolDetails, loop.Clipboard())
+	transcript := newTranscriptView(appearance.theme, appearance.glyphs, loop.Environment().Locale(), loop.Environment().Wheel(), appearance.syntax, cfg.settings.UI.TranscriptRetain, cfg.settings.UI.ToolDetails, loop.Clipboard())
 	brand := newBrandBanner(
 		appearance.theme,
 		appearance.glyphs,
@@ -231,6 +232,13 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		})
 	})
 	a.transcript.images = newTerminalImagePresenter(loop.Images())
+	diagramTheme := "dark"
+	ground := loop.Environment().Ground()
+	if !ground.BG.Default() && !ground.BG.RGB().Dark() {
+		diagramTheme = "default"
+	}
+	a.prepareDiagram = prepareMermaid(diagramTheme)
+	a.configureMarkdown(a.transcript)
 	a.configureComposer(appearance, cfg.keyBindings.editor, cfg.initialDraft)
 	a.configureCompletion(appearance)
 	a.registerCommands()
@@ -390,6 +398,7 @@ func (a *app) Close(ctx context.Context) error {
 		closeErr = errors.Join(closeErr, a.cancelOpeningRunNow(ctx, pendingStart))
 	}
 	a.transcript.Close()
+	closeErr = errors.Join(closeErr, a.transcript.releaseErr)
 	if a.dialogs.reader != nil {
 		a.dialogs.reader.Shutdown()
 	}

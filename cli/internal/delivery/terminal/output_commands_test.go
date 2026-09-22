@@ -187,9 +187,9 @@ func TestSessionExportOutlivesSameSessionProjectionReplacement(t *testing.T) {
 	}
 	release()
 	exported := filepath.Join(workspace, "owned.md")
-	host.Until(t, "the session export artifact", func() bool {
+	awaitState(t, "the session export artifact", func() bool {
 		_, statErr := os.Stat(exported)
-		return statErr == nil && host.Repaint()
+		return statErr == nil
 	})
 	stop()
 }

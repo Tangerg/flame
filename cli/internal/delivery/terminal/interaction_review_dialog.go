@@ -44,7 +44,7 @@ func (d interactionReviewDecision) Validate() error {
 func (i *interactionSummaryPane) Draw(frame headless.Frame) {
 	rows := frame.Subs((layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
 		{Size: layout.Flex(1)},
-		{Size: layout.Fixed(min(i.form.Measure(frame.Bounds().Dx()), 7))},
+		{Size: layout.Fixed(min(i.form.HeightForWidth(frame.Bounds().Dx()), 7))},
 	}))
 	i.viewport.Draw(rows[0])
 	i.form.Draw(rows[1])
@@ -70,6 +70,7 @@ func (a *app) openInteractionSummary() {
 	}
 	decision := interactionReviewSubmit
 	choice := &headless.Select[interactionReviewDecision]{
+		Same:  headless.Equal[interactionReviewDecision],
 		Label: "Review complete", Value: headless.Bind(&decision), Rows: 3,
 	}
 	choice.SetOptions([]headless.Option[interactionReviewDecision]{

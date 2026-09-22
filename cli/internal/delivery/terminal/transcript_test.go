@@ -71,10 +71,10 @@ func TestStreamingPreservesAReadersScrollPosition(t *testing.T) {
 		t.Fatal(err)
 	}
 	root.Draw(surface.View())
-	if !view.scroll.AtBottom() {
+	if !view.scroll.FollowingEnd() {
 		t.Fatal("a new transcript did not follow its output")
 	}
-	if !view.Scroll(scrollPageUp) || view.scroll.AtBottom() {
+	if !view.Scroll(scrollPageUp) || view.scroll.FollowingEnd() {
 		t.Fatal("page-up did not enter reader-controlled scrolling")
 	}
 	wantOffset := view.scroll.Offset()
@@ -83,7 +83,7 @@ func TestStreamingPreservesAReadersScrollPosition(t *testing.T) {
 		t.Fatal(err)
 	}
 	root.Draw(surface.View())
-	if view.scroll.AtBottom() {
+	if view.scroll.FollowingEnd() {
 		t.Fatal("streaming resumed bottom-following after the reader scrolled up")
 	}
 	if got := view.scroll.Offset(); got != wantOffset {
@@ -383,10 +383,10 @@ func TestToolStreamingPreservesAReadersScrollPosition(t *testing.T) {
 		t.Fatal(err)
 	}
 	root.Draw(surface.View())
-	if !view.scroll.AtBottom() {
+	if !view.scroll.FollowingEnd() {
 		t.Fatal("new tool stream did not follow its output")
 	}
-	if !view.Scroll(scrollPageUp) || view.scroll.AtBottom() {
+	if !view.Scroll(scrollPageUp) || view.scroll.FollowingEnd() {
 		t.Fatal("page-up did not enter reader-controlled scrolling")
 	}
 	wantOffset := view.scroll.Offset()
@@ -395,7 +395,7 @@ func TestToolStreamingPreservesAReadersScrollPosition(t *testing.T) {
 		t.Fatal(err)
 	}
 	root.Draw(surface.View())
-	if view.scroll.AtBottom() {
+	if view.scroll.FollowingEnd() {
 		t.Fatal("tool streaming resumed bottom-following after the reader scrolled up")
 	}
 	if got := view.scroll.Offset(); got != wantOffset {
@@ -756,7 +756,7 @@ func TestTranscriptResetNeverReactivatesAStaleFrameAtEpochExhaustion(t *testing.
 
 func TestDraggingFromAToolHeaderCopiesWithoutToggling(t *testing.T) {
 	clipboard := new(recordingClipboard)
-	view := newTranscriptView(kit.Dark(), kit.Unicode(), input.Wheel{}, highlight.New("github-dark"), 24, false, clipboard)
+	view := newTranscriptView(kit.Dark(), kit.Unicode(), "", input.Wheel{}, highlight.New("github-dark"), 24, false, clipboard)
 	t.Cleanup(view.Close)
 	tool := appendTestTool(view, "drag", "DRAG_DETAIL")
 	root := headless.NewRoot(view)
@@ -783,7 +783,7 @@ func TestDraggingFromAToolHeaderCopiesWithoutToggling(t *testing.T) {
 
 func TestTranscriptIgnoresAnUnownedPointerRelease(t *testing.T) {
 	clipboard := new(recordingClipboard)
-	view := newTranscriptView(kit.Dark(), kit.Unicode(), input.Wheel{}, highlight.New("github-dark"), 24, false, clipboard)
+	view := newTranscriptView(kit.Dark(), kit.Unicode(), "", input.Wheel{}, highlight.New("github-dark"), 24, false, clipboard)
 	t.Cleanup(view.Close)
 	appendTestTool(view, "drag", "DRAG_DETAIL")
 	root := headless.NewRoot(view)
@@ -912,7 +912,7 @@ func TestCollapsingASelectedToolKeepsItsHeaderVisible(t *testing.T) {
 
 func TestFocusedTranscriptCopiesTheSelectedBlock(t *testing.T) {
 	clipboard := new(recordingClipboard)
-	view := newTranscriptView(kit.Dark(), kit.Unicode(), input.Wheel{}, highlight.New("github-dark"), 24, false, clipboard)
+	view := newTranscriptView(kit.Dark(), kit.Unicode(), "", input.Wheel{}, highlight.New("github-dark"), 24, false, clipboard)
 	t.Cleanup(view.Close)
 	appendTestTool(view, "copy", "COPY_DETAIL")
 	view.Focus(true)
@@ -968,7 +968,7 @@ func (*recordingClipboard) Paste() bool { return false }
 
 func testTranscriptView(t *testing.T) *transcriptView {
 	t.Helper()
-	view := newTranscriptView(kit.Dark(), kit.Unicode(), input.Wheel{}, highlight.New("github-dark"), 24, false, nil)
+	view := newTranscriptView(kit.Dark(), kit.Unicode(), "", input.Wheel{}, highlight.New("github-dark"), 24, false, nil)
 	t.Cleanup(view.Close)
 	return view
 }
@@ -1056,7 +1056,7 @@ func TestReaderTargetTitlesAUserBlockByItsOwnSpeaker(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			clipboard := new(recordingClipboard)
 			view := newTranscriptView(
-				kit.Dark(), kit.Unicode(), input.Wheel{}, highlight.New("github-dark"), 24, false, clipboard,
+				kit.Dark(), kit.Unicode(), "", input.Wheel{}, highlight.New("github-dark"), 24, false, clipboard,
 			)
 			t.Cleanup(view.Close)
 			view.Append(newUserMessageBlock(view.theme, test.speaker, "inspect this repository"))

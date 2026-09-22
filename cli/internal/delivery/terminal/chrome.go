@@ -53,7 +53,7 @@ func (s *sessionHeader) SetWorkspaceChanges(count int) {
 	s.changes, s.changesKnown = max(count, 0), true
 }
 
-func (s *sessionHeader) Measure(width int) int {
+func (s *sessionHeader) HeightForWidth(width int) int {
 	if width < headerMinWidth {
 		return 0
 	}
@@ -207,7 +207,7 @@ func (a *activityView) Reset() {
 	a.items = a.items[:0]
 }
 
-func (a *activityView) Measure(width int) int {
+func (a *activityView) HeightForWidth(width int) int {
 	if len(a.items) == 0 || width < activityMinWidth {
 		return 0
 	}
@@ -307,7 +307,7 @@ func (s *statusView) Reset() {
 	*s = statusView{theme: theme, glyphs: glyphs, doing: "ready", problem: problem}
 }
 
-func (s *statusView) Measure(int) int { return 1 }
+func (s *statusView) HeightForWidth(int) int { return 1 }
 
 func (s *statusView) Draw(view grid.View) {
 	width, height := view.Size()

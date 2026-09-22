@@ -5,11 +5,13 @@ go 1.27.0
 require (
 	github.com/Tangerg/flame/runtime v0.0.0-20260922105849-e8520b61c9ed
 	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260912094153-1dc998bda962
-	github.com/Tangerg/oolong/components v0.16.0
-	github.com/Tangerg/oolong/core v0.16.0
-	github.com/Tangerg/oolong/highlight v0.16.0
-	github.com/Tangerg/oolong/markdown v0.16.0
-	github.com/Tangerg/oolong/ptytest v0.16.0
+	github.com/Tangerg/oolong/components v0.18.2
+	github.com/Tangerg/oolong/core v0.18.2
+	github.com/Tangerg/oolong/highlight v0.18.2
+	github.com/Tangerg/oolong/latex v0.18.2
+	github.com/Tangerg/oolong/markdown v0.18.2
+	github.com/Tangerg/oolong/mermaid v0.18.2
+	github.com/Tangerg/oolong/ptytest v0.18.2
 	github.com/mattn/go-shellwords v1.0.14
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/fileflow v0.1.0
@@ -22,6 +24,7 @@ require (
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.23.2 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
+	codeberg.org/go-latex/latex v0.3.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Tangerg/go-sdk v1.8.1-scope.1 // indirect
 	github.com/Tangerg/scope/a2a v0.33.0 // indirect
@@ -114,6 +117,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
+	golang.org/x/image v0.45.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect

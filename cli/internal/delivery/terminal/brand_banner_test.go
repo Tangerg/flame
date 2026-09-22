@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/kit"
+	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/core/text"
 
 	"github.com/Tangerg/flame/cli/internal/application/settings"
@@ -100,7 +101,8 @@ func TestTranscriptResetConsumesAnUnshownEntranceProjection(t *testing.T) {
 func TestReplacementTranscriptDoesNotInheritTheBrand(t *testing.T) {
 	initial := testTranscriptView(t)
 	initial.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{}))
-	a := &app{transcript: initial, syntax: initial.syntax, settings: settings.Default()}
+	initial.images = newTerminalImagePresenter(program.Images{})
+	a := &app{ctx: t.Context(), transcript: initial, syntax: initial.syntax, settings: settings.Default()}
 
 	replacement := a.newTranscript()
 	t.Cleanup(replacement.Close)
