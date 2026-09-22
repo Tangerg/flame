@@ -58,18 +58,15 @@ func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessi
 func wireRollbackErr(err error, sessionID string) error {
 	switch {
 	case errors.Is(err, sessions.ErrSessionBusy):
-		return fmt.Errorf("%w: session %q has a run in flight", protocol.ErrSessionBusy, sessionID)
+		return NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q has a run in flight", sessionID))
 	case errors.Is(err, sessions.ErrWorkspaceMutationPending):
-		return fmt.Errorf(
-			"%w: session %q has an unfinished file rollback that must be recovered first",
-			protocol.ErrSessionBusy, sessionID,
-		)
+		return NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q has an unfinished file rollback that must be recovered first", sessionID))
 	case errors.Is(err, sessions.ErrCheckpointUnavailable):
 		return protocol.ErrCheckpointUnavailable
 	case errors.Is(err, transcript.ErrRunNotFound):
 		return protocol.ErrRunNotFound
 	case errors.Is(err, transcript.ErrNotRoot):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	default:
 		return wireSessionErr(err)
 	}
@@ -80,7 +77,7 @@ func wireBoundaryErr(err error) error {
 	case errors.Is(err, transcript.ErrRunNotFound):
 		return protocol.ErrRunNotFound
 	case errors.Is(err, transcript.ErrNotRoot):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	default:
 		return err
 	}

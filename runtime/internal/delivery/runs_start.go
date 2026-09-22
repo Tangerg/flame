@@ -73,7 +73,7 @@ func invalidWireContentBlock(index int, field, detail string) error {
 	constraint := &protocol.ConstraintError{Shape: "RunInput", Fields: []protocol.FieldError{{
 		Field: fmt.Sprintf("input[%d].%s", index, field), Detail: detail,
 	}}}
-	return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, constraint)
+	return NewFailure(errors.Join(protocol.ErrInvalidParams, constraint), constraint.Error())
 }
 
 func wireRunStartErr(err error) error {
@@ -86,17 +86,17 @@ func wireRunStartErr(err error) error {
 	}
 	switch {
 	case errors.Is(err, runs.ErrInputRequired):
-		return fmt.Errorf("%w: input must contain a user text or image block", protocol.ErrInvalidParams)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), "input must contain a user text or image block")
 	case modelref.IsInvalid(err):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrInvalidRunOptions):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrUnsupportedMedia):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrUnsupportedModelSelection):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrInvalidScheduledStart):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrSessionBusy):
 		return protocol.ErrSessionBusy
 	case errors.Is(err, session.ErrNotFound):

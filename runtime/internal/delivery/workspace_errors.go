@@ -2,7 +2,6 @@ package delivery
 
 import (
 	"errors"
-	"fmt"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -37,11 +36,11 @@ func wireWorkspaceError(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, workspaceapp.ErrCWDUnavailable):
-		return fmt.Errorf("%w: %w", protocol.ErrWorkspaceUnavailable, err)
+		return NewFailure(errors.Join(protocol.ErrWorkspaceUnavailable, err), err.Error())
 	case errors.Is(err, workspaceapp.ErrPathOutsideRoot):
 		return protocol.ErrPathOutsideRoot
 	case errors.Is(err, workspaceapp.ErrUnsupportedFile):
-		return fmt.Errorf("%w: %w", protocol.ErrUnsupportedMime, err)
+		return NewFailure(errors.Join(protocol.ErrUnsupportedMime, err), err.Error())
 	case errors.Is(err, workspaceapp.ErrPathRequired),
 		errors.Is(err, workspaceapp.ErrInvalidFileRange),
 		errors.Is(err, workspaceapp.ErrFileReadTooLarge),
@@ -57,7 +56,7 @@ func wireWorkspaceError(err error) error {
 		errors.Is(err, workspaceapp.ErrPageCursor),
 		errors.Is(err, workspaceapp.ErrVCSResultTooLarge),
 		errors.Is(err, workspaceapp.ErrVCSBaseUnknown):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, workspaceapp.ErrVCSUnavailable):
 		return protocol.ErrVcsUnavailable
 	default:

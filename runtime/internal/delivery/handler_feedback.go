@@ -3,7 +3,6 @@ package delivery
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/session/feedback"
@@ -22,7 +21,7 @@ func (s *Handler) CreateFeedback(ctx context.Context, in protocol.FeedbackReques
 		Text:      in.Text,
 	})
 	if errors.Is(err, feedbackdomain.ErrInvalid) {
-		return fmt.Errorf("%w: %v", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return err
 }

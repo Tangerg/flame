@@ -70,7 +70,7 @@ func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, 
 			capabilities.InterruptKinds = append(capabilities.InterruptKinds, kind)
 			continue
 		}
-		return run.Capabilities{}, fmt.Errorf("%w: unknown interruptTypes value %q", protocol.ErrInvalidParams, declared)
+		return run.Capabilities{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown interruptTypes value %q", declared))
 	}
 	return capabilities.Normalized(), nil
 }

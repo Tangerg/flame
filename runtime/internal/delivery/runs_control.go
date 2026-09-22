@@ -29,7 +29,7 @@ func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (
 	case errors.Is(err, runs.ErrSessionBusy):
 		return nil, protocol.ErrSessionBusy
 	case errors.Is(err, runs.ErrInvalidCancellationReason):
-		return nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return nil, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrChildRunNotAllowed):
 		return nil, NewCapabilityGapError(protocol.CapabilityRequirement{
 			Type: protocol.RequirementFeature,
@@ -70,10 +70,10 @@ func wireSteerError(err error) error {
 			Field:  fmt.Sprintf("input[%d].%s", input.Index, input.Field),
 			Detail: input.Detail,
 		}}}
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, constraint)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, constraint), constraint.Error())
 	}
 	if errors.Is(err, runs.ErrInputRequired) || errors.Is(err, runs.ErrUnsupportedMedia) {
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return wireLiveSegmentError(err)
 }

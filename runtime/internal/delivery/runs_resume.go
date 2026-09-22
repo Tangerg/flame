@@ -53,7 +53,7 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 		case errors.Is(err, runs.ErrInterruptNotOpen):
 			return nil, nil, protocol.ErrInterruptNotOpen
 		case errors.Is(err, runs.ErrInvalidInterruptResponse):
-			return nil, nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+			return nil, nil, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 		case errors.Is(err, runs.ErrSessionBusy):
 			return nil, nil, protocol.ErrSessionBusy
 		case errors.Is(err, runs.ErrRunNotFound):
@@ -89,7 +89,7 @@ func decodeResumeResponses(responses []protocol.InterruptResponse) ([]runs.Resum
 
 func decodeResumeResponse(wire protocol.InterruptResponse) (runs.ResumeResponse, error) {
 	if wire.ItemID == "" {
-		return runs.ResumeResponse{}, fmt.Errorf("%w: interrupt response itemId is required", protocol.ErrInvalidParams)
+		return runs.ResumeResponse{}, NewFailure(protocol.ErrInvalidParams, "interrupt response itemId is required")
 	}
 	response := runs.ResumeResponse{ItemID: wire.ItemID}
 	switch wire.Response.Type {
@@ -108,14 +108,14 @@ func decodeResumeResponse(wire protocol.InterruptResponse) (runs.ResumeResponse,
 		response.Kind = runs.QuestionResponseKind
 		response.Question = question
 	default:
-		return runs.ResumeResponse{}, fmt.Errorf("%w: unknown interrupt response type %q", protocol.ErrInvalidParams, wire.Response.Type)
+		return runs.ResumeResponse{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown interrupt response type %q", wire.Response.Type))
 	}
 	return response, nil
 }
 
 func decodeApprovalResponse(wire protocol.InterruptResponseValue) (*runs.ApprovalResponse, error) {
 	if wire.Answers != nil {
-		return nil, fmt.Errorf("%w: approval response contains fields for another response type", protocol.ErrInvalidParams)
+		return nil, NewFailure(protocol.ErrInvalidParams, "approval response contains fields for another response type")
 	}
 	// remember{scope} persists this decision as a rule at the chosen scope.
 	// Empty means the one-shot decision is not remembered.
@@ -123,7 +123,7 @@ func decodeApprovalResponse(wire protocol.InterruptResponseValue) (*runs.Approva
 	if wire.Remember != nil {
 		scope, ok := rememberScopeFromWire(wire.Remember.Scope)
 		if !ok {
-			return nil, fmt.Errorf("%w: remember scope must be %q | %q | %q", protocol.ErrInvalidParams, protocol.RememberSession, protocol.RememberProject, protocol.RememberGlobal)
+			return nil, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("remember scope must be %q | %q | %q", protocol.RememberSession, protocol.RememberProject, protocol.RememberGlobal))
 		}
 		approval.RememberScope = scope
 	}
@@ -140,14 +140,14 @@ func decodeApprovalResponse(wire protocol.InterruptResponseValue) (*runs.Approva
 	case protocol.ApprovalDeny:
 		approval.Approved = false
 	default:
-		return nil, fmt.Errorf(`%w: approval decision must be "approve" | "deny"`, protocol.ErrInvalidParams)
+		return nil, NewFailure(protocol.ErrInvalidParams, "approval decision must be \"approve\" | \"deny\"")
 	}
 	return approval, nil
 }
 
 func decodeQuestionResponse(wire protocol.InterruptResponseValue) (*runs.QuestionResponse, error) {
 	if wire.Decision != "" || wire.Remember != nil || wire.EditedArgs != nil || wire.Reason != "" {
-		return nil, fmt.Errorf("%w: answer response contains fields for another response type", protocol.ErrInvalidParams)
+		return nil, NewFailure(protocol.ErrInvalidParams, "answer response contains fields for another response type")
 	}
 	// The ordered answer list is the complete question resolution. The
 	// application later validates it against the stored question's field schema.
@@ -176,5 +176,5 @@ func questionAnswerParamsError(
 		Shape:  "ResumeRunRequest",
 		Fields: []protocol.FieldError{{Field: field, Detail: answerError.Detail}},
 	}
-	return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, constraint)
+	return NewFailure(errors.Join(protocol.ErrInvalidParams, constraint), constraint.Error())
 }

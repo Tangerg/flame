@@ -23,7 +23,7 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 	result, err := s.sessions.ExportSession(ctx, request.SessionID)
 	if err != nil {
 		if errors.Is(err, sessions.ErrSessionBusy) {
-			return nil, fmt.Errorf("%w: session %q has a run in flight or open interrupt", protocol.ErrSessionBusy, request.SessionID)
+			return nil, NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q has a run in flight or open interrupt", request.SessionID))
 		}
 		return nil, wireSessionErr(err)
 	}
@@ -42,7 +42,7 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 		}, nil
 	case protocol.ExportFormatJSON:
 	default:
-		return nil, fmt.Errorf("%w: unsupported export format %q", protocol.ErrInvalidParams, format)
+		return nil, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unsupported export format %q", format))
 	}
 	artifact, err := artifactFromPortable(result.Snapshot)
 	if err != nil {
@@ -60,7 +60,7 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSessionRequest) (*protocol.ImportSessionResponse, error) {
 	artifact := request.Artifact
 	if artifact.Version != protocol.SessionArtifactVersion {
-		return nil, fmt.Errorf("%w: unsupported artifact version %d (want %d)", protocol.ErrInvalidParams, artifact.Version, protocol.SessionArtifactVersion)
+		return nil, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unsupported artifact version %d (want %d)", artifact.Version, protocol.SessionArtifactVersion))
 	}
 	portable, err := portableArtifactFromWire(artifact)
 	if err != nil {
@@ -79,13 +79,13 @@ func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSess
 	view, err := s.sessions.RestorePortableSession(ctx, portable)
 	if err != nil {
 		if errors.Is(err, sessions.ErrSessionBusy) {
-			return nil, fmt.Errorf("%w: session %q has a run in flight or open interrupt", protocol.ErrSessionBusy, sessionID)
+			return nil, NewFailure(errors.Join(protocol.ErrSessionBusy, err), fmt.Sprintf("session %q has a run in flight or open interrupt", sessionID))
 		}
 		if errors.Is(err, sessions.ErrInvalidPortableSnapshot) {
-			return nil, fmt.Errorf("%w: %v", protocol.ErrInvalidParams, err)
+			return nil, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 		}
 		if errors.Is(err, transcript.ErrIdentityConflict) || errors.Is(err, toolresult.ErrIdentityConflict) {
-			return nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+			return nil, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 		}
 		return nil, wireSessionErr(err)
 	}

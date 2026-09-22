@@ -117,9 +117,7 @@ func mapSkillError(err error) error {
 	default:
 		return wireWorkspaceError(err)
 	}
-	failure := NewFailure(kind, detail)
-	failure.cause = errors.Join(kind, err)
-	return failure
+	return NewFailure(errors.Join(kind, err), detail)
 }
 
 // ListSkillProposals returns the one current proposal per scoped Skill name,
@@ -174,11 +172,11 @@ func (s *Handler) RejectSkillProposal(ctx context.Context, in protocol.SkillProp
 func skillProposalRef(in protocol.SkillProposalRef) (skills.ProposalRef, error) {
 	scope, ok := proposalScopeDomain(in.Scope)
 	if !ok {
-		return skills.ProposalRef{}, fmt.Errorf("%w: scope must be project or user", protocol.ErrInvalidParams)
+		return skills.ProposalRef{}, NewFailure(protocol.ErrInvalidParams, "scope must be project or user")
 	}
 	ref := skills.ProposalRef{Scope: scope, Name: in.Name, Revision: in.Revision}
 	if err := ref.Validate(); err != nil {
-		return skills.ProposalRef{}, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return skills.ProposalRef{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return ref, nil
 }
@@ -223,7 +221,7 @@ func mapSkillProposalErr(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, skills.ErrConflict), errors.Is(err, skills.ErrProposalChanged), errors.Is(err, skills.ErrNotFound):
-		return fmt.Errorf("%w: proposal review is stale: %w", protocol.ErrRevisionConflict, err)
+		return NewFailure(errors.Join(protocol.ErrRevisionConflict, err), fmt.Sprintf("proposal review is stale: %v", err))
 	default:
 		return wireWorkspaceError(err)
 	}

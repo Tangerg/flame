@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -39,7 +40,7 @@ func mcpServerInputFromCandidate(in protocol.MCPServerCandidate) (mcpapp.ServerI
 func parseMCPServerName(raw string) (mcpserver.ServerName, error) {
 	name, err := mcpserver.ParseServerName(raw)
 	if err != nil {
-		return mcpserver.ServerName{}, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return mcpserver.ServerName{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return name, nil
 }
@@ -91,7 +92,7 @@ func mcpToolPolicyFromWire(disabledRaw, autoApprovedRaw []string) (mcpserver.Ser
 	}
 	policy, err := mcpserver.NewServerToolPolicy(disabled, autoApproved)
 	if err != nil {
-		return mcpserver.ServerToolPolicy{}, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return mcpserver.ServerToolPolicy{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return policy, nil
 }
@@ -101,7 +102,7 @@ func parseRemoteToolNames(raw []string) ([]mcpserver.RemoteToolName, error) {
 	for i, value := range raw {
 		name, err := mcpserver.ParseRemoteToolName(value)
 		if err != nil {
-			return nil, fmt.Errorf("%w: remote tool at index %d: %w", protocol.ErrInvalidParams, i, err)
+			return nil, NewFailure(errors.Join(protocol.ErrInvalidParams, err), fmt.Sprintf("remote tool at index %d: %v", i, err))
 		}
 		names[i] = name
 	}
@@ -114,25 +115,25 @@ func mcpHandshakeTimeoutFromWire(in protocol.MCPHandshakeTimeout) (mcpserver.Han
 		return mcpserver.HandshakeTimeout{}, nil
 	case protocol.MCPHandshakeBounded:
 		if in.Seconds == nil {
-			return mcpserver.HandshakeTimeout{}, fmt.Errorf("%w: bounded MCP handshake timeout requires seconds", protocol.ErrInvalidParams)
+			return mcpserver.HandshakeTimeout{}, NewFailure(protocol.ErrInvalidParams, "bounded MCP handshake timeout requires seconds")
 		}
 		if int64(*in.Seconds) > protocol.MaximumDurationSeconds {
-			return mcpserver.HandshakeTimeout{}, fmt.Errorf("%w: MCP handshake timeout exceeds time.Duration", protocol.ErrInvalidParams)
+			return mcpserver.HandshakeTimeout{}, NewFailure(protocol.ErrInvalidParams, "MCP handshake timeout exceeds time.Duration")
 		}
 		timeout, err := mcpserver.NewHandshakeTimeout(time.Duration(*in.Seconds) * time.Second)
 		if err != nil {
-			return mcpserver.HandshakeTimeout{}, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+			return mcpserver.HandshakeTimeout{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 		}
 		return timeout, nil
 	default:
-		return mcpserver.HandshakeTimeout{}, fmt.Errorf("%w: unknown MCP handshake timeout %q", protocol.ErrInvalidParams, in.Type)
+		return mcpserver.HandshakeTimeout{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP handshake timeout %q", in.Type))
 	}
 }
 
 func mcpConnectionInputFromWire(in protocol.MCPConnectionInput) (mcpapp.ConnectionInput, error) {
 	transport, ok := mcpTransportFromWire(in.Type)
 	if !ok {
-		return mcpapp.ConnectionInput{}, fmt.Errorf("%w: unknown MCP transport %q", protocol.ErrInvalidParams, in.Type)
+		return mcpapp.ConnectionInput{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP transport %q", in.Type))
 	}
 	var authorization *mcpapp.AuthorizationChange
 	if in.Authorization != nil {
@@ -143,7 +144,7 @@ func mcpConnectionInputFromWire(in protocol.MCPConnectionInput) (mcpapp.Connecti
 		case protocol.MCPSecretClear:
 			change.Kind = mcpapp.SecretClear
 		default:
-			return mcpapp.ConnectionInput{}, fmt.Errorf("%w: unknown MCP authorization change %q", protocol.ErrInvalidParams, in.Authorization.Type)
+			return mcpapp.ConnectionInput{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP authorization change %q", in.Authorization.Type))
 		}
 		authorization = &change
 	}
@@ -156,7 +157,7 @@ func mcpConnectionInputFromWire(in protocol.MCPConnectionInput) (mcpapp.Connecti
 		case protocol.MCPSecretClear:
 			change.Kind = mcpapp.SecretClear
 		default:
-			return mcpapp.ConnectionInput{}, fmt.Errorf("%w: unknown MCP headers change %q", protocol.ErrInvalidParams, in.Headers.Type)
+			return mcpapp.ConnectionInput{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP headers change %q", in.Headers.Type))
 		}
 		headers = &change
 	}
@@ -169,7 +170,7 @@ func mcpConnectionInputFromWire(in protocol.MCPConnectionInput) (mcpapp.Connecti
 		case protocol.MCPSecretClear:
 			change.Kind = mcpapp.SecretClear
 		default:
-			return mcpapp.ConnectionInput{}, fmt.Errorf("%w: unknown MCP environment change %q", protocol.ErrInvalidParams, in.Env.Type)
+			return mcpapp.ConnectionInput{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP environment change %q", in.Env.Type))
 		}
 		environment = &change
 	}

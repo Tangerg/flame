@@ -81,7 +81,7 @@ func runStatusesFromWire(statuses []protocol.RunStatus) ([]run.Status, error) {
 		case protocol.RunStatusFinished:
 			out = append(out, run.StatusFinished)
 		default:
-			return nil, fmt.Errorf("%w: statuses contains unknown run status %q", protocol.ErrInvalidParams, status)
+			return nil, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("statuses contains unknown run status %q", status))
 		}
 	}
 	return out, nil
@@ -131,7 +131,7 @@ func wireInterruptPageError(err error) error {
 	}
 	switch {
 	case errors.Is(err, transcript.ErrNotRoot):
-		return fmt.Errorf("%w: %w", protocol.ErrRunNotRoot, err)
+		return NewFailure(errors.Join(protocol.ErrRunNotRoot, err), err.Error())
 	default:
 		return err
 	}
@@ -162,7 +162,7 @@ func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequ
 	var attached runs.Subscription
 	if in.Snapshot {
 		if request.Cursor != "" {
-			return nil, nil, fmt.Errorf("%w: snapshot subscription cannot replay a cursor", protocol.ErrInvalidParams)
+			return nil, nil, NewFailure(protocol.ErrInvalidParams, "snapshot subscription cannot replay a cursor")
 		}
 		attached, err = s.runs.SubscribeSnapshot(ctx, request, func(ctx context.Context, sessionID string) error {
 			var readErr error
@@ -198,17 +198,17 @@ func wireLiveSegmentError(err error) error {
 	case errors.Is(err, runs.ErrRunNotFound):
 		return protocol.ErrRunNotFound
 	case errors.Is(err, transcript.ErrNotRoot):
-		return fmt.Errorf("%w: %w", protocol.ErrRunNotRoot, err)
+		return NewFailure(errors.Join(protocol.ErrRunNotRoot, err), err.Error())
 	case errors.Is(err, runs.ErrRunWaiting):
-		return fmt.Errorf("%w: %w", protocol.ErrRunWaiting, err)
+		return NewFailure(errors.Join(protocol.ErrRunWaiting, err), err.Error())
 	case errors.Is(err, runs.ErrRunFinished):
-		return fmt.Errorf("%w: %w", protocol.ErrRunFinished, err)
+		return NewFailure(errors.Join(protocol.ErrRunFinished, err), err.Error())
 	case errors.Is(err, runs.ErrStaleSegment):
-		return fmt.Errorf("%w: %w", protocol.ErrStaleSegment, err)
+		return NewFailure(errors.Join(protocol.ErrStaleSegment, err), err.Error())
 	case errors.Is(err, runs.ErrReplayCursorInvalid):
-		return fmt.Errorf("%w: %w", protocol.ErrReplayCursorInvalid, err)
+		return NewFailure(errors.Join(protocol.ErrReplayCursorInvalid, err), err.Error())
 	case errors.Is(err, runs.ErrReplayUnavailable):
-		return fmt.Errorf("%w: %w", protocol.ErrReplayUnavailable, err)
+		return NewFailure(errors.Join(protocol.ErrReplayUnavailable, err), err.Error())
 	default:
 		return err
 	}

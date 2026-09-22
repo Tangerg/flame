@@ -164,17 +164,17 @@ func (s *Handler) GetMCPAuthorizationAttempt(ctx context.Context, attemptID stri
 func wireMCPError(err error) error {
 	switch {
 	case errors.Is(err, mcpapp.ErrUnknownServer):
-		return fmt.Errorf("%w: %w", protocol.ErrMCPServerNotFound, err)
+		return NewFailure(errors.Join(protocol.ErrMCPServerNotFound, err), err.Error())
 	case errors.Is(err, mcpapp.ErrServerAlreadyExists):
-		return fmt.Errorf("%w: %w", protocol.ErrMCPServerAlreadyExists, err)
+		return NewFailure(errors.Join(protocol.ErrMCPServerAlreadyExists, err), err.Error())
 	case errors.Is(err, mcpapp.ErrServerDisabled):
-		return fmt.Errorf("%w: %w", protocol.ErrMCPServerDisabled, err)
+		return NewFailure(errors.Join(protocol.ErrMCPServerDisabled, err), err.Error())
 	case errors.Is(err, mcpapp.ErrAuthorizationAttemptNotFound):
-		return fmt.Errorf("%w: %w", protocol.ErrMCPAuthorizationAttemptNotFound, err)
+		return NewFailure(errors.Join(protocol.ErrMCPAuthorizationAttemptNotFound, err), err.Error())
 	case errors.Is(err, mcpapp.ErrAuthorizationUnsupported):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, mcpapp.ErrInvalidServerConfiguration):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return err
 }

@@ -54,7 +54,7 @@ func (s *Handler) ReviewAgentMemory(ctx context.Context, in protocol.AgentMemory
 	case protocol.AgentMemoryReviewReject:
 		decision = agentmemory.ReviewReject
 	default:
-		return fmt.Errorf("%w: decision must be \"approve\" or \"reject\"", protocol.ErrInvalidParams)
+		return NewFailure(protocol.ErrInvalidParams, "decision must be \"approve\" or \"reject\"")
 	}
 	return mapAgentMemoryErr(s.agentMemory.Review(ctx, in.ID, decision))
 }
@@ -102,16 +102,16 @@ func agentMemoryTargetFromWire(scope protocol.AgentMemoryScope, workspace *proto
 	switch scope {
 	case protocol.AgentMemoryScopeProject:
 		if workspace == nil {
-			return "", "", fmt.Errorf("%w: project agent memory requires workspace", protocol.ErrInvalidParams)
+			return "", "", NewFailure(protocol.ErrInvalidParams, "project agent memory requires workspace")
 		}
 		return agentmemory.ScopeProject, workspace.Path, nil
 	case protocol.AgentMemoryScopeUser:
 		if workspace != nil {
-			return "", "", fmt.Errorf("%w: user agent memory forbids workspace", protocol.ErrInvalidParams)
+			return "", "", NewFailure(protocol.ErrInvalidParams, "user agent memory forbids workspace")
 		}
 		return agentmemory.ScopeUser, "", nil
 	default:
-		return "", "", fmt.Errorf("%w: unknown agent memory scope %q", protocol.ErrInvalidParams, scope)
+		return "", "", NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown agent memory scope %q", scope))
 	}
 }
 
@@ -120,11 +120,11 @@ func mapAgentMemoryErr(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, agentmemory.ErrNotFound), errors.Is(err, agentmemory.ErrNotVisible):
-		return fmt.Errorf("%w: no such memory item", protocol.ErrInvalidParams)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), "no such memory item")
 	case errors.Is(err, agentmemory.ErrNotPending):
-		return fmt.Errorf("%w: memory item is not pending review", protocol.ErrInvalidParams)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), "memory item is not pending review")
 	case errors.Is(err, agentmemory.ErrTargetFull):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	default:
 		return wireWorkspaceError(err)
 	}

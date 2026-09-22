@@ -45,7 +45,7 @@ func (c *CapabilityGapError) Error() string {
 	for _, requirement := range c.Requirements {
 		names = append(names, string(requirement.Type)+"."+requirement.Name)
 	}
-	return fmt.Sprintf("%s: requires %s", protocol.ErrCapabilityNotNeg, strings.Join(names, ", "))
+	return fmt.Sprintf("requires %s", strings.Join(names, ", "))
 }
 
 func (c *CapabilityGapError) Is(target error) bool { return target == protocol.ErrCapabilityNotNeg }
@@ -60,7 +60,7 @@ type ActiveRunConflictError struct {
 }
 
 func (a *ActiveRunConflictError) Error() string {
-	return fmt.Sprintf("%s: run %s is %s", protocol.ErrSessionHasActiveRun, a.ActiveRun.RunID, a.ActiveRun.Status)
+	return fmt.Sprintf("run %s is %s", a.ActiveRun.RunID, a.ActiveRun.Status)
 }
 
 func (a *ActiveRunConflictError) Is(target error) bool {

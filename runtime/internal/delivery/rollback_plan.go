@@ -14,10 +14,10 @@ func rollbackScopeFromWire(in protocol.RollbackSessionRequest) (sessions.Restore
 	}
 	scope := sessions.RestoreScope(restoreType)
 	if !scope.Valid() {
-		return "", fmt.Errorf("%w: unknown restoreType %q", protocol.ErrInvalidParams, restoreType)
+		return "", NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown restoreType %q", restoreType))
 	}
 	if scope.RestoresFiles() && in.ToRunID == "" {
-		return "", fmt.Errorf("%w: restoreType %q requires toRunId", protocol.ErrInvalidParams, restoreType)
+		return "", NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("restoreType %q requires toRunId", restoreType))
 	}
 	return scope, nil
 }

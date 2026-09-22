@@ -26,7 +26,7 @@ func (s *Handler) GetApprovalMode(ctx context.Context) (*protocol.ApprovalModeRe
 func (s *Handler) SetApprovalMode(ctx context.Context, in protocol.SetApprovalModeRequest) (*protocol.ApprovalModeResult, error) {
 	mode, ok := approvalModeFromWire(in.Mode)
 	if !ok {
-		return nil, fmt.Errorf("%w: unknown approval mode %q", protocol.ErrInvalidParams, in.Mode)
+		return nil, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown approval mode %q", in.Mode))
 	}
 	if err := s.approvals.SetDefaultMode(ctx, mode); err != nil {
 		return nil, err

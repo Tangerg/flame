@@ -116,7 +116,7 @@ func mapScheduleErr(err error, id string) error {
 		return wired
 	}
 	if errors.Is(err, schedule.ErrRevisionConflict) {
-		return fmt.Errorf("%w: schedule %q changed after it was read", protocol.ErrRevisionConflict, id)
+		return NewFailure(errors.Join(protocol.ErrRevisionConflict, err), fmt.Sprintf("schedule %q changed after it was read", id))
 	}
 	if errors.Is(err, schedule.ErrIDRequired) ||
 		errors.Is(err, schedule.ErrRevisionRequired) ||
@@ -125,7 +125,7 @@ func mapScheduleErr(err error, id string) error {
 		modelref.IsInvalid(err) ||
 		errors.Is(err, modelref.ErrUnsupported) ||
 		errors.Is(err, schedule.ErrInvalidCron) {
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return err
 }

@@ -2,7 +2,7 @@ package delivery
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -34,7 +34,7 @@ func (s *Handler) ListTools(ctx context.Context) (*protocol.Page[protocol.ToolSp
 func (s *Handler) InvokeTool(ctx context.Context, in protocol.InvokeToolRequest) (any, error) {
 	args, err := toolsvc.ArgumentsFromMap(in.Arguments)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return nil, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	result, err := s.tools.Invoke(ctx, workspaceapp.DiagnosticToolInvocation{
 		Name: in.Name, Arguments: args, CWD: workspaceRefPath(in.Workspace),

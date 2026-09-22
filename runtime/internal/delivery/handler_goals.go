@@ -105,19 +105,14 @@ func mapGoalErr(err error) error {
 	}
 	switch {
 	case errors.Is(err, goals.ErrGoalActive), errors.Is(err, goals.ErrGoalOwned):
-		return fmt.Errorf("%w: a goal is already active for this session — stop it first", protocol.ErrSessionBusy)
-	case errors.Is(err, goals.ErrNoGoal):
-		return fmt.Errorf("%w: no goal for this session", protocol.ErrInvalidParams)
-	case errors.Is(err, goal.ErrNotResumable):
-		return fmt.Errorf("%w: this goal is not resumable", protocol.ErrInvalidParams)
-	case errors.Is(err, goal.ErrNotEditable):
-		return fmt.Errorf("%w: this goal is finishing and cannot be edited", protocol.ErrInvalidParams)
-	case modelref.IsInvalid(err):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
-	case errors.Is(err, goal.ErrInvalid):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
-	case errors.Is(err, modelref.ErrUnsupported):
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrSessionBusy, err), err.Error())
+	case errors.Is(err, goals.ErrNoGoal),
+		errors.Is(err, goal.ErrNotResumable),
+		errors.Is(err, goal.ErrNotEditable),
+		modelref.IsInvalid(err),
+		errors.Is(err, goal.ErrInvalid),
+		errors.Is(err, modelref.ErrUnsupported):
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	default:
 		return err
 	}

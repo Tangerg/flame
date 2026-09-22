@@ -3,7 +3,6 @@ package delivery
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
@@ -67,9 +66,7 @@ func mapModelError(err error) error {
 		return nil
 	}
 	if errors.Is(err, modelapp.ErrModelDiscoveryFailed) {
-		failure := NewFailure(protocol.ErrProviderError, "the provider could not supply a valid model catalog; check its configuration and availability")
-		failure.cause = errors.Join(protocol.ErrProviderError, err)
-		return failure
+		return NewFailure(errors.Join(protocol.ErrProviderError, err), "the provider could not supply a valid model catalog; check its configuration and availability")
 	}
 	if errors.Is(err, modelapp.ErrProviderUnsupported) ||
 		errors.Is(err, modelapp.ErrProviderBaseURLRequired) ||
@@ -77,7 +74,7 @@ func mapModelError(err error) error {
 		errors.Is(err, modelapp.ErrProviderUpdateRequired) ||
 		errors.Is(err, modelapp.ErrEmbeddingUnsupported) ||
 		modelref.IsInvalid(err) {
-		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return err
 }

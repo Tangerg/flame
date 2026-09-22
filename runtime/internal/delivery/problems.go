@@ -93,13 +93,23 @@ func (f *Failure) Problem() protocol.ProblemData {
 	return cloneProblemData(f.data)
 }
 
-// NewFailure constructs a safe failure for a registered stable sentinel.
-func NewFailure(sentinel error, detail string) *Failure {
-	spec, ok := problemSpecForError(sentinel)
+// NewFailure separates a client-safe explanation from the cause chain, which
+// must identify a registered problem. Structured details remain owner-provided.
+func NewFailure(cause error, detail string) *Failure {
+	spec, ok := problemSpecForError(cause)
 	if !ok {
 		return internalFailure()
 	}
-	return newFailure(spec, sentinel, detail)
+	failure := newFailure(spec, cause, detail)
+	if detailed, ok := errors.AsType[ProblemDetailed](cause); ok {
+		detailed.Enrich(&failure.data)
+	}
+	if spec.sentinel == protocol.ErrInvalidParams {
+		if constraint, ok := errors.AsType[*protocol.ConstraintError](cause); ok {
+			failure.data.Errors = slices.Clone(constraint.Fields)
+		}
+	}
+	return failure
 }
 
 // ProjectError maps an implementation error onto the binding-neutral problem
@@ -109,16 +119,20 @@ func ProjectError(err error) *Failure {
 		return nil
 	}
 	if failure, ok := errors.AsType[*Failure](err); ok {
+		if protocol.ValidateWireTree(failure.data) != nil {
+			return internalFailure()
+		}
 		return &Failure{cause: failure.cause, data: cloneProblemData(failure.data)}
 	}
 	for _, spec := range problemSpecs {
 		if !errors.Is(err, spec.sentinel) {
 			continue
 		}
-		failure := newFailure(spec, err, err.Error())
-		if detailed, ok := errors.AsType[ProblemDetailed](err); ok {
-			detailed.Enrich(&failure.data)
+		detail := ""
+		if err != spec.sentinel {
+			detail = err.Error()
 		}
+		failure := NewFailure(err, detail)
 		if protocol.ValidateWireTree(failure.data) != nil {
 			return internalFailure()
 		}
@@ -138,14 +152,7 @@ func ProjectError(err error) *Failure {
 // InvalidParameters projects strict wire-constraint failures with their field
 // locations intact.
 func InvalidParameters(err error) *Failure {
-	failure := NewFailure(protocol.ErrInvalidParams, err.Error())
-	if constraint, ok := errors.AsType[*protocol.ConstraintError](err); ok {
-		failure.data.Errors = slices.Clone(constraint.Fields)
-	}
-	if protocol.ValidateWireTree(failure.data) != nil {
-		return internalFailure()
-	}
-	return failure
+	return ProjectError(NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error()))
 }
 
 // runtimeProduced reports a failure in the Runtime's own output. The wire keeps

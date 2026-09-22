@@ -53,10 +53,10 @@ func (s *Handler) UpdateKnowledge(ctx context.Context, in protocol.UpdateKnowled
 	)
 	if err != nil {
 		if errors.Is(err, knowledge.ErrRevisionConflict) {
-			return nil, fmt.Errorf("%w: the knowledge document changed after it was read", protocol.ErrRevisionConflict)
+			return nil, NewFailure(errors.Join(protocol.ErrRevisionConflict, err), "the knowledge document changed after it was read")
 		}
 		if errors.Is(err, knowledge.ErrRevisionRequired) || errors.Is(err, knowledge.ErrDocumentTooLarge) {
-			return nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
+			return nil, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 		}
 		return nil, wireWorkspaceError(err)
 	}
@@ -95,6 +95,6 @@ func knowledgeScopeFromWire(scope protocol.KnowledgeScope) (knowledge.Scope, err
 	case protocol.KnowledgeScopeHome:
 		return knowledge.ScopeHome, nil
 	default:
-		return "", fmt.Errorf("%w: unknown knowledge scope %q", protocol.ErrInvalidParams, scope)
+		return "", NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown knowledge scope %q", scope))
 	}
 }

@@ -2,7 +2,7 @@ package delivery
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -25,7 +25,7 @@ func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequ
 	if in.SinceDays != nil {
 		recent, periodErr := sessions.RecentUsageDays(*in.SinceDays)
 		if periodErr != nil {
-			return nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, periodErr)
+			return nil, NewFailure(errors.Join(protocol.ErrInvalidParams, periodErr), periodErr.Error())
 		}
 		period = recent
 	}

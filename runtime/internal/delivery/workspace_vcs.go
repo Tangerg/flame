@@ -41,10 +41,10 @@ func (s *Handler) GetWorkspaceDiff(ctx context.Context, in protocol.GetDiffReque
 	case protocol.DiffModeBase:
 		base = true
 	default:
-		return nil, fmt.Errorf("%w: unknown mode %q", protocol.ErrInvalidParams, in.Mode)
+		return nil, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown mode %q", in.Mode))
 	}
 	if in.Format == protocol.DiffFormatRaw && in.Limit != nil {
-		return nil, fmt.Errorf("%w: limit is only valid for rows format", protocol.ErrInvalidParams)
+		return nil, NewFailure(protocol.ErrInvalidParams, "limit is only valid for rows format")
 	}
 	rowLimit := workspaceapp.DefaultDiffRowLimit()
 	if in.Limit != nil {

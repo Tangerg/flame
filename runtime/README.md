@@ -40,6 +40,8 @@ if err != nil {
 
 Hosts must close each Runtime they open. Protocol errors support `errors.Is` against public sentinel errors and `errors.As` to `protocol.ProblemError` for structured recovery information.
 
+Operation failures separate the stable machine `type` from their human-readable `detail`; a bare category omits redundant detail. Clients render the type once and use structured field errors, capability requirements, and active-Run references when present. Go callers retain underlying causes without parsing the display text. Explicit and inferred failures pass the same wire validation before leaving the endpoint.
+
 Cancellation failures returned by the Go binding also preserve `context.Canceled` or `context.DeadlineExceeded` for `errors.Is`. Request cancellation causes are local to that invocation; wire problems and persisted replay outcomes retain their protocol category and safe details.
 
 The standalone Runtime and CLI interpret `FLAME_HOME` as Flame's local product root. Runtime-owned state lives under `$FLAME_HOME/runtime`; the default is `~/.flame/runtime`.
