@@ -69,13 +69,15 @@ func TestCanceledToolRetainsEvidenceAfterRootAwait(t *testing.T) {
 
 func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 	for _, test := range []struct {
-		name       string
-		limit      int
-		beforeCall bool
-		outcome    run.Outcome
+		name        string
+		limit       int
+		beforeCall  bool
+		outcome     run.Outcome
+		commitError error
 	}{
 		{name: "stream exceeds budget", limit: 512, outcome: run.OutcomeLost},
 		{name: "minimum response cannot fit", limit: 64, beforeCall: true, outcome: run.OutcomeFailed},
+		{name: "rejected stream observation cannot commit", limit: 512, outcome: run.OutcomeLost, commitError: errors.New("failed observation store unavailable")},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			model := streamingObservationModel{chunks: 20, streamed: make(chan struct{})}
@@ -88,8 +90,8 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// Replace only the public Dispatcher resource policy; keep Flame's real model
-			// projection and external-boundary tracker around it.
+			// Replace only the public Dispatcher resource policy; retain Runtime's
+			// model publication boundary.
 			deployment := session.deployment
 			definition := deployment.Definition().(*interaction.Definition)
 			observed, err := newObservedInteractionModel(model, model, session)
@@ -117,7 +119,11 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 				for event := range sequence {
 					if commit, ok := event.Payload.(runs.ExecutionFactCommit); ok {
 						event.Payload = commit.Fact()
-						commit.Complete(nil)
+						if _, failed := event.Payload.(runs.ModelCallFailed); failed {
+							commit.Complete(test.commitError)
+						} else {
+							commit.Complete(nil)
+						}
 					}
 					events = append(events, event)
 				}
@@ -144,8 +150,14 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 					t.Fatal("provider was dispatched without a usable response budget")
 				default:
 				}
-			} else if len(effects) != 1 || !strings.Contains(effects[0].Detail(), interaction.ErrModelResponseTooLarge.Error()) {
-				t.Fatalf("resource cause lost: %+v", effects)
+			} else {
+				cause := interaction.ErrModelResponseTooLarge
+				if test.commitError != nil {
+					cause = test.commitError
+				}
+				if len(effects) != 1 || !strings.Contains(effects[0].Detail(), cause.Error()) {
+					t.Fatalf("dispatch cause lost: %+v", effects)
+				}
 			}
 			if err := executor.Release(t.Context(), ref); err != nil {
 				t.Fatal(err)

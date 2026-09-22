@@ -29,26 +29,22 @@ func (o *observedInteractionModel) Call(
 	ctx context.Context,
 	request *corechat.Request,
 ) (*corechat.Response, error) {
-	invocation, attempt, callID, err := o.begin(ctx)
+	invocation, callID, err := o.begin(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer o.session.accounting.discardPreparedModelContext(invocation)
-	if beginExternalCallErr := attempt.beginExternalCall(); beginExternalCallErr != nil {
-		return nil, beginExternalCallErr
-	}
 	response, err := o.model.Call(ctx, request)
 	if err != nil {
-		return response, o.finishFailedCall(ctx, invocation, attempt, callID, runs.ModelObservation{}, nil, err)
+		return response, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
 	}
 	if response == nil {
-		return nil, o.finishFailedCall(ctx, invocation, attempt, callID, runs.ModelObservation{}, nil, errors.New("agentexec: model returned no response"))
+		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, errors.New("agentexec: model returned no response"))
 	}
 	if err := response.Validate(); err != nil {
-		return response, o.finishFailedCall(ctx, invocation, attempt, callID, runs.ModelObservation{}, nil, err)
+		return response, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
 	}
 	if err := o.complete(ctx, invocation, callID, response, nil); err != nil {
-		attempt.recordProjectionFailure(err)
 		return nil, err
 	}
 	return response, nil
@@ -59,16 +55,12 @@ func (o *observedInteractionModel) Stream(
 	request *corechat.Request,
 ) iter.Seq2[*corechat.ResponseDelta, error] {
 	return func(yield func(*corechat.ResponseDelta, error) bool) {
-		invocation, attempt, callID, err := o.begin(ctx)
+		invocation, callID, err := o.begin(ctx)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
 		defer o.session.accounting.discardPreparedModelContext(invocation)
-		if err := attempt.beginExternalCall(); err != nil {
-			yield(nil, err)
-			return
-		}
 		var accumulated corechat.ResponseAccumulator
 		var text, reasoning strings.Builder
 		observation := func() runs.ModelObservation {
@@ -78,12 +70,12 @@ func (o *observedInteractionModel) Stream(
 		dispatchedAt := time.Now()
 		for chunk, streamErr := range o.streamer.Stream(ctx, request) {
 			if streamErr != nil {
-				yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, observation(), firstOutputLatencyMillis, streamErr))
+				yield(nil, o.finishFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis, streamErr))
 				return
 			}
 			receivedAt := time.Now()
 			if err := accumulated.Add(chunk); err != nil {
-				yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, observation(), firstOutputLatencyMillis, err))
+				yield(nil, o.finishFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis, err))
 				return
 			}
 			for _, part := range chunk.Parts {
@@ -99,7 +91,9 @@ func (o *observedInteractionModel) Stream(
 			}
 			if !yield(chunk, nil) {
 				if err := o.fail(ctx, invocation, callID, observation(), firstOutputLatencyMillis); err != nil {
-					attempt.recordProjectionFailure(err)
+					// Scope rejected this delta and stopped consuming. Preserve the
+					// publication failure locally; yielding again violates the stream.
+					o.session.effectFailures.record(invocation.EffectID(), err)
 				}
 				return
 			}
@@ -109,7 +103,6 @@ func (o *observedInteractionModel) Stream(
 			yield(nil, o.finishFailedCall(
 				ctx,
 				invocation,
-				attempt,
 				callID,
 				observation(),
 				firstOutputLatencyMillis,
@@ -117,12 +110,7 @@ func (o *observedInteractionModel) Stream(
 			))
 			return
 		}
-		if err := response.Validate(); err != nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, attempt, callID, observation(), firstOutputLatencyMillis, err))
-			return
-		}
 		if err := o.complete(ctx, invocation, callID, response, firstOutputLatencyMillis); err != nil {
-			attempt.recordProjectionFailure(err)
 			yield(nil, err)
 		}
 	}
@@ -131,7 +119,6 @@ func (o *observedInteractionModel) Stream(
 func (o *observedInteractionModel) finishFailedCall(
 	ctx context.Context,
 	invocation interaction.ModelInvocation,
-	attempt *dispatchAttempt,
 	callID string,
 	observation runs.ModelObservation,
 	firstOutputLatencyMillis *int64,
@@ -144,7 +131,6 @@ func (o *observedInteractionModel) finishFailedCall(
 		}
 		return errors.Join(cause, o.session.stopModelProcess(ctx, invocation.Relation().ProcessID()))
 	}
-	attempt.recordProjectionFailure(projectionErr)
 	return errors.Join(cause, projectionErr)
 }
 
@@ -171,13 +157,12 @@ func (o *observedInteractionModel) begin(
 	ctx context.Context,
 ) (
 	invocation interaction.ModelInvocation,
-	attempt *dispatchAttempt,
 	callID string,
 	err error,
 ) {
 	invocation, ok := interaction.ModelInvocationFromContext(ctx)
 	if !ok {
-		return interaction.ModelInvocation{}, nil, "", errors.New("agentexec: model call has no Interaction attribution")
+		return interaction.ModelInvocation{}, "", errors.New("agentexec: model call has no Interaction attribution")
 	}
 	preparedInvocation := invocation
 	defer func() {
@@ -187,27 +172,23 @@ func (o *observedInteractionModel) begin(
 			err = errors.Join(err, o.session.stopModelProcess(ctx, preparedInvocation.Relation().ProcessID()))
 		}
 	}()
-	attempt, err = dispatchAttemptFrom(ctx, invocation.EffectID())
-	if err != nil {
-		return interaction.ModelInvocation{}, nil, "", err
-	}
 	callIdentity, err := modelInvocationID(invocation)
 	if err != nil {
-		return interaction.ModelInvocation{}, nil, "", err
+		return interaction.ModelInvocation{}, "", err
 	}
 	callID = callIdentity.String()
 	member := o.session.executorMember(invocation.Relation())
 	if err := o.session.commitAppliedInputs(
 		ctx, member, invocation.Relation().ProcessID(), invocation.AppliedSteerSignalIDs(),
 	); err != nil {
-		return interaction.ModelInvocation{}, nil, "", interaction.HostFailure(err)
+		return interaction.ModelInvocation{}, "", interaction.HostFailure(err)
 	}
 	if err := o.session.commitFact(ctx, member, runs.ModelCallStarted{CallID: callID}); err != nil {
-		return interaction.ModelInvocation{}, nil, "", interaction.HostFailure(
+		return interaction.ModelInvocation{}, "", interaction.HostFailure(
 			fmt.Errorf("agentexec: commit model call start: %w", err),
 		)
 	}
-	return invocation, attempt, callID, nil
+	return invocation, callID, nil
 }
 
 func (o *observedInteractionModel) complete(

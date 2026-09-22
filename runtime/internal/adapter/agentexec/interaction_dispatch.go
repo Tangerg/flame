@@ -2,16 +2,13 @@ package agentexec
 
 import (
 	"context"
-	"fmt"
 
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
 
-// interactionDispatcher gives each EffectRequest one independent attempt
-// tracker. The inner Interaction Dispatcher still owns protocol decoding and
-// definite settlements; this wrapper alone converts a post-external-call
-// projection failure into Agent Framework's unknown settlement path.
+// Scope owns definite settlements and unknown dispatch outcomes. Runtime gates
+// dispatch on the active product Segment and retains local failure diagnostics.
 type interactionDispatcher struct {
 	inner   *interaction.Dispatcher
 	session *interactionSession
@@ -22,26 +19,16 @@ func (i *interactionDispatcher) Dispatch(
 	request agent.EffectRequest,
 	emit agent.DeltaEmitter,
 ) (settlement agent.Settlement, err error) {
-	defer func() { i.session.effectFailures.record(request.ID(), err) }()
+	defer func() {
+		if err != nil {
+			i.session.effectFailures.record(request.ID(), err)
+			i.session.lifetime.wakeUnknown()
+		}
+	}()
 	if err := i.session.awaitDispatchSegment(ctx); err != nil {
 		return agent.Settlement{}, err
 	}
-	attempt := newDispatchAttempt(request.ID())
-	settlement, err = i.inner.Dispatch(withDispatchAttempt(ctx, attempt), request, emit)
-	if projectionErr := attempt.indeterminateFailure(); projectionErr != nil {
-		i.session.lifetime.wakeUnknown()
-		return agent.Settlement{}, fmt.Errorf(
-			"agentexec: authoritative projection failed after external Effect %s: %w",
-			request.ID(), projectionErr,
-		)
-	}
-	if err != nil && attempt.crossedExternalBoundary() {
-		// The inner Dispatcher already returns an indeterminate error to Engine.
-		// Wake the direct path as well; the periodic public-state reconciliation
-		// remains the loss-tolerant backstop.
-		i.session.lifetime.wakeUnknown()
-	}
-	return settlement, err
+	return i.inner.Dispatch(ctx, request, emit)
 }
 
 func (i *interactionDispatcher) ReplayPolicy(effect agent.Effect) agent.ReplayPolicy {
