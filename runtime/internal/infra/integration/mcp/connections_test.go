@@ -18,7 +18,7 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"golang.org/x/oauth2"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"

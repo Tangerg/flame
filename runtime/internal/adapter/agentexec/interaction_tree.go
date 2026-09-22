@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -69,7 +70,7 @@ func (i *interactionSession) captureHumanInputBarrier(
 	if root == nil {
 		return agent.TreeSnapshot{}, nil, false, runs.ErrExecutorNotLive
 	}
-	// Inspect live scheduling first; only the persisted head is a recovery cut.
+	// Prove a product input wait before asking Scope to drain in-flight work.
 	inspection, readable := i.inspectTree(ctx)
 	if !readable {
 		return agent.TreeSnapshot{}, nil, false, nil
@@ -84,8 +85,11 @@ func (i *interactionSession) captureHumanInputBarrier(
 	if !externallyAddressedWait(inspection) {
 		return agent.TreeSnapshot{}, nil, false, nil
 	}
+	requestedPauses := make(map[agent.ProcessID]struct{})
+	ticker := time.NewTicker(i.statePollInterval)
+	defer ticker.Stop()
 	for {
-		tree, err := i.committedTree(ctx, root.Relation().RootID())
+		tree, err := i.engine.CaptureTree(ctx, root.Relation().RootID())
 		if err != nil {
 			return agent.TreeSnapshot{}, nil, false, err
 		}
@@ -101,32 +105,30 @@ func (i *interactionSession) captureHumanInputBarrier(
 			if snapshot.Status() != agent.StatusRunning {
 				continue
 			}
-			process, found := i.engine.Process(snapshot.ProcessID())
-			if !found {
-				paused = true
+			paused = true
+			if _, requested := requestedPauses[snapshot.ProcessID()]; requested {
 				continue
 			}
-			// The cut says this member was running; by now it may have finished or
-			// reached a wait, and only a running member can be armed with a pause.
-			// Either way the tree moved under the cut, so the barrier asks again
-			// rather than treating its own stale reading as a fault.
+			process, found := i.engine.Process(snapshot.ProcessID())
+			if !found {
+				return agent.TreeSnapshot{}, nil, false, nil
+			}
+			// Pause acknowledges intent before its committed snapshot advances.
+			// Retain that receipt until this capture observes the settled cut.
 			if err := process.Pause(ctx, interactionBarrierPauseReason); err != nil &&
 				!errors.Is(err, agent.ErrProcessFinished) {
 				return agent.TreeSnapshot{}, nil, false, fmt.Errorf("pause Interaction member %s: %w", snapshot.ProcessID(), err)
 			}
-			paused = true
+			requestedPauses[snapshot.ProcessID()] = struct{}{}
 		}
 		if paused {
-			continue
-		}
-		current, readable := i.inspectTree(ctx)
-		if !readable || current.CommitPending || current.HeadDigest != tree.Digest() {
-			return agent.TreeSnapshot{}, nil, false, nil
-		}
-		for _, process := range current.Processes {
-			if process.Work != agent.ProcessWorkIdle {
-				return agent.TreeSnapshot{}, nil, false, nil
+			select {
+			case <-i.lifetime.stateWake:
+			case <-ticker.C:
+			case <-ctx.Done():
+				return agent.TreeSnapshot{}, nil, false, ctx.Err()
 			}
+			continue
 		}
 		return tree, interruptions, true, nil
 	}

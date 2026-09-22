@@ -223,7 +223,6 @@ func (i *interactionSession) commitSubtreeApplication(
 		managed.assistantProjected = true
 		managed.segmentProjected = true
 		managed.mu.Unlock()
-		i.committedReplies.forget(managed.childProcessID)
 	}
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()

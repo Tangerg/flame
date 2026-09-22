@@ -322,12 +322,18 @@ func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	waitForRunEvents(t, collectRunEvents(events), "first waiting sibling")
+	openingEvents := waitForRunEvents(t, collectRunEvents(events), "first waiting sibling")
 	pending, err := api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: started.RunID})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(pending.Data) != 1 || len(pending.Data[0].Interrupts) == 0 {
+		for _, event := range openingEvents {
+			if event.Event.Outcome != nil {
+				encoded, _ := json.Marshal(event.Event.Outcome)
+				t.Logf("run %s outcome: %s", event.RunID, encoded)
+			}
+		}
 		t.Fatalf("waiting sibling barrier = %+v", pending)
 	}
 	canceledRunID := pending.Data[0].Interrupts[0].RunID

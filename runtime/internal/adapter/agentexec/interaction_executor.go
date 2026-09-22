@@ -274,7 +274,7 @@ func (i *InteractionExecutor) assembleInteraction(
 		return nil, installDeploymentsErr
 	}
 	engine, err := agent.NewEngine(agent.EngineConfig{
-		TreeDurability:                           session,
+		TreeCommitter:                            session,
 		DeploymentResolver:                       deployments,
 		ProcessAdmitter:                          agent.ProcessAdmitterFunc(session.admitProcess),
 		ProcessInitializationOutcomeAcknowledger: agent.ProcessInitializationOutcomeAcknowledgerFunc(session.acknowledgeProcessInitializationOutcome),

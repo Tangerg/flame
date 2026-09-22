@@ -40,7 +40,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			}
 			trees := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 			payload := []byte(`{"tree":"settled"}`)
-			update := runs.ExecutionTreeUpdate{Head: runs.ExecutionTreeHead{SessionID: draft.SessionID, RootID: "root", Writer: "writer", Digest: fmt.Sprintf("sha256:%x", sha256.Sum256(payload)), Payload: payload}}
+			update := runs.ExecutionTreeUpdate{Head: runs.ExecutionTreeHead{Sequence: 1, CommitID: "initial", CommitDigest: "initial", SessionID: draft.SessionID, RootID: "root", Writer: "writer", Digest: fmt.Sprintf("sha256:%x", sha256.Sum256(payload)), Payload: payload}}
 			rollback := true
 			transactions := 0
 			effects := mustNewEffects(Config{

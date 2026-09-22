@@ -239,9 +239,6 @@ func (o *observedInteractionModel) complete(
 	); err != nil {
 		return err
 	}
-	if !invocation.Relation().IsRoot() {
-		o.session.committedReplies.record(invocation.Relation().ProcessID(), fact.Message)
-	}
 	return o.session.registerDelegateCalls(invocation, modelOutput.Message)
 }
 

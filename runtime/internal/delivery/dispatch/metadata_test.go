@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"

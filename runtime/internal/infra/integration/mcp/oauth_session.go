@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/auth"
+	"github.com/Tangerg/go-sdk/auth"
 	"golang.org/x/oauth2"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"

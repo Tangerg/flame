@@ -16,6 +16,7 @@ type testExecutionTrees struct {
 	mu           sync.Mutex
 	heads        map[string]runs.ExecutionTreeHead
 	publications map[string]runs.ResultPublication
+	commits      map[string]string
 }
 
 func testTrees(t *testing.T) *testExecutionTrees {
@@ -51,14 +52,28 @@ func (s *testExecutionTrees) SaveExecutionTree(ctx context.Context, update runs.
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := update.Validate(); err != nil {
+		return err
+	}
 	h := s.heads[update.Head.RootID]
-	if h.Writer == update.Head.Writer && h.Digest == update.Head.Digest {
+	if s.commits == nil {
+		s.commits = make(map[string]string)
+	}
+	key := update.Head.RootID + "|" + update.Head.CommitID
+	if h.SameCommit(update.Head) {
 		return nil
+	}
+	if _, exists := s.commits[key]; exists {
+		return errors.New("historical commit")
+	}
+	if h.Writer == "" && update.Head.Sequence != 1 || h.Writer != "" && h.Writer != update.Head.Writer && update.Head.Sequence != 0 || h.Writer == update.Head.Writer && update.Head.Sequence != h.Sequence+1 {
+		return errors.New("invalid commit sequence")
 	}
 	if h.Writer != update.PreviousWriter || h.Digest != update.PreviousDigest {
 		return errors.New("stale tree writer")
 	}
 	s.heads[update.Head.RootID] = update.Head
+	s.commits[key] = update.Head.CommitDigest
 	return nil
 }
 func (s *testExecutionTrees) ExecutionResultCommitted(_ context.Context, _ string, publication runs.ResultPublication) (bool, error) {

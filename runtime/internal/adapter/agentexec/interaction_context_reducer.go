@@ -2,7 +2,6 @@ package agentexec
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -295,19 +294,12 @@ func sameInteractionMetadata(left, right coremetadata.Map) bool {
 	if len(left) != len(right) {
 		return false
 	}
-	for key, leftValue := range left {
-		rightValue, found := right[key]
-		if !found {
-			return false
-		}
-		var leftDecoded, rightDecoded any
-		if json.Unmarshal(leftValue, &leftDecoded) != nil ||
-			json.Unmarshal(rightValue, &rightDecoded) != nil ||
-			!reflect.DeepEqual(leftDecoded, rightDecoded) {
-			return false
-		}
+	if len(left) == 0 {
+		return true
 	}
-	return true
+	leftValues, leftErr := left.Values()
+	rightValues, rightErr := right.Values()
+	return leftErr == nil && rightErr == nil && reflect.DeepEqual(leftValues, rightValues)
 }
 
 var _ interaction.ModelContextReducer = (*interactionModelContextReducer)(nil)

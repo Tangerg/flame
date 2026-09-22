@@ -100,6 +100,7 @@ func TestBuildChatDeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 	var calls atomic.Int32
 	var secondRequest struct {
 		Messages []map[string]any `json:"messages"`
+		Stream   bool             `json:"stream"`
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		call := calls.Add(1)
@@ -110,12 +111,12 @@ func TestBuildChatDeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 				return
 			}
 		}
-		writer.Header().Set("Content-Type", "application/json")
+		writer.Header().Set("Content-Type", "text/event-stream")
 		if call == 1 {
-			_, _ = writer.Write([]byte(`{"id":"first","model":"deepseek-v4-flash","choices":[{"index":0,"message":{"role":"assistant","reasoning_content":"private chain","content":"first answer"},"finish_reason":"stop"}]}`))
+			_, _ = writer.Write([]byte(`data: {"id":"first","model":"deepseek-v4-flash","choices":[{"index":0,"delta":{"role":"assistant","reasoning_content":"private chain","content":"first answer"},"finish_reason":"stop"}]}` + "\n\ndata: [DONE]\n\n"))
 			return
 		}
-		_, _ = writer.Write([]byte(`{"id":"second","model":"deepseek-v4-flash","choices":[{"index":0,"message":{"role":"assistant","content":"second answer"},"finish_reason":"stop"}]}`))
+		_, _ = writer.Write([]byte(`data: {"id":"second","model":"deepseek-v4-flash","choices":[{"index":0,"delta":{"role":"assistant","content":"second answer"},"finish_reason":"stop"}]}` + "\n\ndata: [DONE]\n\n"))
 	}))
 	t.Cleanup(server.Close)
 
@@ -142,6 +143,9 @@ func TestBuildChatDeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 	}
 	if second.Text() != "second answer" {
 		t.Fatalf("second response text = %q", second.Text())
+	}
+	if !secondRequest.Stream {
+		t.Fatal("complete call did not use streaming transport")
 	}
 	assistant := findWireAssistant(t, secondRequest.Messages)
 	if _, exists := assistant["reasoning_content"]; exists {
@@ -181,15 +185,11 @@ func TestBuildChatGoogleUsesConfiguredEndpoint(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		requests.Add(1)
-		if !strings.Contains(request.URL.Path, ":generateContent") {
-			t.Errorf("Google request path = %q, want generateContent", request.URL.Path)
+		if !strings.Contains(request.URL.Path, ":streamGenerateContent") {
+			t.Errorf("Google request path = %q, want streamGenerateContent", request.URL.Path)
 		}
-		writer.Header().Set("Content-Type", "application/json")
-		_, _ = writer.Write([]byte(`{
-  "responseId":"custom-endpoint","modelVersion":"gemini-3.6-flash",
-  "candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"custom endpoint"}]},"finishReason":"STOP"}],
-  "usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":2,"totalTokenCount":3}
-}`))
+		writer.Header().Set("Content-Type", "text/event-stream")
+		_, _ = writer.Write([]byte(`data: {"responseId":"custom-endpoint","modelVersion":"gemini-3.6-flash","candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"custom endpoint"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":2,"totalTokenCount":3}}` + "\n\n"))
 	}))
 	t.Cleanup(server.Close)
 
@@ -363,12 +363,12 @@ func TestDirectOpenAIUsesResponsesCountingWhileCompatibleRemainsChatCompletions(
 			_, _ = writer.Write([]byte(`{"object":"response.input_tokens","input_tokens":73}`))
 		case "/responses":
 			responseRequests.Add(1)
-			_, _ = writer.Write([]byte(`{
-  "id":"resp_flame","object":"response","created_at":1,"status":"completed","model":"gpt-5.6-sol",
-  "output":[{"type":"message","id":"msg_flame","status":"completed","role":"assistant","content":[{"type":"output_text","text":"done","annotations":[]}]}],
-  "parallel_tool_calls":false,"tools":[],
-  "usage":{"input_tokens":73,"output_tokens":1,"total_tokens":74,"input_tokens_details":{"cached_tokens":0},"output_tokens_details":{"reasoning_tokens":0}}
-}`))
+			writer.Header().Set("Content-Type", "text/event-stream")
+			_, _ = writer.Write([]byte(`event: response.output_text.delta
+data: {"type":"response.output_text.delta","sequence_number":0,"item_id":"msg_flame","output_index":0,"content_index":0,"delta":"done","logprobs":[]}
+
+event: response.completed
+data: {"type":"response.completed","sequence_number":1,"response":{"id":"resp_flame","object":"response","created_at":1,"status":"completed","model":"gpt-5.6-sol","output":[{"type":"message","id":"msg_flame","status":"completed","role":"assistant","content":[{"type":"output_text","text":"done","annotations":[]}]}],"parallel_tool_calls":false,"tools":[],"usage":{"input_tokens":73,"output_tokens":1,"total_tokens":74,"input_tokens_details":{"cached_tokens":0},"output_tokens_details":{"reasoning_tokens":0}}}}` + "\n\n"))
 		default:
 			t.Errorf("unexpected path %q", request.URL.Path)
 			http.Error(writer, "unexpected path", http.StatusNotFound)

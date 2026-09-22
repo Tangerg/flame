@@ -23,7 +23,7 @@ func NewExecutorCheckpointStore(storage *sqlite.ExecutorCheckpointStore) *Execut
 
 func (e *ExecutorCheckpointStore) LoadExecutionTree(ctx context.Context, sessionID, rootID string) (runs.ExecutionTreeHead, bool, error) {
 	value, found, err := e.storage.LoadExecutionTree(ctx, sessionID, rootID)
-	return runs.ExecutionTreeHead{SessionID: value.SessionID, RootID: value.RootID, Writer: value.Writer, Digest: value.Digest, Payload: value.Payload}, found, err
+	return runs.ExecutionTreeHead{SessionID: value.SessionID, RootID: value.RootID, Writer: value.Writer, Digest: value.Digest, Payload: value.Payload, Sequence: value.Sequence, CommitID: value.CommitID, CommitDigest: value.CommitDigest}, found, err
 }
 
 func (e *ExecutorCheckpointStore) ExecutionResultCommitted(ctx context.Context, sessionID string, publication runs.ResultPublication) (bool, error) {
@@ -35,7 +35,15 @@ func (e *ExecutorCheckpointStore) SaveExecutionTree(ctx context.Context, update 
 		return err
 	}
 	h := update.Head
-	return e.storage.SaveExecutionTree(ctx, update.PreviousWriter, update.PreviousDigest, sqlite.ExecutionTreeRecord{SessionID: h.SessionID, RootID: h.RootID, Writer: h.Writer, Digest: h.Digest, Payload: h.Payload})
+	err := e.storage.SaveExecutionTree(ctx, update.PreviousWriter, update.PreviousDigest, sqlite.ExecutionTreeRecord{SessionID: h.SessionID, RootID: h.RootID, Writer: h.Writer, Digest: h.Digest, Payload: h.Payload, Sequence: h.Sequence, CommitID: h.CommitID, CommitDigest: h.CommitDigest})
+	switch {
+	case errors.Is(err, sqlite.ErrExecutionTreeCommitConflict):
+		return errors.Join(runs.ErrExecutionTreeCommitConflict, err)
+	case errors.Is(err, sqlite.ErrExecutionTreeConflict):
+		return errors.Join(runs.ErrExecutionTreeWriterConflict, err)
+	default:
+		return err
+	}
 }
 
 func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error {

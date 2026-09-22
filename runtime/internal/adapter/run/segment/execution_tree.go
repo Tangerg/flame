@@ -43,7 +43,7 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, update runs.Execution
 	readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), stagedToolResultCleanupTimeout)
 	defer cancel()
 	head, found, readErr := e.executionTrees.LoadExecutionTree(readCtx, update.Head.SessionID, update.Head.RootID)
-	if readErr == nil && found && head.Writer == update.Head.Writer && head.Digest == update.Head.Digest {
+	if readErr == nil && found && head.SameCommit(update.Head) {
 		last := make(map[string]runs.EventCommit)
 		for _, commit := range commits {
 			last[commit.RunID] = commit

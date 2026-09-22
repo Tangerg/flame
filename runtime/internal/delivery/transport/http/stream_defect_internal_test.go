@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"

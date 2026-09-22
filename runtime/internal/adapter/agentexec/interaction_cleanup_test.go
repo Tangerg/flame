@@ -93,14 +93,14 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 		entered, proceed := make(chan struct{}), make(chan struct{})
 		unblock := sync.OnceFunc(func() { close(proceed) })
 		defer unblock()
-		writer, _ := state.tree.IncarnationID()
-		if err := session.executionTrees.SaveExecutionTree(t.Context(), runs.ExecutionTreeUpdate{Head: runs.ExecutionTreeHead{SessionID: start.SessionID, RootID: state.tree.RootID().String(), Writer: writer.String(), Digest: state.tree.Digest().String(), Payload: state.tree.JSON()}}); err != nil {
+		writer := state.tree.IncarnationID()
+		if err := session.executionTrees.SaveExecutionTree(t.Context(), runs.ExecutionTreeUpdate{Head: runs.ExecutionTreeHead{Sequence: 1, CommitID: "initial", CommitDigest: "initial", SessionID: start.SessionID, RootID: state.tree.RootID().String(), Writer: writer.String(), Digest: state.tree.Digest().String(), Payload: state.tree.JSON()}}); err != nil {
 			t.Fatal(err)
 		}
 		durability := &blockingCheckpointDurability{interactionSession: session, entered: entered, proceed: proceed}
 		session.engine, err = agent.NewEngine(agent.EngineConfig{
 			DeploymentResolver: session.state.deployments,
-			TreeDurability:     durability,
+			TreeCommitter:      durability,
 		})
 		if err != nil {
 			t.Fatal(err)

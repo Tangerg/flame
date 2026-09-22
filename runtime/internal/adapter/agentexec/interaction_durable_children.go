@@ -1,8 +1,6 @@
 package agentexec
 
 import (
-	"errors"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	agent "github.com/Tangerg/scope/agent"
 )
@@ -41,18 +39,12 @@ func (i *interactionSession) childTerminalFacts(tree agent.TreeSnapshot) ([]runs
 			continue
 		}
 		member := i.executorMember(snapshot.Relation())
-		if result.Status() == agent.StatusCompleted {
-			reply, found := i.committedReplies.lookup(result.ProcessID())
-			if !found {
-				return nil, nil, errors.New("agentexec: completed child has no committed model reply")
-			}
-			if !messageRequestsTools(reply) {
-				completion, err := runs.NewAssistantMessageCompleted(reply)
-				if err != nil {
-					return nil, nil, err
-				}
-				facts = append(facts, runs.ExecutorEvent{Member: member, Payload: completion})
-			}
+		completion, err := completedAssistantMessage(result)
+		if err != nil {
+			return nil, nil, err
+		}
+		if completion != nil {
+			facts = append(facts, runs.ExecutorEvent{Member: member, Payload: *completion})
 		}
 		draft := segmentEndFromTermination(result.Termination(), i.segmentClock.duration(result.StartedAt(), result.FinishedAt()))
 		usage, err := i.accounting.segmentUsage(result.ProcessID())

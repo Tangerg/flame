@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/scope/core/chat"
@@ -158,4 +158,49 @@ func toolCatalogSession(t *testing.T, descriptors ...*sdkmcp.Tool) *sdkmcp.Clien
 	}
 	t.Cleanup(func() { _ = clientSession.Close() })
 	return clientSession
+}
+
+func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
+	for _, payload := range []string{`{"decimal":0.123456789012345678901,"integer":18446744073709551615}`, `{}`, `null`} {
+		t.Run(payload, func(t *testing.T) {
+			serverTransport, clientTransport := sdkmcp.NewInMemoryTransports()
+			server := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "exact-results"}, nil)
+			server.AddTool(&sdkmcp.Tool{Name: "read", InputSchema: json.RawMessage(`{"type":"object"}`)}, func(context.Context, *sdkmcp.CallToolRequest) (*sdkmcp.CallToolResult, error) {
+				return &sdkmcp.CallToolResult{StructuredContent: json.RawMessage(payload)}, nil
+			})
+			serverSession, err := server.Connect(t.Context(), serverTransport, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer serverSession.Close()
+			client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "runtime"}, nil)
+			session, err := client.Connect(t.Context(), clientTransport, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer session.Close()
+			tools, err := sourceTools(t.Context(), testMCPServerName("catalog"), session)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(tools) != 1 {
+				t.Fatalf("tools = %d", len(tools))
+			}
+			binding, err := toolcontract.Bind(tools[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "exact", Name: binding.Contract().Definition().Name, Arguments: `{}`})
+			if err != nil {
+				t.Fatal(err)
+			}
+			output, err := binding.Call(t.Context(), invocation)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(output.Details) != payload {
+				t.Fatalf("structured result = %s, want %s", output.Details, payload)
+			}
+		})
+	}
 }

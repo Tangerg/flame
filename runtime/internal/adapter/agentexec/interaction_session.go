@@ -44,16 +44,14 @@ type interactionSession struct {
 	buildID             runtimeidentity.BuildID
 	start               runs.RootExecutionStart
 	modelFailures       interactionModelFailures
-	committedReplies    interactionCommittedReplies
 	effectFailures      interactionEffectFailures
 	segmentClock        interactionSegmentClock
 }
 
 // interactionState owns the one lock domain whose facts must move atomically:
 // the live Process, its observation/waiting boundary, exact pending steers,
-// and Delegate topology. Accounting,
-// committed replies, and Segment timing have independent invariants and do not
-// belong under this lock.
+// and Delegate topology. Accounting and Segment timing have independent
+// invariants and do not belong under this lock.
 type interactionState struct {
 	toolMetadata               map[string]toolResultMetadata
 	mu                         sync.Mutex
@@ -121,8 +119,7 @@ func newInteractionSession(
 			delegateCalls:    make(map[delegateCallIdentity]*managedDelegateCall),
 			delegateChildren: make(map[agent.ProcessID]*managedDelegateCall),
 		},
-		committedReplies: newInteractionCommittedReplies(),
-		modelFailures:    newInteractionModelFailures(),
+		modelFailures: newInteractionModelFailures(),
 		accounting: newInteractionAccounting(
 			start.ModelSelection,
 			config.Pricing,
@@ -608,32 +605,14 @@ func (i *interactionSession) await() {
 
 func (i *interactionSession) publishResult(result agent.Result) error {
 	member := runs.ExecutorMember{MemberID: result.ProcessID().String()}
+	completion, err := completedAssistantMessage(result)
+	if err != nil {
+		return err
+	}
+	if completion != nil && !i.lifetime.send(runs.ExecutorEvent{Member: member, Payload: *completion}) {
+		return nil
+	}
 	if result.Status() == agent.StatusCompleted {
-		erased, ok := result.Output()
-		if !ok {
-			return errors.New("agentexec: completed Interaction has no output")
-		}
-		output, err := erased.Decode[interaction.Output]()
-		if err != nil {
-			return fmt.Errorf("decode Interaction output: %w", err)
-		}
-		switch output.Source {
-		case interaction.CompletionSourceDirectToolResults:
-			// The durable tree boundary has already published these exact results.
-		case interaction.CompletionSourceModelResponse:
-			if output.ModelResponse == nil || output.ModelResponse.Output == nil || output.ModelResponse.Output.Message == nil {
-				return errors.New("agentexec: Interaction output has no assistant message")
-			}
-			completion, err := runs.NewAssistantMessageCompleted(*output.ModelResponse.Output.Message)
-			if err != nil {
-				return err
-			}
-			if !i.lifetime.send(runs.ExecutorEvent{Member: member, Payload: completion}) {
-				return nil
-			}
-		default:
-			return fmt.Errorf("unsupported Interaction completion source %q", output.Source)
-		}
 		i.maintainCompletedRoot()
 	}
 	end, err := i.segmentEnd(result)

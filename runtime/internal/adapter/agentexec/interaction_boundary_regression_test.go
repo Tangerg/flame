@@ -16,7 +16,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-func TestSemanticRefusalCrossesRealInterpreterAndTreeDurability(t *testing.T) {
+func TestSemanticRefusalCrossesRealInterpreterAndTreeCommitter(t *testing.T) {
 	for _, source := range []string{"original", "hook", "authorization"} {
 		t.Run(source, func(t *testing.T) {
 			executions, modelCalls := 0, 0

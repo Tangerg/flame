@@ -10,7 +10,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	agent "github.com/Tangerg/scope/agent"
-	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 func (i *interactionSession) sendExecutorRequest(
@@ -113,29 +112,17 @@ func (i *interactionSession) projectDelegateTerminal(
 		MemberID: result.ProcessID().String(), ParentID: managed.identity.parentID.String(),
 		SpawnCallID: managed.call.ID,
 	}
-	if result.Status() == agent.StatusCompleted {
-		_, present := result.Output()
-		if !present {
-			return false, errors.New("agentexec: completed delegated child has no output")
+	if !managed.assistantProjected {
+		completion, err := completedAssistantMessage(result)
+		if err != nil {
+			return false, err
 		}
-		if !managed.assistantProjected {
-			committedReply, replyFound := i.committedReplies.lookup(result.ProcessID())
-			if !replyFound {
-				return false, errors.New("agentexec: completed delegated child has no committed model reply")
+		if completion != nil {
+			if err := i.commitFact(ctx, member, *completion); err != nil {
+				return false, fmt.Errorf("agentexec: commit delegated child answer: %w", err)
 			}
-			if !messageRequestsTools(committedReply) {
-				completion, err := runs.NewAssistantMessageCompleted(committedReply)
-				if err != nil {
-					return false, fmt.Errorf("agentexec: construct delegated child answer: %w", err)
-				}
-				if err := i.commitFact(
-					ctx, member, completion,
-				); err != nil {
-					return false, fmt.Errorf("agentexec: commit delegated child answer: %w", err)
-				}
-			}
-			managed.assistantProjected = true
 		}
+		managed.assistantProjected = true
 	}
 	end, err := i.segmentEnd(result)
 	if err != nil {
@@ -146,15 +133,5 @@ func (i *interactionSession) projectDelegateTerminal(
 	}
 	managed.segmentProjected = true
 	i.modelFailures.forget(result.ProcessID())
-	i.committedReplies.forget(result.ProcessID())
 	return true, nil
-}
-
-func messageRequestsTools(message corechat.Message) bool {
-	for _, part := range message.Parts {
-		if part.Kind == corechat.PartToolCall {
-			return true
-		}
-	}
-	return false
 }

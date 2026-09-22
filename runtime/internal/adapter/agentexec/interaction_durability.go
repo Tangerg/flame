@@ -2,6 +2,7 @@ package agentexec
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -15,25 +16,43 @@ import (
 
 const executionTreeCommitTimeout = 30 * time.Second
 
+type treeCommit struct {
+	PreviousWriter string
+	PreviousDigest string
+	Sequence       uint64
+	Kind           string
+	ID             string
+}
+
 func (i *interactionSession) ActivateTree(ctx context.Context, activation agent.TreeActivation) error {
-	return i.commitTree(ctx, activation.TreeSnapshot(), activation.PreviousIncarnationID().String(), activation.PreviousTreeDigest().String())
+	return i.commitTree(ctx, activation.TreeSnapshot(), treeCommit{
+		PreviousWriter: activation.PreviousIncarnationID().String(), PreviousDigest: activation.PreviousTreeDigest().String(),
+		Kind: "activation", ID: fmt.Sprintf("activation:%q", activation.IncarnationID().String()),
+	})
 }
 
 func (i *interactionSession) CommitEffect(ctx context.Context, boundary agent.EffectBoundary) error {
-	writer, _ := boundary.TreeSnapshot().IncarnationID()
-	return i.commitTree(ctx, boundary.TreeSnapshot(), writer.String(), boundary.PreviousTreeDigest().String())
+	return i.commitTree(ctx, boundary.TreeSnapshot(), treeCommit{
+		PreviousWriter: boundary.TreeSnapshot().IncarnationID().String(), PreviousDigest: boundary.PreviousTreeDigest().String(),
+		Sequence: boundary.Sequence(), Kind: boundary.Kind().String(),
+		ID: fmt.Sprintf("effect:%q:%s", boundary.Request().ID().String(), boundary.Kind()),
+	})
 }
 
 func (i *interactionSession) CommitCheckpoint(ctx context.Context, checkpoint agent.TreeCheckpoint) error {
-	writer, _ := checkpoint.TreeSnapshot().IncarnationID()
-	previousWriter, previousDigest := writer.String(), checkpoint.PreviousTreeDigest().String()
-	if checkpoint.Kind() == agent.TreeCheckpointKindStart {
-		previousWriter, previousDigest = "", ""
+	writer := checkpoint.TreeSnapshot().IncarnationID()
+	commit := treeCommit{
+		PreviousWriter: writer.String(), PreviousDigest: checkpoint.PreviousTreeDigest().String(),
+		Sequence: checkpoint.Sequence(), Kind: checkpoint.Kind().String(),
+		ID: fmt.Sprintf("checkpoint:%q:%d", writer.String(), checkpoint.Sequence()),
 	}
-	return i.commitTree(ctx, checkpoint.TreeSnapshot(), previousWriter, previousDigest)
+	if checkpoint.Kind() == agent.TreeCheckpointKindStart {
+		commit.PreviousWriter, commit.PreviousDigest = "", ""
+	}
+	return i.commitTree(ctx, checkpoint.TreeSnapshot(), commit)
 }
 
-func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnapshot, previousWriter, previousDigest string) error {
+func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnapshot, commit treeCommit) error {
 	ctx, cancel := i.lifetime.publicationContext(ctx)
 	defer cancel()
 	ctx, timeout := context.WithTimeout(ctx, executionTreeCommitTimeout)
@@ -41,9 +60,24 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	writer, _ := tree.IncarnationID()
-	update := runs.ExecutionTreeUpdate{PreviousWriter: previousWriter, PreviousDigest: previousDigest,
-		Head: runs.ExecutionTreeHead{SessionID: i.start.SessionID, RootID: tree.RootID().String(), Writer: writer.String(), Digest: tree.Digest().String(), Payload: tree.JSON()}}
+	// The validated snapshot contains the frozen Effect request and settlement;
+	// the envelope also binds commit kind and predecessor, which snapshots omit.
+	content, err := json.Marshal(struct {
+		treeCommit
+		Snapshot string
+	}{commit, tree.Digest().String()})
+	if err != nil {
+		return err
+	}
+	update := runs.ExecutionTreeUpdate{
+		PreviousWriter: commit.PreviousWriter, PreviousDigest: commit.PreviousDigest,
+		Head: runs.ExecutionTreeHead{
+			SessionID: i.start.SessionID, RootID: tree.RootID().String(), Writer: tree.IncarnationID().String(),
+			Sequence: commit.Sequence, CommitID: commit.ID, CommitDigest: agent.ComputeDigest(content).String(),
+			Digest: tree.Digest().String(), Payload: tree.JSON(),
+		},
+	}
+
 	if i.executionTrees == nil {
 		return errors.New("agentexec: execution tree store is required")
 	}
@@ -138,7 +172,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 			head, found, readErr := i.executionTrees.LoadExecutionTree(readCtx, update.Head.SessionID, update.Head.RootID)
 			deadline()
 			stop()
-			if readErr == nil && found && head.Writer == update.Head.Writer && head.Digest == update.Head.Digest {
+			if readErr == nil && found && head.SameCommit(update.Head) {
 				err = nil
 			} else {
 				err = errors.Join(err, readErr)
@@ -148,6 +182,12 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 		err = i.commitFact(ctx, runs.ExecutorMember{MemberID: tree.RootID().String()}, fact)
 	}
 	if err != nil {
+		switch {
+		case errors.Is(err, runs.ErrExecutionTreeCommitConflict):
+			err = errors.Join(agent.ErrCommitConflict, err)
+		case errors.Is(err, runs.ErrExecutionTreeWriterConflict):
+			err = errors.Join(agent.ErrTreeIncarnationConflict, err)
+		}
 		return fmt.Errorf("agentexec: commit execution tree: %w", err)
 	}
 	for _, child := range terminalChildren {
@@ -155,7 +195,6 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 		child.segmentProjected, child.assistantProjected = true, true
 		child.mu.Unlock()
 		i.modelFailures.forget(child.childProcessID)
-		i.committedReplies.forget(child.childProcessID)
 	}
 	i.retirePublishedToolMetadata(retired)
 	return nil
@@ -177,8 +216,8 @@ func decodeExecutionTree(head runs.ExecutionTreeHead, rootID agent.ProcessID) (a
 	if err != nil {
 		return agent.TreeSnapshot{}, err
 	}
-	writer, durable := tree.IncarnationID()
-	if !durable || tree.RootID() != rootID || writer.String() != head.Writer || tree.Digest().String() != head.Digest {
+	writer := tree.IncarnationID()
+	if tree.RootID() != rootID || writer.String() != head.Writer || tree.Digest().String() != head.Digest {
 		return agent.TreeSnapshot{}, errors.New("agentexec: execution tree storage identity mismatch")
 	}
 	return tree, nil

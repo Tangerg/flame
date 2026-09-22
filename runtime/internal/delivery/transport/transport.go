@@ -14,7 +14,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/strictjson"
-	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
+	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
 // Message is one JSON-RPC 2.0 envelope. Concrete types are

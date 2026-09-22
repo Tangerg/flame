@@ -14,8 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/auth"
-	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/Tangerg/go-sdk/auth"
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/httporigin"

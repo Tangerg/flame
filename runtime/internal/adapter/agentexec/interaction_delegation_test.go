@@ -27,23 +27,6 @@ func durationPointer(value time.Duration) *time.Duration {
 	return &value
 }
 
-func TestDelegatedInteractionReplyPreservesRefusal(t *testing.T) {
-	message := chat.NewAssistantMessage(chat.NewRefusalPart("I cannot complete that delegated task."))
-	response := chat.Response{Output: &chat.Output{
-		Message: &message, FinishReason: chat.FinishReasonRefusal,
-	}}
-
-	reply, err := delegatedInteractionReply(interaction.Output{
-		Source: interaction.CompletionSourceModelResponse, ModelResponse: &response, ModelCalls: 1,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reply != "I cannot complete that delegated task." {
-		t.Fatalf("delegated reply = %q", reply)
-	}
-}
-
 // TestPositiveOrDefaultRefusesAnUnusableDefault covers the arm no policy value
 // can reach: the fallback is a composition-root constant, so only the rule
 // itself can refuse one that admits nothing.
@@ -186,9 +169,17 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 			}
 		}
 	}
-	if delegatedResult == nil || len(delegatedResult.Output.Content) != 0 ||
-		string(delegatedResult.Output.Details) != `{"reply":"subtask: result"}` {
+	if delegatedResult == nil || len(delegatedResult.Output.Content) != 0 {
 		t.Fatalf("durable Delegate model result = %#v, want exact structured child output", delegatedResult)
+	}
+	payload, err := agent.ParsePayload(delegatedResult.Output.Details)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := payload.Decode[interaction.Output]()
+	if err != nil || output.Validate() != nil || output.Source != interaction.CompletionSourceModelResponse ||
+		output.ModelResponse.Text() != "subtask: result" || output.ModelCalls != 1 {
+		t.Fatalf("Delegate result lost its Scope output: %+v, %v", output, err)
 	}
 	coordinator.BeginShutdown()
 	if err := coordinator.AwaitShutdown(t.Context()); err != nil {

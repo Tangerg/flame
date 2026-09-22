@@ -11,7 +11,7 @@ import (
 const delegateDescription = "Delegate one self-contained task to a fresh Agent with coding tools and bounded delegation. " +
 	"Use it for focused, separable work so the current context stays uncluttered. " +
 	"The delegated Agent starts with clean context and cannot see its parent conversation, so include everything it needs in instructions. " +
-	"It returns one final answer."
+	"It returns the agent's final response or direct tool results."
 
 // delegateInput is the complete model-facing contract for one delegated task. Summary
 // identifies the child in lifecycle projections; Instructions are the child's

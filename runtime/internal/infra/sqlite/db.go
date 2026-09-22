@@ -77,7 +77,8 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 	firstExactInteger := exactint.First().Value()
 	stmts := []string{
-		`CREATE TABLE IF NOT EXISTS execution_trees (root_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, writer TEXT NOT NULL, digest TEXT NOT NULL, payload BLOB NOT NULL)`,
+		`CREATE TABLE IF NOT EXISTS execution_trees (root_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, writer TEXT NOT NULL, sequence TEXT NOT NULL, commit_id TEXT NOT NULL, commit_digest TEXT NOT NULL, digest TEXT NOT NULL, payload BLOB NOT NULL)`,
+		`CREATE TABLE IF NOT EXISTS execution_tree_commits (root_id TEXT NOT NULL REFERENCES execution_trees(root_id) ON DELETE CASCADE, commit_id TEXT NOT NULL, digest TEXT NOT NULL, PRIMARY KEY(root_id, commit_id))`,
 		`CREATE INDEX IF NOT EXISTS idx_execution_trees_session ON execution_trees(session_id)`,
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS sessions (
 			id          TEXT    PRIMARY KEY,
@@ -767,6 +768,13 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("sqlite: install current schema: %w", err)
 		}
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT sequence, commit_id, commit_digest FROM execution_trees LIMIT 0`)
+	if err != nil {
+		return fmt.Errorf("sqlite: incompatible execution tree schema; open a fresh data directory: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("sqlite: inspect execution tree schema: %w", err)
 	}
 	// The feedback ledger has no reader inside Runtime, so an index on its
 	// timestamp only charged every insert for a query nobody makes; the pending

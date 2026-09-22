@@ -472,7 +472,11 @@ func TestAgentFrameworkStaysBehindAgentexec(t *testing.T) {
 			if relativeDir != agentexecDir && !strings.HasPrefix(relativeDir, agentexecDir+"/") {
 				t.Errorf("Agent Framework import escaped %s: %s imports %q", agentexecDir, relativePath, importPath)
 			}
-			if _, allowed := allowedImports[importPath]; !allowed {
+			_, allowed := allowedImports[importPath]
+			if importPath == "github.com/Tangerg/scope/agent/agenttest" && strings.HasSuffix(path, "_test.go") {
+				allowed = true
+			}
+			if !allowed {
 				t.Errorf("unreviewed Agent Framework package import: %s imports %q", relativePath, importPath)
 			}
 		}
@@ -739,7 +743,7 @@ func TestCapabilityAdaptersDoNotImportLowLevelTransportSDKs(t *testing.T) {
 	forbidExternalImports(t, filepath.Join(root, "internal", "adapter", "toolset"), []string{
 		"github.com/Tangerg/scope/mcp",
 		"github.com/a2aproject/a2a-go",
-		"github.com/modelcontextprotocol/go-sdk",
+		"github.com/Tangerg/go-sdk",
 		"github.com/mark3labs/mcp-go",
 	})
 }
