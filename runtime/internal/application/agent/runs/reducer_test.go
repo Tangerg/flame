@@ -97,7 +97,7 @@ func TestReducerModelCompletionReplacesPartialObservation(t *testing.T) {
 		corechat.NewTextPart("authoritative answer"),
 	)
 	reduced := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Message: message, Steps: 1,
+		CallID: "model_call_1", Message: new(message), Steps: 1,
 	})
 
 	var completed []transcript.Item
@@ -121,12 +121,46 @@ func TestReducerModelCompletionReplacesPartialObservation(t *testing.T) {
 	}
 }
 
+func TestReducerAccountsModelResponseWithoutMessage(t *testing.T) {
+	reducer := newReducer(testReducerConfig())
+	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
+	usage := accounting.TokenUsage{PromptTokens: 7, CompletionTokens: 2}
+	reduced := mustReduce(t, reducer, ModelCallCompleted{
+		CallID: "model_call_1", ReportedUsage: &usage, TokenUsage: usage, Steps: 1,
+	})
+	if len(completedItems(reduced)) != 0 || len(committedConversationMessages(reduced)) != 0 {
+		t.Fatalf("absent message created content: %+v", reduced)
+	}
+	var calls []ModelInvocationCommit
+	for _, reduction := range reduced {
+		if reduction.Commit != nil {
+			calls = append(calls, reduction.Commit.ModelInvocations...)
+		}
+	}
+	if len(calls) != 1 || calls[0].State != ModelInvocationCompleted ||
+		calls[0].Usage == nil || *calls[0].Usage != usage {
+		t.Fatalf("usage-only model journal = %+v", calls)
+	}
+	if late := mustReduce(t, reducer, MessageDelta{Text: "late"}); len(late) != 0 {
+		t.Fatalf("completed model boundary reopened: %+v", late)
+	}
+	terminal := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeFailed, &run.Failure{
+		Kind: run.FailureProviderRejected, Detail: "model response has no finished assistant message",
+	}, nil, 0))
+	record := terminal[len(terminal)-1].Event.(SegmentFinished).Run
+	accounted, available := record.Metrics().Usage()
+	if record.Metrics().Steps() != 1 || !available ||
+		accounted.Total.InputTokens != usage.PromptTokens || accounted.Total.OutputTokens != usage.CompletionTokens {
+		t.Fatalf("terminal lost model accounting: %+v", record.Metrics())
+	}
+}
+
 func TestReducerProjectsProviderRefusalWithoutChangingConversationSemantics(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	message := corechat.NewAssistantMessage(corechat.NewRefusalPart("I cannot help with that request."))
 	reduced := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Message: message, Steps: 1,
+		CallID: "model_call_1", Message: new(message), Steps: 1,
 	})
 
 	items := completedItems(reduced)
@@ -146,10 +180,10 @@ func TestReducerClassifiesToolPreambleAndTerminalAnswerAtTheModelBoundary(t *tes
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	commentary := completedItems(mustReduce(t, reducer, ModelCallCompleted{
 		CallID: "model_call_1",
-		Message: corechat.NewAssistantMessage(
+		Message: new(corechat.NewAssistantMessage(
 			corechat.NewTextPart("I will inspect the file first."),
 			corechat.NewToolCallPart(call),
-		),
+		)),
 		Steps: 1,
 	}))
 	if len(commentary) != 1 || commentary[0].Kind() != transcript.AgentMessage {
@@ -171,7 +205,7 @@ func TestReducerClassifiesToolPreambleAndTerminalAnswerAtTheModelBoundary(t *tes
 	answer := corechat.NewAssistantMessage(corechat.NewTextPart("The file is ready."))
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_2"})
 	final := completedItems(mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_2", Message: answer, Steps: 2,
+		CallID: "model_call_2", Message: new(answer), Steps: 2,
 	}))
 	if len(final) != 1 || final[0].Kind() != transcript.AgentMessage {
 		t.Fatalf("final Items = %#v, want one agent message", final)
@@ -202,7 +236,7 @@ func TestReducerKeepsStreamingItemsOpenUntilTheAuthoritativeModelResponse(t *tes
 		corechat.NewTextPart("authoritative answer"),
 	)
 	completed := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Message: message, Steps: 1,
+		CallID: "model_call_1", Message: new(message), Steps: 1,
 	})
 	items := completedItems(completed)
 	if len(items) != 2 {
@@ -224,7 +258,7 @@ func TestReducerTerminalDoesNotDuplicateCommittedModelResponse(t *testing.T) {
 	message := corechat.NewAssistantMessage(corechat.NewTextPart("authoritative answer"))
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	modelBatch := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Message: message, Steps: 1,
+		CallID: "model_call_1", Message: new(message), Steps: 1,
 	})
 	completed := 0
 	for _, reduction := range modelBatch {
@@ -257,7 +291,7 @@ func TestReducerIgnoresStreamingObservationAfterAuthoritativeModelCompletion(t *
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	mustReduce(t, reducer, MessageDelta{Text: "authoritative answer"})
 	modelBatch := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Message: message, Steps: 1,
+		CallID: "model_call_1", Message: new(message), Steps: 1,
 	})
 	if completed := completedItems(modelBatch); len(completed) != 1 {
 		t.Fatalf("model completion Items = %#v, want one", completed)
@@ -313,7 +347,7 @@ func TestReducerProjectsModelToolContextWithProviderCallIdentity(t *testing.T) {
 	message := corechat.NewAssistantMessage(corechat.NewToolCallPart(call))
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	modelBatch := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", Message: message, Steps: 1,
+		CallID: "model_call_1", Message: new(message), Steps: 1,
 	})
 	modelMessages := committedConversationMessages(modelBatch)
 	if len(modelMessages) != 1 || len(modelMessages[0].Parts) != 1 ||
@@ -356,7 +390,7 @@ func TestReducerRejectsInvalidProviderToolCallIdentityBeforeProjection(t *testin
 			ID: identity, Name: "inspect", Arguments: `{}`,
 		}))
 		if _, err := reducer.reduce(ModelCallCompleted{
-			CallID: "model_call_1", Message: message, Steps: 1,
+			CallID: "model_call_1", Message: new(message), Steps: 1,
 		}); !errors.Is(err, errExecutorContract) {
 			t.Errorf("identity %q error = %v, want executor contract failure", identity, err)
 		}
@@ -373,10 +407,10 @@ func TestReducerTerminalClosesProviderToolCallCanceledBeforeRuntimeStart(t *test
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	modelBatch := mustReduce(t, reducer, ModelCallCompleted{
 		CallID: "model_call_1",
-		Message: corechat.NewAssistantMessage(
+		Message: new(corechat.NewAssistantMessage(
 			corechat.NewToolCallPart(first),
 			corechat.NewToolCallPart(second),
-		),
+		)),
 		Steps: 1,
 	})
 
@@ -802,7 +836,7 @@ func TestReducerSeparatesModelAndPresentedToolResults(t *testing.T) {
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	mustReduce(t, reducer, ModelCallCompleted{
 		CallID:  "model_call_1",
-		Message: corechat.NewAssistantMessage(corechat.NewToolCallPart(call)),
+		Message: new(corechat.NewAssistantMessage(corechat.NewToolCallPart(call))),
 		Steps:   1,
 	})
 	mustReduce(t, reducer, ToolCallStarted{

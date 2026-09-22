@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
 	"runtime"
 	"slices"
 	"strings"
@@ -23,6 +24,46 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
+
+func TestModelResponseWithoutMessageRetainsAccountingAndScopeFailure(t *testing.T) {
+	for _, stream := range []bool{false, true} {
+		t.Run(fmt.Sprintf("stream=%t", stream), func(t *testing.T) {
+			executor := newObservedTestInteractionExecutor(t, usageOnlyModel{}, InteractionExecutorConfig{
+				StreamModelResponses: stream,
+			})
+			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+			completed := payloadsOf[runs.ModelCallCompleted](events)
+			if len(completed) != 1 || completed[0].Message != nil || completed[0].ReportedUsage == nil ||
+				completed[0].ReportedUsage.PromptTokens != 7 || completed[0].ReportedUsage.CompletionTokens != 2 ||
+				completed[0].Steps != 1 || completed[0].FirstOutputLatencyMillis != nil {
+				t.Fatalf("usage-only model completion = %+v", completed)
+			}
+			if len(payloadsOf[runs.ModelCallFailed](events)) != 0 || len(payloadsOf[runs.MessageDelta](events)) != 0 {
+				t.Fatalf("valid response invented a failed invocation or message: %+v", events)
+			}
+			ends := payloadsOf[runs.SegmentEnded](events)
+			if len(ends) != 1 || ends[0].Reason != run.OutcomeFailed || ends[0].Failure() == nil ||
+				ends[0].Failure().Kind != run.FailureProviderRejected || len(ends[0].UnresolvedEffects()) != 0 {
+				t.Fatalf("Scope rejection = %+v", ends)
+			}
+			if usage := ends[0].Usage(); usage == nil || usage.Steps != 1 || usage.Tokens.PromptTokens != 7 || usage.Tokens.CompletionTokens != 2 {
+				t.Fatalf("terminal lost completed model usage: %+v", usage)
+			}
+		})
+	}
+}
+
+type usageOnlyModel struct{}
+
+func (usageOnlyModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
+	return chat.NewResponse(&chat.Output{FinishReason: chat.FinishReasonStop}, &chat.ResponseMetadata{
+		Model: "test-model", Usage: &chat.Usage{InputTokens: 7, OutputTokens: 2},
+	})
+}
+
+func (u usageOnlyModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(u.Call(ctx, request))
+}
 
 func TestCanceledToolRetainsEvidenceAfterRootAwait(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})

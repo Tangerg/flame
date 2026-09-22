@@ -13,6 +13,82 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
+func TestUsageOnlyResponsePersistsCompletedCallAndRejectedRun(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("FLAME_HOME", home)
+	model := &usageOnlyProviderModel{}
+	host, api := openProtocolRuntime(t, model)
+	defer func() {
+		if err := host.Close(); err != nil {
+			t.Errorf("close Runtime: %v", err)
+		}
+	}()
+	ctx := protocolLifecycleContext(t.Context())
+	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
+		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "usage without content",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	started, events, err := api.StartRun(ctx, protocol.StartRunRequest{
+		SessionID: session.ID,
+		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "answer"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForRunEvents(t, collectRunEvents(events), "usage-only response")
+	ended, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: started.RunID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ended.Status != protocol.RunStatusFinished || ended.Outcome == nil ||
+		ended.Outcome.Type != protocol.OutcomeFailed || ended.Outcome.Error == nil ||
+		ended.Outcome.Error.Type != protocol.ProblemProviderRejected {
+		t.Fatalf("Run = %+v, want Scope's definite response rejection", ended)
+	}
+	if ended.Metrics.Steps != 1 || ended.Metrics.Usage == nil ||
+		ended.Metrics.Usage.InputTokens != 7 || ended.Metrics.Usage.OutputTokens != 2 {
+		t.Fatalf("Run lost completed model accounting: %+v", ended.Metrics)
+	}
+	calls, err := api.ListModelInvocations(ctx, protocol.ListModelInvocationsRequest{RunID: started.RunID})
+	if err != nil || len(calls.Data) != 1 {
+		t.Fatalf("model calls = %+v, %v", calls, err)
+	}
+	call := calls.Data[0]
+	if call.State != protocol.ModelInvocationCompleted || call.Usage == nil ||
+		call.Usage.InputTokens != 7 || call.Usage.OutputTokens != 2 || call.FirstOutputLatencyMillis != nil {
+		t.Fatalf("completed model call = %+v", call)
+	}
+	items, err := api.ListItems(ctx, protocol.ListItemsRequest{
+		Scope: protocol.ItemListScope{Type: protocol.ItemScopeRun, RunID: started.RunID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range items.Data {
+		if item.Type == protocol.ItemTypeAgentMessage || item.Type == protocol.ItemTypeReasoning {
+			t.Fatalf("usage-only response invented content: %+v", item)
+		}
+	}
+	if model.calls.Load() != 1 {
+		t.Fatalf("model calls = %d, want no retry after Scope rejection", model.calls.Load())
+	}
+}
+
+type usageOnlyProviderModel struct{ calls atomic.Int32 }
+
+func (m *usageOnlyProviderModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
+	m.calls.Add(1)
+	return chat.NewResponse(&chat.Output{FinishReason: chat.FinishReasonStop}, &chat.ResponseMetadata{
+		Model: "test-model", Usage: &chat.Usage{InputTokens: 7, OutputTokens: 2},
+	})
+}
+
+func (m *usageOnlyProviderModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(m.Call(ctx, request))
+}
+
 func TestProviderFailureTerminalizesRunAndReleasesSession(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)

@@ -39,7 +39,7 @@ type preparedModelContext struct {
 }
 
 type modelCallAccountingInput struct {
-	message       corechat.Message
+	message       *corechat.Message
 	delta         accounting.ModelUsage
 	contextTokens int64
 	usageReported bool
@@ -299,18 +299,22 @@ func newModelCallAccountingInput(
 	selection modelref.Selection,
 	pricing accounting.Pricing,
 ) (modelCallAccountingInput, error) {
-	if response == nil || response.Output == nil || response.Output.Message == nil {
-		return modelCallAccountingInput{}, errors.New("agentexec: account model call without an assistant message")
+	if response == nil || response.Output == nil {
+		return modelCallAccountingInput{}, errors.New("agentexec: account model call without a response output")
 	}
-	if err := conversation.ValidateMessageIdentities(*response.Output.Message); err != nil {
-		return modelCallAccountingInput{}, fmt.Errorf("agentexec: account model call: %w", err)
+	var message *corechat.Message
+	if response.Output.Message != nil {
+		if err := conversation.ValidateMessageIdentities(*response.Output.Message); err != nil {
+			return modelCallAccountingInput{}, fmt.Errorf("agentexec: account model call: %w", err)
+		}
+		message = new(response.Output.Message.Clone())
 	}
 	delta := modelUsage(response, selection, pricing)
 	if err := delta.Validate(); err != nil {
 		return modelCallAccountingInput{}, fmt.Errorf("agentexec: account model call: %w", err)
 	}
 	return modelCallAccountingInput{
-		message: response.Output.Message.Clone(), delta: delta, contextTokens: delta.PromptTokens,
+		message: message, delta: delta, contextTokens: delta.PromptTokens,
 		usageReported: response.Metadata != nil && response.Metadata.Usage != nil,
 	}, nil
 }

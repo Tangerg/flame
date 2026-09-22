@@ -91,9 +91,9 @@ func (a *authoritativeFailureExecutor) Observe(
 		usage := accounting.TokenUsage{PromptTokens: 2, CompletionTokens: 1}
 		completion, completionReceipt, err := NewExecutionFactCommit(ModelCallCompleted{
 			CallID: "model_call_1",
-			Message: corechat.NewAssistantMessage(
+			Message: new(corechat.NewAssistantMessage(
 				corechat.NewTextPart("durable final that must not be half-published"),
-			),
+			)),
 			TokenUsage: usage,
 			ByModel: []accounting.ModelUsage{{
 				Model: "test-model", TokenUsage: usage, Calls: 1,

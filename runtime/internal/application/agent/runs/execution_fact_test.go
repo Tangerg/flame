@@ -35,7 +35,7 @@ func TestNewExecutionFactCommitRejectsUnsupportedFactRepresentation(t *testing.T
 func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 	model := ModelCallCompleted{
 		ReportedUsage: &accounting.TokenUsage{PromptTokens: 17},
-		Message:       corechat.NewAssistantMessage(corechat.NewTextPart("original")),
+		Message:       new(corechat.NewAssistantMessage(corechat.NewTextPart("original"))),
 		ByModel:       []accounting.ModelUsage{{Model: "model-original", Calls: 1}},
 	}
 	modelCommit, _, err := NewExecutionFactCommit(model)

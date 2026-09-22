@@ -341,9 +341,6 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 	if !started {
 		return factReduction{}, fmt.Errorf("%w: model call %q completed without a start", errExecutorContract, completed.CallID)
 	}
-	if err := conversation.ValidateMessageIdentities(completed.Message); err != nil {
-		return factReduction{}, fmt.Errorf("%w: model call completion: %v", errExecutorContract, err)
-	}
 	finishedAt := r.now()
 	if finishedAt.Before(startedAt) {
 		return factReduction{}, fmt.Errorf(
@@ -354,13 +351,20 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 	}
 	delete(r.modelCalls, completed.CallID)
 	r.modelBoundaryClosed = true
-	phase := transcript.MessageFinalAnswer
-	if messageRequestsToolCalls(completed.Message) {
-		phase = transcript.MessageCommentary
-	}
-	events, err := r.completeModelMessage(completed.Message, phase)
-	if err != nil {
-		return factReduction{}, fmt.Errorf("%w: model call completion: %w", errExecutorContract, err)
+	var events []ProjectionEvent
+	var conversationMessages []corechat.Message
+	if completed.Message != nil {
+		message := *completed.Message
+		phase := transcript.MessageFinalAnswer
+		if messageRequestsToolCalls(message) {
+			phase = transcript.MessageCommentary
+		}
+		var err error
+		events, err = r.completeModelMessage(message, phase)
+		if err != nil {
+			return factReduction{}, fmt.Errorf("%w: model call completion: %w", errExecutorContract, err)
+		}
+		conversationMessages = r.rootConversationMessages(message)
 	}
 	progressEvents, err := r.usageProgress(UsageReported{
 		TokenUsage: completed.TokenUsage, ByModel: completed.ByModel, Cost: completed.Cost,
@@ -373,7 +377,6 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 	if err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call metrics: %w", errExecutorContract, err)
 	}
-	conversationMessages := r.rootConversationMessages(completed.Message)
 	if err := r.appendToolContext(conversationMessages); err != nil {
 		return factReduction{}, fmt.Errorf("%w: track model Tool context: %w", errReducerInvariant, err)
 	}

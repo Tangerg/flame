@@ -117,7 +117,9 @@ type ModelCallStarted struct {
 }
 
 // ModelCallCompleted is the sole authoritative semantic and accounting projection
-// of one completed model invocation. Message may contain ToolCall parts; the
+// of one completed model invocation. Message is absent when the provider
+// completed without portable content; the strategy owns whether that response
+// can complete execution. Message may contain ToolCall parts; the
 // reducer projects only assistant content/reasoning here because each actual
 // Tool invocation has its own pre-call commit boundary.
 type ModelCallCompleted struct {
@@ -127,7 +129,7 @@ type ModelCallCompleted struct {
 	// ReportedUsage is per-call and absent when unavailable. TokenUsage and
 	// ByModel below remain cumulative for this executing process.
 	ReportedUsage *accounting.TokenUsage
-	Message       corechat.Message
+	Message       *corechat.Message
 	TokenUsage    accounting.TokenUsage
 	ByModel       []accounting.ModelUsage
 	Cost          accounting.Cost

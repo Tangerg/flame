@@ -758,7 +758,7 @@ func segmentEndFromTermination(termination agent.Termination, duration time.Dura
 		switch failure.Code() {
 		case "interaction.model.failed":
 			problem.Kind = run.FailureProviderUnavailable
-		case "interaction.model.tool_calls_not_completed":
+		case "interaction.model.invalid_response", "interaction.model.tool_calls_not_completed":
 			problem.Kind = run.FailureProviderRejected
 		case "interaction.delegate.unresolved_effects":
 			end.reason = run.OutcomeLost
