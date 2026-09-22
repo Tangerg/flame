@@ -16,6 +16,70 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
+func TestPlanToolAcceptsScopeNormalizedArguments(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("FLAME_HOME", home)
+	var calls atomic.Int32
+	model := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
+		if calls.Add(1) == 1 {
+			message := chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
+				ID: "enter_plan", Name: "enter_plan_mode",
+			}))
+			return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
+		}
+		for _, message := range request.Messages {
+			for _, part := range message.Parts {
+				if result := part.ToolResult; result != nil && result.ID == "enter_plan" && !result.IsError {
+					return completedTextResponse("Plan mode entered"), nil
+				}
+			}
+		}
+		return nil, errors.New("missing successful Plan tool result")
+	})
+	host, api := openProtocolRuntime(t, model)
+	t.Cleanup(func() {
+		if err := host.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	ctx := protocolLifecycleContext(t.Context())
+	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
+		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "Scope-admitted Plan arguments",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	started, events, err := api.StartRun(ctx, protocol.StartRunRequest{
+		SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "enter Plan mode"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForRunEvents(t, collectRunEvents(events), "Plan entry without arguments")
+	ended, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: started.RunID})
+	if err != nil || ended.Outcome == nil || ended.Outcome.Type != protocol.OutcomeCompleted || calls.Load() != 2 {
+		t.Fatalf("Plan entry = %+v, calls=%d error=%v", ended, calls.Load(), err)
+	}
+	items, err := api.ListItems(ctx, protocol.ListItemsRequest{
+		Scope: protocol.ItemListScope{Type: protocol.ItemScopeRun, RunID: started.RunID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed := 0
+	for _, item := range items.Data {
+		if item.Type == protocol.ItemTypeToolCall && item.Tool.Name == "enter_plan_mode" {
+			completed++
+			if item.Status != protocol.ItemStatusCompleted || item.Error != nil || len(item.Tool.Arguments) != 0 {
+				t.Fatalf("Plan tool lost its admitted arguments or result: %+v", item)
+			}
+		}
+	}
+	if completed != 1 {
+		t.Fatalf("completed Plan tools = %d, want 1", completed)
+	}
+}
+
 func TestProtocolPreservesToolPreparationFailuresAcrossRestart(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)

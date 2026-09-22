@@ -3,6 +3,7 @@ package agentexec
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"sync/atomic"
 	"testing"
@@ -15,6 +16,47 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
+
+func TestInteractionToolUsesScopeAdmittedArguments(t *testing.T) {
+	for _, arguments := range []string{"", " \n\t", "{}"} {
+		t.Run(fmt.Sprintf("arguments=%q", arguments), func(t *testing.T) {
+			var executions, modelCalls int
+			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+				Name: "inspect", Description: "Inspect without additional arguments.",
+			}, func(context.Context, struct{}) (string, error) {
+				executions++
+				return "inspected", nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			model := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
+				modelCalls++
+				if hasToolMessage(request.Messages) {
+					return interactionTextResponse("done"), nil
+				}
+				return interactionToolResponse(chat.ToolCall{ID: "inspect_call", Name: "inspect", Arguments: arguments}, 1, 1), nil
+			})
+			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+				ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+			})
+			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+			ends := payloadsOf[runs.SegmentEnded](events)
+			if len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted || executions != 1 || modelCalls != 2 {
+				t.Fatalf("admitted arguments failed: ends=%+v executions=%d model=%d", ends, executions, modelCalls)
+			}
+			starts := payloadsOf[runs.ToolCallStarted](events)
+			if len(starts) != 1 || starts[0].Arguments != "{}" {
+				t.Fatalf("effective arguments = %+v", starts)
+			}
+			results := payloadsOf[runs.ToolCallFinished](events)
+			if len(results) != 1 || results[0].ModelResult == nil || results[0].ModelResult.IsError {
+				t.Fatalf("known tool result missing: %+v", results)
+			}
+		})
+	}
+}
 
 func TestInteractionToolSchedulingUsesSafeArguments(t *testing.T) {
 	for _, policy := range []string{"hook rewrite", "authorization rewrite", "immutable arguments"} {

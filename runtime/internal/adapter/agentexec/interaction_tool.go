@@ -215,14 +215,13 @@ func (o *observedInteractionTool) attributedInvocation(
 		return interaction.ToolInvocation{}, tool.Arguments{}, "", errors.New("agentexec: Tool call has no Interaction attribution")
 	}
 	call := invocation.ToolCall()
-	rawArguments := string(bound.Arguments())
-	if call.Name != o.Definition().Name || call.Arguments != rawArguments {
+	if call.Name != o.Definition().Name {
 		return interaction.ToolInvocation{}, tool.Arguments{}, "", errors.New("agentexec: Tool invocation differs from its bound executable")
 	}
 	if _, err := conversation.NewToolCallIdentity(call.ID); err != nil {
 		return interaction.ToolInvocation{}, tool.Arguments{}, "", fmt.Errorf("agentexec: Tool invocation: %w", err)
 	}
-	arguments, err := tool.ParseArguments(rawArguments)
+	arguments, err := tool.ParseArguments(string(bound.Arguments()))
 	if err != nil {
 		return interaction.ToolInvocation{}, tool.Arguments{}, "", fmt.Errorf("agentexec: parse Tool %q arguments: %w", call.Name, err)
 	}
