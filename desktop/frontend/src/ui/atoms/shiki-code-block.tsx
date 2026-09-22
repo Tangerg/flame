@@ -42,7 +42,9 @@ interface HighlightedCode {
 
 const styles = stylex.create({
   block: {
-    marginBlock: "calc(var(--spacing) * 3.5)",
+    // The prose block gap, same as a paragraph, a list or a quote. This and the diagram beside
+    // it each carried their own 14px literal.
+    marginBlock: space.s2_5,
     overflow: "hidden",
     borderRadius: radius.lg,
     fontFamily: "var(--font-mono)",

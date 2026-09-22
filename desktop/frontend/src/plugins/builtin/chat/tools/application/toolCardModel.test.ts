@@ -51,7 +51,8 @@ describe("toolCardModel", () => {
   });
 
   it("keeps a detail that is not one of the files", () => {
-    const grep = toolCardModel(t, tool({ name: "grep", fn: "TODO", fnKind: "machine", files: 3 }));
+    // No `fnKind` is a `machine` detail — a pattern, not one of the files it searched.
+    const grep = toolCardModel(t, tool({ name: "grep", fn: "TODO", files: 3 }));
 
     expect(grep.detail).toMatchObject({ value: "TODO" });
   });

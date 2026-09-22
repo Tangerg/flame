@@ -16,7 +16,7 @@ const mb = stylex.create({
   frame: {
     position: "relative",
     isolation: "isolate",
-    marginBlock: "calc(var(--spacing) * 3.5)",
+    marginBlock: space.s2_5,
     minHeight: "calc(var(--spacing) * 25)",
     width: "100%",
     borderRadius: radius.lg,
@@ -40,7 +40,7 @@ const mb = stylex.create({
   // Holds the diagram's eventual measure so the transcript does not jump when it resolves.
   loading: {
     position: "relative",
-    marginBlock: "calc(var(--spacing) * 3.5)",
+    marginBlock: space.s2_5,
     display: "grid",
     height: "calc(var(--spacing) * 60)",
     minHeight: "calc(var(--spacing) * 25)",
