@@ -358,6 +358,7 @@ github.com/Tangerg/scope/eval v0.21.0 h1:T6nciTIv+vXp7ANzb/WcpeF0fNBrVBtfBXpNwzC
 github.com/Tangerg/scope/eval v0.21.0/go.mod h1:pEeFQ78wLYtEUiFp8es7zxwFLhumNhf/eQCkyI+PuXo=
 github.com/Tangerg/scope/eval v0.22.0 h1:8u32DxrxyryW9YP9O+2rPrPbGO3n57452iufVaPhfJ8=
 github.com/Tangerg/scope/eval v0.22.0/go.mod h1:plIk3BEylVnXBD/8YDYhaRj4l6LDsJqIF2KejOfDHy4=
+github.com/Tangerg/scope/eval v0.31.0 h1:4XUmfDPLxCoWOqtyOsivt7QjRQ6/JTfzFUHcOEBLu1g=
 github.com/Tangerg/scope/eval v0.31.0/go.mod h1:8FkI7fFZSC/sAAz8IsHyDwIeAiuP6HaxM8FjKWrV1mQ=
 github.com/Tangerg/scope/rag v0.11.0/go.mod h1:1ViaNAlsp2i+QfB5wY56mq+B5Xl8SvDG0yA/EHOaba4=
 github.com/Tangerg/scope/rag v0.12.0 h1:ZbYYJWdAk3DG0Hr2fpOt3qBthUmaPS0kQl7Br1exNEM=
@@ -372,6 +373,7 @@ github.com/Tangerg/scope/rag v0.21.0 h1:5Iwf9dtz6lGEdrWQkeAwiq4NFgRRaNEdtWFpQrfN
 github.com/Tangerg/scope/rag v0.21.0/go.mod h1:agOgbJ/oU2ee6BkpSqUZqfOpJ7jjDv9Xkw8X1/4QCew=
 github.com/Tangerg/scope/rag v0.22.0 h1:gHqtDJFXfTzfJ9cfdTZOU3nZ/dWgq/vv8jhf4ZwpoQE=
 github.com/Tangerg/scope/rag v0.22.0/go.mod h1:JvIyY4BquaF24PwMHmgT9OTAvy+iWWoBDclMcbWO0Vc=
+github.com/Tangerg/scope/rag v0.31.0 h1:K8AIJmDULps//T6+mE/5v9b5L0QyRJvMblET0c4GPqQ=
 github.com/Tangerg/scope/rag v0.31.0/go.mod h1:ecALhj/8KPJNOEj4NXiJtKdsTIZ7KNe7ybt5T4ANxf8=
 github.com/a2aproject/a2a-go v0.3.15 h1:h5YpCiPq3jxQ5rIns7oDjPag3ivP8u817AzdA4F+NiI=
 github.com/a2aproject/a2a-go v0.3.15/go.mod h1:I7Cm+a1oL+UT6zMoP+roaRE5vdfUa1iQGVN8aSOuZ0I=
