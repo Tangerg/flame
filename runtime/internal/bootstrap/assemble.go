@@ -201,7 +201,7 @@ func buildAssemblyCore(
 		Checkpoints: workspaceServices.checkpoints,
 		Titles: &segment.TitleMaintenance{
 			Sessions:  sessionCoordinator,
-			Generator: segment.NewTitleGenerator(execution.models.utilityClient),
+			Generator: segment.NewTitleGenerator(execution.models.utilityModel),
 			Tasks:     runEffectTasks,
 		},
 	})

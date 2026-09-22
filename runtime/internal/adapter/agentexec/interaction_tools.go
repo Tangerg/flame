@@ -13,8 +13,9 @@ import (
 
 // InteractionToolResolver builds the exact Tool manifest for one staged root.
 // Runtime binds the resolved Session/workspace scope to ctx before calling it;
-// resolution must not execute a Tool or call a model. [toolset.Resolver]
-// satisfies this port directly.
+// resolution must not execute a Tool or call a model. A successful resolution
+// transfers manifest resource ownership to this execution, including on later
+// assembly failure. [toolset.Resolver] satisfies this port directly.
 type InteractionToolResolver interface {
 	Manifest(ctx context.Context, group tool.Group) (toolset.Manifest, error)
 }

@@ -293,7 +293,7 @@ func (r *Resolver) cwdFor(ctx context.Context) string {
 }
 
 func (r *Resolver) toolsForCWD(cwd string) (cwdTools, error) {
-	return buildCWDTools(cwd, r.codeIntel, r.readTracker, r.pathLocker)
+	return openCWDTools(cwd, r.codeIntel, r.readTracker, r.pathLocker)
 }
 
 // Manifest resolves one Group's frozen, framework-neutral Tool visibility. It
@@ -308,7 +308,7 @@ func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group) (Manife
 	return resolved.manifest(), nil
 }
 
-func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (manifestBuilder, error) {
+func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (_ manifestBuilder, err error) {
 	if !group.Valid() {
 		return manifestBuilder{}, fmt.Errorf("toolset: unsupported Tool group %q", group)
 	}
@@ -317,7 +317,12 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (manifes
 	if err != nil {
 		return manifestBuilder{}, err
 	}
-	var tools manifestBuilder
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, localTools.close())
+		}
+	}()
+	tools := manifestBuilder{close: localTools.close}
 	tools.direct(localTools.readSearch...)
 	tools.direct(localTools.edit)
 	tools.direct(localTools.applyPatch)

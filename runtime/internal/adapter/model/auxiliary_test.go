@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"iter"
-	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -66,17 +65,20 @@ func TestCompleteBuildsOneMiddlewareFreePrompt(t *testing.T) {
 	if model.request.Options.MaxOutputTokens == nil || *model.request.Options.MaxOutputTokens != 123 {
 		t.Fatalf("MaxOutputTokens = %v, want 123", model.request.Options.MaxOutputTokens)
 	}
+	if format := model.request.Options.OutputFormat; format == nil || format.Type != chat.OutputFormatText {
+		t.Fatalf("output format = %+v, want Scope text contract", format)
+	}
 }
 
 func TestCompleteRejectsMissingClient(t *testing.T) {
 	_, err := fixedAuxiliaryClient(nil).Complete(t.Context(), AuxiliaryPrompt{Operation: "test", MaxInputBytes: 1, MaxOutputTokens: 1})
-	if err == nil || err.Error() != "auxiliary model: client is required" {
+	if err == nil || err.Error() != "auxiliary model: model is required" {
 		t.Fatalf("Complete nil client error = %v", err)
 	}
 }
 
 func TestCompleteRejectsInvalidResourceEnvelopeBeforeResolvingModel(t *testing.T) {
-	resolver := AuxiliaryResolver(func(context.Context) (*chatclient.Client, error) {
+	resolver := AuxiliaryResolver(func(context.Context) (chat.Model, error) {
 		t.Fatal("invalid resource envelope reached the resolver")
 		return nil, nil
 	})
@@ -94,7 +96,7 @@ func TestCompleteRejectsInvalidResourceEnvelopeBeforeResolvingModel(t *testing.T
 
 func TestCompletePreservesResolutionFailure(t *testing.T) {
 	failure := errors.New("provider unavailable")
-	resolver := AuxiliaryResolver(func(context.Context) (*chatclient.Client, error) {
+	resolver := AuxiliaryResolver(func(context.Context) (chat.Model, error) {
 		return nil, failure
 	})
 	text, err := resolver.Complete(t.Context(), AuxiliaryPrompt{Operation: "test", MaxInputBytes: 1, MaxOutputTokens: 1})
@@ -104,7 +106,7 @@ func TestCompletePreservesResolutionFailure(t *testing.T) {
 }
 
 func fixedAuxiliaryClient(client *chatclient.Client) AuxiliaryResolver {
-	return func(context.Context) (*chatclient.Client, error) { return client, nil }
+	return func(context.Context) (chat.Model, error) { return client, nil }
 }
 
 func TestCompleteRejectsIncompleteTextGenerations(t *testing.T) {
@@ -113,7 +115,7 @@ func TestCompleteRejectsIncompleteTextGenerations(t *testing.T) {
 	type completionCase struct {
 		name       string
 		response   *chat.Response
-		wantReason string
+		wantReason chat.FinishReason
 	}
 	cases := []completionCase{
 		{
@@ -121,19 +123,17 @@ func TestCompleteRejectsIncompleteTextGenerations(t *testing.T) {
 			response: &chat.Response{Output: &chat.Output{
 				Message: &refusal, FinishReason: chat.FinishReasonRefusal,
 			}},
-			wantReason: `finish reason "refusal"`,
+			wantReason: chat.FinishReasonRefusal,
 		},
 		{
 			name: "contentless stop",
 			response: &chat.Response{Output: &chat.Output{
 				FinishReason: chat.FinishReasonStop,
 			}},
-			wantReason: `finish reason "stop"`,
 		},
 		{
-			name:       "nil response",
-			response:   nil,
-			wantReason: "invalid response",
+			name:     "nil response",
+			response: nil,
 		},
 	}
 
@@ -144,7 +144,7 @@ func TestCompleteRejectsIncompleteTextGenerations(t *testing.T) {
 		cases = append(cases, completionCase{
 			name:       string(reason) + " with text",
 			response:   &chat.Response{Output: &chat.Output{Message: &partial, FinishReason: reason}},
-			wantReason: `finish reason "` + string(reason) + `"`,
+			wantReason: reason,
 		})
 	}
 	for _, tc := range cases {
@@ -158,8 +158,14 @@ func TestCompleteRejectsIncompleteTextGenerations(t *testing.T) {
 				SystemPrompt: "summarize", UserPrompt: "history",
 				MaxInputBytes: 1024, MaxOutputTokens: 128,
 			})
-			if text != "" || err == nil || !strings.Contains(err.Error(), tc.wantReason) {
-				t.Fatalf("Complete error = %v, want %q", err, tc.wantReason)
+			if text != "" || !errors.Is(err, chatclient.ErrInvalidOutput) {
+				t.Fatalf("Complete = (%q, %v), want Scope typed output rejection", text, err)
+			}
+			if tc.wantReason != "" {
+				completion, ok := errors.AsType[*chatclient.OutputCompletionError](err)
+				if !ok || completion.FinishReason != tc.wantReason {
+					t.Fatalf("Complete error = %v, want completion reason %q", err, tc.wantReason)
+				}
 			}
 		})
 	}
@@ -209,6 +215,32 @@ func TestAuxiliaryRequestLifetimeBelongsToCaller(t *testing.T) {
 					}
 				}
 			})
+		})
+	}
+}
+
+func TestCompleteUsesScopeTypedTextContract(t *testing.T) {
+	for _, part := range []chat.Part{
+		chat.NewRefusalPart("refused"),
+		chat.NewToolCallPart(chat.ToolCall{ID: "call", Name: "unexpected", Arguments: `{}`}),
+	} {
+		t.Run(string(part.Kind), func(t *testing.T) {
+			message := chat.NewAssistantMessage(chat.NewTextPart("must not become a summary"), part)
+			response, err := chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			client, err := chatclient.New(auxiliaryResponseModel{response: response}, chatclient.Config{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			text, err := fixedAuxiliaryClient(&client).Complete(t.Context(), AuxiliaryPrompt{
+				Operation: "compaction", SystemPrompt: "summarize", UserPrompt: "history",
+				MaxInputBytes: 1024, MaxOutputTokens: 128,
+			})
+			if text != "" || !errors.Is(err, chatclient.ErrInvalidOutput) {
+				t.Fatalf("Complete = (%q, %v), want Scope typed output rejection", text, err)
+			}
 		})
 	}
 }

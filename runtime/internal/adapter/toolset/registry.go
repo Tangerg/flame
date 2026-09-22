@@ -32,14 +32,15 @@ type DiagnosticRegistry struct{}
 
 // List translates the adapter catalog in encounter order. Application owns the
 // safe, unique, name-ordered public catalog.
-func (DiagnosticRegistry) List(context.Context) ([]tool.Tool, error) {
-	chatTools, err := directTools(".")
+func (DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
+	manifest, err := openDirectTools(".")
 	if err != nil {
 		return nil, err
 	}
+	defer func() { err = errors.Join(err, manifest.Close()) }()
 	interpreter := Interpreter{}
-	out := make([]tool.Tool, 0, len(chatTools))
-	for _, candidate := range chatTools {
+	out := make([]tool.Tool, 0, len(manifest.Visible))
+	for _, candidate := range manifest.Visible {
 		definition := candidate.Definition()
 		schema, err := tool.ParseSchema(definition.InputSchema)
 		if err != nil {
@@ -55,7 +56,7 @@ func (DiagnosticRegistry) List(context.Context) ([]tool.Tool, error) {
 	return out, nil
 }
 
-func (DiagnosticRegistry) Invoke(ctx context.Context, root, name string, arguments tool.Arguments) (tool.Result, error) {
+func (DiagnosticRegistry) Invoke(ctx context.Context, root, name string, arguments tool.Arguments) (_ tool.Result, err error) {
 	if name == "" {
 		return tool.Result{}, errors.New("toolset: direct tool name must not be empty")
 	}
@@ -64,11 +65,12 @@ func (DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argumen
 		trace.WithAttributes(attribute.String(attrGenAIToolName, name)))
 	defer span.End()
 
-	direct, err := directTools(root)
+	direct, err := openDirectTools(root)
 	if err != nil {
 		return tool.Result{}, err
 	}
-	for _, candidate := range direct {
+	defer func() { err = errors.Join(err, direct.Close()) }()
+	for _, candidate := range direct.Visible {
 		if candidate.Definition().Name != name {
 			continue
 		}

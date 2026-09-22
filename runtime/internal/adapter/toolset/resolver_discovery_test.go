@@ -22,6 +22,11 @@ func resolveRootManifest(t *testing.T, mcpTools []toolcontract.Tool) Manifest {
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}
+	t.Cleanup(func() {
+		if err := manifest.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	return manifest
 }
 

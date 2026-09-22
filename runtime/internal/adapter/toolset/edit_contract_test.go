@@ -18,10 +18,15 @@ func TestEditExecutesThroughTheMutationGuards(t *testing.T) {
 	if err := os.WriteFile(notes, []byte("first\nsecond\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	tools, err := buildCWDTools(root, nil, newReadTracker(), newPathLocker())
+	tools, err := openCWDTools(root, nil, newReadTracker(), newPathLocker())
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := tools.close(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	refusal := callRejectedTool(t, t.Context(), tools.edit, editArguments(t, "notes.txt", "first", "FIRST"))
 	if !strings.Contains(strings.ToLower(refusal), "read") {
@@ -54,10 +59,15 @@ func TestEditRefusesProtectedDirectories(t *testing.T) {
 	if err := os.WriteFile(config, []byte("[core]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	tools, err := buildCWDTools(root, nil, newReadTracker(), newPathLocker())
+	tools, err := openCWDTools(root, nil, newReadTracker(), newPathLocker())
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := tools.close(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	refusal := callRejectedTool(t, t.Context(), tools.edit, editArguments(t, ".git/config", "[core]", "[hijacked]"))
 	if !strings.Contains(refusal, "protected") {

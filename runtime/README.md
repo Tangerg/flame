@@ -108,6 +108,8 @@ Compaction, memory extraction and curation, skill mining, and title generation e
 
 Failed attempts record the `resolve`, `call`, or `response` stage and distinguish cancellation from deadline expiry. These spans do not record prompt text, output text, or raw provider errors. They are diagnostic telemetry, not durable `modelInvocations.list` records or additional Run accounting. Persistence and retention depend on the configured telemetry exporter; they do not survive restart through the invocation journal.
 
+Auxiliary text generation uses Scope's `Client.Output` with its `Text` contract. Scope admits only naturally completed text and reasoning; refusals, media, and Tool calls cannot become summaries, memory, skill proposals, or titles by dropping their non-text parts. Runtime additionally rejects blank text and retains its resource limits and observation policy.
+
 Title generation is nested under `run segment maintenance`, with `run.id`, `gen_ai.conversation.id`, `maintenance.operation`, and `run.parked` identifying its boundary. A parked Run can generate its initial Session title while waiting for user input; this span does not mean the Run has completed. Workspace checkpoints use the same span name and run only at a terminal boundary.
 
 ## Background shell lifetime

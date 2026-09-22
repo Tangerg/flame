@@ -1,19 +1,20 @@
 package toolset
 
 import (
+	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
 
-// buildCWDTools instantiates the working-directory-bound filesystem capabilities,
-// all anchored at cwd. These are the only tools whose behavior depends on
-// the working directory, so they are rebuilt per resolution (cheap structs)
-// rather than captured once. The filesystem tools need no credentials. (The
-// shell family is built over shared exec.Shells in shell.Build, not here; it
-// reads cwd per call.)
+// openCWDTools acquires the working-directory-bound filesystem capabilities,
+// all anchored at cwd. Each resolution owns a Scope directory authority until
+// its manifest closes after execution drains. The filesystem tools need no
+// credentials. The shell family is built over shared exec.Shells in shell.Build
+// and reads cwd per call.
 //
 // Every mutation is wrapped so a successful change is type-checked by the
 // code-intelligence analyzer and any new problems are folded into the tool
@@ -31,15 +32,22 @@ type cwdTools struct {
 	readSearch []toolcontract.Tool
 	edit       toolcontract.Tool
 	applyPatch toolcontract.Tool
+	close      func() error
 }
 
-func buildCWDTools(cwd string, ci *codeintel.Analyzer, tracker *readTracker, locker *pathLocker) (cwdTools, error) {
+func openCWDTools(cwd string, ci *codeintel.Analyzer, tracker *readTracker, locker *pathLocker) (_ cwdTools, err error) {
 	fsExec, err := fs.NewLocalExecutor(cwd)
 	if err != nil {
 		return cwdTools{}, fmt.Errorf("toolset: construct filesystem executor: %w", err)
 	}
+	close := sync.OnceValue(fsExec.Close)
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, close())
+		}
+	}()
 	searchTools := newRuntimeSearchTools(cwd)
-	readTool, err := newRuntimeReadTool(cwd, fsExec)
+	readTool, err := newRuntimeReadTool(fsExec)
 	if err != nil {
 		return cwdTools{}, err
 	}
@@ -69,6 +77,7 @@ func buildCWDTools(cwd string, ci *codeintel.Analyzer, tracker *readTracker, loc
 		},
 		edit:       edit,
 		applyPatch: applyPatch,
+		close:      close,
 	}
 	return families, nil
 }

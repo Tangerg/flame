@@ -299,7 +299,7 @@ func buildExecutionComposition(
 		workspaceServices.skills,
 		workspaceServices.skillMaintenance,
 		workspaceServices.memoryCuration,
-		modelServices.utilityClient,
+		modelServices.utilityModel,
 		transientSessions,
 	)
 	if err != nil {

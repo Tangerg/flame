@@ -9,19 +9,31 @@ import (
 // Manifest is one Run's frozen, framework-neutral model Tool surface. Visible
 // Tools enter the initial model manifest. Deferred Tools are already executable
 // authority but remain hidden until the discovery Tool advertises their exact
-// names. The slices never overlap.
+// names. The slices never overlap. Its caller owns Close after all Tool calls
+// have drained; copied manifests share the same resource lifetime.
 type Manifest struct {
 	Visible  []toolcontract.Tool
 	Deferred []toolcontract.Tool
+	close    func() error
 }
 
-// Clone returns an ownership-isolated manifest. Tool implementations are
-// immutable capabilities; only the containing slices require isolation.
+// Clone isolates the slices while retaining the same executable capabilities
+// and resource lifetime. It does not grant an independent Close obligation.
 func (m Manifest) Clone() Manifest {
 	return Manifest{
 		Visible:  slices.Clone(m.Visible),
 		Deferred: slices.Clone(m.Deferred),
+		close:    m.close,
 	}
+}
+
+// Close releases the manifest's filesystem authority once. It is safe to call
+// again, including through a clone, after the execution owner has drained calls.
+func (m Manifest) Close() error {
+	if m.close == nil {
+		return nil
+	}
+	return m.close()
 }
 
 // manifestBuilder owns the one real visibility decision made while assembling a
@@ -31,6 +43,7 @@ func (m Manifest) Clone() Manifest {
 type manifestBuilder struct {
 	visible  []toolcontract.Tool
 	deferred []toolcontract.Tool
+	close    func() error
 }
 
 func (m *manifestBuilder) direct(tools ...toolcontract.Tool) {
@@ -53,5 +66,6 @@ func (m manifestBuilder) manifest() Manifest {
 	return Manifest{
 		Visible:  slices.Clone(m.visible),
 		Deferred: slices.Clone(m.deferred),
+		close:    m.close,
 	}
 }

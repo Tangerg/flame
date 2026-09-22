@@ -60,6 +60,11 @@ func TestPlanModeToolsAreRootOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Manifest(delegated): %v", err)
 	}
+	t.Cleanup(func() {
+		if err := delegated.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	names := definitionNames(manifestTools(delegated))
 	if !names["ask_user"] {
 		t.Fatalf("delegated tools = %v, want ask_user", names)
@@ -75,6 +80,11 @@ func TestPlanModeToolsAreRootOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Manifest(root): %v", err)
 	}
+	t.Cleanup(func() {
+		if err := root.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	foundPlan := false
 	foundEnter := false
 	foundExit := false
@@ -133,6 +143,11 @@ func TestGoalToolsAreRootOnlyAndOutcomeRequiresGoalRunProvenance(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Manifest(%s): %v", tc.group, err)
 			}
+			t.Cleanup(func() {
+				if err := manifest.Close(); err != nil {
+					t.Error(err)
+				}
+			})
 			names := definitionNames(manifestTools(manifest))
 			for _, name := range []string{"create_goal", "get_goal", "report_goal_outcome"} {
 				if names[name] != tc.want[name] {
@@ -165,6 +180,11 @@ func TestProposeSkillIsRootOnlyAndDeferred(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Manifest(%s): %v", tc.group, err)
 		}
+		t.Cleanup(func() {
+			if err := manifest.Close(); err != nil {
+				t.Error(err)
+			}
+		})
 		if got := definitionNames(manifestTools(manifest))["propose_skill"]; got != tc.want {
 			t.Errorf("group %s propose_skill present=%v, want %v", tc.group, got, tc.want)
 		}
@@ -184,8 +204,12 @@ func TestResolverAcceptsOnlyCanonicalGroups(t *testing.T) {
 	closeBuiltToolset(t, built)
 
 	for _, group := range []domaintool.Group{domaintool.GroupRoot, domaintool.GroupDelegated} {
-		if _, err := built.Resolver.Manifest(t.Context(), group); err != nil {
+		manifest, err := built.Resolver.Manifest(t.Context(), group)
+		if err != nil {
 			t.Errorf("Manifest(%q): %v", group, err)
+		}
+		if err := manifest.Close(); err != nil {
+			t.Error(err)
 		}
 	}
 	for _, obsolete := range []domaintool.Group{"coding", "subtask"} {

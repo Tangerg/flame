@@ -48,7 +48,7 @@ func TestResolvedChatRejectsTypedNilInputTokenCounter(t *testing.T) {
 	}
 }
 
-func TestLiveUtilityClientResolvesMainForEveryUse(t *testing.T) {
+func TestLiveUtilityModelResolvesMainForEveryUse(t *testing.T) {
 	selection := mustRoleSelection(t, "anthropic", "claude-test")
 	model := newTestChatModel(t)
 	calls := 0
@@ -59,7 +59,7 @@ func TestLiveUtilityClientResolvesMainForEveryUse(t *testing.T) {
 		}
 		return mustResolvedChat(t, model, nil), nil
 	}}
-	resolve, err := LiveUtilityClient(resolver, selection, staticRoleSource{})
+	resolve, err := LiveUtilityModel(resolver, selection, staticRoleSource{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,18 +69,15 @@ func TestLiveUtilityClientResolvesMainForEveryUse(t *testing.T) {
 	if firstErr != nil || secondErr != nil {
 		t.Fatalf("resolve errors = (%v, %v)", firstErr, secondErr)
 	}
-	// A client is a projection of the resolved model, so each resolution builds
-	// its own. What must hold is that both are usable and that neither was
-	// served from a cache.
 	if first == nil || second == nil {
-		t.Fatalf("resolved clients = (%v, %v), want two usable clients", first, second)
+		t.Fatalf("resolved models = (%v, %v), want two usable models", first, second)
 	}
 	if calls != 2 {
 		t.Fatalf("resolver calls = %d, want 2 current-registry reads", calls)
 	}
 }
 
-func TestLiveUtilityClientReturnsConfiguredRoleFailureWithoutFallback(t *testing.T) {
+func TestLiveUtilityModelReturnsConfiguredRoleFailureWithoutFallback(t *testing.T) {
 	mainSelection := mustRoleSelection(t, "anthropic", "claude-main")
 	utilityRole := mustRole(t, "openai", "utility-model")
 	utilitySelection := utilityRole.Selection()
@@ -93,7 +90,7 @@ func TestLiveUtilityClientReturnsConfiguredRoleFailureWithoutFallback(t *testing
 		}
 		return mustResolvedChat(t, model, nil), nil
 	}}
-	resolve, err := LiveUtilityClient(resolver, mainSelection, staticRoleSource{role: utilityRole})
+	resolve, err := LiveUtilityModel(resolver, mainSelection, staticRoleSource{role: utilityRole})
 	if err != nil {
 		t.Fatal(err)
 	}

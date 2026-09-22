@@ -88,10 +88,15 @@ func TestAssembledMutationToolsStillReportWhatTheyMutate(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The composition the resolver exposes, not a hand-assembled stand-in.
-	tools, err := buildCWDTools(cwd, nil, newReadTracker(), newPathLocker())
+	tools, err := openCWDTools(cwd, nil, newReadTracker(), newPathLocker())
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := tools.close(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	for _, testCase := range []struct {
 		name      string

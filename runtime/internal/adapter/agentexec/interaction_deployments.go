@@ -2,6 +2,7 @@ package agentexec
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -15,12 +16,24 @@ import (
 )
 
 type interactionDeploymentSet struct {
+	manifests         []toolset.Manifest
 	root              agent.Deployment
 	byRef             map[agent.DeploymentRef]agent.Deployment
 	delegatesByParent map[agent.DeploymentRef]map[string]agent.DeploymentRef
 	managedChildren   map[agent.DeploymentRef]struct{}
 	toolChildren      map[agent.DeploymentRef]struct{}
 	treeLimits        agent.TreeLimits
+}
+
+func (i *interactionDeploymentSet) close() error {
+	if i == nil {
+		return nil
+	}
+	var err error
+	for _, manifest := range i.manifests {
+		err = errors.Join(err, manifest.Close())
+	}
+	return err
 }
 
 func (i *interactionDeploymentSet) Resolve(
@@ -70,7 +83,11 @@ func (i *InteractionExecutor) buildInteractionDeployments(
 	if err != nil {
 		return nil, err
 	}
-	return builder.build()
+	deployments, err := builder.build()
+	if err != nil {
+		return nil, errors.Join(err, builder.deployments.close())
+	}
+	return deployments, nil
 }
 
 type interactionDeploymentBuilder struct {
@@ -92,7 +109,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 	start runs.RootExecutionStart,
 	model *observedInteractionModel,
 	counter ModelContextInputTokenCounter,
-) (*interactionDeploymentBuilder, error) {
+) (_ *interactionDeploymentBuilder, err error) {
 	instructions, err := interactionInstructionContext(start.WorkingContext)
 	if err != nil {
 		return nil, err
@@ -105,6 +122,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 		executor: i, session: session, start: start, model: model, counter: counter,
 		instructions: instructions, rootManifest: rootManifest,
 		deployments: &interactionDeploymentSet{
+			manifests:         []toolset.Manifest{rootManifest},
 			byRef:             make(map[agent.DeploymentRef]agent.Deployment),
 			toolChildren:      make(map[agent.DeploymentRef]struct{}),
 			delegatesByParent: make(map[agent.DeploymentRef]map[string]agent.DeploymentRef),
@@ -112,6 +130,11 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 			treeLimits:        agent.TreeLimits{MaxDepth: 2, MaxActiveChildren: uint32(i.policy.maxConcurrentToolCalls)},
 		},
 	}
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, builder.deployments.close())
+		}
+	}()
 	if start.ChildRunAdmissionEnabled {
 		builder.maxDepth = defaultDelegateDepth
 		builder.deployments.treeLimits.MaxDepth = defaultDelegateDepth + 1
@@ -122,6 +145,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 		if err != nil {
 			return nil, err
 		}
+		builder.deployments.manifests = append(builder.deployments.manifests, builder.delegatedManifest)
 	}
 	return builder, nil
 }
@@ -293,7 +317,7 @@ func (i *interactionDeploymentBuilder) deploymentDefinition(
 func (i *InteractionExecutor) resolveInteractionManifest(
 	ctx context.Context,
 	group domaintool.Group,
-) (toolset.Manifest, error) {
+) (_ toolset.Manifest, err error) {
 	if i.config.ToolResolver == nil {
 		return toolset.Manifest{}, nil
 	}
@@ -301,6 +325,11 @@ func (i *InteractionExecutor) resolveInteractionManifest(
 	if err != nil {
 		return toolset.Manifest{}, fmt.Errorf("agentexec: resolve Interaction %s Tools: %w", group, err)
 	}
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, manifest.Close())
+		}
+	}()
 	manifest = manifest.Clone()
 	if err := validateToolManifest(manifest); err != nil {
 		return toolset.Manifest{}, err

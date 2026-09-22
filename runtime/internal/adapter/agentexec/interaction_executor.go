@@ -271,7 +271,7 @@ func (i *InteractionExecutor) assembleInteraction(
 		return nil, err
 	}
 	if installDeploymentsErr := session.installDeployments(deployments); installDeploymentsErr != nil {
-		return nil, installDeploymentsErr
+		return nil, errors.Join(installDeploymentsErr, deployments.close())
 	}
 	engine, err := agent.NewEngine(agent.EngineConfig{
 		TreeCommitter:                            session,

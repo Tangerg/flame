@@ -56,6 +56,11 @@ func TestRejectedCallsDoNotCostTheRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := manifest.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	for _, exposed := range manifestTools(manifest) {
 		name := exposed.Definition().Name

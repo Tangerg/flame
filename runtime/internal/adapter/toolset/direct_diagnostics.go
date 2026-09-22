@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sync"
 
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -16,20 +17,26 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 )
 
-// directTools is the small, read-only capability set valid without an agent
+// openDirectTools owns the small, read-only capability set valid without an agent
 // process. Keep this list explicit: being available to a model does not make a
 // tool valid for a client-driven call.
-func directTools(root string) ([]toolcontract.Tool, error) {
+func openDirectTools(root string) (_ Manifest, err error) {
 	executor, err := fs.NewLocalExecutor(root)
 	if err != nil {
-		return nil, fmt.Errorf("toolset: construct direct filesystem executor: %w", err)
+		return Manifest{}, fmt.Errorf("toolset: construct direct filesystem executor: %w", err)
 	}
-	readTool, err := newRuntimeReadTool(root, executor)
+	close := sync.OnceValue(executor.Close)
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, close())
+		}
+	}()
+	readTool, err := newRuntimeReadTool(executor)
 	if err != nil {
-		return nil, err
+		return Manifest{}, err
 	}
 	search := newRuntimeSearchTools(root)
-	return []toolcontract.Tool{readTool, search.glob, search.grep}, nil
+	return Manifest{Visible: []toolcontract.Tool{readTool, search.glob, search.grep}, close: close}, nil
 }
 
 // Only Scope-admitted inputs may be normalized: typed decoding and re-encoding

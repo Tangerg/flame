@@ -35,6 +35,11 @@ func resolvedRootTools(t *testing.T, resolver *toolset.Resolver) []toolcontract.
 	if err != nil {
 		t.Fatalf("root manifest: %v", err)
 	}
+	t.Cleanup(func() {
+		if err := manifest.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	return append(append([]toolcontract.Tool(nil), manifest.Visible...), manifest.Deferred...)
 }
 

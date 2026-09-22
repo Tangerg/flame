@@ -85,7 +85,7 @@ func memoryConsolidationFixture(t *testing.T, replies ...scriptedReply) (*Memory
 	consolidator, err := NewMemoryConsolidator(
 		messages,
 		memoryCuration,
-		func(context.Context) (*chatclient.Client, error) { return &client, nil },
+		func(context.Context) (chat.Model, error) { return &client, nil },
 		MemoryCurationPolicyValues{MinPendingFacts: intPointer(1)},
 	)
 	if err != nil {

@@ -19,7 +19,7 @@ func guardedPatchTools(t testing.TB, dir string, format bool) (toolcontract.Tool
 	t.Helper()
 	tracker := newReadTracker()
 	executor := mustLocalExecutor(t, dir)
-	read := withReadTracking(mustRuntimeReadTool(t, dir, executor), tracker, dir)
+	read := withReadTracking(mustRuntimeReadTool(t, executor), tracker, dir)
 	mutation := toolcontract.Tool(withApplyPatchMutationPaths(mustApplyPatchTool(t, executor)))
 	if format {
 		mutation = withAutoFormat(mutation, dir)
@@ -278,7 +278,7 @@ func TestReadTrackingRejectsSameContentReplacementDuringRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	tracker := newReadTracker()
-	base := mustRuntimeReadTool(t, dir, mustLocalExecutor(t, dir))
+	base := mustRuntimeReadTool(t, mustLocalExecutor(t, dir))
 	readFinished := make(chan struct{})
 	release := make(chan struct{})
 	blocking := decorateCall(base, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {

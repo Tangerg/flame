@@ -24,6 +24,7 @@ func TestAuxiliaryCallObservation(t *testing.T) {
 		finish  chat.FinishReason
 		failure error
 		stage   string
+		refusal string
 	}{
 		{name: "reported usage", usage: &chat.Usage{InputTokens: 12, OutputTokens: 4, CacheReadInputTokens: new(int64(0))}, finish: chat.FinishReasonStop},
 		{name: "unreported usage", finish: chat.FinishReasonStop},
@@ -31,6 +32,7 @@ func TestAuxiliaryCallObservation(t *testing.T) {
 		{name: "deadline", failure: context.DeadlineExceeded, stage: "call"},
 		{name: "canceled", failure: fmt.Errorf("private failure: %w", context.Canceled), stage: "call"},
 		{name: "incomplete response", usage: &chat.Usage{InputTokens: 12, OutputTokens: 4}, finish: chat.FinishReasonLength, stage: "response"},
+		{name: "refusal with text", usage: &chat.Usage{InputTokens: 12, OutputTokens: 4}, finish: chat.FinishReasonStop, refusal: "private refusal", stage: "response"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			exporter := tracetest.NewInMemoryExporter()
@@ -40,14 +42,18 @@ func TestAuxiliaryCallObservation(t *testing.T) {
 			t.Cleanup(func() { otel.SetTracerProvider(previous); _ = provider.Shutdown(context.Background()) })
 			ctx, parent := provider.Tracer("test").Start(t.Context(), "maintenance")
 			defer parent.End()
+			outputMessage := message.Clone()
+			if tc.refusal != "" {
+				outputMessage.Parts = append(outputMessage.Parts, chat.NewRefusalPart(tc.refusal))
+			}
 			model := auxiliaryResponseModel{
 				response: &chat.Response{
-					Output:   &chat.Output{Message: &message, FinishReason: tc.finish},
+					Output:   &chat.Output{Message: &outputMessage, FinishReason: tc.finish},
 					Metadata: &chat.ResponseMetadata{Usage: tc.usage},
 				},
 				failure: tc.failure,
 			}
-			resolver, err := LiveUtilityClient(recordingChatResolver{
+			resolver, err := LiveUtilityModel(recordingChatResolver{
 				resolve: func(modelref.Selection) (ResolvedChat, error) {
 					if tc.stage == "resolve" {
 						return ResolvedChat{}, tc.failure

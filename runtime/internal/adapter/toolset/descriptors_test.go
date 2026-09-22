@@ -156,6 +156,11 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}
+	t.Cleanup(func() {
+		if err := manifest.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	names := definitionNames(manifestTools(manifest))
 	for _, want := range []string{"enter_plan_mode", "exit_plan_mode", "create_goal", "get_goal", "report_goal_outcome"} {
 		if !names[want] {
@@ -212,6 +217,11 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}
+	t.Cleanup(func() {
+		if err := manifest.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	resolved := manifestTools(manifest)
 	existing := definitionNames(resolved)
 	checkedContracts := make(map[string]bool)

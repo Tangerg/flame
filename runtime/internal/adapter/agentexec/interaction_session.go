@@ -595,7 +595,7 @@ func (i *interactionSession) await() {
 		err = i.publishResult(result)
 	}
 	if err == nil {
-		err = i.engine.Close(joinCtx)
+		err = i.closeExecution(joinCtx)
 	}
 	if err != nil {
 		i.publishProjectionFailure(err)
@@ -693,7 +693,19 @@ func (i *interactionSession) release(ctx context.Context) error {
 	if !workersStarted {
 		i.finish()
 	}
-	return i.engine.Close(ctx)
+	return i.closeExecution(ctx)
+}
+
+// Scope must drain the Engine before the host revokes its Tool capabilities.
+// An interrupted close retains those resources for the next release attempt.
+func (i *interactionSession) closeExecution(ctx context.Context) error {
+	if err := i.engine.Close(ctx); err != nil {
+		return err
+	}
+	i.state.mu.Lock()
+	deployments := i.state.deployments
+	i.state.mu.Unlock()
+	return deployments.close()
 }
 
 func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded, error) {

@@ -34,6 +34,11 @@ func TestResolverRegistersTheMutationVocabulary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}
+	t.Cleanup(func() {
+		if err := manifest.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	names := definitionNames(manifestTools(manifest))
 	if !names[domaintool.Edit] || !names[domaintool.ApplyPatch] {
 		t.Fatalf("mutation vocabulary = %v, want edit and apply_patch", names)
@@ -89,6 +94,11 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}
+	t.Cleanup(func() {
+		if err := manifest.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	registered := definitionNames(manifestTools(manifest))
 	advertised := definitionNames(manifest.Visible)
 	for _, name := range []string{

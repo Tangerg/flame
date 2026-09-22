@@ -13,6 +13,11 @@ func mustLocalExecutor(t testing.TB, root string) *fs.LocalExecutor {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := executor.Close(); err != nil {
+			t.Error(err)
+		}
+	})
 	return executor
 }
 
@@ -34,9 +39,9 @@ func mustApplyPatchTool(t testing.TB, executor fs.PatchApplier) *fs.ApplyPatchTo
 	return tool
 }
 
-func mustRuntimeReadTool(t testing.TB, root string, reader fs.Reader) *fs.ReadTool {
+func mustRuntimeReadTool(t testing.TB, reader fs.Reader) *fs.ReadTool {
 	t.Helper()
-	tool, err := newRuntimeReadTool(root, reader)
+	tool, err := newRuntimeReadTool(reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,9 +50,14 @@ func mustRuntimeReadTool(t testing.TB, root string, reader fs.Reader) *fs.ReadTo
 
 func mustDirectTools(t testing.TB, root string) []toolcontract.Tool {
 	t.Helper()
-	tools, err := directTools(root)
+	manifest, err := openDirectTools(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return tools
+	t.Cleanup(func() {
+		if err := manifest.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return manifest.Visible
 }

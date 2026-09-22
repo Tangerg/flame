@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 const (
@@ -29,13 +30,9 @@ type runtimeReadExecutor struct {
 	next fs.Reader
 }
 
-func newRuntimeReadTool(root string, reader fs.Reader) (*fs.ReadTool, error) {
-	if reader == nil {
-		executor, err := fs.NewLocalExecutor(root)
-		if err != nil {
-			return nil, fmt.Errorf("toolset: construct read executor: %w", err)
-		}
-		reader = executor
+func newRuntimeReadTool(reader fs.Reader) (*fs.ReadTool, error) {
+	if dependency.Missing(reader) {
+		return nil, errors.New("toolset: read executor is required")
 	}
 	tool, err := fs.NewReadTool(runtimeReadExecutor{next: reader})
 	if err != nil {

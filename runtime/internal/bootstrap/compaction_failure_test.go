@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/chatclient"
 )
 
 func TestRuntimeRejectsTruncatedSummaryBeforeReplacingHistory(t *testing.T) {
@@ -72,8 +73,9 @@ func TestRuntimeRejectsTruncatedSummaryBeforeReplacingHistory(t *testing.T) {
 		t.Fatal(finished.Failure)
 	}
 	outcome := finished.Value.(*protocol.RunRef).Outcome
+	completionFailure := (&chatclient.OutputCompletionError{FinishReason: chat.FinishReasonLength}).Error()
 	if outcome == nil || outcome.Type != protocol.OutcomeFailed || outcome.Error == nil ||
-		!strings.Contains(outcome.Error.Detail, `finish reason "length"`) {
+		!strings.Contains(outcome.Error.Detail, completionFailure) {
 		t.Fatalf("Run outcome = %+v, want incomplete summary failure", outcome)
 	}
 	history, err := stores.ChatHistory.Read(ctx, sessionID)

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/scope/core/chatclient"
+	"github.com/Tangerg/scope/core/chat"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -20,18 +20,18 @@ type RoleSource interface {
 	Role() modelref.Role
 }
 
-// ChatClientResolver resolves an exact selection from the current provider
+// ChatModelResolver resolves an exact selection from the current provider
 // configuration snapshot. The utility role adapter depends only on that
 // behavior, not on ChatResolver's registry implementation.
-type ChatClientResolver interface {
+type ChatModelResolver interface {
 	ResolveChat(context.Context, modelref.Selection) (ResolvedChat, error)
 }
 
-// LiveUtilityClient resolves the optional specialized role on every use. An
+// LiveUtilityModel resolves the optional specialized role on every use. An
 // absent role selects the main model; a configured role is exact and never
 // silently falls back to another provider/model when resolution fails.
-func LiveUtilityClient(
-	resolver ChatClientResolver,
+func LiveUtilityModel(
+	resolver ChatModelResolver,
 	mainSelection modelref.Selection,
 	roles RoleSource,
 ) (AuxiliaryResolver, error) {
@@ -44,7 +44,7 @@ func LiveUtilityClient(
 	if dependency.Missing(roles) {
 		return nil, errors.New("model: utility role source is required")
 	}
-	return func(ctx context.Context) (*chatclient.Client, error) {
+	return func(ctx context.Context) (chat.Model, error) {
 		selection := mainSelection
 		if role := roles.Role(); role.Configured() {
 			selection = role.Selection()
@@ -62,11 +62,7 @@ func LiveUtilityClient(
 				err,
 			)
 		}
-		client, err := resolved.Client()
-		if err != nil {
-			return nil, fmt.Errorf("auxiliary model: chat client: %w", err)
-		}
-		return &client, nil
+		return resolved.Model(), nil
 	}, nil
 }
 

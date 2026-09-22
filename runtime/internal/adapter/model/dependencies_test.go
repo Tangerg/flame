@@ -41,15 +41,15 @@ func TestLiveRoleResolversRejectIncompleteConstruction(t *testing.T) {
 	resolver := &pointerChatResolver{}
 
 	var nilResolver *pointerChatResolver
-	if _, err := LiveUtilityClient(nilResolver, selection, role); err == nil || !strings.Contains(err.Error(), "chat resolver") {
-		t.Fatalf("LiveUtilityClient typed-nil resolver error = %v", err)
+	if _, err := LiveUtilityModel(nilResolver, selection, role); err == nil || !strings.Contains(err.Error(), "chat resolver") {
+		t.Fatalf("LiveUtilityModel typed-nil resolver error = %v", err)
 	}
-	if _, err := LiveUtilityClient(resolver, modelref.Selection{}, role); err == nil || !strings.Contains(err.Error(), "model selection") {
-		t.Fatalf("LiveUtilityClient empty main selection error = %v", err)
+	if _, err := LiveUtilityModel(resolver, modelref.Selection{}, role); err == nil || !strings.Contains(err.Error(), "model selection") {
+		t.Fatalf("LiveUtilityModel empty main selection error = %v", err)
 	}
 	var nilRole *pointerRoleSource
-	if _, err := LiveUtilityClient(resolver, selection, nilRole); err == nil || !strings.Contains(err.Error(), "role source") {
-		t.Fatalf("LiveUtilityClient typed-nil role error = %v", err)
+	if _, err := LiveUtilityModel(resolver, selection, nilRole); err == nil || !strings.Contains(err.Error(), "role source") {
+		t.Fatalf("LiveUtilityModel typed-nil role error = %v", err)
 	}
 	if _, err := NewRoleEmbedder(nil, role); err == nil || !strings.Contains(err.Error(), "embedding resolver") {
 		t.Fatalf("NewRoleEmbedder nil resolver error = %v", err)

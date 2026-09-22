@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 	corechat "github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 )
 
 // InputTokenCounter is the narrow optional provider capability consumed by
@@ -21,7 +20,7 @@ type InputTokenCounter interface {
 }
 
 // ResolvedChat is one immutable provider-model construction projected through
-// the capabilities Runtime consumes. Its client and optional token counter
+// the capabilities Runtime consumes. Its model and optional token counter
 // always share the same underlying model and credential snapshot.
 type ResolvedChat struct {
 	model             corechat.Model
@@ -50,11 +49,6 @@ func (r ResolvedChat) Streamer() (corechat.Streamer, bool) {
 	return streamer, ok
 }
 
-// Client returns the ordinary call projection over the same instance.
-func (r ResolvedChat) Client() (chatclient.Client, error) {
-	return chatclient.New(r.model, chatclient.Config{})
-}
-
 // InputTokenCounter returns the optional complete-request counting projection.
 func (r ResolvedChat) InputTokenCounter() (InputTokenCounter, bool) {
 	return r.inputTokenCounter, r.inputTokenCounter != nil
@@ -67,10 +61,10 @@ type CredentialLookup interface {
 	Get(ctx context.Context, id string) (provider.Provider, bool, error)
 }
 
-// ChatResolver resolves a per-Run [chatclient.Client] for an explicit model
+// ChatResolver resolves a per-Run provider model for an explicit model
 // selection. The provider is taken as given by the selection and is never
 // inferred from the model id; the resolver pulls the provider's current
-// configuration from the registry and builds an immutable client. It does not
+// configuration from the registry and builds an immutable model. It does not
 // retain prior credential generations in a process-lifetime cache.
 type ChatResolver struct {
 	providers CredentialLookup

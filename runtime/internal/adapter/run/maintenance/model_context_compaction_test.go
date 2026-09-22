@@ -744,6 +744,32 @@ func TestRequiredModelContextCompactionRequiresLifecyclePermission(t *testing.T)
 	}
 }
 
+func TestRequiredCompactionCannotPersistTextFromARefusal(t *testing.T) {
+	store := newCompactionTestStore()
+	const sessionID = "session:refused-summary"
+	history := completeContextTurns()
+	if err := store.Write(t.Context(), sessionID, history...); err != nil {
+		t.Fatal(err)
+	}
+	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
+	threshold := mustEstimateModelContextTokens(t, append(cloneMessages(instructions), history...), nil, chat.Options{})
+	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		message := chat.NewAssistantMessage(chat.NewTextPart("discarded history"), chat.NewRefusalPart("cannot summarize"))
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, nil)
+	})
+	compactor := mustNewCompactor(t, store,
+		func(context.Context) (chat.Model, error) { return model, nil },
+		nil, CompactionPolicyValues{MaxTokens: intPointer(threshold)},
+	)
+	request := durableContextRequest(t, sessionID, history, 0, nil)
+	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, chatclient.ErrInvalidOutput) {
+		t.Fatalf("CompactModelContext = %v, want Scope typed output rejection", err)
+	}
+	if store.rewrites != 0 {
+		t.Fatalf("refused summary rewrote conversation %d times", store.rewrites)
+	}
+}
+
 func TestDurableModelContextCompactionRejectsConversationDrift(t *testing.T) {
 	store := newCompactionTestStore()
 	const sessionID = "session:drift"

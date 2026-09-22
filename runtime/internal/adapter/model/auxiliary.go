@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"go.opentelemetry.io/otel"
@@ -14,10 +15,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// AuxiliaryResolver selects the current utility-role client for each call.
+// AuxiliaryResolver selects the current utility-role model for each call.
 // Resolving at the boundary lets a role configuration change take effect without
 // rebuilding the owning worker.
-type AuxiliaryResolver func(context.Context) (*chatclient.Client, error)
+type AuxiliaryResolver func(context.Context) (chat.Model, error)
 
 // AuxiliaryPrompt is the complete resource envelope for one auxiliary model request.
 // Input bytes and output tokens are deliberately mandatory: background
@@ -82,24 +83,43 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		}
 		span.End()
 	}()
-	client, err := r(ctx)
+	model, err := r(ctx)
 	if err != nil {
 		return "", err
 	}
-	if client == nil {
-		return "", errors.New("auxiliary model: client is required")
+	if dependency.Missing(model) {
+		return "", errors.New("auxiliary model: model is required")
+	}
+	client, err := chatclient.New(chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+		response, callErr := model.Call(ctx, request)
+		if callErr == nil {
+			stage = "response"
+			observeAuxiliaryResponse(span, response)
+		}
+		return response, callErr
+	}), chatclient.Config{})
+	if err != nil {
+		return "", err
 	}
 	stage = "call"
-	response, err := client.Call(ctx, &chat.Request{Messages: []chat.Message{
+	text, err = client.Output(ctx, &chat.Request{Messages: []chat.Message{
 		chat.NewSystemMessage(prompt.SystemPrompt),
 		chat.NewUserMessage(chat.NewTextPart(prompt.UserPrompt)),
-	}, Options: chat.Options{MaxOutputTokens: &prompt.MaxOutputTokens}})
+	}, Options: chat.Options{MaxOutputTokens: &prompt.MaxOutputTokens}}, chatclient.Text())
 	if err != nil {
 		return "", err
 	}
-	stage = "response"
-	if err := response.Validate(); err != nil {
-		return "", fmt.Errorf("auxiliary model: invalid response: %w", err)
+	if strings.TrimSpace(text) == "" {
+		return "", fmt.Errorf("%w: auxiliary model returned blank text", chatclient.ErrInvalidOutput)
+	}
+	return text, nil
+}
+
+// Observation records valid usage even when Scope rejects the completed value.
+// It never changes the response or decides whether text is acceptable.
+func observeAuxiliaryResponse(span trace.Span, response *chat.Response) {
+	if response.Validate() != nil {
+		return
 	}
 	span.SetAttributes(attribute.String("gen_ai.response.finish_reason", string(response.Output.FinishReason)))
 	if response.Metadata != nil && response.Metadata.Usage != nil {
@@ -115,15 +135,4 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 			span.SetAttributes(attribute.Int64("gen_ai.usage.reasoning_tokens", *usage.ReasoningTokens))
 		}
 	}
-	if response.Output.FinishReason != chat.FinishReasonStop {
-		return "", fmt.Errorf("auxiliary model: generation did not complete (finish reason %q)", response.Output.FinishReason)
-	}
-	text = response.Text()
-	if strings.TrimSpace(text) == "" {
-		return "", fmt.Errorf(
-			"auxiliary model: completed without text (finish reason %q)",
-			response.Output.FinishReason,
-		)
-	}
-	return text, nil
 }

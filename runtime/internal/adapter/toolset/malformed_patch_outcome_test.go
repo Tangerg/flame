@@ -22,10 +22,15 @@ func TestMalformedPatchFailsTheCallNotTheRun(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "notes.txt"), []byte("one\ntwo\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	tools, err := buildCWDTools(root, nil, newReadTracker(), newPathLocker())
+	tools, err := openCWDTools(root, nil, newReadTracker(), newPathLocker())
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := tools.close(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	// -1,5 declares five old-side lines; the body carries two.
 	patch := `--- a/notes.txt

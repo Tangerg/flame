@@ -16,7 +16,7 @@ type modelEnvironment struct {
 	defaultSelection   modelref.Selection
 	chatResolver       ChatResolver
 	utilityRoleState   *models.RoleState
-	utilityClient      modeladapter.AuxiliaryResolver
+	utilityModel       modeladapter.AuxiliaryResolver
 	embeddingRoleState *models.RoleState
 	embeddingResolver  *modeladapter.EmbeddingResolver
 	agentMemoryRead    *agentmemoryapp.ReadModel
@@ -43,7 +43,7 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 	if err != nil {
 		return modelEnvironment{}, err
 	}
-	utilityClient, err := modeladapter.LiveUtilityClient(chatResolver, defaultSelection, utilityRoleState)
+	utilityModel, err := modeladapter.LiveUtilityModel(chatResolver, defaultSelection, utilityRoleState)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
@@ -52,7 +52,7 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 		defaultSelection:   defaultSelection,
 		chatResolver:       chatResolver,
 		utilityRoleState:   utilityRoleState,
-		utilityClient:      utilityClient,
+		utilityModel:       utilityModel,
 		embeddingRoleState: embeddingRoleState,
 		embeddingResolver:  embeddingResolver,
 	}

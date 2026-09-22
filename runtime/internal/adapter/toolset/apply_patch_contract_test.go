@@ -10,10 +10,15 @@ import (
 
 func TestApplyPatchPublishedExamplesExecuteThroughGuards(t *testing.T) {
 	root := t.TempDir()
-	tools, err := buildCWDTools(root, nil, newReadTracker(), newPathLocker())
+	tools, err := openCWDTools(root, nil, newReadTracker(), newPathLocker())
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := tools.close(); err != nil {
+			t.Error(err)
+		}
+	})
 	examples := regexp.MustCompile("(?s)```diff\\n(.*?)```").FindAllStringSubmatch(tools.applyPatch.Definition().Description, -1)
 	if len(examples) != 3 {
 		t.Fatal("apply_patch must publish executable create, modify, and delete examples")
