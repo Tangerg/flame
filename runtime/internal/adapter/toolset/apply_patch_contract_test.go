@@ -2,11 +2,15 @@ package toolset
 
 import (
 	"encoding/json"
-	"github.com/Tangerg/flame/runtime/internal/keylock"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
+	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/keylock"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func TestApplyPatchPublishedExamplesExecuteThroughGuards(t *testing.T) {
@@ -51,5 +55,43 @@ func TestApplyPatchPublishedExamplesExecuteThroughGuards(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, "notes.txt")); !os.IsNotExist(err) {
 		t.Fatalf("delete example left file: %v", err)
+	}
+}
+
+func TestApplyPatchNativePathsSurviveGuards(t *testing.T) {
+	root := t.TempDir()
+	tools, err := openCWDTools(root, nil, newReadTracker(), keylock.NewSet())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := tools.close(); err != nil {
+			t.Error(err)
+		}
+	})
+	patch := strings.ReplaceAll("--- /dev/null\n+++ b/notes.txt\n@@ -0,0 +1 @@\n+created\n", "\n", "\r\n")
+	arguments, err := json.Marshal(map[string]string{"patch": patch})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reporter, found, err := toolcontract.Capability[FileMutationReporter](tools.applyPatch)
+	if err != nil || !found {
+		t.Fatalf("native patch capability unavailable: %v, %v", found, err)
+	}
+	paths, err := reporter.MutationPaths(arguments)
+	if err != nil || !slices.Equal(paths, []string{"notes.txt"}) {
+		t.Fatalf("CRLF patch paths = %v, %v", paths, err)
+	}
+	var recorded []string
+	ctx := WithMutationRecorder(t.Context(), func(paths []string) { recorded = append(recorded, paths...) })
+	if _, err := callTextTool(ctx, tools.applyPatch, string(arguments)); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(root, "notes.txt"))
+	if err != nil || string(body) != "created\n" {
+		t.Fatalf("guarded patch content = %q, %v", body, err)
+	}
+	if !slices.Equal(recorded, []string{"notes.txt"}) {
+		t.Fatalf("acknowledged mutations = %v", recorded)
 	}
 }

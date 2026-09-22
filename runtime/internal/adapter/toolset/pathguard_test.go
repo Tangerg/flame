@@ -10,51 +10,44 @@ import (
 	"testing"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
-type patchPathStub struct {
-	called *bool
-}
-
-func (p *patchPathStub) Definition() chat.ToolDefinition {
-	return chat.ToolDefinition{Name: "apply_patch", InputSchema: json.RawMessage(`{"type":"object"}`)}
-}
-
-func (p *patchPathStub) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
-	*p.called = true
-	return chat.NewTextToolOutput("patched"), nil
-}
-
-func (p *patchPathStub) MutationPaths([]byte) ([]string, error) {
-	return []string{"ok.txt", ".git/config"}, nil
-}
-
 func TestPathGuardApplyPatchChecksAllTargets(t *testing.T) {
-	called := false
-	tool := withPathGuard(&patchPathStub{called: &called}, mustRoot(t, t.TempDir()))
-	patch := `--- a/ok.txt
-+++ b/ok.txt
-@@ -1 +1 @@
--old
-+new
---- a/.git/config
-+++ b/.git/config
-@@ -1 +1 @@
--old
-+new
-`
-	arguments, err := json.Marshal(map[string]string{"patch": patch})
-	if err != nil {
-		t.Fatal(err)
-	}
-	out := callRejectedTool(t, t.Context(), tool, string(arguments))
-	if called {
-		t.Fatal("inner tool ran despite protected path in patch")
-	}
-	if !strings.Contains(out, "Refused") {
-		t.Fatalf("out = %q, want refusal", out)
+	for _, patch := range []string{
+		"--- a/ok.txt\n+++ b/ok.txt\n@@ -1 +1 @@\n-old\n+new\n" +
+			"--- a/.git/config\n+++ b/.git/config\n@@ -1 +1 @@\n-old\n+new\n",
+		"diff --git a/ok.txt b/.git/moved\nsimilarity index 100%\nrename from ok.txt\nrename to .git/moved\n",
+		"diff --git a/.git/config b/moved.txt\nsimilarity index 100%\nrename from .git/config\nrename to moved.txt\n",
+	} {
+		dir := t.TempDir()
+		if err := os.Mkdir(filepath.Join(dir, ".git"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		for _, path := range []string{"ok.txt", ".git/config"} {
+			if err := os.WriteFile(filepath.Join(dir, path), []byte("old\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		executable := withPathGuard(mustApplyPatchTool(t, mustLocalExecutor(t, dir)), mustRoot(t, dir))
+		arguments, err := json.Marshal(map[string]string{"patch": patch})
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := callRejectedTool(t, t.Context(), executable, string(arguments))
+		if !strings.Contains(out, "Refused") {
+			t.Fatalf("out = %q, want refusal", out)
+		}
+		for _, path := range []string{"ok.txt", ".git/config"} {
+			body, err := os.ReadFile(filepath.Join(dir, path))
+			if err != nil || string(body) != "old\n" {
+				t.Fatalf("protected patch changed %s: %q, %v", path, body, err)
+			}
+		}
+		for _, path := range []string{"moved.txt", ".git/moved"} {
+			if _, err := os.Stat(filepath.Join(dir, path)); !os.IsNotExist(err) {
+				t.Fatalf("protected patch created %s: %v", path, err)
+			}
+		}
 	}
 }
 

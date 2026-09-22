@@ -21,7 +21,7 @@ func guardedPatchTools(t testing.TB, dir string, format bool) (toolcontract.Tool
 	tracker := newReadTracker()
 	executor := mustLocalExecutor(t, dir)
 	read := withReadTracking(mustRuntimeReadTool(t, executor), tracker, mustRoot(t, dir))
-	mutation := toolcontract.Tool(withApplyPatchMutationPaths(mustApplyPatchTool(t, recordingExecutor{LocalExecutor: executor})))
+	mutation := toolcontract.Tool(mustApplyPatchTool(t, recordingExecutor{LocalExecutor: executor}))
 	if format {
 		mutation = withAutoFormat(mutation, mustRoot(t, dir), executor)
 	}
@@ -331,7 +331,7 @@ func TestReadStampAndSamePathMutationAreAtomic(t *testing.T) {
 	})
 	read := withPathLock(withReadTracking(blockingRead, tracker, mustRoot(t, dir)), locker, mustRoot(t, dir))
 	mutation := withPathLock(withMutationGuard(
-		withApplyPatchMutationPaths(mustApplyPatchTool(t, recordingExecutor{LocalExecutor: mustLocalExecutor(t, alias)})),
+		mustApplyPatchTool(t, recordingExecutor{LocalExecutor: mustLocalExecutor(t, alias)}),
 		tracker, mustRoot(t, alias),
 	), locker, mustRoot(t, alias))
 	arguments := patchArguments(t, "foo.txt", "before\n", "after\n")

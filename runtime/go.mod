@@ -30,9 +30,8 @@ require (
 	github.com/Tangerg/scope/models/zhipu v0.33.0
 	github.com/Tangerg/scope/otel v0.33.0
 	github.com/Tangerg/scope/skills v0.33.0
-	github.com/Tangerg/scope/tools v0.34.0
+	github.com/Tangerg/scope/tools v0.35.0
 	github.com/Tangerg/sse v0.0.6
-	github.com/bluekeyes/go-gitdiff v0.9.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-chi/cors v1.2.2
@@ -67,6 +66,7 @@ require (
 	github.com/adrg/frontmatter v0.2.0 // indirect
 	github.com/anthropics/anthropic-sdk-go v1.72.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
+	github.com/bluekeyes/go-gitdiff v0.9.0 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.10.0 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

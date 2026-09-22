@@ -66,7 +66,7 @@ func openCWDTools(cwd string, ci *codeintel.Analyzer, tracker *readTracker, lock
 	// concurrent mutations to the same file; path guard refuses protected dirs.
 	// apply_patch declares its own paths because they are inside the patch text;
 	// edit needs no declaration, since the guards read its path argument.
-	applyPatch := guardedMutation(withApplyPatchMutationPaths(applyPatchTool), ci, tracker, locker, root, fsExec)
+	applyPatch := guardedMutation(applyPatchTool, ci, tracker, locker, root, fsExec)
 	edit := guardedMutation(editTool, ci, tracker, locker, root, fsExec)
 
 	families := cwdTools{

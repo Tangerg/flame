@@ -26,7 +26,7 @@ func TestPathLockUsesOneCanonicalMutationIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mutation := withApplyPatchMutationPaths(mustApplyPatchTool(t, executor))
+	mutation := mustApplyPatchTool(t, executor)
 	mutationPaths, err := resolvedMutationPaths(
 		mutation,
 		mustTestInvocation(t, mutation, patchArguments(t, "real.txt", "content", "next")), mustRoot(t, cwd),
@@ -56,7 +56,7 @@ func TestPathLockUsesPhysicalIdentityForSymlinkAlias(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	mutation := withApplyPatchMutationPaths(mustApplyPatchTool(t, executor))
+	mutation := mustApplyPatchTool(t, executor)
 	aliasPaths, err := resolvedMutationPaths(
 		mutation,
 		mustTestInvocation(t, mutation, patchArguments(t, "alias.txt", "content", "next")), mustRoot(t, cwd),
