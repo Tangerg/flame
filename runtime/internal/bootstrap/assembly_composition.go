@@ -352,6 +352,10 @@ func buildExecutionComposition(
 		return executionComposition{}, fmt.Errorf("runtime: Interaction executor: %w", err)
 	}
 	lifetime.executor = interactionExecutor
+	toolRegistry, err := toolset.NewDiagnosticRegistry(cfg.DefaultWorkspacePath)
+	if err != nil {
+		return executionComposition{}, err
+	}
 	return executionComposition{
 		conversation:      conversation,
 		models:            modelServices,
@@ -360,7 +364,7 @@ func buildExecutionComposition(
 		workingContexts:   workingContexts,
 		transientSessions: transientSessions,
 		executor:          interactionExecutor,
-		toolRegistry:      toolset.NewDiagnosticRegistry(),
+		toolRegistry:      toolRegistry,
 	}, nil
 }
 

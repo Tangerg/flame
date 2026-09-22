@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -24,16 +25,21 @@ const attrGenAIToolName = "gen_ai.tool.name"
 // catalog. It deliberately does not reuse the agent resolver: agent tools may
 // require a process, session, approval flow, or model loop that does not exist
 // for a client-driven call.
-func NewDiagnosticRegistry() DiagnosticRegistry { return DiagnosticRegistry{} }
+func NewDiagnosticRegistry(directory string) (DiagnosticRegistry, error) {
+	if !filepath.IsAbs(directory) {
+		return DiagnosticRegistry{}, errors.New("toolset: diagnostic catalog directory must be absolute")
+	}
+	return DiagnosticRegistry{directory: filepath.Clean(directory)}, nil
+}
 
 // DiagnosticRegistry is the direct-invocation adapter for the small diagnostic
 // tool catalog exposed outside an Agent Run.
-type DiagnosticRegistry struct{}
+type DiagnosticRegistry struct{ directory string }
 
 // List translates the adapter catalog in encounter order. Application owns the
 // safe, unique, name-ordered public catalog.
-func (DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
-	manifest, err := openDirectTools(".")
+func (r DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
+	manifest, err := openDirectTools(r.directory)
 	if err != nil {
 		return nil, err
 	}

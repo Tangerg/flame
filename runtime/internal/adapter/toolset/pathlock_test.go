@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/keylock"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -21,15 +22,14 @@ func TestPathLockUsesOneCanonicalMutationIdentity(t *testing.T) {
 
 	executor := mustLocalExecutor(t, cwd)
 	read := mustReadTool(t, executor)
-	readPaths, err := resolvedMutationPaths(read, mustTestInvocation(t, read, readArguments(realPath)), cwd)
+	readPaths, err := resolvedMutationPaths(read, mustTestInvocation(t, read, readArguments(realPath)), mustRoot(t, cwd))
 	if err != nil {
 		t.Fatal(err)
 	}
 	mutation := withApplyPatchMutationPaths(mustApplyPatchTool(t, executor))
 	mutationPaths, err := resolvedMutationPaths(
 		mutation,
-		mustTestInvocation(t, mutation, patchArguments(t, "real.txt", "content", "next")),
-		cwd,
+		mustTestInvocation(t, mutation, patchArguments(t, "real.txt", "content", "next")), mustRoot(t, cwd),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -52,15 +52,14 @@ func TestPathLockUsesPhysicalIdentityForSymlinkAlias(t *testing.T) {
 
 	executor := mustLocalExecutor(t, cwd)
 	read := mustReadTool(t, executor)
-	realPaths, err := resolvedMutationPaths(read, mustTestInvocation(t, read, readArguments(realPath)), cwd)
+	realPaths, err := resolvedMutationPaths(read, mustTestInvocation(t, read, readArguments(realPath)), mustRoot(t, cwd))
 	if err != nil {
 		t.Fatal(err)
 	}
 	mutation := withApplyPatchMutationPaths(mustApplyPatchTool(t, executor))
 	aliasPaths, err := resolvedMutationPaths(
 		mutation,
-		mustTestInvocation(t, mutation, patchArguments(t, "alias.txt", "content", "next")),
-		cwd,
+		mustTestInvocation(t, mutation, patchArguments(t, "alias.txt", "content", "next")), mustRoot(t, cwd),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -71,10 +70,9 @@ func TestPathLockUsesPhysicalIdentityForSymlinkAlias(t *testing.T) {
 }
 
 // TestAssembledMutationToolsStillReportWhatTheyMutate pins the wrapping chain
-// through the real stack. A guarded mutation tool is six wrappers deep, and
+// through the real stack. A guarded mutation tool has several decorators, and
 // everything above it asks the OUTERMOST tool what the call will touch — the
-// approval gate renders that blast radius, and the tool-end event reports the
-// paths that changed. A layer that stops being a WrappingTool ends the chain and
+// approval gate renders that blast radius, and locks reserve every prospective target. A layer that stops being a WrappingTool ends the chain and
 // silently answers "nothing", which reads as a safe tool rather than a broken
 // lookup.
 //
@@ -88,7 +86,7 @@ func TestAssembledMutationToolsStillReportWhatTheyMutate(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The composition the resolver exposes, not a hand-assembled stand-in.
-	tools, err := openCWDTools(cwd, nil, newReadTracker(), newPathLocker())
+	tools, err := openCWDTools(cwd, nil, newReadTracker(), keylock.NewSet())
 	if err != nil {
 		t.Fatal(err)
 	}

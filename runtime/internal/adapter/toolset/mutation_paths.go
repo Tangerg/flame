@@ -12,7 +12,6 @@ import (
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
 // FileMutationReporter is the optional Tool capability that names the paths one
@@ -56,13 +55,13 @@ func mutationPaths(tool toolcontract.Tool, invocation toolcontract.Invocation) (
 	return cleanPathList(paths), nil
 }
 
-func resolvedMutationPaths(tool toolcontract.Tool, invocation toolcontract.Invocation, cwd string) ([]string, error) {
+func resolvedMutationPaths(tool toolcontract.Tool, invocation toolcontract.Invocation, root *filesystemRoot) ([]string, error) {
 	paths, err := mutationPaths(tool, invocation)
 	if err != nil {
 		return nil, err
 	}
 	for i, path := range paths {
-		resolved, err := pathidentity.Canonical(cwd, path)
+		resolved, err := resolveRootPath(root, path)
 		if err != nil {
 			return nil, err
 		}

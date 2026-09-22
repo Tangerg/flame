@@ -2,14 +2,14 @@ package toolset
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
 
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/scope/tools/fs"
 )
 
 // protectedDirs are directory names the agent must never modify, even when
@@ -33,14 +33,14 @@ var protectedDirs = []string{".git"}
 // into a model-facing refusal before any staleness or diagnostics work begins.
 // Shell/git capabilities remain the explicit route for operations outside the
 // workspace.
-func withPathGuard(inner toolcontract.Tool, cwd string) toolcontract.Tool {
+func withPathGuard(inner toolcontract.Tool, root *filesystemRoot) toolcontract.Tool {
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
 			return chat.ToolOutput{}, fmt.Errorf("inspect mutation paths: %w", err)
 		}
 		for _, path := range paths {
-			if refusal, ok := guardMutationPath(cwd, path); !ok {
+			if refusal, ok := guardMutationPath(root, path); !ok {
 				failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
 					Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput(refusal),
 				})
@@ -54,38 +54,19 @@ func withPathGuard(inner toolcontract.Tool, cwd string) toolcontract.Tool {
 	})
 }
 
-// guardMutationPath decides whether a mutation of path (relative to cwd) is
-// allowed, returning ok=false plus a model-facing refusal otherwise. A path is
-// refused when it cannot be resolved, lands inside a [protectedDirs] directory,
-// or escapes the workspace root. Pure (no ctx) so the boundary decision is
-// directly testable.
-func guardMutationPath(cwd, path string) (refusal string, ok bool) {
-	resolved, err := pathidentity.Resolve(cwd, path)
+// guardMutationPath checks protected directories through the pinned root.
+func guardMutationPath(root *filesystemRoot, path string) (refusal string, ok bool) {
+	resolved, err := resolveRootPath(root, path)
+	if errors.Is(err, fs.ErrPathOutsideRoot) {
+		return fmt.Sprintf("Refused: %q is outside this workspace. Filesystem tools may only modify files inside their workspace root.", path), false
+	}
 	if err != nil {
 		return fmt.Sprintf("Refused: %q could not be resolved safely (%v).", path, err), false
 	}
-	if dir := protectedDirHit(resolved); dir != "" {
+	if dir := protectedDirHit(filepath.Join(root.identity, resolved)); dir != "" {
 		return fmt.Sprintf("Refused: %q is inside the protected %q directory, which is read-only to the agent. Use the shell/git tooling if you need to change version-control state.", path, dir), false
 	}
-	inside, err := withinWorkspace(cwd, resolved)
-	if err != nil {
-		return fmt.Sprintf("Refused: %q could not be checked against the workspace boundary (%v).", path, err), false
-	}
-	if !inside {
-		return fmt.Sprintf("Refused: %q is outside this workspace. Filesystem tools may only modify files inside their workspace root.", path), false
-	}
 	return "", true
-}
-
-// withinWorkspace reports whether the resolved path is cwd or below it, with
-// cwd resolved to its physical identity first so a symlinked workspace root
-// (macOS temp dirs live under /var → /private/var) compares correctly.
-func withinWorkspace(cwd, resolved string) (bool, error) {
-	root, err := pathidentity.Resolve(cwd, ".")
-	if err != nil {
-		return false, err
-	}
-	return pathidentity.Contains(root, resolved)
 }
 
 // protectedDirHit returns the [protectedDirs] name when abs lies inside one

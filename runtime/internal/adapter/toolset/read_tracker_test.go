@@ -32,7 +32,7 @@ func TestTracker(t *testing.T) {
 	}
 
 	// Refresh re-stamps the current content → passes again.
-	tr.refresh(sess, path, two)
+	tr.record(sess, path, two)
 	if got := tr.check(sess, path, two); got != mutationAllowed {
 		t.Fatalf("post-refresh Check = %v, want ok", got)
 	}

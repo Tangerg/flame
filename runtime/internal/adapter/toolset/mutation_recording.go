@@ -2,18 +2,14 @@ package toolset
 
 import (
 	"context"
-	"slices"
 
-	"github.com/Tangerg/scope/core/chat"
-	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/Tangerg/scope/tools/fs"
 )
 
 type mutationRecorderKey struct{}
 
-// WithMutationRecorder installs the invocation-scoped sink used by filesystem
-// decorators to report writes that actually crossed their guards. Potential
-// paths declared by a tool remain useful for locking and approval, but they are
-// not evidence that a call changed the workspace.
+// WithMutationRecorder observes acknowledged filesystem effects. A Tool's
+// potential targets are approval/locking inputs, not proof of a mutation.
 func WithMutationRecorder(ctx context.Context, record func([]string)) context.Context {
 	if record == nil {
 		return ctx
@@ -21,23 +17,29 @@ func WithMutationRecorder(ctx context.Context, record func([]string)) context.Co
 	return context.WithValue(ctx, mutationRecorderKey{}, record)
 }
 
-// withMutationRecording sits inside every soft guard and immediately outside
-// the operation that may write. A read-before-write refusal never reaches it;
-// an execution error never records; a successful mutation reports the paths
-// declared by the tool while the invocation context is still alive.
-func withMutationRecording(inner toolcontract.Tool) toolcontract.Tool {
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
-		out, err := inner.Call(ctx, invocation)
-		if err != nil {
-			return out, err
-		}
-		paths, pathErr := mutationPaths(inner, invocation)
-		if pathErr != nil || len(paths) == 0 {
-			return out, nil
-		}
-		if record, ok := ctx.Value(mutationRecorderKey{}).(func([]string)); ok {
-			record(slices.Clone(paths))
-		}
-		return out, nil
-	})
+type recordingExecutor struct{ *fs.LocalExecutor }
+
+func (e recordingExecutor) Edit(ctx context.Context, request fs.EditRequest) (fs.EditResponse, error) {
+	response, err := e.LocalExecutor.Edit(ctx, request)
+	if err == nil {
+		recordMutations(ctx, []string{request.Path})
+	}
+	return response, err
+}
+
+func (e recordingExecutor) ApplyPatch(ctx context.Context, request fs.ApplyPatchRequest) (fs.ApplyPatchResponse, error) {
+	response, err := e.LocalExecutor.ApplyPatch(ctx, request)
+	paths := make([]string, 0, len(response.Files)*2)
+	for _, file := range response.Files {
+		paths = append(paths, file.Path, file.MovedFrom)
+	}
+	// Scope reports acknowledged partial effects even when a later commit fails.
+	recordMutations(ctx, cleanPathList(paths))
+	return response, err
+}
+
+func recordMutations(ctx context.Context, paths []string) {
+	if record, ok := ctx.Value(mutationRecorderKey{}).(func([]string)); ok && len(paths) > 0 {
+		record(paths)
+	}
 }

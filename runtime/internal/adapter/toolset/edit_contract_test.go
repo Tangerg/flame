@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/keylock"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -18,7 +19,7 @@ func TestEditExecutesThroughTheMutationGuards(t *testing.T) {
 	if err := os.WriteFile(notes, []byte("first\nsecond\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	tools, err := openCWDTools(root, nil, newReadTracker(), newPathLocker())
+	tools, err := openCWDTools(root, nil, newReadTracker(), keylock.NewSet())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +60,7 @@ func TestEditRefusesProtectedDirectories(t *testing.T) {
 	if err := os.WriteFile(config, []byte("[core]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	tools, err := openCWDTools(root, nil, newReadTracker(), newPathLocker())
+	tools, err := openCWDTools(root, nil, newReadTracker(), keylock.NewSet())
 	if err != nil {
 		t.Fatal(err)
 	}

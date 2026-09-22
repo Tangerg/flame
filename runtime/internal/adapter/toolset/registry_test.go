@@ -13,7 +13,7 @@ import (
 )
 
 func TestDiagnosticRegistryListsOnlyDirectTools(t *testing.T) {
-	registry := toolset.NewDiagnosticRegistry()
+	registry := newDiagnosticRegistry(t)
 
 	found, err := registry.List(t.Context())
 	if err != nil {
@@ -49,7 +49,7 @@ func TestDiagnosticRegistryInvokesWithinRoot(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "note.txt"), []byte("flame"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	registry := toolset.NewDiagnosticRegistry()
+	registry := newDiagnosticRegistry(t)
 	output, err := registry.Invoke(t.Context(), root, "read", diagnosticArguments(t, `{"path":"note.txt"}`))
 	if err != nil {
 		t.Fatalf("Invoke: %v", err)
@@ -79,7 +79,7 @@ func TestDiagnosticRegistryValidatesBeforeNormalizingArguments(t *testing.T) {
 		{"grep", `{"pattern":"flame","max_results":null}`},
 	} {
 		t.Run(test.name+"/"+test.arguments, func(t *testing.T) {
-			_, err := toolset.NewDiagnosticRegistry().Invoke(t.Context(), root, test.name, diagnosticArguments(t, test.arguments))
+			_, err := newDiagnosticRegistry(t).Invoke(t.Context(), root, test.name, diagnosticArguments(t, test.arguments))
 			if !errors.Is(err, tool.ErrInvalidArguments) {
 				t.Fatalf("Invoke(%s) error = %v, want invalid Tool input", test.arguments, err)
 			}
@@ -88,7 +88,7 @@ func TestDiagnosticRegistryValidatesBeforeNormalizingArguments(t *testing.T) {
 }
 
 func TestDiagnosticRegistryRejectsUnknownOrEscapingTool(t *testing.T) {
-	registry := toolset.NewDiagnosticRegistry()
+	registry := newDiagnosticRegistry(t)
 	if _, err := registry.Invoke(t.Context(), t.TempDir(), "shell", diagnosticArguments(t, `{}`)); err == nil {
 		t.Fatal("Invoke error = nil, want unknown-tool error")
 	}
@@ -114,7 +114,7 @@ func TestDiagnosticRegistryRejectsSymlinkEscape(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := toolset.NewDiagnosticRegistry().Invoke(t.Context(), root, "read", diagnosticArguments(t, `{"path":"outside/secret.txt"}`))
+	_, err := newDiagnosticRegistry(t).Invoke(t.Context(), root, "read", diagnosticArguments(t, `{"path":"outside/secret.txt"}`))
 	if !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
 		t.Fatalf("Invoke symlink escape error = %v, want ErrPathOutsideRoot", err)
 	}
@@ -127,4 +127,21 @@ func diagnosticArguments(t *testing.T, raw string) tool.Arguments {
 		t.Fatalf("ParseArguments: %v", err)
 	}
 	return arguments
+}
+
+func newDiagnosticRegistry(t *testing.T) toolset.DiagnosticRegistry {
+	t.Helper()
+	registry, err := toolset.NewDiagnosticRegistry(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return registry
+}
+
+func TestDiagnosticRegistryRequiresExplicitDirectory(t *testing.T) {
+	for _, directory := range []string{"", ".", "relative"} {
+		if _, err := toolset.NewDiagnosticRegistry(directory); err == nil {
+			t.Fatalf("accepted implicit directory %q", directory)
+		}
+	}
 }

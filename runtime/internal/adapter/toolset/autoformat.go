@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"go/format"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,8 +16,8 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/scope/tools/fs"
 )
 
 const (
@@ -30,9 +29,9 @@ const (
 var errAutoFormatFileTooLarge = fmt.Errorf(
 	"auto-format: file exceeds the %d MiB limit", maxAutoFormatFileBytes>>20)
 
-func withAutoFormat(inner toolcontract.Tool, cwd string) toolcontract.Tool {
+func withAutoFormat(inner toolcontract.Tool, root *filesystemRoot, executor *fs.LocalExecutor) toolcontract.Tool {
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
-		paths, err := resolvedMutationPaths(inner, invocation, cwd)
+		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
 			return chat.ToolOutput{}, fmt.Errorf("inspect mutation paths before formatting: %w", err)
 		}
@@ -42,7 +41,7 @@ func withAutoFormat(inner toolcontract.Tool, cwd string) toolcontract.Tool {
 		}
 		var failed []string
 		for _, path := range paths {
-			if formatErr := formatPath(ctx, path); formatErr != nil {
+			if formatErr := formatPath(ctx, root, executor, path); formatErr != nil {
 				failed = append(failed, formatErr.Error())
 			}
 		}
@@ -53,8 +52,12 @@ func withAutoFormat(inner toolcontract.Tool, cwd string) toolcontract.Tool {
 	})
 }
 
-func formatPath(ctx context.Context, path string) error {
-	info, err := os.Lstat(path)
+func formatPath(ctx context.Context, root *filesystemRoot, executor *fs.LocalExecutor, path string) error {
+	path, err := rootRelative(root.Name(), path)
+	if err != nil {
+		return err
+	}
+	info, err := root.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
@@ -77,11 +80,11 @@ func formatPath(ctx context.Context, path string) error {
 		return nil
 	}
 
-	source, err := readAutoFormatFile(ctx, path)
+	source, err := readAutoFormatFile(ctx, root, executor, path)
 	if err != nil {
 		return fmt.Errorf("%s: %w", path, err)
 	}
-	input := source.content
+	input := []byte(source.content)
 	var formatted []byte
 	switch extension {
 	case ".go":
@@ -94,13 +97,16 @@ func formatPath(ctx context.Context, path string) error {
 			return nil
 		}
 		var buffer bytes.Buffer
-		if indentErr := json.Indent(&buffer, input, "", "  "); indentErr != nil {
+		if indentErr := json.Indent(&buffer, bytes.TrimSpace(input), "", "  "); indentErr != nil {
 			return nil
 		}
 		buffer.WriteByte('\n')
 		formatted = buffer.Bytes()
 	default:
-		formatted, err = runFormatter(ctx, input, prettier, "--stdin-filepath", path)
+		if err := verifyWorkspacePath(root); err != nil {
+			return err
+		}
+		formatted, err = runFormatter(ctx, input, prettier, "--stdin-filepath", filepath.Join(root.Name(), path))
 		if err != nil {
 			return err
 		}
@@ -114,7 +120,7 @@ func formatPath(ctx context.Context, path string) error {
 	if bytes.Equal(input, formatted) {
 		return nil
 	}
-	return writeFormattedFile(path, formatted, source.info)
+	return applyFormattedFile(ctx, root, executor, path, formatted, source)
 }
 
 func runFormatter(ctx context.Context, input []byte, name string, args ...string) ([]byte, error) {
@@ -156,50 +162,36 @@ func runFormatter(ctx context.Context, input []byte, name string, args ...string
 }
 
 type autoFormatSource struct {
-	content []byte
+	content string
 	info    os.FileInfo
 }
 
-func readAutoFormatFile(ctx context.Context, path string) (_ autoFormatSource, err error) {
-	if cause := context.Cause(ctx); cause != nil {
-		return autoFormatSource{}, cause
+func readAutoFormatFile(ctx context.Context, root *filesystemRoot, executor *fs.LocalExecutor, path string) (autoFormatSource, error) {
+	if err := context.Cause(ctx); err != nil {
+		return autoFormatSource{}, err
 	}
-	pathInfo, err := os.Lstat(path)
+	before, err := root.Lstat(path)
 	if err != nil {
 		return autoFormatSource{}, err
 	}
-	if err := validateAutoFormatSource(pathInfo); err != nil {
+	if err := validateAutoFormatSource(before); err != nil {
 		return autoFormatSource{}, err
 	}
-	file, info, err := fileinput.OpenExpected(path, pathInfo, maxAutoFormatFileBytes)
-	if err != nil {
-		switch {
-		case errors.Is(err, fileinput.ErrTooLarge):
-			return autoFormatSource{}, fmt.Errorf("%w: file grew while opening", errAutoFormatFileTooLarge)
-		case errors.Is(err, fileinput.ErrNotRegular):
-			return autoFormatSource{}, errors.New("unsupported file mode while opening for formatting")
-		case errors.Is(err, fileinput.ErrChanged):
-			return autoFormatSource{}, errors.New("file changed while opening for formatting")
-		}
-		return autoFormatSource{}, err
-	}
-	defer func() {
-		err = errors.Join(err, file.Close())
-	}()
-	content, err := io.ReadAll(io.LimitReader(
-		cancelread.Reader(ctx, file),
-		maxAutoFormatFileBytes+1,
-	))
+	result, err := executor.Read(ctx, fs.ReadInput{
+		Path: path, MaxInputBytes: maxAutoFormatFileBytes,
+		MaxLineBytes: int(maxAutoFormatFileBytes), MaxOutputBytes: int(maxAutoFormatFileBytes),
+	})
 	if err != nil {
 		return autoFormatSource{}, err
 	}
-	if len(content) > int(maxAutoFormatFileBytes) {
-		return autoFormatSource{}, fmt.Errorf("%w: file grew while reading", errAutoFormatFileTooLarge)
+	if result.Truncated {
+		return autoFormatSource{}, errAutoFormatFileTooLarge
 	}
-	if err := fileinput.VerifyPathVersion(file, info, path); err != nil {
+	after, err := root.Lstat(path)
+	if err != nil || !fileinput.SameVersion(before, after) {
 		return autoFormatSource{}, errors.New("file changed while reading for formatting")
 	}
-	return autoFormatSource{content: content, info: info}, nil
+	return autoFormatSource{content: result.Content, info: after}, nil
 }
 
 func validateAutoFormatSource(info os.FileInfo) error {
@@ -239,45 +231,14 @@ func (f *formatOutputBuffer) String() string {
 
 func (f *formatOutputBuffer) Bytes() []byte { return f.buffer.Bytes() }
 
-func writeFormattedFile(path string, data []byte, source os.FileInfo) error {
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".format-*")
-	if err != nil {
-		return err
-	}
-	tmpPath := tmp.Name()
-	closed := false
-	defer func() {
-		if !closed {
-			_ = tmp.Close()
-		}
-		_ = os.Remove(tmpPath)
-	}()
-	if _, err := tmp.Write(data); err != nil {
-		return err
-	}
-	if err := tmp.Chmod(source.Mode().Perm()); err != nil {
-		return err
-	}
-	if err := tmp.Sync(); err != nil {
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		closed = true
-		return err
-	}
-	closed = true
-	current, err := os.Lstat(path)
-	if err != nil || !fileinput.SameVersion(source, current) {
+// Scope owns atomic replacement, parent-directory handles, and preservation of
+// BOM, line endings, and mode. Formatting supplies only an exact-text edit of
+// the complete, bounded source it observed.
+func applyFormattedFile(ctx context.Context, root *filesystemRoot, executor *fs.LocalExecutor, path string, data []byte, source autoFormatSource) error {
+	current, err := root.Lstat(path)
+	if err != nil || !fileinput.SameVersion(source.info, current) {
 		return errors.New("file changed while formatting")
 	}
-	if err := os.Rename(tmpPath, path); err != nil {
-		return err
-	}
-	// The replacement is already committed. Directory sync strengthens crash
-	// durability where supported, but a refusal cannot turn a successful format
-	// into an apparent failure that might overwrite a later user edit on retry.
-	if directory, _, openErr := fileinput.OpenDirectory(filepath.Dir(path)); openErr == nil {
-		_ = errors.Join(directory.Sync(), directory.Close())
-	}
-	return nil
+	_, err = executor.Edit(ctx, fs.EditRequest{Path: path, OldString: source.content, NewString: string(data)})
+	return err
 }

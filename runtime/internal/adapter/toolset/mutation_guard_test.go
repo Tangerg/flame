@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/keylock"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -19,15 +20,14 @@ func guardedPatchTools(t testing.TB, dir string, format bool) (toolcontract.Tool
 	t.Helper()
 	tracker := newReadTracker()
 	executor := mustLocalExecutor(t, dir)
-	read := withReadTracking(mustRuntimeReadTool(t, executor), tracker, dir)
-	mutation := toolcontract.Tool(withApplyPatchMutationPaths(mustApplyPatchTool(t, executor)))
+	read := withReadTracking(mustRuntimeReadTool(t, executor), tracker, mustRoot(t, dir))
+	mutation := toolcontract.Tool(withApplyPatchMutationPaths(mustApplyPatchTool(t, recordingExecutor{LocalExecutor: executor})))
 	if format {
-		mutation = withAutoFormat(mutation, dir)
+		mutation = withAutoFormat(mutation, mustRoot(t, dir), executor)
 	}
 	return read, withMutationGuard(
-		withMutationRecording(withMutationDiagnostics(mutation, nil, dir)),
-		tracker,
-		dir,
+		withMutationDiagnostics(mutation, nil, mustRoot(t, dir)),
+		tracker, mustRoot(t, dir),
 	)
 }
 
@@ -233,7 +233,7 @@ func TestFingerprintExistingFilePreservesCancellation(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, _, err := fingerprintExistingFile(ctx, path); !errors.Is(err, context.Canceled) {
+	if _, _, err := fingerprintExistingFile(ctx, mustRoot(t, filepath.Dir(path)), filepath.Base(path)); !errors.Is(err, context.Canceled) {
 		t.Fatalf("fingerprintExistingFile error = %v, want context.Canceled", err)
 	}
 }
@@ -254,7 +254,7 @@ func TestReadTrackingRejectsAFileChangedAfterReadBeforeStamp(t *testing.T) {
 		<-release
 		return out, err
 	})
-	tracked := withReadTracking(blocking, tracker, dir)
+	tracked := withReadTracking(blocking, tracker, mustRoot(t, dir))
 	done := make(chan error, 1)
 	go func() {
 		_, err := callTextTool(t.Context(), tracked, `{"path":"foo.txt"}`)
@@ -287,7 +287,7 @@ func TestReadTrackingRejectsSameContentReplacementDuringRead(t *testing.T) {
 		<-release
 		return out, err
 	})
-	tracked := withReadTracking(blocking, tracker, dir)
+	tracked := withReadTracking(blocking, tracker, mustRoot(t, dir))
 	done := make(chan error, 1)
 	go func() {
 		_, err := callTextTool(t.Context(), tracked, `{"path":"foo.txt"}`)
@@ -309,12 +309,16 @@ func TestReadTrackingRejectsSameContentReplacementDuringRead(t *testing.T) {
 
 func TestReadStampAndSamePathMutationAreAtomic(t *testing.T) {
 	dir := t.TempDir()
+	alias := filepath.Join(t.TempDir(), "workspace-alias")
+	if err := os.Symlink(dir, alias); err != nil {
+		t.Fatal(err)
+	}
 	path := filepath.Join(dir, "foo.txt")
 	if err := os.WriteFile(path, []byte("before\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	tracker := newReadTracker()
-	locker := newPathLocker()
+	locker := keylock.NewSet()
 	executor := mustLocalExecutor(t, dir)
 	readStarted := make(chan struct{})
 	releaseRead := make(chan struct{})
@@ -325,12 +329,11 @@ func TestReadStampAndSamePathMutationAreAtomic(t *testing.T) {
 		<-releaseRead
 		return out, err
 	})
-	read := withPathLock(withReadTracking(blockingRead, tracker, dir), locker, dir)
+	read := withPathLock(withReadTracking(blockingRead, tracker, mustRoot(t, dir)), locker, mustRoot(t, dir))
 	mutation := withPathLock(withMutationGuard(
-		withApplyPatchMutationPaths(mustApplyPatchTool(t, executor)),
-		tracker,
-		dir,
-	), locker, dir)
+		withApplyPatchMutationPaths(mustApplyPatchTool(t, recordingExecutor{LocalExecutor: mustLocalExecutor(t, alias)})),
+		tracker, mustRoot(t, alias),
+	), locker, mustRoot(t, alias))
 	arguments := patchArguments(t, "foo.txt", "before\n", "after\n")
 
 	readDone := make(chan error, 1)
@@ -382,7 +385,7 @@ func TestMutationGuardNamesTheLimitItCannotSee(t *testing.T) {
 	}
 
 	tracker := newReadTracker()
-	blocked, err := admitMutationPaths(t.Context(), tracker, dir, "ses_1", []string{"huge.bin"})
+	blocked, err := admitMutationPaths(t.Context(), tracker, mustRoot(t, dir), "ses_1", []string{"huge.bin"})
 	if err != nil {
 		t.Fatalf("admitMutationPaths: %v", err)
 	}

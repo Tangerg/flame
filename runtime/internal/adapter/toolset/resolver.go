@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/keylock"
 )
 
 // The per-Run application-context seam (cwd, session, isolation, goal incarnation)
@@ -40,7 +41,7 @@ type Resolver struct {
 	lsp           []toolcontract.Tool        // code-intelligence tools; cwd read per-call (analyzer keys servers by root)
 	codeIntel     *codeintel.Analyzer        // backs post-patch diagnostics (rebuilt per resolution with the Run's cwd)
 	readTracker   *readTracker               // backs the read-before-patch and stale-read guards
-	pathLocker    *pathLocker                // serializes same-path fs calls across every concurrent Run resolution
+	pathLocker    *keylock.Set               // serializes same-path fs calls across every concurrent Run resolution
 	shell         []toolcontract.Tool        // shell tools (shell / read_shell_output / stop_shell) over the exec.Shells; cwd read per-call
 	staticSpecs   []staticSpec               // built-once capabilities with one group/placement policy for Run manifests
 
@@ -159,7 +160,7 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 		},
 		codeIntel:       d.CodeIntel,
 		readTracker:     d.ReadTracker,
-		pathLocker:      newPathLocker(),
+		pathLocker:      keylock.NewSet(),
 		mcpToolDisabled: d.MCPToolDisabled,
 	}
 	for _, scheduleTool := range d.ScheduleTools {

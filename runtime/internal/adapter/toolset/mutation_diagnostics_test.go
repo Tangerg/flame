@@ -39,7 +39,7 @@ func TestMutationDiagnosticsAppendsProblems(t *testing.T) {
 			return "wrote " + a.Path, nil
 		},
 	)
-	wrapped := withMutationDiagnostics(inner, ci, root)
+	wrapped := withMutationDiagnostics(inner, ci, mustRoot(t, root))
 	args := `{"path":"oops.go","content":"package main\n\nfunc main() {\n\tundefinedXYZ()\n}\n"}`
 
 	// Cold gopls may need more than one settle window; the file content is

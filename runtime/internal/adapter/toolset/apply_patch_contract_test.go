@@ -2,6 +2,7 @@ package toolset
 
 import (
 	"encoding/json"
+	"github.com/Tangerg/flame/runtime/internal/keylock"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -10,7 +11,7 @@ import (
 
 func TestApplyPatchPublishedExamplesExecuteThroughGuards(t *testing.T) {
 	root := t.TempDir()
-	tools, err := openCWDTools(root, nil, newReadTracker(), newPathLocker())
+	tools, err := openCWDTools(root, nil, newReadTracker(), keylock.NewSet())
 	if err != nil {
 		t.Fatal(err)
 	}

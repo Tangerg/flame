@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"sync"
 
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -21,11 +20,10 @@ import (
 // process. Keep this list explicit: being available to a model does not make a
 // tool valid for a client-driven call.
 func openDirectTools(root string) (_ Manifest, err error) {
-	executor, err := fs.NewLocalExecutor(root)
+	authority, executor, close, err := openFilesystem(root)
 	if err != nil {
 		return Manifest{}, fmt.Errorf("toolset: construct direct filesystem executor: %w", err)
 	}
-	close := sync.OnceValue(executor.Close)
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, close())
@@ -36,7 +34,7 @@ func openDirectTools(root string) (_ Manifest, err error) {
 		return Manifest{}, err
 	}
 	search := newRuntimeSearchTools(root)
-	return Manifest{Visible: []toolcontract.Tool{readTool, search.glob, search.grep}, close: close}, nil
+	return Manifest{Visible: []toolcontract.Tool{withWorkspacePath(readTool, authority), withWorkspacePath(search.glob, authority), withWorkspacePath(search.grep, authority)}, close: close}, nil
 }
 
 // Only Scope-admitted inputs may be normalized: typed decoding and re-encoding
@@ -104,6 +102,11 @@ func encodeDirectArguments(value any) (string, error) {
 func directPath(root, path string) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("%w: path is required", workspaceapp.ErrPathRequired)
+	}
+	if !filepath.IsAbs(path) {
+		if _, err := rootRelative(root, path); err != nil {
+			return "", fmt.Errorf("%w: %w", workspaceapp.ErrPathOutsideRoot, err)
+		}
 	}
 	// Resolve both values first. On macOS, temporary directories commonly have
 	// a lexical /var/... spelling but a physical /private/var/... spelling;

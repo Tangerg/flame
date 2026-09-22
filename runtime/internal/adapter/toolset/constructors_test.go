@@ -9,7 +9,7 @@ import (
 
 func mustLocalExecutor(t testing.TB, root string) *fs.LocalExecutor {
 	t.Helper()
-	executor, err := fs.NewLocalExecutor(root)
+	executor, err := fs.NewLocalExecutor(mustRoot(t, root).Root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,4 +60,18 @@ func mustDirectTools(t testing.TB, root string) []toolcontract.Tool {
 		}
 	})
 	return manifest.Visible
+}
+
+func mustRoot(t testing.TB, directory string) *filesystemRoot {
+	t.Helper()
+	root, err := openFilesystemRoot(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := root.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return root
 }

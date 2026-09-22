@@ -27,10 +27,6 @@ func (r *readTracker) record(session, path string, fingerprint contentFingerprin
 	r.put(session, path, readStamp{hash: fingerprint})
 }
 
-func (r *readTracker) refresh(session, path string, fingerprint contentFingerprint) {
-	r.put(session, path, readStamp{hash: fingerprint})
-}
-
 func (r *readTracker) forget(session, path string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

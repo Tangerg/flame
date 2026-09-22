@@ -33,7 +33,7 @@ func (p *patchPathStub) MutationPaths([]byte) ([]string, error) {
 
 func TestPathGuardApplyPatchChecksAllTargets(t *testing.T) {
 	called := false
-	tool := withPathGuard(&patchPathStub{called: &called}, "/work")
+	tool := withPathGuard(&patchPathStub{called: &called}, mustRoot(t, t.TempDir()))
 	patch := `--- a/ok.txt
 +++ b/ok.txt
 @@ -1 +1 @@
@@ -83,7 +83,7 @@ func TestWithPathGuardFailsClosedWhenMutationDiscoveryFails(t *testing.T) {
 	)
 
 	_, err := callTextTool(
-		t.Context(), withPathGuard(failingMutationReporter{Tool: inner, err: cause}, t.TempDir()),
+		t.Context(), withPathGuard(failingMutationReporter{Tool: inner, err: cause}, mustRoot(t, t.TempDir())),
 		`{"path":"safe.txt"}`)
 
 	if called {
@@ -115,7 +115,7 @@ func TestWithPathGuard(t *testing.T) {
 			return "wrote", nil
 		},
 	)
-	guarded := withPathGuard(inner, "/work")
+	guarded := withPathGuard(inner, mustRoot(t, t.TempDir()))
 
 	cases := []struct {
 		name      string
@@ -179,7 +179,7 @@ func TestGuardMutationPathConfinesWrites(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			refusal, ok := guardMutationPath(work, tc.path)
+			refusal, ok := guardMutationPath(mustRoot(t, work), tc.path)
 			if tc.wantBlock {
 				if ok || !strings.Contains(refusal, "outside this workspace") {
 					t.Fatalf("%q: ok=%v refusal=%q, want blocked at the workspace boundary", tc.path, ok, refusal)
@@ -211,7 +211,7 @@ func TestWithPathGuardRejectsSymlinkAliasesIntoGit(t *testing.T) {
 			return "wrote", nil
 		},
 	)
-	guarded := withPathGuard(inner, dir)
+	guarded := withPathGuard(inner, mustRoot(t, dir))
 	for _, path := range []string{"git-alias/config", "dangling-alias"} {
 		called = false
 		out := callRejectedTool(t, t.Context(), guarded, `{"path":"`+path+`"}`)
@@ -238,7 +238,7 @@ func TestWithPathGuardRejectsSymlinkCycle(t *testing.T) {
 			return "wrote", nil
 		},
 	)
-	out := callRejectedTool(t, t.Context(), withPathGuard(inner, dir), `{"path":"a/config"}`)
+	out := callRejectedTool(t, t.Context(), withPathGuard(inner, mustRoot(t, dir)), `{"path":"a/config"}`)
 	if called || !strings.Contains(out, "Refused") {
 		t.Fatalf("symlink cycle was not refused: called=%v out=%q", called, out)
 	}

@@ -16,8 +16,10 @@ func TestFormatJSONWritesIndentedFile(t *testing.T) {
 	if err := os.WriteFile(path, []byte(`{"b":1,"a":2}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := formatPath(t.Context(), path); err != nil {
-		t.Fatalf("formatPath: %v", err)
+	for range 2 {
+		if err := formatTestPath(t, path); err != nil {
+			t.Fatalf("formatPath: %v", err)
+		}
 	}
 	got, err := os.ReadFile(path)
 	if err != nil {
@@ -41,7 +43,7 @@ func TestFormatGoUsesBoundedInProcessFormatter(t *testing.T) {
 	if err := os.WriteFile(path, []byte("package main\nfunc main(){println(\"ok\")}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := formatPath(t.Context(), path); err != nil {
+	if err := formatTestPath(t, path); err != nil {
 		t.Fatalf("formatPath: %v", err)
 	}
 	got, err := os.ReadFile(path)
@@ -55,7 +57,7 @@ func TestFormatGoUsesBoundedInProcessFormatter(t *testing.T) {
 }
 
 func TestFormatPathIgnoresDeletedFile(t *testing.T) {
-	if err := formatPath(t.Context(), filepath.Join(t.TempDir(), "deleted.go")); err != nil {
+	if err := formatTestPath(t, filepath.Join(t.TempDir(), "deleted.go")); err != nil {
 		t.Fatalf("format deleted file: %v", err)
 	}
 }
@@ -71,7 +73,7 @@ func TestFormatPathDoesNotReplaceSymbolicLink(t *testing.T) {
 	if err := os.Symlink(target, link); err != nil {
 		t.Fatal(err)
 	}
-	if err := formatPath(t.Context(), link); err != nil {
+	if err := formatTestPath(t, link); err != nil {
 		t.Fatal(err)
 	}
 	if info, err := os.Lstat(link); err != nil || info.Mode()&os.ModeSymlink == 0 {
@@ -82,12 +84,14 @@ func TestFormatPathDoesNotReplaceSymbolicLink(t *testing.T) {
 	}
 }
 
-func TestWriteFormattedFileRejectsReplacedSource(t *testing.T) {
+func TestApplyFormattedFileRejectsReplacedSource(t *testing.T) {
 	directory := t.TempDir()
 	path := filepath.Join(directory, "data.json")
 	if err := os.WriteFile(path, []byte("original"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	root := mustRoot(t, directory)
+	executor := mustLocalExecutor(t, directory)
 	source, err := os.Lstat(path)
 	if err != nil {
 		t.Fatal(err)
@@ -99,15 +103,15 @@ func TestWriteFormattedFileRejectsReplacedSource(t *testing.T) {
 	if err := os.Rename(replacement, path); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeFormattedFile(path, []byte("formatted"), source); err == nil || !strings.Contains(err.Error(), "changed while formatting") {
-		t.Fatalf("writeFormattedFile error = %v, want changed source", err)
+	if err := applyFormattedFile(t.Context(), root, executor, "data.json", []byte("formatted"), autoFormatSource{content: "original", info: source}); err == nil || !strings.Contains(err.Error(), "changed while formatting") {
+		t.Fatalf("applyFormattedFile error = %v, want changed source", err)
 	}
 	if content, err := os.ReadFile(path); err != nil || string(content) != "replacement" {
 		t.Fatalf("replacement = %q, %v; want preserved", content, err)
 	}
 }
 
-func TestWriteFormattedFileDoesNotRecreateDeletedDirectory(t *testing.T) {
+func TestApplyFormattedFileDoesNotRecreateDeletedDirectory(t *testing.T) {
 	directory := filepath.Join(t.TempDir(), "removed")
 	if err := os.Mkdir(directory, 0o700); err != nil {
 		t.Fatal(err)
@@ -116,6 +120,8 @@ func TestWriteFormattedFileDoesNotRecreateDeletedDirectory(t *testing.T) {
 	if err := os.WriteFile(path, []byte("original"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	root := mustRoot(t, directory)
+	executor := mustLocalExecutor(t, directory)
 	source, err := os.Lstat(path)
 	if err != nil {
 		t.Fatal(err)
@@ -123,7 +129,7 @@ func TestWriteFormattedFileDoesNotRecreateDeletedDirectory(t *testing.T) {
 	if err := os.RemoveAll(directory); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeFormattedFile(path, []byte("formatted"), source); err == nil {
+	if err := applyFormattedFile(t.Context(), root, executor, "data.json", []byte("formatted"), autoFormatSource{content: "original", info: source}); err == nil {
 		t.Fatal("formatting a removed source succeeded")
 	}
 	if _, err := os.Lstat(directory); !errors.Is(err, os.ErrNotExist) {
@@ -136,7 +142,7 @@ func TestFormatPathSurfacesUnexpectedStatFailure(t *testing.T) {
 	if err := os.WriteFile(parent, []byte("not a directory"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	err := formatPath(t.Context(), filepath.Join(parent, "child.go"))
+	err := formatPath(t.Context(), mustRoot(t, filepath.Dir(parent)), mustLocalExecutor(t, filepath.Dir(parent)), "file/child.go")
 	if err == nil || !strings.Contains(err.Error(), "inspect before formatting") {
 		t.Fatalf("format error = %v, want stat context", err)
 	}
@@ -148,7 +154,7 @@ func TestFormatPathRefusesOversizedSupportedFile(t *testing.T) {
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	err := formatPath(t.Context(), path)
+	err := formatTestPath(t, path)
 	if err == nil || !strings.Contains(err.Error(), "8 MiB") {
 		t.Fatalf("format oversized JSON error = %v, want explicit 8 MiB refusal", err)
 	}
@@ -195,4 +201,10 @@ func TestRunFormatterPreservesCancellation(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("formatter error = %v, want context.Canceled", err)
 	}
+}
+
+func formatTestPath(t *testing.T, path string) error {
+	t.Helper()
+	directory := filepath.Dir(path)
+	return formatPath(t.Context(), mustRoot(t, directory), mustLocalExecutor(t, directory), filepath.Base(path))
 }

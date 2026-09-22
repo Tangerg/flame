@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/keylock"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -22,7 +23,7 @@ func TestMalformedPatchFailsTheCallNotTheRun(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "notes.txt"), []byte("one\ntwo\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	tools, err := openCWDTools(root, nil, newReadTracker(), newPathLocker())
+	tools, err := openCWDTools(root, nil, newReadTracker(), keylock.NewSet())
 	if err != nil {
 		t.Fatal(err)
 	}

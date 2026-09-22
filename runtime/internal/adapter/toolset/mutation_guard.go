@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -15,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/scope/tools/fs"
 )
 
@@ -26,7 +26,7 @@ import (
 // withReadTracking stamps a full-file fingerprint only when the same digest
 // brackets the successful read. The read may return a range, but any concurrent
 // whole-file change invalidates the call rather than authorizing unseen bytes.
-func withReadTracking(inner toolcontract.Tool, tr *readTracker, cwd string) toolcontract.Tool {
+func withReadTracking(inner toolcontract.Tool, tr *readTracker, root *filesystemRoot) toolcontract.Tool {
 	if tr == nil {
 		return inner
 	}
@@ -35,11 +35,12 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, cwd string) tool
 		if decodeErr != nil {
 			return chat.ToolOutput{}, fmt.Errorf("track read arguments: %w", decodeErr)
 		}
-		abs, pathErr := pathidentity.Canonical(cwd, request.Path)
+		path, pathErr := resolveRootPath(root, request.Path)
 		if pathErr != nil {
 			return chat.ToolOutput{}, fmt.Errorf("track read path: %w", pathErr)
 		}
-		before, existedBefore, err := observeFingerprintExistingFile(ctx, abs, maxRuntimeReadFileBytes)
+		abs := filepath.Join(root.identity, path)
+		before, existedBefore, err := observeFingerprintExistingFile(ctx, root, path, maxRuntimeReadFileBytes)
 		if err != nil {
 			return chat.ToolOutput{}, fmt.Errorf("track read %s: %w", request.Path, err)
 		}
@@ -47,7 +48,7 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, cwd string) tool
 		if err != nil {
 			return out, err
 		}
-		after, existsAfter, err := observeFingerprintExistingFile(ctx, abs, maxRuntimeReadFileBytes)
+		after, existsAfter, err := observeFingerprintExistingFile(ctx, root, path, maxRuntimeReadFileBytes)
 		if err != nil {
 			tr.forget(executionctx.SessionID(ctx), abs)
 			return out, fmt.Errorf("track read %s: %w", request.Path, err)
@@ -63,7 +64,7 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, cwd string) tool
 
 // withMutationGuard requires every existing target to have been read and to
 // remain unchanged, then refreshes stamps after a successful mutation.
-func withMutationGuard(inner toolcontract.Tool, tr *readTracker, cwd string) toolcontract.Tool {
+func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesystemRoot) toolcontract.Tool {
 	if tr == nil {
 		return inner
 	}
@@ -73,7 +74,7 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, cwd string) too
 			return chat.ToolOutput{}, fmt.Errorf("inspect mutation paths before applying patch: %w", err)
 		}
 		sessionID := executionctx.SessionID(ctx)
-		blocked, err := admitMutationPaths(ctx, tr, cwd, sessionID, paths)
+		blocked, err := admitMutationPaths(ctx, tr, root, sessionID, paths)
 		if err != nil {
 			return chat.ToolOutput{}, err
 		}
@@ -90,20 +91,20 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, cwd string) too
 		if err != nil {
 			return out, err
 		}
-		if err := refreshMutationPaths(ctx, tr, cwd, sessionID, paths); err != nil {
+		if err := refreshMutationPaths(ctx, tr, root, sessionID, paths); err != nil {
 			return out, err
 		}
 		return out, nil
 	})
 }
 
-func admitMutationPaths(ctx context.Context, tr *readTracker, cwd, sessionID string, paths []string) (string, error) {
+func admitMutationPaths(ctx context.Context, tr *readTracker, root *filesystemRoot, sessionID string, paths []string) (string, error) {
 	for _, path := range paths {
-		abs, err := pathidentity.Canonical(cwd, path)
+		relative, err := resolveRootPath(root, path)
 		if err != nil {
 			return "", fmt.Errorf("resolve mutation path: %w", err)
 		}
-		fingerprint, exists, err := fingerprintExistingFile(ctx, abs)
+		fingerprint, exists, err := fingerprintExistingFile(ctx, root, relative)
 		if errors.Is(err, errRuntimeReadFileTooLarge) {
 			return unreadableMutationMessage(path), nil
 		}
@@ -113,22 +114,22 @@ func admitMutationPaths(ctx context.Context, tr *readTracker, cwd, sessionID str
 		if !exists {
 			continue
 		}
-		if verdict := tr.check(sessionID, abs, fingerprint); !verdict.allowed() {
+		if verdict := tr.check(sessionID, filepath.Join(root.identity, relative), fingerprint); !verdict.allowed() {
 			return mutationGuardMessage(verdict, path), nil
 		}
 	}
 	return "", nil
 }
 
-func refreshMutationPaths(ctx context.Context, tr *readTracker, cwd, sessionID string, paths []string) error {
+func refreshMutationPaths(ctx context.Context, tr *readTracker, root *filesystemRoot, sessionID string, paths []string) error {
 	for _, path := range paths {
-		abs, err := pathidentity.Canonical(cwd, path)
+		relative, err := resolveRootPath(root, path)
 		if err != nil {
 			return fmt.Errorf("refresh mutation path: %w", err)
 		}
-		fingerprint, exists, err := fingerprintExistingFile(ctx, abs)
+		fingerprint, exists, err := fingerprintExistingFile(ctx, root, relative)
 		if err != nil {
-			tr.forget(sessionID, abs)
+			tr.forget(sessionID, filepath.Join(root.identity, relative))
 			// The mutation already happened. A file that grew past the readable
 			// limit has no stamp this tracker can hold, which the next mutation
 			// discovers on its own; reporting it would fail a call that succeeded.
@@ -138,10 +139,10 @@ func refreshMutationPaths(ctx context.Context, tr *readTracker, cwd, sessionID s
 			return fmt.Errorf("refresh mutation path %s: %w", path, err)
 		}
 		if !exists {
-			tr.forget(sessionID, abs)
+			tr.forget(sessionID, filepath.Join(root.identity, relative))
 			continue
 		}
-		tr.refresh(sessionID, abs, fingerprint)
+		tr.record(sessionID, filepath.Join(root.identity, relative), fingerprint)
 	}
 	return nil
 }
@@ -170,8 +171,8 @@ func unreadableMutationMessage(path string) string {
 // read tool enforces. A larger file can never hold a read stamp, so hashing it
 // without that bound would spend the whole file to produce a fingerprint
 // nothing can match.
-func fingerprintExistingFile(ctx context.Context, path string) (contentFingerprint, bool, error) {
-	observation, exists, err := observeFingerprintExistingFile(ctx, path, maxRuntimeReadFileBytes)
+func fingerprintExistingFile(ctx context.Context, root *filesystemRoot, path string) (contentFingerprint, bool, error) {
+	observation, exists, err := observeFingerprintExistingFile(ctx, root, path, maxRuntimeReadFileBytes)
 	return observation.fingerprint, exists, err
 }
 
@@ -180,8 +181,8 @@ type fingerprintObservation struct {
 	info        os.FileInfo
 }
 
-func observeFingerprintExistingFile(ctx context.Context, path string, maxBytes int64) (_ fingerprintObservation, exists bool, err error) {
-	preflight, err := os.Stat(path)
+func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, path string, maxBytes int64) (_ fingerprintObservation, exists bool, err error) {
+	preflight, err := root.Stat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return fingerprintObservation{}, false, nil
 	}
@@ -197,7 +198,7 @@ func observeFingerprintExistingFile(ctx context.Context, path string, maxBytes i
 	if cause := context.Cause(ctx); cause != nil {
 		return fingerprintObservation{}, false, cause
 	}
-	file, before, err := fileinput.OpenExpected(path, preflight, maxBytes)
+	file, before, err := fileinput.OpenAtExpected(root.Root, path, preflight, maxBytes)
 	if err != nil {
 		if errors.Is(err, fileinput.ErrTooLarge) {
 			return fingerprintObservation{}, false, fmt.Errorf("%w: file grew while opening", errRuntimeReadFileTooLarge)
@@ -224,7 +225,7 @@ func observeFingerprintExistingFile(ctx context.Context, path string, maxBytes i
 	if err != nil {
 		return fingerprintObservation{}, false, err
 	}
-	current, err := os.Stat(path)
+	current, err := root.Stat(path)
 	if err != nil {
 		return fingerprintObservation{}, false, fmt.Errorf("file changed while fingerprinting: %w", err)
 	}
@@ -245,7 +246,7 @@ func sameFingerprintObservation(left, right fingerprintObservation) bool {
 // [codeintel.Analyzer.DiagnoseMutation]; this adapter supplies the mutation
 // closure and resolved workspace root. It is a filesystem decorator, not an LSP
 // query tool, so it lives here rather than in package lsp.
-func withMutationDiagnostics(inner toolcontract.Tool, ci *codeintel.Analyzer, root string) toolcontract.Tool {
+func withMutationDiagnostics(inner toolcontract.Tool, ci *codeintel.Analyzer, root *filesystemRoot) toolcontract.Tool {
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
@@ -256,13 +257,25 @@ func withMutationDiagnostics(inner toolcontract.Tool, ci *codeintel.Analyzer, ro
 			path = paths[0]
 		}
 		var output chat.ToolOutput
-		section, err := ci.DiagnoseMutation(ctx, root, path, func() error {
+		if ci != nil {
+			if err := verifyWorkspacePath(root); err != nil {
+				output, callErr := inner.Call(ctx, invocation)
+				if callErr != nil {
+					return output, callErr
+				}
+				return appendToolOutputText(output, "\n\nDiagnostics unavailable: "+err.Error()), nil
+			}
+		}
+		section, err := ci.DiagnoseMutation(ctx, root.Name(), path, func() error {
 			var callErr error
 			output, callErr = inner.Call(ctx, invocation)
 			return callErr
 		})
 		if err != nil || section == "" {
 			return output, err
+		}
+		if err := verifyWorkspacePath(root); err != nil {
+			return appendToolOutputText(output, "\n\nDiagnostics unavailable: "+err.Error()), nil
 		}
 		return appendToolOutputText(output, "\n\n"+section), nil
 	})

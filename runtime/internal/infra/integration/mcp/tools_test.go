@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -198,7 +199,16 @@ func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if string(output.Details) != payload {
+			// JSON member order is transport-owned; number lexemes and explicit
+			// empty objects must survive without float64 conversion.
+			var got, want map[string]json.RawMessage
+			if err := json.Unmarshal(output.Details, &got); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal([]byte(payload), &want); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("structured result = %s, want %s", output.Details, payload)
 			}
 		})
