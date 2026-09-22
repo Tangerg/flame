@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
 import { toolFamilyId } from "@/lib/toolFamilies";
-import { toolIconFor } from "@/plugins/builtin/chat/tools/public/toolIcon";
+import { toolIconFor } from "@/plugins/builtin/agent/public/toolIcon";
 import { type ApprovalDecision, type RememberScope } from "@/plugins/builtin/agent/public/hitl";
 import { approvalSettledDecision } from "@/plugins/builtin/agent/public/messagePresentation";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";

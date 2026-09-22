@@ -12,7 +12,7 @@ import { fmtDuration } from "@/lib/format";
 import { TIMELINE_WINDOW_SIZE } from "@/plugins/sdk/types/agentTimeline";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { toolIntent, type ToolDetail } from "@/plugins/builtin/agent/public/messagePresentation";
-import { toolCallIconFor } from "@/plugins/builtin/chat/tools/public/toolIcon";
+import { toolCallIconFor } from "@/plugins/builtin/agent/public/toolIcon";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { face, type as typeStep } from "@/styles/tokens.stylex";

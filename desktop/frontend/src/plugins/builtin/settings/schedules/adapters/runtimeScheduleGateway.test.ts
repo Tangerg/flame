@@ -86,7 +86,6 @@ describe("runtimeScheduleGateway", () => {
       instructions: "Review changes",
       cwd: "",
       cron: "0 9 * * 1",
-      enabled: true,
       revision: 7,
     });
 
@@ -97,7 +96,6 @@ describe("runtimeScheduleGateway", () => {
       instructions: "Review changes",
       workspaceMode: "default",
       cron: "0 9 * * 1",
-      enabled: true,
     });
     expectSendable("UpdateScheduleRequest", update);
   });
@@ -113,7 +111,6 @@ describe("runtimeScheduleGateway", () => {
       instructions: "Review changes",
       cwd: "/workspace",
       cron: "0 9 * * 1",
-      enabled: true,
       revision: 7,
     });
 
@@ -124,7 +121,6 @@ describe("runtimeScheduleGateway", () => {
       instructions: "Review changes",
       workspace: { path: "/workspace" },
       cron: "0 9 * * 1",
-      enabled: true,
     });
     expectSendable("UpdateScheduleRequest", update);
   });

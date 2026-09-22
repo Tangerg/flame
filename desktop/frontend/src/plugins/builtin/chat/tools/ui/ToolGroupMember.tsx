@@ -3,7 +3,7 @@ import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { DiffStat, Icon, Pressable, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { headlineToolMetaItem, toolCardModel } from "../application/toolCardModel";
-import { toolCallIconFor } from "../public/toolIcon";
+import { toolCallIconFor } from "@/plugins/builtin/agent/public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "@/ui/agent";
 import { color, face, space, type as typeStep } from "@/styles/tokens.stylex";

@@ -6,7 +6,7 @@ import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectPatchChanges, type PatchChange } from "@/plugins/builtin/agent/public/patchResult";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
+import { toolShapeKey } from "@/plugins/builtin/agent/public/toolIcon";
 import type { ToolFileChange } from "@/plugins/sdk/types/agentSessionView";
 import { DiffStat, FilePath, TextPreview, vocab } from "@/ui";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";

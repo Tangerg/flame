@@ -6,7 +6,7 @@ import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { useGrepToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewQueries";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
+import { toolShapeKey } from "@/plugins/builtin/agent/public/toolIcon";
 
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { previewStyles as pv } from "./previewStyles";

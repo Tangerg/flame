@@ -13,7 +13,7 @@ import {
   useExtensionPoint,
 } from "@/plugins/sdk";
 import { toolCardActions, toolCardModel, toolCardViewOpener } from "../application/toolCardModel";
-import { toolCallIconFor } from "../public/toolIcon";
+import { toolCallIconFor } from "@/plugins/builtin/agent/public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "@/ui/agent";
 import { color, face, space, type as typeStep, weight } from "@/styles/tokens.stylex";

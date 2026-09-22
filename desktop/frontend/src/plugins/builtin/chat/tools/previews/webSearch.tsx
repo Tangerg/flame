@@ -7,7 +7,7 @@ import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectWebSearchPreview } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
+import { toolShapeKey } from "@/plugins/builtin/agent/public/toolIcon";
 import { PreviewOverflow } from "./previewChrome";
 import { previewStyles as pv } from "./previewStyles";
 

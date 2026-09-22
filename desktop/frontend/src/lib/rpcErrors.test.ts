@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-contract/validate";
-import { RpcError } from "@/rpc";
+import { RpcError, RpcTransportError, RPC_METHOD_NOT_FOUND } from "@/rpc";
 import { en } from "./i18n/locales/en";
 import {
   MAPPED_TYPES,
@@ -71,6 +71,19 @@ describe("the protocol error copy table", () => {
     expect(describeProblem({ type: "session_busy" })).toBe(describeErrorType("session_busy"));
     expect(describeProblem({ type: "replay_unavailable" })).toBe("replay_unavailable");
     expect(describeProblem(undefined)).toBeUndefined();
+  });
+
+  it("does not confuse an HTTP routing failure with an unsupported RPC method", () => {
+    expect(isUnsupportedMethod(new RpcTransportError("not found", 404))).toBe(false);
+    expect(
+      isUnsupportedMethod(
+        new RpcError({
+          code: RPC_METHOD_NOT_FOUND,
+          message: "method not found",
+          data: { type: "method_not_found" },
+        }),
+      ),
+    ).toBe(true);
   });
 
   it("reads a non-error as no unsupported method", () => {

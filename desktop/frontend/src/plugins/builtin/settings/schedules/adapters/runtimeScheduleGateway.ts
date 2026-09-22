@@ -39,7 +39,6 @@ function runtimeScheduleGateway(client: FlameClient): ScheduleGateway {
           ...(input.cwd ? {} : { workspaceMode: "default" }),
           id: input.id,
           expectedRevision: input.revision,
-          enabled: input.enabled,
         }),
       );
     },

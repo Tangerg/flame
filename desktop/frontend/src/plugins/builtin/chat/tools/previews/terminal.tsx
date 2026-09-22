@@ -3,7 +3,7 @@ import { ToolOutputPanel } from "@/plugins/builtin/chat/tools/public/previews/To
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
+import { toolShapeKey } from "@/plugins/builtin/agent/public/toolIcon";
 import { commandToolResult } from "@/plugins/sdk";
 
 function ShellOutput({ tool }: ToolPreviewProps) {

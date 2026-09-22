@@ -9,7 +9,6 @@ export type { ScheduleConfig, ScheduleConfigInput } from "./scheduleConfig";
 
 export interface ScheduleUpdateInput extends ScheduleConfigInput {
   id: string;
-  enabled: boolean;
   revision: number;
 }
 
@@ -42,14 +41,7 @@ class ScheduleMutationGeneration {
   update(input: ScheduleUpdateInput): Promise<ScheduleConfig> {
     return this.#run(
       input.id,
-      () => {
-        const basis = this.#latest(input.id, input);
-        return this.#gateway.update({
-          ...input,
-          enabled: basis.enabled,
-          revision: basis.revision,
-        });
-      },
+      () => this.#gateway.update(input),
       (saved) => this.#commitSaved(saved),
     );
   }
@@ -127,16 +119,16 @@ class ScheduleMutationGeneration {
     commitScheduleSaved(saved);
   }
 
-  #latest(identity: string, fallback: ScheduleConfig | ScheduleUpdateInput): ScheduleConfig {
+  #latest(identity: string, fallback: ScheduleConfig): ScheduleConfig {
     const cached = queryClient
       .getQueryData<ScheduleConfig[]>([SCHEDULES_KEY])
       ?.find((schedule) => schedule.id === identity);
     const candidates = [fallback, cached, this.#accepted.get(identity)].filter(
-      (candidate): candidate is ScheduleConfig | ScheduleUpdateInput => candidate !== undefined,
+      (candidate): candidate is ScheduleConfig => candidate !== undefined,
     );
     return candidates.reduce((latest, candidate) =>
       candidate.revision > latest.revision ? candidate : latest,
-    ) as ScheduleConfig;
+    );
   }
 }
 
@@ -207,9 +199,7 @@ export async function createSchedule(input: ScheduleConfigInput): Promise<Schedu
   return ScheduleMutationOwner.current().create(input);
 }
 
-export async function updateSchedule(
-  input: ScheduleConfigInput & { id: string; enabled: boolean; revision: number },
-): Promise<ScheduleConfig> {
+export async function updateSchedule(input: ScheduleUpdateInput): Promise<ScheduleConfig> {
   return ScheduleMutationOwner.current().update(input);
 }
 

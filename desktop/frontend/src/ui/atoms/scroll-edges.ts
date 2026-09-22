@@ -15,7 +15,7 @@ export const scrollEdges = stylex.create({
   },
 });
 
-export interface ScrollEdges {
+interface ScrollEdges {
   /** Carries `scrollEdges.fade`, `onScroll` and `style`. */
   port: React.RefObject<HTMLDivElement | null>;
   /** Watched too, so growth re-measures without a scroll event. */

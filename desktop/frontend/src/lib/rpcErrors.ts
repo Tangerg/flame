@@ -1,14 +1,7 @@
 // Protocol error type → locale key. Each key's leaf is the wire symbol VERBATIM, keeping the
 // table one-to-one with the protocol; behaviour still branches on `isErrorType`.
 
-import {
-  errorDetail,
-  errorType,
-  isErrorType,
-  RPC_METHOD_NOT_FOUND,
-  RpcError,
-  RpcTransportError,
-} from "@/rpc";
+import { errorDetail, errorType, isErrorType, RpcError } from "@/rpc";
 import type { ProblemData } from "@/rpc";
 import { t } from "./i18n";
 
@@ -101,14 +94,9 @@ export function rpcErrorText(err: unknown): string | undefined {
   return describeRpcError(err) ?? errorDetail(err.data) ?? err.message;
 }
 
-/** True when the runtime does not implement the method. It answers an unknown one with HTTP
- *  404 wrapping a -32601, so HTTP reports a transport error and in-process reports the
- *  -32601 directly — both are this. */
+/** HTTP routing failures do not establish whether an RPC method is supported. */
 export function isUnsupportedMethod(err: unknown): boolean {
-  return (
-    (err instanceof RpcTransportError && err.status === 404) ||
-    (err instanceof RpcError && err.code === RPC_METHOD_NOT_FOUND)
-  );
+  return isErrorType(err, "method_not_found");
 }
 
 /** A collection the connected Runtime does not implement is EMPTY, not broken. */

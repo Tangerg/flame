@@ -58,6 +58,9 @@ const sf = stylex.create({
 
 export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: ScheduleFormProps) {
   const t = useT();
+  const [basis] = useState(() =>
+    schedule ? { id: schedule.id, revision: schedule.revision } : undefined,
+  );
   const [draft, setDraft] = useState<ScheduleDraft>(() =>
     initialScheduleDraft(schedule, defaultCwd),
   );
@@ -73,12 +76,10 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
   const onSave = () =>
     run(async () => {
       const input = scheduleInputFromDraft(draft);
-      if (schedule) {
+      if (basis) {
         await updateSchedule({
           ...input,
-          id: schedule.id,
-          enabled: schedule.enabled,
-          revision: schedule.revision,
+          ...basis,
         });
       } else {
         await createSchedule(input);

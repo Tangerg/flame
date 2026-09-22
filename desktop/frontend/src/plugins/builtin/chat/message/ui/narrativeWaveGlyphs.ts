@@ -1,7 +1,7 @@
 import type { IconName } from "@/ui/icons";
 import type { MessageRenderUnit } from "@/plugins/builtin/agent/public/messagePresentation";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { toolIconFor, toolRoutingKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
+import { toolIconFor, toolRoutingKey } from "@/plugins/builtin/agent/public/toolIcon";
 
 export function waveGlyph(
   units: readonly MessageRenderUnit[],

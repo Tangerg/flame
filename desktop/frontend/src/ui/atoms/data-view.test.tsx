@@ -1,15 +1,36 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { RpcTransportError } from "@/rpc/errors";
+import { RpcError, RpcTransportError } from "@/rpc/errors";
 import { DataView } from "./data-view";
 
 const rows = (items: string[]) => <div>{items.join(",")}</div>;
 
 const broke = new Error("the runtime answered badly");
-/** A Runtime without the endpoint at all, which is the state a retry cannot mend. */
-const notImplemented = new RpcTransportError("method not found", 404);
+const notImplemented = new RpcError({
+  message: "method not found",
+  data: { type: "method_not_found" },
+});
 
 describe("DataView", () => {
+  it("keeps recovery available when the HTTP endpoint is unavailable", () => {
+    const onRetry = vi.fn();
+    render(
+      <DataView
+        items={undefined}
+        isLoading={false}
+        failure={new RpcTransportError("not found", 404)}
+        unsupported={{ title: "Not supported" }}
+        onRetry={onRetry}
+      >
+        {rows}
+      </DataView>,
+    );
+
+    expect(screen.queryByText("Not supported")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
   it("recovers from an error rather than dead-ending on it", () => {
     const onRetry = vi.fn();
     render(

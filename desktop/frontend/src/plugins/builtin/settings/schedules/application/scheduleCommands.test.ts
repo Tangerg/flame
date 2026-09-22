@@ -93,47 +93,28 @@ describe("schedule commands", () => {
     expect(setEnabled.mock.calls[1]).toEqual([disabled, true]);
   });
 
-  it("preserves accepted enablement when a queued edit rebases its revision", async () => {
-    const current = {
+  it("keeps a draft's revision when a newer schedule has been read", async () => {
+    const draft = {
       id: "sch_1",
-      title: "Review",
+      title: "Review weekly",
       instructions: "Review changes",
       cwd: "/repo",
       cron: "0 9 * * 1",
-      enabled: true,
       revision: 7,
     };
-    const disabled = { ...current, enabled: false, revision: 8 };
-    const first = Promise.withResolvers<typeof disabled>();
-    const setEnabled = vi.fn(() => first.promise);
-    const update = vi.fn((input) => Promise.resolve({ ...input, revision: input.revision + 1 }));
-    owner = ScheduleMutationOwner.install({ setEnabled, update } as unknown as ScheduleGateway);
+    const latest = { ...draft, instructions: "New instructions", enabled: false, revision: 8 };
+    const conflict = new Error("revision conflict");
+    const update = vi.fn(async (input) => {
+      if (input.revision !== latest.revision) throw conflict;
+      return { ...latest, ...input, revision: 9 };
+    });
+    owner = ScheduleMutationOwner.install({ update } as unknown as ScheduleGateway);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
-    queryClient.setQueryData([SCHEDULES_KEY], [current]);
+    queryClient.setQueryData([SCHEDULES_KEY], [latest]);
 
-    const disable = setScheduleEnabled(current, false);
-    const edit = updateSchedule({
-      ...current,
-      title: "Review weekly",
-      cwd: current.cwd,
-    });
-    await vi.waitFor(() => expect(setEnabled).toHaveBeenCalledOnce());
-    expect(update).not.toHaveBeenCalled();
-
-    first.resolve(disabled);
-    await expect(disable).resolves.toEqual(disabled);
-    await expect(edit).resolves.toMatchObject({
-      title: "Review weekly",
-      enabled: false,
-      revision: 9,
-    });
-    expect(update).toHaveBeenCalledWith({
-      ...current,
-      title: "Review weekly",
-      cwd: current.cwd,
-      enabled: false,
-      revision: 8,
-    });
+    await expect(updateSchedule(draft)).rejects.toBe(conflict);
+    expect(update).toHaveBeenCalledWith(draft);
+    expect(queryClient.getQueryData([SCHEDULES_KEY])).toEqual([latest]);
   });
 
   it("rejects an accepted mutation whose generation is replaced during cache repair", async () => {

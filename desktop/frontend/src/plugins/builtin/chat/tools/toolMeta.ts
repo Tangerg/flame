@@ -1,4 +1,4 @@
-import { defaultToolIconContributions } from "@/plugins/builtin/chat/tools/public/toolIcon";
+import { defaultToolIconContributions } from "@/plugins/builtin/agent/public/toolIcon";
 import { copyText } from "@/lib/clipboard";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_ACTION, TOOL_ICON } from "@/plugins/sdk/kernelPoints";

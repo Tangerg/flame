@@ -3106,6 +3106,16 @@ for await (const line of lines) {
     });
     expect(updated.revision).toBe(firedSchedule.revision + 1);
     expect(updated.workspace).toBeUndefined();
+    await expect(
+      client.schedules.update({
+        id: created.id,
+        expectedRevision: firedSchedule.revision,
+        title: "Stale draft must not overwrite the saved title",
+      }),
+    ).rejects.toMatchObject({ data: { type: "revision_conflict" } });
+    await expect(client.schedules.list()).resolves.toMatchObject({
+      data: [expect.objectContaining({ title: updated.title, revision: updated.revision })],
+    });
     await expect(nextRuntimeEvent(runtimeEvents, "schedules.changed")).resolves.toMatchObject({
       type: "schedules.changed",
       scheduleIds: [created.id],
@@ -3117,6 +3127,17 @@ for await (const line of lines) {
       scheduleIds: [created.id],
     });
     await expect(client.schedules.list()).resolves.toMatchObject({ data: [] });
+
+    await expect(client.schedules.runNow(created.id)).rejects.toMatchObject({
+      data: { type: "schedule_not_found" },
+    });
+    await expect(
+      client.schedules.update({
+        id: created.id,
+        expectedRevision: updated.revision,
+        enabled: true,
+      }),
+    ).rejects.toMatchObject({ data: { type: "schedule_not_found" } });
 
     streamController.abort();
     await runtimeEvents.return?.();

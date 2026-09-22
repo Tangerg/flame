@@ -6,7 +6,7 @@ import {
   type ToolPreviewProps,
 } from "@/plugins/sdk";
 import { ToolInspector } from "./ToolInspector";
-import { toolRoutingKey, toolShapeKey } from "../public/toolIcon";
+import { toolRoutingKey, toolShapeKey } from "@/plugins/builtin/agent/public/toolIcon";
 import { createElement } from "react";
 
 export function ToolPreview({ tool }: ToolPreviewProps) {

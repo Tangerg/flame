@@ -32,7 +32,7 @@ export { Gauge } from "./gauge";
 export { ProgressBar } from "./progress-bar";
 export { ProviderIcon, providerDisplayName } from "./provider-icon";
 export { ScrollArea } from "./scroll-area";
-export { scrollEdges, useScrollEdges, type ScrollEdges } from "./scroll-edges";
+export { scrollEdges, useScrollEdges } from "./scroll-edges";
 export { SearchField } from "./text-field";
 export { SearchOverlay } from "./search-overlay";
 export { SectionLabel } from "./section-label";
