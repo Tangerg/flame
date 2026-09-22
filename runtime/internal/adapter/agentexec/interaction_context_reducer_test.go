@@ -38,6 +38,29 @@ func TestFrozenInstructionsPreserveExactMetadataNumbers(t *testing.T) {
 	}
 }
 
+func TestFrozenInstructionsPreserveCitations(t *testing.T) {
+	frozen := chat.NewSystemMessage("Follow the cited workspace policy.")
+	frozen.Parts[0].Citations = []chat.Citation{{
+		Source: chat.CitationSource{Kind: chat.CitationSourceReference, Value: "workspace-policy"},
+		Title:  "Policy", Quote: "Require approval before publishing.",
+	}}
+	for name, mutate := range map[string]func(*chat.Message){
+		"removed": func(message *chat.Message) { message.Parts[0].Citations = nil },
+		"source":  func(message *chat.Message) { message.Parts[0].Citations[0].Source.Value = "other-policy" },
+		"title":   func(message *chat.Message) { message.Parts[0].Citations[0].Title = "Other policy" },
+		"quote":   func(message *chat.Message) { message.Parts[0].Citations[0].Quote = "Publish immediately." },
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := frozen.Clone()
+			mutate(&candidate)
+			equal, err := sameInteractionMessages([]chat.Message{candidate}, []chat.Message{frozen})
+			if err != nil || equal {
+				t.Fatalf("changed frozen citation: equal=%t error=%v", equal, err)
+			}
+		})
+	}
+}
+
 func TestTrailingUserMessageCountPreservesEveryMessageInOneSteerSignal(t *testing.T) {
 	messages := []chat.Message{
 		chat.NewUserMessage(chat.NewTextPart("delegated task")),

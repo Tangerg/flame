@@ -36,18 +36,20 @@ func NewDiagnosticRegistry(directory string) (DiagnosticRegistry, error) {
 // tool catalog exposed outside an Agent Run.
 type DiagnosticRegistry struct{ directory string }
 
-// List translates the adapter catalog in encounter order. Application owns the
-// safe, unique, name-ordered public catalog.
+// List projects Scope's admitted, frozen definitions into the product catalog.
 func (r DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
 	manifest, err := openDirectTools(r.directory)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, manifest.Close()) }()
+	registry, err := toolcontract.NewRegistry(manifest.Visible...)
+	if err != nil {
+		return nil, fmt.Errorf("toolset: bind diagnostic catalog: %w", err)
+	}
 	interpreter := Interpreter{}
 	out := make([]tool.Tool, 0, len(manifest.Visible))
-	for _, candidate := range manifest.Visible {
-		definition := candidate.Definition()
+	for _, definition := range registry.Definitions() {
 		schema, err := tool.ParseSchema(definition.InputSchema)
 		if err != nil {
 			return nil, fmt.Errorf("toolset: decode input schema for tool %q: %w", definition.Name, err)
@@ -76,38 +78,36 @@ func (DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argumen
 		return tool.Result{}, err
 	}
 	defer func() { err = errors.Join(err, direct.Close()) }()
-	for _, candidate := range direct.Visible {
-		if candidate.Definition().Name != name {
-			continue
-		}
-		binding, bindErr := toolcontract.Bind(candidate)
-		if bindErr != nil {
-			return tool.Result{}, fmt.Errorf("toolset: bind direct tool %q: %w", name, bindErr)
-		}
-		proposed, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: arguments.Canonical()})
-		if prepareErr != nil {
-			return tool.Result{}, fmt.Errorf("%w: direct tool %q: %w", tool.ErrInvalidArguments, name, prepareErr)
-		}
-		normalized, err := normalizeDirectArguments(root, name, proposed)
-		if err != nil {
-			span.RecordError(err)
-			span.SetStatus(codes.Error, err.Error())
-			return tool.Result{}, err
-		}
-		invocation, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: normalized})
-		if prepareErr != nil {
-			return tool.Result{}, fmt.Errorf("toolset: prepare direct tool %q: %w", name, prepareErr)
-		}
-		output, callErr := binding.Call(ctx, invocation)
-		if callErr != nil {
-			span.RecordError(callErr)
-			span.SetStatus(codes.Error, callErr.Error())
-			return tool.Result{}, callErr
-		}
-		return directResult(output)
+	registry, err := toolcontract.NewRegistry(direct.Visible...)
+	if err != nil {
+		return tool.Result{}, fmt.Errorf("toolset: bind diagnostic catalog: %w", err)
 	}
-	err = fmt.Errorf("toolset: direct tool %q is not registered", name)
-	span.RecordError(err)
-	span.SetStatus(codes.Error, err.Error())
-	return tool.Result{}, err
+	binding, found := registry.Resolve(name)
+	if !found {
+		err = fmt.Errorf("toolset: direct tool %q is not registered", name)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return tool.Result{}, err
+	}
+	proposed, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: arguments.Canonical()})
+	if prepareErr != nil {
+		return tool.Result{}, fmt.Errorf("%w: direct tool %q: %w", tool.ErrInvalidArguments, name, prepareErr)
+	}
+	normalized, err := normalizeDirectArguments(root, name, proposed)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return tool.Result{}, err
+	}
+	invocation, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: normalized})
+	if prepareErr != nil {
+		return tool.Result{}, fmt.Errorf("toolset: prepare direct tool %q: %w", name, prepareErr)
+	}
+	output, callErr := binding.Call(ctx, invocation)
+	if callErr != nil {
+		span.RecordError(callErr)
+		span.SetStatus(codes.Error, callErr.Error())
+		return tool.Result{}, callErr
+	}
+	return directResult(output)
 }

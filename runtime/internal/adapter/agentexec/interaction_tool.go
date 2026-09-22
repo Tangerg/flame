@@ -37,7 +37,7 @@ type observedInteractionTool struct {
 }
 
 func (o *observedInteractionTool) Definition() corechat.ToolDefinition {
-	return o.inner.Definition()
+	return o.binding.Contract().Definition()
 }
 
 func (o *observedInteractionTool) Unwrap() toolcontract.Tool { return o.inner }
@@ -561,12 +561,24 @@ func wrapInteractionTools(
 	offloadPolicy toolResultOffloadPolicy,
 	start runs.RootExecutionStart,
 ) (visible []toolcontract.Tool, deferred []toolcontract.Tool, err error) {
+	if len(manifest.Visible)+len(manifest.Deferred) > 0 {
+		if dependency.Missing(config.ToolInterpreter) {
+			return nil, nil, errors.New("agentexec: Interaction Tools require a Tool interpreter")
+		}
+		if dependency.Missing(config.ToolAuthorizer) {
+			return nil, nil, errors.New("agentexec: Interaction Tools require a Tool authorizer")
+		}
+	}
 	wrap := func(values []toolcontract.Tool) ([]toolcontract.Tool, error) {
 		wrapped := make([]toolcontract.Tool, len(values))
 		for index, executable := range values {
 			binding, bindErr := toolcontract.Bind(executable)
 			if bindErr != nil {
-				return nil, fmt.Errorf("agentexec: bind Interaction Tool %q: %w", executable.Definition().Name, bindErr)
+				return nil, fmt.Errorf("agentexec: bind Interaction Tool[%d]: %w", index, bindErr)
+			}
+			name := binding.Contract().Definition().Name
+			if class := config.ToolInterpreter.SafetyClass(name); !class.Valid() {
+				return nil, fmt.Errorf("agentexec: Interaction Tool %q has invalid safety class %q", name, class)
 			}
 			observed := &observedInteractionTool{
 				inner: executable, binding: binding, session: session, interpreter: config.ToolInterpreter,
@@ -575,7 +587,7 @@ func wrapInteractionTools(
 				offloadPolicy: offloadPolicy,
 				start:         start,
 			}
-			if config.ToolHooks == nil && !config.ToolInterpreter.UsesStandardPolicy(executable.Definition().Name) &&
+			if config.ToolHooks == nil && !config.ToolInterpreter.UsesStandardPolicy(name) &&
 				!slices.Contains(start.InterruptKinds, interrupt.Approval) {
 				concurrent, _, err := toolcontract.Capability[interaction.ConcurrentTool](executable)
 				if err != nil {
@@ -593,33 +605,4 @@ func wrapInteractionTools(
 	}
 	deferred, err = wrap(manifest.Deferred)
 	return visible, deferred, err
-}
-
-func validateToolManifest(manifest toolset.Manifest) error {
-	seen := make(map[string]string, len(manifest.Visible)+len(manifest.Deferred))
-	for _, group := range []struct {
-		name   string
-		values []toolcontract.Tool
-	}{{name: "visible", values: manifest.Visible}, {name: "deferred", values: manifest.Deferred}} {
-		name, values := group.name, group.values
-		for index, executable := range values {
-			if dependency.Missing(executable) {
-				return fmt.Errorf("agentexec: %s Interaction Tool[%d] is nil", name, index)
-			}
-			toolName := executable.Definition().Name
-			if strings.TrimSpace(toolName) == "" || toolName != strings.TrimSpace(toolName) {
-				return fmt.Errorf("agentexec: %s Interaction Tool[%d] has an invalid name", name, index)
-			}
-			if prior, duplicate := seen[toolName]; duplicate {
-				return fmt.Errorf(
-					"agentexec: Interaction Tool %q appears more than once (first in %s, again in %s)",
-					toolName,
-					prior,
-					name,
-				)
-			}
-			seen[toolName] = name
-		}
-	}
-	return nil
 }

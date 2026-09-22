@@ -188,6 +188,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	if err != nil {
 		return agent.Deployment{}, fmt.Errorf("agentexec: wrap Interaction tools at depth %d: %w", depth, err)
 	}
+	manifest.Visible, manifest.Deferred = visible, deferred
 	// An ordinary Tool is a child Process with its own Deployment now, so the
 	// Tool authority belongs to the Definition rather than to the model
 	// boundary. Flame grants no Framework capability names, so a Tool child runs
@@ -317,7 +318,7 @@ func (i *interactionDeploymentBuilder) deploymentDefinition(
 func (i *InteractionExecutor) resolveInteractionManifest(
 	ctx context.Context,
 	group domaintool.Group,
-) (_ toolset.Manifest, err error) {
+) (toolset.Manifest, error) {
 	if i.config.ToolResolver == nil {
 		return toolset.Manifest{}, nil
 	}
@@ -325,19 +326,7 @@ func (i *InteractionExecutor) resolveInteractionManifest(
 	if err != nil {
 		return toolset.Manifest{}, fmt.Errorf("agentexec: resolve Interaction %s Tools: %w", group, err)
 	}
-	defer func() {
-		if err != nil {
-			err = errors.Join(err, manifest.Close())
-		}
-	}()
-	manifest = manifest.Clone()
-	if err := validateToolManifest(manifest); err != nil {
-		return toolset.Manifest{}, err
-	}
-	if err := i.validateInteractionTools(manifest); err != nil {
-		return toolset.Manifest{}, err
-	}
-	return manifest, nil
+	return manifest.Clone(), nil
 }
 
 func interactionInstructionContext(messages []corechat.Message) ([]corechat.Message, error) {

@@ -1,15 +1,15 @@
 package agentexec
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
-	coremetadata "github.com/Tangerg/scope/core/metadata"
 )
 
 const rootOpeningMessageCount = 1
@@ -266,40 +266,17 @@ func sameInteractionMessages(left, right []corechat.Message) (bool, error) {
 	if len(left) != len(right) {
 		return false, nil
 	}
-	for index := range left {
-		if err := left[index].Validate(); err != nil {
-			return false, fmt.Errorf("agentexec: effective instruction %d: %w", index, err)
-		}
-		if err := right[index].Validate(); err != nil {
-			return false, fmt.Errorf("agentexec: frozen instruction %d: %w", index, err)
-		}
-		if left[index].Role != right[index].Role ||
-			!sameInteractionMetadata(left[index].Metadata, right[index].Metadata) ||
-			len(left[index].Parts) != len(right[index].Parts) {
-			return false, nil
-		}
-		for partIndex := range left[index].Parts {
-			leftPart := left[index].Parts[partIndex]
-			rightPart := right[index].Parts[partIndex]
-			if leftPart.Kind != rightPart.Kind || leftPart.Text != rightPart.Text ||
-				!sameInteractionMetadata(leftPart.Metadata, rightPart.Metadata) {
-				return false, nil
-			}
-		}
+	// Compare Scope's complete canonical values, including citations and future
+	// message fields, without making metadata whitespace part of identity.
+	effective, err := agent.EncodePayload(left)
+	if err != nil {
+		return false, fmt.Errorf("agentexec: effective instructions: %w", err)
 	}
-	return true, nil
-}
-
-func sameInteractionMetadata(left, right coremetadata.Map) bool {
-	if len(left) != len(right) {
-		return false
+	frozen, err := agent.EncodePayload(right)
+	if err != nil {
+		return false, fmt.Errorf("agentexec: frozen instructions: %w", err)
 	}
-	if len(left) == 0 {
-		return true
-	}
-	leftValues, leftErr := left.Values()
-	rightValues, rightErr := right.Values()
-	return leftErr == nil && rightErr == nil && reflect.DeepEqual(leftValues, rightValues)
+	return bytes.Equal(effective.JSON(), frozen.JSON()), nil
 }
 
 var _ interaction.ModelContextReducer = (*interactionModelContextReducer)(nil)

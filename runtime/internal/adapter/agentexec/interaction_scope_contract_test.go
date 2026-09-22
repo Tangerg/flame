@@ -3,6 +3,7 @@ package agentexec
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -89,6 +90,71 @@ func (scopeOutputTool) Definition() chat.ToolDefinition {
 
 func (s scopeOutputTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
 	return s.output.Clone(), nil
+}
+
+type scopeDefinitionTool struct{ definition chat.ToolDefinition }
+
+func (s *scopeDefinitionTool) Definition() chat.ToolDefinition { return s.definition.Clone() }
+
+func (*scopeDefinitionTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
+	return chat.NewTextToolOutput("done"), nil
+}
+
+func TestObservedToolPreservesBoundDefinition(t *testing.T) {
+	executable := &scopeDefinitionTool{definition: scopeOutputTool{}.Definition()}
+	want := executable.Definition()
+	visible, _, err := wrapInteractionTools(
+		toolset.Manifest{Visible: []toolcontract.Tool{executable}}, nil,
+		InteractionExecutorConfig{ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}},
+		toolResultOffloadPolicy{}, runs.RootExecutionStart{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	executable.definition.Name = "replacement"
+	executable.definition.InputSchema = json.RawMessage(`{"type":"object","required":["replacement"]}`)
+	got := visible[0].Definition()
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("observed Tool changed its admitted definition: got=%+v want=%+v", got, want)
+	}
+	got.InputSchema[0] = '!'
+	if !reflect.DeepEqual(visible[0].Definition(), want) {
+		t.Fatal("editing an advertised definition changed the bound contract")
+	}
+}
+
+func TestInteractionManifestUsesScopeAdmission(t *testing.T) {
+	valid := scopeOutputTool{output: chat.NewTextToolOutput("done")}
+	var absent *scopeDefinitionTool
+	for _, test := range []struct {
+		name     string
+		manifest toolset.Manifest
+		want     error
+	}{
+		{"nil", toolset.Manifest{Visible: []toolcontract.Tool{nil}}, toolcontract.ErrInvalidTool},
+		{"typed nil", toolset.Manifest{Deferred: []toolcontract.Tool{absent}}, toolcontract.ErrInvalidTool},
+		{"invalid name", toolset.Manifest{Visible: []toolcontract.Tool{&scopeDefinitionTool{definition: chat.ToolDefinition{Name: "invalid tool", InputSchema: json.RawMessage(`{}`)}}}}, toolcontract.ErrInvalidTool},
+		{"invalid schema", toolset.Manifest{Deferred: []toolcontract.Tool{&scopeDefinitionTool{definition: chat.ToolDefinition{Name: "invalid_schema", InputSchema: json.RawMessage(`{"type":"invalid"}`)}}}}, toolcontract.ErrInvalidTool},
+		{"visible collision", toolset.Manifest{Visible: []toolcontract.Tool{valid, valid}}, interaction.ErrInvalidToolSet},
+		{"deferred collision", toolset.Manifest{Deferred: []toolcontract.Tool{valid, valid}}, interaction.ErrInvalidToolSet},
+		{"cross visibility collision", toolset.Manifest{Visible: []toolcontract.Tool{valid}, Deferred: []toolcontract.Tool{valid}}, interaction.ErrInvalidToolSet},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			executor := newObservedTestInteractionExecutor(t,
+				chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+					t.Fatal("invalid manifest reached model dispatch")
+					return nil, nil
+				}),
+				InteractionExecutorConfig{
+					ToolResolver:    staticInteractionTools{manifest: test.manifest},
+					ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+				},
+			)
+			if _, err := executor.StageRoot(t.Context(), interactionTestStart()); !errors.Is(err, test.want) {
+				t.Fatalf("StageRoot error = %v, want %v", err, test.want)
+			}
+		})
+	}
 }
 
 func TestToolOffloadPreservesScopeOutputContract(t *testing.T) {

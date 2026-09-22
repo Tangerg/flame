@@ -291,31 +291,6 @@ func (i *InteractionExecutor) assembleInteraction(
 	return session, nil
 }
 
-func (i *InteractionExecutor) validateInteractionTools(manifest toolset.Manifest) error {
-	if len(manifest.Visible)+len(manifest.Deferred) == 0 {
-		return nil
-	}
-	if i.config.ToolInterpreter == nil {
-		return errors.New("agentexec: Interaction Tools require a Tool interpreter")
-	}
-	if i.config.ToolAuthorizer == nil {
-		return errors.New("agentexec: Interaction Tools require a Tool authorizer")
-	}
-	for _, tools := range [][]toolcontract.Tool{manifest.Visible, manifest.Deferred} {
-		for _, executable := range tools {
-			name := executable.Definition().Name
-			if class := i.config.ToolInterpreter.SafetyClass(name); !class.Valid() {
-				return fmt.Errorf(
-					"agentexec: Interaction Tool %q has invalid safety class %q",
-					name,
-					class,
-				)
-			}
-		}
-	}
-	return nil
-}
-
 // The Deployment's configuration digest names what makes two executions
 // interchangeable, so only deployment-shaping values enter it. Per-run state —
 // cwd, limits, the working context — deliberately does not: a digest that moved
@@ -400,7 +375,7 @@ func (i *InteractionExecutor) AwaitShutdown(ctx context.Context) error {
 func toolDefinitions(tools []toolcontract.Tool) []corechat.ToolDefinition {
 	definitions := make([]corechat.ToolDefinition, len(tools))
 	for index, executable := range tools {
-		definitions[index] = executable.Definition().Clone()
+		definitions[index] = executable.Definition()
 	}
 	return definitions
 }
