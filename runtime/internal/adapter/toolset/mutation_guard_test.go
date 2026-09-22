@@ -79,10 +79,7 @@ func TestMutationGuardRequiresReadBeforeChangingExistingFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, mutation := guardedPatchTools(t, dir, false)
-	out, err := callTextTool(t.Context(), mutation, patchArguments(t, "foo.go", before, strings.ReplaceAll(before, "Foo", "Bar")))
-	if err != nil {
-		t.Fatalf("apply patch: %v", err)
-	}
+	out := callRejectedTool(t, t.Context(), mutation, patchArguments(t, "foo.go", before, strings.ReplaceAll(before, "Foo", "Bar")))
 	if !strings.Contains(out, "must read foo.go before modifying") {
 		t.Fatalf("out = %q, want a read-first message", out)
 	}
@@ -104,9 +101,7 @@ func TestMutationRecordingReportsOnlyAppliedChanges(t *testing.T) {
 	})
 	arguments := patchArguments(t, "foo.txt", "before\n", "after\n")
 
-	if _, err := callTextTool(ctx, mutation, arguments); err != nil {
-		t.Fatalf("guarded patch: %v", err)
-	}
+	callRejectedTool(t, ctx, mutation, arguments)
 	if len(recorded) != 0 {
 		t.Fatalf("guard refusal recorded mutations: %v", recorded)
 	}
@@ -187,10 +182,7 @@ func TestMutationGuardDetectsStaleRead(t *testing.T) {
 	if err := os.WriteFile(path, []byte("package main\n\nfunc Foo() { /* changed */ }\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	out, err := callTextTool(t.Context(), mutation, patchArguments(t, "foo.go", before, strings.ReplaceAll(before, "Foo", "Bar")))
-	if err != nil {
-		t.Fatal(err)
-	}
+	out := callRejectedTool(t, t.Context(), mutation, patchArguments(t, "foo.go", before, strings.ReplaceAll(before, "Foo", "Bar")))
 	if !strings.Contains(out, "changed since you last read it") {
 		t.Fatalf("out = %q, want stale-read message", out)
 	}
@@ -225,10 +217,7 @@ func TestMutationGuardForgetsDeletedFileBeforeExternalRecreation(t *testing.T) {
 		t.Fatalf("external recreation: %v", err)
 	}
 
-	out, err := callTextTool(t.Context(), mutation, patchArguments(t, "foo.txt", before, "after\n"))
-	if err != nil {
-		t.Fatalf("guarded patch: %v", err)
-	}
+	out := callRejectedTool(t, t.Context(), mutation, patchArguments(t, "foo.txt", before, "after\n"))
 	if !strings.Contains(out, "must read foo.txt before modifying") {
 		t.Fatalf("out = %q, want a fresh read after external recreation", out)
 	}

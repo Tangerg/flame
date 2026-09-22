@@ -31,10 +31,9 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, cwd string) tool
 		return inner
 	}
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
-		arguments := string(invocation.Arguments())
-		request, decodeErr := decodeToolArguments[fs.ReadRequest](arguments)
-		if decodeErr != nil || request.Path == "" {
-			return inner.Call(ctx, invocation)
+		request, decodeErr := decodeToolArguments[fs.ReadRequest](invocation)
+		if decodeErr != nil {
+			return chat.ToolOutput{}, fmt.Errorf("track read arguments: %w", decodeErr)
 		}
 		abs, pathErr := pathidentity.Canonical(cwd, request.Path)
 		if pathErr != nil {
@@ -79,7 +78,13 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, cwd string) too
 			return chat.ToolOutput{}, err
 		}
 		if blocked != "" {
-			return chat.NewTextToolOutput(blocked), nil
+			failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
+				Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput(blocked),
+			})
+			if err != nil {
+				return chat.ToolOutput{}, err
+			}
+			return chat.ToolOutput{}, failure
 		}
 		out, err := inner.Call(ctx, invocation)
 		if err != nil {

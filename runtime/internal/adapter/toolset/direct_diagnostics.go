@@ -2,11 +2,10 @@ package toolset
 
 import (
 	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"path/filepath"
-	"strings"
 
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -33,14 +32,14 @@ func directTools(root string) ([]toolcontract.Tool, error) {
 	return []toolcontract.Tool{readTool, search.glob, search.grep}, nil
 }
 
-// normalizeDirectArguments validates the direct-call protocol's paths and
-// rewrites them to the root-relative identity promised by the application
-// contract. LocalExecutor independently enforces the filesystem capability;
-// this adapter owns domain-error translation and protocol normalization.
-func normalizeDirectArguments(root, name, arguments string) (string, error) {
+// Only Scope-admitted inputs may be normalized: typed decoding and re-encoding
+// can erase invalid zero/null values or normalize field aliases before admission.
+// This adapter owns path identity and domain-error translation; LocalExecutor
+// independently enforces the filesystem capability.
+func normalizeDirectArguments(root, name string, invocation toolcontract.Invocation) (string, error) {
 	switch name {
 	case tool.Read:
-		request, err := decodeToolArguments[fs.ReadRequest](arguments)
+		request, err := decodeToolArguments[fs.ReadRequest](invocation)
 		if err != nil {
 			return "", fmt.Errorf("toolset: decode direct read arguments: %w", err)
 		}
@@ -51,7 +50,7 @@ func normalizeDirectArguments(root, name, arguments string) (string, error) {
 		request.Path = path
 		return encodeDirectArguments(request)
 	case tool.Glob:
-		request, err := decodeToolArguments[runtimeGlobRequest](arguments)
+		request, err := decodeToolArguments[runtimeGlobRequest](invocation)
 		if err != nil {
 			return "", fmt.Errorf("toolset: decode direct glob arguments: %w", err)
 		}
@@ -64,7 +63,7 @@ func normalizeDirectArguments(root, name, arguments string) (string, error) {
 		}
 		return encodeDirectArguments(request)
 	case tool.Grep:
-		request, err := decodeToolArguments[runtimeGrepRequest](arguments)
+		request, err := decodeToolArguments[runtimeGrepRequest](invocation)
 		if err != nil {
 			return "", fmt.Errorf("toolset: decode direct grep arguments: %w", err)
 		}
@@ -81,20 +80,10 @@ func normalizeDirectArguments(root, name, arguments string) (string, error) {
 	}
 }
 
-func decodeToolArguments[T any](arguments string) (T, error) {
+func decodeToolArguments[T any](invocation toolcontract.Invocation) (T, error) {
 	var request T
-	decoder := json.NewDecoder(strings.NewReader(arguments))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&request); err != nil {
-		return request, err
-	}
-	if err := decoder.Decode(new(json.RawMessage)); err != io.EOF {
-		if err == nil {
-			return request, errors.New("unexpected trailing JSON value")
-		}
-		return request, err
-	}
-	return request, nil
+	err := jsonv2.Unmarshal(invocation.Arguments(), &request, jsonv2.RejectUnknownMembers(true))
+	return request, err
 }
 
 func encodeDirectArguments(value any) (string, error) {

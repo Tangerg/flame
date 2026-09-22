@@ -23,9 +23,9 @@ var protectedDirs = []string{".git"}
 
 // withPathGuard wraps a file-mutating tool so a target whose
 // resolved path lies inside a [protectedDirs] directory is refused with a
-// model-facing message instead of executed. Like the read/mutation guards, the
-// refusal is a normal result (not an error), so the model adapts rather
-// than the run aborting. Resolution uses the canonical physical path, so a
+// model-facing Scope rejection instead of executed. A definite refusal keeps
+// the model able to adapt without publishing successful execution or unknown
+// effects. Resolution uses the canonical physical path, so a
 // traversal or symlink that lands in a protected directory is caught too. Apply it as
 // the OUTERMOST wrap so the check gates before any staleness/diagnostics work.
 //
@@ -41,7 +41,13 @@ func withPathGuard(inner toolcontract.Tool, cwd string) toolcontract.Tool {
 		}
 		for _, path := range paths {
 			if refusal, ok := guardMutationPath(cwd, path); !ok {
-				return chat.NewTextToolOutput(refusal), nil
+				failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
+					Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput(refusal),
+				})
+				if err != nil {
+					return chat.ToolOutput{}, err
+				}
+				return chat.ToolOutput{}, failure
 			}
 		}
 		return inner.Call(ctx, invocation)

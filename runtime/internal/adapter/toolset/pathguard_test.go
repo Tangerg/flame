@@ -49,10 +49,7 @@ func TestPathGuardApplyPatchChecksAllTargets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := callTextTool(t.Context(), tool, string(arguments))
-	if err != nil {
-		t.Fatalf("call: %v", err)
-	}
+	out := callRejectedTool(t, t.Context(), tool, string(arguments))
 	if called {
 		t.Fatal("inner tool ran despite protected path in patch")
 	}
@@ -136,11 +133,8 @@ func TestWithPathGuard(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			called = false
-			out, err := callTextTool(context.Background(), guarded, `{"path":"`+tc.path+`"}`)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
 			if tc.wantBlock {
+				out := callRejectedTool(t, t.Context(), guarded, `{"path":"`+tc.path+`"}`)
 				if called {
 					t.Fatalf("inner tool ran for protected path %q", tc.path)
 				}
@@ -148,6 +142,10 @@ func TestWithPathGuard(t *testing.T) {
 					t.Fatalf("path %q not refused: %q", tc.path, out)
 				}
 				return
+			}
+			out, err := callTextTool(t.Context(), guarded, `{"path":"`+tc.path+`"}`)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
 			}
 			if !called {
 				t.Fatalf("inner tool was blocked for allowed path %q: %q", tc.path, out)
@@ -216,10 +214,7 @@ func TestWithPathGuardRejectsSymlinkAliasesIntoGit(t *testing.T) {
 	guarded := withPathGuard(inner, dir)
 	for _, path := range []string{"git-alias/config", "dangling-alias"} {
 		called = false
-		out, err := callTextTool(context.Background(), guarded, `{"path":"`+path+`"}`)
-		if err != nil {
-			t.Fatalf("%s: %v", path, err)
-		}
+		out := callRejectedTool(t, t.Context(), guarded, `{"path":"`+path+`"}`)
 		if called || !strings.Contains(out, "Refused") {
 			t.Fatalf("symlink path %q escaped guard: called=%v out=%q", path, called, out)
 		}
@@ -243,10 +238,7 @@ func TestWithPathGuardRejectsSymlinkCycle(t *testing.T) {
 			return "wrote", nil
 		},
 	)
-	out, err := callTextTool(context.Background(), withPathGuard(inner, dir), `{"path":"a/config"}`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	out := callRejectedTool(t, t.Context(), withPathGuard(inner, dir), `{"path":"a/config"}`)
 	if called || !strings.Contains(out, "Refused") {
 		t.Fatalf("symlink cycle was not refused: called=%v out=%q", called, out)
 	}

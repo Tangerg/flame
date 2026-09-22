@@ -70,7 +70,7 @@ func TestRejectedCallsDoNotCostTheRun(t *testing.T) {
 		}
 		_, callErr := callTextTool(t.Context(), exposed, arguments)
 		if callErr == nil {
-			continue // refused as output; the Run is unaffected
+			continue // Query tools may answer normally, including empty results.
 		}
 		var failure *toolcontract.Failure
 		if !errors.As(callErr, &failure) {

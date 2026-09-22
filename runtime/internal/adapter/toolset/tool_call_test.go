@@ -25,6 +25,20 @@ func callTextTool(ctx context.Context, executable toolcontract.Tool, arguments s
 	return text, nil
 }
 
+func callRejectedTool(t *testing.T, ctx context.Context, executable toolcontract.Tool, arguments string) string {
+	t.Helper()
+	_, err := callTextTool(ctx, executable, arguments)
+	failure, ok := errors.AsType[*toolcontract.Failure](err)
+	if !ok || failure.Kind() != toolcontract.FailureKindRejected || failure.Validate() != nil {
+		t.Fatalf("Call error = %v, want a valid Scope rejection", err)
+	}
+	text, textual := failure.Output().Text()
+	if !textual {
+		t.Fatal("refusal contains non-text output")
+	}
+	return text
+}
+
 func mustTestInvocation(t *testing.T, executable toolcontract.Tool, arguments string) toolcontract.Invocation {
 	t.Helper()
 	_, invocation, err := prepareTestInvocation(executable, arguments)

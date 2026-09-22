@@ -23,12 +23,7 @@ func TestEditExecutesThroughTheMutationGuards(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Unread file: the staleness guard owns this, and it answers the model
-	// rather than failing the call.
-	refusal, err := callTextTool(t.Context(), tools.edit, editArguments(t, "notes.txt", "first", "FIRST"))
-	if err != nil {
-		t.Fatalf("editing an unread file: %v", err)
-	}
+	refusal := callRejectedTool(t, t.Context(), tools.edit, editArguments(t, "notes.txt", "first", "FIRST"))
 	if !strings.Contains(strings.ToLower(refusal), "read") {
 		t.Fatalf("unread-file refusal = %q, want it to say the file must be read first", refusal)
 	}
@@ -64,10 +59,7 @@ func TestEditRefusesProtectedDirectories(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	refusal, err := callTextTool(t.Context(), tools.edit, editArguments(t, ".git/config", "[core]", "[hijacked]"))
-	if err != nil {
-		t.Fatalf("editing inside .git: %v", err)
-	}
+	refusal := callRejectedTool(t, t.Context(), tools.edit, editArguments(t, ".git/config", "[core]", "[hijacked]"))
 	if !strings.Contains(refusal, "protected") {
 		t.Fatalf("refusal = %q, want the protected-directory message", refusal)
 	}

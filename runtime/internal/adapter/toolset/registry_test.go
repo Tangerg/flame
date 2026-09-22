@@ -59,6 +59,34 @@ func TestDiagnosticRegistryInvokesWithinRoot(t *testing.T) {
 	}
 }
 
+func TestDiagnosticRegistryValidatesBeforeNormalizingArguments(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "note.txt"), []byte("flame\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name      string
+		arguments string
+	}{
+		{"read", `{"Path":"note.txt"}`},
+		{"read", `{"path":"note.txt","Start_Line":1}`},
+		{"read", `{"path":"note.txt","start_line":0}`},
+		{"read", `{"path":"note.txt","max_lines":0}`},
+		{"read", `{"path":"note.txt","start_line":null}`},
+		{"glob", `{"Pattern":"*.txt"}`},
+		{"glob", `{"pattern":"*.txt","max_results":null}`},
+		{"grep", `{"Pattern":"flame"}`},
+		{"grep", `{"pattern":"flame","max_results":null}`},
+	} {
+		t.Run(test.name+"/"+test.arguments, func(t *testing.T) {
+			_, err := toolset.NewDiagnosticRegistry().Invoke(t.Context(), root, test.name, diagnosticArguments(t, test.arguments))
+			if !errors.Is(err, tool.ErrInvalidArguments) {
+				t.Fatalf("Invoke(%s) error = %v, want invalid Tool input", test.arguments, err)
+			}
+		})
+	}
+}
+
 func TestDiagnosticRegistryRejectsUnknownOrEscapingTool(t *testing.T) {
 	registry := toolset.NewDiagnosticRegistry()
 	if _, err := registry.Invoke(t.Context(), t.TempDir(), "shell", diagnosticArguments(t, `{}`)); err == nil {

@@ -64,12 +64,6 @@ func (DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argumen
 		trace.WithAttributes(attribute.String(attrGenAIToolName, name)))
 	defer span.End()
 
-	normalized, err := normalizeDirectArguments(root, name, arguments.Canonical())
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return tool.Result{}, err
-	}
 	direct, err := directTools(root)
 	if err != nil {
 		return tool.Result{}, err
@@ -81,6 +75,16 @@ func (DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argumen
 		binding, bindErr := toolcontract.Bind(candidate)
 		if bindErr != nil {
 			return tool.Result{}, fmt.Errorf("toolset: bind direct tool %q: %w", name, bindErr)
+		}
+		proposed, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: arguments.Canonical()})
+		if prepareErr != nil {
+			return tool.Result{}, fmt.Errorf("%w: direct tool %q: %w", tool.ErrInvalidArguments, name, prepareErr)
+		}
+		normalized, err := normalizeDirectArguments(root, name, proposed)
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			return tool.Result{}, err
 		}
 		invocation, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: normalized})
 		if prepareErr != nil {

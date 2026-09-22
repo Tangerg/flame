@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	// ErrInvalidArguments reports malformed or non-object tool arguments.
+	// ErrInvalidArguments reports malformed arguments or a violated Tool input contract.
 	ErrInvalidArguments = errors.New("tool: invalid arguments")
 	// ErrInvalidResult reports a tool result that cannot be represented as one
 	// complete JSON value without losing information.

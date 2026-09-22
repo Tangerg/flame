@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -41,7 +42,8 @@ func wireWorkspaceError(err error) error {
 		return protocol.ErrPathOutsideRoot
 	case errors.Is(err, workspaceapp.ErrUnsupportedFile):
 		return NewFailure(errors.Join(protocol.ErrUnsupportedMime, err), err.Error())
-	case errors.Is(err, workspaceapp.ErrPathRequired),
+	case errors.Is(err, tool.ErrInvalidArguments),
+		errors.Is(err, workspaceapp.ErrPathRequired),
 		errors.Is(err, workspaceapp.ErrInvalidFileRange),
 		errors.Is(err, workspaceapp.ErrFileReadTooLarge),
 		errors.Is(err, workspaceapp.ErrInvalidFileListPath),

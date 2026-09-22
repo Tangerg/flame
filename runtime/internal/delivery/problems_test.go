@@ -8,6 +8,7 @@ import (
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -18,6 +19,7 @@ func TestOperationProblemsSeparateTypeDetailAndCause(t *testing.T) {
 	}{
 		{"bare resource failure", protocol.ErrSessionNotFound, protocol.ErrSessionNotFound, protocol.ErrSessionNotFound},
 		{"workspace", wireWorkspaceError(workspaceapp.ErrCWDUnavailable), protocol.ErrWorkspaceUnavailable, workspaceapp.ErrCWDUnavailable},
+		{"tool input", wireWorkspaceError(tool.ErrInvalidArguments), protocol.ErrInvalidParams, tool.ErrInvalidArguments},
 		{"mcp", wireMCPError(mcpapp.ErrUnknownServer), protocol.ErrMCPServerNotFound, mcpapp.ErrUnknownServer},
 		{"schedule revision", mapScheduleErr(schedule.ErrRevisionConflict, "sch_1"), protocol.ErrRevisionConflict, schedule.ErrRevisionConflict},
 	} {
