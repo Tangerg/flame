@@ -20,6 +20,10 @@ type concurrencyPolicy interface {
 	ConcurrencyPolicy() func(toolcontract.Invocation) (key string, concurrent bool)
 }
 
+type toolDecorator struct{ toolcontract.Tool }
+
+func (t toolDecorator) Unwrap() toolcontract.Tool { return t.Tool }
+
 func TestInputSchemaRejectsMissingAndInvalidValues(t *testing.T) {
 	if _, err := inputSchema(nil); !errors.Is(err, mcpserver.ErrInvalidInputSchema) {
 		t.Fatalf("inputSchema(nil) error = %v, want ErrInvalidInputSchema", err)
@@ -73,6 +77,11 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 
 	got := make(map[string]bool, len(wrapped))
 	for _, tool := range wrapped {
+		ref, found, err := IdentifyTool(toolDecorator{Tool: toolDecorator{Tool: tool}})
+		if err != nil || !found || ref.Server.String() != "catalog" ||
+			(ref.Tool.String() != "lookup" && ref.Tool.String() != "mutate") {
+			t.Fatalf("decorated Scope Tool identity = %+v, %t, %v", ref, found, err)
+		}
 		keyer, ok := tool.(concurrencyPolicy)
 		if !ok {
 			t.Fatalf("tool %q does not expose concurrency policy", tool.Definition().Name)

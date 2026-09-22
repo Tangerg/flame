@@ -30,9 +30,12 @@ func validateToolCatalog(servers []*server, replacing *server, candidateServer m
 		}
 	}
 	for _, tool := range candidate {
-		ref, err := remoteToolRef(tool)
+		ref, found, err := IdentifyTool(tool)
 		if err != nil {
 			return fmt.Errorf("mcp: validate tools from server %q: %w", candidateServer, err)
+		}
+		if !found {
+			return fmt.Errorf("mcp: tool from server %q has no MCP identity", candidateServer)
 		}
 		if ref.Server != candidateServer {
 			return fmt.Errorf("mcp: candidate tool source %q does not match server %q", ref.Server, candidateServer)

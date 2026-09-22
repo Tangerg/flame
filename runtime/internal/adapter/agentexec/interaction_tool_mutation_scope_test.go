@@ -77,7 +77,12 @@ func TestFileMutationScopeReadsTheCapabilityToolsetImplements(t *testing.T) {
 		{
 			name: "no working directory to judge against",
 			tool: reportedMutationTool{Tool: executable, paths: []string{"file.txt"}},
-			want: domaintool.FileMutationNone,
+			want: domaintool.FileMutationUnknown,
+		},
+		{
+			name: "invalid capability chain",
+			tool: &cyclicPolicyTool{Tool: executable}, cwd: workspace,
+			want: domaintool.FileMutationUnknown,
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -88,6 +93,10 @@ func TestFileMutationScopeReadsTheCapabilityToolsetImplements(t *testing.T) {
 		})
 	}
 }
+
+type cyclicPolicyTool struct{ toolcontract.Tool }
+
+func (c *cyclicPolicyTool) Unwrap() toolcontract.Tool { return c }
 
 // TestWorkspaceEscapingMutationStillPromptsUnderYolo ties the capability read to
 // the product rule it feeds: a mutation leaving the workspace is confirmed by a

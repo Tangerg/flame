@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -376,9 +377,12 @@ func (o *observedInteractionTool) authorizationRequest(
 	}
 	autoApproved := false
 	if o.session.mcpToolAutoApproved != nil {
-		if identity, ok := o.inner.(interactionMCPToolIdentity); ok {
-			server, remote := identity.MCPToolIdentity()
-			autoApproved = server != "" && remote != "" && o.session.mcpToolAutoApproved(server, remote)
+		ref, found, err := mcp.IdentifyTool(o.inner)
+		if err != nil {
+			return ToolAuthorizationRequest{}, interaction.HostFailure(fmt.Errorf("agentexec: resolve MCP Tool identity: %w", err))
+		}
+		if found {
+			autoApproved = o.session.mcpToolAutoApproved(ref.Server.String(), ref.Tool.String())
 		}
 	}
 	return ToolAuthorizationRequest{

@@ -24,6 +24,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -88,10 +89,18 @@ func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 	}
 	t := &Discovery{byName: make(map[string]discoverableTool, len(withheld))}
 	for _, tool := range withheld {
+		ref, found, err := mcp.IdentifyTool(tool)
+		if err != nil {
+			return nil, fmt.Errorf("discovery: resolve Tool identity: %w", err)
+		}
+		source := "built-in"
+		if found {
+			source = ref.Server.String()
+		}
 		def := tool.Definition()
 		e := discoverableTool{
 			definition: def,
-			source:     sourceOf(tool),
+			source:     source,
 			nameTerms:  tokenize(def.Name),
 			nameLower:  strings.ToLower(def.Name),
 			descLower:  strings.ToLower(def.Description),
@@ -336,16 +345,6 @@ func (d *Discovery) renderMatches(matches []discoverableTool) string {
 
 func (d *Discovery) renderNoMatch(query string) string {
 	return fmt.Sprintf("No tools matched %q. %d tool(s) are available — try a broader keyword, or select:name to load one by exact name.", query, len(d.entries))
-}
-
-func sourceOf(tool toolcontract.Tool) string {
-	if id, ok := tool.(mcpToolIdentity); ok {
-		server, _ := id.MCPToolIdentity()
-		if server != "" {
-			return server
-		}
-	}
-	return "built-in"
 }
 
 // tokenize splits a qualified tool name into lowercase terms on non-alphanumeric

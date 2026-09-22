@@ -217,3 +217,5 @@ Stored JSON uses the standard library's single-pass strict decoder. Columns requ
 ## Scope provider transport
 
 Runtime consumes released Scope v0.33.0 modules and tools v0.34.0. Provider `Call` and `Stream` use Scope's canonical streaming transport; complete calls aggregate that same validated stream. Runtime does not retain a unary provider fallback. MCP sessions use `github.com/Tangerg/go-sdk`, the same SDK as Scope MCP, so structured results preserve large integers, decimal values, and explicit empty objects through transport and Tool publication.
+
+MCP identity follows Scope's capability chain through Tool decorators for discovery, disabled-tool policy, and automatic approval. Invalid MCP identity declarations now reject the catalog instead of silently hiding entries or grouping them as built-ins. Persisted settings and public protocol shapes require no migration.

@@ -166,17 +166,16 @@ func validateToolAuthorizationText(name, value string) error {
 	return nil
 }
 
-type interactionMCPToolIdentity interface {
-	MCPToolIdentity() (sourceName, remoteName string)
-}
-
 func fileMutationScope(
 	executable toolcontract.Tool,
 	arguments tool.Arguments,
 	cwd string,
 ) tool.FileMutationScope {
 	reporter, found, err := toolcontract.Capability[toolset.FileMutationReporter](executable)
-	if err != nil || !found || strings.TrimSpace(cwd) == "" {
+	if err != nil {
+		return tool.FileMutationUnknown
+	}
+	if !found {
 		return tool.FileMutationNone
 	}
 	paths, err := reporter.MutationPaths([]byte(arguments.Canonical()))
@@ -185,6 +184,9 @@ func fileMutationScope(
 	}
 	if len(paths) == 0 {
 		return tool.FileMutationNone
+	}
+	if strings.TrimSpace(cwd) == "" {
+		return tool.FileMutationUnknown
 	}
 	root, err := pathidentity.Resolve("", cwd)
 	if err != nil {

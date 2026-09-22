@@ -51,9 +51,12 @@ func validateSourceToolMaterial(server mcpserver.ServerName, tools []toolcontrac
 		return fmt.Errorf("mcp: validate tools from server %q: %w", server, err)
 	}
 	for _, tool := range tools {
-		ref, err := remoteToolRef(tool)
+		ref, found, err := IdentifyTool(tool)
 		if err != nil {
 			return fmt.Errorf("mcp: validate tool from server %q: %w", server, err)
+		}
+		if !found {
+			return fmt.Errorf("mcp: tool from server %q has no MCP identity", server)
 		}
 		if ref.Server != server {
 			return fmt.Errorf("mcp: tool source %q does not match server %q", ref.Server, server)
@@ -64,27 +67,6 @@ func validateSourceToolMaterial(server mcpserver.ServerName, tools []toolcontrac
 		}
 	}
 	return nil
-}
-
-type remoteToolIdentity interface {
-	MCPToolIdentity() (sourceName, remoteName string)
-}
-
-func remoteToolRef(tool toolcontract.Tool) (mcpserver.ToolRef, error) {
-	identity, ok := tool.(remoteToolIdentity)
-	if !ok {
-		return mcpserver.ToolRef{}, fmt.Errorf("tool %q has no MCP identity", tool.Definition().Name)
-	}
-	server, remote := identity.MCPToolIdentity()
-	serverName, err := mcpserver.ParseServerName(server)
-	if err != nil {
-		return mcpserver.ToolRef{}, err
-	}
-	remoteName, err := mcpserver.ParseRemoteToolName(remote)
-	if err != nil {
-		return mcpserver.ToolRef{}, err
-	}
-	return mcpserver.ToolRef{Server: serverName, Tool: remoteName}, nil
 }
 
 // inputSchema converts the SDK's open schema representation at the MCP

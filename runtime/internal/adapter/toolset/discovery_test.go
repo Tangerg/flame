@@ -16,6 +16,10 @@ type mcpTool struct {
 	name, desc, server, remote, result string
 }
 
+type discoveryDecorator struct{ toolcontract.Tool }
+
+func (d discoveryDecorator) Unwrap() toolcontract.Tool { return d.Tool }
+
 func (m mcpTool) Definition() chat.ToolDefinition {
 	return chat.ToolDefinition{
 		Name:        m.name,
@@ -124,6 +128,9 @@ func TestRoundRobinSpreadsAcrossServers(t *testing.T) {
 		mcpTool{name: "beta_issue_a", desc: "issue", server: "beta", remote: "a"},
 		mcpTool{name: "beta_issue_b", desc: "issue", server: "beta", remote: "b"},
 		mcpTool{name: "beta_issue_c", desc: "issue", server: "beta", remote: "c"},
+	}
+	for index := range many {
+		many[index] = discoveryDecorator{Tool: many[index]}
 	}
 	tool := newSearch(t, many)
 	args, _ := json.Marshal(map[string]any{"query": "issue", "limit": 2})

@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 )
 
@@ -123,10 +124,6 @@ type resolverDeps struct {
 	MCPToolDisabled func(mcpserver.ToolRef) bool
 }
 
-type mcpToolIdentity interface {
-	MCPToolIdentity() (sourceName, remoteName string)
-}
-
 // newResolver builds the Runtime-scoped Tool resolver from its
 // working-directory-independent inputs. The create_goal entry Tool is injected
 // through an explicit seam after its cyclic application owner exists; the MCP
@@ -213,21 +210,22 @@ func (r *Resolver) createGoalTool() toolcontract.Tool {
 // any tools the configured servers disable. The disabled set is read here, not
 // at SetMCPTools, so it stays correct regardless of which hot-swap fired last
 // (a reconnect that swaps tools vs. a configure that swaps the disabled set).
-// The common case (nothing disabled) returns the stored slice unchanged — no
-// per-resolution copy.
-func (r *Resolver) mcpTools() []toolcontract.Tool {
+func (r *Resolver) mcpTools() ([]toolcontract.Tool, error) {
 	p := r.mcp.Load()
 	if p == nil {
-		return nil
+		return nil, nil
 	}
 	values := *p
-	if r.mcpToolDisabled == nil {
-		return values
-	}
 	var out []toolcontract.Tool
 	for i, tool := range values {
-		ref, ok := mcpToolRef(tool)
-		if !ok || r.mcpToolDisabled(ref) {
+		ref, found, err := mcp.IdentifyTool(tool)
+		if err != nil {
+			return nil, fmt.Errorf("toolset: resolve MCP tool identity: %w", err)
+		}
+		if !found {
+			return nil, errors.New("toolset: MCP tool has no source identity")
+		}
+		if r.mcpToolDisabled != nil && r.mcpToolDisabled(ref) {
 			if out == nil {
 				out = append(make([]toolcontract.Tool, 0, len(values)-1), values[:i]...)
 			}
@@ -238,9 +236,9 @@ func (r *Resolver) mcpTools() []toolcontract.Tool {
 		}
 	}
 	if out == nil {
-		return values
+		return values, nil
 	}
-	return out
+	return out, nil
 }
 
 // SetMCPTools swaps in a freshly-built MCP tool set (boot + each reconnect).
@@ -268,23 +266,6 @@ func (r *Resolver) ForgetWorkspace(root string) {
 		return
 	}
 	r.readTracker.forgetWorkspace(root)
-}
-
-func mcpToolRef(tool toolcontract.Tool) (mcpserver.ToolRef, bool) {
-	identity, ok := tool.(mcpToolIdentity)
-	if !ok {
-		return mcpserver.ToolRef{}, false
-	}
-	server, remote := identity.MCPToolIdentity()
-	parsedServer, err := mcpserver.ParseServerName(server)
-	if err != nil {
-		return mcpserver.ToolRef{}, false
-	}
-	parsedRemote, err := mcpserver.ParseRemoteToolName(remote)
-	if err != nil {
-		return mcpserver.ToolRef{}, false
-	}
-	return mcpserver.ToolRef{Server: parsedServer, Tool: parsedRemote}, true
 }
 
 // cwdFor reads the per-Run working directory, falling back to the
@@ -328,7 +309,10 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (_ manif
 	tools.direct(localTools.edit)
 	tools.direct(localTools.applyPatch)
 	tools.deferTools(r.online...)
-	mcpTools := r.mcpTools()
+	mcpTools, err := r.mcpTools()
+	if err != nil {
+		return manifestBuilder{}, err
+	}
 	tools.deferTools(mcpTools...)
 	tools.deferTools(r.a2a...)
 	tools.deferTools(r.lsp...)
