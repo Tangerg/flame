@@ -102,14 +102,12 @@ func scheduleWorkspacePathPatch(ref *protocol.WorkspaceRef, mode protocol.Schedu
 	return workspacePathPatch(ref)
 }
 
-// mapScheduleErr surfaces an unknown-id as invalid_params (the supplied id
-// doesn't resolve), passing every other error through unchanged.
 func mapScheduleErr(err error, id string) error {
 	if err == nil {
 		return nil
 	}
 	if errors.Is(err, schedule.ErrNotFound) {
-		return fmt.Errorf("%w: schedule %q not found", protocol.ErrInvalidParams, id)
+		return NewFailure(errors.Join(protocol.ErrScheduleNotFound, err), fmt.Sprintf("schedule %q no longer exists; refresh the schedule list", id))
 	}
 	// Workspace failures have one translation. A schedule's cwd can produce any
 	// of them, not just an unavailable one, and wireWorkspaceError returns

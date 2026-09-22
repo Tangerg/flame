@@ -2128,6 +2128,10 @@
           "type": "error"
         },
         {
+          "name": "ErrScheduleNotFound",
+          "type": "error"
+        },
+        {
           "name": "ErrSessionBusy",
           "type": "error"
         },

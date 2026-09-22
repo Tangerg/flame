@@ -6467,6 +6467,20 @@
             "requiredCapabilities": false,
             "retryAfterSeconds": false,
             "type": {
+              "const": "schedule_not_found"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "activeRun": false,
+            "errors": false,
+            "requiredCapabilities": false,
+            "retryAfterSeconds": false,
+            "type": {
               "const": "session_busy"
             }
           },

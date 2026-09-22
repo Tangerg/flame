@@ -737,7 +737,10 @@
       "operation": "command",
       "idempotency": "replayResponse",
       "replayCursor": "none",
-      "pagination": "none"
+      "pagination": "none",
+      "errors": [
+        "workspace_unavailable"
+      ]
     },
     {
       "name": "approval.getMode",
@@ -793,6 +796,7 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "workspace_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -807,7 +811,9 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "schedule_not_found",
         "revision_conflict",
+        "workspace_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -836,6 +842,7 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "schedule_not_found",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1489,6 +1496,15 @@
         ]
       },
       {
+        "type": "schedule_not_found",
+        "code": -32036,
+        "recoveryAction": "refetch",
+        "methods": [
+          "schedules.runNow",
+          "schedules.update"
+        ]
+      },
+      {
         "type": "session_busy",
         "code": -32018,
         "recoveryAction": "refetch",
@@ -1583,10 +1599,13 @@
         "methods": [
           "agentDocs.list",
           "hooks.list",
+          "hooks.setTrust",
           "knowledge.get",
           "knowledge.list",
           "knowledge.update",
           "recipes.list",
+          "schedules.create",
+          "schedules.update",
           "sessions.create",
           "sessions.update",
           "skills.discovered.get",
@@ -2544,6 +2563,13 @@
         },
         {
           "tag": "run_waiting",
+          "optional": [
+            "detail",
+            "docUrl"
+          ]
+        },
+        {
+          "tag": "schedule_not_found",
           "optional": [
             "detail",
             "docUrl"

@@ -204,6 +204,7 @@ var (
 	ErrReplayUnavailable               = errors.New("replay_unavailable")
 	ErrMCPServerNotFound               = errors.New("mcp_server_not_found")
 	ErrSkillNotFound                   = errors.New("skill_not_found")
+	ErrScheduleNotFound                = errors.New("schedule_not_found")
 	ErrSkillUnavailable                = errors.New("skill_unavailable")
 	ErrMCPServerAlreadyExists          = errors.New("mcp_server_already_exists")
 	ErrMCPServerDisabled               = errors.New("mcp_server_disabled")

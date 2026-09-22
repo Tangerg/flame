@@ -22,7 +22,8 @@ func registerHooks(registry *Registry) {
 	})
 
 	registry.commandAck(MethodMeta{
-		Name: HooksSetTrust,
+		Name:   HooksSetTrust,
+		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
 	}, func(service interface {
 		SetHookTrust(context.Context, protocol.SetHookTrustRequest) error
 	}, ctx context.Context, request protocol.SetHookTrustRequest) error {

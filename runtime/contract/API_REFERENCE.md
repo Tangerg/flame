@@ -62,16 +62,16 @@ Protocol `2026-09-22` · 88 methods
 | `mcp.authorizationAttempts.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.get` | query | unary | none | none | none | — | `mcp` | `mcp_authorization_attempt_not_found`, `capability_not_negotiated` |
 | `hooks.list` | query | unary | none | none | none | — | — | `workspace_unavailable` |
-| `hooks.setTrust` | command | unary | replayResponse | none | none | — | — | — |
+| `hooks.setTrust` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable` |
 | `approval.getMode` | query | unary | none | none | none | — | — | — |
 | `approval.setMode` | command | unary | replayResponse | none | none | — | — | — |
 | `approval.listRules` | query | unary | none | none | none | — | — | — |
 | `approval.forgetRule` | command | unary | replayResponse | none | none | — | — | — |
 | `schedules.list` | query | unary | none | none | cursor | — | `schedules` | `capability_not_negotiated` |
-| `schedules.create` | command | unary | replayResponse | none | none | — | `schedules` | `capability_not_negotiated` |
-| `schedules.update` | command | unary | replayResponse | none | none | — | `schedules` | `revision_conflict`, `capability_not_negotiated` |
+| `schedules.create` | command | unary | replayResponse | none | none | — | `schedules` | `workspace_unavailable`, `capability_not_negotiated` |
+| `schedules.update` | command | unary | replayResponse | none | none | — | `schedules` | `schedule_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
 | `schedules.delete` | command | unary | replayResponse | none | none | — | `schedules` | `capability_not_negotiated` |
-| `schedules.runNow` | command | unary | replayResponse | none | none | — | `schedules` | `capability_not_negotiated` |
+| `schedules.runNow` | command | unary | replayResponse | none | none | — | `schedules` | `schedule_not_found`, `capability_not_negotiated` |
 | `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.update` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.clear` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
@@ -183,6 +183,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `run_not_found` | — | `detail`, `docUrl` |
 | `run_not_root` | — | `detail`, `docUrl` |
 | `run_waiting` | — | `detail`, `docUrl` |
+| `schedule_not_found` | — | `detail`, `docUrl` |
 | `session_busy` | — | `detail`, `docUrl` |
 | `session_has_active_run` | `activeRun` | `detail`, `docUrl` |
 | `session_not_found` | — | `detail`, `docUrl` |

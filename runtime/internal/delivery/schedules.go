@@ -25,6 +25,7 @@ func registerSchedules(registry *Registry) {
 
 	registry.command(MethodMeta{
 		Name: SchedulesCreate, CapabilityRules: requires(protocol.FeatureSchedules),
+		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
 	}, func(service interface {
 		CreateSchedule(context.Context, protocol.CreateScheduleRequest) (*protocol.Schedule, error)
 	}, ctx context.Context, request protocol.CreateScheduleRequest) (*protocol.Schedule, error) {
@@ -32,7 +33,7 @@ func registerSchedules(registry *Registry) {
 	})
 
 	registry.command(MethodMeta{
-		Name: SchedulesUpdate, Errors: []string{protocol.ErrRevisionConflict.Error()},
+		Name: SchedulesUpdate, Errors: []string{protocol.ErrScheduleNotFound.Error(), protocol.ErrRevisionConflict.Error(), protocol.ErrWorkspaceUnavailable.Error()},
 		CapabilityRules: requires(protocol.FeatureSchedules),
 	}, func(service interface {
 		UpdateSchedule(context.Context, protocol.UpdateScheduleRequest) (*protocol.Schedule, error)
@@ -50,6 +51,7 @@ func registerSchedules(registry *Registry) {
 
 	registry.command(MethodMeta{
 		Name: SchedulesRunNow, CapabilityRules: requires(protocol.FeatureSchedules),
+		Errors: []string{protocol.ErrScheduleNotFound.Error()},
 	}, func(service interface {
 		RunScheduleNow(context.Context, protocol.RunScheduleNowRequest) (*protocol.RunScheduleNowResponse, error)
 	}, ctx context.Context, request protocol.RunScheduleNowRequest) (*protocol.RunScheduleNowResponse, error) {

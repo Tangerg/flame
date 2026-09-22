@@ -3975,6 +3975,12 @@
           "type": "object"
         }
       },
+      "errors": [
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
+        }
+      ],
       "x-flame-kind": "unary",
       "x-flame-operation": "command",
       "x-flame-idempotency": "replayResponse",
@@ -4318,6 +4324,10 @@
       },
       "errors": [
         {
+          "code": -32005,
+          "message": "workspace_unavailable"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -4459,8 +4469,16 @@
       },
       "errors": [
         {
+          "code": -32036,
+          "message": "schedule_not_found"
+        },
+        {
           "code": -32019,
           "message": "revision_conflict"
+        },
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
         },
         {
           "code": -32006,
@@ -4602,6 +4620,10 @@
         }
       },
       "errors": [
+        {
+          "code": -32036,
+          "message": "schedule_not_found"
+        },
         {
           "code": -32006,
           "message": "capability_not_negotiated"

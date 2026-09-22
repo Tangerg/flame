@@ -38,4 +38,5 @@ const (
 	codeIdempotencyStoreMismatch        = -32033
 	codeSkillNotFound                   = -32034
 	codeSkillUnavailable                = -32035
+	codeScheduleNotFound                = -32036
 )

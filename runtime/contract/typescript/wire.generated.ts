@@ -1003,6 +1003,7 @@ export type ProblemData =
   | { type: "run_not_found"; detail?: string; docUrl?: string }
   | { type: "run_not_root"; detail?: string; docUrl?: string }
   | { type: "run_waiting"; detail?: string; docUrl?: string }
+  | { type: "schedule_not_found"; detail?: string; docUrl?: string }
   | { type: "session_busy"; detail?: string; docUrl?: string }
   | { type: "session_has_active_run"; activeRun: ActiveRunRef; detail?: string; docUrl?: string }
   | { type: "session_not_found"; detail?: string; docUrl?: string }

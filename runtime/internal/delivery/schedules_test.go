@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -121,6 +122,28 @@ func TestCreateScheduleBuildsEnabledDomainSchedule(t *testing.T) {
 	}
 }
 
+func TestMissingScheduleIsAResourceFailure(t *testing.T) {
+	endpoint := mustNewEndpoint(t, handlerWithSchedules(t, &fakeScheduleRegistry{}), EndpointConfig{})
+	for _, tc := range []struct {
+		method Name
+		params any
+	}{
+		{SchedulesUpdate, protocol.UpdateScheduleRequest{ID: "sch_missing", ExpectedRevision: 1}},
+		{SchedulesRunNow, protocol.RunScheduleNowRequest{ID: "sch_missing"}},
+	} {
+		t.Run(string(tc.method), func(t *testing.T) {
+			result := endpoint.Invoke(t.Context(), tc.method, tc.params, Options{})
+			if !errors.Is(result.Failure, protocol.ErrScheduleNotFound) || !errors.Is(result.Failure, schedule.ErrNotFound) {
+				t.Fatalf("failure = %v, want missing schedule with preserved cause", result.Failure)
+			}
+			method, _ := contract.lookup(tc.method)
+			if !slices.Contains(method.Meta.Errors, result.Failure.Problem().Type) {
+				t.Fatal("missing resource error is absent from the method contract")
+			}
+		})
+	}
+}
+
 func TestCreateScheduleRejectsUnavailableCWD(t *testing.T) {
 	reg := &fakeScheduleRegistry{}
 	s := handlerWithSchedules(t, reg)
@@ -134,6 +157,39 @@ func TestCreateScheduleRejectsUnavailableCWD(t *testing.T) {
 	}
 	if len(reg.created) != 0 {
 		t.Fatalf("created %d schedule(s), want 0", len(reg.created))
+	}
+}
+
+func TestWorkspaceMutationFailuresMatchPublishedContracts(t *testing.T) {
+	root := t.TempDir()
+	missing := protocol.WorkspaceRef{Path: root + "/missing"}
+	reg := &fakeScheduleRegistry{byID: map[string]schedule.Schedule{
+		"sch_1": mustServerSchedule(t, schedule.Snapshot{ID: "sch_1", Instructions: "Review", CWD: root}),
+	}}
+	s := handlerWithSchedules(t, reg)
+	s.workspaceHooks = newWorkspaceHandler(root).workspaceHooks
+	endpoint := mustNewEndpoint(t, s, EndpointConfig{})
+	for _, tc := range []struct {
+		method Name
+		params any
+	}{
+		{SchedulesCreate, protocol.CreateScheduleRequest{Instructions: "Review", Cron: "@daily", Workspace: &missing}},
+		{SchedulesUpdate, protocol.UpdateScheduleRequest{ID: "sch_1", ExpectedRevision: 1, Workspace: &missing}},
+		{HooksSetTrust, protocol.SetHookTrustRequest{ProjectRoot: missing.Path, Trusted: true}},
+	} {
+		t.Run(string(tc.method), func(t *testing.T) {
+			result := endpoint.Invoke(t.Context(), tc.method, tc.params, Options{})
+			if !errors.Is(result.Failure, protocol.ErrWorkspaceUnavailable) {
+				t.Fatalf("failure = %v, want workspace unavailable", result.Failure)
+			}
+			method, _ := contract.lookup(tc.method)
+			if !slices.Contains(method.Meta.Errors, result.Failure.Problem().Type) {
+				t.Fatal("workspace failure is absent from the method contract")
+			}
+		})
+	}
+	if len(reg.created) != 0 || len(reg.updated) != 0 {
+		t.Fatal("invalid workspace mutated a schedule")
 	}
 }
 
@@ -211,21 +267,6 @@ func TestUpdateScheduleCanReturnToDefaultWorkspace(t *testing.T) {
 	}
 	if got.Workspace != nil {
 		t.Fatalf("wire schedule workspace = %+v, want omitted Runtime default", got.Workspace)
-	}
-}
-
-func TestUpdateScheduleUnknownIDIsInvalidParams(t *testing.T) {
-	s := handlerWithSchedules(t, &fakeScheduleRegistry{})
-
-	_, err := s.UpdateSchedule(context.Background(), protocol.UpdateScheduleRequest{
-		ID:               "missing",
-		ExpectedRevision: 1,
-		Instructions:     valuePtr("hello"),
-		Cron:             valuePtr("@daily"),
-		Enabled:          valuePtr(true),
-	})
-	if !errors.Is(err, protocol.ErrInvalidParams) {
-		t.Fatalf("update missing err = %v, want ErrInvalidParams", err)
 	}
 }
 
