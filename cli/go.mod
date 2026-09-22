@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/cli
 go 1.27.0
 
 require (
-	github.com/Tangerg/flame/runtime v0.0.0-20260922124738-7141c39a429c
+	github.com/Tangerg/flame/runtime v0.0.0-20260922130524-eb09ca64f6eb
 	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260912094153-1dc998bda962
 	github.com/Tangerg/oolong/components v0.18.2
 	github.com/Tangerg/oolong/core v0.18.2
@@ -53,7 +53,7 @@ require (
 	github.com/Tangerg/scope/models/xiaomi v0.33.0 // indirect
 	github.com/Tangerg/scope/models/zhipu v0.33.0 // indirect
 	github.com/Tangerg/scope/skills v0.33.0 // indirect
-	github.com/Tangerg/scope/tools v0.34.0 // indirect
+	github.com/Tangerg/scope/tools v0.35.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/a2aproject/a2a-go/v2 v2.5.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect
