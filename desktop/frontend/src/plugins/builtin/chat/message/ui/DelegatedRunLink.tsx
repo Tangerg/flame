@@ -28,22 +28,15 @@ const styles = stylex.create({
     paddingBlock: space.s2,
     paddingInline: space.s2,
     borderRadius: radius.row,
-    // The row is the view's main affordance and answered the pointer with nothing — measured,
-    // its background stayed transparent on hover while every other dock list washed at 5%.
-    // A row that opens something has to look like it does.
     backgroundColor: { default: null, ":hover": surface.hover },
     transitionProperty: "background-color",
     transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
   },
   detail: { display: "flex", flexDirection: "column", gap: space.s0_5, minWidth: 0, flex: 1 },
-  // The NAME takes the slack, so the outcome lands on the row's end rather than wherever the
-  // name happened to stop. Four rows of a fan-out reported their status at four different
-  // offsets, which is the column a reader scans to find the one that needs them.
+  /** Takes the slack, so the outcome lands on the row's end rather than after the name. */
   name: { minWidth: 0, flex: 1 },
-  // Held open whether or not the run can be cancelled. The button used to appear only on the
-  // rows that could, so those rows ended 30px short of the ones that could not and the
-  // outcome column zig-zagged down a fan-out.
+  /** Held open whether or not the run can be cancelled, so the outcome column holds. */
   cancelSlot: {
     display: "flex",
     flexShrink: 0,

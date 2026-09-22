@@ -14,9 +14,7 @@ export function InboxTab() {
   const query = usePendingWork();
   const sessions = useAgentSessions();
   const items = query.data ?? [];
-  // Never the id. A session that is not in the list, or carries no title, used to put its
-  // wire identifier where a reader looks for a name — `ses_other` beside "Agent · idle" in the
-  // same column. The sidebar already answers this the same way.
+  // Never the wire id: a session may be absent from the list or carry no title at all.
   const titleOf = (sessionId: string) =>
     sessions.data?.find((session) => session.id === sessionId)?.title?.trim() ||
     t("session.untitled");

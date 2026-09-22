@@ -41,8 +41,7 @@ const tc = stylex.create({
     // Lands on the LABEL: the 16px mark plus the trigger's own 6px gap.
     marginLeft: "calc(var(--spacing) * 5.5)",
     overflowWrap: "anywhere",
-    // Normal ink, not the tone: the "failed" word beside the row already carries that, and the
-    // timeline inks the same sentence the same way. A whole red paragraph is a shout.
+    // Normal ink: the "failed" word beside the row carries the tone, as it does in the timeline.
     color: color.fg,
   },
 });

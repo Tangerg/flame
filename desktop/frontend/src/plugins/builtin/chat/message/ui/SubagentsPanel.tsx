@@ -24,10 +24,7 @@ import { MESSAGE_CONTENT_CLASS } from "./messageContent";
 import { messageStyles as ms } from "./messageStyles";
 
 const styles = stylex.create({
-  // The dock's own summary line, in the vocabulary the other ten views open with: muted, mono,
-  // one step down. This view used to open with nothing, or — once a transcript was picked —
-  // with a bespoke header inset to the READING gutter, which put its only control at an
-  // offset no other view's controls share.
+  /** The dock's summary line, in the vocabulary the other views open with. */
   headLine: { minWidth: 0, flex: 1 },
   scroller: {
     flex: 1,

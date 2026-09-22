@@ -78,9 +78,8 @@ function entrySubject(t: Translate, entry: TimelineEntry, tool: ToolCall | undef
 
 function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | undefined }) {
   const t = useT();
-  // The call's OWN glyph, the one the transcript gave it, rather than the generic wrench the
-  // kind would supply: a run of tool rows all carrying the same busy mark says nothing and is
-  // the densest thing on the line at 12px.
+  // The call's own glyph rather than the kind's generic one, so a read, a shell and an edit
+  // are told apart before the text is.
   const icon = entry.kind === "tool" && tool ? toolCallIconFor(tool) : KIND_ICON[entry.kind];
   const subject = entrySubject(t, entry, tool);
   return (

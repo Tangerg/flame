@@ -28,13 +28,7 @@ export function SearchTab() {
   const view = workspaceSearchViewModel(data);
 
   return (
-    <WorkspaceViewLayout
-      icon="search"
-      title="search.title"
-      // The count slot holds a COUNT. It used to fall back to a sentence describing the
-      // mechanism, which every sibling view leaves empty when it has nothing to count.
-      sub={workspaceSearchSubtext(t, view)}
-    >
+    <WorkspaceViewLayout icon="search" title="search.title" sub={workspaceSearchSubtext(t, view)}>
       <div {...stylex.props(vs.gutter, vs.statusPad)}>
         <SearchField
           font="mono"

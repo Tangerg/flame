@@ -4,9 +4,8 @@ import type { MessageRenderUnit } from "@/plugins/builtin/agent/public/messagePr
  *  usually wants something from the reader. */
 export type UnitVoice = "process" | "prose" | "panel";
 
-// Exhaustive, with no `default`: a new block kind is a decision about rhythm, and the fallback
-// had already made one silently — a compaction notice renders as the same activity line as the
-// tool rows around it, wants nothing from the reader, and was spaced as a panel anyway.
+// Exhaustive on purpose: a new block kind is a decision about rhythm, and a `default` makes
+// that decision silently.
 export function unitVoice(unit: MessageRenderUnit): UnitVoice {
   if (unit.kind === "wave" || unit.kind === "toolGroup") return "process";
   switch (unit.block.kind) {

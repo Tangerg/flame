@@ -33,15 +33,8 @@ export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
     running: tool.status === "running",
     denied: tool.status === "denied",
     intent,
-    // The SUBJECT, whatever the outcome. A failure used to take this slot, which cost the row
-    // the one thing that says which call failed — and bought the error nothing, because the
-    // slot is a single truncating line, so a message longer than the row was unreadable and
-    // uncopyable. It travels beside the row now, where it can be read in full.
-    //
-    // Withheld when it would name ONE of several. A `path` detail is a file, and a call that
-    // reports touching three of them put whichever one it happened to carry beside a "3 files"
-    // count — an arbitrary pick, read as THE file. The count says how many and the disclosure
-    // names them all. Only `path`: a pattern or a URL is not one of the files.
+    // The SUBJECT — one truncating line, so never the failure, and never one file out of
+    // several: `files` already says how many and the disclosure names them.
     detail: namesOneOfMany(intent.detail, tool) ? undefined : intent.detail,
     ...(tool.status === "err" && tool.error ? { error: tool.error } : {}),
     diffStat,
