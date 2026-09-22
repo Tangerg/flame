@@ -48,6 +48,39 @@ func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
 	}
 }
 
+func TestRuntimeConnectionResourceFailures(t *testing.T) {
+	configureIntegrationRuntime(t)
+	runtime := openIntegrationRuntime(t, t.TempDir())
+	for _, tc := range []struct {
+		name string
+		kind error
+		call func() error
+	}{
+		{"schedule", protocol.ErrScheduleNotFound, func() error {
+			_, err := runtime.RunNow(t.Context(), "sch_missing")
+			return err
+		}},
+		{"session", protocol.ErrSessionNotFound, func() error {
+			_, err := runtime.GetSession(t.Context(), "missing-session")
+			return err
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.call()
+			if !errors.Is(err, tc.kind) {
+				t.Fatalf("resource failure = %v, want %v", err, tc.kind)
+			}
+			problem, ok := errors.AsType[protocol.ProblemError](err)
+			if !ok || problem.Problem().Type != tc.kind.Error() {
+				t.Fatalf("lost structured resource failure: %v", err)
+			}
+			if strings.Count(err.Error(), tc.kind.Error()) != 1 {
+				t.Fatalf("error category rendered more than once: %v", err)
+			}
+		})
+	}
+}
+
 func TestRuntimeConnectionSessionCatalogAndLifecycle(t *testing.T) {
 	configureIntegrationRuntime(t)
 	workspace := t.TempDir()
