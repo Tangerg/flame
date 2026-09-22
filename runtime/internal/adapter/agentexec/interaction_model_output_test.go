@@ -9,8 +9,46 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
 )
+
+func TestUnavailableModelStreamClosesAttemptWithoutInventingResponse(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		sequence iter.Seq2[*chat.ResponseDelta, error]
+	}{
+		{name: "nil sequence"},
+		{name: "empty sequence", sequence: func(func(*chat.ResponseDelta, error) bool) {}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			model := struct {
+				chat.Model
+				chat.Streamer
+			}{
+				Model: chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+					t.Error("unexpected nonstreaming call")
+					return nil, errors.New("unexpected nonstreaming call")
+				}),
+				Streamer: chat.StreamerFunc(func(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+					return test.sequence
+				}),
+			}
+			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: true})
+			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+			failed := payloadsOf[runs.ModelCallFailed](events)
+			if len(failed) != 1 || failed[0].Observation != (runs.ModelObservation{}) ||
+				failed[0].FirstOutputLatencyMillis != nil || len(payloadsOf[runs.ModelCallCompleted](events)) != 0 {
+				t.Fatalf("unavailable stream failed to close its model attempt: %+v", failed)
+			}
+			ends := payloadsOf[runs.SegmentEnded](events)
+			if len(ends) != 1 || ends[0].Reason != run.OutcomeFailed || ends[0].Failure() == nil ||
+				ends[0].Failure().Kind != run.FailureProviderUnavailable || len(ends[0].UnresolvedEffects()) != 1 {
+				t.Fatalf("stream failure lost its provider classification or unknown Effect: %+v", ends)
+			}
+		})
+	}
+}
 
 func TestFirstModelOutputExcludesStreamBookkeeping(t *testing.T) {
 	for _, test := range []struct {

@@ -61,14 +61,20 @@ func (o *observedInteractionModel) Stream(
 			return
 		}
 		defer o.session.accounting.discardPreparedModelContext(invocation)
+		dispatchedAt := time.Now()
+		sequence := o.streamer.Stream(ctx, request)
+		if sequence == nil {
+			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil,
+				errors.New("agentexec: model streamer returned a nil sequence")))
+			return
+		}
 		var accumulated corechat.ResponseAccumulator
 		var text, reasoning strings.Builder
 		observation := func() runs.ModelObservation {
 			return runs.ModelObservation{Text: text.String(), Reasoning: reasoning.String()}
 		}
 		var firstOutputLatencyMillis *int64
-		dispatchedAt := time.Now()
-		for chunk, streamErr := range o.streamer.Stream(ctx, request) {
+		for chunk, streamErr := range sequence {
 			if streamErr != nil {
 				yield(nil, o.finishFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis, streamErr))
 				return
