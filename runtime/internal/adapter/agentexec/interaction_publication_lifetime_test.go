@@ -53,6 +53,20 @@ func TestExecutionWaitsForSlowDurableReceipts(t *testing.T) {
 					time.Sleep(executionTreeCommitTimeout / 2)
 					delayed++
 				}
+				if _, modelCompletion := commit.Fact().(runs.ModelCallCompleted); modelCompletion {
+					session, err := executor.session(ref)
+					if err != nil {
+						t.Fatal(err)
+					}
+					tree, err := session.engine.InspectTree(t.Context(), session.processRootID())
+					if err != nil {
+						t.Fatal(err)
+					}
+					root, found := tree.Process(session.processRootID())
+					if !found || root.Snapshot.Status().Terminal() {
+						t.Fatal("Scope completed before Runtime accepted the model response")
+					}
+				}
 				commit.Complete(nil)
 				event.Payload = commit.Fact()
 			}

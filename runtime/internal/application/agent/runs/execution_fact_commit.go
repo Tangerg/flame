@@ -72,9 +72,6 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 		return value, true
 	case ReasoningDelta:
 		return value, true
-	case AssistantMessageCompleted:
-		value.message = value.message.Clone()
-		return value, true
 	case ModelCallStarted:
 		return value, true
 	case ModelCallCompleted:
@@ -98,7 +95,7 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 	case ExecutionTreeSettled:
 		for _, event := range value.Facts {
 			switch event.Payload.(type) {
-			case ToolResultsCommitted, AssistantMessageCompleted, SegmentEnded:
+			case ToolResultsCommitted, SegmentEnded:
 			default:
 				return nil, false
 			}

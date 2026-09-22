@@ -144,11 +144,11 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		}
 		t.Fatalf("Tool calls after answer = %d, want 1; failure=%+v events=%#v", toolCalls, failure, events)
 	}
-	completed := payloadsOf[runs.AssistantMessageCompleted](events)
+	completed := payloadsOf[runs.ModelCallCompleted](events)
 	if len(completed) != 1 {
 		t.Fatalf("completion = %#v", completed)
 	}
-	message := completed[0].Message()
+	message := completed[0].Message
 	if message.Text() != "completed" {
 		t.Fatalf("completion = %#v", completed)
 	}
@@ -238,9 +238,11 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	observed := <-events
 	resumed := payloadsOf[runs.ToolCallStarted](observed)
 	finished := payloadsOf[runs.ToolCallFinished](observed)
+	ends := payloadsOf[runs.SegmentEnded](observed)
 	if len(resumed) != 1 || resumed[0].CallID != starts[0].CallID ||
 		len(finished) != 1 || finished[0].CallID != starts[0].CallID ||
-		len(payloadsOf[runs.AssistantMessageCompleted](observed)) != 1 {
+		len(payloadsOf[runs.ModelCallCompleted](observed)) != 1 ||
+		len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted {
 		t.Fatalf("restored ask_user lifecycle = %#v", observed)
 	}
 	if err := executor.Release(t.Context(), ref); err != nil {

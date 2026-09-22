@@ -122,21 +122,17 @@ func TestDelegatedOutputSurvivesColdRestoreWithoutReplyCache(t *testing.T) {
 			if err != nil || output.Validate() != nil || output.ModelCalls != 1 || modelCalls.Load() != 1 {
 				t.Fatalf("restored output=%+v calls=%d error=%v", output, modelCalls.Load(), err)
 			}
-			completion, err := completedAssistantMessage(result)
-			if err != nil {
-				t.Fatal(err)
-			}
 			if test.direct {
-				if completion != nil || output.Source != interaction.CompletionSourceDirectToolResults || toolCalls.Load() != 1 ||
+				if output.Source != interaction.CompletionSourceDirectToolResults || toolCalls.Load() != 1 ||
 					len(output.DirectToolResults) != 1 || output.DirectToolResults[0].ID != "answer_1" {
-					t.Fatalf("direct result changed: output=%+v calls=%d completion=%+v", output, toolCalls.Load(), completion)
+					t.Fatalf("direct result changed: output=%+v calls=%d", output, toolCalls.Load())
 				}
 			} else {
-				if completion == nil || output.Source != interaction.CompletionSourceModelResponse {
+				if output.Source != interaction.CompletionSourceModelResponse {
 					t.Fatal("restored output lost its assistant message")
 				}
 				want, _ := agent.EncodePayload(test.message)
-				got, err := agent.EncodePayload(completion.Message())
+				got, err := agent.EncodePayload(*output.ModelResponse.Output.Message)
 				if err != nil || !bytes.Equal(want.JSON(), got.JSON()) {
 					t.Fatalf("assistant content changed: got=%s want=%s error=%v", got.JSON(), want.JSON(), err)
 				}

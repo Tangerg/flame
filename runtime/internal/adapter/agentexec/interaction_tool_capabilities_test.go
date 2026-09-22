@@ -161,8 +161,14 @@ func TestInteractionDirectToolCompletionUsesCommittedResults(t *testing.T) {
 	if len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted || modelCalls.Load() != 1 || executions.Load() != 2 {
 		t.Fatalf("direct completion: ends=%+v model=%d tools=%d", ends, modelCalls.Load(), executions.Load())
 	}
-	if len(payloadsOf[runs.AssistantMessageCompleted](events)) != 0 {
-		t.Fatal("direct completion synthesized an assistant message")
+	completed := payloadsOf[runs.ModelCallCompleted](events)
+	if len(completed) != 1 || len(completed[0].Message.Parts) != 2 {
+		t.Fatalf("direct completion changed the model response: %+v", completed)
+	}
+	for _, part := range completed[0].Message.Parts {
+		if part.Kind != chat.PartToolCall {
+			t.Fatalf("direct completion synthesized assistant content: %+v", part)
+		}
 	}
 	want := []chat.ToolResult{
 		{ID: "first", Name: "answer", Output: chat.NewTextToolOutput("first answer")},

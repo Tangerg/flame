@@ -366,7 +366,7 @@ func (i *interactionSession) commitFact(
 	owner := i.lifetime.execution
 	switch fact.(type) {
 	case runs.ModelCallCompleted, runs.ModelCallFailed, runs.ToolResultsCommitted, runs.ExecutionTreeSettled,
-		runs.AssistantMessageCompleted, runs.SegmentEnded:
+		runs.SegmentEnded:
 		owner = i.lifetime.releasing
 	}
 	if err := ctx.Err(); err != nil {
@@ -605,13 +605,6 @@ func (i *interactionSession) await() {
 
 func (i *interactionSession) publishResult(result agent.Result) error {
 	member := runs.ExecutorMember{MemberID: result.ProcessID().String()}
-	completion, err := completedAssistantMessage(result)
-	if err != nil {
-		return err
-	}
-	if completion != nil && !i.lifetime.send(runs.ExecutorEvent{Member: member, Payload: *completion}) {
-		return nil
-	}
 	if result.Status() == agent.StatusCompleted {
 		i.maintainCompletedRoot()
 	}

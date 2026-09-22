@@ -39,13 +39,6 @@ func (i *interactionSession) childTerminalFacts(tree agent.TreeSnapshot) ([]runs
 			continue
 		}
 		member := i.executorMember(snapshot.Relation())
-		completion, err := completedAssistantMessage(result)
-		if err != nil {
-			return nil, nil, err
-		}
-		if completion != nil {
-			facts = append(facts, runs.ExecutorEvent{Member: member, Payload: *completion})
-		}
 		draft := segmentEndFromTermination(result.Termination(), i.segmentClock.duration(result.StartedAt(), result.FinishedAt()))
 		usage, err := i.accounting.segmentUsage(result.ProcessID())
 		if err != nil {

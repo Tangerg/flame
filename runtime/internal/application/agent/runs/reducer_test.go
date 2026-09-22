@@ -88,7 +88,7 @@ func TestReducerStepsCountModelCallsRatherThanParallelTools(t *testing.T) {
 	}
 }
 
-func TestReducerEarlyExecutorFinalWaitsForAuthoritativeModelResponse(t *testing.T) {
+func TestReducerModelCompletionReplacesPartialObservation(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	mustReduce(t, reducer, MessageDelta{Text: "partial"})
@@ -96,9 +96,6 @@ func TestReducerEarlyExecutorFinalWaitsForAuthoritativeModelResponse(t *testing.
 		corechat.NewReasoningPart("authoritative reasoning", nil),
 		corechat.NewTextPart("authoritative answer"),
 	)
-	if reduced := mustReduce(t, reducer, mustAssistantMessageCompleted(t, message)); len(reduced) != 0 {
-		t.Fatalf("early executor confirmation projected transcript content: %#v", reduced)
-	}
 	reduced := mustReduce(t, reducer, ModelCallCompleted{
 		CallID: "model_call_1", Message: message, Steps: 1,
 	})
@@ -182,9 +179,6 @@ func TestReducerClassifiesToolPreambleAndTerminalAnswerAtTheModelBoundary(t *tes
 	if final[0].MessagePhase() != transcript.MessageFinalAnswer {
 		t.Fatalf("final phase = %q, want final answer", final[0].MessagePhase())
 	}
-	if confirmation := mustReduce(t, reducer, mustAssistantMessageCompleted(t, answer)); len(confirmation) != 0 {
-		t.Fatalf("executor confirmation duplicated the classified final answer: %#v", confirmation)
-	}
 }
 
 func TestReducerKeepsStreamingItemsOpenUntilTheAuthoritativeModelResponse(t *testing.T) {
@@ -225,7 +219,7 @@ func TestReducerKeepsStreamingItemsOpenUntilTheAuthoritativeModelResponse(t *tes
 	}
 }
 
-func TestReducerDoesNotDuplicateModelFinalWhenExecutorConfirmsSameMessage(t *testing.T) {
+func TestReducerTerminalDoesNotDuplicateCommittedModelResponse(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	message := corechat.NewAssistantMessage(corechat.NewTextPart("authoritative answer"))
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
@@ -245,9 +239,15 @@ func TestReducerDoesNotDuplicateModelFinalWhenExecutorConfirmsSameMessage(t *tes
 	if len(conversation) != 1 || conversation[0].Text() != "authoritative answer" {
 		t.Fatalf("model conversation projection = %#v", conversation)
 	}
-	processBatch := mustReduce(t, reducer, mustAssistantMessageCompleted(t, message))
-	if len(processBatch) != 0 {
-		t.Fatalf("executor confirmation duplicated model final: %#v", processBatch)
+	terminal := mustReduce(t, reducer, NewSegmentEnded(run.OutcomeCompleted, nil, nil, 0))
+	if items := completedItems(terminal); len(items) != 0 {
+		t.Fatalf("terminal duplicated committed model Items: %#v", items)
+	}
+	if messages := committedConversationMessages(terminal); len(messages) != 0 {
+		t.Fatalf("terminal duplicated committed conversation: %#v", messages)
+	}
+	if last := terminal[len(terminal)-1].Event.(SegmentFinished); last.Run.State() != run.Completed {
+		t.Fatalf("terminal did not complete: %+v", last.Run)
 	}
 }
 
@@ -264,9 +264,6 @@ func TestReducerIgnoresStreamingObservationAfterAuthoritativeModelCompletion(t *
 	}
 	if late := mustReduce(t, reducer, MessageDelta{Text: "authoritative answer"}); len(late) != 0 {
 		t.Fatalf("late stream observation reopened a transcript Item: %#v", late)
-	}
-	if confirmation := mustReduce(t, reducer, mustAssistantMessageCompleted(t, message)); len(confirmation) != 0 {
-		t.Fatalf("executor confirmation duplicated the model final: %#v", confirmation)
 	}
 }
 

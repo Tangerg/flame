@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"reflect"
 	"slices"
 	"time"
 
@@ -83,16 +82,11 @@ type reducer struct {
 	// authoritative model completion or failure commit. A later ModelCallStarted reopens
 	// the observation window for the next provider turn.
 	modelBoundaryClosed bool
-	// Exactly one side of the final model/process confirmation handshake may be
-	// pending. The two facts travel through different executor paths and either
-	// can arrive first; only ModelCallCompleted projects transcript content.
-	lastModelMessage      *corechat.Message
-	earlyAssistantMessage *corechat.Message
-	toolCallIDs           map[string]struct{}
-	toolPositions         map[toolPosition]string
-	tools                 openTools
-	drained               []DrainedTool
-	errFailure            *run.Failure
+	toolCallIDs         map[string]struct{}
+	toolPositions       map[toolPosition]string
+	tools               openTools
+	drained             []DrainedTool
+	errFailure          *run.Failure
 	// plan is the last Plan this segment published, kept so the segment
 	// can fence its final value before finishing. Nil means this segment never
 	// changed the projection, and a segment that changed nothing has nothing to
@@ -186,14 +180,6 @@ func (r *reducer) clone() *reducer {
 		failure := *r.errFailure
 		cloned.errFailure = &failure
 	}
-	if r.lastModelMessage != nil {
-		message := r.lastModelMessage.Clone()
-		cloned.lastModelMessage = &message
-	}
-	if r.earlyAssistantMessage != nil {
-		message := r.earlyAssistantMessage.Clone()
-		cloned.earlyAssistantMessage = &message
-	}
 	return &cloned
 }
 
@@ -274,8 +260,6 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 			return factReduction{}, fmt.Errorf("%w: append reasoning: %w", errReducerInvariant, err)
 		}
 		return factReduction{events: appended}, nil
-	case AssistantMessageCompleted:
-		return r.reduceAssistantMessage(e)
 	case ModelCallStarted:
 		return r.startModelCall(e)
 	case ModelCallCompleted:
@@ -330,28 +314,6 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 	}
 }
 
-func (r *reducer) reduceAssistantMessage(completed AssistantMessageCompleted) (factReduction, error) {
-	message := completed.Message()
-	if r.lastModelMessage != nil {
-		if !reflect.DeepEqual(*r.lastModelMessage, message) {
-			return factReduction{}, fmt.Errorf(
-				"%w: executor final assistant message differs from the last committed model response",
-				errExecutorContract,
-			)
-		}
-		r.lastModelMessage = nil
-		return factReduction{}, nil
-	}
-	if r.earlyAssistantMessage != nil {
-		return factReduction{}, fmt.Errorf(
-			"%w: executor completed the assistant message more than once",
-			errExecutorContract,
-		)
-	}
-	r.earlyAssistantMessage = &message
-	return factReduction{}, nil
-}
-
 func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error) {
 	if err := runtimeidentity.ValidateEffect(started.CallID); err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call start: %v", errExecutorContract, err)
@@ -392,12 +354,6 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 	}
 	delete(r.modelCalls, completed.CallID)
 	r.modelBoundaryClosed = true
-	if r.earlyAssistantMessage != nil && !reflect.DeepEqual(*r.earlyAssistantMessage, completed.Message) {
-		return factReduction{}, fmt.Errorf(
-			"%w: executor final assistant message differs from the committed model response",
-			errExecutorContract,
-		)
-	}
 	phase := transcript.MessageFinalAnswer
 	if messageRequestsToolCalls(completed.Message) {
 		phase = transcript.MessageCommentary
@@ -405,15 +361,6 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 	events, err := r.completeModelMessage(completed.Message, phase)
 	if err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call completion: %w", errExecutorContract, err)
-	}
-	if r.earlyAssistantMessage != nil {
-		r.earlyAssistantMessage = nil
-		r.lastModelMessage = nil
-	} else if !messageRequestsToolCalls(completed.Message) {
-		message := completed.Message.Clone()
-		r.lastModelMessage = &message
-	} else {
-		r.lastModelMessage = nil
 	}
 	progressEvents, err := r.usageProgress(UsageReported{
 		TokenUsage: completed.TokenUsage, ByModel: completed.ByModel, Cost: completed.Cost,

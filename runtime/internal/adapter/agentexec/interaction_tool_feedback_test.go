@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	"github.com/Tangerg/scope/core/chat"
@@ -79,7 +80,9 @@ func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
 				}
 				return nil
 			})
-			if committed == nil || !committed.IsError || len(payloadsOf[runs.AssistantMessageCompleted](events)) != 1 {
+			ends := payloadsOf[runs.SegmentEnded](events)
+			if committed == nil || !committed.IsError || len(payloadsOf[runs.ModelCallCompleted](events)) != 2 ||
+				len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted {
 				t.Fatalf("failed Tool feedback did not continue after commit: result=%+v events=%#v", committed, events)
 			}
 			if !reflect.DeepEqual(committed.Output, test.failure.Output()) {
@@ -180,7 +183,9 @@ func TestInteractionRejectedToolFeedbackMatchesDurableResult(t *testing.T) {
 				}
 				return nil
 			})
-			if committed == nil || !committed.IsError || len(payloadsOf[runs.AssistantMessageCompleted](events)) != 1 {
+			ends := payloadsOf[runs.SegmentEnded](events)
+			if committed == nil || !committed.IsError || len(payloadsOf[runs.ModelCallCompleted](events)) != 2 ||
+				len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted {
 				t.Fatalf("rejected Tool feedback did not continue after commit: result=%+v", committed)
 			}
 		})

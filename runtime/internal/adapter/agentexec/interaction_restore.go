@@ -268,8 +268,7 @@ func restoreManagedDelegateCall(
 		parentToolFinished: !pending,
 		// Closed children have already published their product terminal. Scope
 		// retains their result until the waiting parent can commit its Tool batch.
-		assistantProjected: !survives,
-		segmentProjected:   !survives,
+		segmentProjected: !survives,
 	}, nil
 }
 

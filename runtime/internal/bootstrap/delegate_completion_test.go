@@ -77,12 +77,19 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 	}
 	rootRunID := started.Value.(*protocol.StartRunResponse).RunID
 	streamed := make(map[string]protocol.SegmentOutcomeType)
+	answers := make(map[string]int)
 	for value, err := range started.Events {
 		if err != nil {
 			t.Fatal(err)
 		}
 		event := value.(protocol.RunEvent)
+		if event.Event.Type == protocol.StreamItemCompleted && event.Event.Item.Type == protocol.ItemTypeAgentMessage {
+			answers[event.RunID]++
+		}
 		if event.Event.Type == protocol.StreamSegmentFinished && event.Event.Outcome != nil {
+			if answers[event.RunID] != 1 {
+				t.Fatalf("Run %s ended with %d assistant answers, want one before its terminal", event.RunID, answers[event.RunID])
+			}
 			streamed[event.RunID] = event.Event.Outcome.Type
 		}
 	}
@@ -98,6 +105,28 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 	}
 	completedChildren := 0
 	for _, value := range finished.Data {
+		read := endpoint.Invoke(ctx, delivery.ItemsList, protocol.ListItemsRequest{Scope: protocol.ItemListScope{Type: protocol.ItemScopeRun, RunID: value.ID}}, options)
+		if read.Failure != nil {
+			t.Fatal(read.Failure)
+		}
+		items := read.Value.(*protocol.ListItemsResponse)
+		want := "child completed"
+		if value.ID == rootRunID {
+			want = "all done"
+		}
+		var persistedAnswers int
+		for _, item := range items.Data {
+			if item.Type != protocol.ItemTypeAgentMessage {
+				continue
+			}
+			persistedAnswers++
+			if item.Status != protocol.ItemStatusCompleted || len(item.Content) != 1 || item.Content[0].Text != want {
+				t.Fatalf("Run %s lost its committed answer: %+v", value.ID, item)
+			}
+		}
+		if persistedAnswers != 1 || answers[value.ID] != 1 {
+			t.Fatalf("Run %s has %d durable and %d streamed answers, want one each", value.ID, persistedAnswers, answers[value.ID])
+		}
 		if value.Status != protocol.RunStatusFinished || value.Outcome == nil {
 			t.Fatalf("unfinished Run: %+v", value)
 		}

@@ -112,18 +112,6 @@ func (i *interactionSession) projectDelegateTerminal(
 		MemberID: result.ProcessID().String(), ParentID: managed.identity.parentID.String(),
 		SpawnCallID: managed.call.ID,
 	}
-	if !managed.assistantProjected {
-		completion, err := completedAssistantMessage(result)
-		if err != nil {
-			return false, err
-		}
-		if completion != nil {
-			if err := i.commitFact(ctx, member, *completion); err != nil {
-				return false, fmt.Errorf("agentexec: commit delegated child answer: %w", err)
-			}
-		}
-		managed.assistantProjected = true
-	}
 	end, err := i.segmentEnd(result)
 	if err != nil {
 		return false, err

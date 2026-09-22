@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/core/chat"
@@ -79,7 +80,9 @@ func TestInteractionPolicyRefusalPublishesItsExactReasonBeforeModelContinuation(
 			if len(finished) != 1 || finished[0].Failure == nil || *finished[0].Failure != (domaintool.Failure{Kind: domaintool.FailureDenied, Detail: reason}) {
 				t.Fatalf("product refusal differs from public outcome: %#v", finished)
 			}
-			if toolCalls != 0 || hooks.after != 0 || modelCalls != 2 || len(payloadsOf[runs.AssistantMessageCompleted](events)) != 1 {
+			ends := payloadsOf[runs.SegmentEnded](events)
+			if toolCalls != 0 || hooks.after != 0 || modelCalls != 2 || len(payloadsOf[runs.ModelCallCompleted](events)) != 2 ||
+				len(ends) != 1 || ends[0].Reason != run.OutcomeCompleted {
 				t.Fatalf("refusal lifecycle: tool=%d after=%d model=%d", toolCalls, hooks.after, modelCalls)
 			}
 		})

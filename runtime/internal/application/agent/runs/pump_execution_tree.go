@@ -23,7 +23,7 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 			return err
 		}
 		switch event.Payload.(type) {
-		case ToolResultsCommitted, AssistantMessageCompleted:
+		case ToolResultsCommitted:
 		case SegmentEnded:
 			if route == s.routes.root {
 				return fmt.Errorf("runs: tree settlement cannot close the root projection")

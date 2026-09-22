@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -107,35 +106,6 @@ type MessageDelta struct {
 type ReasoningDelta struct {
 	executionFactBase
 	Text string
-}
-
-// AssistantMessageCompleted confirms that the executor's final process output
-// is the same assistant message already committed at the authoritative
-// [ModelCallCompleted] boundary. It may race ahead of that boundary, so the
-// reducer buffers it until the model fact arrives; it never creates a second
-// transcript Item.
-type AssistantMessageCompleted struct {
-	executionFactBase
-	message corechat.Message
-}
-
-// NewAssistantMessageCompleted captures one validated final assistant message.
-func NewAssistantMessageCompleted(message corechat.Message) (AssistantMessageCompleted, error) {
-	if message.Role != corechat.RoleAssistant {
-		return AssistantMessageCompleted{}, errors.New("runs: completed assistant message must have assistant role")
-	}
-	if err := message.Validate(); err != nil {
-		return AssistantMessageCompleted{}, fmt.Errorf("runs: completed assistant message: %w", err)
-	}
-	if err := conversation.ValidateMessageIdentities(message); err != nil {
-		return AssistantMessageCompleted{}, fmt.Errorf("runs: completed assistant message: %w", err)
-	}
-	return AssistantMessageCompleted{message: message.Clone()}, nil
-}
-
-// Message returns an ownership-independent final assistant message.
-func (a AssistantMessageCompleted) Message() corechat.Message {
-	return a.message.Clone()
 }
 
 // ModelCallStarted is the authoritative pre-provider boundary for one model

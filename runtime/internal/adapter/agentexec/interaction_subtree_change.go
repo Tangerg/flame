@@ -220,7 +220,6 @@ func (i *interactionSession) commitSubtreeApplication(
 	// that result is projected.
 	for _, managed := range change.retired {
 		managed.mu.Lock()
-		managed.assistantProjected = true
 		managed.segmentProjected = true
 		managed.mu.Unlock()
 	}

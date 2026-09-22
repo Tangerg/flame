@@ -156,10 +156,8 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 			switch payload.(type) {
 			case runs.ToolResultsCommitted:
 				return 0
-			case runs.AssistantMessageCompleted:
-				return 1
 			default:
-				return 2
+				return 1
 			}
 		}
 		return rank(a.Payload) - rank(b.Payload)
@@ -192,7 +190,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 	}
 	for _, child := range terminalChildren {
 		child.mu.Lock()
-		child.segmentProjected, child.assistantProjected = true, true
+		child.segmentProjected = true
 		child.mu.Unlock()
 		i.modelFailures.forget(child.childProcessID)
 	}
