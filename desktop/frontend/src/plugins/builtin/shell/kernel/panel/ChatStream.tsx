@@ -148,7 +148,7 @@ export function ChatStream({ onSend }: Props) {
     return (
       <>
         <ChatBanners sessionId={sessionId} />
-        <div {...emptyPane} className={cn("panel-scroll", emptyPane.className)}>
+        <div {...emptyPane}>
           <div {...stylex.props(rc.box, rc.gutter)}>
             <h2 {...stylex.props(cst.heading, typeStep.displayMd)}>
               <EmptyChatHeading />

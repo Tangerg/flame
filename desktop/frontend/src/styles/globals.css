@@ -155,7 +155,7 @@
   }
 
   /* Present to a screen reader, absent to everyone else. A RECIPE rather than a property, so it
-     stays a class the way `panel-scroll` and `truncate-fade` do. */
+     stays a class the way `truncate-fade` does. */
   .sr-only {
     position: absolute;
     width: 1px;
@@ -1401,40 +1401,38 @@ html.theme-dark {
   );
 }
 
-/* SCROLLBAR APPEARANCE ONLY. The layout of a scroller — filling its parent, clipping, holding
-   its overscroll — is stated in utilities at `ScrollArea`, because bundling the two here forced
-   the hidden-scrollbar variant to restate all four properties and put an unlayered rule in
-   charge of geometry that call sites also spell. */
-.panel-scroll {
+/* The one scrollbar, for every scroller in the window: a thin thumb revealed while the pointer
+   is over its scroller. Zero-specificity, so a scroller that must differ says so in one rule. */
+:where(*) {
   scrollbar-width: thin;
-  transition: scrollbar-color var(--dur-fast) ease;
   scrollbar-color: transparent transparent;
 }
-.panel-scroll:hover {
+:where(*):hover {
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
-.panel-scroll::-webkit-scrollbar {
+:where(*)::-webkit-scrollbar {
   width: 10px;
+  height: 10px;
 }
-.panel-scroll::-webkit-scrollbar-track {
+:where(*)::-webkit-scrollbar-track,
+:where(*)::-webkit-scrollbar-corner {
   background: transparent;
 }
-.panel-scroll::-webkit-scrollbar-thumb {
+:where(*)::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: var(--shape-pill);
   border: 2px solid transparent;
   background-clip: content-box;
-  transition: background-color var(--dur-fast) ease;
   /* A thumb is proportional to how much is off screen, so a long log shrinks it to a couple of
      pixels and it stops being something a pointer can catch. */
   min-height: 32px;
   min-width: 32px;
 }
-.panel-scroll:hover::-webkit-scrollbar-thumb {
+:where(*):hover::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   background-clip: content-box;
 }
-.panel-scroll::-webkit-scrollbar-thumb:hover {
+:where(*)::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-strong);
   background-clip: content-box;
 }

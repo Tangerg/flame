@@ -157,7 +157,7 @@ export function MessageStream({ rows, ctx, sessionId }: Props) {
     <StickToBottom
       key={sessionId}
       {...scroller}
-      className={cn("panel-scroll", scroller.className)}
+      className={scroller.className}
       initial="instant"
       resize="instant"
     >
@@ -165,7 +165,7 @@ export function MessageStream({ rows, ctx, sessionId }: Props) {
         scrollClassName={cn(
           // Two mechanism keys `globals.css` owns: the scrollbar's look, and the viewport the
           // transcript measures its own scroll against.
-          "panel-scroll msg-scroll-viewport",
+          "msg-scroll-viewport",
           stylex.props(ms.viewport).className,
         )}
         className={stylex.props(rc.box, ms.content).className}

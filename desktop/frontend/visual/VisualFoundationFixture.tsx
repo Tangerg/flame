@@ -11,7 +11,6 @@ import { Button, IconButton } from "@/ui";
 import * as stylex from "@stylexjs/stylex";
 import { fx } from "./fixtureStyles";
 import { type as typeStep } from "@/styles/tokens.stylex";
-import { cn } from "@/lib/classNames";
 
 interface VisualFoundationFixtureProps {
   sidebarOpen: boolean;
@@ -32,7 +31,7 @@ function WorkIndexFixture() {
         <IconButton icon="search" size="sm" aria-label="Search" />
         <IconButton icon="edit" size="sm" aria-label="New session" />
       </AgentSurfaceHeader>
-      <div className={cn("panel-scroll", stylex.props(fx.pane, fx.listPad).className)}>
+      <div {...stylex.props(fx.pane, fx.listPad)}>
         <div {...stylex.props(typeStep.uiXs, fx.specimenLabel)}>Work index</div>
         <AgentRow icon="folder" trailing={<span {...stylex.props(fx.figures)}>3</span>}>
           scope
@@ -98,7 +97,7 @@ function FoundationSurface({ sidebarOpen }: { sidebarOpen: boolean }) {
         <IconButton icon="panel-r" size="sm" aria-label="Open context dock" />
       </AgentSurfaceHeader>
 
-      <div className={cn("panel-scroll", stylex.props(fx.pane).className)}>
+      <div {...stylex.props(fx.pane)}>
         <div {...stylex.props(fx.measure)}>
           <div {...stylex.props(typeStep.uiXs, fx.specimenLabelFlush)}>
             Deterministic visual fixture

@@ -356,37 +356,18 @@
   overflow-wrap: anywhere;
 }
 /* A content scroller keeps its thumb at rest: a table or a listing that runs past the column
-   has no other sign that it does. The bar's geometry and ink are the panel scroller's. */
+   has no other sign that it does. */
 .md-table-scroller,
 .shiki-block .shiki,
 .shiki-block .shiki-fallback,
 [data-slot="mermaid-stage"] {
-  scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) transparent;
-}
-.md-table-scroller::-webkit-scrollbar,
-.shiki-block .shiki::-webkit-scrollbar,
-.shiki-block .shiki-fallback::-webkit-scrollbar,
-[data-slot="mermaid-stage"]::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
 }
 .md-table-scroller::-webkit-scrollbar-thumb,
 .shiki-block .shiki::-webkit-scrollbar-thumb,
 .shiki-block .shiki-fallback::-webkit-scrollbar-thumb,
 [data-slot="mermaid-stage"]::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
-  border-radius: var(--shape-pill);
-  border: 2px solid transparent;
-  background-clip: content-box;
-  min-width: 32px;
-  min-height: 32px;
-}
-.md-table-scroller::-webkit-scrollbar-thumb:hover,
-.shiki-block .shiki::-webkit-scrollbar-thumb:hover,
-.shiki-block .shiki-fallback::-webkit-scrollbar-thumb:hover,
-[data-slot="mermaid-stage"]::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-strong);
   background-clip: content-box;
 }
 

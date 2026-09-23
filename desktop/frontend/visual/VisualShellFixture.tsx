@@ -11,7 +11,6 @@ import type { VisualWorkIndexState } from "./shellFixtureStates";
 import * as stylex from "@stylexjs/stylex";
 import { corner, fx } from "./fixtureStyles";
 import { type as typeStep } from "@/styles/tokens.stylex";
-import { cn } from "@/lib/classNames";
 
 const STATE_COPY: Record<VisualWorkIndexState, { title: string; body: string }> = {
   populated: {
@@ -59,7 +58,7 @@ export function VisualShellFixture({ state }: { state: VisualWorkIndexState }) {
             </span>
             <AgentStatusPill tone={state === "error" ? "waiting" : "idle"}>{state}</AgentStatusPill>
           </AgentSurfaceHeader>
-          <div className={cn("panel-scroll", stylex.props(fx.paneRow).className)}>
+          <div {...stylex.props(fx.paneRow)}>
             <div {...stylex.props(fx.emptyBox)}>
               <span {...stylex.props(fx.emptyGlyph, corner.pill)}>
                 <Icon name="spark" size="md" />

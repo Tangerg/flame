@@ -15,14 +15,7 @@ interface Props {
 export function ScrollArea({ className, children, ref }: Props) {
   const styled = stylex.props(styles.port);
   return (
-    <div
-      ref={ref}
-      {...styled}
-      // `panel-scroll` is the bar's own material — a hover-revealed thumb drawn by
-      // `::-webkit-scrollbar-*`, which is several pseudo-elements deep and stays in
-      // `globals.css` where the rest of the window's chrome lives.
-      className={cn(styled.className, "panel-scroll", className)}
-    >
+    <div ref={ref} {...styled} className={cn(styled.className, className)}>
       {children}
     </div>
   );
