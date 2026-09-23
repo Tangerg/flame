@@ -19,6 +19,10 @@ interface ThemeSurfaces {
   /** Defaults to a fixed per-scheme neutral, deliberately OFF the ladder: a control's own
    *  fill must not drift when the contrast slider moves. */
   sunken?: string;
+  /** The window's back plane, which the sidebar sits on. It stays BEHIND the content in both
+   *  schemes, as Codex and zcode draw it; in dark the surface ladder climbs toward the viewer,
+   *  so the default there is a step under `bg` rather than `surface`. */
+  drawer?: string;
 }
 
 interface ThemeInk {

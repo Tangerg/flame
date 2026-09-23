@@ -76,6 +76,11 @@ export function buildTokenMap(spec: ColorThemePluginSpec): Record<string, string
     "color-surface": spec.surfaces.surface,
     "color-elevated": spec.surfaces.elevated ?? "var(--color-surface-2)",
     "color-sunken": spec.surfaces.sunken ?? SCHEME_SUNKEN[spec.scheme],
+    "color-drawer":
+      spec.surfaces.drawer ??
+      (spec.scheme === "dark"
+        ? colord(spec.surfaces.bg).darken(0.035).toHex()
+        : spec.surfaces.surface),
 
     // Faint shares the muted fallback on purpose: a third lower-opacity rung fails AA on
     // ordinary canvases.

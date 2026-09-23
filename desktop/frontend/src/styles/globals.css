@@ -348,6 +348,7 @@
   --color-surface: #f9f9f9;
   --color-elevated: #ffffff;
   --color-sunken: #ededed;
+  --color-drawer: #f9f9f9;
   --depth-step: 4%;
   --color-surface-2: color-mix(
     in oklab,
@@ -651,7 +652,7 @@
   --shadow-diff-deleted-spine: inset 3px 0 0 var(--color-diff-deleted-meta);
   --color-focus-ring: var(--color-accent);
 
-  --app-drawer-surface: var(--color-surface);
+  --app-drawer-surface: var(--color-drawer);
   --app-content-surface: var(--color-bg);
   --app-header-surface: transparent;
   --app-dock-surface: color-mix(in oklab, var(--color-bg) 25%, var(--color-surface));
@@ -895,6 +896,7 @@ html.theme-dark {
   --color-surface: #2b2b2b;
   --color-elevated: #2b2b2b;
   --color-sunken: #181818;
+  --color-drawer: #161616;
   --depth-step: 8%;
 
   --shadow-cast: rgb(0 0 0 / 0.55);

@@ -85,7 +85,7 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "surface-card-radius": "var(--shape-md)",
   "row-radius": "var(--shape-lg)",
   "floating-panel-radius": "var(--shape-xl)",
-  "floating-tip-radius": "var(--shape-sm)",
+  "floating-tip-radius": "var(--shape-md)",
   "dock-tab-radius": "var(--shape-lg)",
 
   // Every height is EVEN so a centred 1px rule never lands on a half pixel.
@@ -107,7 +107,7 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "wash-selected":
     "color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 2.5), transparent)",
 
-  "app-drawer-surface": "var(--color-surface)",
+  "app-drawer-surface": "var(--color-drawer)",
   "app-content-surface": "var(--color-bg)",
   "app-header-surface": "transparent",
   "app-dock-surface": "color-mix(in oklab, var(--color-bg) 25%, var(--color-surface))",

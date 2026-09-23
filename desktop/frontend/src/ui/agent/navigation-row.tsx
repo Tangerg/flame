@@ -71,7 +71,9 @@ const rowStyles = stylex.create({
   quiet: {
     color: { default: color.fgMuted, ":hover": color.fg, ":is([data-active])": color.fg },
   },
-  search: { backgroundColor: { default: surface.sunken, ":hover": surface.sunkenHover } },
+  // An ink wash rather than the sunken fill: it has to read on the drawer in both schemes, and
+  // the drawer sits beside `sunken` in dark.
+  search: { backgroundColor: { default: surface.hover, ":hover": surface.selected } },
 });
 
 // Styles rather than class strings, so each one composes INTO the props call at its element
