@@ -37,6 +37,11 @@ func mutationPaths(tool toolcontract.Tool, invocation toolcontract.Invocation) (
 		paths = append(paths, reported...)
 	}
 	if len(paths) == 0 {
+		// Only ApplyPatchTool declares its endpoints; every other file Tool names
+		// one path in its schema, which the Contract validated before this call.
+		// Arguments that are not such an object simply name no path — there is
+		// nothing for a guard to resolve, and the Tool's own schema already
+		// refused anything its executor could not read.
 		var a struct {
 			Path string `json:"path"`
 		}
