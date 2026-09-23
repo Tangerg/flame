@@ -16,19 +16,19 @@ import (
 
 func (i *interactionSession) validateWaitingTree(ctx context.Context, continuation runs.WaitingContinuation, checkpoint interactionCheckpointState) error {
 
+	// A retained Unknown settlement is a restorable fact to the Engine; refusing
+	// to resume on top of one is this Runtime's policy, so it stays here.
 	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot)
 	for _, snapshot := range checkpoint.tree.ProcessSnapshots() {
 		snapshots[snapshot.ProcessID()] = snapshot
 		if len(snapshot.UnknownEffectIDs()) != 0 {
 			return errors.New("waiting tree contains unresolved effects")
 		}
-		deployment, err := i.state.deployments.Resolve(snapshot.DeploymentRef())
-		if err != nil {
-			return err
-		}
-		if _, err := deployment.Definition().Restore(ctx, snapshot.CommittedExecutionState()); err != nil {
-			return err
-		}
+	}
+	// The Engine answers restorability with the same prepare pass RestoreTree
+	// runs, so this admission and the restore below cannot disagree.
+	if err := i.engine.ValidateRestorableTree(ctx, i.deployment, checkpoint.tree); err != nil {
+		return err
 	}
 	members, err := i.restoredWaitingMembers(continuation, snapshots, checkpoint.tree.RootID())
 	if err != nil {
@@ -165,7 +165,7 @@ func (i *interactionSession) restoreDelegateCalls(
 		if _, active := members[parentID]; !active {
 			continue
 		}
-		active, found, err := interaction.ActiveDelegateChildrenFromSnapshot(parentSnapshot)
+		active, found, err := interaction.ActiveDelegateChildren(parentSnapshot)
 		if err != nil {
 			return nil, nil, fmt.Errorf("inspect parent %s: %w", parentID, err)
 		}

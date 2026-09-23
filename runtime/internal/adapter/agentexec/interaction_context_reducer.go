@@ -58,6 +58,11 @@ func appendPendingContinuation(
 	return append(messages, message), nil
 }
 
+// ReduceModelContext builds the complete messages for one model call. The
+// Dispatcher hands in a throwaway Clone and clones whatever comes back, so this
+// reducer reslices and appends to request.Messages directly; copying it again
+// would give the same sequence a second owner. The frozen instructions are this
+// Runtime's own and are still copied before anything appends to them.
 func (i *interactionModelContextReducer) ReduceModelContext(
 	ctx context.Context,
 	invocation interaction.ModelInvocation,
@@ -89,7 +94,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	}
 	if i.compactor == nil {
 		effective, err := appendPendingContinuation(
-			cloneChatMessages(request.Messages), pendingContinuation, hasPendingContinuation,
+			request.Messages, pendingContinuation, hasPendingContinuation,
 		)
 		if err != nil {
 			return nil, err
@@ -212,7 +217,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 // current durable values above, so a Tool call or external replacement cannot
 // leave an opening snapshot masquerading as current state.
 func withoutReplaceableSessionState(messages []corechat.Message) ([]corechat.Message, error) {
-	candidate := cloneChatMessages(messages)
+	candidate := messages
 	goalSeen := false
 	planSeen := false
 	for len(candidate) > 0 && candidate[0].Role == corechat.RoleSystem {
