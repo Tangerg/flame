@@ -6,9 +6,8 @@ export interface ComposerActionLayout {
 }
 
 /**
- * The rule this exists to hold: while a run is in flight, STOP is always reachable. Sharing
- * one circle with steer meant typing during a run replaced the stop button, and the only way
- * to stop was to delete what you had written.
+ * The rule this exists to hold: while a run is in flight, STOP is always reachable, so typing
+ * a steer never takes the stop button's place.
  */
 export function composerActionLayout({
   running,

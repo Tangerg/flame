@@ -9,11 +9,7 @@ export type ButtonPrimitiveProps = ComponentPropsWithoutRef<typeof BaseButton> &
    *
    * NOT `disabled`, and the difference is the whole reason it exists. `disabled` says the action
    * is unavailable, and the platform enforces that by making the element unfocusable — so a
-   * control that disables itself while its work runs blurs whoever was standing on it. Measured
-   * on Settings → Connection before the fix: press Enter on Refresh and focus is on `<body>`
-   * 120ms later, and still there a second after the work finished. Forty-four call sites spelled
-   * in-flight as `disabled` under eight flag names, so every async action in the product dropped
-   * the keyboard user's place in the document.
+   * control that disables itself while its work runs drops the keyboard user onto `<body>`.
    *
    * `aria-disabled` says the same thing to a screen reader while leaving the element in the tab
    * order, and the click is refused here instead of by the platform. It looks identical, because

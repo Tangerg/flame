@@ -52,11 +52,9 @@ export function submitComposer({
   // restarted at the top of the document instead of continuing from the composer. Measured on
   // the narrative and dock routes.
   //
-  // The two belong together, which is why they are one function: the focus return was first
-  // written inside `accept`, and `accept` is only reached by a submit MODE. An ordinary message
-  // takes the default path at the bottom of this file and a slash command takes the middle one,
-  // so the fix ran for neither and the measurement did not budge. `clear()` is the moment a
-  // submit is accepted — this file's own invariant — so it is the moment focus comes back.
+  // The two belong together, which is why they are one function: every path — a submit mode,
+  // a slash command, an ordinary message — ends in `clear()`, the moment a submit is accepted,
+  // so that is the moment focus comes back.
   const consume = () => {
     clear();
     focusComposer();

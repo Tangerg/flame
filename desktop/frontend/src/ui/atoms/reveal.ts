@@ -4,10 +4,6 @@ import * as stylex from "@stylexjs/stylex";
  * A control that appears when its row does — the × on a dock tab, the copy on a code block, a
  * message's actions.
  *
- * This was eleven class lists: which group, which pseudo-class, opacity or visibility. The one
- * part already owned was the touch fallback (`[data-reveal]` in `globals.css`), because a device
- * with no pointer can never hover; the mechanism itself was written out at every call site.
- *
  * StyleX has no ancestor selector, so the host publishes its own state as a custom property and
  * the target reads it. Custom properties inherit, so the target may sit at any depth, and the
  * fallback is SHOWN — a target outside any host is simply visible rather than invisible.

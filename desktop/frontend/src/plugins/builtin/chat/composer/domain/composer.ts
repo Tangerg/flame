@@ -46,10 +46,8 @@ export class ComposerDraft {
 }
 
 /**
- * Where the input ring is being read from, as a closed state.
- *
- * This was an index with `-1` meaning "not recalling" plus a separate saved draft that was
- * only meaningful while it was not `-1`. Four call sites had to remember to reset both.
+ * Where the input ring is being read from, as a closed state: the saved draft exists only
+ * while recalling.
  */
 type Recall = { readonly active: false } | { readonly active: true; at: number; saved: string };
 
