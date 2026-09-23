@@ -629,11 +629,11 @@ test("model capabilities drive the picker and image admission together", async (
   const attach = page.getByRole("button", { name: "Attach image" });
   const effort = page.getByRole("button", { name: "Switch reasoning effort" });
   await expect(attach).toBeEnabled();
-  await page.getByRole("button", { name: "Switch model" }).click();
   await expect(effort).toHaveText("medium");
   await effort.click();
   await page.getByRole("menuitem", { name: "high", exact: true }).click();
   await expect(effort).toHaveText("high");
+  await page.getByRole("button", { name: "Switch model" }).click();
   await expect(page.getByRole("option", { name: GPT_5_6_SOL_CAPABILITY_NAME })).toBeVisible();
   await page.getByPlaceholder("Search models…").fill("Qwen MT Plus");
   await page.getByRole("option", { name: QWEN_MT_PLUS_CAPABILITY_NAME }).click();
@@ -875,7 +875,7 @@ test("code blocks use the Codex caption and source geometry", async ({ page }) =
 
   expect(geometry).not.toBeNull();
   expect.soft(geometry?.headerBackground).toBe("rgba(0, 0, 0, 0)");
-  expect.soft(geometry?.blockMargin).toBe("14px");
+  expect.soft(geometry?.blockMargin).toBe("10px");
   expect.soft(geometry?.headerPadding).toBe("4px 8px");
   expect.soft(geometry?.languageFamily).toBe(geometry?.bodyFamily);
   expect.soft(geometry?.languageSize).toBe("14px");
@@ -1242,14 +1242,14 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
   expect.soft(styles?.level3Margin).toBe("20px 10px");
   expect.soft(styles?.leadParagraphMargin).toBe("0px 10px");
   expect.soft(styles?.leadListMargin).toBe("0px 10px");
-  expect.soft(styles?.tableMargin).toBe("0px 0px");
+  expect.soft(styles?.tableMargin).toBe("0px 10px");
   expect.soft(styles?.tableFontSize).toBe("14px");
   expect.soft(styles?.tableLineHeight).toBe("21px");
   expect.soft(styles?.tableHeaderFontSize).toBe("14px");
   expect.soft(styles?.tableHeaderLineHeight).toBe("16px");
-  expect.soft(styles?.proseParagraphMargin).toBe("0px 11px");
+  expect.soft(styles?.proseParagraphMargin).toBe("0px 10px");
   expect.soft(styles?.inlineCodeDecoration).toBe("clone");
-  expect.soft(styles?.inlineCodeFontSize).toBe("14.72px");
+  expect.soft(styles?.inlineCodeFontSize).toBe("13px");
   expect.soft(styles?.inlineCodeRadius).toBe("6px");
   expect.soft(styles?.inlineCodeWordBreak).toBe("break-word");
   expect.soft(styles?.inlineCodeWrap).toBe("anywhere");
@@ -1506,20 +1506,17 @@ test("expanded reasoning keeps a quiet identity mark and an aside rule", async (
   await expect(reasoning.getByRole("region")).toHaveCSS("border-left-width", "1px");
 });
 
-test("an expanded patch reports only its call-scoped file receipt", async ({ page }) => {
+test("a path row gives up its directory before its filename", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=tool-shells");
   await page.locator("html[data-visual-ready]").waitFor();
   await page.getByRole("button", { name: /steps/ }).first().click();
 
-  const row = page
-    .locator(".msg-scroll-viewport button")
-    .filter({ hasText: "specialisedPreviewProjections.ts" })
-    .first();
+  const row = page.locator(".msg-scroll-viewport button").filter({ hasText: "store.go" }).first();
   await expect(row).toBeVisible();
 
   const clipping = await row.evaluate((element) => {
     const activity = element.closest<HTMLElement>("[data-slot='agent-activity-disclosure']");
-    if (activity) activity.style.width = "480px";
+    if (activity) activity.style.width = "200px";
     const directory = element.querySelector("[dir=rtl]");
     const filename = directory?.nextElementSibling?.nextElementSibling;
     return {
@@ -1531,7 +1528,19 @@ test("an expanded patch reports only its call-scoped file receipt", async ({ pag
   });
   expect(clipping.directoryClipped).toBe(true);
   expect(clipping.directoryLost).toBeGreaterThan(clipping.filenameLost);
-  expect(clipping.filenameText).toBe("specialisedPreviewProjections.ts");
+  expect(clipping.filenameText).toBe("store.go");
+});
+
+test("a patch over several files counts them and names each only in its receipt", async ({
+  page,
+}) => {
+  await page.goto("/visual/?fixture=agent&theme=light&state=tool-shells");
+  await page.locator("html[data-visual-ready]").waitFor();
+  await page.getByRole("button", { name: /steps/ }).first().click();
+
+  const row = page.locator(".msg-scroll-viewport button").filter({ hasText: "3 files" }).first();
+  await expect(row).toBeVisible();
+  await expect(row).not.toContainText("specialisedPreviewProjections.ts");
   await expect(row).not.toContainText("+");
   await expect(row).not.toContainText("−");
 
@@ -1764,7 +1773,7 @@ for (const theme of ["light", "dark"] as const) {
         await page.getByRole("button", { name: /steps/ }).first().click();
         await page
           .locator('[data-tool="apply_patch"] button[aria-expanded]')
-          .filter({ hasText: "specialisedPreviewProjections.ts" })
+          .filter({ hasText: "3 files" })
           .click();
       }
       await layOutTranscript(page);
@@ -1911,5 +1920,5 @@ test("a collapsed live reasoning row glimpses its newest line, softened only whe
   expect(
     measured.overflowing.lead,
     "a line wider than its row is cut, and the cut is softened",
-  ).toBe("24px");
+  ).toBe("16px");
 });

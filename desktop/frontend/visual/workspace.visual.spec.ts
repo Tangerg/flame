@@ -514,7 +514,7 @@ test("font smoothing updates the browser rendering preference and survives reloa
   await openWorkspace(page, { state: "settings" });
   await waitForWorkspaceState(page, "settings");
 
-  const smoothing = page.getByRole("checkbox", { name: en["settings.font.smoothing"]! });
+  const smoothing = page.getByRole("switch", { name: en["settings.font.smoothing"]! });
   await smoothing.uncheck();
   await expect(page.locator("html")).toHaveCSS("-webkit-font-smoothing", "auto");
 
