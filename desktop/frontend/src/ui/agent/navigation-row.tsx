@@ -15,6 +15,7 @@ const rowStyles = stylex.create({
     height: "var(--density-row-height)",
     gap: "var(--density-row-gap)",
     paddingInline: space.s2,
+    borderWidth: 0,
     textAlign: "left",
     color: { default: color.fg, ":hover": color.fg },
     backgroundColor: {
