@@ -55,8 +55,8 @@ func (p *Pool) Statuses() []mcpserver.ConnectionStatus {
 	return p.inner.Statuses()
 }
 
-func (p *Pool) Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
-	items, err := p.inner.Tools(ctx, server)
+func (p *Pool) Tools(server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
+	items, err := p.inner.Tools(server)
 	return items, mapError(err)
 }
 

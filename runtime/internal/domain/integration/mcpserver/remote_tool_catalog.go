@@ -14,10 +14,6 @@ const (
 	// MaxRemoteToolDescriptionBytes bounds model-visible prose attached to one
 	// remote tool descriptor.
 	MaxRemoteToolDescriptionBytes = 64 << 10
-
-	// MaxRemoteToolInputSchemaBytes bounds the encoded JSON Schema attached to
-	// one remote tool descriptor.
-	MaxRemoteToolInputSchemaBytes = 1 << 20
 )
 
 // ErrInvalidRemoteToolCatalog reports remote descriptor material that cannot
@@ -50,18 +46,6 @@ func ValidateRemoteToolDescription(description string) error {
 			len(description),
 			MaxRemoteToolDescriptionBytes,
 		)
-	}
-	return nil
-}
-
-// ValidateRemoteToolMaterial validates the complete model-visible material for
-// one already-encoded remote descriptor.
-func ValidateRemoteToolMaterial(description string, inputSchema []byte) error {
-	if err := ValidateRemoteToolDescription(description); err != nil {
-		return err
-	}
-	if _, err := ParseInputSchema(inputSchema); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidRemoteToolCatalog, err)
 	}
 	return nil
 }

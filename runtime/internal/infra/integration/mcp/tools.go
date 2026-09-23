@@ -61,21 +61,14 @@ func validateSourceToolMaterial(server mcpserver.ServerName, tools []toolcontrac
 		if ref.Server != server {
 			return fmt.Errorf("mcp: tool source %q does not match server %q", ref.Server, server)
 		}
-		definition := tool.Definition()
-		if err := mcpserver.ValidateRemoteToolMaterial(definition.Description, definition.InputSchema); err != nil {
+		binding, err := toolcontract.Bind(tool)
+		if err != nil {
+			return fmt.Errorf("mcp: admit tool %q from server %q: %w", ref.Tool, server, err)
+		}
+		definition := binding.Contract().Definition()
+		if err := mcpserver.ValidateRemoteToolDescription(definition.Description); err != nil {
 			return fmt.Errorf("mcp: validate tool %q from server %q: %w", definition.Name, server, err)
 		}
 	}
 	return nil
-}
-
-// inputSchema converts the SDK's open schema representation at the MCP
-// boundary. Missing or malformed advertised schemas fail the catalog read
-// instead of being silently presented as schema-less tools.
-func inputSchema(schema any) (mcpserver.InputSchema, error) {
-	parsed, err := mcpserver.NewInputSchema(schema)
-	if err != nil {
-		return mcpserver.InputSchema{}, err
-	}
-	return parsed, nil
 }

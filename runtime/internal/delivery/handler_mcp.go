@@ -121,7 +121,11 @@ func (s *Handler) ListMCPTools(ctx context.Context, in protocol.MCPListToolsRequ
 	}
 	out := make([]protocol.MCPTool, 0, len(found))
 	for _, tool := range found {
-		out = append(out, presentMCPTool(tool))
+		projected, err := presentMCPTool(tool)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, projected)
 	}
 	return protocol.NewPage(out), nil
 }

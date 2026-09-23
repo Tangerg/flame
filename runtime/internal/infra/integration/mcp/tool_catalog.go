@@ -7,49 +7,19 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// validateToolCatalog rejects model-facing name collisions across live MCP
-// servers. The public label is sanitized and capped by provider constraints, so
-// distinct raw identities can collapse to one name; allowing both through would
-// make the next Run fail registry construction and leave model-facing
-// dispatch ambiguous.
-//
-// replacing is excluded from the current catalog for reconnect/configure. At
-// boot it is nil because the candidate has not joined servers yet. The caller
-// serializes access to servers.
+// Admission covers the prospective live union because distinct MCP identities
+// can collapse to the same provider-safe name. Reconnect excludes the session
+// being replaced; the caller serializes access to servers.
 func validateToolCatalog(servers []*server, replacing *server, candidateServer mcpserver.ServerName, candidate []toolcontract.Tool) error {
-	if err := mcpserver.ValidateRemoteToolCount(len(candidate)); err != nil {
-		return fmt.Errorf("mcp: validate tools from server %q: %w", candidateServer, err)
-	}
-	owners := make(map[string]mcpserver.ServerName)
+	var combined []toolcontract.Tool
 	for _, current := range servers {
-		if current == replacing || current.session == nil {
-			continue
-		}
-		for _, tool := range current.tools {
-			owners[tool.Definition().Name] = current.name()
+		if current != replacing && current.session != nil {
+			combined = append(combined, current.tools...)
 		}
 	}
-	for _, tool := range candidate {
-		ref, found, err := IdentifyTool(tool)
-		if err != nil {
-			return fmt.Errorf("mcp: validate tools from server %q: %w", candidateServer, err)
-		}
-		if !found {
-			return fmt.Errorf("mcp: tool from server %q has no MCP identity", candidateServer)
-		}
-		if ref.Server != candidateServer {
-			return fmt.Errorf("mcp: candidate tool source %q does not match server %q", ref.Server, candidateServer)
-		}
-		name := tool.Definition().Name
-		if owner, collision := owners[name]; collision {
-			return fmt.Errorf(
-				"mcp: public tool name collision %q between servers %q and %q",
-				name,
-				owner,
-				candidateServer,
-			)
-		}
-		owners[name] = candidateServer
+	combined = append(combined, candidate...)
+	if _, err := toolcontract.NewRegistry(combined...); err != nil {
+		return fmt.Errorf("mcp: admit catalog with server %q: %w", candidateServer, err)
 	}
 	return nil
 }

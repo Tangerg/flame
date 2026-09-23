@@ -336,6 +336,18 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 	publications := make(chan []string, 2)
 	c.SetToolSink(func(catalog []toolcontract.Tool) { publications <- toolNames(catalog) })
 	addRemoteTool(t, remote, "second")
+	listed, err := c.Tools(&config.Name)
+	if err != nil || len(listed) != 1 || listed[0].Name.String() != "first" {
+		t.Fatalf("catalog before reconnect = %+v, %v; want the admitted first tool", listed, err)
+	}
+	if statuses := c.Statuses(); len(statuses) != 1 || statuses[0].ToolCount != len(listed) {
+		t.Fatalf("status and catalog disagree: %+v, %+v", statuses, listed)
+	}
+	listed[0].Definition.InputSchema[0] = '!'
+	listed, err = c.Tools(nil)
+	if err != nil || len(listed) != 1 || listed[0].Definition.Validate() != nil || initial[0].Definition().Validate() != nil {
+		t.Fatalf("catalog projection changed the admitted definition: %+v, %v", listed, err)
+	}
 	if err := c.Reconnect(t.Context(), config.Name); err != nil {
 		t.Fatalf("Reconnect: %v", err)
 	}
@@ -346,6 +358,10 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 	slices.Sort(settled)
 	if want := []string{"remote_first", "remote_second"}; !slices.Equal(settled, want) {
 		t.Fatalf("settled publication = %v, want %v", settled, want)
+	}
+	listed, err = c.Tools(&config.Name)
+	if err != nil || len(listed) != len(settled) {
+		t.Fatalf("catalog after reconnect = %+v, %v; want the replacement catalog", listed, err)
 	}
 }
 
@@ -377,7 +393,7 @@ func TestConfiguredSessionOutlivesRequestScope(t *testing.T) {
 	cancelRequest()
 
 	name := testMCPServerName("dynamic")
-	tools, err := connections.Tools(t.Context(), &name)
+	tools, err := connections.Tools(&name)
 	if err != nil {
 		t.Fatalf("Tools after request scope ended: %v", err)
 	}
@@ -461,7 +477,7 @@ func TestDialQuarantinesCrossServerPublicToolNameCollision(t *testing.T) {
 		t.Fatalf("statuses = %+v, want connected then failed", statuses)
 	}
 	if output := diagnostics.String(); !strings.Contains(output, "server.name=a_b") ||
-		!strings.Contains(output, "public tool name collision") || !strings.Contains(output, "a_b_read") {
+		!strings.Contains(output, toolcontract.ErrDuplicateTool.Error()) || !strings.Contains(output, "a_b_read") {
 		t.Fatalf("startup catalog failure lost its server or cause: %s", output)
 	}
 }
@@ -504,7 +520,7 @@ func TestDialReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
 		t.Fatalf("startup connection failure lost its server or cause: %s", output)
 	}
 	name := testMCPServerName("healthy")
-	tools, err := connections.Tools(t.Context(), &name)
+	tools, err := connections.Tools(&name)
 	if err != nil || len(tools) != 1 || tools[0].Name.String() != "read" {
 		t.Fatalf("healthy server tools after startup failure = %+v, %v", tools, err)
 	}
@@ -543,7 +559,7 @@ func TestConfigureRejectsCrossServerPublicToolNameCollision(t *testing.T) {
 	t.Cleanup(secondHTTP.Close)
 
 	err = c.Configure(t.Context(), ServerConfig{Name: testMCPServerName("a"), Transport: TransportHTTP, Endpoint: secondHTTP.URL})
-	if err == nil || !strings.Contains(err.Error(), `public tool name collision "a_b_c"`) {
+	if !errors.Is(err, toolcontract.ErrDuplicateTool) {
 		t.Fatalf("Configure collision error = %v", err)
 	}
 	statuses := c.Statuses()
@@ -590,7 +606,7 @@ func TestReconnectQuarantinesNewCrossServerPublicToolNameCollision(t *testing.T)
 	c.SetToolSink(func(catalog []toolcontract.Tool) { publications <- toolNames(catalog) })
 	addRemoteTool(t, secondRemote, "b_c")
 	err = c.Reconnect(t.Context(), testMCPServerName("a"))
-	if err == nil || !strings.Contains(err.Error(), `public tool name collision "a_b_c"`) {
+	if !errors.Is(err, toolcontract.ErrDuplicateTool) {
 		t.Fatalf("Reconnect collision error = %v", err)
 	}
 	for phase := range 2 {

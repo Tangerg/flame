@@ -1,6 +1,10 @@
 package mcpserver
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/Tangerg/scope/core/chat"
+)
 
 // ConnectionState is the lifecycle state of a configured MCP connection.
 // Keeping this vocabulary canonical prevents subtly different values for the
@@ -33,13 +37,10 @@ var ErrUnknownServer = errors.New("mcp: unknown server")
 
 var ErrAuthorizationRequired = errors.New("mcp: authorization required")
 
-// AdvertisedTool is one tool advertised by a connected MCP server. The
-// connection adapter is the only producer: it parses each descriptor out of the
-// remote server's reply and owns identity, description, and schema limits at
-// that boundary.
+// AdvertisedTool projects an admitted Scope definition with its original MCP
+// identity. The connection adapter transfers ownership of this snapshot.
 type AdvertisedTool struct {
-	Server      ServerName
-	Name        RemoteToolName
-	Description string
-	InputSchema InputSchema
+	Server     ServerName
+	Name       RemoteToolName
+	Definition chat.ToolDefinition
 }

@@ -4,8 +4,9 @@ package tool
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"unicode/utf8"
+
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // ErrInvalidDefinition reports registered Tool metadata that cannot be used as
@@ -63,20 +64,16 @@ const (
 	WebSearch           = "web_search"
 )
 
-// Tool is the metadata of one registered tool. Schema is the JSON Schema
-// the model is shown; SafetyClass drives the default approval flow
-// (see approvals.RuntimePolicy).
+// Tool projects a Scope definition with the Runtime-owned safety class.
 type Tool struct {
-	Name        string
-	Description string
-	Schema      Schema
+	chat.ToolDefinition
 	SafetyClass SafetyClass
 }
 
 // Validate checks the metadata invariants shared by every Tool catalog.
 func (t Tool) Validate() error {
-	if !utf8.ValidString(t.Name) || strings.TrimSpace(t.Name) == "" || t.Name != strings.TrimSpace(t.Name) {
-		return fmt.Errorf("%w: name %q is empty, invalid UTF-8, or not canonical", ErrInvalidDefinition, t.Name)
+	if err := t.ToolDefinition.Validate(); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidDefinition, err)
 	}
 	if !utf8.ValidString(t.Description) {
 		return fmt.Errorf("%w: Tool %q description is not valid UTF-8", ErrInvalidDefinition, t.Name)

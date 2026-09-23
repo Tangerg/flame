@@ -27,8 +27,8 @@ func TestDiagnosticRegistryListsOnlyDirectTools(t *testing.T) {
 	got := make(map[string]tool.SafetyClass, len(found))
 	for _, candidate := range found {
 		got[candidate.Name] = candidate.SafetyClass
-		if candidate.Schema.Map() == nil {
-			t.Errorf("tool %q has nil schema object", candidate.Name)
+		if err := candidate.ToolDefinition.Validate(); err != nil {
+			t.Errorf("tool %q has invalid Scope definition: %v", candidate.Name, err)
 		}
 		if candidate.Description == "" {
 			t.Errorf("tool %q has empty description", candidate.Name)

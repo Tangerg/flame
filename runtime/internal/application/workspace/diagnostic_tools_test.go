@@ -6,6 +6,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/scope/core/chat"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
@@ -75,8 +77,8 @@ func newDiagnosticTools(t *testing.T, registry DiagnosticToolRegistry, roots Dia
 
 func TestListOwnsSafeUniqueNameOrder(t *testing.T) {
 	registry := toolRegistryFixture{tools: []tool.Tool{
-		{Name: "read", SafetyClass: tool.SafetyClassSafe},
-		{Name: "glob", SafetyClass: tool.SafetyClassSafe},
+		{ToolDefinition: chat.ToolDefinition{Name: "read", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe},
+		{ToolDefinition: chat.ToolDefinition{Name: "glob", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe},
 	}}
 	c := newDiagnosticTools(t, registry, &rootRecorder{})
 
@@ -103,13 +105,13 @@ func TestListOwnsSafeUniqueNameOrder(t *testing.T) {
 func TestListRejectsInvalidCatalogs(t *testing.T) {
 	for name, tools := range map[string][]tool.Tool{
 		"empty name":          {{SafetyClass: tool.SafetyClassSafe}},
-		"padded name":         {{Name: " read ", SafetyClass: tool.SafetyClassSafe}},
-		"invalid description": {{Name: "read", Description: string([]byte{0xff}), SafetyClass: tool.SafetyClassSafe}},
-		"unknown safety":      {{Name: "read", SafetyClass: tool.SafetyClass("future")}},
-		"unsafe":              {{Name: "write", SafetyClass: tool.SafetyClassWrite}},
+		"padded name":         {{ToolDefinition: chat.ToolDefinition{Name: " read ", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe}},
+		"invalid description": {{ToolDefinition: chat.ToolDefinition{Name: "read", Description: string([]byte{0xff}), InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe}},
+		"unknown safety":      {{ToolDefinition: chat.ToolDefinition{Name: "read", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClass("future")}},
+		"unsafe":              {{ToolDefinition: chat.ToolDefinition{Name: "write", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassWrite}},
 		"duplicate name": {
-			{Name: "read", SafetyClass: tool.SafetyClassSafe},
-			{Name: "read", SafetyClass: tool.SafetyClassSafe},
+			{ToolDefinition: chat.ToolDefinition{Name: "read", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe},
+			{ToolDefinition: chat.ToolDefinition{Name: "read", InputSchema: []byte(`{"type":"object"}`)}, SafetyClass: tool.SafetyClassSafe},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

@@ -238,7 +238,7 @@ func TestToolEnvironmentToleratesUnreachableMCP(t *testing.T) {
 	if len(statuses) != 1 || statuses[0].Name.String() != "down" || statuses[0].State != mcpserver.ConnectionFailed {
 		t.Fatalf("statuses = %+v, want [down failed]", statuses)
 	}
-	tools, err := pool.Tools(context.Background(), nil)
+	tools, err := pool.Tools(nil)
 	if err != nil {
 		t.Fatalf("MCPTools: %v", err)
 	}
@@ -263,7 +263,7 @@ func TestToolEnvironmentReconnectsMCP(t *testing.T) {
 	if len(st) != 1 || st[0].State != mcpserver.ConnectionFailed {
 		t.Fatalf("statuses = %+v, want [down failed]", st)
 	}
-	if tools, _ := pool.Tools(context.Background(), nil); len(tools) != 0 {
+	if tools, _ := pool.Tools(nil); len(tools) != 0 {
 		t.Fatalf("MCPTools = %+v, want empty after a failed reconnect", tools)
 	}
 

@@ -107,13 +107,17 @@ func presentMCPAuthorizationAttempt(attempt mcpapp.AuthorizationAttempt) protoco
 	}
 }
 
-func presentMCPTool(tool mcpserver.AdvertisedTool) protocol.MCPTool {
+func presentMCPTool(tool mcpserver.AdvertisedTool) (protocol.MCPTool, error) {
+	schema, err := presentToolSchema(tool.Definition)
+	if err != nil {
+		return protocol.MCPTool{}, err
+	}
 	return protocol.MCPTool{
 		Server:      tool.Server.String(),
 		Name:        tool.Name.String(),
-		Description: tool.Description,
-		InputSchema: tool.InputSchema.Map(),
-	}
+		Description: tool.Definition.Description,
+		InputSchema: schema,
+	}, nil
 }
 
 func presentMCPToolPolicy(policy mcpserver.ServerToolPolicy) (disabled, autoApproved []string) {

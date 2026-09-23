@@ -17,9 +17,10 @@ type StatusReader interface {
 	Statuses() []mcpserver.ConnectionStatus
 }
 
-// ToolCatalog borrows the optional server scope and transfers the returned catalog.
+// ToolCatalog borrows the optional server scope and transfers the returned
+// catalog snapshot. Implementations read admitted state without remote calls.
 type ToolCatalog interface {
-	Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error)
+	Tools(server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error)
 }
 
 // ConnectionControl reconnects and authorizes configured servers.

@@ -26,7 +26,7 @@ type fakeMCPPorts struct {
 
 func (f *fakeMCPPorts) Statuses() []mcpserver.ConnectionStatus { return slices.Clone(f.statuses) }
 
-func (f *fakeMCPPorts) Tools(_ context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
+func (f *fakeMCPPorts) Tools(server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	if server == nil {
 		return slices.Clone(f.tools), nil
 	}

@@ -18,10 +18,14 @@ func (s *Handler) ListTools(ctx context.Context) (*protocol.Page[protocol.ToolSp
 	}
 	out := make([]protocol.ToolSpec, 0, len(internal))
 	for _, t := range internal {
+		schema, err := presentToolSchema(t.ToolDefinition)
+		if err != nil {
+			return nil, err
+		}
 		out = append(out, protocol.ToolSpec{
 			Name:        t.Name,
 			Description: t.Description,
-			Parameters:  t.Schema.Map(),
+			Parameters:  schema,
 			SafetyClass: presentSafetyClass(t.SafetyClass),
 		})
 	}

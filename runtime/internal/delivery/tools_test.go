@@ -2,9 +2,12 @@ package delivery
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"math"
 	"testing"
+
+	"github.com/Tangerg/scope/core/chat"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -29,15 +32,12 @@ func (t *toolRegistryFake) Invoke(_ context.Context, in workspaceapp.DiagnosticT
 }
 
 func TestListToolsMapsRegisteredToolsToWire(t *testing.T) {
-	shellSchema, err := tool.ParseSchema([]byte(`{"type":"object","properties":{"cmd":{"type":"string"}}}`))
-	if err != nil {
-		t.Fatalf("ParseSchema: %v", err)
-	}
 	s := handlerWithTools(&toolRegistryFake{tools: []tool.Tool{
 		{
-			Name:        "shell",
-			Description: "run a command",
-			Schema:      shellSchema,
+			ToolDefinition: chat.ToolDefinition{
+				Name: "shell", Description: "run a command",
+				InputSchema: []byte(`{"type":"object","properties":{"cmd":{"type":"string"},"limit":{"maximum":9007199254740993}}}`),
+			},
 			SafetyClass: tool.SafetyClassExec,
 		},
 	}})
@@ -54,6 +54,15 @@ func TestListToolsMapsRegisteredToolsToWire(t *testing.T) {
 	}
 	if page.Data[0].Parameters["type"] != "object" {
 		t.Fatalf("schema = %+v, want decoded object schema", page.Data[0].Parameters)
+	}
+	limit := page.Data[0].Parameters["properties"].(map[string]any)["limit"].(map[string]any)
+	if limit["maximum"] != json.Number("9007199254740993") {
+		t.Fatalf("schema lost exact numeric bound: %v", limit)
+	}
+	page.Data[0].Parameters["type"] = "array"
+	next, err := s.ListTools(t.Context())
+	if err != nil || next.Data[0].Parameters["type"] != "object" {
+		t.Fatalf("catalog projection exposed producer storage: %+v, %v", next, err)
 	}
 }
 

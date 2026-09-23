@@ -50,15 +50,9 @@ func (r DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
 	interpreter := Interpreter{}
 	out := make([]tool.Tool, 0, len(manifest.Visible))
 	for _, definition := range registry.Definitions() {
-		schema, err := tool.ParseSchema(definition.InputSchema)
-		if err != nil {
-			return nil, fmt.Errorf("toolset: decode input schema for tool %q: %w", definition.Name, err)
-		}
 		out = append(out, tool.Tool{
-			Name:        definition.Name,
-			Description: definition.Description,
-			Schema:      schema,
-			SafetyClass: interpreter.SafetyClass(definition.Name),
+			ToolDefinition: definition,
+			SafetyClass:    interpreter.SafetyClass(definition.Name),
 		})
 	}
 	return out, nil

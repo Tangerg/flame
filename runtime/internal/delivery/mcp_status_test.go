@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/scope/core/chat"
+
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -40,7 +42,7 @@ func TestListMCPServers(t *testing.T) {
 			{Name: testMCPServerName("down"), State: mcpserver.ConnectionFailed},
 		},
 		tools: []mcpserver.AdvertisedTool{
-			{Server: testMCPServerName("fs"), Name: testRemoteToolName("read")}, {Server: testMCPServerName("fs"), Name: testRemoteToolName("write")},
+			{Server: testMCPServerName("fs"), Name: testRemoteToolName("read")}, {Server: testMCPServerName("fs"), Name: testRemoteToolName("write"), Definition: chat.ToolDefinition{Name: "fs_write", InputSchema: []byte(`{"type":"object"}`)}},
 		},
 	}))
 	page, err := s.ListMCPServers(context.Background())
@@ -131,14 +133,10 @@ func TestReconnectMCPServer(t *testing.T) {
 }
 
 func TestListMCPTools(t *testing.T) {
-	readSchema, err := mcpserver.ParseInputSchema([]byte(`{"type":"object"}`))
-	if err != nil {
-		t.Fatalf("ParseInputSchema: %v", err)
-	}
 	s := handlerWithMCP(t, fakeMCPPortsConfig(&fakeMCPPorts{tools: []mcpserver.AdvertisedTool{
-		{Server: testMCPServerName("fs"), Name: testRemoteToolName("read"), Description: "read a file", InputSchema: readSchema},
-		{Server: testMCPServerName("fs"), Name: testRemoteToolName("write")},
-		{Server: testMCPServerName("git"), Name: testRemoteToolName("log")},
+		{Server: testMCPServerName("fs"), Name: testRemoteToolName("read"), Definition: chat.ToolDefinition{Name: "fs_read", Description: "read a file", InputSchema: []byte(`{"type":"object"}`)}},
+		{Server: testMCPServerName("fs"), Name: testRemoteToolName("write"), Definition: chat.ToolDefinition{Name: "fs_write", InputSchema: []byte(`{"type":"object"}`)}},
+		{Server: testMCPServerName("git"), Name: testRemoteToolName("log"), Definition: chat.ToolDefinition{Name: "git_log", InputSchema: []byte(`{"type":"object"}`)}},
 	}}))
 
 	all, err := s.ListMCPTools(context.Background(), protocol.MCPListToolsRequest{})

@@ -578,7 +578,7 @@ func (f *fakePorts) Statuses() []mcpserver.ConnectionStatus {
 	return slices.Clone(f.statuses)
 }
 
-func (f *fakePorts) Tools(_ context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
+func (f *fakePorts) Tools(server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	f.toolsCalls++
 	if server != nil {
 		f.toolsServer = server.String()

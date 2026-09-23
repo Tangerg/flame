@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -24,15 +25,19 @@ type toolDecorator struct{ toolcontract.Tool }
 
 func (t toolDecorator) Unwrap() toolcontract.Tool { return t.Tool }
 
-func TestInputSchemaRejectsMissingAndInvalidValues(t *testing.T) {
-	if _, err := inputSchema(nil); !errors.Is(err, mcpserver.ErrInvalidInputSchema) {
-		t.Fatalf("inputSchema(nil) error = %v, want ErrInvalidInputSchema", err)
-	}
-	if _, err := inputSchema(map[string]any{"type": "array"}); !errors.Is(err, mcpserver.ErrInvalidInputSchema) {
-		t.Fatalf("inputSchema(array) error = %v, want ErrInvalidInputSchema", err)
-	}
-	if _, err := inputSchema(make(chan int)); !errors.Is(err, mcpserver.ErrInvalidInputSchema) {
-		t.Fatalf("inputSchema(channel) error = %v, want ErrInvalidInputSchema", err)
+func TestSourceToolsCompilesSchemasBeforePublishing(t *testing.T) {
+	for _, schema := range []string{
+		`{"type":"object","properties":{"value":{"type":"unknown"}}}`,
+		`{"type":"object","properties":{"value":{"$ref":"#/$defs/missing"}}}`,
+		`{"type":"object","properties":{"value":{"$ref":"https://example.invalid/schema.json"}}}`,
+	} {
+		t.Run(schema, func(t *testing.T) {
+			session := toolCatalogSession(t, &sdkmcp.Tool{Name: "read", InputSchema: json.RawMessage(schema)})
+			tools, err := sourceTools(t.Context(), testMCPServerName("catalog"), session)
+			if len(tools) != 0 || !errors.Is(err, toolcontract.ErrInvalidTool) || !errors.Is(err, jsonschema.ErrInvalid) {
+				t.Fatalf("sourceTools = %v, %v; want Scope schema admission failure", tools, err)
+			}
+		})
 	}
 }
 
@@ -119,19 +124,14 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 		}
 	})
 
-	t.Run("management schema", func(t *testing.T) {
+	t.Run("connection schema", func(t *testing.T) {
 		session := toolCatalogSession(t, &sdkmcp.Tool{
 			Name: "oversized-schema",
 			InputSchema: json.RawMessage(`{"type":"object","description":"` +
-				strings.Repeat("x", mcpserver.MaxRemoteToolInputSchemaBytes+1) + `"}`),
+				strings.Repeat("x", (1<<20)+1) + `"}`),
 		})
-		connections := &Connections{servers: []*server{{
-			config:  ServerConfig{Name: testMCPServerName("catalog")},
-			session: session,
-		}}}
-		name := testMCPServerName("catalog")
-		if _, err := connections.Tools(t.Context(), &name); err == nil {
-			t.Fatal("Connections.Tools accepted a schema larger than 1 MiB")
+		if _, err := sourceTools(t.Context(), testMCPServerName("catalog"), session); err == nil {
+			t.Fatal("sourceTools accepted a schema larger than Scope's 1 MiB bound")
 		}
 	})
 
@@ -140,8 +140,8 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 		for index := range candidate {
 			candidate[index] = catalogTool(fmt.Sprintf("catalog_tool_%04d", index))
 		}
-		if err := validateToolCatalog(nil, nil, testMCPServerName("catalog"), candidate); err == nil {
-			t.Fatal("validateToolCatalog accepted more than 2,048 remote tools")
+		if err := validateSourceToolMaterial(testMCPServerName("catalog"), candidate); err == nil {
+			t.Fatal("source catalog accepted more than 2,048 remote tools")
 		}
 	})
 }
