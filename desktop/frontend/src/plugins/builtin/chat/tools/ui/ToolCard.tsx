@@ -36,6 +36,7 @@ const tc = stylex.create({
     gap: space.s1_5,
   },
   failure: { flexShrink: 0, color: color.negative },
+  openSlot: { flexShrink: 0, width: "var(--control-height-xs)" },
   failureLine: {
     marginTop: space.s0_5,
     // Lands on the LABEL: the 16px mark plus the trigger's own 6px gap.
@@ -99,9 +100,6 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
             )}
           </>
         }
-        // An ARRAY, never a fragment: the slot renders on `Children.count`, and a fragment counts
-        // as one child however empty it is — which would hang ten pixels of padding off the right
-        // of every row that has no action at all.
         actions={[
           ...actions.map((action) => (
             <IconButton
@@ -122,24 +120,26 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
               className={stylex.props(reveal.shown).className}
             />
           )),
-          ...(onOpenView
-            ? [
-                <IconButton
-                  key="open-view"
-                  data-reveal="hover"
-                  data-slot="tool-open-view"
-                  icon="panel-r"
-                  size="xs"
-                  quiet
-                  title={t("workspace.view.openBeside")}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onOpenView();
-                  }}
-                  className={stylex.props(reveal.shown).className}
-                />,
-              ]
-            : []),
+          // The open-beside slot is held on every row, so a tool without a view keeps its status
+          // on the column of the tools beside it.
+          onOpenView ? (
+            <IconButton
+              key="open-view"
+              data-reveal="hover"
+              data-slot="tool-open-view"
+              icon="panel-r"
+              size="xs"
+              quiet
+              title={t("workspace.view.openBeside")}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenView();
+              }}
+              className={stylex.props(reveal.shown).className}
+            />
+          ) : (
+            <span key="open-view" aria-hidden {...stylex.props(tc.openSlot)} />
+          ),
         ]}
         open={expanded}
         onToggle={onToggleExpand}

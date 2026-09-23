@@ -1327,8 +1327,16 @@ for (const { state, inputSurface } of [
       const scroller = document.querySelector(".msg-scroll-viewport");
       const input = document.querySelector(inputSurface);
       if (!scroller || !input) return null;
-      scroller.scrollTop = scroller.scrollHeight;
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const frame = () =>
+        new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      // Late layout (highlighting, fonts) can still grow the tail after the first scroll, so the
+      // end is only the end once the height holds across a frame.
+      let height = -1;
+      while (height !== scroller.scrollHeight) {
+        height = scroller.scrollHeight;
+        scroller.scrollTop = height;
+        await frame();
+      }
       const tail = Array.from(scroller.querySelectorAll("[data-turn-id]")).at(-1);
       if (!tail) return null;
       return {

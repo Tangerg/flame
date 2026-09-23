@@ -227,8 +227,8 @@ const styles = stylex.create({
   },
 
   chip: { color: color.fgSoft },
-  chipSm: { paddingInline: space.s1_5 },
-  chipMd: { paddingInline: space.s2 },
+  chipSm: { paddingInline: inset(space.s1_5) },
+  chipMd: { paddingInline: inset(space.s2) },
 
   quiet: { color: color.fgFaint },
   quietAccent: { color: { default: color.fgFaint, ":hover": color.accent } },
