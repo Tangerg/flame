@@ -185,4 +185,33 @@ describe("ModelPicker", () => {
       reasoningEffort: "high",
     });
   });
+
+  it("sets the effort on the selected row without re-choosing the model", async () => {
+    state.selection = { model: state.models[2]!, reasoningEffort: "high" };
+    render(<ModelPicker />);
+    expect(screen.getByRole("button", { name: "Switch model" }).textContent).toContain(
+      "DeepSeek Reasoner · High",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    await screen.findByPlaceholderText("Search models…");
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch reasoning effort" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Low" }));
+    expect(state.setModel).toHaveBeenCalledTimes(1);
+    expect(state.setModel).toHaveBeenCalledWith({
+      kind: "explicit",
+      provider: "deepseek",
+      model: "DeepSeek Reasoner",
+      reasoningEffort: "low",
+    });
+    expect(screen.getByPlaceholderText("Search models…")).toBeTruthy();
+  });
+
+  it("offers an effort only on the selected model", async () => {
+    state.selection = { model: state.models[1]!, reasoningEffort: undefined };
+    render(<ModelPicker />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    await screen.findByPlaceholderText("Search models…");
+    expect(screen.queryByRole("button", { name: "Switch reasoning effort" })).toBeNull();
+  });
 });

@@ -42,6 +42,7 @@ import {
   Folder,
   FolderOpen,
   FolderSearch,
+  Gauge,
   GitBranch,
   Globe,
   Image,
@@ -136,6 +137,7 @@ export type IconName =
   | "spark"
   | "skip-back"
   | "fold"
+  | "gauge"
   | "open"
   | "compose"
   | "close-others"
@@ -231,6 +233,7 @@ const ICON_MAP = {
   spark: Sparkles,
   "skip-back": SkipBack,
   fold: FoldVertical,
+  gauge: Gauge,
   open: ArrowUpRight,
   compose: SquarePen,
   "close-others": CopyX,

@@ -2,6 +2,7 @@ import { useRef } from "react";
 
 import * as stylex from "@stylexjs/stylex";
 import { DropdownMenu, HiddenFileInput, Icon, IconButton, vocab } from "@/ui";
+import type { IconName } from "@/ui/icons";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { toolbarStyles } from "./toolbarStyles";
 import { AgentComposerChip } from "@/ui/agent";
@@ -19,7 +20,7 @@ import { contributeLayout, notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { definePlugin } from "@/plugins/sdk";
 import { useAddComposerImageFiles } from "./public/attachments";
-import { ModelPicker, ReasoningEffortPicker } from "./ui/ModelPicker";
+import { ModelPicker } from "./ui/ModelPicker";
 
 function AttachButton() {
   const t = useT();
@@ -51,6 +52,12 @@ function AttachButton() {
   );
 }
 
+const MODE_ICON: Record<ApprovalMode, IconName> = {
+  safe: "shield",
+  balanced: "gauge",
+  yolo: "alert",
+};
+
 function ApprovalModePill() {
   const t = useT();
   const { data: mode, isError } = useApprovalMode();
@@ -74,20 +81,28 @@ function ApprovalModePill() {
             aria-label={t("approvals.mode.aria")}
             variant={full ? "wash" : "ghost"}
             tone={full ? "warning" : undefined}
-            leading={<Icon name={full ? "alert" : "shield"} size="sm" full />}
+            leading={<Icon name={MODE_ICON[mode]} size="sm" full />}
             label={t(current.labelKey)}
             labelVisibility={full ? "always" : "wide"}
           />
         }
       />
       <DropdownMenu.Content align="start" sideOffset={6}>
+        <div aria-hidden {...stylex.props(toolbarStyles.menuHeading, typeStep.uiSm)}>
+          {t("approvals.mode.aria")}
+        </div>
         {APPROVAL_MODES.map((m) => (
           <DropdownMenu.Item
             key={m.value}
             onClick={() => void onSelect(m.value)}
-            layout="pickPlain"
+            layout="pick"
             styles={toolbarStyles.describedRow}
           >
+            <Icon
+              name={MODE_ICON[m.value]}
+              size="md"
+              className={stylex.props(toolbarStyles.optionGlyph).className}
+            />
             <span {...stylex.props(vocab.min)}>
               <span {...stylex.props(toolbarStyles.optionTitle, typeStep.uiMd)}>
                 {t(m.labelKey)}
@@ -127,11 +142,6 @@ export const composerToolbar = definePlugin({
       id: "model",
       order: 1,
       component: ModelPicker,
-    });
-    contributeLayout(ctx, "composer.toolbar.start", {
-      id: "reasoning-effort",
-      order: 2,
-      component: ReasoningEffortPicker,
     });
   },
 });

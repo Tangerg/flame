@@ -1,11 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { type as typeStep } from "@/styles/tokens.stylex";
-import { toolbarStyles } from "../toolbarStyles";
-import { composerStyles } from "./composerStyles";
 
 import { fmtTokens } from "@/lib/format";
-import { useT } from "@/lib/i18n";
+import { type Translate, useT } from "@/lib/i18n";
 import {
   Button,
   DropdownMenu,
@@ -26,32 +23,34 @@ import { AgentComposerChip } from "@/ui/agent";
 import { useSetComposerModelPreference } from "../public/modelPreference";
 import { useSelectedModelSelection } from "../public/selectedModel";
 
-export function ReasoningEffortPicker() {
+type Selection = NonNullable<ReturnType<typeof useSelectedModelSelection>>;
+
+function ReasoningEffortMenu({
+  model,
+  selectedEffort,
+}: {
+  model: SelectableModel;
+  selectedEffort: string;
+}) {
   const t = useT();
-  const selection = useSelectedModelSelection();
   const setModel = useSetComposerModelPreference();
-  if (!selection || selection.model.reasoningLevels.length === 0) return null;
-
-  const { model, reasoningEffort } = selection;
-  const selectedEffort = reasoningEffort ?? model.reasoningLevelOrDefault();
-  if (!selectedEffort) return null;
-
+  const [open, setOpen] = useState(false);
   return (
-    <DropdownMenu.Root>
+    <DropdownMenu.Root open={open} onOpenChange={setOpen}>
       <DropdownMenu.Trigger
         render={
-          <AgentComposerChip
+          <Button
+            variant="soft"
+            size="xs"
             aria-label={t("composer.switchReasoningEffort")}
-            className={stylex.props(toolbarStyles.capitalize).className}
-            leading={
-              <Icon name="sparkle" size="sm" className={stylex.props(vocab.faint).className} />
-            }
-            label={selectedEffort}
-            labelVisibility="wide"
-          />
+            onClick={() => setOpen((value) => !value)}
+          >
+            {effortLabel(selectedEffort)}
+            <Icon name="chevron-down" size="xs" className={stylex.props(vocab.faint).className} />
+          </Button>
         }
       />
-      <DropdownMenu.Content align="start" sideOffset={6}>
+      <DropdownMenu.Content align="end" sideOffset={4}>
         {model.reasoningLevels.map((effort) => (
           <DropdownMenu.Item
             key={effort}
@@ -65,7 +64,7 @@ export function ReasoningEffortPicker() {
             }
             layout="pickPlain"
           >
-            <span {...stylex.props(vocab.truncate, toolbarStyles.capitalize)}>{effort}</span>
+            <span {...stylex.props(vocab.truncate)}>{effortLabel(effort)}</span>
             {effort === selectedEffort && (
               <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
             )}
@@ -82,23 +81,39 @@ function modelItemId(model: SelectableModel): string {
 
 const RECENT_GROUP_ID = "__recent";
 
-function modelItem(model: SelectableModel, selected: SelectableModel) {
+function modelItem(model: SelectableModel, selection: Selection, t: Translate) {
+  const active = model.provider === selection.model.provider && model.id === selection.model.id;
+  const effort = active ? selectedEffort(selection) : undefined;
   return {
     id: modelItemId(model),
     label: model.label,
     caption: providerDisplayName(model.provider),
+    title: modelCapabilities(model, t) || undefined,
     leading: <ProviderIcon provider={model.provider} size="md" />,
-    description: <ModelCapabilities model={model} />,
     keywords: [model.provider, model.id],
-    active: model.provider === selected.provider && model.id === selected.id,
+    active,
+    accessory: effort ? <ReasoningEffortMenu model={model} selectedEffort={effort} /> : undefined,
   };
+}
+
+function selectedEffort(selection: Selection): string | undefined {
+  if (selection.model.reasoningLevels.length === 0) return undefined;
+  return selection.reasoningEffort ?? selection.model.reasoningLevelOrDefault();
+}
+
+function effortSuffixed(label: string, effort: string | undefined): string {
+  return effort ? `${label} · ${effortLabel(effort)}` : label;
+}
+
+function effortLabel(effort: string): string {
+  return effort.charAt(0).toUpperCase() + effort.slice(1);
 }
 
 function modelGroups(
   models: readonly SelectableModel[],
-  selected: SelectableModel,
+  selection: Selection,
   recent: readonly RecentModel[],
-  recentLabel: string,
+  t: Translate,
 ): CatalogPickerGroup[] {
   const byProvider = new Map<string, SelectableModel[]>();
   for (const model of models) {
@@ -116,29 +131,28 @@ function modelGroups(
   const providers = [...byProvider].map(([provider, items]) => ({
     id: provider,
     label: providerDisplayName(provider),
-    leading: <ProviderIcon provider={provider} size="sm" />,
+    leading: <ProviderIcon provider={provider} size="md" />,
     count: items.length,
-    items: items.map((model) => modelItem(model, selected)),
+    items: items.map((model) => modelItem(model, selection, t)),
   }));
 
   return shelf.length > 0
     ? [
         {
           id: RECENT_GROUP_ID,
-          label: recentLabel,
-          leading: <Icon name="history" size="sm" />,
+          label: t("composer.model.recent"),
+          leading: <Icon name="history" size="md" />,
           count: shelf.length,
-          items: shelf.map((model) => modelItem(model, selected)),
+          items: shelf.map((model) => modelItem(model, selection, t)),
         },
         ...providers,
       ]
     : providers;
 }
 
-function ModelCapabilities({ model }: { model: SelectableModel }) {
-  const t = useT();
+function modelCapabilities(model: SelectableModel, t: Translate): string {
   const tokenLimits = model.tokenLimits;
-  const primary = [
+  return [
     tokenLimits?.contextWindow !== undefined
       ? t("composer.model.contextWindow", { tokens: fmtTokens(tokenLimits.contextWindow) })
       : null,
@@ -150,8 +164,6 @@ function ModelCapabilities({ model }: { model: SelectableModel }) {
         ? t("composer.model.reasoningLevels", { levels: model.reasoningLevels.join(" / ") })
         : t("composer.model.reasoning")
       : null,
-  ].filter((value): value is string => value !== null);
-  const secondary = [
     tokenLimits?.maxInputTokens !== undefined &&
     tokenLimits.maxInputTokens !== tokenLimits.contextWindow
       ? t("composer.model.maxInput", { tokens: fmtTokens(tokenLimits.maxInputTokens) })
@@ -167,20 +179,9 @@ function ModelCapabilities({ model }: { model: SelectableModel }) {
     model.knowledgeCutoff
       ? t("composer.model.knowledgeCutoff", { cutoff: model.knowledgeCutoff })
       : null,
-  ].filter((value): value is string => value !== null);
-  if (primary.length === 0 && secondary.length === 0) return null;
-
-  const title = [...primary, ...secondary].join(" · ");
-  if (primary.length === 0) return null;
-  return (
-    <span
-      {...stylex.props(composerStyles.modelHint, typeStep.uiXs)}
-      title={title}
-      aria-label={title}
-    >
-      {primary.join(" · ")}
-    </span>
-  );
+  ]
+    .filter((value): value is string => value !== null)
+    .join(" · ");
 }
 
 function ModelPickerPlaceholder() {
@@ -196,8 +197,8 @@ export function ModelPicker() {
   const recent = useRecentModelsStore((state) => state.recent);
   const remember = useRecentModelsStore((state) => state.remember);
   const groups = useMemo(
-    () => (selected ? modelGroups(models, selected, recent, t("composer.model.recent")) : []),
-    [models, recent, selected, t],
+    () => (selection ? modelGroups(models, selection, recent, t) : []),
+    [models, recent, selection, t],
   );
   const modelsByItemId = useMemo(
     () => new Map(models.map((model) => [modelItemId(model), model])),
@@ -232,6 +233,7 @@ export function ModelPicker() {
         groups.some((group) => group.id === selected.provider) ? selected.provider : groups[0]?.id
       }
       label={t("composer.switchModel")}
+      heading={t("composer.model.title")}
       placeholder={t("composer.model.search.placeholder")}
       emptyLabel={t("composer.model.search.empty")}
       onSelect={(item) => {
@@ -252,7 +254,7 @@ export function ModelPicker() {
           title={`${selected.label} · ${providerDisplayName(selected.provider)}`}
           shrink="gives"
           leading={<ProviderIcon provider={selected.provider} size="sm" />}
-          label={selected.label}
+          label={effortSuffixed(selected.label, selectedEffort(selection))}
         />
       }
       side="top"

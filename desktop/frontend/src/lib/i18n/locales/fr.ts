@@ -40,6 +40,7 @@ export const fr: Record<string, string> = {
   "composer.placeholder": "Décrivez ce que vous voulez faire — @ pour référencer un fichier",
   "composer.switchModel": "Changer de modèle",
   "composer.switchReasoningEffort": "Changer l’intensité du raisonnement",
+  "composer.model.title": "Modèles",
   "composer.model.recent": "Récents",
   "composer.model.search.placeholder": "Rechercher des modèles…",
   "composer.model.search.empty": "Aucun modèle trouvé",

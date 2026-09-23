@@ -39,6 +39,7 @@ export const ko: Record<string, string> = {
   "composer.placeholder": "무엇을 할지 적어 주세요 — @ 로 파일 참조",
   "composer.switchModel": "모델 변경",
   "composer.switchReasoningEffort": "추론 강도 변경",
+  "composer.model.title": "모델",
   "composer.model.recent": "최근 사용",
   "composer.model.search.placeholder": "모델 검색…",
   "composer.model.search.empty": "일치하는 모델이 없습니다",

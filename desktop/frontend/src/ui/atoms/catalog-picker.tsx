@@ -1,14 +1,23 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactElement, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/classNames";
-import { color, motion, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
+import {
+  color,
+  corner,
+  motion,
+  radius,
+  space,
+  surface,
+  type,
+  weight,
+} from "@/styles/tokens.stylex";
 import { ComboboxPrimitive } from "@/ui/primitives";
 import { Icon, type IconName } from "@/ui/icons";
 import { dress } from "./button";
 import { Popover } from "./popover";
 import { floatingRow } from "./option-row";
 import { Pressable } from "./pressable";
-import { vocab } from "./vocabulary";
+import { gap, vocab } from "./vocabulary";
 
 const styles = stylex.create({
   emptyFlush: { padding: { default: null, ":is([data-empty])": 0 } },
@@ -27,18 +36,6 @@ const styles = stylex.create({
     backgroundColor: surface.canvas,
     paddingInline: "calc(var(--spacing) * 2 - var(--control-edge-width))",
     borderColor: { default: surface.field, ":focus-within": surface.fieldFocus },
-    color: { default: color.fgMuted, ":focus-within": color.fg },
-  },
-  searchRule: {
-    display: "flex",
-    flexShrink: 0,
-    alignItems: "center",
-    gap: space.s2,
-    borderBottomWidth: "var(--control-edge-width)",
-    borderBottomStyle: "solid",
-    borderBottomColor: surface.divider,
-    paddingInline: space.s3,
-    paddingBlock: space.s2,
     color: { default: color.fgMuted, ":focus-within": color.fg },
   },
   glyph: { flexShrink: 0 },
@@ -120,24 +117,47 @@ const styles = stylex.create({
 
   rail: {
     display: "flex",
-    width: "132px",
     flexShrink: 0,
     flexDirection: "column",
     gap: space.s0_5,
     overflowY: "auto",
+    scrollbarWidth: "none",
     borderRightWidth: "var(--control-edge-width)",
     borderRightStyle: "solid",
     borderRightColor: surface.divider,
     padding: space.s1,
   },
-  railBody: { display: "flex", height: "240px", minHeight: 0 },
-  railRow: {
+  railBody: { display: "flex", height: "280px", minHeight: 0 },
+  railColumn: { display: "flex", minWidth: 0, flex: 1, flexDirection: "column" },
+  railHead: {
     display: "flex",
-    minHeight: space.s7,
+    flexShrink: 0,
     alignItems: "center",
     gap: space.s2,
+    paddingInline: space.s3,
+    paddingTop: space.s2,
+    paddingBottom: space.s1,
+  },
+  railTitle: { flexShrink: 0, fontWeight: weight.medium, color: color.fgFaint },
+  railSearch: {
+    display: "flex",
+    minWidth: 0,
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: space.s1_5,
+    color: { default: color.fgFaint, ":focus-within": color.fg },
+  },
+  railSearchInput: { flex: "0 1 auto", maxWidth: "100%", fieldSizing: "content" },
+  rowTrailing: {
+    gridTemplateColumns: "var(--menu-glyph, calc(var(--spacing) * 4)) minmax(0, 1fr) auto",
+  },
+  railRow: {
+    display: "grid",
+    height: space.s8,
+    width: space.s8,
+    placeItems: "center",
     borderRadius: radius.sm,
-    paddingInline: space.s2,
     transitionProperty: "color, background-color",
     transitionDuration: motion.color,
     transitionTimingFunction: motion.easeState,
@@ -150,14 +170,23 @@ const styles = stylex.create({
     color: { default: color.fgMuted, ":hover": color.fg },
     backgroundColor: { default: null, ":hover": surface.hover },
   },
-  railLabel: {
-    minWidth: 0,
-    flex: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
+  accessory: { display: "flex", flexShrink: 0, alignItems: "center" },
+  radio: {
+    display: "grid",
+    height: "var(--control-mark-size)",
+    width: "var(--control-mark-size)",
+    flexShrink: 0,
+    placeItems: "center",
+    borderWidth: "var(--control-edge-width)",
+    borderStyle: "solid",
+    borderColor: surface.controlEdge,
   },
-  railCount: { flexShrink: 0, fontFamily: "var(--font-mono)", color: color.fgFaint },
+  radioOn: { borderColor: color.accent, backgroundColor: color.accent },
+  radioDot: {
+    height: space.s1_5,
+    width: space.s1_5,
+    backgroundColor: color.onAccent,
+  },
 });
 
 interface CatalogPickerItem {
@@ -169,6 +198,8 @@ interface CatalogPickerItem {
   keywords?: readonly string[];
   active?: boolean;
   caption?: string;
+  title?: string;
+  accessory?: ReactNode;
 }
 
 export interface CatalogPickerGroup {
@@ -230,14 +261,32 @@ function CatalogSearch({ placeholder, ref }: { placeholder: string; ref?: Ref<HT
   );
 }
 
-function CatalogRow(item: CatalogPickerItem, groupLabel?: string) {
+type CatalogMark = "check" | "radio";
+
+function RowMark({ mark, active }: { mark: CatalogMark; active?: boolean }) {
+  if (mark === "radio") {
+    return (
+      <span aria-hidden {...stylex.props(styles.radio, corner.pill, active && styles.radioOn)}>
+        {active && <span {...stylex.props(styles.radioDot, corner.pill)} />}
+      </span>
+    );
+  }
+  return active ? <Icon name="check" size="xs" {...stylex.props(styles.mark)} /> : <span />;
+}
+
+function CatalogRow(item: CatalogPickerItem, mark: CatalogMark, groupLabel?: string) {
   const showCaption = item.caption !== undefined && item.caption !== groupLabel;
   return (
     <ComboboxPrimitive.Item
       key={item.id}
       value={item}
+      title={item.title}
       data-current={item.active ? "" : undefined}
-      {...stylex.props(floatingRow("pick", item.description ? "lg" : "sm"), styles.row)}
+      {...stylex.props(
+        floatingRow("pick", item.description ? "lg" : "sm"),
+        styles.row,
+        mark === "radio" && styles.rowTrailing,
+      )}
     >
       {item.leading ?? (
         <Icon name={item.icon ?? "panel-r"} size="md" {...stylex.props(styles.rowGlyph)} />
@@ -251,7 +300,19 @@ function CatalogRow(item: CatalogPickerItem, groupLabel?: string) {
         </span>
         {item.description}
       </span>
-      {item.active ? <Icon name="check" size="xs" {...stylex.props(styles.mark)} /> : <span />}
+      <span {...stylex.props(styles.accessory, gap.s2)}>
+        {item.accessory && (
+          <span
+            role="presentation"
+            {...stylex.props(styles.accessory)}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            {item.accessory}
+          </span>
+        )}
+        <RowMark mark={mark} active={item.active} />
+      </span>
     </ComboboxPrimitive.Item>
   );
 }
@@ -331,7 +392,7 @@ export function CatalogPicker({
                   )}
                 </ComboboxPrimitive.GroupLabel>
                 <ComboboxPrimitive.Collection>
-                  {(item: CatalogPickerItem) => CatalogRow(item)}
+                  {(item: CatalogPickerItem) => CatalogRow(item, "check")}
                 </ComboboxPrimitive.Collection>
               </ComboboxPrimitive.Group>
             )}
@@ -345,6 +406,7 @@ export function CatalogPicker({
 export function RailCatalogPicker({
   groups,
   openAtGroupId,
+  heading,
   label,
   placeholder,
   emptyLabel,
@@ -357,6 +419,7 @@ export function RailCatalogPicker({
 }: CatalogSurfaceProps & {
   groups: CatalogPickerGroup[];
   openAtGroupId?: string;
+  heading: string;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -418,22 +481,6 @@ export function RailCatalogPicker({
           inline
           open
         >
-          <div {...stylex.props(styles.searchRule)}>
-            <Icon name="search" size="sm" {...stylex.props(styles.glyph)} />
-            <ComboboxPrimitive.Input
-              ref={searchRef}
-              aria-label={placeholder}
-              placeholder={placeholder}
-              onKeyDown={(event) => {
-                if (event.key !== "Escape" || !searching) return;
-                event.preventDefault();
-                event.stopPropagation();
-                setQuery("");
-              }}
-              {...stylex.props(styles.input, styles.inputShort, type.uiMd)}
-            />
-          </div>
-
           <div data-slot="catalog-body" {...stylex.props(styles.railBody)}>
             {!searching && groups.length > 1 && (
               <div {...stylex.props(styles.rail)}>
@@ -441,6 +488,8 @@ export function RailCatalogPicker({
                   <Pressable
                     key={group.id}
                     aria-pressed={group.id === active?.id}
+                    aria-label={group.label}
+                    title={group.label}
                     data-chrome-focus=""
                     onClick={() => {
                       setGroupId(group.id);
@@ -448,36 +497,58 @@ export function RailCatalogPicker({
                     className={
                       stylex.props(
                         styles.railRow,
-                        type.uiSm,
                         group.id === active?.id ? styles.railRowOn : styles.railRowOff,
                       ).className
                     }
                   >
                     {group.leading}
-                    <span {...stylex.props(styles.railLabel)}>{group.label}</span>
-                    {group.count !== undefined && (
-                      <span aria-hidden {...stylex.props(styles.railCount, type.uiXs)}>
-                        {group.count}
-                      </span>
-                    )}
                   </Pressable>
                 ))}
               </div>
             )}
 
-            <ComboboxPrimitive.Empty
-              className={stylex.props(styles.emptySplit, styles.hideWhenEmpty, type.uiSm).className}
-            >
-              {emptyLabel}
-            </ComboboxPrimitive.Empty>
-            <ComboboxPrimitive.List
-              ref={listRef}
-              className={
-                stylex.props(styles.hideWhenListEmpty, styles.list, styles.listInset).className
-              }
-            >
-              {(item: CatalogPickerItem) => CatalogRow(item, searching ? undefined : active?.label)}
-            </ComboboxPrimitive.List>
+            <div {...stylex.props(styles.railColumn)}>
+              <div {...stylex.props(styles.railHead)}>
+                <span {...stylex.props(styles.railTitle, type.uiSm)}>{heading}</span>
+                <div {...stylex.props(styles.railSearch)}>
+                  <ComboboxPrimitive.Input
+                    ref={searchRef}
+                    aria-label={placeholder}
+                    placeholder={placeholder}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Escape" || !searching) return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setQuery("");
+                    }}
+                    {...stylex.props(
+                      styles.input,
+                      styles.inputShort,
+                      styles.railSearchInput,
+                      type.uiSm,
+                    )}
+                  />
+                  <Icon name="search" size="sm" {...stylex.props(styles.glyph)} />
+                </div>
+              </div>
+              <ComboboxPrimitive.Empty
+                className={
+                  stylex.props(styles.emptySplit, styles.hideWhenEmpty, type.uiSm).className
+                }
+              >
+                {emptyLabel}
+              </ComboboxPrimitive.Empty>
+              <ComboboxPrimitive.List
+                ref={listRef}
+                className={
+                  stylex.props(styles.hideWhenListEmpty, styles.list, styles.listInset).className
+                }
+              >
+                {(item: CatalogPickerItem) =>
+                  CatalogRow(item, "radio", searching ? undefined : active?.label)
+                }
+              </ComboboxPrimitive.List>
+            </div>
           </div>
         </ComboboxPrimitive.Root>
       </Popover.Content>

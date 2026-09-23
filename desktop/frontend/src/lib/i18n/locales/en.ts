@@ -40,6 +40,7 @@ export const en: Record<string, string> = {
   "composer.placeholder.steer": "Send a message to steer the running turn…",
   "composer.switchModel": "Switch model",
   "composer.switchReasoningEffort": "Switch reasoning effort",
+  "composer.model.title": "Models",
   "composer.model.recent": "Recent",
   "composer.model.search.placeholder": "Search models…",
   "composer.model.search.empty": "No models found",

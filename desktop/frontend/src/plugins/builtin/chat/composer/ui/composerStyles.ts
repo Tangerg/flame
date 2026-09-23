@@ -52,13 +52,4 @@ export const composerStyles = stylex.create({
     boxShadow: "var(--shadow-modal)",
   },
   dropLabel: { fontWeight: weight.medium, color: color.fgSoft },
-  modelHint: {
-    display: "block",
-    minWidth: 0,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    fontWeight: weight.regular,
-    color: color.fgFaint,
-  },
 });

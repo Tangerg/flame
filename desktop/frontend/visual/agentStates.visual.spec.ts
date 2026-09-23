@@ -32,10 +32,9 @@ const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
   waves: "running",
 };
 
-const GPT_5_6_SOL_CAPABILITY_NAME =
-  "GPT-5.6 Sol 1.1M context · text + image + pdf input · Reasoning none / low / medium / high / xhigh / max · 922k max input · 128k max output · text output · Tools · Structured output · Knowledge 2026-02-16T00:00:00Z";
-const QWEN_MT_PLUS_CAPABILITY_NAME =
-  "Qwen MT Plus Alibaba 32.8k context · text input · text output";
+const GPT_5_6_SOL_CAPABILITIES =
+  "1.1M context · text + image + pdf input · Reasoning none / low / medium / high / xhigh / max · 922k max input · 128k max output · text output · Tools · Structured output · Knowledge 2026-02-16T00:00:00Z";
+const QWEN_MT_PLUS_CAPABILITIES = "32.8k context · text input · text output";
 
 test("every declared state carries an expected attention", () => {
   expect(Object.keys(EXPECTED_ATTENTION).sort()).toEqual([...VISUAL_AGENT_STATES].sort());
@@ -622,19 +621,30 @@ test("model capabilities drive the picker and image admission together", async (
   await page.locator("html[data-visual-ready]").waitFor();
 
   const attach = page.getByRole("button", { name: "Attach image" });
-  const effort = page.getByRole("button", { name: "Switch reasoning effort" });
+  const trigger = page.getByRole("button", { name: "Switch model" });
+  const triggerLabel = trigger.locator('[data-slot="composer-chip-label"]');
   await expect(attach).toBeEnabled();
-  await expect(effort).toHaveText("medium");
+  await expect(triggerLabel).toHaveText("GPT-5.6 Sol · Medium");
+  await trigger.click();
+
+  const surface = page.getByRole("dialog", { name: "Switch model" });
+  const sol = surface.getByRole("option", { name: /^GPT-5\.6 Sol/ });
+  await expect(sol).toHaveAttribute("title", GPT_5_6_SOL_CAPABILITIES);
+  const effort = surface.getByRole("button", { name: "Switch reasoning effort" });
+  await expect(effort).toHaveText("Medium");
   await effort.click();
-  await page.getByRole("menuitem", { name: "high", exact: true }).click();
-  await expect(effort).toHaveText("high");
-  await page.getByRole("button", { name: "Switch model" }).click();
-  await expect(page.getByRole("option", { name: GPT_5_6_SOL_CAPABILITY_NAME })).toBeVisible();
+  await page.getByRole("menuitem", { name: "High", exact: true }).click();
+  await expect(effort).toHaveText("High");
+  await expect(surface).toBeVisible();
+  await expect(triggerLabel).toHaveText("GPT-5.6 Sol · High");
+
   await page.getByPlaceholder("Search models…").fill("Qwen MT Plus");
-  await page.getByRole("option", { name: QWEN_MT_PLUS_CAPABILITY_NAME }).click();
+  const qwen = surface.getByRole("option", { name: /^Qwen MT Plus/ });
+  await expect(qwen).toHaveAttribute("title", QWEN_MT_PLUS_CAPABILITIES);
+  await qwen.click();
 
   await expect(attach).toBeDisabled();
-  await expect(effort).toHaveCount(0);
+  await expect(triggerLabel).toHaveText("Qwen MT Plus");
 });
 
 for (const theme of ["light", "dark"] as const) {
