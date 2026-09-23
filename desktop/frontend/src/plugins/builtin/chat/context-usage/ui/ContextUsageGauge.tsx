@@ -10,10 +10,9 @@ import { color, motion, radius, space, surface } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../chatStyles";
 
 const cu = stylex.create({
-  // Pulls back into the bar's own inset: the gauge is a glyph, not a control with a box.
   trigger: {
-    marginInline: "calc(var(--spacing) * -1.5)",
     display: "inline-flex",
+    flexShrink: 0,
     height: space.s7,
     width: space.s7,
     alignItems: "center",

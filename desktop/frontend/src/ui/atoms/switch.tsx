@@ -40,7 +40,7 @@ interface SwitchProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
-  ariaLabel?: string;
+  ariaLabel: string;
   className?: string;
 }
 

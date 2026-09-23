@@ -125,7 +125,7 @@ export function FontSection() {
         <Switch
           checked={fontSmoothing}
           onCheckedChange={setFontSmoothing}
-          aria-label={t("settings.font.smoothing")}
+          ariaLabel={t("settings.font.smoothing")}
         />
       </SettingRow>
     </>

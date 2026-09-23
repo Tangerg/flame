@@ -26,9 +26,6 @@ import { AgentComposerChip } from "@/ui/agent";
 import { useSetComposerModelPreference } from "../public/modelPreference";
 import { useSelectedModelSelection } from "../public/selectedModel";
 
-// A toolbar chip beside the model, not a footer inside the model menu: effort is switched far
-// more often than the model it belongs to, and reaching it through the model picker meant
-// opening one menu to get at another.
 export function ReasoningEffortPicker() {
   const t = useT();
   const selection = useSelectedModelSelection();
@@ -50,6 +47,7 @@ export function ReasoningEffortPicker() {
               <Icon name="sparkle" size="sm" className={stylex.props(vocab.faint).className} />
             }
             label={selectedEffort}
+            labelVisibility="wide"
           />
         }
       />

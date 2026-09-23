@@ -34,6 +34,7 @@ const df = stylex.create({
   glyph: { opacity: "var(--glyph-step)" },
   sep: { marginInline: space.s2 },
   scroller: { minWidth: 0, paddingInline: space.s2, paddingBottom: space.s2 },
+  baseline: { overflowWrap: "anywhere" },
 });
 
 const FILE_ANCHOR = "data-diff-file";
@@ -165,7 +166,7 @@ export function DiffWorkspaceSurface() {
       />
       {view.baseline && (
         <p
-          {...stylex.props(vs.gutter, typeStep.uiSm, vocab.muted)}
+          {...stylex.props(vs.gutter, typeStep.uiSm, vocab.muted, vocab.pretty, df.baseline)}
           title={view.baseline.type === "emptyTree" ? undefined : view.baseline.commit}
         >
           {t(`diff.baseline.${view.baseline.type}`, {

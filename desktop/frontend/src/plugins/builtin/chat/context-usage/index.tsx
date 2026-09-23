@@ -6,7 +6,7 @@ export default definePlugin({
   setup(ctx) {
     contributeLayout(ctx, "composer.toolbar.start", {
       id: "context-usage",
-      order: 3,
+      order: 4,
       component: ContextUsageGauge,
     });
   },
