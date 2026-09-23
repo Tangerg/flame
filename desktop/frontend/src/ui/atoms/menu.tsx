@@ -28,7 +28,8 @@ const menuStyles = stylex.create({
     rowGap: "2px",
     minWidth: "12rem",
     maxHeight: "min(380px, var(--available-height))",
-    overflowY: "auto",
+    // The same property the floating face sets, so the two resolve as one declaration.
+    overflow: "hidden auto",
     overscrollBehavior: "contain",
     scrollPaddingBlock: space.s1,
     padding: space.s1,

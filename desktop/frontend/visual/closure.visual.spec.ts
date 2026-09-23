@@ -1725,3 +1725,50 @@ test("the reasoning window fades the edge it actually clips", async ({ page }) =
   await expect.poll(async () => (await readFade()).top).toBe("24px");
   expect((await readFade()).bottom).toBe("24px");
 });
+
+test("no floating surface carries two StyleX rules for one property", async ({ page }) => {
+  // Wide enough that the turn rail is laid out beside the reading column.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const collisions = new Set<string>();
+  const collect = async (where: string) => {
+    for (const found of await stylexCollisions(page)) collisions.add(`[${where}] ${found}`);
+  };
+
+  await openFixture(page, { fixture: "shell", state: "populated" });
+  await page
+    .getByRole("button", { name: /Refine Runtime protocol/ })
+    .first()
+    .click({
+      button: "right",
+    });
+  await expect(page.getByRole("menu")).toBeVisible();
+  await collect("session menu");
+  await page.keyboard.press("Escape");
+
+  await openFixture(page, { fixture: "agent", state: "narrative" });
+  for (const name of ["Approval mode", "Switch reasoning effort", "Switch model"]) {
+    await page.getByRole("button", { name }).click();
+    await page.waitForTimeout(250);
+    await collect(name);
+    await page.keyboard.press("Escape");
+  }
+  const tick = page.locator('[data-slot="chat-rail"] nav button').first();
+  await tick.hover();
+  await expect(page.getByRole("tooltip")).toBeVisible();
+  await collect("turn preview");
+
+  await openFixture(page, { fixture: "agent", state: "idle" });
+  await page.getByRole("button", { name: "Regenerate response" }).last().hover();
+  await expect(page.getByRole("tooltip")).toBeVisible();
+  await collect("tooltip");
+
+  await openFixture(page, { fixture: "workspace", state: "dock-light" });
+  await page.getByRole("button", { name: "Browse panels" }).click();
+  await page.waitForTimeout(250);
+  await collect("panel catalogue");
+
+  expect(
+    [...collisions],
+    "a property declared twice on one element is decided by bundler order",
+  ).toEqual([]);
+});
