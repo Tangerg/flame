@@ -9,11 +9,15 @@ import (
 )
 
 type closeTrackingPersistence struct {
-	closed int
+	closed  int
+	listErr error
 }
 
 func (*closeTrackingPersistence) Read(string, int64) ([]byte, error) { return nil, os.ErrNotExist }
-func (*closeTrackingPersistence) ListFiles(string, string) ([]string, error) {
+func (p *closeTrackingPersistence) ListFiles(string, string) ([]string, error) {
+	if p.listErr != nil {
+		return nil, p.listErr
+	}
 	return nil, os.ErrNotExist
 }
 func (*closeTrackingPersistence) Replace(string, []byte) error { return nil }
@@ -21,6 +25,19 @@ func (*closeTrackingPersistence) Remove(string) error          { return nil }
 func (p *closeTrackingPersistence) Close() error {
 	p.closed++
 	return nil
+}
+
+// TestOpenClosesPersistenceWhenLoadingFails pins the ownership half that used
+// to live in every caller: the handle is the Store's from the call, so a failed
+// load releases it rather than leaving the caller to remember.
+func TestOpenClosesPersistenceWhenLoadingFails(t *testing.T) {
+	persistence := &closeTrackingPersistence{listErr: errors.New("state directory is unreadable")}
+	if _, err := Open(persistence, Config{}); err == nil {
+		t.Fatal("Open succeeded with an unreadable state directory")
+	}
+	if persistence.closed != 1 {
+		t.Fatalf("persistence close count = %d, want 1", persistence.closed)
+	}
 }
 
 func TestStoreClosesOwnedPersistenceOnce(t *testing.T) {
