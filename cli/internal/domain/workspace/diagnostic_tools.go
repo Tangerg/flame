@@ -5,6 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -26,7 +27,7 @@ func (d DiagnosticToolDescriptor) Validate() error {
 }
 
 func (d DiagnosticToolDescriptor) Clone() DiagnosticToolDescriptor {
-	d.Schema = append(jsontext.Value(nil), d.Schema...)
+	d.Schema = slices.Clone(d.Schema)
 	return d
 }
 
@@ -49,14 +50,14 @@ func (i DiagnosticToolInvocation) Validate() error {
 type DiagnosticToolResult struct{ JSON jsontext.Value }
 
 func (r DiagnosticToolResult) Validate() error {
-	if len(r.JSON) == 0 || !jsontext.Value(r.JSON).IsValid() {
+	if len(r.JSON) == 0 || !r.JSON.IsValid() {
 		return errors.New("diagnostic tool result is not valid JSON")
 	}
 	return nil
 }
 
 func (r DiagnosticToolResult) Clone() DiagnosticToolResult {
-	return DiagnosticToolResult{JSON: append(jsontext.Value(nil), r.JSON...)}
+	return DiagnosticToolResult{JSON: slices.Clone(r.JSON)}
 }
 
 // ParseDiagnosticToolArguments owns the direct-invocation JSON-object invariant without
@@ -70,11 +71,11 @@ func ParseDiagnosticToolArguments(value string) (jsontext.Value, error) {
 	if err := validateObject("diagnostic tool arguments", arguments); err != nil {
 		return nil, err
 	}
-	return append(jsontext.Value(nil), arguments...), nil
+	return slices.Clone(arguments), nil
 }
 
 func validateObject(name string, value jsontext.Value) error {
-	if len(value) == 0 || !jsontext.Value(value).IsValid() {
+	if len(value) == 0 || !value.IsValid() {
 		return fmt.Errorf("%s is not valid JSON", name)
 	}
 	var object map[string]jsontext.Value
