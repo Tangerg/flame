@@ -16,22 +16,22 @@ func TestDecodeMessageRejectsDuplicateJSONMembersAtEveryObjectDepth(t *testing.T
 		{
 			name: "envelope method",
 			body: `{"jsonrpc":"2.0","id":"1","method":"sessions.list","method":"runs.list"}`,
-			want: `duplicate JSON member "method"`,
+			want: `duplicate object member name "method"`,
 		},
 		{
 			name: "escaped equivalent envelope method",
 			body: `{"jsonrpc":"2.0","id":"1","method":"sessions.list","\u006dethod":"runs.list"}`,
-			want: `duplicate JSON member "method"`,
+			want: `duplicate object member name "method"`,
 		},
 		{
 			name: "request metadata",
 			body: `{"jsonrpc":"2.0","id":"1","method":"sessions.list","params":{"_meta":{"protocolVersion":"2026-08-11","protocolVersion":"2026-08-10"}}}`,
-			want: `duplicate JSON member "protocolVersion"`,
+			want: `duplicate object member name "protocolVersion"`,
 		},
 		{
 			name: "array member",
 			body: `{"jsonrpc":"2.0","id":"1","method":"runs.start","params":{"input":[{"type":"text","text":"first","text":"second"}]}}`,
-			want: `duplicate JSON member "text"`,
+			want: `duplicate object member name "text"`,
 		},
 	}
 

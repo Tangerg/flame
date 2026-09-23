@@ -10,10 +10,11 @@ package transport
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"io"
 
-	"github.com/Tangerg/flame/runtime/internal/strictjson"
 	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
@@ -53,7 +54,7 @@ func EncodeMessage(message Message) ([]byte, error) { return jsonrpc.EncodeMessa
 // two different requests by intermediaries that choose first-wins versus
 // last-wins decoding.
 func DecodeMessage(encoded []byte) (Message, error) {
-	if err := strictjson.ValidateUniqueMembers(encoded); err != nil {
+	if err := validateSingleUnambiguousValue(encoded); err != nil {
 		return nil, err
 	}
 	if err := validateJSONRPCEnvelope(encoded); err != nil {
@@ -251,6 +252,22 @@ func (members jsonObjectMembers) rejectUnknown(envelopeKind string, allowed ...s
 		if _, ok := allowedMembers[member]; !ok {
 			return fmt.Errorf("unknown JSON-RPC %s member %q", envelopeKind, member)
 		}
+	}
+	return nil
+}
+
+// validateSingleUnambiguousValue rejects the two shapes the JSON-RPC SDK's
+// decoder would otherwise resolve silently: a repeated object member, whose
+// meaning depends on whether a reader keeps the first or the last, and a second
+// top-level value after the message. The standard library's decoder refuses
+// duplicates by default and names the member and its location.
+func validateSingleUnambiguousValue(encoded []byte) error {
+	decoder := jsontext.NewDecoder(bytes.NewReader(encoded))
+	if _, err := decoder.ReadValue(); err != nil {
+		return err
+	}
+	if _, err := decoder.ReadToken(); !errors.Is(err, io.EOF) {
+		return errors.New("JSON-RPC message carries more than one JSON value")
 	}
 	return nil
 }

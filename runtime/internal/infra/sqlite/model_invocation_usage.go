@@ -4,11 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/Tangerg/scope/core/chat"
-
-	"github.com/Tangerg/flame/runtime/internal/strictjson"
 )
 
 // Both totals are reported on every call, so their absence is a corrupt
@@ -43,13 +40,8 @@ func encodeModelInvocationUsage(usage *chat.Usage) (*string, error) {
 }
 
 func decodeModelInvocationUsage(encoded string) (*chat.Usage, error) {
-	if err := strictjson.ValidateUniqueMembers([]byte(encoded)); err != nil {
-		return nil, fmt.Errorf("sqlite: decode model invocation usage: %w", err)
-	}
 	var row *modelInvocationUsageRow
-	decoder := json.NewDecoder(strings.NewReader(encoded))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&row); err != nil {
+	if err := decodeStoredJSON([]byte(encoded), &row); err != nil {
 		return nil, fmt.Errorf("sqlite: decode model invocation usage: %w", err)
 	}
 	if row == nil || row.InputTokens == nil || row.OutputTokens == nil {

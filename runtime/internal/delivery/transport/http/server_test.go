@@ -518,7 +518,7 @@ func TestInvalidRPCEnvelopeReturnsTransportProblem(t *testing.T) {
 		{
 			name:   "duplicate member",
 			body:   `{"jsonrpc":"2.0","id":"1","method":"sessions.list","method":"runs.list","params":{}}`,
-			detail: `duplicate JSON member "method"`,
+			detail: `duplicate object member name "method"`,
 		},
 		{
 			name:   "empty method",
