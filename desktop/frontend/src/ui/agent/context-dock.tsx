@@ -75,7 +75,8 @@ const styles = stylex.create({
     borderWidth: 0,
     backgroundColor: "transparent",
     paddingBlock: 0,
-    fontWeight: weight.regular,
+    // zcode's side-pane tab weight: a tab names a place, and reads a step above the rows in it.
+    fontWeight: weight.medium,
     color: "inherit",
   },
   labelClosable: { paddingLeft: space.s2, paddingRight: space.s1 },

@@ -68,7 +68,9 @@ const styles = stylex.create({
   area: { resize: "vertical", lineHeight: leading.body },
   // The prose step brings prose tracking, which is right for what is typed and wrong for the
   // placeholder: a placeholder is UI text, not prose.
-  areaProse: { lineHeight: leading.prose, "::placeholder": { letterSpacing: "normal" } },
+  // Codex's composer line: 20px at the 14px body. An input is written in, not read at length, so
+  // it takes a tighter line than the transcript's reading leading.
+  areaProse: { lineHeight: "calc(1em + 6px)", "::placeholder": { letterSpacing: "normal" } },
   areaSm: { paddingInline: space.s2_5, paddingBlock: space.s1_5 },
   areaMd: { paddingInline: space.s3, paddingBlock: space.s2 },
   autosize: { fieldSizing: "content", resize: "none" },
