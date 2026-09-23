@@ -352,7 +352,7 @@ export const es: Record<string, string> = {
   "settings.font.smoothing.sub": "Antialiasing de macOS. Trazos más finos, bordes más suaves.",
   "settings.font.default": "Predeterminado",
   "settings.font.defaultUi": "Predeterminada (sistema)",
-  "settings.font.defaultMono": "Predeterminada (sistema, monoespaciada)",
+  "settings.font.defaultMono": "Predeterminada (mono del sistema)",
   "settings.customColors": "Colores personalizados",
   "settings.customColors.sub": "Fondo + primer plano; el resto se deriva.",
   "settings.color.bg": "Fondo",

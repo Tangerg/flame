@@ -61,7 +61,9 @@ export function SelectTrigger({ label, leading: lead, className, ...props }: Sel
       className={cn(styled.className, className)}
     >
       {lead}
-      <span {...stylex.props(styles.label)}>{label}</span>
+      <span title={typeof label === "string" ? label : undefined} {...stylex.props(styles.label)}>
+        {label}
+      </span>
       <Icon
         name="more"
         size="xs"
