@@ -13,14 +13,6 @@ import type { AgentRootAttention, AgentRunTreeNode } from "../view/runTree";
 import type { TranscriptRow } from "../conversation/transcriptRows";
 import { isAgentRunFailure } from "../view/runOutcome";
 
-/**
- * The active Session's exact root Run read model.
- *
- * Attention, streaming admission, outcome and metrics are facets of one Run
- * identity, not independently sampled global facts. Keeping them together also
- * gives transcript chrome one place to ask which exact turn owns terminal
- * material while an optimistic successor message is still unassigned.
- */
 export class CurrentRootMaterial {
   static readonly idle = new CurrentRootMaterial(null);
 
@@ -28,12 +20,8 @@ export class CurrentRootMaterial {
   readonly status: AgentRunView["status"] | "idle";
   readonly outcome: AgentRunOutcome | null;
   readonly metrics: AgentRunMetrics | null;
-  /** Latest model prompt footprint for this Run. Unlike cumulative usage, this
-   * is the number that occupies the model's context window. */
   readonly contextTokens: number | null;
   readonly modelSelection: AgentModelSelection | null;
-  /** Epoch millis, so a view can time the wait without re-parsing per tick. Null when the
-   *  Run states no start a clock could run from. */
   readonly startedAt: number | null;
   readonly attention: AgentRootAttention;
 
@@ -59,9 +47,6 @@ export class CurrentRootMaterial {
     return this.status === "running";
   }
 
-  /** The last narrative row owned by this finished Run is the only row that may
-   * host its close material. An unassigned optimistic successor can never steal
-   * that ownership merely by becoming the transcript tail. */
   terminalTurnIndex(rows: readonly TranscriptRow[]): number {
     if (
       this.status !== "finished" ||
@@ -104,8 +89,6 @@ export function useActiveSessionProblem(): AgentProblem | null {
   return agentSessionView().useProblem();
 }
 
-// An unparseable timestamp answers "no clock" rather than NaN, which would render as a
-// duration nobody can read.
 function epochMillis(iso: string | undefined): number | null {
   if (iso === undefined) return null;
   const parsed = Date.parse(iso);

@@ -161,8 +161,6 @@ function loadEntries(storage: MutationJournalStorage): JournalEntry[] {
     });
 }
 
-/** Canonical JSON is used only as transient hash input. Request bodies, prompts,
- * credentials, and file contents are never written to persistent storage. */
 function canonicalJSON(value: unknown): string {
   if (value === null) return "null";
   if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
@@ -190,8 +188,6 @@ function canonicalJSON(value: unknown): string {
   return "null";
 }
 
-/** A compact 128-bit matching fingerprint. Runtime still validates the real
- * method and params; this value is only a privacy-preserving local lookup key. */
 function fingerprint(value: string): string {
   let h1 = 1_779_033_703;
   let h2 = 3_144_134_277;

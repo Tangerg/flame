@@ -1,7 +1,3 @@
-// Tab badges load EAGERLY while the view bodies they belong to do not: a badge renders in
-// the tab strip, which sits outside the view's Suspense boundary. Lazy badges would suspend
-// the strip itself and flash every tab whenever one view's chunk resolved.
-
 import { usePendingWork } from "@/plugins/builtin/agent/public/hitl";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { usePlanView } from "@/plugins/builtin/workspace/application/planViewModel";

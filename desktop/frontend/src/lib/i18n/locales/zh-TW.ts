@@ -693,7 +693,6 @@ export const zhTW: Record<string, string> = {
   "vcs.notARepo": "非 Git 儲存庫",
   "vcs.notARepoSub": "工作階段的工作目錄不在版本控制之下。",
 
-  // Filled 2026-07 — these keys had fallen behind en.
   "composer.placeholder.steer": "傳送訊息以引導進行中的回合…",
   "composer.action.steer": "引導進行中的回合",
   "composer.drop.images": "拖入圖片以附加",

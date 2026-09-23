@@ -1,7 +1,3 @@
-// A working dot, an unread count and a base title are each set by a different plugin, so
-// one composer owns the string and each setter owns one field — no claim can erase another.
-// Its own store rather than a registry slice: this is window state, not registration.
-
 import { create } from "zustand";
 import { PRODUCT_NAME } from "@/product";
 

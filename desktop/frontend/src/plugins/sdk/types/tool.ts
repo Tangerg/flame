@@ -6,20 +6,11 @@ export interface ToolPreviewProps {
 }
 export type ToolPreviewComponent = ComponentType<ToolPreviewProps>;
 
-/**
- * A button on every ToolCard header, before the expand button. The optional `predicate`
- * scopes the action to a subset of tool calls.
- */
 export interface ToolActionSpec {
   id: string;
   icon: string;
-  /** Tooltip / aria label — a catalog key, resolved where the action renders
-   *  (see `CommandSpec.label`: a contribution is registered once, and nothing
-   *  re-registers on a language switch). */
   title: string;
-  /** Lower comes first. */
   order?: number;
-  /** Optional gate — return false to hide the action for this tool. */
   predicate?: (tool: ToolCall) => boolean;
   run: (tool: ToolCall) => void | Promise<void>;
 }

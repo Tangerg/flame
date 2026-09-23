@@ -1,6 +1,3 @@
-// Store reads stay inside handlers via getState() so per-message UI does not subscribe
-// (CLAUDE.md §5).
-
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { t } from "@/lib/i18n";
 import { notifyError, notifyInfo } from "@/plugins/sdk";
@@ -34,8 +31,6 @@ function reportRollbackError(err: unknown): void {
 }
 
 export interface RollbackActionOptions {
-  /** Also restore the working tree to the pre-turn checkpoint
-   *  (restoreType:"both", gated features.checkpoints). */
   restoreFiles?: boolean;
 }
 
@@ -52,9 +47,6 @@ export function regenerateMessage(msg: Message, opts?: RollbackActionOptions): v
   void rollbackSessionToBeforeRun(sessionId, prompt.runId, opts?.restoreFiles ? "both" : "history")
     .then((rollback) => {
       if (rollback.status === "inFlight") return;
-      // The tab may have been torn down, or merely switched away (which nulls `send` via
-      // useAgentSession's cleanup), while the rollback was in flight. No live binding means
-      // no resend, and that must surface rather than drop the regenerate silently.
       const input =
         rollback.status === "committed" && rollback.userInput
           ? rollback.userInput
@@ -73,8 +65,6 @@ export function editMessageInComposer(msg: Message): void {
   prefillComposer(msg);
 }
 
-// Rewinds a RECONCILED user turn before prefill; unreconciled messages fall back to the
-// non-destructive edit path.
 export function editAndRerunMessage(msg: Message, opts?: RollbackActionOptions): void {
   const conversation = activeAgentConversation();
   if (!conversation || !messageHasDraftContent(msg)) return;
@@ -87,8 +77,6 @@ export function editAndRerunMessage(msg: Message, opts?: RollbackActionOptions):
     msg.runId,
     opts?.restoreFiles ? "both" : "history",
   )
-    // Run unknown to the server (ok=false) still prefills — the user can at
-    // least resend; only a hard failure (busy / transport) aborts with a toast.
     .then((rollback) => {
       if (rollback.status === "inFlight") return;
       if (rollback.status === "committed" && rollback.userInput) {
@@ -100,8 +88,6 @@ export function editAndRerunMessage(msg: Message, opts?: RollbackActionOptions):
     .catch(reportRollbackError);
 }
 
-// Restore stops after rollback. It does not prefill or resend because the user
-// is choosing a checkpoint to continue from.
 export function restoreCheckpoint(msg: Message, restoreType: RestoreType): void {
   const conversation = activeAgentConversation();
   if (!conversation || msg.role !== "user" || !msg.runId) return;
@@ -125,8 +111,6 @@ function restoreCopy(restoreType: RestoreType): string {
   }
 }
 
-// Fork keeps history through this run in a new active session; the original
-// session is untouched.
 export function forkFromMessage(msg: Message): void {
   const conversation = activeAgentConversation();
   if (!conversation || !msg.runId) return;

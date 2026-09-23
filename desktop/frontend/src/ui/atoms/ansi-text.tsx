@@ -10,14 +10,6 @@ const styles = stylex.create({
   underline: { textDecorationLine: "underline" },
 });
 
-/**
- * What an SGR colour means HERE. Exhaustive against the tone union: a tone added to the parser
- * and not answered here is a compile error, not a span that quietly renders in the ink around it.
- *
- * Five of the six are the product's own tones, so they point at `toneInk` rather than restating
- * it. `muted` is the exception and is NOT `Tone.neutral`: ANSI's dim is "below the text around
- * me", a step under muted, which is why it reads from `vocab` directly.
- */
 const TONE: Record<AnsiTone, StyleXStyles> = {
   negative: toneInk.negative,
   success: toneInk.success,

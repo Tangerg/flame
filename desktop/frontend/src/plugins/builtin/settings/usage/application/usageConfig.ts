@@ -29,9 +29,6 @@ export function usagePeriodForRange(range: UsageRange): UsagePeriod {
   }
 }
 
-// Input + output ONLY. Reasoning tokens are a subset of the completion for some providers and
-// a separate line for others, and the Runtime forwards what the provider reported without
-// normalising that — summing would double-count. Cache reads and writes price separately.
 export function usageTokens(bucket: { inputTokens?: number; outputTokens?: number }): number {
   return (bucket.inputTokens ?? 0) + (bucket.outputTokens ?? 0);
 }

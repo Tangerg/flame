@@ -8,14 +8,8 @@ import {
   type WorkspaceFileViewer,
 } from "./ports/navigationState";
 
-/**
- * The dock's own destination for "open, showing what could go here". It is a location value
- * rather than a tab: a tab would be one the person never asked for and has to close.
- */
 export const WORKSPACE_DOCK_CATALOG = "catalog";
 
-/** The one view that takes the whole content card instead of a dock slot, which is why it is
- *  absent from the dock destinations and named here rather than spelled at each caller. */
 export const WORKSPACE_SETTINGS_VIEW = "settings";
 
 export function useActiveWorkspaceViewId(): string | null {
@@ -58,7 +52,6 @@ export function useDockWidth(): WorkspaceOptionalColumnWidth {
   return workspaceNavigation().useDockWidth();
 }
 
-/** The imperative half of `useSidebarDrawer`, for the global shortcut. */
 export function toggleWorkspaceSidebar(): void {
   workspaceNavigation().toggleSidebar();
 }
@@ -67,14 +60,10 @@ export function selectWorkspaceChat(): void {
   workspaceNavigation().selectChat();
 }
 
-/** Give a view the whole content card. Reserved for surfaces that have nothing
- *  to say beside a conversation, such as settings. */
 export function openWorkspaceView(id: string): void {
   workspaceNavigation().openView(id);
 }
 
-/** Open a view in the dock, beside the conversation — the default placement for
- *  anything opened *from* the conversation or the palette. */
 export function openWorkspaceViewInDock(id: string): void {
   workspaceNavigation().openViewInDock(id);
 }
@@ -115,10 +104,6 @@ export function showWorkspaceDock(): void {
   workspaceNavigation().showDock(WORKSPACE_DOCK_CATALOG);
 }
 
-/** Toggle the context dock through the same navigation owner as the on-screen
- * control. The current location, rather than the remembered tab set, decides
- * whether the dock is visible: collapsing intentionally keeps those tabs for
- * the next show. */
 export function toggleWorkspaceDock(): void {
   if (workspaceNavigation().dock().open) {
     workspaceNavigation().collapseDock();

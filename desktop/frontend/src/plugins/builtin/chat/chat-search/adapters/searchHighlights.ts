@@ -11,11 +11,6 @@ const HIGHLIGHT_STYLES = `
 }
 `;
 
-/**
- * A runtime style rather than the application stylesheet: Lightning CSS cannot yet parse
- * Custom Highlight selectors and warns on these valid platform rules — and uninstalling the
- * search UI should take its paint rules with its Range registry entries.
- */
 export function installChatSearchHighlightStyles(): () => void {
   const existing = document.getElementById(HIGHLIGHT_STYLE_ID);
   if (existing) return () => undefined;
@@ -28,7 +23,6 @@ export function installChatSearchHighlightStyles(): () => void {
 }
 
 export function paintChatSearchHighlights(ranges: Range[], activeIndex: number): void {
-  // Older WebViews may lack CSS.highlights; navigation still scrolls ranges.
   if (!HIGHLIGHTS_AVAILABLE) return;
 
   CSS.highlights.delete("chat-search");

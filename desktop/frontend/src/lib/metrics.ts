@@ -1,9 +1,3 @@
-// Instruments are bound LATE, not at module load: the metrics API has no proxy meter, so
-// an instrument created before a MeterProvider is registered is a NoopInstrument FOREVER —
-// a later `setGlobalMeterProvider` does not upgrade it. This module loads very early (the
-// reducer imports it), so `lib/observability/setup` calls `bindMetricInstruments()` right
-// after registering the provider. Until then `measure*` are cheap no-ops.
-
 import type { Counter, Histogram } from "@opentelemetry/api";
 import { metrics } from "@opentelemetry/api";
 
@@ -16,8 +10,6 @@ interface Instruments {
 
 let inst: Instruments | null = null;
 
-/** Create the instruments against the (now-registered) global MeterProvider.
- *  Called once by lib/observability/setup after setGlobalMeterProvider. */
 export function bindMetricInstruments(): void {
   const meter = metrics.getMeter("flame");
   inst = {
@@ -39,11 +31,6 @@ export function bindMetricInstruments(): void {
   };
 }
 
-/**
- * Wrap one synchronous reducer call. Records duration + bumps the StreamEvent
- * counter, both tagged with `eventType`. Re-throws on error so the reducer's
- * existing error path keeps working. No-op until instruments are bound.
- */
 export function measureReduce<T>(eventType: string, fn: () => T): T {
   const start = performance.now();
   try {

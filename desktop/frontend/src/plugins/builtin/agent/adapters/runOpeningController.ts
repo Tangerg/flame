@@ -84,10 +84,6 @@ export function createRunOpeningController({
           },
           (err: unknown) => {
             if (isCancelled() || ctrl.signal.aborted || ownLease !== openingLease) return;
-            // The Application projection may already prove that another client
-            // won this opening race (for example, consumed the same HITL set).
-            // Let that neutral fact suppress a now-stale command error without
-            // teaching this Adapter any operation-specific wire error types.
             if (onStartError?.() === true) return;
             failure = err;
             console.error("[agent] run failed to start:", sessionId, err);

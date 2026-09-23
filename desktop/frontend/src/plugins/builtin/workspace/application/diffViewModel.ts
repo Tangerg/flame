@@ -23,20 +23,11 @@ export interface WorkspaceDiffViewModel {
 
 export interface WorkspaceDiffFileHeader {
   path: string;
-  /** Set only for a rename: where the file came from. */
   previousPath?: string;
   added?: number;
   removed?: number;
 }
 
-/**
- * The review panel's read model: the whole comparison, plus which file the
- * review is focused on.
- *
- * The query is deliberately NOT scoped by the active file. A reviewer needs the
- * change as a whole — the active file is where to look first, not what to look
- * at, and the panel scrolls to it rather than filtering down to it.
- */
 export function useWorkspaceDiffView(mode: WorkspaceDiffMode) {
   const gitEnabled = useWorkspaceCapability("git");
   const workspace = useActiveSessionWorkspace();
@@ -82,12 +73,6 @@ export function workspaceDiffViewModel(data: WorkspaceDiff | undefined): Workspa
   };
 }
 
-/**
- * The paths and figures a file's card announces itself with.
- *
- * The two paths stay distinct so the view can truncate each around its filename
- * and allocate space without parsing a presentation string.
- */
 export function workspaceDiffFileHeader(file: WorkspaceFileDiff): WorkspaceDiffFileHeader {
   return {
     path: file.path,

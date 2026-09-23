@@ -27,15 +27,8 @@ import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 import { vocab } from "@/ui";
 
 const cst = stylex.create({
-  /** A reading column with nothing in it takes no space, so the gap above it closes. */
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },
-  // The transcript answers its own width rather than the window's: a tool card decides whether
-  // it can afford its meta column from THIS pane, which the dock resizes independently.
   queryable: { containerType: "inline-size" },
-  // The rail hangs OUTSIDE the reading column, so it is positioned from the pane's centre plus
-  // half the column — and only appears once the pane is wide enough to have room beside the
-  // text. It spans the transcript and must not take the pointer from it; what it hangs there
-  // takes the pointer back, in the one globals.css rule an atomic class cannot express.
   rail: {
     position: "absolute",
     top: 0,

@@ -19,8 +19,6 @@ import { definePlugin } from "@/plugins/sdk";
 import { space } from "@/styles/tokens.stylex";
 
 const pj = stylex.create({
-  // The trailing inset is shorter so the action glyph lands on the column the row actions,
-  // pins and timestamps below it hold.
   label: { paddingLeft: space.s2, paddingRight: space.s1, paddingTop: 0, paddingBottom: space.s2 },
 });
 

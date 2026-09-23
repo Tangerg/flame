@@ -196,7 +196,6 @@ describe("markdownMessage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Architecture" }));
     const dialog = screen.getByRole("dialog", { name: "Architecture" });
     expect(screen.getByRole("button", { name: "Close image preview" })).toBeTruthy();
-    // Disabled at the first step, and still focusable: the step that reaches it keeps the keyboard.
     expect(
       screen.getByRole("button", { name: "Zoom out image" }).getAttribute("aria-disabled"),
     ).toBe("true");

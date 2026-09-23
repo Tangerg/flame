@@ -8,8 +8,6 @@ import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 
 const si = stylex.create({
   bar: { display: "flex", minWidth: 0, flexShrink: 1, alignItems: "center", gap: space.s2 },
-  // The working directory is context, so it is the first thing the bar gives up: hidden below
-  // the wide breakpoint, and capped even above it.
   cwd: {
     display: { default: "none", "@media (min-width: 1024px)": "inline" },
     minWidth: 0,
@@ -44,12 +42,6 @@ interface Props {
   workspacePath?: string;
 }
 
-/**
- * The header's answer to "which session am I in, and where is it running". Both facts are
- * shown lossily — the path as its basename, and only above `lg`; the title truncated — so
- * both carry a `title` and both can be copied whole, which is where the reference puts them
- * too.
- */
 export function SessionIdentity({ sessionId, title, workspacePath }: Props): ReactElement {
   const t = useT();
 
@@ -71,9 +63,6 @@ export function SessionIdentity({ sessionId, title, workspacePath }: Props): Rea
                 </span>
               </>
             )}
-            {/* The name of what the reader is looking at, and the only heading above the
-                turns — which are h2. It was a span, so a populated transcript published an
-                outline that started at its second rung. */}
             <h1 title={title} className={stylex.props(si.title, typeStep.uiMd).className}>
               {title}
             </h1>

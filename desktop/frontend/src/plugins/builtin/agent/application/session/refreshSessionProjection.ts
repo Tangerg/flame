@@ -6,21 +6,12 @@ import { agentSessionView } from "../ports/sessionView";
 import { projectAgentSessionSnapshot } from "./sessionSnapshot";
 
 interface RefreshSessionProjectionOptions {
-  /** A server-side history rewrite invalidates queued events from the replaced history.
-   *  Ordinary runtime invalidation keeps the live stream generation intact. */
   invalidateQueuedRunEvents?: boolean;
-  /** Cold-open recovery uses this to reject a fetch after local interaction or
-   *  teardown without coupling this use case to React lifecycle state. */
   canCommit?: () => boolean;
-  /** Lifecycle owner for a Runtime generation. An aborted read cannot commit,
-   * even when the gateway settles late or ignores cancellation. */
   signal?: AbortSignal;
 }
 
 export interface AgentSessionProjectionRevalidation {
-  /** Projection built from this read even when a newer local write prevents it
-   * from replacing the material view. Command settlement may still use this
-   * neutral fact without forcing a stale projection commit. */
   authoritativeView: AgentSessionView;
   committed: boolean;
 }
@@ -69,13 +60,9 @@ export async function revalidateAgentSessionMaterial(
 
 export interface MountedAgentSessionSynchronization {
   sessionIds?: readonly string[];
-  /** A global reconciliation boundary supersedes any live stream from the
-   * previous Runtime/event generation before reading durable truth. */
   ownership: SessionProjectionSynchronizationOwnership;
 }
 
-/** Reconcile one Session through its mounted lifecycle owner and let a command
- * wait for the same authoritative material boundary the event loop uses. */
 export function synchronizeMountedAgentSession(
   sessionId: string,
   ownership: SessionProjectionSynchronizationOwnership,

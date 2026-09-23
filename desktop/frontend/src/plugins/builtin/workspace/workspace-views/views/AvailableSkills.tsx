@@ -102,8 +102,6 @@ function SkillInspection({ cwd, name }: { cwd?: string; name: string }) {
       >
         {open ? t("skillProposals.hideBody") : t("skillProposals.readBody")}
       </TextButton>
-      {/* Mounted only once asked: the body is a whole document per skill, and a list of them
-          would fetch every one to render a row nobody opened. */}
       {open && (
         <Collapsible open>
           <SkillDetail cwd={cwd} name={name} />

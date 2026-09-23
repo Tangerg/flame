@@ -27,35 +27,8 @@ function visibleText(children: ReactNode): string {
 }
 
 const WHITESPACE_ONLY = /^\s*$/;
-/**
- * Writing with no spaces between words, which is why two paragraphs of it sit closer.
- *
- * A run of Japanese or Chinese is a solid block of even ink — no word gaps, no ascender rhythm
- * — so the same paragraph margin that separates two ragged Latin blocks reads as a hole between
- * two of these. `markdown.css` closes it, and this decides which paragraphs are in the run.
- *
- * Kana counts as well as Han: a Japanese paragraph can be all kana, and because the CSS pairs
- * ADJACENT paragraphs, one unmarked paragraph mid-reply reopens the gap on both sides of it.
- *
- * Hangul is deliberately NOT here. Korean puts spaces between words, so it has the ragged
- * rhythm this rule exists to leave alone — and a Korean reply is uniformly unmarked rather than
- * inconsistent with itself.
- */
 const UNSPACED_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
 
-/**
- * A table cell that is a NUMBER, so a column of them lines up and cannot wrap.
- *
- * `markdown.css` gives the class tabular figures, a floor width and `nowrap`. The table an agent
- * actually writes is a benchmark or a diff summary — `91.2%`, `4.2s`, `1,234`, `-3` — so a
- * number here is more than a bare integer.
- *
- * Deliberately a little generous at the tail: a trailing unit of up to three letters (`ms`,
- * `GB`, `px`) still reads as a quantity. Being wrong that way costs a minimum width on a short
- * cell; being wrong the other way is a column that does not line up. The expression is anchored
- * at both ends, so a sentence can never reach it.
- */
-// Grouping is a comma or one of the two spaces a locale uses for it.
 const NUMERIC_CELL = /^[+-]?\d[\d,\u202f\u00a0]*(?:\.\d+)?\s*(?:%|[a-zA-Z]{1,3})?$/;
 const NUMERIC_CLASS = "md-table-cell-numeric";
 
@@ -80,11 +53,6 @@ function imageOnlyParagraph(children: ReactNode): ReactElement<MarkdownImageElem
   return material;
 }
 
-/**
- * Recursive rather than a check on the link's direct children, because markdown puts emphasis
- * between them freely — `[**![badge](x)**](url)` is the same shape as `[![badge](x)](url)` and
- * has the same answer.
- */
 function imagesDeferToTheLink(children: ReactNode): ReactNode {
   return Children.map(children, (child) => {
     if (!isValidElement<MarkdownImageElementProps & { children?: ReactNode }>(child)) return child;
@@ -158,11 +126,6 @@ const sharedMarkdownComponents: Components = {
       </p>
     );
   },
-  // A body opens at h3 — one below the turn heading that contains it — so a model writing
-  // `# Title` cannot outrank its own turn, and `#`/`##` share a rung because a message is cut
-  // by `splitStreamingBlocks` and each block renders through its OWN `ReactMarkdown`: nothing
-  // here can see which levels the rest of the message used. `data-md-level` carries the authored
-  // level for the type scale.
   h1({ children }) {
     return (
       <h3 dir="auto" data-md-level="1">
@@ -296,9 +259,6 @@ const sharedMarkdownComponents: Components = {
       </th>
     );
   },
-  // Every prop a PARENT decided has to be named here: this is a forwarding wrapper, so anything
-  // `cloneElement` set upstream — `allowWide` from an image-only paragraph, `linked` from a link
-  // — is dropped unless it is read back out of `rest`.
   img({ src, alt, title, ...rest }) {
     const decided = rest as { allowWide?: boolean; linked?: boolean };
     return (

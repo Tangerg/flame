@@ -15,8 +15,6 @@ const Ctx = createContext<HoverTrack | null>(null);
 
 const host = stylex.create({ boxless: { display: "contents" } });
 
-/** One highlight travelling between rows, held until the pointer leaves the list — a per-row
- *  fill flickers across the gutter between them. */
 export function HoverTrack({
   children,
   styles,
@@ -66,8 +64,6 @@ const highlight = stylex.create({
   },
 });
 
-/** The travelling fill. Sits behind its item's content, so the item opens a stacking context
- *  and stops painting a hover fill of its own. */
 export function HoverHighlight({
   item,
   styles,

@@ -3,8 +3,6 @@ import { defineColorThemePlugin } from "../kit/defineColorThemePlugin";
 const c = {
   accent: "#3574f0",
 
-  // Achromatic, at the lightness they already had: the blue came from being derived at the
-  // default accent, not from a decision about how dark each plane is.
   canvas: "#1f1f1f",
   surface1: "#2b2b2b",
   sunken: "#181818",
@@ -13,7 +11,6 @@ const c = {
   ink: "#e3e5e9",
   inkSoft: "#c6c9cf",
   inkMuted: "#aaaeb5",
-  // Clears AA on a selected row, which is the brightest plane it lands on.
   inkFaint: "#9da1a7",
 
   hairline: "#303030",
@@ -52,7 +49,6 @@ export default defineColorThemePlugin({
   semantic: {
     negative: "#e68a8a",
     warning: "#d6a750",
-    // Lifted 12 L, NOT `c.accent`: aliased to the brand fill a 12px label reads 3.23:1.
     info: "#6e9bf4",
     success: "#6db473",
   },

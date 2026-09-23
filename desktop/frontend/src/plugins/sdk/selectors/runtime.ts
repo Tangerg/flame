@@ -2,7 +2,6 @@ import type { AgentRunStartOptions, AgentRunOptionsProviderSpec, AgentSourceSpec
 import { AGENT_RUN_OPTIONS, AGENT_SOURCE, DATA_PROVIDER } from "../kernelPoints";
 import { lookupExtensionByKey, lookupExtensionPoint } from "./extensions";
 
-/** Highest priority wins, ties broken by insertion order. */
 export function pickAgentSource(): AgentSourceSpec | undefined {
   const sources = lookupExtensionPoint(AGENT_SOURCE);
   if (sources.length === 0) return undefined;
@@ -21,7 +20,6 @@ export function resolveAgentRunStartOptions(): AgentRunStartOptions {
   return pickAgentRunOptionsProvider()?.resolve() ?? {};
 }
 
-/** The type is ERASED so every provider fits one map; callers cast on the way out. */
 export function lookupDataProvider<T = unknown, P = unknown>(
   key: string,
 ): ((params?: P, signal?: AbortSignal) => Promise<T>) | undefined {

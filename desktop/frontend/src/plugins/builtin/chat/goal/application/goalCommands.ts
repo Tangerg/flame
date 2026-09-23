@@ -71,16 +71,9 @@ class GoalCommandGeneration {
       }
     } catch (error) {
       if (this.#cohort.retired) throw error;
-      // A command rejection may race Runtime's own loop progression, or its
-      // success response may be lost after the transaction commits. Preserve the
-      // command error for its caller while converging the standing Goal material.
       await this.#repairStandingProjection(sessionId);
       throw error;
     }
-    // Mutation responses are point-in-time acknowledgements, not the standing
-    // Goal read model. Keep the next local command behind the mounted Session's
-    // authoritative material transaction so Goal cannot advance separately from
-    // Plan/HITL/Run/Tool or accept a late independent query writer.
     await this.#repairStandingProjection(sessionId);
     this.#cohort.assertCurrent();
   }
@@ -91,9 +84,6 @@ class GoalCommandGeneration {
       await this.#cohort.settle(this.#repairProjection(sessionId));
     } catch (error) {
       if (this.#cohort.retired) throw error;
-      // A durable command receipt and an ambiguous command failure retain their
-      // own meanings. Runtime events and the next read remain repair paths when
-      // the standing projection itself cannot be fetched.
     }
   }
 }

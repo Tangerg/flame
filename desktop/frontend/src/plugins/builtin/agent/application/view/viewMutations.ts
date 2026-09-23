@@ -31,14 +31,6 @@ function settleInterruptedTool(
   };
 }
 
-/**
- * Reconcile a provisional message identity with its durable identity.
- *
- * The durable message may already have arrived through another projection path
- * before the command acknowledgement names it. In that ordering, retaining the
- * provisional row would render the same user turn twice; collapse it into the
- * existing durable row instead of treating the occupied target as a no-op.
- */
 export function reconcileMessageIdentity(
   view: AgentSessionView,
   fromId: string,
@@ -152,9 +144,6 @@ export function resolveInterrupt(
     );
   }
   if (settled.decision && touchedApproval && ownerRunId) {
-    // The subject comes from the REQUEST rather than being restated: it is the same
-    // approval, and a run that asked twice would otherwise settle into two rows reading
-    // "Approval settled" with nothing to say which command each one answered.
     const requested = next.timeline.find(
       (entry) => entry.kind === "approval-request" && entry.refId === itemId,
     );

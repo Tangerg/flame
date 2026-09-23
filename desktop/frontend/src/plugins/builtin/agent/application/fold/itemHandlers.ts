@@ -28,12 +28,6 @@ export function onItemStarted(
   source: AgentFoldSource,
 ): AgentSessionView {
   assertItemSource(item, source);
-  // item.started is a create-once observation. Replays may arrive after
-  // deltas, item.completed, an interrupt materialization, or a durable
-  // snapshot has already advanced the same Item. Letting the older shell
-  // upsert at that point would erase content and regress complete/err cards
-  // back to running. Only item.completed is allowed to reconcile an existing
-  // projection with authoritative fields.
   const materialized = assertItemProjectionIdentity(state, item);
   if (
     item.type !== "userMessage" &&

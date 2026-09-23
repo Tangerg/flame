@@ -1,24 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { color, motion, radius, space, surface } from "@/styles/tokens.stylex";
 
-/**
- * The material everything that leaves the document flow is made of.
- *
- * One fill, one cast, one blur, one way of arriving and leaving — so a menu, a popover, a tip
- * and a dialog cannot each decide what floating looks like. These are exported rather than
- * wrapped in components because the primitives that need them are Base UI parts: a `Popup` takes
- * a class, not a surface.
- *
- * These are style exports and not a component on purpose. A component here once rendered a bare
- * `<div>` wearing this material, which promised the name and delivered none of it: no portal, so
- * an `overflow: hidden` ancestor clipped it away, and no positioner, so each call site invented
- * its own coordinates. Leaving the flow is the Popover's and the Menu's job — Base UI's Portal
- * and Positioner — and this file only says what the thing that left is made of.
- */
 const styles = stylex.create({
-  // The blur lives on a pseudo-element behind the fill rather than on the surface itself: a
-  // `backdrop-filter` on the element would be clipped by its own `overflow: hidden`, and an
-  // element that filters its backdrop also becomes a containing block for its descendants.
   face: {
     position: "relative",
     isolation: "isolate",
@@ -60,7 +43,6 @@ const styles = stylex.create({
     },
   },
   panel: { borderRadius: radius.floatingPanel },
-  // A list of options — a menu, a picker — is concentric with its rows, so tighter than a panel.
   options: { borderRadius: radius.lg },
   tip: { borderRadius: radius.floatingTip },
   layer: { zIndex: "var(--layer-floating)" },
@@ -87,17 +69,10 @@ const styles = stylex.create({
     zIndex: "var(--layer-modal)",
     boxShadow: "var(--shadow-modal)",
   },
-  // Centred is the standing answer; a finder anchors near the top because the list below it
-  // grows downward and a centred one would walk up the screen as results arrive.
   modalCentred: { inset: 0, margin: "auto", height: "fit-content" },
   modalTop: { insetInline: 0, top: "calc(var(--spacing) * 24)", marginInline: "auto" },
 });
 
-/**
- * A dialog that asks for an answer — a confirmation, an edit — rather than showing a thing. They
- * share one plane, one inset and one action row, so which of them opened cannot change how
- * a dialog looks or where its buttons sit.
- */
 export const formDialog = stylex.create({
   plane: { borderRadius: radius.floatingPanel, backgroundColor: surface.card },
   inset: { padding: space.s5 },
@@ -110,7 +85,6 @@ export const formDialog = stylex.create({
   },
 });
 
-/** Where a floating thing sits in the stack. Its own layer, not the modal one. */
 export const FLOATING_LAYER = [styles.layer];
 
 export const FLOATING_PANEL = [styles.face, styles.motion, styles.panel];
@@ -119,7 +93,6 @@ export const FLOATING_TIP = [styles.face, styles.motion, styles.tip];
 
 export const MODAL_SCRIM = [styles.scrim];
 
-/** The panel the scrim sits in front of. Width, fill and corner stay with each dialog. */
 export const modalPanel = (place: "centred" | "top" = "centred") => [
   styles.modal,
   place === "top" ? styles.modalTop : styles.modalCentred,

@@ -1,8 +1,5 @@
 import { activeLocale, type Translate } from "./i18n";
 
-// The NUMBER follows the locale; the UNIT is notation. `toFixed` always writes a period,
-// wrong in five of the eight locales here. NOT `Intl` compact notation: Japanese counts in
-// 万, changing magnitude word and width per language inside a mono column.
 const formatters = new Map<string, Intl.NumberFormat>();
 
 function decimal(value: number, fractionDigits: number, exact = false): string {
@@ -26,31 +23,25 @@ export function fmtTokens(n: number): string {
   return `${decimal(n / 1_000_000, 1, true)}M`;
 }
 
-// Sub-cent spend keeps 4 dp: rounding to "$0.00" would imply free.
 export function fmtCost(usd: number): string {
   if (usd > 0 && usd < 0.01) return `$${decimal(usd, 4, true)}`;
   return `$${decimal(usd, 2, true)}`;
 }
 
-/** A trace span was recorded to show tenths; a tool call's wall time was not. */
 export type DurationPrecision = "whole" | "tenths";
 
 export function fmtDuration(ms: number, precision: DurationPrecision = "whole"): string {
   if (ms < 1000) return `${decimal(ms, precision === "tenths" ? 1 : 0)}ms`;
   const seconds = ms / 1000;
   if (seconds < 10) return `${decimal(Math.round(seconds * 10) / 10, 1)}s`;
-  // Rounded BEFORE the minute test: 59.6s rounds to 60, and no clock reads "60s".
   const whole = Math.round(seconds);
   if (whole < 60) return `${whole}s`;
   const minutes = Math.floor(whole / 60);
   if (minutes < 60) return `${minutes}m ${String(whole - minutes * 60).padStart(2, "0")}s`;
-  // A clock drops its finest unit as its coarsest grows: a tool call that ran for six and a
-  // half hours reads 6h 30m, not 390m 00s. Agent work is expected to run this long.
   const hours = Math.floor(minutes / 60);
   return `${hours}h ${String(minutes - hours * 60).padStart(2, "0")}m`;
 }
 
-/** A measured number in a table — a tenth only while one still means something. */
 export function fmtMetric(value: number): string {
   return value < 10 ? decimal(value, 1) : decimal(Math.round(value), 0);
 }
@@ -61,8 +52,6 @@ export function durationText(t: Translate, start: number, end: number | null): s
   if (sec < 60) return t("duration.seconds", { sec });
   const min = Math.floor(sec / 60);
   if (min < 60) return t("duration.minutes", { min, sec: sec % 60 });
-  // The wait as lived, and it can be hours: this reads the wall clock across approval pauses.
-  // A clock drops its finest unit as its coarsest grows — 6h 30m, never 390m 0s.
   const hr = Math.floor(min / 60);
   return t("duration.hours", { hr, min: min % 60 });
 }

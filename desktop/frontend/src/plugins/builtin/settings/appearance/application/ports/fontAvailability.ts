@@ -1,12 +1,7 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 
-/**
- * A port because the candidate list is ours — a curated cross-platform set — while the probe
- * is the browser's, and keeping it behind here leaves that list testable without a DOM.
- */
 interface FontAvailabilityPort {
   isAvailable(family: string): boolean;
-  /** Whether the family can render tabular figures — see the adapter for why it is asked. */
   hasTabularFigures(family: string): boolean;
 }
 

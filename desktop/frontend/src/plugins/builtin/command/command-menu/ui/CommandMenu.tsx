@@ -36,10 +36,6 @@ export function CommandMenu() {
   const catalog = useContextDockCatalog();
   const views = useWorkspaceViews();
 
-  // Views are rows here for the same reason the reference lists its panels: one you can only
-  // reach by opening the dock and browsing is one the keyboard cannot reach. Where it opens
-  // comes from the dock catalogue rather than a second list — a view it does not carry takes
-  // the whole content card, which is what settings and the icon gallery are.
   const docked = new Set(
     catalog.flatMap((group) => group.destinations.map((destination) => destination.viewId)),
   );
@@ -57,8 +53,6 @@ export function CommandMenu() {
       combo: command.combo,
       run: () => void command.run(),
     })),
-    // Settings has a command of its own, carrying the key the platform reserves for it; a
-    // second row for the same surface would only be noise.
     ...views
       .filter((view) => view.id !== WORKSPACE_SETTINGS_VIEW)
       .map((view) => viewRow(view.id, view.title, view.icon)),
@@ -87,9 +81,6 @@ export function CommandMenu() {
           },
           children: (
             <>
-              {/* A command has no glyph of its own, and a ⌘ on every row would say what the
-                  key beside it already does — twice. The slot is held so the labels of both
-                  kinds of row start on the same edge. */}
               {knownIconName(choice.icon) ? (
                 <Icon
                   name={knownIconName(choice.icon)!}

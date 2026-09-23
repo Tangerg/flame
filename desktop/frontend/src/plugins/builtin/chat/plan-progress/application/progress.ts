@@ -1,9 +1,5 @@
 import type { PlanStep, SessionPlan } from "@/plugins/builtin/agent/public/plan";
 
-/**
- * Only the visibility is decided here. Which step is current and how many are
- * done are the Plan projection's facts and are not re-derived here.
- */
 export interface ActivePlanState {
   visible: boolean;
   total: number;

@@ -10,8 +10,6 @@ import { agentRuntime } from "../ports/runtimeGateway";
 import { reportSessionError } from "./reportSessionError";
 import { agentCommandOwner, type AgentCommandEffect } from "../agentCommandOwner";
 
-/** Empty titles are rejected server-side (invalid_params) — callers trim
- *  and skip no-op submissions before getting here. */
 export function useRenameSession(): (
   id: string,
   expectedRevision: number,
@@ -21,9 +19,6 @@ export function useRenameSession(): (
     const owner = agentCommandOwner();
     const runtime = agentRuntime();
     let effect: AgentCommandEffect | undefined;
-    // Cancel any in-flight sessions refetch FIRST: one started before this optimistic write
-    // resolves with pre-rename data and clobbers it. Snapshot after cancelling, so rollback
-    // restores the right state.
     try {
       await owner.settle(queryClient.cancelQueries({ queryKey: [AGENT_SESSIONS_KEY] }));
       owner.assertCurrent();

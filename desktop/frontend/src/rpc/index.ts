@@ -1,6 +1,3 @@
-// Public surface of the Flame Runtime Protocol client (runtime/doc/API.md). Sidecar
-// metadata is HTTP-only and lives behind `createSidecarClient`.
-
 export {
   isErrorType,
   RpcConnectionError,
@@ -32,7 +29,6 @@ export type {
   WorkspaceSummary,
   SessionArtifact,
   SessionSnapshot,
-  // Runs
   RunRef,
   RunOutcome,
   SegmentOutcome,
@@ -41,22 +37,18 @@ export type {
   RunProtocolProfile,
   StartRunResponse,
   CancelRunResponse,
-  // Items
   Item,
   ContentBlock,
   Question,
   ToolInvocation,
-  // Streaming
   RunEvent,
   StreamEvent,
   ItemDelta,
-  // HITL
   Interrupt,
   PendingInterruptSet,
   Plan,
   InterruptResponse,
   Goal,
-  // Files
   WorkspaceFileChange,
   PlanStep,
   Usage,

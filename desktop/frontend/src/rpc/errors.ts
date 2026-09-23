@@ -1,6 +1,3 @@
-// Thrown for a JSON-RPC `error`, or for the capability preflight refusing a call the
-// negotiation already ruled out. Callers branch on the problem TYPE, never the message.
-
 import type { ProblemData } from "@flame/runtime-contract/wire";
 import type { WireViolation } from "@flame/runtime-contract/wire-check";
 
@@ -8,12 +5,10 @@ type ProblemOf<Type extends ProblemData["type"]> = Type extends `plugin:${string
   ? Extract<ProblemData, { type: `plugin:${string}/${string}` }>
   : Extract<ProblemData, { type: Type }>;
 
-/** Stable diagnostic text even when a dependency throws a non-Error value. */
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** API.md §8: judge errors by type, never by code or message. */
 export function isErrorType<Type extends ProblemData["type"]>(
   error: unknown,
   type: Type,
@@ -22,11 +17,8 @@ export function isErrorType<Type extends ProblemData["type"]>(
 }
 
 export class RpcError extends Error {
-  /** Absent when the refusal never crossed the wire. A business failure is identified by
-   *  `data.type`; this number is a classification the protocol may renumber. */
   readonly code?: number;
   readonly data?: ProblemData;
-  /** Outside ProblemData so business errors stay transport-agnostic. */
   readonly requestId?: string;
 
   constructor(payload: BusinessErrorPayload, requestId?: string) {
@@ -38,19 +30,12 @@ export class RpcError extends Error {
   }
 }
 
-/** Local refusals omit `code` because no server answered them; both carry the same typed
- *  ProblemData contract. */
 interface BusinessErrorPayload {
   code?: number;
   message: string;
   data?: ProblemData;
 }
 
-// Lower-level transport failure — used when an HTTP request fails before
-// we get a JSON-RPC response back (network error, 4xx/5xx that aren't
-// JSON-RPC envelope, etc.). The HTTP status mapping in runtime/doc/API.md §7.3
-// says 401/500/503 return flat JSON not envelope, so we surface those
-// here without a JSON-RPC error code.
 export class RpcTransportError extends Error {
   readonly status?: number;
   readonly requestId?: string;
@@ -65,9 +50,6 @@ export class RpcTransportError extends Error {
   }
 }
 
-/** The HTTP connection failed before a complete Runtime response arrived.
- *  This remains a transport error for broad callers while letting lifecycle
- *  owners distinguish a disappeared process from a malformed response. */
 export class RpcConnectionError extends RpcTransportError {
   constructor(message: string, requestId?: string) {
     super(message, undefined, requestId);
@@ -96,7 +78,6 @@ interface TransportProblem {
   requestId?: string;
 }
 
-/** Parse an RFC 9457-style transport problem without trusting its shape. */
 export function parseTransportProblem(text: string): TransportProblem | undefined {
   try {
     const value: unknown = JSON.parse(text);

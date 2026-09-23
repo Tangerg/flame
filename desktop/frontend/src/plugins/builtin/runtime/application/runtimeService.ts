@@ -7,7 +7,6 @@ export interface RuntimeServiceObservation {
   checks: Record<string, RuntimeServiceHealth>;
 }
 
-/** Opaque identity reported by one Runtime process incarnation. */
 type RuntimeProcessGeneration = string;
 
 export interface RuntimeConnectionInspection<Capabilities> {
@@ -16,7 +15,6 @@ export interface RuntimeConnectionInspection<Capabilities> {
   capabilities: Capabilities;
 }
 
-/** Consumer-owned gateway; the adapter removes HTTP paths and response DTOs. */
 export interface RuntimeConnectionInspector<Capabilities> {
   inspect(signal: AbortSignal): Promise<RuntimeConnectionInspection<Capabilities>>;
 }
@@ -42,10 +40,6 @@ export const RUNTIME_SERVICE_HEALTHY_POLL_MS = 30_000;
 export const RUNTIME_SERVICE_RETRY_BASE_MS = 1_000;
 export const RUNTIME_SERVICE_RETRY_CAP_MS = 30_000;
 
-/**
- * Own one lifecycle-safe inspection sequence. Concurrent refreshes coalesce;
- * dispose aborts transport work and makes every late settlement inert.
- */
 export function createRuntimeServiceController<Capabilities>(
   inspector: RuntimeConnectionInspector<Capabilities>,
   sink: RuntimeServiceSink<Capabilities>,
@@ -77,8 +71,6 @@ export function createRuntimeServiceController<Capabilities>(
           );
     scheduled = setTimeout(() => {
       scheduled = undefined;
-      // Discovery can succeed while the event stream repeatedly fails. Only a
-      // full interval without another loss establishes a stable connection.
       if (kind === "poll") failures = 0;
       void inspect(false);
     }, delay);
@@ -142,7 +134,6 @@ export function createRuntimeServiceController<Capabilities>(
         releaseDeadline();
         const ownsAttempt = attempt?.controller === controller;
         if (ownsAttempt) attempt = null;
-        // A retired inspection cannot replace the successor's retry or poll.
         if (!active || !monitoring || !ownsAttempt) return;
         scheduleNext(succeeded ? "poll" : "retry");
       });

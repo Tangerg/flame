@@ -4,8 +4,6 @@ type StateUpdate = (state: AgentSessionView) => AgentSessionView;
 
 export const TIMELINE_WINDOW_SIZE = 500;
 
-/** Project one observation by stable identity and retain the newest bounded
- * window. Updates preserve source order for equal server timestamps. */
 export function setTimelineEntry(entry: TimelineEntry): StateUpdate {
   return (state) => {
     const index = state.timeline.findIndex((existing) => existing.id === entry.id);

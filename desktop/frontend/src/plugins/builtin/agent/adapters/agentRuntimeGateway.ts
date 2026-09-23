@@ -132,8 +132,6 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
 }
 
 export function installAgentRuntimeGateway() {
-  // Retire command continuations before publishing a successor gateway. A queued
-  // task from the previous Host must never resolve its dependencies through this one.
   let commandOwner = AgentCommandOwner.install();
   const gateway = new RuntimeAgentGateway();
   let usageOwner = AgentSessionUsageOwner.install(gateway);

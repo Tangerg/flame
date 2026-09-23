@@ -1,6 +1,3 @@
-// A separate axis from the type ladder. Chrome-bar heights deliberately do NOT scale: the
-// content header, drawer header and traffic-light gutter share one number across the seam.
-
 import { DEFAULT_UI_DENSITY, UI_DENSITY_MODES, type UiDensity } from "./appearance";
 
 const SCALE: Readonly<Record<UiDensity, number>> = {
@@ -9,7 +6,6 @@ const SCALE: Readonly<Record<UiDensity, number>> = {
   spacious: 1.15,
 };
 
-/** Comfortable-mode base values, in px. Navigation alone responds to density; reading and input keep their own rhythm. */
 const BASE_PX = {
   rowHeight: 30,
   rowGap: 8,
@@ -26,7 +22,6 @@ function normalizeUiDensity(value: unknown): UiDensity {
   return isUiDensity(value) ? value : DEFAULT_UI_DENSITY;
 }
 
-/** Names spelled out so a grep for a token finds both its writer and its readers. */
 export function densityCssVariables(mode: unknown): Readonly<Record<string, string>> {
   const scale = SCALE[normalizeUiDensity(mode)];
   const px = (base: number) => `${Math.round(base * scale)}px`;

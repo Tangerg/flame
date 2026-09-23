@@ -1,5 +1,3 @@
-// The one door into the plugin system; built-ins import from here too, with no back door.
-
 export { getConfig, hasConfig, setConfig, useConfigStore } from "./config";
 
 export type { ConfigValue } from "./config";

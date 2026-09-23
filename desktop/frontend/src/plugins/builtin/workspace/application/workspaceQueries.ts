@@ -37,29 +37,17 @@ export interface WorkspaceSkillDetailQuery {
   name: string;
 }
 
-// Workspace catalog reads are keyed by the session workspace. Keeping the
-// scope in the query identity prevents a catalog from one open project being
-// reused after the user switches to another.
 export interface WorkspaceCatalogQuery {
   cwd?: string;
 }
 
-// One entry in the global self-authored skill library (skills.library.list),
-// tagged with its curator lifecycle. Distinct from WorkspaceSkill (the agent's
-// project+global discovery view): this is the management surface, which also
-// lists archived skills.
 export interface ManagedSkill {
   name: string;
   description: string;
   lifecycle: "active" | "archived";
 }
 
-// One skill proposal awaiting offline review (skills.proposals.list).
-// name+revision+scope is the handle an approve/reject decision carries;
-// origin and sourceSession are the provenance shown to the reviewer, and
-// `revises` says an approval would overwrite a Skill that already loads.
 export interface SkillProposal {
-  /** The exact workspace against which this immutable proposal was listed. */
   workspace: string;
   name: string;
   revision: string;
@@ -71,16 +59,11 @@ export interface SkillProposal {
   sourceSession: string;
 }
 
-// The (scope, cwd) key an agentMemory read is bound to. The user scope ignores
-// cwd; the project scope resolves it to the session's project.
 export interface AgentMemoryQuery {
   scope: "project" | "user";
   cwd?: string;
 }
 
-// One addressable agent-memory item (agentMemory.list). status is
-// active | pending (pending items await review); origin is auto (mined) | user
-// (authored). Distinct from WorkspaceKnowledgeEntry (the FLAME.md file cascade).
 export interface AgentMemoryEntry {
   id: string;
   scope: "project" | "user";
@@ -94,8 +77,6 @@ export interface AgentMemoryEntry {
   updatedAt: string;
 }
 
-/** Where a project-level agent doc lives: the session cwd, the project root, or
- *  the user's home. Shared by the knowledge files and the AGENTS.md docs. */
 export type WorkspaceKnowledgeScope = "cwd" | "projectRoot" | "home";
 
 export interface WorkspaceAgentDoc {

@@ -4,12 +4,6 @@ import { lookupExtensionByKey, lookupExtensionPoint } from "@/plugins/sdk/select
 import { systemAppearance } from "./ports/systemAppearance";
 import { appearancePreferencePort } from "./ports/appearancePreference";
 
-/**
- * Callers asking "is this light?" MUST resolve through here rather than comparing the id
- * against `"light"`: an id carries no scheme — `"custom"` is whichever the reader's own
- * colours resolve to, and a third-party palette names itself whatever it likes. Unregistered
- * ids read as dark, which covers early boot and a saved id whose plugin is gone.
- */
 export function resolveThemeScheme(themeId: string): Scheme {
   if (themeId === "system") return systemAppearance().scheme();
   return lookupExtensionByKey(COLOR_THEME, themeId)?.scheme ?? "dark";
@@ -19,11 +13,6 @@ export function isLightTheme(themeId: string): boolean {
   return resolveThemeScheme(themeId) === "light";
 }
 
-/**
- * Here rather than on the store: picking WHICH theme comes next needs the COLOR_THEME
- * registry, and a store reaching into the plugin registry is a store that knows about the
- * plugin system. The store holds the value; this decides it.
- */
 export function toggleThemeScheme(): void {
   const preference = appearancePreferencePort();
   const target = resolveThemeScheme(preference.read().theme) === "dark" ? "light" : "dark";

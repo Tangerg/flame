@@ -7,8 +7,6 @@ import { useT } from "@/lib/i18n";
 import { ButtonPrimitive } from "@/ui/primitives";
 import { Tooltip } from "./tooltip";
 
-// The close button also grows into place. `--reveal` is 0 or 1, so one channel drives both the
-// fade and the scale without a second custom property.
 const chipStyles = stylex.create({
   chip: {
     display: "inline-flex",
@@ -24,8 +22,6 @@ const chipStyles = stylex.create({
   },
   reference: { backgroundColor: surface.accentBadge, color: color.fgSoft },
   attached: { backgroundColor: surface.surface2, color: color.fgMuted },
-  // The value is machine text and it is capped: a chip that grows with its content pushes the
-  // rest of the row off the end instead of yielding.
   value: {
     maxWidth: "220px",
     overflow: "hidden",
@@ -44,8 +40,6 @@ const chipStyles = stylex.create({
   },
   close: {
     scale: "calc(0.96 + 0.04 * var(--reveal, 1))",
-    // One transition list, stated once: the fade, the growth and the hover recolour. Split
-    // across two declarations the later one wins and the others simply stop animating.
     transitionProperty: "opacity, scale, background-color, color",
     transitionDuration: "var(--dur-fast)",
     transitionTimingFunction: motion.easeState,
@@ -57,9 +51,7 @@ interface Props {
   children: ReactNode;
   title?: string;
   onClose?: () => void;
-  /** What the chip is for. `reference` is something the reader named; `attached` came along. */
   kind?: "reference" | "attached";
-  /** Names what is being removed, for a row where "Remove" alone does not say which one. */
   closeLabel?: string;
 }
 
@@ -68,8 +60,6 @@ export function Chip({ icon, children, title, onClose, kind = "reference", close
   return (
     <Tooltip label={title}>
       <span
-        // What it is and which kind, as attributes: they are what a test can hold onto, and a
-        // generated class name is not a contract.
         data-slot="chip"
         data-kind={kind}
         {...stylex.props(reveal.host, chipStyles.chip, chipStyles[kind], corner.pill, type.uiSm)}

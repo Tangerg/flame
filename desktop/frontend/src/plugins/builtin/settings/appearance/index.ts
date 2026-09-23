@@ -1,8 +1,3 @@
-// Built-in plugin: Appearance settings pane.
-//
-// Sections (theme / accent / contrast / font / shape / motion / language)
-// live in sibling files. This file is only the plugin manifest.
-
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
 import { registerSettingsPane } from "../kit";

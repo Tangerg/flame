@@ -12,7 +12,6 @@ const fsx = stylex.create({
   trigger: { maxWidth: "280px" },
 });
 
-/** The empty string is "no custom face", which is what the preference stores. */
 const SYSTEM = "";
 
 function FontPicker({

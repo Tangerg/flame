@@ -7,8 +7,6 @@ const ROUTES = [
   "fixture=agent&state=narrative",
 ];
 
-// The fill and the opacity are both transitioned, so an immediate read returns the value the
-// control is leaving rather than the one it is arriving at.
 const SETTLE_MS = 400;
 
 const PROBE = "[data-refusal-probe]";
@@ -23,8 +21,6 @@ test("a control that refuses a click says so, however it was refused", async ({ 
     await page.waitForTimeout(200);
 
     await page
-      // A control that is not a `<button>` cannot carry `disabled` at all, so there is no pair
-      // to compare: `aria-disabled` is the only way it can ever refuse.
       .locator('button[data-control="button"]:not(:disabled):not([aria-disabled="true"])')
       .evaluateAll((nodes) => {
         nodes.forEach((node, index) => node.setAttribute("data-refusal-probe", String(index)));
@@ -63,8 +59,6 @@ test("a control that refuses a click says so, however it was refused", async ({ 
 
     for (const [probe, entry] of Object.entries(unavailable)) {
       const flight = inFlight[probe];
-      // A surface that re-rendered under the sweep took its own props back, so the two reads
-      // are no longer of the same state and there is nothing here to compare.
       if (!flight || !entry.refused || !flight.refused) continue;
       compared += 1;
       if (entry.look === flight.look) continue;

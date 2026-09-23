@@ -1,8 +1,3 @@
-// Standing a kernel up. Built-ins go in as one transaction — a built-in that
-// throws is a broken build, and a Host that refuses to start says so, where the
-// old loader booted two thirds of an app and left the user to work out which
-// third was missing.
-
 import { createHost, type AnyPlugin, type Host } from "dougong";
 import { reportPluginError } from "./errors";
 import { kernelLogger } from "./hostLog";
@@ -51,8 +46,6 @@ export async function stopKernel(host: Host): Promise<void> {
   await host.stop();
 }
 
-// `host.start()` resolving is the ready point; Core has no post-start hook
-// because it has no opinion about what "the app is up" means.
 function fireReadyHandlers(): void {
   for (const entry of contributionsTo(READY_HANDLER)) {
     try {

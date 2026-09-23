@@ -5,8 +5,6 @@ import { motion as motionToken } from "@/styles/tokens.stylex";
 import { useScrollLock } from "./use-scroll-lock";
 
 const styles = stylex.create({
-  // The row opens by growing its own track from `0fr` to `1fr`, which is the one way to
-  // animate to a height nobody measured: the child keeps its natural size throughout.
   row: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr)",
@@ -16,7 +14,6 @@ const styles = stylex.create({
   },
   open: { gridTemplateRows: "1fr" },
   shut: { gridTemplateRows: "0fr" },
-  // Height and opacity are one change, the way Codex animates its activity disclosure.
   well: {
     minHeight: 0,
     overflow: "clip",
@@ -30,12 +27,9 @@ const styles = stylex.create({
 
 interface Props {
   open: boolean;
-  /** Rendered shut as well as open: the node a trigger names through `aria-controls` has to
-   *  exist. Defer its CONTENT with `useDisclosedContent`, never its identity. */
   children: ReactNode;
 }
 
-/** Whether the disclosed content has ever been asked for. */
 export function useDisclosedContent(open: boolean): boolean {
   const [revealed, setRevealed] = useState(open);
   if (open && !revealed) setRevealed(true);

@@ -14,10 +14,6 @@ import { useT } from "@/lib/i18n";
 import { IconButton } from "./icon-button";
 import type { ShikiTransformer } from "shiki";
 
-// Shiki gives the `<pre>` it emits a `tabindex`, so the scrollable code takes keyboard focus like
-// any other scroll region. The rounded block wrapping it clips, which leaves the global ring with
-// nowhere to draw; `data-focus-inset` is how a clipped control asks for it on the inside. Only
-// this call site keeps that `<pre>` — the diff and file views strip the wrapper away.
 const FOCUS_INSET: ShikiTransformer[] = [
   {
     pre(node) {
@@ -42,8 +38,6 @@ interface HighlightedCode {
 
 const styles = stylex.create({
   block: {
-    // On the markdown rhythm unit `markdown.css` owns, so a listing keeps its distance from the
-    // prose around it at every reading size.
     marginBlock: "calc(var(--md-space) * 5)",
     overflow: "hidden",
     borderRadius: radius.lg,
@@ -125,8 +119,6 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
           setCachedHighlight(lang, shikiTheme, debouncedCode, out);
           setHighlighted({ lang, theme: shikiTheme, code: debouncedCode, html: out });
         } catch (error) {
-          // One grammar failing leaves this block plain and every other block alone, so the
-          // report is keyed by language: a file type Shiki cannot parse says so once.
           reportHighlightFailure(`grammar ${lang}`, error);
         }
       })
@@ -151,13 +143,9 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
       data-markdown-copy="code-block"
       data-markdown-copy-text={code}
       {...block}
-      // `shiki-block` and `shiki-body` are the highlighter's own hooks: Shiki writes the token
-      // spans, and `globals.css` styles them several levels down. They stay classes.
       className={cn(block.className, "shiki-block")}
     >
       <div data-markdown-copy="exclude" {...stylex.props(styles.caption, type.uiMd)}>
-        {/* The language, spelled as the highlighter reports it: no capitalising, and the UI
-            tracking off, because a token like `tsx` is machine text wearing a proportional face. */}
         <span {...stylex.props(styles.lang, type.uiMd, styles.langPlain)}>{lang || "text"}</span>
         <span {...stylex.props(styles.spacer)} />
         {!isPreview && (

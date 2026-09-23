@@ -734,7 +734,6 @@ export const es: Record<string, string> = {
   "vcs.notARepo": "No es un repositorio Git",
   "vcs.notARepoSub": "El directorio de trabajo de la sesión no está bajo control de versiones.",
 
-  // Filled 2026-07 — these keys had fallen behind en.
   "composer.placeholder.steer": "Envía un mensaje para guiar el turno en curso…",
   "composer.action.steer": "Guiar el turno en curso",
   "composer.paste.lines_one": "Pegado · {{count}} línea",

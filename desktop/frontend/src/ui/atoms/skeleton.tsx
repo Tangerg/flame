@@ -56,9 +56,6 @@ function SkeletonLine({ width = "100%", height = 10 }: { width?: string; height?
   );
 }
 
-/**
- * One control's worth of placeholder, for a bar that must not resize as it loads.
- */
 export function SkeletonControl({
   glyph = true,
   width = "64px",

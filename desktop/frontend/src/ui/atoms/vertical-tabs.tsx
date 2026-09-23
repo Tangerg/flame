@@ -55,8 +55,6 @@ const styles = stylex.create({
     paddingBottom: space.s6,
   },
   group: { display: "flex", flexDirection: "column", gap: "1px" },
-  // Measured in the same three tokens every other rail in the product uses, so the Appearance
-  // density setting reaches it.
   tab: {
     display: "flex",
     height: "var(--density-row-height)",
@@ -124,9 +122,6 @@ export function VerticalTabs({
   railHeader?: ReactNode;
 }) {
   const items = groups.flatMap((group) => group.items);
-  // `pane-split` is the seam this rail casts toward the page — a globals mechanism keyed on
-  // `data-split-side`, so it composes with the rail's own class list rather than replacing it.
-  // Spreading `stylex.props` AFTER a `className` silently drops that class.
   const rail = stylex.props(styles.rail);
   return (
     <TabsPrimitive.Root

@@ -1,13 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { color, motion, radius, space, surface, weight } from "@/styles/tokens.stylex";
 
-/**
- * The gallery card, at the two measures its two panes use.
- *
- * Both panes render the same thing — a plate holding a glyph, its name under it — and had
- * written it out twice at 120/44px and 96/34px. The card is the same card; only the measure
- * differs, so that is the only thing the two steps carry.
- */
 export const galleryStyles = stylex.create({
   card: {
     display: "flex",

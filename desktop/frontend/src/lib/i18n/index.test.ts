@@ -7,8 +7,6 @@ afterEach(async () => {
 });
 
 describe("the document's declared language", () => {
-  // Unguarded until now, and silent when it breaks: a screen reader announces Chinese prose in
-  // an English voice, and the engine picks the wrong line-breaking and font fallback with it.
   it("follows the active locale", async () => {
     setLocale("ja");
     await Promise.resolve();
@@ -19,7 +17,6 @@ describe("the document's declared language", () => {
     expect(document.documentElement.lang).toBe("de");
   });
 
-  // `zh` alone leaves the script open; the catalog is Simplified and `zh-TW` is its own locale.
   it("gives Chinese the region its catalog actually is", async () => {
     setLocale("zh");
     await Promise.resolve();

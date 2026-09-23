@@ -10,11 +10,6 @@ const wl = stylex.create({
 });
 
 interface Props extends ViewHeaderProps {
-  /**
-   * How the scroller insets its rows. `rows` is the standing answer — fourteen of the
-   * twenty-one views passed the same `py-1` to say it — and `flush` is for a view whose content
-   * brings its own inset: a file, a terminal, a tree.
-   */
   scrollInset?: "rows" | "flush";
   scrollRef?: Ref<HTMLDivElement>;
   children: ReactNode;

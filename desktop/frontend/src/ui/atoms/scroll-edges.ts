@@ -3,11 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 
 const FADE = "24px";
 
-/** Sub-pixel scroll offsets mean "at the end" is never exactly zero. */
 const EPSILON = 1;
 
-// A mask, not overlays: inside `overflow-y: auto` an absolutely-positioned gradient anchors to
-// the scrolled content origin, so it leaves the viewport exactly when it is needed.
 export const scrollEdges = stylex.create({
   fade: {
     maskImage: `linear-gradient(to bottom, transparent 0, #000 var(--fade-top, 0px), #000 calc(100% - var(--fade-bottom, 0px)), transparent 100%)`,
@@ -16,9 +13,7 @@ export const scrollEdges = stylex.create({
 });
 
 interface ScrollEdges {
-  /** Carries `scrollEdges.fade`, `onScroll` and `style`. */
   port: React.RefObject<HTMLDivElement | null>;
-  /** Watched too, so growth re-measures without a scroll event. */
   content: React.RefObject<HTMLDivElement | null>;
   onScroll: () => void;
   style: CSSProperties;
@@ -27,7 +22,6 @@ interface ScrollEdges {
   scrollToEnd: () => void;
 }
 
-/** `active` is the caller's gate: a collapsed port has zero height and measures to a lie. */
 export function useScrollEdges(active = true): ScrollEdges {
   const port = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
@@ -52,7 +46,6 @@ export function useScrollEdges(active = true): ScrollEdges {
     );
   }, []);
 
-  // Synchronous first measurement: `overflowing` decides tab order, which must hold on mount.
   useEffect(() => {
     if (!active) return;
     measure();

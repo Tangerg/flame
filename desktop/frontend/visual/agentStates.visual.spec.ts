@@ -63,11 +63,6 @@ test("HITL approval settles through the exact Run and Item identity", async ({ p
   await expect(page.locator("html")).toHaveAttribute("data-visual-resumed-item", "item_approval");
 });
 
-// Asks whether the plane SEPARATES, not how. It used to pin `border-top-width: 0px`, which read
-// as "Codex's request surface is borderless" — and Codex's is not; its light elevated equals its
-// light surface and the edge is what divides them. Pinning the mechanism meant the fill was the
-// only separation under test, so when the light theme made card and canvas the same white this
-// stayed green while the approval lost its boundary outright.
 test("a pending approval is a plane against whatever it sits on", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=waiting");
   await page.locator("html[data-visual-ready]").waitFor();
@@ -1333,8 +1328,6 @@ for (const { state, inputSurface } of [
       if (!scroller || !input) return null;
       const frame = () =>
         new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      // Late layout (highlighting, fonts) can still grow the tail after the first scroll, so the
-      // end is only the end once the height holds across a frame.
       let height = -1;
       while (height !== scroller.scrollHeight) {
         height = scroller.scrollHeight;
@@ -1858,9 +1851,6 @@ test("large command output stays fully readable inside the tool card", async ({ 
   await expect(command.locator("[data-output-line]")).toHaveCount(9);
 });
 
-// The glimpse is only reachable by collapsing a reasoning row that is still streaming, which no
-// fixture state does on its own — so it shipped with no coverage at all. Both halves are held
-// here: that the line reports the NEWEST words, and that the lead only softens a real cut.
 test("a collapsed live reasoning row glimpses its newest line, softened only where it is cut", async ({
   page,
 }) => {
@@ -1875,18 +1865,12 @@ test("a collapsed live reasoning row glimpses its newest line, softened only whe
 
   const glimpse = page.locator('[data-slot="reasoning-glimpse"]');
   await expect(glimpse).toBeVisible();
-  // This fixture's thought really does run past the row, so the cut is real and softened.
   await expect(glimpse).toHaveAttribute("data-clipped", "");
 
-  // Drive the line through the near-miss: `flex-end` puts its first pixel at `container - line`,
-  // so a line that merely APPROACHES the full width used to start inside a constant lead and
-  // ghost an opening that fits. Widths come back with the lead the observer settled on.
   const measured = await glimpse.evaluate(async (box) => {
     const line = box.firstElementChild as HTMLElement;
     const original = line.textContent;
     const settle = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-    // Steps back off the overshoot: one "m" is wider than the margin the near-miss case needs to
-    // land in, so growing until `>= target` can sail past the box edge and stop being a near miss.
     const grow = async (target: number) => {
       let text = "M";
       line.textContent = text;
@@ -1908,8 +1892,6 @@ test("a collapsed live reasoning row glimpses its newest line, softened only whe
       };
     };
     const nearMiss = await grow(box.clientWidth - 10);
-    // Not a width target: a long enough line can widen the row it sits in, which moves the very
-    // boundary the target was computed from. A line nobody could fit settles that question.
     line.textContent = "m".repeat(900);
     await settle();
     const overflowing = {

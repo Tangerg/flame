@@ -1,11 +1,7 @@
 import type { MessageRenderUnit } from "@/plugins/builtin/agent/public/messagePresentation";
 
-/** `process` is what the turn DID, `prose` is the answer, `panel` stands on its own and
- *  usually wants something from the reader. */
 export type UnitVoice = "process" | "prose" | "panel";
 
-// Exhaustive on purpose: a new block kind is a decision about rhythm, and a `default` makes
-// that decision silently.
 export function unitVoice(unit: MessageRenderUnit): UnitVoice {
   if (unit.kind === "wave" || unit.kind === "toolGroup") return "process";
   switch (unit.block.kind) {
@@ -22,18 +18,8 @@ export function unitVoice(unit: MessageRenderUnit): UnitVoice {
   }
 }
 
-/** How far apart two units sit. Four distances, named by how far and not by how much. */
 export type UnitSeam = "tight" | "close" | "apart" | "wide";
 
-/**
- * Keyed on the PAIR, because a seam is a relationship and neither side knows the distance
- * alone. This table is the ONLY owner of the RELATIONSHIP — cards must not set outer margins:
- * adjacent margins collapse, so per-card values made the gap depend on which pair happened
- * to meet.
- *
- * It does not own the number of pixels: that is a view decision. The view maps a seam to a
- * step; this table says which seam a pair makes.
- */
 const SEAM: Record<UnitVoice, Record<UnitVoice, UnitSeam>> = {
   process: { process: "tight", prose: "wide", panel: "apart" },
   prose: { process: "wide", prose: "close", panel: "apart" },
@@ -47,7 +33,3 @@ export function unitSeam(
   if (!previous) return undefined;
   return SEAM[unitVoice(previous)][unitVoice(unit)];
 }
-
-// Flat: at the top level there is nothing for a unit to be subordinate to, so a step in from
-// the measure only moves it out of the reading column. Kept as a named fact rather than an
-// empty string per voice, which is what it was — three keys all answering "none".

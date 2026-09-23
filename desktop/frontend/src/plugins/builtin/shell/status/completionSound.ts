@@ -1,6 +1,3 @@
-// Read directly, not through a port: a preference with a default must be readable with no
-// other plugin installed, or the chime cannot fire until the settings pane loads.
-
 import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -16,7 +13,6 @@ interface CompletionSoundState {
 
 const persistSchema = z.object({ completionSound: z.boolean() });
 
-/** Held equal at compile time — see `Paired`. */
 const _paired: Paired<CompletionSoundState, z.infer<typeof persistSchema>> = true;
 void _paired;
 

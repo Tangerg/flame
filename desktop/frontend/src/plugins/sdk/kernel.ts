@@ -1,6 +1,3 @@
-// Adds this app's policy over Core's raw `contributions(token)`: single/multi resolution,
-// the sort, and the by-reference caching the selectors' secondary indexes depend on.
-
 import { useSyncExternalStore } from "react";
 import type { ContributionView, Host } from "dougong";
 import type { Contribution } from "./contracts";
@@ -44,8 +41,6 @@ export function publishKernel(next: Host): void {
   announce();
 }
 
-/** Retract exactly the generation its owner is retiring: a late cleanup from an older
- *  renderer must never unpublish the successor that replaced it. */
 export function retractKernel(owner: Host): boolean {
   if (host !== owner) return false;
   retractViews();
@@ -54,7 +49,6 @@ export function retractKernel(owner: Host): boolean {
   return true;
 }
 
-/** Identity that distinguishes a Host REPLACEMENT from a change inside the same Host. */
 export function publishedKernel(): Host | undefined {
   return host;
 }
@@ -80,9 +74,6 @@ function viewOf<T>(point: ExtensionPoint<T>): ContributionView<Contribution<T>> 
   return view;
 }
 
-// Precedence: the item's own `order`, then the contribute-time hint, then a stable default.
-// The sort is stable, so equal orders keep insertion order — which is what makes "last
-// contributor of a key wins" mean the later plugin in the manifest.
 function sortKey(entry: Contribution<unknown>): number {
   const own = (entry.item as { order?: number } | null)?.order;
   return own ?? entry.order ?? 100;
@@ -96,10 +87,7 @@ function resolve<T>(
   const kept =
     point.keying === "multi"
       ? all
-      : // Insertion order is contribution order, so the last writer of a key is
-        // the winner. A Map by key keeps one per key at its FIRST insertion position, so
-        // list order holds while a shadowing plugin loads and unloads.
-        [
+      : [
           ...all
             .reduce((byKey, e) => byKey.set(e.key, e), new Map<string, Contribution<T>>())
             .values(),
@@ -107,8 +95,6 @@ function resolve<T>(
   return kept.sort((a, b) => sortKey(a) - sortKey(b));
 }
 
-/** Sorted, `single` points resolved to one entry per key. Stable BY REFERENCE until that
- *  point's contributions change — the contract the selectors' indexes depend on. */
 export function contributionsTo<T>(point: ExtensionPoint<T>): ReadonlyArray<Contribution<T>> {
   const cached = entries.get(point.id);
   if (cached) return cached as ReadonlyArray<Contribution<T>>;
@@ -123,8 +109,6 @@ function subscribe(onChange: () => void): () => void {
   return () => listeners.delete(onChange);
 }
 
-/** Against the KERNEL, not one point's view: a plugin subscribing during its own setup would
- *  otherwise hold a dead subscription. */
 export function subscribeContributions(listener: () => void): () => void {
   return subscribe(listener);
 }

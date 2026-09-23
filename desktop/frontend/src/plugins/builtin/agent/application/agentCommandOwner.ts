@@ -17,14 +17,6 @@ export interface AgentCommandEffect {
   rollback(): void;
 }
 
-/**
- * Exact Plugin Host generation that owns Agent product commands and their local effects.
- *
- * Transport mutation identity answers whether one Runtime command committed. This owner
- * answers the outer product question: which installed Host may start that command, join
- * its single-flight work, or publish its response into navigation/query/material state.
- * A successor synchronously retires the predecessor before its gateway is published.
- */
 export class AgentCommandOwner {
   readonly #creates = new Map<string, Promise<unknown>>();
   readonly #forks = new Map<string, Promise<unknown>>();

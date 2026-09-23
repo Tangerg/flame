@@ -51,7 +51,6 @@ function catalog<Row>(rows: Row[], enabled = true): WorkspaceCatalogViewModel<Ro
   };
 }
 
-/** The catalog key for a knowledge scope; an unknown scope reads as itself. */
 export function scopeLabelKey(scope: string): string {
   return SCOPE_LABEL_KEY[scope as WorkspaceKnowledgeScope] ?? scope;
 }

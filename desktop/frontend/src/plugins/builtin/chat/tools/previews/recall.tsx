@@ -16,7 +16,6 @@ import { TextPreview, vocab } from "@/ui";
 
 const rc = stylex.create({
   memory: { display: "flex", gap: space.s2_5 },
-  // The speaker column holds a measure so the snippets beside them start level.
   hit: { display: "grid", gridTemplateColumns: "minmax(0, 9.5rem) minmax(0, 1fr)", gap: space.s3 },
   who: { display: "flex", minWidth: 0, alignItems: "baseline", gap: space.s1 },
 });
@@ -64,11 +63,6 @@ function ConversationRecallPreview({ tool }: ToolPreviewProps) {
     <TextPreview>
       {hits.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((hit, i) => (
         <div key={i} className={stylex.props(rc.hit, pv.row, pv.rowPad).className}>
-          {/* The date never shrinks and the speaker gives way: the speaker is a two-value enum
-              whose first four characters tell them apart, while a cut date is lost. 9.5rem and
-              not the 11.13 that fits "assistant" whole, which spends a quarter of the row on
-              metadata. Each row is its own grid, so the width is a literal for the columns to
-              line up. */}
           <span {...stylex.props(rc.who, vocab.faint)}>
             <span {...stylex.props(vocab.min, vocab.truncate)}>{hit.speaker}</span>
             <span {...stylex.props(vocab.hold)}>· {hit.day}</span>
@@ -94,8 +88,6 @@ function StoredToolResultPreview({ tool }: ToolPreviewProps) {
 export const recallPreviews = definePlugin({
   name: "flame.builtin.recall-previews",
   setup(ctx) {
-    // Searching the agent's own history: project memory and earlier conversations. Two
-    // shapes, one family — both answer "here is what I already knew".
     for (const preview of toolPreviews({
       search_memory: MemoryRecallPreview,
       search_conversations: ConversationRecallPreview,

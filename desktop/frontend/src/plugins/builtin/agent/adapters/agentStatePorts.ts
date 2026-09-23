@@ -38,26 +38,14 @@ function getLifecycleSnapshot(): AgentOpenSessions {
   };
 }
 
-/**
- * Enter a Session identity. Two halves of one move: the tab set remembers it is
- * open, and the location says it is where the user is. Promoted material belongs
- * to the predecessor Session and retires at this identity boundary; the dock is
- * deliberately omitted because its per-Session scope owner restores that memory.
- */
 function goToSession(id: string, options?: { replace?: boolean }): void {
   const store = useAgentSessionStore.getState();
   if (id !== "") store.holdOpen(id);
-  // Recorded here rather than by a subscriber on the location: ports are
-  // installed while plugins load, which is before the router (and so the
-  // Navigator) exists. Memory is a consequence of the move, so the mover keeps
-  // it — and there is one mover.
   store.rememberSession(id);
   navigator().go({ session: id, view: null }, options);
 }
 
 export function installAgentStatePorts(): () => void {
-  // Claim before publishing successor ports. From this point an old port retained by
-  // an in-flight snapshot can no longer commit into the shared material store.
   const refreshOwner = AgentViewRefreshOwner.install();
   const disposeSessionState = configureAgentSessionStatePort({
     useActiveSessionId: () => navigator().use((location) => location.session),
@@ -67,8 +55,6 @@ export function installAgentStatePorts(): () => void {
       navigator().subscribe((location, previous) => {
         if (location.session !== previous.session) onChange(location.session);
       }),
-    // Fires for either half: the location moved to another session, or the open
-    // set changed under the one we are on.
     subscribeLifecycle: (onChange) => {
       let last = getLifecycleSnapshot();
       const emit = () => {
@@ -106,9 +92,6 @@ export function installAgentStatePorts(): () => void {
     },
     useDraftSessionIds: () => useAgentSessionStore((state) => state.draftSessionIds),
     isDraftSession: (id) => useAgentSessionStore.getState().draftSessionIds.has(id),
-    // Boot: drop open + active refs to sessions the runtime no longer has. The
-    // location is corrected with `replace` — a session that turned out not to
-    // exist was never a place the user went, so there is nothing to go back to.
     reconcileSessions: (liveIds) => {
       const store = useAgentSessionStore.getState();
       const next = reconcileOpenSessions(
@@ -121,10 +104,6 @@ export function installAgentStatePorts(): () => void {
       );
       if (!next) return;
       store.retainOnly(next.openSessionIds);
-      // Reconciliation may correct a deleted deep-link/last-session seed or
-      // establish a direct live deep-link as held-open. Keep cold-start memory
-      // aligned with that accepted location; otherwise the next launch replays
-      // the identity we just proved stale.
       if (next.activeSessionId !== activeSessionId()) {
         goToSession(next.activeSessionId, { replace: true });
       } else {

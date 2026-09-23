@@ -16,10 +16,6 @@ function scheduleInput(input: ScheduleConfigInput): CreateScheduleRequest {
   };
 }
 
-/** The wire Schedule as this product reads it. The Runtime nests the working directory in a
- *  `workspace` object; the config Settings and every read model traffic in carries the path
- *  flat as `cwd`. One owner, in the adapter that owns the other direction too, because a
- *  wire change that reaches only one of two copies is a change nothing reports. */
 function scheduleConfig(schedule: Schedule): ScheduleConfig {
   const { workspace, ...config } = schedule;
   return {
@@ -79,9 +75,6 @@ export function installScheduleGateway() {
   };
 }
 
-/** The schedules read. It lives here rather than with the other Runtime data providers
- *  because the key, the config shape and the wire translation are all this context's — and
- *  a provider elsewhere had to translate `Schedule` a second time to answer it. */
 export function registerScheduleDataProvider(ctx: Contributor): void {
   ctx.contribute(DATA_PROVIDER, {
     key: SCHEDULES_KEY,

@@ -20,25 +20,18 @@ export interface WorkGroup {
   sessions: WorkSession[];
 }
 
-/**
- * Every session is split exactly once: it belongs to a project when its directory is one the
- * workspace knows, and is otherwise recent work with no home yet. Two lists rather than one
- * tree, because inventing a project from an arbitrary path gives scratch work a false home.
- */
 export interface WorkIndexContent {
   groups: WorkGroup[];
   recents: WorkSession[];
 }
 
 export interface WorkIndex {
-  /** Both absent until the first answer arrives — distinct from "known empty". */
   groups: WorkGroup[] | undefined;
   recents: WorkSession[] | undefined;
   activeSessionId: string;
   activeCwd: string | undefined;
   isLoading: boolean;
   isError: boolean;
-  /** What failed, so a view can tell a Runtime that broke from one that never had the call. */
   error: unknown;
   retry: () => void;
 }

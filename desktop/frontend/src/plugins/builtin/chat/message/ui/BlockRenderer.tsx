@@ -49,9 +49,6 @@ export function renderBlock(
       if (!tool) return null;
       const delegatedRuns = facts.delegatedRuns[block.toolCallId] ?? [];
       return (
-        // The card and the runs it spawned are one named group, which is what lets the rows
-        // below drop the task from their own labels: a reader entering the group is told the
-        // task once instead of hearing it at the head of every child.
         <div
           id={block.toolCallId}
           key={block.toolCallId}
@@ -151,8 +148,6 @@ export function renderMessageBlocks(
         key={anchor}
         {...stepEnter}
         {...{ [BLOCK_ANCHOR_ATTR]: anchor }}
-        // The class only: `motion.div` animates through `style`, so spreading StyleX's whole
-        // result here hands the same attribute two owners.
         className={stylex.props(seamStep[unitSeam(units[index - 1], unit) ?? "none"]).className}
       >
         {renderUnit(unit, facts, ctx)}

@@ -20,7 +20,6 @@ interface AgentAppShellProps {
 }
 
 const styles = stylex.create({
-  // The card layer, so the drawer's cast lands behind the content rather than on top of it.
   content: {
     position: "relative",
     display: "flex",
@@ -70,11 +69,6 @@ export function AgentAppShell({
       className="agent-shell"
       data-sidebar={hasSidebar && sidebarOpen ? "expanded" : "collapsed"}
     >
-      {/* Before the sidebar, because this sits at the TOP of the window and the keyboard walks
-          the DOM: rendered after it, the control that collapses the sidebar was the last stop
-          in the whole shell, reached only after every session row. Its box is absolute with an
-          explicit `--layer-chrome-control`, so neither the layout nor the paint order depends
-          on where it sits among its siblings — only the tab order did. */}
       {hasSidebar && (
         <div className="agent-window-sidebar-control">
           <AgentDrawerToggle

@@ -32,8 +32,6 @@ interface ContentBlockMap {
   approval: {
     kind: "approval";
     status: BlockStatus;
-    /** The tool whose call needs a decision. The card localizes its headline at
-     *  render. Absent when the runtime named no tool. */
     toolName?: string;
     command: string;
     reason: string;

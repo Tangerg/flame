@@ -25,8 +25,6 @@ import { transcriptTurnContentVisibility } from "./transcriptTurnContentVisibili
 import { space } from "@/styles/tokens.stylex";
 
 const ms = stylex.create({
-  /** The transcript's scrollport: it takes the pane and stops its own overscroll from
-   *  reaching the window, which on a webview is what makes the whole app rubber-band. */
   viewport: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
   dayPad: { paddingBlock: space.s1 },
   content: { position: "relative", display: "flex", flexDirection: "column", paddingTop: space.s8 },
@@ -82,7 +80,6 @@ function transcriptDayBreaks(rows: readonly TranscriptRow[]): readonly boolean[]
   });
 }
 
-// The gap between turns, as steps rather than class names, for the same reason as `seamStep`.
 const TURN_GAP = stylex.create({
   none: {},
   continuation: { marginTop: space.s2 },
@@ -120,8 +117,6 @@ const TranscriptTurn = memo(function TranscriptTurn({
         {...enterUp}
         data-turn-id={row.message.id}
         data-turn-role={row.message.role}
-        // The class only: `motion.div` animates through `style`, so spreading StyleX's whole
-        // result here hands the same attribute two owners.
         className={
           stylex.props(rc.gutter, TURN_GAP[gap], transcriptTurnContentVisibility(isLast)).className
         }
@@ -162,12 +157,7 @@ export function MessageStream({ rows, ctx, sessionId }: Props) {
       resize="instant"
     >
       <StickToBottom.Content
-        scrollClassName={cn(
-          // Two mechanism keys `globals.css` owns: the scrollbar's look, and the viewport the
-          // transcript measures its own scroll against.
-          "msg-scroll-viewport",
-          stylex.props(ms.viewport).className,
-        )}
+        scrollClassName={cn("msg-scroll-viewport", stylex.props(ms.viewport).className)}
         className={stylex.props(rc.box, ms.content).className}
       >
         <AnimatePresence initial={false}>

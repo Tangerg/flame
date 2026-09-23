@@ -1,8 +1,3 @@
-// A SYMBOL both the declaration and the link share: spelled as literals, renaming a pane
-// still compiles and the click just lands nowhere.
-//
-// Third-party panes keep declaring free-form ids; this is the built-in set.
-
 export const APPEARANCE_PANE = "appearance";
 export const PERSONALIZATION_PANE = "personalization";
 export const PROVIDERS_PANE = "providers";

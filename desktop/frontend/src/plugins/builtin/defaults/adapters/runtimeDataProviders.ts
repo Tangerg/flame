@@ -63,9 +63,6 @@ import {
   toAgentSessionSummary,
 } from "./runtimeReadModelAdapters";
 
-// DATA_PROVIDER intentionally erases each fetcher's parameter type so unlike
-// resources can share one registry. Restore that type once at this adapter
-// boundary instead of scattering unchecked casts through every provider.
 function optionalParams<P>(params: unknown): P | undefined {
   return params as P | undefined;
 }
@@ -80,9 +77,6 @@ function pageData<T>(request: Promise<{ data: T[] }>): Promise<T[]> {
   return request.then((page) => page.data);
 }
 
-/** One admitted DATA_PROVIDER read. The Runtime client and cancellation
- * identity are captured together at the query boundary so a multi-stage read
- * cannot splice a retired response into a successor transport. */
 class RuntimeProviderRead {
   private constructor(
     readonly client: FlameClient,
@@ -224,7 +218,6 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
         scope: p.scope,
         description: p.description,
         instructions: p.instructions,
-        // Absent means the agent decided on its own to distil this.
         origin: p.origin ?? "mined",
         revises: p.revises === true,
         sourceSession: p.sourceSession ?? "",
@@ -287,14 +280,10 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
   });
   contribute({
     key: MODELS_KEY,
-    // Aggregate models across Runtime-configured providers only; catalog-only providers
-    // cannot run and would produce dead composer-picker options.
     fetcher: async (read) => {
       const configured = (await pageData(read.client.providers.list(read.signal))).filter(
         (provider) => provider.configured,
       );
-      // Runtime owns model discovery. A rejected models.list is a failure,
-      // not an empty catalog; preserve it so consumers can render it honestly.
       const lists = await Promise.all(
         configured.map((provider) => pageData(read.client.models.list(provider.id, read.signal))),
       );

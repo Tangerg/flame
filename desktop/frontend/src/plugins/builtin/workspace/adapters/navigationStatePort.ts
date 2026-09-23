@@ -1,19 +1,13 @@
-// Which surface fills the content card, and which settings pane is open, are
-// the user's location — they come from the Navigator, so history holds them.
-// What the dock has OPEN, and the per-view state inside it, is memory the
-// location doesn't describe: that stays in the store.
 import { useShellLayoutStore } from "./shellLayoutStore";
 import { WORKSPACE_DOCK_CATALOG } from "../application/navigation";
 import { useContextDockStore } from "./contextDockStore";
 import { navigator } from "@/lib/navigation";
 import { configureWorkspaceNavigationPort } from "../application/ports/navigationState";
 
-/** Leaving a promoted view returns to the chat, which is the only other surface. */
 function selectChat(): void {
   navigator().go({ view: null });
 }
 
-/** The dock is open exactly when the location names a destination. */
 function dockSnapshot() {
   return {
     open: navigator().get().dock !== null,
@@ -22,14 +16,9 @@ function dockSnapshot() {
   };
 }
 
-/** The two ways a dock view arrives: `alone` takes the content card back from whatever was
- *  promoted there, `beside` leaves it. Named because a bare `true` at the call site says
- *  neither, and six call sites split three and three. */
 type DockArrival = "alone" | "beside";
 
 function showDockView(id: string, arrival: DockArrival): void {
-  // Remembered by the mover rather than by a subscriber on the location: this
-  // port is installed while plugins load, before the router exists.
   useContextDockStore.getState().adoptDockLocation(id);
   navigator().go(arrival === "alone" ? { view: null, dock: id } : { dock: id });
 }
@@ -52,8 +41,6 @@ export function installWorkspaceNavigationPort(): () => void {
     useSettingsPaneTarget: () => navigator().use((location) => location.settings),
     useExpandedToolIds: () => useContextDockStore((state) => state.expandedToolIds),
     useToggleTool: () => useContextDockStore((state) => state.toggleExpandedTool),
-    // The drawer follows the user's preference and nothing else. The dock is a
-    // separate resizable column, so opening it cannot override that preference.
     useSidebarDrawer: () => ({
       collapsed: useShellLayoutStore((state) => state.sidebarCollapsed),
       toggle: useShellLayoutStore((state) => state.toggleSidebar),
@@ -71,11 +58,7 @@ export function installWorkspaceNavigationPort(): () => void {
     },
     toggleSidebar: () => useShellLayoutStore.getState().toggleSidebar(),
     selectChat,
-    // Taking the whole card leaves the dock's own selection alone: closing the
-    // full view brings back whatever the user had beside the chat.
     openView: (id) => navigator().go({ view: id }),
-    // One move: the tab opens and the location shows it, leaving the promoted
-    // view behind.
     openViewInDock: (id) => showDockView(id, "alone"),
     selectDockView: (id) => {
       if (useContextDockStore.getState().dockViewIds.includes(id)) showDockView(id, "beside");
@@ -101,7 +84,6 @@ export function installWorkspaceNavigationPort(): () => void {
       const target = useContextDockStore.getState().dockTabToShow(defaultViewId);
       showDockView(target, "alone");
     },
-    /** A stale id is a no-op: it is not the surface on screen. */
     closeView: (id) => {
       if (navigator().get().view === id) selectChat();
     },
@@ -121,11 +103,6 @@ export function installWorkspaceNavigationPort(): () => void {
         requestAnimationFrame(() => focusConversationTool(id));
       }
     },
-    // A fresh renderer or a same-session Host rebind adopts the URL: location
-    // already owns whether the dock survived open or collapsed. A real session
-    // move restores that session's memory with `replace`, because this is the
-    // tail of the move the user already made — going back should leave the
-    // session, not undo its dock.
     activateSessionScope: (sessionId) => {
       const state = useContextDockStore.getState();
       const adoptsCurrentLocation =
@@ -145,17 +122,9 @@ export function installWorkspaceNavigationPort(): () => void {
   });
 }
 
-/**
- * Whether focus LANDED, which is what the caller retries on.
- *
- * The anchor existing is not enough: `?.focus()` on a control that is not there yet is silent,
- * and the retry exists for the frame where the anchor has committed and its button has not.
- */
 function focusConversationTool(itemId: string): boolean {
   const anchor = document.getElementById(itemId);
   if (!anchor) return false;
-  // jsdom has no `scrollIntoView`, which `context-dock.test.tsx` deletes from the prototype
-  // on purpose to prove this survives without it.
   anchor.scrollIntoView?.({ block: "center" });
   const control = anchor.querySelector<HTMLElement>("button");
   if (!control) return false;

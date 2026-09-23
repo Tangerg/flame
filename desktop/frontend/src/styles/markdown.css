@@ -1,5 +1,3 @@
-/* One unit for the whole reading rhythm, a quarter of the reading size, so every gap scales
-   with the reader's type setting and stays in proportion to the line it separates. */
 .md {
   --md-space: calc(var(--fs-prose) / 4);
   display: block;
@@ -267,7 +265,6 @@
   align-items: flex-start;
   gap: 8px;
   opacity: 0;
-  /* Transparent is not gone: without this the strip is an invisible target over the table. */
   pointer-events: none;
   user-select: none;
   transition: opacity var(--polish-fast);
@@ -329,7 +326,6 @@
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
   font-family: var(--font-mono);
-  /* The code step, the same size a fenced block renders the material at. */
   font-size: var(--fs-code);
   padding: 1px 6px;
   background: color-mix(in srgb, var(--wash-hover) 60%, var(--color-text) 6%);
@@ -373,8 +369,6 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-/* A content scroller keeps its thumb at rest: a table or a listing that runs past the column
-   has no other sign that it does. */
 .md-table-scroller,
 .shiki-block .shiki,
 .shiki-block .shiki-fallback,

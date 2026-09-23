@@ -9,7 +9,6 @@ import { SettingsGroup } from "@/plugins/builtin/settings/kit";
 
 const sc = stylex.create({
   pane: { display: "flex", flexDirection: "column", gap: space.s3 },
-  // A real table, because this IS tabular: an action and the keys that reach it.
   table: { width: "100%", borderCollapse: "collapse", textAlign: "left" },
   head: {
     backgroundColor: surface.sunken,
@@ -17,7 +16,6 @@ const sc = stylex.create({
     fontWeight: weight.semibold,
   },
   cell: { paddingInline: space.s4, paddingBlock: space.s1_5 },
-  // A fixed measure: the key column must not widen because one shortcut has three chords.
   keyColumn: { width: "160px", textAlign: "right" },
   right: { textAlign: "right" },
   row: {

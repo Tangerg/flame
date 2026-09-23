@@ -82,8 +82,6 @@ const tr = stylex.create({
     rowGap: space.s0_5,
   },
   attrValue: { wordBreak: "break-all", color: color.fgMuted },
-  // A trace id or an error message is something the reader copies out, so it opts back in to
-  // selection that the shell turns off everywhere else.
   selectable: { userSelect: "text" },
 });
 

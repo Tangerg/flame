@@ -70,26 +70,6 @@ function MessageBlockInner({
           isLast,
         });
 
-  // Activating something inside a message can take away the thing that was activated. The
-  // action bar is removed outright when the message materializes again —
-  // `messageActionsVisibility` answers "absent" for that, correctly, because a message being
-  // rebuilt has nothing to act on — and an approval card is removed once it has been answered.
-  // Measured on the narrative route: focus Regenerate and press Enter, or Deny and press Enter,
-  // and focus is on `<body>`. The node is not disabled, it is gone, so the next Tab restarts at
-  // the top of the document instead of continuing from this message.
-  //
-  // Stated once over the whole column rather than per disappearing part, because the column is
-  // what survives and is where the reader already was.
-  //
-  // Keyed on focus ARRIVING, not on blur. Removing the focused element does not dispatch a blur
-  // event — focus just becomes `<body>` silently — so a version of this that listened for
-  // `onBlurCapture` never ran at the only moment it was needed, and the audit caught it still
-  // reporting the same orphans. What does fire reliably is focus coming in, so that is what is
-  // remembered; a blur to a REAL element clears it, since focus moving somewhere on purpose is
-  // someone navigating and stealing it back would fight them.
-  //
-  // The effect has no dependency list on purpose: the render that removes the bar is the render
-  // that has to be noticed, and it carries no state of its own to depend on.
   const columnRef = useRef<HTMLDivElement | null>(null);
   const heldFocus = useRef(false);
   useEffect(() => {
@@ -144,8 +124,6 @@ function MessageBlockInner({
       >
         <div
           ref={columnRef}
-          // Programmatic focus only — `-1` keeps it out of the tab order, so the rescue below
-          // can put focus here without adding a stop nobody asked for.
           tabIndex={-1}
           onFocusCapture={() => {
             heldFocus.current = true;
@@ -155,8 +133,6 @@ function MessageBlockInner({
           }}
           {...stylex.props(reveal.host, messageStyles.column, isUser && messageStyles.columnUser)}
         >
-          {/* `sr-only` is the mechanism `globals.css` owns. `select-none` is not decoration:
-              the heading IS in the DOM, so without it the role name lands in copied text. */}
           <h2 className={cn("sr-only", stylex.props(messageStyles.unselectable).className)}>
             {roleLabel}
           </h2>
@@ -187,13 +163,8 @@ function MessageBlockInner({
 
 export const MessageBlock = memo(MessageBlockInner);
 
-// One fact — how visible the action bar is — in one language, so no class can silently
-// override the reveal channel.
 const ACTIONS_VISIBILITY = {
   hidden: messageStyles.actionsHidden,
   hover: reveal.shown,
   pinned: messageStyles.actionsPinned,
-  // `unknown` for the value on purpose: what is checked here is that every state has an
-  // answer, and `StyleXStyles` cannot type `reveal.shown` — its `pointer-events` is a custom
-  // property, which CSS's own enum for that property does not admit.
 } as const satisfies Record<Exclude<MessageActionsVisibility, "absent">, unknown>;

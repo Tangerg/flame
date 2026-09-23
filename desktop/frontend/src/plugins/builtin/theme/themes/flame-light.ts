@@ -3,10 +3,6 @@ import { defineColorThemePlugin } from "../kit/defineColorThemePlugin";
 const c = {
   accent: "#2b5fd0",
 
-  // Achromatic on purpose. These carried a blue cast — they were authored as "the neutral
-  // family at the default blue accent", which is what the accent-tint derivation wanted. A
-  // surface is not a shade of the accent; Codex draws its whole grey ramp with the channels
-  // equal, and beside it ours read as a blue-grey panel where a near-white one belongs.
   canvas: "#ffffff",
   card: "#ffffff",
   surface1: "#f9f9f9",

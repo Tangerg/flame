@@ -1,13 +1,8 @@
-// Scores basename hits, consecutive runs and segment starts higher, so "cmp" surfaces
-// Composer.tsx above a deep incidental match. Dependency-free because the candidate set is
-// the already-bounded file list.
-
 interface Hit {
   path: string;
   score: number;
 }
 
-/** An empty query returns the head of the list unranked (the picker just opened). */
 export function fuzzyFile(query: string, paths: string[], limit: number): string[] {
   const q = query.toLowerCase();
   if (q === "") return paths.slice(0, limit);
@@ -22,8 +17,6 @@ export function fuzzyFile(query: string, paths: string[], limit: number): string
   return hits.slice(0, limit).map((h) => h.path);
 }
 
-// A basename match dominates a path-spanning one: typing "comp" should rank
-// Composer.tsx over a/b/c/o/m/p strewn across directory names.
 function scorePath(q: string, path: string): number {
   const lower = path.toLowerCase();
   const base = lower.slice(lower.lastIndexOf("/") + 1);
@@ -32,8 +25,6 @@ function scorePath(q: string, path: string): number {
   return subseqScore(q, lower);
 }
 
-// 0 if q isn't a subsequence of s; else a positive score rewarding consecutive
-// matched chars and matches at a segment boundary (start / after / . _ -).
 function subseqScore(q: string, s: string): number {
   let qi = 0;
   let score = 0;

@@ -12,16 +12,8 @@ import {
   type TextAreaPrimitiveProps,
 } from "@/ui/primitives";
 
-/**
- * How much chrome a field carries.
- *
- * `boxed` is the standing form. `bare` is a field inside something that already has an edge.
- * `inline` edits a value in place inside a row: it takes no chrome either, but must still read
- * as editable, which is why it has a fill the row does not.
- */
 type FieldEdge = "boxed" | "bare" | "inline";
 
-/** Ink, in the vocabulary `Well` already uses — a textarea can BE a well's editable face. */
 type FieldInk = "default" | "soft";
 
 const styles = stylex.create({
@@ -55,8 +47,6 @@ const styles = stylex.create({
   },
   inkDefault: { color: color.fg },
   inkSoft: { color: color.fgSoft },
-  // A field the caller flagged invalid. `boxed` recolours its own edge; `bare` has none to
-  // recolour, so it borrows an outline — the one place a field draws a ring of its own.
   invalidBoxed: { borderColor: { default: color.negative, ":focus": color.negative } },
   invalidBare: { outline: `1px solid ${color.negative}` },
   numeric: { fontVariantNumeric: "tabular-nums" },
@@ -66,17 +56,10 @@ const styles = stylex.create({
   inputMd: { height: "var(--control-height-md)", paddingInline: space.s2_5 },
   inputLg: { height: "var(--control-height-lg)", paddingInline: space.s3 },
   area: { resize: "vertical", lineHeight: leading.body },
-  // The prose step brings prose tracking, which is right for what is typed and wrong for the
-  // placeholder: a placeholder is UI text, not prose.
-  // Codex's composer line: 20px at the 14px body. An input is written in, not read at length, so
-  // it takes a tighter line than the transcript's reading leading.
   areaProse: { lineHeight: "calc(1em + 6px)", "::placeholder": { letterSpacing: "normal" } },
   areaSm: { paddingInline: space.s2_5, paddingBlock: space.s1_5 },
   areaMd: { paddingInline: space.s3, paddingBlock: space.s2 },
   autosize: { fieldSizing: "content", resize: "none" },
-  // A <label>, which never takes focus itself, so the edge answers `:focus-within`. It states
-  // the whole edge rather than composing `boxed`: that one's `:focus` wins the property by
-  // order and can never match here, which left the field with no focus state at all.
   searchBox: {
     display: "flex",
     alignItems: "center",
@@ -110,18 +93,6 @@ type SharedProps = {
   ink?: FieldInk;
   invalid?: boolean;
   className?: string;
-  /**
-   * The action this field belongs to is in flight.
-   *
-   * NOT `disabled`, for the reason `ButtonPrimitive.pending` gives: the platform enforces
-   * `disabled` by making the element unfocusable, so a field that disables itself on submit
-   * blurs whoever submitted from inside it. Measured on the relocate banner — type a path,
-   * press Enter, and focus is on `<body>` 120ms later and stays there.
-   *
-   * `aria-disabled` alone would leave it typable, so this is `readOnly` as well: the field can
-   * still be read and copied from, the caret stays where it was, and nothing can be changed
-   * while the work runs.
-   */
   pending?: boolean;
 };
 
@@ -171,7 +142,6 @@ type AreaSize = "sm" | "md" | "prose";
 
 export type TextAreaProps = Omit<TextAreaPrimitiveProps, "className"> &
   Omit<SharedProps, "variant"> & {
-    /** `well` is `bare` wearing the recessed face, so the block and its editor cannot drift. */
     variant?: FieldEdge | "well";
     size?: AreaSize;
     autosize?: boolean;
@@ -197,7 +167,6 @@ export function TextArea({
     INK[ink],
     ...edge(variant === "well" ? "bare" : variant, invalid),
     size === "prose" ? [type.prose, styles.areaProse] : styles[size === "sm" ? "areaSm" : "areaMd"],
-    // After the size step, so the well's own padding and face win over it.
     well && [WELL_SURFACE.face, type.code],
     autosize && styles.autosize,
   );

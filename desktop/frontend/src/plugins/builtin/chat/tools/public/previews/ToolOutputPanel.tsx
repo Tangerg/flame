@@ -20,10 +20,8 @@ import { PreviewPlaceholder } from "./PreviewPlaceholder";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { space } from "@/styles/tokens.stylex";
 
-// The surface is the `Well`'s, stated once there.
 const op = stylex.create({
   frame: { overflow: "hidden" },
-  // A shell prints `->` and `!=`; it did not ask for a glyph.
   lines: { fontVariantLigatures: "none" },
   line: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
   anchor: { position: "relative" },
@@ -42,13 +40,8 @@ const op = stylex.create({
 });
 
 const COLLAPSED_LINES = 9;
-// Large output stays fully accessible without mounting every line at once.
 const VIRTUALIZE_AFTER_LINES = 1_000;
 
-// Plain lines go through `LinkedText`, which turns a path into somewhere to click. A line
-// carrying escape codes does not: the link scanner would have to be taught the codes, and a
-// coloured `go test` line is the one shape where the path is already the least of what is
-// there.
 function OutputLine({ text }: { text: string }) {
   if (!hasAnsi(text)) return <LinkedText text={text || " "} />;
   return <AnsiText text={text} />;

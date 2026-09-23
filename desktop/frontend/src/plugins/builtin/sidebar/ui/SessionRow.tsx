@@ -8,14 +8,10 @@ import type { WorkSession } from "@/plugins/builtin/navigation/public/workIndex"
 import { color, corner, space, type as typeStep } from "@/styles/tokens.stylex";
 
 const sr = stylex.create({
-  // The rename field's own box; the row is the containing block for it.
   host: { position: "relative", userSelect: "none" },
   trailing: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1_5 },
   favorite: { color: color.accent },
   mark: { height: space.s1_5, width: space.s1_5, flexShrink: 0 },
-  // Shape, not only hue: hollow reads as "under way", solid as "your turn". The pulse is the
-  // running mark's other channel and reduced motion takes it away, which would otherwise leave
-  // two 6px dots told apart by colour alone — and the accent is the user's to pick.
   markRunning: {
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
@@ -38,11 +34,6 @@ interface Props {
   onToggleFavorite?: (id: string, expectedRevision: number, favorite: boolean) => void;
 }
 
-/**
- * The row's title while it is being renamed. Enter and blur are the same intention, so they
- * share one `commit` — written twice, the two could drift, and a rename that depends on which
- * key ended it is not a thing anyone asked for.
- */
 function SessionTitleField({
   title,
   onCommit,
@@ -142,12 +133,6 @@ export function SessionRow({
                 <Icon name="star" size="xs" className={stylex.props(sr.favorite).className} />
               )}
               {session.attention !== "none" ? (
-                // Shape, not only hue. The pulse is the running mark's other channel and
-                // `prefers-reduced-motion` takes it away, which would leave two 6px dots telling
-                // two states apart by colour alone — and the accent is the user's to pick, with
-                // an orange 22° from the warning tone in the swatch row. Hollow reads as "under
-                // way", solid as "your turn", which is also the right weight for the one that
-                // wants an answer.
                 <span
                   {...stylex.props(
                     sr.mark,

@@ -5,7 +5,6 @@ export interface ToolPreviewContribution {
   component: ToolPreviewComponent;
 }
 
-/** Keyed by RUNTIME tool name, so the map at a callsite is the registration itself. */
 export function toolPreviews(
   components: Readonly<Record<string, ToolPreviewComponent>>,
 ): ToolPreviewContribution[] {

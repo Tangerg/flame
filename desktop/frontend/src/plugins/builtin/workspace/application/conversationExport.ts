@@ -28,8 +28,6 @@ function timestampForFilename(date: Date): string {
   return date.toISOString().replace(/[:.]/g, "-").slice(0, 19);
 }
 
-// The role's display name belongs to whoever contributed the role — MESSAGE_ROLE
-// carries the catalog key, resolved here at export time so the current locale owns copy.
 function roleDisplayName(role: Message["role"]): string {
   const key = lookupExtensionByKey(MESSAGE_ROLE, role)?.displayName;
   return key ? t(key) : role;
@@ -49,7 +47,6 @@ interface LocalExportMaterial {
   readonly mime: string;
 }
 
-/** Captures the exact Session projection selected when the command begins. */
 function captureLocalExport(
   sessionId: string,
   format: ConversationExportFormat,
@@ -215,8 +212,6 @@ class ConversationArchiveGeneration {
       await this.#cohort.run(() => invalidateAgentSessions());
     } catch (error) {
       if (this.#cohort.retired) throw error;
-      // The import response and rehydrated Session are authoritative. Runtime
-      // events and the next Session collection read retain the repair path.
     }
   }
 
@@ -235,11 +230,6 @@ export interface ConversationArchiveOwnerDependencies {
   readonly files: FileTransferPort;
 }
 
-/**
- * Owns one exact Plugin Host's conversation archive commands. A Runtime
- * generation replacement retires the whole command cohort — picker, RPC,
- * rehydrate, query repair, navigation, toast and download all share one owner.
- */
 export class ConversationArchiveOwner {
   readonly #dependencies: ConversationArchiveOwnerDependencies;
   #generation: ConversationArchiveGeneration;

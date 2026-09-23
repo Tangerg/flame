@@ -19,9 +19,6 @@ export function initialScheduleDraft(
     title: schedule?.title ?? "",
     instructions: schedule?.instructions ?? "",
     cron: schedule?.cron ?? "0 9 * * 1-5",
-    // A persisted schedule with no workspace deliberately targets the Runtime's
-    // default. Only a NEW schedule inherits the currently selected project;
-    // applying that convenience to edits silently relocates old schedules.
     cwd: schedule ? (schedule.cwd ?? "") : (defaultCwd ?? ""),
     modelSelection:
       schedule?.provider && schedule.model

@@ -4,17 +4,7 @@ import { IconButton } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { space } from "@/styles/tokens.stylex";
 
-/**
- * The centring and the entrance are ONE `translate`.
- *
- * `translate` is a single property: two declarations do not merge, the later one wins, and the
- * button loses the half of its own width that centres it. So each state states both axes.
- */
 const styles = stylex.create({
-  // No transition here. `Button` already names every property a button animates and says why
-  // at its own declaration: the list is the whole list, so a call site restating a SUBSET of
-  // it does not narrow the transition to what it cares about — it silently drops the rest.
-  // This one asked for `opacity, translate` and took the press scale and every colour with it.
   float: {
     position: "absolute",
     left: "50%",

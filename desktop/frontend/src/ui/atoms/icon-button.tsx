@@ -33,7 +33,6 @@ const ICON_SIZE: Record<keyof typeof BOX, IconSize> = {
 };
 
 const styles = stylex.create({
-  // The badge hangs off the corner, so the button is its containing block.
   host: { position: "relative" },
   badge: {
     position: "absolute",
@@ -62,8 +61,6 @@ export function IconButton({
   ...props
 }: IconButtonProps) {
   const hasBadge = badge !== undefined && badge !== "" && badge !== 0;
-  // Only a badge needs the button to be a containing block. Declaring it always would pin every
-  // icon button to `relative`, and the one that has to float could not say otherwise.
   const host = stylex.props(hasBadge && styles.host);
   return (
     <Tooltip label={title}>

@@ -10,21 +10,11 @@ export interface AgentSessionStatePort {
   getLifecycleSnapshot(): AgentOpenSessions;
   subscribeActiveSessionId(onChange: (sessionId: string) => void): () => void;
   subscribeLifecycle(onChange: (snapshot: AgentOpenSessions) => void): () => void;
-  /**
-   * Go to a session: hold it open and make it the place the user is. Leaves any
-   * promoted view behind — selecting a session means looking at that
-   * conversation. One navigation owns the move, so no selection counter is needed.
-   */
   selectSession(id: string): void;
   closeSession(id: string): void;
   useDraftSessionIds(): Set<string>;
   isDraftSession(id: string): boolean;
   reconcileSessions(liveIds: string[]): void;
-  /**
-   * Cold start: go to the session the user was last in, if the location doesn't
-   * already name one. A no-op when it does — a deeplink or a reload with a
-   * session in the URL is a stronger statement about where to be than memory is.
-   */
   restoreLastSession(): void;
   markDraftSession(id: string): void;
 }

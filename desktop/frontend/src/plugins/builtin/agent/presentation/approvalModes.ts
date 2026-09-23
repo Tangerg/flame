@@ -6,7 +6,6 @@ export interface ApprovalModeOption {
   descKey: string;
 }
 
-// Keyed by the closed mode so every mode has exactly one option and a lookup cannot miss.
 export const APPROVAL_MODE_OPTION: Record<ApprovalMode, ApprovalModeOption> = {
   safe: { value: "safe", labelKey: "approvals.mode.safe", descKey: "approvals.mode.safe.desc" },
   balanced: {

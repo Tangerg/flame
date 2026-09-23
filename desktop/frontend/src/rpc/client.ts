@@ -1,5 +1,3 @@
-// Id allocation, response correlation and notification dispatch (API.md §1).
-
 import { errorMessage, RpcError, RpcProtocolError, RpcTransportError } from "./errors";
 import {
   MAXIMUM_RUN_EVENT_ID_CHARACTERS,
@@ -37,8 +35,6 @@ import { ExactSequence } from "@/foundation/exactSequence";
 
 export interface NotificationObserver<M extends WireNotificationName = WireNotificationName> {
   next(params: WireNotificationParams[M], requestRpcId: RpcId): void;
-  /** A protocol error names its response stream; a connection failure has no request owner
-   *  and terminates every observer. */
   error(error: RpcProtocolError | RpcTransportError, requestRpcId?: RpcId): void;
 }
 
@@ -58,15 +54,9 @@ export interface RpcClientOptions {
 export interface RpcCallOptions {
   signal?: AbortSignal;
   idempotencyKey?: string;
-  /** Refused BEFORE business admission when it no longer matches discovery. */
   idempotencyNamespace?: string;
-  /** The last event this client FOLDED (§5.5). Replayed from just after it, or refused when
-   *  not addressable — the caller's signal to cold-read. */
   lastEventId?: string;
-  /** A SNAPSHOT, so preflight and the emitted request stay on one client declaration even
-   *  when the metadata provider is dynamic. */
   requestMeta?: RequestMeta | null;
-  /** Bind a stream owner before Transport.send can deliver its first frame. */
   onRequestRpcId?: (id: RpcId) => void;
 }
 
@@ -91,7 +81,6 @@ interface Pending {
 }
 
 export function createRpcClient(transport: Transport, options: RpcClientOptions = {}): RpcClient {
-  // Arbitrary precision: an integer id would repeat at the safe-integer boundary.
   const requestIds = new ExactSequence();
   const pending = new Map<RpcId, Pending>();
   const subscribers = new Map<WireNotificationName, Set<NotificationObserver>>();
@@ -114,8 +103,6 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     streamEndHandlers.clear();
   }
 
-  // Whether the stream throws OR closes cleanly, no further Responses arrive, so every
-  // in-flight request must settle. Handling only the throw path hangs them on a clean EOS.
   const receiveLoop = (async () => {
     try {
       for await (const event of transport.recv()) {
@@ -140,9 +127,6 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       return;
     }
     if (isResponse(event.message) && event.message.id !== event.requestRpcId) {
-      // The SOURCE request is authoritative, not the envelope id: a transport merges many
-      // response bodies into one channel, so a malformed frame from request A
-      // could otherwise settle request B and strand A.
       const entry = pending.get(event.requestRpcId);
       if (entry) {
         pending.delete(event.requestRpcId);
@@ -171,7 +155,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
   ): void {
     if (isResponse(msg)) {
       const entry = pending.get(msg.id);
-      if (!entry) return; // unsolicited or already settled — drop silently
+      if (!entry) return;
       pending.delete(msg.id);
       if (isErrorResponse(msg)) {
         const payload = msg.error;
@@ -232,13 +216,11 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
         try {
           observer.next(msg.params as WireNotificationParams[typeof msg.method], requestRpcId);
         } catch (err) {
-          // A subscriber must never crash the dispatch loop.
           console.error(`[rpc] notification handler for "${msg.method}" threw:`, err);
         }
       }
       return;
     }
-    // The protocol has no server→client RPC (API.md §1.1), so this is always a mismatch.
     console.warn("[rpc] dropping unexpected server-initiated Request", msg);
   }
 
@@ -302,16 +284,11 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
 
     return new Promise<WireResult<M>>((resolve, reject) => {
       const { signal } = callOptions;
-      // Aborting the transport request propagates cancellation through the
-      // server request context; no second cancellation protocol is needed.
       const onAbort = () => {
         if (!pending.has(id)) return;
         pending.delete(id);
         reject(new RpcTransportError("aborted"));
       };
-      // Detach the abort listener once the request settles by any path —
-      // otherwise a long-lived / shared signal accumulates one dead
-      // listener per completed call ({ once: true } only fires on abort).
       const detach = () => signal?.removeEventListener("abort", onAbort);
       pending.set(id, {
         method,
@@ -352,8 +329,6 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     method: M,
     observer: NotificationObserver<M>,
   ): () => void {
-    // The map is heterogeneous by method. Erasure happens once, here; dispatch only
-    // invokes the observer after the generated validator for this same key succeeds.
     const validatedObserver = observer as NotificationObserver;
     let set = subscribers.get(method);
     if (!set) {
@@ -376,9 +351,6 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
 
   function close(): Promise<void> {
     closePromise ??= (async () => {
-      // `closed` is the request-admission / correlation state and can already
-      // be true because recv() ended. Transport ownership is independent: the
-      // public close contract must still run and join its one teardown.
       if (!closed) failConnection(new RpcTransportError("client closed"));
       let closeFailure: unknown;
       try {
@@ -386,10 +358,6 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       } catch (error) {
         closeFailure = error;
       }
-      // The receive pump is created by RpcClient, not by Transport. Transport
-      // close makes recv() terminal; joining the consumer here guarantees that
-      // close() owns the complete lifecycle and no final iterator continuation
-      // escapes into the next client/test generation.
       await receiveLoop;
       if (closeFailure !== undefined) throw closeFailure;
     })();

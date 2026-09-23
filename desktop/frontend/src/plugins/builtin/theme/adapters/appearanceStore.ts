@@ -11,9 +11,6 @@ import {
   type AppearancePreference,
 } from "../kit/appearance";
 
-// Read back as COLOURS, not opaque strings. `parseInt(hex, 16)` does not reject a non-hex
-// value, it reads whatever prefix parses — "blue" returns a finite garbage colour and every
-// derived surface paints black. Rejecting here is what makes a corrupt payload boot clean.
 const APPEARANCE_STORAGE_KEY = "flame.appearance";
 
 const HEX_COLOUR = z.string().regex(/^#[0-9a-fA-F]{6}$/);
@@ -33,7 +30,6 @@ const appearancePersistSchema = z.object({
   motionScale: z.number(),
 });
 
-/** Held equal at compile time — see `Paired`. */
 const _paired: Paired<AppearancePreference, z.infer<typeof appearancePersistSchema>> = true;
 void _paired;
 

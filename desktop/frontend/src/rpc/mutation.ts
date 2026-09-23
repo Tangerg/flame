@@ -3,14 +3,10 @@ import { isErrorType, RpcProtocolError, RpcTransportError } from "./errors";
 const MILLISECONDS_PER_SECOND = 1_000;
 
 export interface MutationAttemptOptions {
-  /** Cancellation belongs to one delivery attempt, not the logical mutation.
-   * A caller may therefore retry the same idempotency key with a fresh signal. */
   signal?: AbortSignal;
 }
 
 export interface MutationPromise<T> extends Promise<T> {
-  /** Stable identity of this invocation. Persist it before awaiting when a retry
-   * must survive a client restart. */
   readonly idempotencyKey: string;
   retry(options?: MutationAttemptOptions): MutationPromise<T>;
 }
@@ -19,15 +15,9 @@ type MutationExecution<T> = (idempotencyKey: string, options: MutationAttemptOpt
 
 function retryableTransportFailure(error: unknown): error is RpcTransportError {
   if (!(error instanceof RpcTransportError)) return false;
-  // A JSON-RPC response never arrived. Network/body failures and server-side
-  // transport failures have ambiguous settlement; ordinary 4xx responses are
-  // definitive admission refusals and should return immediately.
   return error.status === undefined || error.status === 408 || (error.status ?? 0) >= 500;
 }
 
-/** Whether a failed attempt still leaves business commit unknown to the client.
- * Product settlement owners retain the MutationPromise only for these failures;
- * a typed business refusal is a complete response and may release the identity. */
 export function mutationSettlementIsUnknown(error: unknown): boolean {
   if (error instanceof RpcProtocolError) return true;
   if (retryableTransportFailure(error)) return true;
@@ -54,11 +44,6 @@ async function waitForReplay(seconds: number, signal?: AbortSignal): Promise<voi
   });
 }
 
-/**
- * The same key NEVER executes the business handler twice, so one transport recovery replay
- * closes the "commit succeeded, response was lost" window. Budgets are deliberately finite:
- * a dead transport must return control to the product, whose explicit retry keeps the key.
- */
 async function settleMutation<T>(
   execute: MutationExecution<T>,
   idempotencyKey: string,

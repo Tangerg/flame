@@ -16,12 +16,6 @@ export interface ToolGroupModel {
   nextPinned: boolean;
 }
 
-/**
- * Auto-open is for the LIVE wave only: once the turn starts answering the group is the
- * account of how it got there, not the thing in flight. A pin still wins. A failed child
- * does not force it open either — the row carries a flagged edge visible while closed,
- * which is what makes collapsing safe.
- */
 export function toolGroupModel(
   t: Translate,
   tools: readonly ToolCall[],
@@ -40,10 +34,6 @@ export function toolGroupModel(
   };
 }
 
-/**
- * An empty group is not something the renderer produces but the type allows it, so it answers
- * with nothing and the glyph falls back.
- */
 function dominantTool(tools: readonly ToolCall[]): string {
   const counts = new Map<string, number>();
   for (const tool of tools) counts.set(tool.name, (counts.get(tool.name) ?? 0) + 1);

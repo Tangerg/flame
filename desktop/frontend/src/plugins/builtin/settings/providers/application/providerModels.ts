@@ -34,7 +34,6 @@ export class ProviderAuthentication {
   }
 }
 
-/** A credential summary describes actual secret material, never provider readiness. */
 export class ProviderCredential {
   private constructor(
     readonly masked: string,

@@ -7,10 +7,6 @@ import { Button, type ButtonProps } from "./button";
 
 type SystemMessageVariant = "info" | "warning" | "error" | "success";
 
-/**
- * What holds the message. `sentence` centres against its one line; `form` holds a field and the
- * buttons that answer it, so its content starts at the top and it takes a deeper inset.
- */
 type SystemMessageShape = "sentence" | "form";
 
 const styles = stylex.create({
@@ -80,7 +76,6 @@ export function SystemMessage({
   ...props
 }: SystemMessageProps) {
   const iconName = icon ?? DEFAULT_ICON[variant];
-  // An error or a warning interrupts; the other two report when the reader gets there.
   const role = variant === "error" || variant === "warning" ? "alert" : "status";
   const styled = stylex.props(styles.banner, styles[shape], TONE[variant]);
 

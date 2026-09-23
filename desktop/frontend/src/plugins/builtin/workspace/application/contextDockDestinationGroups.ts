@@ -1,7 +1,5 @@
 import type { ContextDockDestinationScope, WorkspaceViewSpec } from "@/plugins/sdk";
 
-// A view that has told the dock where it belongs. This is the catalog rendered by the
-// add-panel menu.
 export interface ContextDockItem {
   viewId: string;
   title: string;
@@ -16,8 +14,6 @@ export interface ContextDockDestinationGroup {
   destinations: ContextDockItem[];
 }
 
-/** A view that names no scope is not missing from the menu — it takes the content card
- *  instead, and the command menu opens it there. */
 export function resolveContextDockItems(
   views: readonly Pick<WorkspaceViewSpec, "id" | "title" | "icon" | "order" | "dock">[],
 ): ContextDockItem[] {

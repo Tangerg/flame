@@ -10,7 +10,6 @@ type PopupProps = ComponentProps<typeof PopoverPrimitive.Popup>;
 interface PopoverContentBaseProps {
   children: ReactNode;
   className?: string;
-  /** `options` when the popover is a list to choose from, which takes the menu's shell. */
   surface?: "panel" | "options";
   side?: PositionerProps["side"];
   align?: PositionerProps["align"];
@@ -54,7 +53,6 @@ function PopoverContent({
 }
 
 const styles = stylex.create({
-  // The panel is as wide as what it is anchored to, less the inset its own edges want.
   matchAnchor: {
     width: "calc(var(--anchor-width) - calc(var(--spacing) * 4))",
     maxHeight: "min(320px, var(--available-height))",
@@ -66,7 +64,6 @@ const styles = stylex.create({
 interface AnchoredPanelProps {
   open: boolean;
   onOpenChange?: (open: boolean) => void;
-  /** What to sit above. A ref, because the anchor mounts after the panel's first render. */
   anchor: PositionerProps["anchor"];
   children: ReactNode;
   className?: string;
@@ -75,17 +72,6 @@ interface AnchoredPanelProps {
   "aria-label"?: string;
 }
 
-/**
- * A panel the caller opens, over an element it owns no trigger for.
- *
- * The composer's suggestion lists are this shape: typing opens them, and focus must stay in the
- * textarea because what drives the selection is `aria-activedescendant` on the input, not focus
- * in the list. Hence `initialFocus={false}`.
- *
- * It portals because it has to. Rendered as a child of the composer surface — which clips to its
- * own corner with `overflow: hidden` — a panel placed above that surface paints nothing at all,
- * which is exactly what the file-mention popup did.
- */
 function AnchoredPanel({
   open,
   onOpenChange,

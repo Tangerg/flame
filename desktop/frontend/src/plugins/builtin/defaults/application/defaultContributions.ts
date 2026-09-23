@@ -15,8 +15,6 @@ export interface DefaultCommandRuns {
   nextSession: CommandRun;
 }
 
-// The tool-window accent set. Each `dark` value is the hue as the language states it; `light`
-// is the same hue pulled down until it clears 4.5:1 as text on the light scheme's chrome.
 export const DEFAULT_ACCENTS: AccentSpec[] = [
   {
     id: "blue",
@@ -98,8 +96,6 @@ export function defaultStaticCommands(runs: DefaultCommandRuns): CommandSpec[] {
       run: runs.newChat,
     },
     {
-      // Closes the dock's view if one is open, otherwise leaves the session —
-      // which stays in the Work Index. "Close chat" implied it was going away.
       id: "workspace.close-focused",
       label: "command.closeFocused",
       combo: "Mod+W",
@@ -111,8 +107,6 @@ export function defaultStaticCommands(runs: DefaultCommandRuns): CommandSpec[] {
       combo: "Mod+L",
       run: runs.focusComposer,
     },
-    // The window has no address bar and no back button, so these two are the
-    // only way to reach the history the location now records.
     {
       id: "history.back",
       label: "command.historyBack",
@@ -125,8 +119,6 @@ export function defaultStaticCommands(runs: DefaultCommandRuns): CommandSpec[] {
       combo: "Mod+]",
       run: runs.historyForward,
     },
-    // One step out from history's own pair, which is where the reference puts them too:
-    // `Mod+[`/`]` moves through where you have been, `Mod+Shift+[`/`]` through what is open.
     {
       id: "session.previous",
       label: "command.previousSession",

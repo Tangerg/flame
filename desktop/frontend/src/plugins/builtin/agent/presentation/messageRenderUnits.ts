@@ -3,9 +3,6 @@ import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { isQuestionTool } from "../domain/toolCategory";
 import { isReadOnlyTool } from "./toolPresentation";
 
-// Carried on the unit rather than recomputed by the renderer: the planner already asks the
-// same question to decide what to fold, and two places deriving one rule drift apart.
-// A `wave` needs no flag — it exists only because an answer followed it.
 type Superseded = { superseded: boolean };
 
 export type MessageRenderUnit =
@@ -13,8 +10,6 @@ export type MessageRenderUnit =
   | ({ kind: "toolGroup"; tools: ToolCall[] } & Superseded)
   | { kind: "wave"; units: MessageRenderUnit[] };
 
-// Approvals and questions are NOT process even though they arrive mid-turn: they ask the
-// reader for something, and folding away a request for a decision ends the turn in silence.
 function isProcess(block: ContentBlock): boolean {
   return block.kind === "reasoning" || block.kind === "tool";
 }
@@ -24,23 +19,12 @@ interface PositionedBlock {
   index: number;
 }
 
-/**
- * Plans one message's blocks into the units the transcript renders.
- *
- * Every run of process blocks that already has prose after it folds into a single `wave`,
- * so a long turn reads as work · answer · work · answer rather than as everything the agent
- * ever did at one weight. The run still in flight is NEVER folded — that is the one the
- * reader is watching.
- */
 const EMPTY_DELEGATING: ReadonlySet<string> = new Set();
 
 export function planRenderUnits(
   blocks: ContentBlock[],
   toolCalls: Record<string, ToolCall>,
   answerFollows = false,
-  /** Tool calls that spawned a Run. Their narrative hangs off the row, so folding one into a
-   *  group of glances takes the sub-agent — its reply, its status and any decision it is
-   *  waiting on — out of the transcript entirely. */
   delegating: ReadonlySet<string> = EMPTY_DELEGATING,
 ): MessageRenderUnit[] {
   const hasQuestion = blocks.some((block) => block.kind === "question");
@@ -60,8 +44,6 @@ export function planRenderUnits(
       delegating,
     );
     const last = wave[wave.length - 1]!;
-    // Two units minimum: a run that already plans to one row folds on its own, and
-    // wrapping it would only add a level to open through.
     if (answered[last.index] && inner.length >= 2) units.push({ kind: "wave", units: inner });
     else units.push(...inner);
     wave = [];
@@ -80,11 +62,6 @@ export function planRenderUnits(
   return units;
 }
 
-// Walks BACKWARDS: the question is about what comes after each block. A block must carry
-// TEXT to count — `item.started` creates the answer's block before a token exists, so
-// treating its presence as the answer folds the thinking away the instant the model opens
-// its reply, which for providers that stream reasoning and prose from overlapping items is
-// the whole time it is thinking.
 function answeredAfter(blocks: ContentBlock[], answerFollows: boolean): boolean[] {
   const answered: boolean[] = Array.from({ length: blocks.length }, () => false);
   let seen = answerFollows;
@@ -129,17 +106,10 @@ function planWithinWave(
 
   for (const item of positioned) {
     const tool = toolOf(item.block, toolCalls);
-    // The fold keeps both facts while a call waits — the ToolCall is the durable operation,
-    // the approval block the actionable interruption — but the transcript exposes ONE
-    // request surface. Matched only while both are pending, so the historical tool row
-    // returns as soon as the decision settles.
     if (tool && approvalOwnedToolCallIds.has(tool.id)) {
       flushReads();
       continue;
     }
-    // Checked AHEAD of grouping: a question's own tool is side-effect-free (it IS the
-    // interrupt), so it reads as a glance and would be folded into a group instead of
-    // dropped in favour of the question card.
     if (
       tool &&
       hasQuestion &&
@@ -150,10 +120,6 @@ function planWithinWave(
       flushReads();
       continue;
     }
-    // A delegation is read-only by safety class and is not a glance: it owns a whole
-    // sub-agent below it. Folded in with the reads it became one line of a "2 calls" row and
-    // took the sub-agent with it, approval and all — which only ever happened once a turn
-    // delegated TWICE, because a lone read never reaches the two a group needs.
     if (tool && isReadOnlyTool(tool) && !delegating.has(tool.id)) {
       reads.push(item);
       continue;
@@ -189,8 +155,6 @@ function toolOf(block: ContentBlock, toolCalls: Record<string, ToolCall>): ToolC
   return block.kind === "tool" ? toolCalls[block.toolCallId] : undefined;
 }
 
-// Counts reasoning as a step, not just tool calls: a wave of four commands and two
-// conclusions holds six things, and a count of four under-reports what opening it reveals.
 export function waveStepCount(units: readonly MessageRenderUnit[]): number {
   let steps = 0;
   for (const unit of units) {
@@ -201,8 +165,6 @@ export function waveStepCount(units: readonly MessageRenderUnit[]): number {
   return steps;
 }
 
-// Lives beside `waveStepCount` because the planner is the only thing that knows a wave's
-// members without walking blocks a second time.
 export function waveToolCalls(
   units: readonly MessageRenderUnit[],
   toolCalls: Record<string, ToolCall>,

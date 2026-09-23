@@ -7,9 +7,6 @@ import {
 
 export type UiTypeLadder = Readonly<Record<UiTypeStep, number>>;
 
-// Floors matter at the small end: ratio alone sinks `ui-2xs` to 8px at base 11. `prose` reads
-// at the interface size, as Codex and zcode both set it. `aboveProse` is the invariant a ratio
-// cannot hold on its own at the small end, where two steps can round to the same pixel.
 const STEPS: Readonly<
   Record<
     UiTypeStep,
@@ -31,9 +28,6 @@ export function uiTypeLadder(basePx: number | null | undefined): UiTypeLadder {
   const ladder = {} as Record<UiTypeStep, number>;
   for (const step of UI_TYPE_STEPS) {
     const { ratio, floorPx } = STEPS[step];
-    // A step that overshoots the base may never fall under it; a step that undershoots keeps
-    // its own floor so the small end stays legible. There is no ladder-wide ceiling: the base
-    // is already clamped to [MIN, MAX], so every step is bounded by its own ratio.
     const { aboveProse } = STEPS[step];
     const floor = Math.max(
       floorPx,
@@ -45,7 +39,6 @@ export function uiTypeLadder(basePx: number | null | undefined): UiTypeLadder {
   return ladder;
 }
 
-/** Names spelled out so a grep for a token finds both its writer and its readers. */
 export function uiTypeLadderCssVariables(
   basePx: number | null | undefined,
 ): Readonly<Record<string, string>> {

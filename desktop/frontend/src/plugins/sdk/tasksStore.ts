@@ -1,16 +1,13 @@
 import { nanoid } from "nanoid";
 import { create } from "zustand";
 
-/** Idempotent after a terminal transition: extra calls are no-ops. */
 export interface TaskHandle {
-  /** `progress` is 0..1, or null for indeterminate. */
   update: (patch: { progress?: number | null; message?: string | null }) => void;
   succeed: (message?: string) => void;
   fail: (error: unknown) => void;
 }
 
 export interface TaskStartOptions {
-  /** Pass an id to allow cross-call updates; defaults to a generated one. */
   id?: string;
   label: string;
   message?: string;
@@ -22,14 +19,11 @@ type TaskStatus = "running" | "succeeded" | "failed";
 interface TaskEntry {
   id: string;
   label: string;
-  /** 0..1, or null for indeterminate. */
   progress: number | null;
   message: string | null;
   status: TaskStatus;
-  /** Populated when `status === "failed"`. */
   error?: string;
   startedAt: number;
-  /** Set on terminal transitions; the store removes the entry shortly after. */
   settledAt?: number;
 }
 
@@ -69,8 +63,6 @@ export const useTasksStore = create<TasksState & TasksActions>((set) => ({
     }),
 }));
 
-/** Object identity is the task generation; wall time is presentation data and cannot grant
- *  a handle mutation rights. */
 class TaskLifecycle implements TaskEntry {
   readonly id: string;
   readonly label: string;
@@ -127,8 +119,6 @@ export function startTask(pluginName: string, opts: TaskStartOptions): TaskHandl
 
   const settle = (transition: (task: TaskLifecycle) => boolean): void => {
     if (!useTasksStore.getState().mutate(task, () => transition(task))) return;
-    // The timer removes only THE settle it was armed for: a restarted task reusing this id
-    // must not be deleted mid-flight by the previous settle's stale timer.
     window.setTimeout(() => {
       useTasksStore.getState().remove(task);
     }, TASK_LINGER_MS);

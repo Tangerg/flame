@@ -1,9 +1,3 @@
-// Started as ONE Host transaction, with service contracts resolved from each plugin's
-// `requires`/`provides` — this array's order is only a tie-breaker between independent
-// plugins, not dependency semantics.
-//
-// Last-write-wins slots ARE array-order driven, so keep destructive overrides later.
-
 import type { AnyPlugin } from "dougong";
 import appearance from "./settings/appearance";
 import approvalsPane from "./settings/approvals";
@@ -119,8 +113,6 @@ const infrastructure: AnyPlugin[] = [
   mainRoute,
 ];
 
-// Protocol content blocks render directly in the message module; there is deliberately no
-// second renderer registry.
 const messageRendering: AnyPlugin[] = [
   defaultRoles,
   messageCopy,
@@ -129,10 +121,6 @@ const messageRendering: AnyPlugin[] = [
   messageFeedback,
 ];
 
-// Tool rendering — previews, header actions, icon glyph map.
-//
-// Exported so the visual fixture installs the same complete rendering registry as
-// production; a hand-picked preview list would drift and render valid tools as JSON.
 export const toolPreviewPlugins: AnyPlugin[] = [
   shellPreview,
   applyPatchPreview,
@@ -159,8 +147,6 @@ export const toolRenderingPlugins: AnyPlugin[] = [
 const composer: AnyPlugin[] = [
   composerBootstrap,
   slashHints,
-  // After slashHints so a user recipe named like a built-in hint wins the
-  // shared slash key (it carries a real run handler; the hint is display-only).
   recipesSlash,
   composerToolbar,
   composerRunOptions,

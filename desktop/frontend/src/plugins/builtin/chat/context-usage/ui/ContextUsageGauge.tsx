@@ -52,12 +52,7 @@ export function ContextUsageGauge() {
   );
 
   return (
-    <RichTooltip
-      trigger={trigger}
-      side="top"
-      sideOffset={4}
-      styles={cu.panel}
-    >
+    <RichTooltip trigger={trigger} side="top" sideOffset={4} styles={cu.panel}>
       <div {...stylex.props(vocab.column, gap.s0_5, ct.centre)}>
         <span {...stylex.props(vocab.muted)}>{t("context.usage.label")}</span>
         <span {...stylex.props(readout.percent >= 50 && vocab.muted)}>

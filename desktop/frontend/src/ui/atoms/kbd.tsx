@@ -3,16 +3,6 @@ import type { ComponentPropsWithoutRef } from "react";
 import { cn } from "@/lib/classNames";
 import { color, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
 
-/**
- * A shortcut, in the two shapes the product actually shows it.
- *
- * `cap` is the key: a filled, padded plate sized to be tapped by the eye. `inline` is the
- * same shortcut spoken quietly inside a row that already has its own weight.
- *
- * `inline` exists because a call site was cancelling nine of the cap's properties one by one
- * to get it. Under StyleX those overrides are silently discarded: a generated selector carries
- * `:not(#\#)` specificity that no single utility class can outrank.
- */
 type KbdVariant = "cap" | "inline";
 
 const styles = stylex.create({

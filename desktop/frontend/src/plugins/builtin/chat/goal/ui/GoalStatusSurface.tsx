@@ -5,13 +5,8 @@ import { Button, IconButton, TextEditorDialog, vocab } from "@/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
 import { color } from "@/styles/tokens.stylex";
 
-// The Goal tray's own material: an edge on three sides and the composer's backdrop. Its bottom
-// edge is absent and it overlaps the composer by a pixel, because the two are one surface where
-// they meet.
 const goalTray = stylex.create({
   material: {
-    // Stated here because the composer centres its children and the shared surface deliberately
-    // holds no width.
     width: "100%",
     marginBottom: "-1px",
     borderTopWidth: "var(--control-edge-width)",
@@ -51,9 +46,6 @@ const gs = stylex.create({
   },
   glyph: { height: "var(--icon-sm)", width: "var(--icon-sm)" },
   bigGlyph: { height: "var(--icon-lg)", width: "var(--icon-lg)" },
-  // The objective is CONTENT, so when it cannot be edited it keeps its ink and its cursor:
-  // the row is telling you what the goal is, not offering a control that is switched off. It
-  // takes no plate, and only while it IS editable does it answer the pointer.
   summary: {
     minHeight: space.s6,
     textDecorationLine: "underline",
@@ -62,10 +54,6 @@ const gs = stylex.create({
     opacity: { ':is(:disabled, [aria-disabled="true"])': 1 },
   },
   objective: { marginInlineStart: space.s1 },
-  // WCAG 2.5.8 lets a target under 24px pass on SPACING, which is how the 22px control step
-  // clears it everywhere else. Three of them at 8px beside a full-width summary target did
-  // not: axe measured 15.6px and 21.6px of safe clickable space against the 24px it needs.
-  // The step stays 22px — it is not the thing that is wrong — and this row gives it room.
   actions: {
     display: "flex",
     flexShrink: 0,
@@ -108,9 +96,6 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
     fallback: string,
   ) => {
     if (commandInFlight.current) return false;
-    // A runtime that will not take commands is a FAILURE to report, not a reason to go quiet.
-    // The three icon controls are disabled while it is away, but the objective itself stays
-    // live — it is content — so the editor it opens is reachable and its Save lands here.
     if (!runtimeCommandsAvailable()) {
       notifyError(fallback);
       return false;
@@ -170,9 +155,6 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             disabled={!canEdit}
             pending={pending !== null}
             flex="fill"
-            // The objective is the one thing on this row with no room: measured at 155px in a
-            // 480px string, so two thirds of what the agent is pursuing was unreadable and the
-            // only way to see it was to open the editor.
             title={goal.objective}
             className={stylex.props(gs.summary).className}
             onClick={openEditor}

@@ -27,8 +27,6 @@ describe("toolCardModel", () => {
       tool({ status: "err", error: "permission denied", command: "rm -rf /" }),
     );
 
-    // The row still says WHICH call failed. The error used to take this slot, which is a
-    // single truncating line — so it hid the subject and could not be read in full itself.
     expect(model.detail).toMatchObject({ value: "rm -rf /" });
     expect(model.error).toBe("permission denied");
   });
@@ -44,14 +42,11 @@ describe("toolCardModel", () => {
     );
 
     expect(one.detail).toMatchObject({ kind: "path", value: "a.ts" });
-    // The "3 files" count is beside it and the disclosure names them all; one of the three in
-    // the subject slot reads as THE file.
     expect(many.detail).toBeUndefined();
     expect(many.metaItems.some((item) => item.id === "files")).toBe(true);
   });
 
   it("keeps a detail that is not one of the files", () => {
-    // No `fnKind` is a `machine` detail — a pattern, not one of the files it searched.
     const grep = toolCardModel(t, tool({ name: "grep", fn: "TODO", files: 3 }));
 
     expect(grep.detail).toMatchObject({ value: "TODO" });

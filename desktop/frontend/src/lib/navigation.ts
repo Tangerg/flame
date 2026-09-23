@@ -1,19 +1,10 @@
-// OWNERSHIP RULE: the location owns where you ARE, stores own what you KEPT. A transition
-// may read memory to seed a navigation; nothing writes memory back into the location, and
-// nothing keeps a second copy of these location fields.
-
 import { createSingletonPort } from "./ports/singletonPort";
 
 export interface AppLocation {
-  /** Active session id; "" when none is selected. */
   session: string;
-  /** A workspace view promoted to the whole content card; null is the chat. */
   view: string | null;
-  /** The dock destination beside the chat; null means the dock is collapsed. */
   dock: string | null;
-  /** The open settings pane; null when settings are closed. */
   settings: string | null;
-  /** Selected delegated Run within the active session. */
   subagent: string | null;
 }
 
@@ -29,18 +20,8 @@ export type LocationPatch = Partial<AppLocation>;
 
 export interface Navigator {
   get(): AppLocation;
-  /** Select ONE field: the result is compared by identity, so returning the whole location
-   *  re-renders on every navigation. */
   use<T>(select: (location: AppLocation) => T): T;
   subscribe(listener: (location: AppLocation, previous: AppLocation) => void): () => void;
-  /**
-   * Omitted fields keep their value; `null` clears one. `replace` is for corrections that
-   * were never a place the user went.
-   *
-   * Do NOT wrap in `startTransition`: React de-opts a transition to a SYNCHRONOUS render
-   * when the update arrives through `useSyncExternalStore`, which is how the location and
-   * the transcript both reach a component. Nothing defers and the extra render is wasted.
-   */
   go(patch: LocationPatch, options?: { replace?: boolean }): void;
   back(): void;
   forward(): void;

@@ -42,15 +42,11 @@ export async function rollbackSessionToBeforeRun(
   const owner = agentCommandOwner();
   const lease = owner.beginSessionRollback(sessionId);
   if (!lease) return { status: "inFlight" };
-  // One captured gateway owns both the pre-command inspection and the write. A
-  // replacement between them retires the lease instead of splicing two clients.
   const runtime = agentRuntime();
   try {
     const material = await owner.settle(runtime.loadSessionSnapshot(sessionId));
     owner.assertCurrent();
     if (!material) return { status: "unavailable" };
-    // This is a pre-command inspection, not a mounted projection commit. Its
-    // associated read models must not replace what the UI currently owns.
     const view = projectAgentSessionSnapshot(material.snapshot);
     const roots = selectRootRuns(view);
     const index = roots.findIndex((run) => run.id === runId);
@@ -61,9 +57,6 @@ export async function rollbackSessionToBeforeRun(
       notifyInfo(t("session.restore.noCheckpoint"), {
         source: "session",
       });
-      // Protocol requires a concrete checkpoint for files/both and forbids
-      // silently degrading either intent to history-only. Omitting both fields
-      // here would mean "drop all history", the opposite of files-only.
       return { status: "unavailable" };
     }
     const result = await owner.settle(

@@ -3,29 +3,6 @@ import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/classNames";
 import { radius, space, surface } from "@/styles/tokens.stylex";
 
-/**
- * A plane, named by what it IS rather than assembled from fill, corner and cast.
- *
- * A closed set rather than fill, corner and cast as three props: those would spell eight planes
- * of which half mean nothing (a fill-less plane with a popover cast), and a call site cannot
- * cancel part of a StyleX plane from outside. A plane's identity is one decision.
- *
- * `group` has no fill at all and states its edge, which is why it may never also carry a cast —
- * that is the double edge DESIGN.md §5 forbids. `request` and `prompt` sit inside the
- * transcript, where every block is a bubble.
- *
- * `card` and `request` state an edge TOO, because a fill alone does not make a plane. They read
- * from `--app-card-surface`, and a theme is free to set that to the same value as the canvas —
- * the light theme does, and Codex's light theme does the same thing, because in light mode a
- * raised plane has nowhere brighter to go. With `--shadow-surface-card: none` under every
- * shipped visual style, the fill was the only separation on offer and in light it was worth
- * zero: measured `rgb(255,255,255)` on `rgb(255,255,255)`, no border, no shadow, so an approval
- * had no boundary and its buttons read as loose page furniture.
- *
- * The edge is what does not depend on a delta this atom cannot see. A visual style that ever
- * gives `--shadow-surface-card` a real cast has to turn this off in the same change, or it is
- * the double edge again — `prompt` is the standing example, which is why it has no edge here.
- */
 type SurfaceVariant = "card" | "group" | "request" | "prompt";
 
 const edge = {

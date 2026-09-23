@@ -21,25 +21,11 @@ const ROW_STYLE = {
   added: { tone: cs.rowAdded, meta: cs.metaAdded, sign: "+" },
   deleted: { tone: cs.rowDeleted, meta: cs.metaDeleted, sign: "−" },
   context: { tone: null, meta: cs.metaContext, sign: " " },
-  // The keys are the contract; `unknown` for the styles because `satisfies` checks excess
-  // properties, and what StyleX hands back is not worth restating here.
 } as const satisfies Record<
   "added" | "deleted" | "context",
   { sign: string; tone: unknown; meta: unknown }
 >;
 
-/**
- * The words that changed inside a line the row already tinted.
- *
- * A fill, which is what every diff a reader has seen uses, so it needs no learning: the mark is
- * the same hue as the row, one step up, and the eye reads "more of this" rather than a second
- * kind of mark. The rounding keeps a run of words one shape instead of a fence of boxes.
- *
- * The alpha is the largest that leaves this theme's syntax colours at AA on the result — the
- * ceiling is set by the dimmest pair, not by how the mark looks on plain text. See
- * `diffWordMark.visual.spec.ts`, which measures every rendered span against its own composited
- * background rather than trusting these numbers to stay true when a token moves.
- */
 const wordMark = (fill: string) => `background-color:${fill};border-radius:3px`;
 const WD_DEL_STYLE = wordMark("var(--color-diff-deleted-word)");
 const WD_ADD_STYLE = wordMark("var(--color-diff-added-word)");
@@ -80,10 +66,7 @@ function computeWordRanges(rows: WorkspaceDiffRow[]): Map<WorkspaceDiffRow, [num
 }
 
 const dv = stylex.create({
-  /** A diff line wraps rather than scrolls, and breaks mid-token when a token is longer than
-   *  the pane — a minified line or a base64 blob otherwise widens the whole table. */
   cell: { minWidth: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
-  /** Unhighlighted code is the fallback, and reads a step back so the wait is legible. */
   plain: { color: color.fgSoft },
 });
 

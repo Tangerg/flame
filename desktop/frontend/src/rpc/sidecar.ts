@@ -27,9 +27,6 @@ export interface SidecarClient {
   readiness(signal?: AbortSignal): Promise<ReadinessStatus>;
 }
 
-// A new sidecar in Runtime's generated endpoint set must acquire an SDK method
-// in this object or TypeScript fails. The values keep the public method names
-// explicit so product-consumer analysis can resolve typed callsites.
 const SIDECAR_METHODS = {
   info: "info",
   liveness: "liveness",

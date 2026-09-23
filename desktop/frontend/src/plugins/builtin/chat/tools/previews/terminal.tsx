@@ -33,8 +33,6 @@ function CommandShapePreview({ tool }: ToolPreviewProps) {
 export const shellPreview = definePlugin({
   name: "flame.builtin.shell",
   setup(ctx) {
-    // Backgrounding is an ARGUMENT of `shell` (run_in_background), not a tool of its own —
-    // read_shell_output / stop_shell are how you then read and stop it.
     for (const preview of toolPreviews({
       shell: ShellOutput,
       read_shell_output: ShellOutput,

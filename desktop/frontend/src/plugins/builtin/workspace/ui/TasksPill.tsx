@@ -5,9 +5,6 @@ import { Icon, IconButton, Popover, ProgressBar, SectionLabel, toneInk, vocab } 
 import type { TaskReadoutStatus, TaskReadoutTask } from "../application/ports/taskReadoutPort";
 import { taskProgressPercent, useTaskReadout } from "../application/taskReadout";
 
-// The icon reports the status, and it inherits the control's ink — so the tone is the button's
-// rather than a class on the glyph. `running` has no tone: it is the ordinary state, and the
-// chrome's own ink is what ordinary looks like.
 const STATUS_ICON: Record<
   TaskReadoutStatus,
   { name: "spark" | "check" | "x"; tone?: "accent" | "negative" }
@@ -17,8 +14,6 @@ const STATUS_ICON: Record<
   failed: { name: "x", tone: "negative" },
 };
 
-// The task list's glyph column is 18px wide — the icon plus its gap — so a message under a
-// label starts where the label does rather than under the glyph.
 const GLYPH_COLUMN = "18px";
 
 const p = stylex.create({

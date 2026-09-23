@@ -1,5 +1,3 @@
-// The one place all three OTel signals are wired onto the global providers.
-
 import { metrics } from "@opentelemetry/api";
 import { logs } from "@opentelemetry/api-logs";
 import {
@@ -20,7 +18,6 @@ import { LocalLogProcessor, LocalMetricExporter, LocalSpanProcessor } from "./si
 export interface ObservabilityOptions {
   serviceName: string;
   serviceVersion: string;
-  /** OTLP/HTTP base URL. When set, all three signals are ALSO exported there. */
   otlpEndpoint?: string;
 }
 
@@ -29,7 +26,7 @@ const LOCAL_METRIC_INTERVAL_MS = 500;
 let shutdownFn: (() => Promise<void>) | null = null;
 
 export async function setupObservability(opts: ObservabilityOptions): Promise<void> {
-  if (shutdownFn) return; // idempotent — one install per session
+  if (shutdownFn) return;
 
   const resource = resourceFromAttributes({
     "service.name": opts.serviceName,
@@ -56,8 +53,6 @@ export async function setupObservability(opts: ObservabilityOptions): Promise<vo
   if (otlp) readers.push(otlp.metricReader);
   const meterProvider = new MeterProvider({ resource, readers });
   metrics.setGlobalMeterProvider(meterProvider);
-  // The metrics API has no proxy meter: instruments created before registration are a
-  // permanent no-op, so lib/metrics builds them here rather than at module load.
   bindMetricInstruments();
 
   const logProcessors: LogRecordProcessor[] = [new LocalLogProcessor()];
@@ -85,11 +80,8 @@ interface OtlpBundle {
   logProcessor: LogRecordProcessor;
 }
 
-// Batch processors, not simple/sync: high volume must not become one network call per span.
 async function loadOtlp(endpoint: string): Promise<OtlpBundle> {
   const base = endpoint.replace(/\/$/, "");
-  // Only the exporter packages are dynamic; the Batch*Processor wrappers are already in
-  // this chunk, so importing them dynamically would be a no-op split.
   const [traceExp, metricExp, logExp] = await Promise.all([
     import("@opentelemetry/exporter-trace-otlp-http"),
     import("@opentelemetry/exporter-metrics-otlp-http"),

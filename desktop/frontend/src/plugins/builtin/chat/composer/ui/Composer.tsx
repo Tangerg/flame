@@ -46,8 +46,6 @@ export function Composer({
   acceptsImages,
 }: Props) {
   const t = useT();
-  // What both suggestion panels are anchored to. They portal, so this ref is the only thing
-  // tying them to the composer's position — there is no positioned ancestor to inherit.
   const surfaceRef = useRef<HTMLDivElement>(null);
   const recordHistory = useRecordComposerHistory();
   const {

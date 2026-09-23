@@ -132,8 +132,6 @@ test("the segmented chip stays concentric inside its track at every radius", asy
     await page.locator("html[data-visual-ready]").waitFor();
     await page.waitForTimeout(300);
 
-    // Named, not positional: this used to take the first horizontal thing on the page, so
-    // removing an unrelated row from Settings pointed it at a pill with no track.
     const measured = await page
       .locator('[data-slot="segmented"]')
       .first()

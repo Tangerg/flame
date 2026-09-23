@@ -18,8 +18,6 @@ interface GrepPreviewRow {
   text: string;
 }
 
-// The runtime projects every grep output mode into one `hits` envelope, so nothing here
-// has to guess which mode produced the rows.
 function inlineGrepRows(result: string | undefined): GrepPreviewRow[] | undefined {
   const hits = searchToolResult(result)?.hits;
   if (!Array.isArray(hits)) return undefined;

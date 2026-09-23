@@ -8,7 +8,6 @@ import { ImagePreviewGallery } from "../ImagePreviewGallery";
 import { radius } from "@/styles/tokens.stylex";
 
 const ib = stylex.create({
-  // The whole thumbnail is the control, so the box is the image and nothing else.
   frame: {
     display: "block",
     cursor: "zoom-in",

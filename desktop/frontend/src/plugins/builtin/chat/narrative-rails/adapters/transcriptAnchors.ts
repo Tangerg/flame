@@ -4,7 +4,6 @@ const TURN_ANCHOR_ATTR = "data-turn-id";
 const TURN_ROLE_ATTR = "data-turn-role";
 const TURN_SELECTOR = `[${TURN_ANCHOR_ATTR}]`;
 
-/** Fraction of the scroller's height at which a turn becomes "the one being read". */
 const READING_LINE = 0.35;
 
 function scroller(): HTMLElement | null {
@@ -15,7 +14,6 @@ function turnElements(root: HTMLElement): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>(TURN_SELECTOR)];
 }
 
-/** `share` is one EXCHANGE's extent as a fraction of the longest one. */
 interface TurnExtent {
   id: string;
   share: number;
@@ -27,9 +25,6 @@ export interface AnchoredTurn {
   top: number;
 }
 
-/** Generic over `{id, role}` so the rail folds its MESSAGES through this same function: two
- *  callers each filtering for `role === "user"` can disagree about where an exchange begins,
- *  and did. A transcript not starting with a user turn still gets a first exchange. */
 export function foldExchanges<T extends { id: string; role: string | null }>(
   turns: readonly T[],
 ): T[] {
@@ -51,13 +46,10 @@ function sameMap(a: TranscriptMap, b: TranscriptMap): boolean {
   if (a.visibleTurnId !== b.visibleTurnId || a.turns.length !== b.turns.length) return false;
   return a.turns.every((turn, i) => {
     const other = b.turns[i]!;
-    // Quantised: a streaming answer grows a pixel a frame, which moves a tick by nothing.
     return turn.id === other.id && Math.round(turn.share * 20) === Math.round(other.share * 20);
   });
 }
 
-/** ONE hook for both facts: two would install two scroll listeners and force layout twice a
- *  frame. rAF coalescing keeps it to one measurement per frame. */
 export function useTranscriptMap(): TranscriptMap {
   const [map, setMap] = useState<TranscriptMap>(EMPTY);
 
@@ -70,8 +62,6 @@ export function useTranscriptMap(): TranscriptMap {
       frame = 0;
       const rootTop = root.getBoundingClientRect().top;
       const line = rootTop + root.clientHeight * READING_LINE;
-      // Same VIEWPORT coordinates as the `getBoundingClientRect().top` reads below: mixing
-      // in content space makes the last exchange win `tallest` and flatten every other.
       const contentBottom = rootTop + root.scrollHeight - root.scrollTop;
       const anchored = turnElements(root).map((element) => ({
         id: element.getAttribute(TURN_ANCHOR_ATTR) ?? "",
@@ -93,7 +83,6 @@ export function useTranscriptMap(): TranscriptMap {
       }
 
       const next: TranscriptMap = {
-        // The first exchange owns the space above the reading line.
         visibleTurnId: current ?? measured[0]?.id ?? null,
         turns: measured.map((turn) => ({ id: turn.id, share: turn.height / tallest })),
       };
@@ -105,7 +94,6 @@ export function useTranscriptMap(): TranscriptMap {
 
     measure();
     root.addEventListener("scroll", schedule, { passive: true });
-    // Turn count and heights both change while a run streams; neither fires a scroll event.
     const observer = new ResizeObserver(schedule);
     observer.observe(root);
     const mutations = new MutationObserver(schedule);

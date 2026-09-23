@@ -1,6 +1,3 @@
-// The dock width is a RATIO, never a px measure: the px changes with every window resize,
-// and CSS re-derives it from the ratio with no React render (`lib/shellGeometry`).
-
 import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -22,7 +19,6 @@ const shellLayoutPersistSchema = z.object({
   dockWidthRatio: z.number().min(0).max(1).nullable(),
 });
 
-/** Held equal at compile time — see `Paired`. */
 const _paired: Paired<ShellLayoutState, z.infer<typeof shellLayoutPersistSchema>> = true;
 void _paired;
 

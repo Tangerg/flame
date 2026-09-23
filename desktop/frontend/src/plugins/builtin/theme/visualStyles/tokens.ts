@@ -77,9 +77,6 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "button-radius": "var(--shape-sm)",
   "field-radius": "var(--shape-md)",
   "segmented-radius": "var(--shape-md)",
-  // The chip is inside the track, so its corner is the track's corner set back by the border
-  // and padding between them rather than a rung of its own. See globals.css for what the two
-  // independent rungs cost.
   "segment-radius":
     "max(0px, calc(var(--segmented-radius) - var(--control-edge-width) - var(--spacing) * 0.5))",
   "surface-card-radius": "var(--shape-md)",
@@ -88,7 +85,6 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "floating-tip-radius": "var(--shape-md)",
   "dock-tab-radius": "var(--shape-lg)",
 
-  // Every height is EVEN so a centred 1px rule never lands on a half pixel.
   "control-height-xs": "22px",
   "control-height-sm": "26px",
   "control-height-md": "30px",
@@ -97,9 +93,6 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "dock-tab-height": "28px",
   "surface-header-height": "46px",
   "control-edge-width": "1px",
-  // One device pixel on a 2x panel. The product draws two edge weights on purpose: a control
-  // states its bounds at `control-edge-width`, and something that only wants to be separated
-  // from what it sits on takes this one, which at 1px would become the heaviest line on screen.
   "hairline-width": "0.5px",
   "composer-edge-width": "var(--hairline-width)",
 
@@ -124,8 +117,6 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "composer-tray-edge-color": "color-mix(in oklab, var(--color-border) 80%, transparent)",
   "app-floating-surface": "color-mix(in oklab, var(--app-content-surface) 90%, transparent)",
   "floating-backdrop": "blur(8px) saturate(1.4)",
-  // GEOMETRY ONLY: declared on :root, so a var() here resolves there, where the shell's live
-  // boundary variables do not exist. The shell names the colour on the element.
   "app-card-edge": "inset 0.5px 0 0 0",
   "app-pane-split": "inset 0.5px 0 0 0",
   "app-pane-split-end": "inset -0.5px 0 0 0",
@@ -135,7 +126,6 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "seam-line": "var(--color-border-soft)",
 
   "shadow-control": "none",
-  // Codex's composer elevation: a close contact shadow and a very wide, faint lift.
   "shadow-composer-depth":
     "0 2px 8px 0 color-mix(in oklab, var(--shadow-cast) 20%, transparent), 0 4px 80px 8px color-mix(in oklab, var(--shadow-cast) 12%, transparent)",
   "shadow-ring": "0 0 0 0.5px var(--seam-line)",
@@ -156,7 +146,6 @@ export function visualStyleTokens(overrides: Partial<VisualStyleTokens>): Visual
   return { ...WORKBENCH_TOKENS, ...overrides };
 }
 
-/** A style's motion as the custom properties the chrome reads. */
 export function visualStyleMotionTokens(motion: VisualStyleMotion): Record<string, string> {
   const bezier = (value: readonly [number, number, number, number]) =>
     `cubic-bezier(${value.join(", ")})`;

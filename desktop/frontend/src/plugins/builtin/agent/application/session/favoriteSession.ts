@@ -10,8 +10,6 @@ import { agentRuntime } from "../ports/runtimeGateway";
 import { reportSessionError } from "./reportSessionError";
 import { agentCommandOwner, type AgentCommandEffect } from "../agentCommandOwner";
 
-/** Optimistic so the row reorders without waiting for the RPC and refetch; rolls back on
- *  failure. */
 export function useToggleFavorite(): (
   id: string,
   expectedRevision: number,
@@ -21,9 +19,6 @@ export function useToggleFavorite(): (
     const owner = agentCommandOwner();
     const runtime = agentRuntime();
     let effect: AgentCommandEffect | undefined;
-    // Cancel any in-flight sessions refetch before the optimistic write so a
-    // background invalidate (workspace resync / reconnect) started earlier
-    // can't resolve with the old favorite flag and un-flip the star.
     try {
       await owner.settle(queryClient.cancelQueries({ queryKey: [AGENT_SESSIONS_KEY] }));
       owner.assertCurrent();

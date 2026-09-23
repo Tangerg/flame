@@ -1,7 +1,3 @@
-// The read half of the contract whose write half is a `DATA_PROVIDER` contribution. These hooks
-// ARE the registry's read surface, so they live with it rather than in `lib/`, where a
-// utility module would end up depending on the plugin registry.
-
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import type { Query, UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
@@ -141,14 +137,9 @@ export function createDataQuery<T>(key: string): () => UseQueryResult<T> {
 }
 
 export interface ParameterizedQueryOptions<T> {
-  /** Poll cadence derived from the latest data — return a ms interval to keep
-   *  refetching, or false to stop. Use for server state with no push signal
-   *  (e.g. an autonomous goal loop whose server-launched runs the client can't
-   *  observe): poll only while it's live, idle otherwise. */
   refetchInterval?: (data: T | undefined) => number | false;
 }
 
-/** Build a cached read hook whose parameters are part of the cache identity. */
 export function createParameterizedDataQuery<P, T>(
   key: string,
   options?: ParameterizedQueryOptions<T>,
@@ -159,10 +150,6 @@ export function createParameterizedDataQuery<P, T>(
       queryKey: [key, params],
       queryFn: ({ signal }) => dataQueryOwner.load<T, P>(key, params, signal),
       enabled: params !== undefined,
-      // Parameters are resource identity, not presentation state. Reusing the
-      // prior key's value can display and mutate one session/workspace while
-      // the UI already names another. A surface whose parameter variants are
-      // genuinely interchangeable can opt into that behavior in its own hook.
       ...STATIC_QUERY_OPTIONS,
       refetchInterval: interval ? (query) => interval(query.state.data) : undefined,
     });

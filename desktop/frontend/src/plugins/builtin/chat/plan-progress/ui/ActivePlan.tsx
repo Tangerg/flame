@@ -28,8 +28,6 @@ const ap = stylex.create({
     transitionProperty: "color",
     transitionTimingFunction: motionToken.easeState,
   },
-  // The pill floats over the composer's top edge, so the row holds its own measure and the
-  // pill docks to the bottom of it — the surface above must not resize as the plan advances.
   host: {
     position: "relative",
     height: space.s8,
@@ -54,10 +52,6 @@ const ap = stylex.create({
     overflowY: "auto",
   },
   steps: { display: "flex", flexDirection: "column", gap: space.s2 },
-  // The leading belongs to the ROW, not to the text in it. `StepMark` sizes itself to one line
-  // so it can sit on the first one of a step that wraps, which only works while the mark and
-  // the sentence beside it agree on how tall a line is — and they cannot agree if only one of
-  // them is told.
   step: {
     display: "flex",
     maxWidth: "calc(var(--spacing) * 80)",
@@ -66,9 +60,6 @@ const ap = stylex.create({
     gap: space.s2,
     lineHeight: "1rem",
   },
-  // A step wraps rather than truncating: half a step is not a step. Its ink comes from the
-  // tooltip's own vocabulary — `text-on-fg` is the INVERTED ink, for a plate filled with the
-  // foreground colour, and on this surface it rendered at 1.00:1 in both themes.
   stepText: {
     minWidth: 0,
     maxWidth: "calc(var(--spacing) * 72)",
@@ -143,13 +134,7 @@ function PlanPill({
       {...stylex.props(ap.host)}
     >
       <div {...stylex.props(ap.dock)}>
-        <RichTooltip
-          trigger={trigger}
-          side="top"
-          sideOffset={8}
-          delay={0}
-          styles={ap.panel}
-        >
+        <RichTooltip trigger={trigger} side="top" sideOffset={8} delay={0} styles={ap.panel}>
           <ul {...stylex.props(ap.steps)}>
             {steps.map((step) => (
               <li key={step.id} {...stylex.props(ap.step)}>

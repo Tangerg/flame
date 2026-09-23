@@ -9,10 +9,7 @@ import { settingStyles as ss } from "../../kit/settingStyles";
 const a = stylex.create({
   swatchLine: { position: "relative", display: "inline-flex", alignItems: "center", gap: space.s2 },
   hex: { fontFamily: "var(--font-mono)", textTransform: "uppercase", color: color.fg },
-  // `bg-clip-padding` keeps the fill out from under the hairline, so a light colour does not
-  // bleed through the border it is meant to sit inside.
   chip: {
-    // A round chip, so the corner comes from the bundle that carries the shape with it.
     height: "calc(var(--spacing) * 4.5)",
     width: "calc(var(--spacing) * 4.5)",
     borderWidth: "var(--hairline-width)",

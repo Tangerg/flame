@@ -1,20 +1,13 @@
-// Pasted JSON is an EXTERNAL trust boundary (CLAUDE.md §3), so it is validated with Zod
-// before any field is trusted. The accepted shape is LENIENT because different MCP clients
-// emit different subsets; `type` is inferred when absent (command ⇒ stdio, url ⇒ http).
-
 import { z } from "zod";
 import type { MCPServerInput } from "./mcpServerInput";
 import { mcpHandshakeTimeoutFromOptionalSeconds } from "./mcpHandshakeTimeout";
 
-// Split on the FIRST '=', so a value may itself contain one.
 const envSchema = z
   .union([z.record(z.string(), z.string()), z.array(z.string())])
   .optional()
   .transform((env) => {
     if (env === undefined) return undefined;
     if (!Array.isArray(env)) return env;
-    // Via a Map: assigning a pasted name onto an object literal silently drops an
-    // entry called `__proto__`, so that variable would go missing on import.
     const out = new Map<string, string>();
     for (const kv of env) {
       const i = kv.indexOf("=");
@@ -25,7 +18,6 @@ const envSchema = z
   });
 
 const serverSchema = z.object({
-  // A lenient string, NOT an enum, so a novel type value pastes in rather than failing.
   type: z.string().optional(),
   command: z.string().optional(),
   args: z.array(z.string()).optional(),
@@ -33,10 +25,9 @@ const serverSchema = z.object({
   dir: z.string().optional(),
   cwd: z.string().optional(),
   url: z.string().optional(),
-  // A bearer token may arrive bare OR as a Headers "Authorization" entry.
   authorization: z.string().optional(),
   headers: z.record(z.string(), z.string()).optional(),
-  timeout: z.number().optional(), // seconds; 0/absent = unbounded
+  timeout: z.number().optional(),
 });
 
 type ParsedServer = z.infer<typeof serverSchema>;
@@ -46,8 +37,6 @@ function authorizationFrom(s: ParsedServer): string | undefined {
   return raw;
 }
 
-// `undefined` when nothing remains, so an Authorization-only block does not store an
-// empty map.
 function headersExceptAuth(s: ParsedServer): Record<string, string> | undefined {
   if (!s.headers) return undefined;
   const out = new Map<string, string>();
@@ -60,17 +49,9 @@ function headersExceptAuth(s: ParsedServer): Record<string, string> | undefined 
 
 export interface McpImportResult {
   servers: MCPServerInput[];
-  /** Entries whose key was not a wire name, as `from → to`, so the pane can say
-   *  what it renamed rather than letting the difference surface as a mismatch
-   *  later. Empty when every key was already one. */
   renamed: { from: string; to: string }[];
 }
 
-/**
- * The protocol admits `^[a-z0-9][a-z0-9._-]{0,31}$`, while the clients people paste from name
- * servers "Git" or "Brave Search". Shaped here, at the boundary that can still say what
- * happened; passed through, it imports cleanly and fails later at the configure request.
- */
 function wireServerName(name: string): string | null {
   const shaped = name
     .toLowerCase()
@@ -81,10 +62,6 @@ function wireServerName(name: string): string | null {
   return /^[a-z0-9][a-z0-9._-]{0,31}$/.test(shaped) ? shaped : null;
 }
 
-/**
- * Throws on malformed JSON or a server entry that matches neither transport (no command and
- * no url) — the caller surfaces the message.
- */
 export function parseMcpImport(text: string): McpImportResult {
   let raw: unknown;
   try {
@@ -104,7 +81,6 @@ export function parseMcpImport(text: string): McpImportResult {
       throw new Error(`Server "${key}" has no name the runtime can accept`);
     }
     if (name !== key) renamed.push({ from: key, to: name });
-    // Every url-based type collapses onto `streamableHttp`, the one remote transport.
     const type = s.type
       ? s.type === "stdio"
         ? "stdio"

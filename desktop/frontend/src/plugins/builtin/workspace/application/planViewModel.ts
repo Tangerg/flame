@@ -16,8 +16,6 @@ export interface PlanViewModel {
 }
 
 export function usePlanView(): PlanViewModel {
-  // Gated by features.plan so a runtime without it shows an explicit
-  // "unavailable" state rather than a perpetually-empty tab.
   return planViewModel(useWorkspaceCapability("plan"), useSessionPlan());
 }
 

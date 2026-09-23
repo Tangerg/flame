@@ -157,14 +157,11 @@ export function ChatPanel({ onSend }: Props) {
   const [dockAvailable, setDockAvailable] = useState(true);
 
   const hasDockOwner = activeSessionId !== "";
-  // Open with nothing in it is a REAL state — the dock shows its catalogue.
   const showingCatalog = dock.activeViewId === WORKSPACE_DOCK_CATALOG;
   const dockOpen = hasDockOwner && dock.open && (showingCatalog || dock.viewIds.length > 0);
   const ownedDockViewIds = hasDockOwner ? dock.viewIds : [];
   const shellVisible = !isLoading || activeMainView !== null || dock.open;
 
-  // Activity detaches this row when a promoted view hides the conversation.
-  // The observer follows the DOM lifetime, including a later reattachment.
   const dockRowRef = useCallback((row: HTMLDivElement | null) => {
     if (!row) return;
     const reconcile = () => {
@@ -172,7 +169,6 @@ export function ChatPanel({ onSend }: Props) {
       setDockAvailable((current) => (current === available ? current : available));
     };
     reconcile();
-    // Defer resize-driven React layout to avoid cascading observer deliveries.
     let delivered = false;
     let queued = 0;
     const observer = new ResizeObserver(() => {
@@ -263,10 +259,6 @@ export function ChatPanel({ onSend }: Props) {
                 <DockHeader tabs={dockTabs} groups={catalog} openViewIds={openViewIds} />
               )}
               <div {...stylex.props(sh.anchor)}>
-                {/* The same box its siblings get. Left as a plain child it had no flex parent to
-                    size against, so its own `flex-1` decided nothing and it grew to its content:
-                    at the minimum window the catalogue stood 860px tall in a 720px dock, and the
-                    last four destinations were below the fold with nothing to scroll. */}
                 {showingCatalog && (
                   <div {...stylex.props(sh.overlay)}>
                     <DockCatalogPage groups={catalog} openViewIds={openViewIds} />

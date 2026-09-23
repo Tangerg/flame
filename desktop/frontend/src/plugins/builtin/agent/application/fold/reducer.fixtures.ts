@@ -38,14 +38,6 @@ function completeStartedRun(state: AgentSessionView, run: RunRef, segmentId: str
   };
 }
 
-/**
- * Build a complete product-owned Agent envelope for scenario tests.
- *
- * Production folds never infer provenance: they accept AgentEventEnvelope only. This
- * test helper keeps the scenario bodies readable while stamping every payload
- * with an explicit, internally consistent source. Source-sensitive contracts
- * should call `testRunEvent` directly and assert the envelope fields.
- */
 export function testRunEvent(
   state: AgentSessionView,
   event: StreamEvent,
@@ -90,10 +82,6 @@ export function foldTestEvent(
   return reduceAgentEvent(state, testRunEvent(state, event, runId, segmentId));
 }
 
-/**
- * Metrics and the prompt footprint both ride the `segment.finished` frame beside the outcome,
- * and a per-suite copy of this builder is one more place to remember that.
- */
 export const runFinished = (
   outcome: SegmentOutcome,
   metrics: Omit<RunMetrics, "usage"> & { usage?: RunMetrics["usage"] } = noMetrics,

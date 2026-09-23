@@ -80,11 +80,7 @@ function DraftContext({ value, onChange }: { value: string; onChange: (v: string
 function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () => void }) {
   const t = useT();
   return (
-    <div
-      // `media-edge` is the mechanism `globals.css` owns: the hairline an image wears so its
-      // own light edge does not read as the surface behind it.
-      className={cn("media-edge", stylex.props(reveal.host, composerStyles.thumb).className)}
-    >
+    <div className={cn("media-edge", stylex.props(reveal.host, composerStyles.thumb).className)}>
       <img
         src={`data:${image.mime};base64,${image.data}`}
         alt={image.name ?? ""}
@@ -106,8 +102,6 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
 
 const PREVIEW_LIMIT = 160;
 
-// Cutting by code UNIT lands inside any non-BMP character, and half of one renders as a
-// replacement glyph before the ellipsis.
 function previewOf(text: string): string {
   if (text.length <= PREVIEW_LIMIT) return text;
   const last = text.charCodeAt(PREVIEW_LIMIT - 1);

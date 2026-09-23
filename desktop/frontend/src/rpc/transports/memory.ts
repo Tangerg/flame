@@ -1,8 +1,3 @@
-// In-memory Transport for unit tests. Backed by a push-pull async channel
-// (`channel.ts`) for the inbound side; `inject()` is just a thin alias
-// for `channel.push()`. Outbound side stores messages in an array that
-// tests inspect via `outbox()`.
-
 import { createPushPullChannel } from "../channel";
 import type {
   Transport,
@@ -21,8 +16,6 @@ export interface MemoryTransport extends Transport {
 
 export function createMemoryTransport(): MemoryTransport {
   const sent: TransportRequest[] = [];
-  // Test fixtures deliberately allow arbitrary pre-injection before a reader
-  // exists; production transports must choose a finite/rendezvous capacity.
   const channel = createPushPullChannel<TransportEvent>({ capacity: "unbounded" });
 
   return {

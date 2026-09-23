@@ -16,8 +16,6 @@ import type { ToolCall, ToolCallStatus } from "@/plugins/sdk/types/agentSessionV
 import { toolCategory } from "../../domain/toolCategory";
 import { parseUnifiedDiff } from "../../domain/unifiedDiff";
 
-// A toolCall spans time (`startedAt`/`finishedAt`); every other Item is instantaneous
-// (`createdAt`).
 export function itemStartedAt(item: AgentItem): string {
   return item.type === "toolCall" ? item.startedAt : item.createdAt;
 }
@@ -28,8 +26,6 @@ export function blockStatus(status: AgentItemStatus): BlockStatus {
   return "complete";
 }
 
-// `blocks` is absent on the `item.started` shell: content arrives via item.delta. Missing
-// content must fold to an empty text block the deltas patch, not throw and skip streaming.
 export function contentText(blocks: AgentMessagePart[] | undefined): string {
   return (blocks ?? [])
     .filter((b): b is Extract<AgentMessagePart, { type: "text" }> => b.type === "text")
@@ -73,9 +69,6 @@ export function mapQuestion(q: AgentQuestion): QuestionItem[] {
 export function mapQuestionAnswers(q: AgentQuestion): string[][] | undefined {
   return q.answers?.map((values) => [...values]);
 }
-
-// API.md §4.4.2 conventions, NOT wire-enforced. Every reader must tolerate absent or
-// malformed optional presentation values. Required protocol facts are validated upstream.
 
 function asRecord(v: unknown): Record<string, unknown> | undefined {
   return typeof v === "object" && v !== null && !Array.isArray(v)
@@ -143,14 +136,10 @@ export function toolLabel(tool: AgentToolInvocation): string {
   return labelSource(tool).text;
 }
 
-// Read off the SAME switch that chose the text, not re-derived from the category: a rule
-// saying "fileEdit means path" would call a tool-name fallback a path and truncate it left.
 export function toolLabelKind(tool: AgentToolInvocation): "path" | "text" {
   return labelSource(tool).path ? "path" : "text";
 }
 
-// Every label lands in a SINGLE-LINE row, and every branch reads a model-produced argument
-// that can carry a newline.
 function oneLine(text: string): string {
   if (!text.includes("\n")) return text;
   const first = text.split("\n").find((line) => line.trim() !== "");
@@ -168,7 +157,6 @@ function rawLabelSource(tool: AgentToolInvocation): { text: string; path: boolea
   const a = tool.arguments ?? {};
   switch (toolCategory(tool.name)) {
     case "command":
-      // Titling with the command line puts data in the slot meant for intent.
       return {
         text: asString(a.description) || asString(a.command) || tool.name || "command",
         path: false,
@@ -177,8 +165,6 @@ function rawLabelSource(tool: AgentToolInvocation): { text: string; path: boolea
       const path = asString(a.path);
       if (path) return { text: path, path: true };
       const single = asString(asRecord(editChanges(tool.result)[0])?.path);
-      // Falls back to the tool's NAME: spelling "3 files" here freezes a language into
-      // view state.
       return single === undefined ? { text: tool.name, path: false } : { text: single, path: true };
     }
     case "search":
@@ -208,10 +194,6 @@ export function toolFields(tool: AgentToolInvocation): Partial<ToolCall> {
   };
 }
 
-/** The call's OWN result, carried verbatim beside whatever the category summarises, so a
- *  preview renders this call's rows instead of re-querying. Absent stays absent: the key is
- *  omitted rather than emptied, so a live `item.delta` preview stands until completed
- *  reconciles it. */
 function rawResult(result: unknown): Pick<ToolCall, "result"> | Record<string, never> {
   return result === undefined
     ? {}
@@ -224,10 +206,6 @@ function categoryFields(
 ): Partial<ToolCall> {
   switch (toolCategory(tool.name)) {
     case "command": {
-      // The authoritative output lands on the result at item.completed (API.md §5.2), so
-      // history hydration, reconnect and non-streaming runtimes all render from here.
-      // `item.delta{toolOutput}` is only a live preview — absent output MUST omit the key
-      // so that preview stands until completed reconciles it.
       const merged = asString(commandToolResult(tool.result)?.output) ?? asString(tool.result);
       return {
         exitCode: asNumber(commandToolResult(tool.result)?.exitCode),
@@ -238,8 +216,6 @@ function categoryFields(
       };
     }
     case "fileEdit": {
-      // The patch argument is the only account of the change until the receipt lands, and it
-      // is the only one carrying line counts at all — the receipt states paths and statuses.
       const proposed = parseUnifiedDiff(asString(tool.arguments?.patch) ?? "");
       const changes = editChanges(tool.result);
       const files = changes.length || proposed.length;
@@ -252,14 +228,10 @@ function categoryFields(
               removed: proposed.reduce((sum, file) => sum + file.removed, 0),
             }
           : {}),
-        // Only the call's own path/status/from receipt. A preview must NOT substitute the
-        // current Git worktree for absent line diffs — that includes other calls' edits.
         ...rawResult(tool.result),
       };
     }
     case "search":
-      // The runtime folds grep and glob into one `hits` envelope. The raw result rides
-      // along so previews render the call's own rows instead of re-querying.
       return {
         hits: asArrayLength(searchToolResult(tool.result)?.hits),
         ...rawResult(tool.result),
@@ -274,7 +246,6 @@ function categoryFields(
       const lines = asNumber(result?.total_lines);
       const start = asNumber(result?.start_line);
       const end = asNumber(result?.end_line);
-      // Omitted when the read covered everything: there the span is the file size twice.
       const partial =
         start !== undefined &&
         end !== undefined &&
@@ -297,9 +268,6 @@ function categoryFields(
   }
 }
 
-// Fallback for tools that deliver args only on item.completed (no `toolArguments` deltas).
-// Returns "" wherever the key arg is already baked into the label, and for an empty object,
-// so a started shell seeds "" for delta accrual rather than "{}".
 export function argsText(tool: AgentToolInvocation): string {
   if (tool.argumentsText !== undefined) return tool.argumentsText;
   if (nameLabel(tool) !== undefined) return "";
@@ -308,24 +276,17 @@ export function argsText(tool: AgentToolInvocation): string {
 }
 
 export function toolStatus(item: Extract<AgentItem, { type: "toolCall" }>): ToolCallStatus {
-  // A HITL decline settles as incomplete + `denied_by_user` (API.md §8.1), but a user's
-  // decision is not a fault — it gets its own status so the card never reads failure-red.
   if (item.error?.code === "denied_by_user") return "denied";
   if (item.error || item.status === "incomplete") return "err";
   if (item.status === "running") return "running";
   return "ok";
 }
 
-// Approval-card projections. Co-located with the other tool readers so every
-// `toolCategory` switch lives here, not in the StreamEvent dispatcher.
-
 export function commandString(tool: AgentToolInvocation): string {
   const c = tool.arguments?.command;
   return typeof c === "string" ? c : "";
 }
 
-// Only free-form tools get an arg editor (API.md §6.1 editedArgs); the rest bake their key
-// argument into the card title, so there is nothing left to edit.
 export function editableArgs(tool: AgentToolInvocation): Record<string, unknown> | undefined {
   const cat = toolCategory(tool.name);
   return cat === "generic" || cat === "subagent" ? tool.arguments : undefined;

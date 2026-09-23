@@ -24,7 +24,6 @@ export interface WorkspaceKnowledgeGateway {
   save(input: WorkspaceKnowledgeUpdateInput): Promise<WorkspaceKnowledgeDocument>;
 }
 
-/** Neutral application failure; the Runtime adapter owns the wire problem type. */
 export class WorkspaceKnowledgeRevisionConflictError extends Error {
   constructor(cause: Error) {
     super(cause.message, { cause });

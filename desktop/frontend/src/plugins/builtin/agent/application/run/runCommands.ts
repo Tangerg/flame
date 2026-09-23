@@ -17,9 +17,6 @@ interface RunCommandTarget {
   readonly runId: string;
 }
 
-/** Cancel the exact root or descendant presented by a Session-owned surface.
- * The command is accepted only while that composite target is non-terminal and
- * its mounted Session driver still owns cancellation. */
 export function cancelSessionRun({ sessionId, runId }: RunCommandTarget): boolean {
   const entry = agentSessionView().getSession(sessionId);
   const run = entry?.view.runsById[runId];

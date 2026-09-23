@@ -19,8 +19,6 @@ const hp = stylex.create({
     alignItems: "center",
     gap: space.s3,
   },
-  // A hook the trust gate has not admitted. It is not disabled — the pane is telling you it
-  // exists and is being ignored — so it steps back without joining the disabled step.
   inactive: { opacity: "var(--state-receded)" },
   injected: { fontStyle: "italic" },
   scope: { color: color.fgFaint, fontWeight: weight.medium },

@@ -3,41 +3,26 @@ import type { Scheme } from "@/lib/appearance";
 interface ThemeBrand {
   accent: string;
   textOnAccent: string;
-  /** Defaults to `colord(accent).darken(0.08)`. */
   accentBorder?: string;
-  /** Defaults to `colord(accent).darken(0.16)`. */
   accentPress?: string;
 }
 
-/** surface-2/-3/-4 are ALWAYS derived off `--depth-step`; pinning them makes the contrast
- *  slider partially dead. `elevated` / `sunken` are anchors, not rungs on that ladder. */
 interface ThemeSurfaces {
   bg: string;
   surface: string;
-  /** Defaults to the first ladder step. */
   elevated?: string;
-  /** Defaults to a fixed per-scheme neutral, deliberately OFF the ladder: a control's own
-   *  fill must not drift when the contrast slider moves. */
   sunken?: string;
-  /** The window's back plane, which the sidebar sits on. It stays BEHIND the content in both
-   *  schemes, as Codex and zcode draw it; in dark the surface ladder climbs toward the viewer,
-   *  so the default there is a step under `bg` rather than `surface`. */
   drawer?: string;
 }
 
 interface ThemeInk {
-  /** The anchor: the soft/muted/faint ramp derives from this when omitted. */
   text: string;
   textBright: string;
-  /** Auto-derives at ~82% alpha when omitted. */
   textSoft?: string;
-  /** Omit to auto-derive (~56% alpha). Must clear WCAG AA at 11-12px. */
   textMuted?: string;
-  /** Omit to auto-derive (~38% alpha). Must clear WCAG AA at 11-12px on canvas AND surface. */
   textFaint?: string;
 }
 
-/** Literal hex, NOT alpha-blended (DESIGN.md §2), so borders read as precise. */
 interface ThemeBorders {
   border: string;
   borderSoft: string;
@@ -48,12 +33,9 @@ interface ThemeSemantic {
   negative: string;
   warning: string;
   info: string;
-  /** NOT the brand accent: accent means "live", success means "finished cleanly". */
   success: string;
 }
 
-/** Defaults to accent-driven, but a theme may override it so the accent stays reserved
- *  for "live" state. */
 export interface ThemeCta {
   cta: string;
   ctaHover: string;
@@ -61,13 +43,10 @@ export interface ThemeCta {
 }
 
 export interface ColorThemePluginSpec {
-  /** Persisted by `useAppearanceStore`, so renaming one strands a user's saved choice. */
   id: string;
   label: string;
-  /** Drives the structural `theme-{scheme}` class and scheme-aware assets. */
   scheme: Scheme;
   icon?: string;
-  /** Lower comes first. */
   order?: number;
 
   brand: ThemeBrand;
@@ -78,7 +57,5 @@ export interface ColorThemePluginSpec {
 
   cta?: Partial<ThemeCta>;
 
-  /** Keys are CSS-variable names WITHOUT the leading `--`. Geometry, elevation and motion
-   *  belong to a visual-style contribution instead. */
   extras?: Record<string, string>;
 }

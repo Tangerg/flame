@@ -1,19 +1,12 @@
 import type { Scheme, VisualStyleMotion } from "@/lib/appearance";
 
-/** A swappable colour palette. Geometry and component treatment belong to a visual style. */
 export interface ColorThemeSpec {
   id: string;
   label: string;
   scheme: Scheme;
   icon?: string;
   order?: number;
-  /** CSS custom properties without the leading `--`. */
   tokens?: Record<string, string>;
-  /**
-   * Opt in to having the neutral family follow the LIVE accent; `tokens` stays the family at
-   * the default accent and is what a cold boot paints. A palette theme MUST leave this
-   * undefined — a palette theme's own surface is its own, not a tint of the selected accent.
-   */
 }
 
 export interface AccentSpec {
@@ -24,14 +17,8 @@ export interface AccentSpec {
   order?: number;
 }
 
-/**
- * A complete component and region design language, independent from colour. Tokens are the
- * whole of it: metrics, materials and region relationships are all custom properties, so a
- * third-party style changes how panes relate rather than merely repainting controls.
- */
 export interface VisualStyleSpec {
   id: string;
   motion: VisualStyleMotion;
-  /** CSS custom properties without the leading `--`. */
   tokens: Record<string, string>;
 }

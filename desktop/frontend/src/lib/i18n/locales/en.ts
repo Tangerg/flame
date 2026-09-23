@@ -1,7 +1,3 @@
-// Default English dictionary. Flat-keyed; `i18n.ts` registers it as
-// the `translation` namespace and uses it as the fallback locale for
-// any key a sister locale hasn't translated yet.
-
 export const en: Record<string, string> = {
   "recipes.error.load": "Couldn't load recipes.",
   "common.cancel": "Cancel",

@@ -23,22 +23,6 @@ import {
 } from "../application/composerInputEvents";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 
-/**
- * How long after a composition commits an ordinary Enter can still be the IME's own.
- *
- * The flag this bounds exists for one shape: some Chinese IMEs commit with `compositionend`
- * and then emit a completely ordinary Enter from the SAME physical keypress, which would
- * otherwise send a half-written message. That Enter arrives in the same input burst.
- *
- * Unbounded, the flag also swallows the next Enter after a commit that involved no key at all
- * — picking a candidate with the mouse. Measured: `compositionend` with no key events, then
- * Enter, and nothing was sent; the reader has to press Enter twice. Nothing distinguishes the
- * two Enters except when they arrive, so the window is the discriminator: far above the
- * browser's dispatch gap, far below moving a hand from the mouse to the keyboard.
- *
- * It is deliberately the loose side of that gap. Too tight and a commit sends an unfinished
- * message; too loose and one Enter is ignored — only one of those loses text.
- */
 const COMPOSITION_COMMIT_GRACE_MS = 100;
 
 interface Args {
@@ -76,7 +60,6 @@ export function useComposerInputController({
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
   const [caret, setCaret] = useState(0);
   const composingRef = useRef(false);
-  // WHEN the composition committed, not merely that it did — see the grace window above.
   const compositionCommittedAtRef = useRef<number | null>(null);
   const commitIsFresh = (): boolean => {
     const at = compositionCommittedAtRef.current;

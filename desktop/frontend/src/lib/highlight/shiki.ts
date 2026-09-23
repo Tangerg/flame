@@ -1,6 +1,3 @@
-// `shiki` is dynamic-imported to keep its ~400KB core and grammar JSONs out of the main
-// chunk until a code block first renders.
-
 import type { Highlighter } from "shiki";
 
 const THEMES = ["github-dark", "github-light-high-contrast"] as const;
@@ -37,10 +34,8 @@ const LANGS = [
   "xml",
 ] as const;
 
-// A long transcript renders hundreds of code blocks, so one line per distinct cause.
 const reported = new Set<string>();
 
-/** Highlighting is a decoration — nothing here throws, the block falls back to plain text. */
 export function reportHighlightFailure(cause: string, error: unknown): void {
   if (reported.has(cause)) return;
   reported.add(cause);
@@ -57,9 +52,6 @@ export function getHighlighter(): Promise<Highlighter> {
         langs: [...LANGS],
       }),
     );
-    // A rejection is NOT cached: the chunk fetch can fail once, and memoising that leaves the
-    // whole session unhighlighted with no way back. Cleared only if the slot still holds THIS
-    // attempt — a later caller may already have started a successor.
     const attempt: Promise<Highlighter> = pending.catch((error: unknown) => {
       if (promise === attempt) promise = null;
       throw error;
@@ -69,12 +61,9 @@ export function getHighlighter(): Promise<Highlighter> {
   return promise;
 }
 
-// Maps, not object literals: keyed by a path the person or the model chose, and an object
-// answers `constructor` / `toString` / `__proto__` with an inherited value.
-
 const LANG_BY_FILENAME = new Map([
   ["Dockerfile", "dockerfile"],
-  ["Makefile", "bash"], // close enough for tab-indented recipes
+  ["Makefile", "bash"],
 ]);
 
 const LANG_BY_EXTENSION = new Map([
@@ -122,7 +111,6 @@ const LANG_BY_EXTENSION = new Map([
   ["xml", "xml"],
 ]);
 
-// Tags a model writes in a fence, not extensions — `c++` and `c#` are not file suffixes.
 const LANG_BY_ALIAS = new Map([
   ["ts", "typescript"],
   ["js", "javascript"],
@@ -139,8 +127,6 @@ const LANG_BY_ALIAS = new Map([
   ["cs", "csharp"],
 ]);
 
-/** "text" when unrecognised. Pass the result through [resolveLang]: a bundled-looking tag
- *  may still not be loaded. */
 export function langFromPath(path: string): string {
   const base = path.slice(path.lastIndexOf("/") + 1);
   const byName = LANG_BY_FILENAME.get(base);
@@ -149,9 +135,7 @@ export function langFromPath(path: string): string {
   return LANG_BY_EXTENSION.get(ext) ?? "text";
 }
 
-/** Shiki throws on a lang it did not load, so an unbundled tag degrades to "text". */
 export function resolveLang(highlighter: Highlighter, lang: string): string {
-  // Two dozen entries scanned once per file beats building a Set to throw away.
   const loaded = highlighter.getLoadedLanguages();
   if (loaded.includes(lang)) return lang;
   const aliased = LANG_BY_ALIAS.get(lang.toLowerCase());

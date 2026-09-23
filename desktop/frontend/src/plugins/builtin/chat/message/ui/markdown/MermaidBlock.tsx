@@ -10,9 +10,6 @@ import { cn } from "@/lib/classNames";
 import { motion, radius, space, surface } from "@/styles/tokens.stylex";
 
 const mb = stylex.create({
-  // The rendered diagram's frame. The `loading` step below is the same frame at a fixed height,
-  // and the two agree on everything but that — which is the point: the placeholder holds the
-  // shape the diagram will take, so the transcript does not jump when it resolves.
   frame: {
     position: "relative",
     isolation: "isolate",
@@ -35,9 +32,7 @@ const mb = stylex.create({
     transitionProperty: "opacity",
     transitionTimingFunction: motion.easeState,
   },
-  /** Machine text kept for the copy action and for a reader who cannot see the drawing. */
   sourceText: { whiteSpace: "pre-wrap" },
-  // Holds the diagram's eventual measure so the transcript does not jump when it resolves.
   loading: {
     position: "relative",
     marginBlock: "calc(var(--md-space) * 2)",
@@ -53,8 +48,6 @@ const mb = stylex.create({
     borderColor: surface.fieldStrong,
     backgroundColor: surface.surface,
   },
-  // The diagram is an SVG the renderer produces, so its own sizing is a DESCENDANT rule that
-  // stays a utility — everything about the frame around it is here.
   stage: { overflowX: "auto", padding: space.s4, textAlign: "center" },
   pulse: {
     height: space.s8,
@@ -173,9 +166,6 @@ export function MermaidBlock({ code }: Props) {
           aria-label={t("markdown.diagram")}
           tabIndex={-1}
           dir="ltr"
-          // `mermaid-stage` is the mechanism `globals.css` owns: Mermaid emits an SVG carrying
-          // its own width and height, and overriding them is a DESCENDANT rule, which no atomic
-          // class can express.
           data-slot="mermaid-stage"
           className={stylex.props(mb.stage).className}
           dangerouslySetInnerHTML={{ __html: svg }}

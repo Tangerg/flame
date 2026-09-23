@@ -23,7 +23,6 @@ export interface AgentDockTab {
   badge?: ReactNode;
   active?: boolean;
   onSelect?: () => void;
-  /** Required: the strip spends a key, an × and a menu item on closing. */
   onClose: () => void;
   closeLabel: string;
   onCloseOthers?: () => void;
@@ -75,7 +74,6 @@ const styles = stylex.create({
     borderWidth: 0,
     backgroundColor: "transparent",
     paddingBlock: 0,
-    // zcode's side-pane tab weight: a tab names a place, and reads a step above the rows in it.
     fontWeight: weight.medium,
     color: "inherit",
   },
@@ -91,8 +89,6 @@ export function AgentContextDock({ children }: { children: ReactNode }) {
   return <aside className="agent-context-dock pane-split">{children}</aside>;
 }
 
-/** The collapsed state lives here rather than on the dock because descendant rules — the dock's
- *  own slide and the header's end padding — both read it. */
 export function AgentDockRow({
   open,
   ref,
@@ -116,14 +112,10 @@ export function AgentDockRow({
   );
 }
 
-/** Sits on the dock's inner edge, so the edge and the placement belong to the dock; the caller
- *  brings only the geometry it stores. */
 export function AgentDockResizer(props: Omit<ResizeHandleProps, "edge" | "className">) {
   return <ResizeHandle {...props} edge="start" className="agent-pane-resizer" />;
 }
 
-/** The dock element inside a row. Exported so the class stays this file's alone: a consumer
- *  keeping its own copy of the selector goes silently blind when the class moves. */
 export function agentDockElement(row: HTMLElement): HTMLElement | null {
   return row.querySelector<HTMLElement>(".agent-context-dock");
 }
@@ -193,12 +185,6 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
       <TabsPrimitive.List aria-label={ariaLabel} {...stylex.props(styles.contents)} activateOnFocus>
         {tabs.map((tab, index) => {
           const close = () => {
-            // Where focus goes has to be decided BEFORE the tab carrying it is removed. Moving
-            // to the newly active tab is the ARIA answer while one remains — but closing the
-            // LAST panel leaves no tab, and `?.focus()` on nothing is silent, so focus fell to
-            // `<body>` and the next Tab restarted at the top of the document. The header
-            // survives an empty dock and holds the control that opens a panel again, which is
-            // both adjacent in the order and the thing a person wants next.
             const header = rootRef.current?.parentElement ?? null;
             const reopen =
               header
@@ -245,17 +231,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
             >
               <TabsPrimitive.Tab
                 value={tab.id}
-                // NOT `data-chrome-focus`: the row state that would stand in for the ring is
-                // `focus-within:text-fg`, which the ACTIVE tab already has — so keyboard focus
-                // landing on it showed nothing at all. The ring is drawn inward because the
-                // strip scrolls and clips.
                 data-focus-inset=""
-                // The × is a pointer affordance: a focusable sibling inside a `tablist` is
-                // an unallowed child (axe `aria-required-children`, critical), and hiding it
-                // from the keyboard the way `visibility: hidden` does leaves closing with no
-                // key at all — seventy Tab presses never reached one. Delete/Backspace on the
-                // focused tab is the ARIA practice for a closable tab and needs no extra stop
-                // in the tab order.
                 onKeyDown={(event) => {
                   if (event.key !== "Delete" && event.key !== "Backspace") return;
                   event.preventDefault();

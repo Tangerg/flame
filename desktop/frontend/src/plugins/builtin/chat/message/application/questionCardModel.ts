@@ -26,8 +26,6 @@ interface PendingQuestionRequest {
   answers?: string[][];
 }
 
-/** The transcript remains the durable source; this selector only chooses its
- * presentation location and never creates a second interrupt read model. */
 export function pendingQuestionRequest(
   rows: readonly TranscriptRow[],
 ): PendingQuestionRequest | null {
@@ -61,14 +59,8 @@ export function questionCardSettledView({
   draft: QuestionDraft;
   answers?: QuestionAnswers;
 }): QuestionCardSettledView {
-  // Submission is only an in-flight intent. Keep the request surface disabled
-  // until the Runtime stamps the authoritative answer into the transcript;
-  // otherwise a skipped response briefly looks like a completed empty answer.
   if (pending) return { settled: false };
   if (!questionSettled(status, answered)) return { settled: false };
-  // Once the Runtime closes the Pending set, only its transcript projection is
-  // authoritative. A local draft may have lost a cross-client race or the Run
-  // may have been canceled without accepting any answer.
   return { settled: true, answers };
 }
 

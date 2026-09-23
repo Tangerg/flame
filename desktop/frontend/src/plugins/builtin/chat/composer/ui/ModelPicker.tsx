@@ -94,8 +94,6 @@ function modelItem(model: SelectableModel, selected: SelectableModel) {
   };
 }
 
-/** The shelf republishes entries that also live under their provider; the picker deduplicates by
- *  id when a query searches across every tab, so a recent model answers once. */
 function modelGroups(
   models: readonly SelectableModel[],
   selected: SelectableModel,
@@ -251,8 +249,6 @@ export function ModelPicker() {
       trigger={
         <AgentComposerChip
           aria-label={t("composer.switchModel")}
-          // Provider included, unlike the chip's default title: two vendors can serve the
-          // same model name.
           title={`${selected.label} · ${providerDisplayName(selected.provider)}`}
           shrink="gives"
           leading={<ProviderIcon provider={selected.provider} size="sm" />}

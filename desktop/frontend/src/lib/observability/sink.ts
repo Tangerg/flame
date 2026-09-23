@@ -1,7 +1,3 @@
-// Every exporter BATCHES before touching the store: a burst of spans or logs buffers for
-// one flush window and lands as a single Zustand commit, bounding render cost regardless of
-// telemetry volume. Metrics already arrive batched from PeriodicExportingMetricReader.
-
 import type { HrTime } from "@opentelemetry/api";
 import type {
   AggregationTemporality,
@@ -14,18 +10,15 @@ import type { LogRow, SpanRow } from "./stores";
 import { useTelemetryStore } from "./stores";
 import { ExactSequence } from "@/foundation/exactSequence";
 
-// Inlined enum values — keeps this module off the SDK's static graph.
-const EXPORT_SUCCESS = 0; // ExportResultCode.SUCCESS
+const EXPORT_SUCCESS = 0;
 const CUMULATIVE_TEMPORALITY = 1 as AggregationTemporality;
-const STATUS_ERROR = 2; // SpanStatusCode.ERROR
-const STATUS_OK = 1; // SpanStatusCode.OK
+const STATUS_ERROR = 2;
+const STATUS_OK = 1;
 const STATUS_TONE: Record<number, SpanRow["status"]> = {
   [STATUS_ERROR]: "error",
   [STATUS_OK]: "ok",
 };
 
-// One flush window for span/log batches — coalesces a burst into a single
-// store commit. Matches the metric reader's cadence so the view ticks once.
 const FLUSH_MS = 500;
 
 const hrToMs = (t: HrTime): number => t[0] * 1000 + t[1] / 1e6;
@@ -41,10 +34,6 @@ function flattenAttrs(
   return out;
 }
 
-// Deliberately NOT Pacer's `Batcher`, which is otherwise the same shape but restarts its
-// timer on every `add`, so the window follows the LAST item. Telemetry has to bound
-// latency from the FIRST: while a run streams, items arrive closer together than the
-// window, so a debounced batch would not flush until the run went quiet.
 class Batcher<T> {
   private buf: T[] = [];
   private timer: ReturnType<typeof setTimeout> | null = null;
@@ -85,9 +74,7 @@ export class LocalSpanProcessor implements SpanProcessor {
   private readonly batcher = new Batcher<SpanRow>((rows) =>
     useTelemetryStore.getState().ingestSpans(rows),
   );
-  onStart(): void {
-    /* coarse spans only — nothing to do on start */
-  }
+  onStart(): void {}
   onEnd(span: ReadableSpan): void {
     const ctx = span.spanContext();
     const code = span.status.code;
@@ -100,8 +87,6 @@ export class LocalSpanProcessor implements SpanProcessor {
       startMs: hrToMs(span.startTime),
       durationMillis: hrToMs(span.duration),
       status: STATUS_TONE[code] ?? "unset",
-      // The failure message endSpan set via setStatus — the one bit of "why"
-      // the bare status enum can't carry. Empty string → omit.
       statusMessage: span.status.message || undefined,
       attrs: flattenAttrs(span.attributes),
     });

@@ -14,7 +14,6 @@ export function InboxTab() {
   const query = usePendingWork();
   const sessions = useAgentSessions();
   const items = query.data ?? [];
-  // Never the wire id: a session may be absent from the list or carry no title at all.
   const titleOf = (sessionId: string) =>
     sessions.data?.find((session) => session.id === sessionId)?.title?.trim() ||
     t("session.untitled");

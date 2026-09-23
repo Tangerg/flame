@@ -4,11 +4,6 @@ import {
   validateReasoningEffortIdentity,
 } from "./modelIdentity";
 
-/**
- * The Desktop application's immutable view of provider-published model token
- * facts. Construction rejects empty objects and numeric sentinels so consumers
- * can use property presence directly without truthiness-based policy.
- */
 export class SelectableModelTokenLimits {
   readonly contextWindow?: number;
   readonly maxInputTokens?: number;
@@ -42,12 +37,6 @@ export class SelectableModelTokenLimits {
   }
 }
 
-/**
- * The model-picker projection kept by Desktop. Runtime remains authoritative
- * for capability discovery and execution admission; this value owns only the
- * immutable client-side behavior shared by the picker, composer and context
- * gauge.
- */
 export class SelectableModel {
   readonly id: string;
   readonly provider: string;

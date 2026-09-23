@@ -1,13 +1,7 @@
-// JSON-RPC 2.0 envelope for the Flame Runtime Protocol (API.md §1). Notifications are used
-// ONLY for runtime→client event delivery; every mutation is a correlated request.
-
 import { z } from "zod";
 
 export const JSONRPC_VERSION = "2.0" as const;
 
-// JSON-RPC allows string | number; Flame locks to STRING (API.md §1.1) so dispatch and
-// correlation never branch on id type. The client allocates monotonic integers and
-// stringifies them before they hit the wire.
 export type RpcId = string;
 
 export interface RpcRequest<P = unknown> {
@@ -45,13 +39,8 @@ interface RpcErrorPayload {
   data?: unknown;
 }
 
-// Standard JSON-RPC codes and deliberately NOTHING else: a business failure is identified
-// by `error.data.type`, never by number. The numeric space is the runtime's to assign, it
-// has retired codes and left holes, and mirroring it here is a second copy of a table only
-// one side edits.
 export const RPC_METHOD_NOT_FOUND = -32601;
 
-/** The canonical way to branch on an error (§8.2). Never compare codes. */
 export function errorType(data: unknown): string | undefined {
   if (data && typeof data === "object" && "type" in data) {
     const t = (data as { type: unknown }).type;
@@ -60,7 +49,6 @@ export function errorType(data: unknown): string | undefined {
   return undefined;
 }
 
-// Absence must stay OBSERVABLE so the layer that owns user-facing copy can supply it.
 export function errorDetail(data: unknown): string | undefined {
   if (data && typeof data === "object") {
     const d = (data as { detail?: unknown }).detail;
@@ -69,12 +57,6 @@ export function errorDetail(data: unknown): string | undefined {
   return undefined;
 }
 
-/**
- * The run a `session_has_active_run` refusal names, and no other type carries.
- *
- * The status is the remedy: a running run is steered, a waiting one is answered or cancelled.
- * Without it a client can only repeat all three back at the person.
- */
 export function errorActiveRun(data: unknown): { runId: string; status: string } | undefined {
   if (!data || typeof data !== "object") return undefined;
   const ref = (data as { activeRun?: unknown }).activeRun;
@@ -85,7 +67,6 @@ export function errorActiveRun(data: unknown): { runId: string; status: string }
   return { runId, status };
 }
 
-/** Read a positive provider-requested retry delay without trusting input. */
 export function errorRetryAfterSeconds(data: unknown): number | undefined {
   if (data && typeof data === "object") {
     const retryAfterSeconds = (data as { retryAfterSeconds?: unknown }).retryAfterSeconds;
@@ -112,9 +93,6 @@ export function isErrorResponse(msg: RpcResponse): msg is RpcResponseError {
   return "error" in msg;
 }
 
-// The inbound trust boundary (CLAUDE.md §3). Payloads stay `unknown` here and are checked
-// against generated per-method schemas after correlation. The envelope is open to
-// extension, but its three JSON-RPC shapes stay mutually exclusive.
 const RpcEnvelopeSchema = z
   .looseObject({
     jsonrpc: z.literal(JSONRPC_VERSION),
@@ -144,9 +122,6 @@ const RpcEnvelopeSchema = z
     }
   });
 
-/** `null` when the text is not valid JSON or not an accepted envelope — the CALLER decides
- *  whether that means "skip this frame" or "fail this call". Rejecting here is what keeps
- *  correlation and notification dispatch from ever seeing a non-envelope. */
 export function parseRpcMessage(text: string): RpcMessage | null {
   let json: unknown;
   try {

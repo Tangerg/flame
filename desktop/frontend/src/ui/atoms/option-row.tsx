@@ -3,17 +3,6 @@ import { cn } from "@/lib/classNames";
 import { color, motion, radius, space, surface, type } from "@/styles/tokens.stylex";
 import { Pressable, type PressableProps } from "./pressable";
 
-/**
- * A row inside something floating: a menu item, a suggestion, a search result.
- *
- * `glyph` exists because `grid` only ever gave `display: grid`, and a grid with no template is
- * one column — so a call site that wanted a glyph beside a label had to supply the template
- * itself. That is not customisation; the step was half a step.
- *
- * `minmax(0, 1fr)` rather than `1fr`: both behave the same here, because every second child
- * truncates and an `overflow: hidden` item already has an automatic minimum of zero. The
- * explicit form says so instead of depending on it.
- */
 export type RowLayout = "grid" | "flex" | "glyph" | "pick" | "pickWide" | "pickPlain";
 type RowSize = "sm" | "md" | "lg";
 
@@ -41,8 +30,6 @@ export const floatingRowStyles = stylex.create({
   grid: { display: "grid" },
   flex: { display: "flex" },
   glyph: { display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" },
-  // The glyph column is a channel because a swatch is wider than an icon; everything else is
-  // fixed.
   pick: {
     display: "grid",
     gridTemplateColumns:
@@ -65,8 +52,6 @@ export const floatingRowStyles = stylex.create({
 export const floatingRow = (layout: RowLayout = "grid", size: RowSize = "md") => [
   floatingRowStyles.base,
   type.uiMd,
-  // `pickWide` composes both rather than repeating the template — a second copy is how the six
-  // spellings started.
   layout === "pickWide" ? floatingRowStyles.pick : floatingRowStyles[layout],
   layout === "pickWide" && floatingRowStyles.pickWide,
   floatingRowStyles[size],

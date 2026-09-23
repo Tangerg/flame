@@ -4,9 +4,6 @@ import { color } from "@/styles/tokens.stylex";
 
 const styles = stylex.create({
   root: { display: "flex", minWidth: 0, alignItems: "baseline" },
-  // The directory truncates from its own start, so what survives is the end — the part
-  // nearest the filename. `dir="rtl"` is what moves the ellipsis to the left edge; the inner
-  // span puts the text back in reading order.
   directory: {
     minWidth: 0,
     maxWidth: "max-content",

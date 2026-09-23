@@ -1,5 +1,3 @@
-// Adding a kernel point is one `defineExtensionPoint` block here plus one selector.
-
 import type {
   AgentRunOptionsProviderSpec,
   AgentSourceSpec,
@@ -63,16 +61,11 @@ export const DATA_PROVIDER = defineExtensionPoint<DataProviderSpec>({
   keying: "single",
   keyOf: (s) => s.key,
 });
-// Slash trigger lives in the map key, not on the spec — contributors pass it
-// via `opts.key`. `normalizeKey` folds the leading "/" so callers can register
-// "ping" or "/ping" and look it up either way.
 export const SLASH_COMMAND = defineExtensionPoint<SlashCommandSpec>({
   id: "flame.composer.slashCommand",
   keying: "single",
   normalizeKey: (k) => (k.startsWith("/") ? k : `/${k}`),
 });
-// Key combos fold "Cmd+K" / "mod+k" to one canonical form on both contribute
-// and lookup, so registrations and keydown lookups always agree.
 export const COMPOSER_KEY_BINDING = defineExtensionPoint<ComposerKeyBindingSpec>({
   id: "flame.composer.keyBinding",
   keying: "single",
@@ -110,9 +103,6 @@ export const READY_HANDLER = defineExtensionPoint<ReadyHandler>({
   keying: "multi",
 });
 
-// The item wraps its sub-key (name / eventType / slot) alongside the payload;
-// the events + layout selectors build a cached secondary index over it (see
-// `createPointSubIndex`). The reducer hits these per StreamEvent.
 export const STREAM_EVENT_HANDLER = defineExtensionPoint<{
   eventType: string;
   handler: StreamEventHandler;
@@ -139,8 +129,6 @@ export const TOOL_VIEW_OPENER = defineExtensionPoint<ToolViewOpenerSpec>({
   id: "flame.tool.viewOpener",
   keying: "single",
 });
-// Keyed by an explicit `opts.key` rather than a field on the item, because the item IS the
-// component.
 export const TOOL_PREVIEW = defineExtensionPoint<ToolPreviewComponent>({
   id: "flame.tool.preview",
   keying: "single",
@@ -149,9 +137,6 @@ export const TOOL_ICON = defineExtensionPoint<string>({
   id: "flame.tool.icon",
   keying: "single",
 });
-// The surface that represents a tool's successful outcome. Pending, failed, and declined
-// calls keep their transcript rows; this registration cannot stand in for those facts.
-// Question and approval Items retain their own presentation independently of this key.
 export const TOOL_STANDING_SURFACE = defineExtensionPoint<string>({
   id: "flame.tool.standingSurface",
   keying: "single",

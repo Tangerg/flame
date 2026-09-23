@@ -1,9 +1,3 @@
-// The eager half of every built-in workspace view. Metadata must stay eager — the tab
-// strip, dock destination list and command palette enumerate views before any is opened —
-// so it lives here and the body arrives through `lazy`, which `WorkspaceViewBody`'s
-// Suspense boundary makes a drop-in `ComponentType`. Badges are the exception; see
-// `tabBadges`.
-
 import { lazy } from "react";
 import { defineWorkspaceView } from "./defineWorkspaceView";
 import { DiffTabBadge, InboxBadge, PlanTabBadge } from "./tabBadges";

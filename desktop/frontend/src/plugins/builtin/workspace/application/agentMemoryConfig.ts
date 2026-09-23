@@ -9,9 +9,6 @@ import { AgentMemoryMutationOwner, agentMemoryQuery } from "./agentMemoryMutatio
 export type { AgentMemoryEntry, AgentMemoryQuery };
 export { agentMemoryQuery };
 
-// Read the review surface for a scope. Disabled (enabled=false) parks the query
-// so a not-yet-ready cwd doesn't fire a request; the project scope binds to the
-// session's cwd, the user scope ignores it.
 export function useAgentMemory(enabled: boolean, scope: AgentMemoryQuery["scope"], cwd?: string) {
   return useAgentMemoryQuery(enabled ? agentMemoryQuery(scope, cwd) : undefined);
 }

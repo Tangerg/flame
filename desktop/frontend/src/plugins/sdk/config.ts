@@ -1,7 +1,3 @@
-// App-level settings any plugin may read or change, distinct from `host.storage`, which is
-// per-plugin namespaced. In-memory ONLY: a plugin that wants persistence subscribes to a
-// key and mirrors it itself.
-
 import type { Disposable } from "./types/common";
 import { create } from "zustand";
 import { safeCall } from "./errors";
@@ -58,7 +54,6 @@ export const useConfigStore = create<ConfigStoreState & ConfigStoreActions>((set
   },
 }));
 
-/** Callers narrow dynamic keys at their own boundary. */
 export function getConfig(key: string, defaultValue?: ConfigValue): ConfigValue | undefined {
   const v = useConfigStore.getState().values.get(key);
   return v === undefined ? defaultValue : v;

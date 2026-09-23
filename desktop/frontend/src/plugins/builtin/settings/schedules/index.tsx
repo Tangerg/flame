@@ -9,7 +9,6 @@ import {
 } from "./adapters/runtimeScheduleGateway";
 import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 
-/** The tools this pane answers for — see the note in plan-progress. */
 export const SCHEDULE_STANDING_TOOLS = [
   "create_schedule",
   "list_schedules",
@@ -38,8 +37,6 @@ export default definePlugin({
       order: 58,
       component: SchedulesPane,
     });
-    // The Schedules pane represents successful calls. An unfinished or rejected command
-    // still needs its transcript row because the pane cannot represent that outcome.
     for (const key of SCHEDULE_STANDING_TOOLS) {
       ctx.contribute(TOOL_STANDING_SURFACE, SCHEDULES_PANE, { key });
     }

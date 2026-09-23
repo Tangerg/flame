@@ -69,8 +69,6 @@ class ProviderMutationGeneration {
   }
 }
 
-/** Owns Provider commands and their cache projection for one exact Plugin Host
- * and Runtime generation. */
 export class ProviderMutationOwner {
   static #materialGeneration = 0n;
   static readonly #materialListeners = new Set<() => void>();

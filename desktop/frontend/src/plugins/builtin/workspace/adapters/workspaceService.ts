@@ -1,7 +1,3 @@
-// The contract belongs to the SDK, the dock state behind it to this context — so the
-// implementation lives here rather than beside the other shell services, which cannot
-// import a context.
-
 import { definePlugin, WORKSPACE, type WorkspaceService } from "@/plugins/sdk";
 import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { lookupExtensionByKey } from "@/plugins/sdk";

@@ -1,39 +1,20 @@
-// The agent context's own vocabulary: tool NAMES are the runtime's, and what they mean
-// for presentation belongs here rather than in the kernel's contract types.
-
 export type ToolCategory =
-  | "command" // shell → { command, description } + { output, exitCode? }, or a plain-string ack when backgrounded
-  | "fileEdit" // apply_patch → { patch } + { changes: AppliedChange[] }
-  | "search" // grep / glob → { pattern } + { hits: SearchHit[] }
-  | "webSearch" // web_search → { query } + { results: WebSearchResult[] }
-  | "read" // read → { path, start_line?, max_lines? } + { content, start_line, … }
-  | "subagent" // delegate_task → { summary, instructions } + { reply }, or a plain-string failure
-  | "generic"; // MCP "<server>_<tool>" / anything unknown → JSON tree
+  "command" | "fileEdit" | "search" | "webSearch" | "read" | "subagent" | "generic";
 
-// A Map, not an object: an MCP server names its own tools, so this is indexed by a
-// string nobody here chose. An object literal answers `constructor` with an inherited
-// member, which is not a ToolCategory and is not "generic" either.
 const TOOL_CATEGORY = new Map<string, ToolCategory>([
   ["shell", "command"],
-  // The only built-in file mutation, and its result is a CALL-SCOPED receipt — not a
-  // workspace diff.
   ["apply_patch", "fileEdit"],
   ["grep", "search"],
   ["glob", "search"],
   ["web_search", "webSearch"],
   ["read", "read"],
-  ["delegate_task", "subagent"], // the runtime's delegation tool (spawns a child run, returns its reply)
+  ["delegate_task", "subagent"],
 ]);
-// Everything else stays "generic" ON PURPOSE: labels, icons and previews key on the tool
-// NAME, and the generic projection already passes their results through.
 
 export function toolCategory(name: string): ToolCategory {
   return TOOL_CATEGORY.get(name) ?? "generic";
 }
 
-// These tools ask through a separate question Item while their logical ToolCall remains
-// running across the interrupt. The question represents that interaction; an actual failed
-// ToolCall still owns a distinct error, which a question cannot stand in for.
 const QUESTION_TOOLS = new Set(["ask_user", "exit_plan_mode"]);
 export function isQuestionTool(name: string): boolean {
   return QUESTION_TOOLS.has(name);

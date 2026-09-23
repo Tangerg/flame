@@ -1,6 +1,3 @@
-// Typed wrappers for runtime/doc/API.md §7. Streaming methods return `{ result, events }`;
-// a run stream carries the whole run tree and ends on the ROOT segment's `segment.finished`.
-
 import type { RpcClient } from "./client";
 import type { MutationPromise } from "./mutation";
 import { createWireCallPath, type MethodsOptions, type WireCall } from "./wireCallPath";
@@ -106,8 +103,6 @@ export interface StreamingResult<R, E> {
   events: AsyncIterable<E>;
 }
 
-// Streaming methods subscribe BEFORE the call (head-drop race), so a REJECTED call must
-// dispose explicitly: nobody iterates `events`, so its self-cleaning iterator never runs.
 async function callOrDispose<R>(
   stream: { dispose: () => void },
   call: () => Promise<R>,
@@ -149,8 +144,6 @@ export interface WorkspaceMethods {
   hooks: {
     list: (signal?: AbortSignal) => Promise<HooksListResult>;
   };
-  // Taken from the BINDING, not the caller: otherwise a decision can name one workspace
-  // while its source list named another.
   skills: {
     listDiscovered: (signal?: AbortSignal) => Promise<SkillDiscovery>;
     getDiscovered: (name: string, signal?: AbortSignal) => Promise<SkillDetail>;
@@ -187,8 +180,6 @@ export interface Methods {
   sessions: {
     list: (query?: ListSessionsRequest, signal?: AbortSignal) => AutoPagingPromise<Page<Session>>;
     get: (sessionId: SessionId, signal?: AbortSignal) => Promise<Session>;
-    // ONE transactionally coherent read: a recovery fold must not combine facts from
-    // different database snapshots.
     snapshot: (
       sessionId: SessionId,
       includeDescendants?: boolean,
@@ -198,15 +189,12 @@ export interface Methods {
     update: (params: UpdateSessionRequest) => MutationPromise<Session>;
     delete: (sessionId: SessionId) => MutationPromise<void>;
     fork: (params: ForkSessionRequest) => MutationPromise<Session>;
-    // `session_busy` while a run is in flight. `restoreType` files|both also restores the
-    // working tree, gated on `features.checkpoints`.
     rollback: (params: RollbackSessionRequest) => MutationPromise<RollbackSessionResponse>;
     export: (
       sessionId: SessionId,
       format?: "md" | "json",
       signal?: AbortSignal,
     ) => Promise<ExportSessionResponse>;
-    // Rebuilds under the artifact's ORIGINAL id, so it is idempotent.
     import: (artifact: SessionArtifact) => MutationPromise<ImportSessionResponse>;
   };
   modelInvocations: {
@@ -224,26 +212,18 @@ export interface Methods {
       params: ResumeRunRequest,
       signal?: AbortSignal,
     ) => MutationPromise<StreamingResult<ResumeRunResponse, RunEvent>>;
-    // BOTH ids required: naming only the run attaches to whatever segment is executing, so
-    // a client folding an earlier one continues into a different execution. Mismatch is
-    // `stale_segment`.
     subscribe: (
       params: SubscribeRunRequest,
       signal?: AbortSignal,
-      // The last event the caller FOLDED. Omitted means tail-only.
       options?: { lastEventId?: string },
     ) => Promise<StreamingResult<SubscribeRunResponse, RunEvent>>;
     cancel: (runId: RunId, reason?: string) => MutationPromise<CancelRunResponse>;
-    // Naming the segment makes a run that parked and resumed between typing and sending
-    // REFUSE with `stale_segment` rather than answer work the person never saw.
     steer: (
       runId: RunId,
       expectedSegmentId: SegmentId,
       input: ContentBlock[],
     ) => MutationPromise<SteerRunResponse>;
     get: (runId: RunId, signal?: AbortSignal) => Promise<RunRef>;
-    // Omitting `statuses` returns every position; descendants require negotiated
-    // `features.subagents`.
     list: (
       query?: PageQuery & {
         sessionId?: SessionId;
@@ -254,19 +234,15 @@ export interface Methods {
     ) => AutoPagingPromise<Page<RunRef>>;
   };
   plan: {
-    // An UNWRITTEN session omits `state`; an explicit clear returns a committed state with a
-    // positive revision and no steps.
     get: (sessionId: SessionId, signal?: AbortSignal) => Promise<Plan>;
   };
   interrupts: {
-    // A page never SPLITS a set: a set is what one `runs.resume` answers.
     list: (
       query?: PageQuery & { sessionId?: SessionId; rootRunId?: RunId },
       signal?: AbortSignal,
     ) => AutoPagingPromise<Page<PendingInterruptSet>>;
   };
   items: {
-    // `order` defaults to "asc" — the order a fold can replay.
     list: (
       params: {
         scope: ItemListScope;
@@ -280,43 +256,32 @@ export interface Methods {
   workspaces: {
     resolve: (ref?: WorkspaceRef, signal?: AbortSignal) => Promise<WorkspaceInfo>;
     list: (signal?: AbortSignal) => Promise<Page<WorkspaceSummary>>;
-    /** Resolves the runtime default when `ref` is omitted. */
     open: (ref?: WorkspaceRef, signal?: AbortSignal) => Promise<WorkspaceMethods>;
   };
-  /** Bind ONCE; every resource operation inherits the identity. */
   workspace: (ref: WorkspaceRef) => WorkspaceMethods;
-  // Lossy "this moved, read it again" signals with NO replay; resubscribing IS the resync.
   runtimeEvents: {
     subscribe: (
       params: RuntimeSubscribeRequest,
       signal?: AbortSignal,
     ) => Promise<StreamingResult<RuntimeSubscribeResponse, RuntimeEvent>>;
   };
-  // Targets the CANONICAL root from `workspace(ref).hooks.list()`.
   hooks: {
     setTrust: (projectRoot: string, trusted: boolean) => MutationPromise<void>;
   };
-  // Workspace-INDEPENDENT: a managed skill is addressed by name alone, and archive and
-  // restore never delete.
   skills: {
     listLibrary: (signal?: AbortSignal) => Promise<Page<ManagedSkill>>;
     archive: (name: string) => MutationPromise<void>;
     restore: (name: string) => MutationPromise<void>;
   };
   mcp: {
-    // One resource carries durable configuration AND live state. `update` is
-    // omission=preserve, which is why it is distinct from `create`.
     list: (signal?: AbortSignal) => Promise<Page<MCPServer>>;
     create: (params: MCPServerCandidate) => MutationPromise<MCPServer>;
     update: (params: UpdateMCPServerRequest) => MutationPromise<MCPServer>;
     delete: (server: string) => MutationPromise<void>;
-    // NOT persisted; a failed probe is `{ ok:false, error }`, not an RPC error.
     test: (params: MCPServerCandidate, signal?: AbortSignal) => Promise<MCPTestResult>;
     listTools: (server?: string, signal?: AbortSignal) => Promise<Page<MCPTool>>;
     reconnect: (server: string) => MutationPromise<void>;
     authorizationAttempts: {
-      // An asynchronous RESOURCE, not a command ack: `get` observes the outcome across
-      // reconnects.
       create: (server: string, signal?: AbortSignal) => MutationPromise<MCPAuthorizationAttempt>;
       get: (attemptId: string, signal?: AbortSignal) => Promise<MCPAuthorizationAttempt>;
     };
@@ -328,10 +293,8 @@ export interface Methods {
   };
   models: {
     list: (provider?: string, signal?: AbortSignal) => Promise<Page<Model>>;
-    // An EMPTY model means unset, so maintenance work runs on the main turn model.
     getUtilityRole: (signal?: AbortSignal) => Promise<UtilityRole>;
     setUtilityRole: (params: UtilityRole) => MutationPromise<UtilityRole>;
-    // An EMPTY model leaves Agent Memory on keyword ranking.
     getEmbeddingRole: (signal?: AbortSignal) => Promise<EmbeddingRole>;
     setEmbeddingRole: (params: EmbeddingRole) => MutationPromise<EmbeddingRole>;
   };
@@ -339,8 +302,6 @@ export interface Methods {
     session: (sessionId: SessionId, signal?: AbortSignal) => Promise<Usage>;
     summary: (params?: UsageSummaryRequest, signal?: AbortSignal) => Promise<UsageSummary>;
   };
-  // The HITL review surface over the agent's SELF-maintained memory. Distinct from the
-  // FLAME.md cascade; `capability_not_negotiated` when the store is not wired.
   agentMemory: {
     list: (target: AgentMemoryTarget, signal?: AbortSignal) => Promise<AgentMemoryList>;
     review: (id: string, decision: "approve" | "reject") => MutationPromise<void>;
@@ -352,11 +313,6 @@ export interface Methods {
     delete: (id: string) => MutationPromise<void>;
     add: (params: AgentMemoryTarget & { content: string }) => MutationPromise<AgentMemoryItem>;
   };
-  // goals.* (§7.14, capability-gated): Goal mode — the autonomous execution
-  // loop. get returns the session's goal or null (no goal); start opens one
-  // (session_busy if one is already actively driving); stop pauses the loop;
-  // resume re-activates a paused/blocked goal. Omitting provider/model runs the
-  // loop on the runtime default.
   goals: {
     get: (sessionId: SessionId, signal?: AbortSignal) => Promise<Goal | null>;
     start: (
@@ -376,17 +332,12 @@ export interface Methods {
   feedback: {
     create: (params: FeedbackRequest) => MutationPromise<void>;
   };
-  // Approval runtime control (B9) — global stance + remember management. Not gated.
   approval: {
     getMode: (signal?: AbortSignal) => Promise<ApprovalModeResult>;
     setMode: (mode: ApprovalMode) => MutationPromise<ApprovalModeResult>;
-    // Rules visible from the session: its session rules + its project's rules
-    // + all global rules (the runtime resolves the session cwd).
     listRules: (sessionId: SessionId, signal?: AbortSignal) => Promise<ListApprovalRulesResult>;
     forgetRule: (id: string) => MutationPromise<void>;
   };
-  // Scheduled runs (§7.9): cron-triggered headless runs of a saved prompt,
-  // fired by the runtime's scheduler worker while serving.
   schedules: {
     list: (query?: PageQuery, signal?: AbortSignal) => AutoPagingPromise<Page<Schedule>>;
     create: (params: CreateScheduleRequest) => MutationPromise<Schedule>;
@@ -397,8 +348,6 @@ export interface Methods {
 }
 
 function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
-  // Copy and freeze the identity so a caller cannot silently retarget an
-  // already-created resource client by mutating the original object.
   const workspace = Object.freeze({ path: ref.path });
 
   return {
@@ -501,11 +450,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           "runs.start",
           params,
           async (idempotencyKey, attempt) => {
-            // Subscribe BEFORE the POST, then bind the response to the runtime-assigned
-            // root segmentId. Under streamable HTTP the response + its event frames
-            // arrive on the same ordered stream, so the first events follow the
-            // response immediately; binding only after `call` resolves could drop
-            // the head (see streamRunEvents).
             const stream = streamRunEvents(client, runEventStreamOptions(attempt.signal));
             const result = await callOrDispose(stream, () =>
               perform("runs.start", params, {
@@ -525,7 +469,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           "runs.resume",
           params,
           async (idempotencyKey, attempt) => {
-            // A resume opens a NEW segment of the SAME run — bind the response to it.
             const stream = streamRunEvents(client, runEventStreamOptions(attempt.signal));
             const result = await callOrDispose(stream, () =>
               perform("runs.resume", params, {
@@ -541,8 +484,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           signal,
         ),
       subscribe: async (params, signal, options) => {
-        // Reattach to the segment the caller named; the ack echoes it, and the
-        // response binds to it (same deferred-bind head-drop guard).
         const stream = streamRunEvents(client, runEventStreamOptions(signal));
         const result = await callOrDispose(stream, () =>
           call("runs.subscribe", params, {
@@ -669,12 +610,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
   };
 }
 
-/**
- * Home knowledge belongs to the person, not to a workspace, so the wire FORBIDS a workspace
- * ref on that scope and requires one on the other two. Attaching it unconditionally — which
- * is what a workspace-bound client naturally does — made every home read and write
- * `invalid_params`.
- */
 function knowledgeWorkspace(
   scope: KnowledgeScope,
   workspace: WorkspaceRef,

@@ -10,7 +10,6 @@ import { AgentDockResizer, agentDockElement } from "@/ui/agent";
 import { useDockWidth } from "@/plugins/builtin/workspace/public/sidebarDrawer";
 import { DOCK_MEASURE_PROPERTY, dockWidthMeasure } from "./dockWidth";
 
-// The floor does not vary with the row: `maxDockWidth` already refuses to fall below it.
 const dockFloor = () => DOCK_MIN_WIDTH_PX;
 
 export function DockResizer() {

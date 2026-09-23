@@ -4,7 +4,6 @@ const SIDEBAR_MAX_WIDTH_PX = 520;
 const SIDEBAR_READING_MIN_WIDTH_PX = 240;
 
 export const DOCK_MIN_WIDTH_PX = 320;
-/** Reserved for the CONVERSATION, not the flank, before the flank may claim anything. */
 export const DOCK_SAFE_AREA_PX = 352;
 export const DOCK_PREFERRED_WIDTH_PX = 480;
 
@@ -23,8 +22,6 @@ export function maxSidebarWidth(shellWidth: number): number {
   );
 }
 
-/** SOLE owner of the floor — which is why the narrow end of the range is the constant, not a
- *  function. A second clamp on that end can never fire; one existed and did nothing. */
 export function maxDockWidth(rowWidth: number): number {
   return Math.max(DOCK_MIN_WIDTH_PX, rowWidth - DOCK_SAFE_AREA_PX);
 }
@@ -38,8 +35,6 @@ function clamp01(ratio: number): number {
   return Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 1;
 }
 
-/** The persisted preference is this RATIO, never a width: the px measure changes with every
- *  window resize, and CSS re-derives it from the ratio with no React render. */
 export function dockWidthFromRatio(ratio: number, rowWidth: number): number {
   const max = maxDockWidth(rowWidth);
   return Math.round(DOCK_MIN_WIDTH_PX + clamp01(ratio) * (max - DOCK_MIN_WIDTH_PX));
@@ -47,12 +42,10 @@ export function dockWidthFromRatio(ratio: number, rowWidth: number): number {
 
 export function dockRatioFromWidth(width: number, rowWidth: number): number {
   const max = maxDockWidth(rowWidth);
-  // Zero-width range: a row under floor + safe area has one legal width.
   if (max <= DOCK_MIN_WIDTH_PX) return 1;
   return clamp01((clampDockWidth(width, rowWidth) - DOCK_MIN_WIDTH_PX) / (max - DOCK_MIN_WIDTH_PX));
 }
 
-/** Automatic layout reserves new space for the conversation, not a larger dock. */
 export function defaultDockWidth(rowWidth: number): number {
   return clampDockWidth(DOCK_PREFERRED_WIDTH_PX, rowWidth);
 }

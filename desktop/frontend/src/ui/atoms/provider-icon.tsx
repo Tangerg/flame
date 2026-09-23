@@ -28,15 +28,9 @@ type BrandIcon = ComponentType<{ size?: number }>;
 
 interface Brand {
   mark: BrandIcon;
-  /** How the vendor writes it. `capitalize` gets "Openai" and "Deepseek", which is a
-   *  different company's name than the one on the mark beside it. */
   name: string;
 }
 
-// Keyed by the Runtime's own provider id — the only string that reaches here. `alibaba`
-// rather than `qwen` and `google` rather than `gemini` are ITS spellings, not the brand's;
-// keying by the brand leaves the mark unreachable. Map, not object, because an object
-// answers `constructor` with an inherited function that then renders as a component.
 const BRAND = new Map<string, Brand>([
   ["alibaba", { mark: Alibaba, name: "Alibaba" }],
   ["anthropic", { mark: Anthropic, name: "Anthropic" }],
@@ -57,7 +51,6 @@ const BRAND = new Map<string, Brand>([
   ["zhipu", { mark: Zhipu, name: "Zhipu" }],
 ]);
 
-/** The vendor's own spelling where this app knows it, else the id capitalised. */
 export function providerDisplayName(provider: string): string {
   return (
     BRAND.get(provider.toLowerCase())?.name ?? provider.charAt(0).toUpperCase() + provider.slice(1)
@@ -74,8 +67,6 @@ export function ProviderIcon({ provider, size = "md" }: { provider: string; size
         {...stylex.props(styles.mark)}
         style={{ width: `var(--icon-${size})`, height: `var(--icon-${size})` }}
       >
-        {/* The mark is one of the module constants above, picked by name — never built
-            here, which is why it is applied rather than written as `<Brand />`. */}
         {createElement(brand.mark, { size: 0 })}
       </span>
     );

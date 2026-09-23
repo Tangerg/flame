@@ -1,7 +1,3 @@
-// Ephemeral open state for the session search use case. The overlay, keyboard
-// shortcut, and Work Index launcher are three adapters for the same action, so
-// they meet here instead of importing one another.
-
 import { create } from "zustand";
 
 interface SessionSearchState {

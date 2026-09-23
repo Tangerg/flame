@@ -14,7 +14,6 @@ const styles = stylex.create({
     userSelect: "none",
     cursor: "default",
   },
-  // The same step every other control fades to when it cannot be used.
   off: { cursor: "not-allowed", opacity: "var(--control-disabled-opacity)" },
   box: {
     display: "grid",
@@ -38,10 +37,6 @@ interface CheckboxProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   label: ReactNode;
-  /** Nothing passes this yet, and it stays anyway: `disabled` is a state every control in this
-   *  library has — `Button` inherits it from the DOM props it extends — and a closed interface
-   *  that omits it would make the checkbox the one control that cannot be turned off. Wired end
-   *  to end, so it works the day something needs it rather than looking as if it does. */
   disabled?: boolean;
   className?: string;
 }

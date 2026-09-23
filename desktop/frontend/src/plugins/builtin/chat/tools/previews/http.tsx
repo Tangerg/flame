@@ -18,7 +18,6 @@ import { previewStyles as pv } from "./previewStyles";
 const hp = stylex.create({
   head: { marginBottom: space.s1_5, display: "flex", alignItems: "center", gap: space.s2 },
   headPlain: { marginBottom: space.s1_5 },
-  // Takes the row's spare width so the status and the duration stay at its two ends.
   spacer: { minWidth: space.s4, flex: 1 },
 });
 

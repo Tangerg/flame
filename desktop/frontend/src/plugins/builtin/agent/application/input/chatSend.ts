@@ -15,21 +15,13 @@ import { useCurrentRootMaterial } from "../run/runReadModel";
 import { ExactSequence } from "@/foundation/exactSequence";
 
 type SendToAgent = (input: AgentInput, options?: AgentRunStartOptions) => boolean;
-/** Start and steer retain distinct user intent. Runtime admission supplies the
- * exact Item identity; only the applied fact attaches it to durable history. */
 export function useChatSend(): (input: AgentInput) => boolean {
   const send = agentSessionView().useAction("send");
   return useCallback(
     (input: AgentInput) => {
       const sessionId = getActiveSessionId();
       const runOptions = resolveAgentRunStartOptions();
-      // Admission is decided at event time, not from the render that created
-      // this callback. A Run can park for HITL between the last paint and an
-      // Enter keydown; steering a captured `running` identity would clear the
-      // composer before the Runtime rejects it as no longer addressable.
       const root = selectCurrentRootRun(agentSessionView().getCurrentView());
-      // A steer needs the segment as well as the run: without it there is nothing to
-      // address, and a fresh turn is the honest fallback.
       if (root?.status === "running" && sessionId && root.activeSegmentId) {
         if (
           steerRunningTurn({
@@ -60,13 +52,9 @@ export function canAcceptChatInput(
   mountedSendAvailable: boolean,
   rootStatus: "idle" | "running" | "waiting" | "finished",
 ): boolean {
-  // Only the mounted Session lifecycle may accept input. The projectless welcome
-  // screen deliberately keeps the draft but cannot send it; a parked root must
-  // be resumed through its interrupt rather than opened as a competing turn.
   return Boolean(sessionId) && mountedSendAvailable && rootStatus !== "waiting";
 }
 
-// A distinct "steer-" suffix so these cannot collide with send()'s own local-N counter.
 const steerBubbleIds = new ExactSequence();
 
 interface SteerRunningTurnInput {

@@ -157,10 +157,6 @@ class RuntimeConnectionOwnerImplementation implements RuntimeConnectionOwner {
 
   replaceEndpoint(commit: () => void): Promise<void> {
     if (!this.#ownsGeneration()) return Promise.resolve();
-    // Server scope is broader than a transport reconnect. Revoke the old
-    // connection first, commit the endpoint only after every synchronous
-    // connection subscriber has retired its writers, then let read-model
-    // owners discard facts that cannot cross server identity.
     useRuntimeConnectionStore.setState(initialConnectionState(), true);
     commit();
     for (const listener of this.#serverReplacementListeners) listener();
@@ -172,10 +168,6 @@ class RuntimeConnectionOwnerImplementation implements RuntimeConnectionOwner {
     const current = useRuntimeConnectionStore.getState();
     if (current.connectionGeneration !== expectedGeneration) return;
 
-    // The stream is an ordered member of this connection generation. Once it
-    // ends unexpectedly, the generation is no longer capable of admitting
-    // commands, queries, mutations, or material writers — even if the same
-    // Runtime process will answer the recovery inspection a moment later.
     useRuntimeConnectionStore.setState(reconnectingConnectionState(), true);
     this.#controller.recover();
   }
@@ -222,11 +214,6 @@ class RuntimeConnectionOwnerImplementation implements RuntimeConnectionOwner {
 
 const runtimeConnectionPublication = createPublicationSlot<RuntimeConnectionOwnerImplementation>();
 
-/**
- * Claim the process-local Runtime connection owner. The claim retires the
- * previous controller before publishing an empty successor projection, so old
- * inspections, timers, and disposers can no longer write or clear current state.
- */
 export function startRuntimeConnection(
   inspector: RuntimeConnectionInspector<ServerCapabilities>,
 ): RuntimeConnectionOwner {

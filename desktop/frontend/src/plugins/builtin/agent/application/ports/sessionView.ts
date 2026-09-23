@@ -22,20 +22,8 @@ export type ResolvePatch = {
 };
 
 export type StopCurrentRootRunAction = () => boolean;
-/**
- *   after-live      The live stream keeps ownership; the read waits for it to go idle.
- *   replace-live    Supersede the active Runtime generation and read at once.
- *   retire-live     Revoke the active generation without admitting a successor read.
- *   replace-server  A new server owns the scope, so the read replaces it wholesale.
- *
- * Stated by every caller. An optional argument would give the commonest boundary a second
- * spelling — absence — and the named one then names nothing.
- */
 export type SessionProjectionSynchronizationOwnership =
   "after-live" | "replace-live" | "retire-live" | "replace-server";
-/** Request the mounted Session's single projection owner to reconcile durable
- * facts. True means an authoritative snapshot committed; false means the read
- * was superseded, unavailable, or failed and the caller may retry. */
 export type SynchronizeSessionAction = (
   ownership: SessionProjectionSynchronizationOwnership,
 ) => Promise<boolean>;
@@ -60,8 +48,6 @@ export type ResumeRunAction = (
   runId: string,
   responses: InterruptResumeInput[],
   onSettled?: () => void,
-  /** Return true when a newer authoritative projection already superseded the
-   *  rejected opening, so the Adapter must not publish a stale command error. */
   onStartError?: () => boolean | void,
 ) => boolean;
 
@@ -69,8 +55,6 @@ export interface AgentSessionViewEntry {
   view: AgentSessionView;
   viewEpoch: bigint;
   viewRevision: bigint;
-  /** Monotonic commits of durable authoritative projections. Unlike
-   * `viewRevision`, live events and optimistic writes do not advance it. */
   authoritativeRevision: bigint;
   stop: StopCurrentRootRunAction | null;
   send: SendAgentInputAction | null;
@@ -80,32 +64,22 @@ export interface AgentSessionViewEntry {
 }
 
 export interface AgentViewRefreshToken {
-  /** Exact mounted projection generation that admitted this read. Session-local
-   * counters restart after a close/remount and cannot identify its successor. */
   readonly generation: bigint;
   readonly requestSequence: bigint;
   readonly viewRevision: bigint;
 }
 
-/** Local presentation state must not cross this boundary even when
- * a successor server reuses the same Session and domain revision. */
 export interface AgentProjectionMaterial<T> {
   readonly generation: bigint;
   readonly value: T | undefined;
 }
 
 export interface AgentSessionViewPort {
-  /** Consumers derive attention, metrics and
-   * outcome from this identity instead of independently sampled fragments. */
   useCurrentRootRun(): AgentRunView | null;
-  /** Whether that Run is streaming, as a BOOLEAN rather than a fact read off the
-   *  snapshot: the Run object is replaced on every progress frame, so a consumer
-   *  that only gates on attention would otherwise re-render per token. */
   useCurrentRootRunning(): boolean;
   useToolCalls(): Record<string, ToolCall>;
   useSessionTimeline(): TimelineEntry[];
   useRootNarrativeMessages(): Message[];
-  /** The transcript as rows, each holding only the session facts it renders. */
   useTranscriptRows(): readonly TranscriptRow[];
   useRunTree(): AgentRunTreeNode[];
   useProblem(): AgentProblem | null;
@@ -129,8 +103,6 @@ export interface AgentSessionViewPort {
     token: AgentViewRefreshToken,
     view: AgentSessionView,
   ): boolean;
-  /** Revoke snapshot tokens and queued live-event cohorts without clearing the
-   * currently visible material or starting a successor read. */
   retireProjectionGeneration(sessionIds: readonly string[]): void;
   replaceServerScope(sessionIds: readonly string[]): void;
   clearProblem(sessionId: string): void;

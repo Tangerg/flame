@@ -3,7 +3,6 @@ import type { CSSProperties, ReactNode } from "react";
 import { color, corner, leading, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 
-/** How much room the state is given. `data-view` names the same two. */
 export type EmptyStateSize = "compact" | "comfortable";
 
 const styles = stylex.create({
@@ -27,9 +26,6 @@ const styles = stylex.create({
   iconCompact: { height: space.s7, width: space.s7 },
   iconComfortable: { height: space.s10, width: space.s10 },
   title: { fontWeight: weight.medium, letterSpacing: "normal", color: color.fg },
-  // 280px is narrow, and this line is the one place the app explains itself in prose — through
-  // every locale it ships. A German compound or an API name in the copy (`host.notify()`) has
-  // nowhere to break, and at this measure that paints outside the pane.
   sub: {
     maxWidth: "280px",
     lineHeight: leading.body,

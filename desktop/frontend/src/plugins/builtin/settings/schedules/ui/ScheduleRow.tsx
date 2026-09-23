@@ -99,13 +99,6 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
   return (
     <div {...stylex.props(sr.shell)}>
       <div {...stylex.props(sr.row)}>
-        {/* Only what the row SAYS steps back, never what it offers. `opacity-60` on the whole
-            row put its run, edit and delete controls BELOW the opacity the app draws a
-            genuinely disabled control at, and measured on the rendered pixels it took the
-            title to 4.36:1, the cron to 2.43 and the instructions to 2.68 — a row marked
-            inactive by making itself unreadable. A step down the token ladder is the same
-            signal with contrast the design system owns rather than a multiplier landing
-            wherever the two colours happen to leave it. */}
         <div {...stylex.props(vocab.min)}>
           <div {...stylex.props(vocab.line)}>
             <span
@@ -177,8 +170,6 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
         </div>
       )}
 
-      {/* One click on a quiet icon between Run and Edit, with no undo behind it: a saved
-          schedule and its instructions would be gone on a slip, so it asks first. */}
       <ConfirmDialog
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}

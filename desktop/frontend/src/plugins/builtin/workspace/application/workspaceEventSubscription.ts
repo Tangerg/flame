@@ -33,10 +33,6 @@ class RuntimeEventLoopOwner {
     if (this.#observedConnection && !generationChanged && (this.#abort !== null) === shouldStream)
       return;
 
-    // Runtime identity owns every read admitted through its connection, not
-    // only runtime.subscribe. Revoke those writers synchronously before the
-    // old tail is aborted or the successor tail begins opening. The successor
-    // snapshot remains deliberately deferred until that tail is established.
     if (generationChanged) this.retireReadModels();
     this.#abort?.abort();
     this.#abort = null;
@@ -104,11 +100,6 @@ export function startWorkspaceEventSubscription(
 
   const retarget = (change: WorkspaceCwdInputChange): void => {
     const lease = (retargetLease = {});
-    // A new active Session must never inherit the previous Session's watch while
-    // its identity resolves. A projection update belongs to the same Session,
-    // so keep the current watch until its workspace resolves: WorkspaceEventLoop
-    // suppresses an equal target and avoids tearing down a healthy stream merely
-    // because the Session list caught up after a cold direct read.
     if (change === "identity") ports.loop.retarget({ type: "none" });
     resolveTarget(lease);
   };

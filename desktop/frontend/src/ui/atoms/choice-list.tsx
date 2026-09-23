@@ -72,9 +72,7 @@ interface ChoiceListProps {
   values: readonly string[];
   labelledBy: string;
   disabled?: boolean;
-  /** The options show their ordinal, so typing it picks one. Pair with `ChoiceOption`'s `ordinal`. */
   numbered?: boolean;
-  /** The answer this list belongs to is being submitted. See `TextField`'s `pending`. */
   pending?: boolean;
   onValueChange: (value: string[]) => void;
   children: ReactNode;
@@ -103,9 +101,6 @@ export function ChoiceList({
     "aria-labelledby": labelledBy,
     className: stylex.props(styles.list).className,
     disabled,
-    // In flight it stays focusable and announces itself as disabled, and the CHANGE is refused
-    // here — `disabled` would take the group out of the tab order, so answering a question by
-    // keyboard blurred the person answering it.
     "aria-disabled": pending ? true : undefined,
     onKeyDown: pending ? undefined : selectNumberedChoice,
   };
@@ -137,9 +132,7 @@ interface ChoiceOptionProps {
   label: string;
   description?: string;
   disabled?: boolean;
-  /** The answer this option belongs to is being submitted. */
   pending?: boolean;
-  /** This option is the one being committed. */
   busy?: boolean;
   onReselect?: () => void;
   children: ReactNode;
@@ -158,9 +151,6 @@ export function ChoiceOption({
   onReselect,
   children,
 }: ChoiceOptionProps) {
-  // The row's own state, from the state Base UI hands the class function — not from an
-  // ancestor selector. `selected` says the same thing on the React side, and the mark below
-  // reads it: what the row is showing is known here, so nothing has to be inherited for it.
   const className = ({ checked }: { checked: boolean }) =>
     stylex.props(styles.row, checked ? styles.rowChosen : styles.rowOpen).className ?? "";
 
@@ -180,11 +170,6 @@ export function ChoiceOption({
 
   const content = (
     <>
-      {/* Round for one-of, square for many-of — the distinction every platform makes, and the
-          one this list needs most before anything is selected: a multi-select's unchecked mark
-          carries no number and no check, so a circle there is three blank radios telling the
-          reader to pick one. `rounded-2xs` is the radius `Checkbox` already uses, so the two
-          places the app asks for several answers now ask the same way. */}
       <span
         aria-hidden
         {...stylex.props(

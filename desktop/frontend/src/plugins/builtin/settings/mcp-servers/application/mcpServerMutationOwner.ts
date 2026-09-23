@@ -116,8 +116,6 @@ class MCPServerMutationGeneration {
   }
 }
 
-/** Owns MCP server commands, authorization polling, and cache projection for
- * one exact Plugin Host and Runtime generation. */
 export class MCPServerMutationOwner {
   static #materialGeneration = 0n;
   static readonly #materialListeners = new Set<() => void>();

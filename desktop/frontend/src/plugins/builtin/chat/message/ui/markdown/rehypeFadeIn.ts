@@ -2,12 +2,10 @@ import type { Element, Root, Text } from "hast";
 import { segmentWords } from "@/lib/i18n/segmentWords";
 import { rewriteTextNodes } from "./rewriteTextNodes";
 
-/** Text that is not prose: it arrives as a whole and animating it word by word is a lie. */
 const SKIP_TAGS = new Set(["pre", "code", "script", "style"]);
 
 const WHITESPACE = /^\s+$/;
 
-/** An opted-out region, and its descendants: the flag is not a claim about one text node. */
 function optedOut(node: Element): boolean {
   const properties = node.properties ?? {};
   return Boolean(properties.dataNoFade ?? properties["data-no-fade"]);

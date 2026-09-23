@@ -6,11 +6,6 @@ import { foldRunSnapshot } from "../fold/runSnapshot";
 import { foldPendingInterruptSet } from "../fold/pendingInterruptSnapshot";
 import { onPlanUpdated } from "../fold/planHandlers";
 
-/**
- * Project one complete durable read off-store. Callers either commit the
- * returned value wholesale or discard it; partially fetched material never
- * becomes observable.
- */
 export function projectAgentSessionSnapshot(snapshot: AgentSessionSnapshot): AgentSessionView {
   let view = EMPTY_AGENT_SESSION_VIEW;
   for (const run of snapshot.runs) view = foldRunSnapshot(view, run);

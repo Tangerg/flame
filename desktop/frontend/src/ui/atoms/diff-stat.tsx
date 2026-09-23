@@ -34,8 +34,6 @@ export function DiffStat({
       </span>
     );
   }
-  // A measured change of nothing, said once. Absent counts are `undefined` upstream and never
-  // reach here, so a dash means "measured, and it was zero" rather than "not measured".
   if (added === 0 && removed === 0) {
     return (
       <span aria-hidden {...quiet} className={cn(quiet.className, className)}>

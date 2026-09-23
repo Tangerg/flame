@@ -1,12 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { color, leading, motion, radius, space, surface, weight } from "@/styles/tokens.stylex";
 
-/**
- * The shapes a dock view is made of.
- *
- * Type steps are NOT here: a view composes `typeStep.uiMd` and friends from the design
- * system, because a size is the design's vocabulary and this file is only the arrangement.
- */
 export const viewStyles = stylex.create({
   gutter: { paddingInline: "var(--reading-gutter-wide)" },
 
@@ -18,7 +12,6 @@ export const viewStyles = stylex.create({
   planPad: { paddingBlock: space.s3_5 },
   planHeading: { paddingInline: 0, paddingTop: 0, paddingBottom: space.s2 },
 
-  /** The height, the inset and the type step stay with each tree. */
   treeRow: {
     display: "flex",
     width: "100%",
@@ -79,9 +72,6 @@ export const viewStyles = stylex.create({
   origin: { marginTop: space.s1, color: color.fgFaint },
   actions: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s2 },
   actionsTight: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s0_5 },
-  // What the agent wrote, so it can contain a path, a hash or an identifier with nowhere to
-  // break. Without this the run paints straight out of the pane; `unbreakableContent` measured
-  // 1636px of it on a memory entry.
   body: { color: color.fg, lineHeight: leading.body, overflowWrap: "break-word" },
   metaLine: { marginTop: space.s1, display: "flex", alignItems: "center", gap: space.s2 },
   formLine: { marginTop: space.s2, display: "flex", alignItems: "center", gap: space.s2 },
@@ -95,20 +85,9 @@ export const viewStyles = stylex.create({
     alignItems: "center",
     gap: space.s1_5,
   },
-  /** Not disabled — the row is telling you it happened. */
   dismissed: { opacity: "var(--state-receded)" },
 
   lineBaseline: { display: "flex", alignItems: "baseline", gap: space.s2, minWidth: 0 },
-  /**
-   * The subject's own column, rather than a box the size of whatever is in it.
-   *
-   * The row is `[kind] [subject] [status] [duration] [clock]`, and the three on the right do not
-   * shrink — so the subject is the one that has to, and it only did when the branch inside it
-   * truncated for itself. `ToolText` does for prose and `FilePath` does for a path, which is why
-   * a subject that reached neither ran on under the duration and the clock and painted them over.
-   * The boundary belongs to the column — and it signs the cut, because a clip with no ellipsis
-   * is a line the reader cannot tell was shortened. One line, always: a timeline row is a row.
-   */
   subject: {
     minWidth: 0,
     flex: 1,
@@ -123,12 +102,6 @@ export const viewStyles = stylex.create({
     alignItems: "baseline",
     gap: space.s2,
   },
-  /**
-   * The name truncates, which gives a flex item an automatic minimum of zero, while a Tag or a
-   * Badge keeps its width. So the one thing in the row that identifies it was the only thing
-   * allowed to vanish: measured in a 207px dock, `review-diff` rendered at 0px wide beside a
-   * revision hash and two badges that were all fully drawn — not ellipsed, absent.
-   */
   titleLine: {
     display: "flex",
     flexWrap: "wrap",
@@ -139,7 +112,6 @@ export const viewStyles = stylex.create({
 
   pushEnd: { marginInlineStart: "auto" },
 
-  // Medium, as zcode sets a label or a row's name: weight marks it without shouting.
   title: { color: color.fg, fontWeight: weight.medium },
   description: {
     marginTop: space.s0_5,
@@ -187,16 +159,9 @@ export const viewStyles = stylex.create({
   editorInset: { paddingBottom: space.s3, paddingLeft: space.s10 },
 });
 
-/**
- * The timeline is the one view whose rows nest: a delegated run is drawn inside its parent.
- * The indent is a ladder rather than `depth × step` because its last rung is a cap — past
- * five levels a further indent buys nothing and costs the text its width.
- */
 export const timelineStyles = stylex.create({
   glyph: { marginTop: space.s1, flexShrink: 0, color: color.fgFaint },
   kind: { color: color.fg, fontWeight: weight.medium },
-  // The box holds a glyph and no text, so it takes no leading: a type step here would add
-  // descender space under a check mark and push the row taller than the line beside it.
   mark: { marginTop: space.s1, flexShrink: 0, lineHeight: 1 },
   stamp: {
     marginTop: space.s0_5,
@@ -204,9 +169,6 @@ export const timelineStyles = stylex.create({
     fontFamily: "var(--font-mono)",
     color: color.fgFaint,
   },
-  // A measure wide enough for the durations a tool call produces, so the status mark to its
-  // left lands on one edge down the list. Without it every row placed its own trailing cluster:
-  // `42ms` and `120ms` differ by a character, and the glyph before them moved with it.
   duration: { minWidth: "calc(var(--spacing) * 12)", textAlign: "right" },
   runHeader: {
     display: "flex",
@@ -255,22 +217,11 @@ export const indent = [
   indentStyles.d5,
 ] as const;
 
-/**
- * The code surfaces: a command log, a file, a diff.
- *
- * Their inset is NOT the dock gutter — it sits beside a line-number column and belongs to the
- * code.
- */
 export const codeStyles = stylex.create({
   sheet: { paddingBlock: space.s2, fontFamily: "var(--font-mono)", lineHeight: leading.relaxed },
   gutter: { textAlign: "right", color: color.fgFaint, userSelect: "none" },
   wrap: { minWidth: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
-  // `anywhere`, like `wrap` above and for the same reason: a hunk header carries the enclosing
-  // declaration, and a generic signature or a long identifier has nowhere to break. Only the
-  // break — the header's whitespace is already whatever the diff sent.
   hunk: {
-    // The gap separates one hunk from the one above it; the first has the file header there
-    // instead, and took both — an 18px empty band under every card header.
     marginTop: { default: space.s2_5, ":first-child": 0 },
     borderWidth: 0,
     backgroundColor: surface.sunken,
@@ -282,9 +233,6 @@ export const codeStyles = stylex.create({
   sideBySide: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" },
   blank: { backgroundColor: surface.sunken },
 
-  // The gutter widths below are absolute on purpose — a digit column is sized by how many
-  // digits must fit, which is not a rung of the spacing rhythm. (`matchRow` above says the
-  // same 44px as `--spacing * 11`; that one is the odd spelling.)
   lineRow: { display: "grid", alignItems: "flex-start", paddingInline: space.s3 },
   gutterOne: { gridTemplateColumns: "44px minmax(0, 1fr)", gap: space.s2 },
   gutterPair: { gridTemplateColumns: "36px 36px minmax(0, 1fr)", gap: space.s1_5 },
@@ -293,8 +241,6 @@ export const codeStyles = stylex.create({
   signMeta: { textAlign: "center", userSelect: "none" },
   targetLine: { backgroundColor: surface.accentWash },
 
-  // The tint has to stay under syntax colour and so stays low; the spine is opaque, carries no
-  // text, and is what makes the row scannable at that alpha.
   rowAdded: {
     backgroundColor: "var(--color-diff-added-tint)",
     boxShadow: "var(--shadow-diff-added-spine)",

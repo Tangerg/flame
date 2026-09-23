@@ -3,8 +3,6 @@ import { useActiveSessionId, useAgentSessions } from "@/plugins/builtin/agent/pu
 import { resolveComposerModelSelection } from "../application/modelSelection";
 import { useComposerModelPreference } from "./modelPreference";
 
-/** While an active Session summary is loading there is deliberately NO fallback — choosing
- *  early turns a query race into a model override. `undefined` when no provider is enabled yet. */
 export function useSelectedModelSelection() {
   const { data: models = [] } = useModels();
   const preference = useComposerModelPreference();

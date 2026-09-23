@@ -1,8 +1,3 @@
-/** Arbitrary-precision, process-local monotonic sequence.
- *
- * Use this only when an identity must be encoded as a stable scalar. Pure
- * cancellation/commit authority should use object identity instead.
- */
 export class ExactSequence {
   #lastIssued: bigint;
 

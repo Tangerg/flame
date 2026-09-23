@@ -146,9 +146,6 @@ export function ConnectionPane() {
               {...stylex.props(vocab.grow)}
               spellCheck={false}
             />
-            {/* Both stay mounted and go disabled instead of appearing. The field beside them is
-                `flex-1`, so a button arriving on the first keystroke narrowed it and moved the
-                caret in the middle of typing. */}
             <Button
               type="button"
               variant="outline"

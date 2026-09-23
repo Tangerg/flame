@@ -9,7 +9,6 @@ export const test = base.extend<{ quietConsole: void }>({
       const complaints: string[] = [];
       page.on("console", (message) => {
         if (message.type() !== "error" && message.type() !== "warning") return;
-        // The suite explicitly emulates reduced motion; Motion announces that setting in dev.
         if (
           message.type() === "warning" &&
           message.text().startsWith("You have Reduced Motion enabled on your device.") &&

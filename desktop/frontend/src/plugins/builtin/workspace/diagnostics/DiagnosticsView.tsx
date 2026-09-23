@@ -21,8 +21,6 @@ const SIGNALS = [
   { value: "logs" as const, label: "diagnostics.signal.logs" },
 ];
 
-// The panel's own table: two columns that hold a measure and one that takes what is left.
-// The widths belong here, beside the header that names them, rather than at each `Cell`.
 const logColumns = stylex.create({
   level: { width: space.s12 },
   message: { flexGrow: 1 },
@@ -52,7 +50,6 @@ const d = stylex.create({
     fontWeight: weight.medium,
   },
   cell: { paddingBlock: space.s0_5, paddingRight: space.s3 },
-  // Columns of numbers read down, so they align on the right and hold one glyph width.
   figures: { textAlign: "right" },
   numeric: { textAlign: "right", fontVariantNumeric: "tabular-nums", color: color.fg },
   metricRow: {
@@ -133,8 +130,6 @@ function LogsPanel() {
   );
 }
 
-// Map, not object: keyed off the telemetry stream, where `constructor` would answer with an
-// inherited member instead of the fallback tone.
 const SEVERITY_TONE = new Map<string, Tone>([
   ["ERROR", "negative"],
   ["WARN", "warning"],
@@ -171,8 +166,6 @@ interface NameGroup {
   rows: MetricRow[];
 }
 
-// Map, not object: grouped by instrument name, where `constructor` answers with a function
-// that reads as an existing group and then throws on `g.rows.push`.
 function groupByName(rows: MetricRow[]): NameGroup[] {
   const by = new Map<string, NameGroup>();
   for (const r of rows) {

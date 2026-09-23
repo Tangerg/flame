@@ -3,14 +3,8 @@ import { motionScale } from "@/lib/appearance";
 import { segmentWords } from "@/lib/i18n/segmentWords";
 import type { StreamReveal } from "../../streamReveal";
 
-/**
- * The reader's stored preference, plus the one case the reader never chose. `instant` is a
- * RENDER decision — replayed history and anything already complete has nothing to reveal — so
- * it extends the preference rather than joining it.
- */
 export type MarkdownReveal = StreamReveal | "instant";
 
-// Characters per second, chosen by how far the reveal has fallen behind the stream.
 const RATE_CRUISE = 40;
 const RATE_MODERATE = 80;
 const RATE_CATCHUP = 160;
@@ -34,9 +28,6 @@ function isHighSurrogate(code: number): boolean {
   return code >= HIGH_SURROGATE_FIRST && code <= HIGH_SURROGATE_LAST;
 }
 
-// The painter publishes the scale AND writes `data-motion` for the stylesheet. Reading the
-// published value keeps this on the one path; scraping the attribute made the same fact
-// reachable two ways, and only one of them survives a rename.
 function prefersReducedMotion(): boolean {
   if (motionScale() === 0) return true;
   return (
@@ -60,8 +51,6 @@ export function useStreamReveal(
   streaming: boolean,
   reveal: MarkdownReveal,
 ): string {
-  // The closed value travels the whole way rather than arriving as two booleans: the hook
-  // owns what each mode means, and a caller cannot pick a combination that means nothing.
   const whole = reveal === "instant" || prefersReducedMotion();
   const active = streaming && !whole;
 
@@ -149,7 +138,6 @@ export function useStreamReveal(
 
       newLen = Math.min(newLen, st.rawText.length);
       if (newLen > st.displayLen && newLen < st.rawText.length) {
-        // Cutting between a surrogate pair renders a replacement character for a frame.
         if (isHighSurrogate(st.rawText.charCodeAt(newLen - 1))) newLen += 1;
       }
       if (newLen !== st.displayLen) {
@@ -183,21 +171,6 @@ export function useStreamReveal(
   return whole ? rawText : rawText.slice(0, displayLen);
 }
 
-/**
- * Trailing-throttles a streaming value, and at `minMs <= 0` hands back what it was given on the
- * SAME render rather than a render later.
- *
- * That short circuit is load-bearing, and what it buys is TIMING, not identity — an earlier
- * version of this comment said the committed copy "is never `===`", which is not true of a
- * string: once the trailing timeout fires, the committed value compares equal to the input by
- * value, as measured. What differs is when. Routed through state, a settled value only becomes
- * equal a timeout after it arrived, and `MarkdownMessage` reads `source === text` to decide
- * what material is on screen — so history and anything already complete would report the wrong
- * answer for that window, every time it mounted.
- *
- * It is also why this is not `useThrottledValue` from react-pacer, which routes every value
- * through state and therefore cannot offer the zero case at all.
- */
 export function useCommitThrottle(value: string, minMs: number): string {
   const [committed, setCommitted] = useState(value);
   const lastCommitRef = useRef(0);

@@ -10,8 +10,6 @@ const styles = stylex.create({
   trigger: {
     display: "inline-flex",
     width: "fit-content",
-    // A select is wide enough for the values it has to hold, whichever one is showing: the
-    // control's measure, not each pane's.
     minWidth: "var(--select-min-width)",
     minHeight: "var(--control-height-md)",
     alignItems: "center",

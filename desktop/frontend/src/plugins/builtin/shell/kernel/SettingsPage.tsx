@@ -15,12 +15,6 @@ import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 
 const sp = stylex.create({
   title: { color: color.fg, fontWeight: weight.semibold },
-  // A reading measure for the blurb: 60 characters, which the pane's width does not decide.
-  //
-  // No `margin: 0` beside the `marginTop`. They are two KEYS, so StyleX emits a class for each
-  // and cannot merge them the way it merges two styles naming one key — the blurb's top margin
-  // was whichever rule the bundler wrote second. The reset already zeroes every margin, so the
-  // shorthand was saying nothing that needed saying and outranking something that did.
   blurb: {
     marginTop: space.s1_5,
     maxWidth: "60ch",
@@ -141,8 +135,6 @@ function SettingsRailHeader({
           onClick={selectWorkspaceChat}
           className={stylex.props(sp.back).className}
         >
-          {/* Leads rather than accompanies, so it keeps full strength — through the attribute
-              the glyph-step rule excludes, not through an opacity that out-ranks it. */}
           <Icon name="arrow-left" size="md" full />
           <span>{t("settings.backToApp")}</span>
         </Button>

@@ -41,15 +41,6 @@ const mi = stylex.create({
   },
 });
 
-/**
- * Only a data URI is rendered as an image; anything else takes the `missing` box below.
- *
- * So every `<img>` in this file carries its bytes inline, and NONE of them may be
- * `loading="lazy"`: there is no request to defer, and the attribute costs the one thing that
- * matters here. Measured — a lazy image below the fold stayed `complete: false`, `0x0`, until
- * the reader scrolled to it and it snapped to 240x96, moving the transcript under the line
- * they were reading; its preview `<button>` sat in the tab order at zero size the whole time.
- */
 const INLINE_IMAGE = /^data:image\/(?:avif|gif|jpeg|jpg|png|svg\+xml|webp)(?:;[^,]*)?,/i;
 
 export function isInlineMarkdownImage(src: string): boolean {
@@ -61,14 +52,6 @@ interface Props {
   alt?: string;
   title?: string;
   allowWide?: boolean;
-  /**
-   * The image is inside a link, so the LINK is the control and this must not be one.
-   *
-   * `[![badge](img)](url)` is the commonest image in anything an agent quotes, and rendering
-   * its own preview trigger there puts a `<button>` inside an `<a target="_blank">`: invalid
-   * HTML, two tab stops where the reader sees one badge, and one click that both opens the
-   * preview and follows the link. Every other renderer emits `<a><img></a>`, and so does this.
-   */
   linked?: boolean;
 }
 
@@ -83,8 +66,6 @@ export function MarkdownImage({
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const unavailable = !isInlineMarkdownImage(src) || failedSource === src;
 
-  // An image that did not load is worth saying, and saying it is all this can do: there is
-  // nothing to open, and a control that can never be enabled is not a control.
   if (unavailable) {
     return (
       <span

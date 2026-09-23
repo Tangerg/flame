@@ -1,7 +1,3 @@
-// For the harnesses that need a location but not a router: unit tests and the visual
-// fixtures. It keeps a REAL history stack, so a test can assert that going back returns
-// where it came from — the behaviour the router-backed one exists to provide.
-
 import { useSyncExternalStore } from "react";
 import {
   applyPatch,
@@ -13,7 +9,6 @@ import {
 } from "./navigation";
 
 export interface MemoryNavigator extends Navigator {
-  /** Replace the whole location without recording history — fixture setup. */
   reset(location?: Partial<AppLocation>): void;
   entries(): AppLocation[];
 }
@@ -53,9 +48,6 @@ export function createMemoryNavigator(initial: Partial<AppLocation> = {}): Memor
 
   return {
     get: current,
-    // Reactive like the router-backed one. A fixture's location is frozen for
-    // the shot and never exercises this, but a test that renders a component and
-    // then navigates would otherwise silently observe the old value.
     use: (select) =>
       useSyncExternalStore(
         (onChange) => subscribe(() => onChange()),

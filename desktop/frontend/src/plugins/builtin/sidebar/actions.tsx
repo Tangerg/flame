@@ -23,8 +23,6 @@ const sb = stylex.create({
 export function SidebarActions() {
   const t = useT();
   const actions = useWorkIndexActions();
-  // The key belongs to the command, not to this row: a hint spelled here would keep saying ⌘K
-  // after the command moved.
   const combo = useExtensionByKey(COMMAND, SESSION_SEARCH_COMMAND)?.combo;
 
   return (

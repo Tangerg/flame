@@ -13,8 +13,6 @@ function itemEntry(item: AgentItem, kind: TimelineEntry["kind"], timestamp: stri
   return { id: `timeline:item:${item.id}:${kind}`, kind, ts, runId: item.runId, refId: item.id };
 }
 
-// Transport events and cold snapshots describe the same Item boundaries. Their
-// receipt times and event IDs are not the identity or timing of the operation.
 export function recordToolTimeline(
   state: AgentSessionView,
   item: Extract<AgentItem, { type: "toolCall" }>,

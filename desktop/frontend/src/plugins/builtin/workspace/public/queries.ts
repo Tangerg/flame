@@ -39,6 +39,4 @@ export {
   type WorkspaceRecipesQuery,
 } from "../application/workspaceQueries";
 
-// Capability gating is part of the cross-context surface; consumers must not
-// infer a workspace feature from connection phase or stale query material.
 export { useWorkspaceCapability } from "../application/workspaceCapabilities";

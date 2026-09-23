@@ -16,11 +16,6 @@ const port = createSingletonPort<RuntimeCapabilityPort>(
 export const configureRuntimeCapabilityPort = port.configure;
 export const runtimeCapabilities = port.get;
 
-/**
- * The negotiated capabilities for a caller outside the plugin lifecycle — the SDK's
- * capability preflight, wired at the composition root. Before the adapter installs,
- * null is the true answer rather than an error: nothing has been negotiated.
- */
 export function negotiatedCapabilities(): ServerCapabilities | null {
   return port.peek()?.negotiated() ?? null;
 }

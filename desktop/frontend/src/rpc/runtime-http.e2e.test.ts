@@ -1,5 +1,3 @@
-// @vitest-environment node
-
 import { execFile } from "node:child_process";
 import {
   chmod,
@@ -568,8 +566,6 @@ function writeChatCompletion(
           })),
         }
       : { role: "assistant", content: reply.text };
-  // Fixed usage is useful for accounting assertions but would erase growing context pressure
-  // through Runtime's provider calibration. Compaction scenarios leave usage unreported.
   const usage = JSON.stringify(body.messages ?? []).includes("E2E_COMPACTION_")
     ? undefined
     : { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 };

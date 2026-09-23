@@ -1,9 +1,5 @@
 import type { ProviderSettingChange, ProviderUpdate } from "./ports/providerGateway";
 
-/**
- * Owns the only blank editable fields in the provider feature. Form input is
- * converted into explicit preserve/set/clear changes before leaving this type.
- */
 export class ProviderCredentialsDraft {
   private constructor(
     readonly apiKey: string,

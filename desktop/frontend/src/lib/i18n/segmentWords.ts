@@ -1,6 +1,3 @@
-// Latin runs as words, CJK as individual codepoints, trailing punctuation glued to the
-// preceding token. Backed by Intl.Segmenter, always available in the WebView Wails ships.
-
 const segmenter = new Intl.Segmenter(undefined, { granularity: "word" });
 
 const TRAILING_PUNCT_RE = /^[，。！？,!?]/;

@@ -6,8 +6,6 @@ const loadRenderer = () => import("./MarkdownRenderer");
 
 const MarkdownRenderer = lazy(() => loadRenderer().then((m) => ({ default: m.MarkdownRenderer })));
 
-// Text that has not been laid out yet has not drained, and the actions a turn ends with wait
-// on that fact. Without this the fallback reports nothing and they materialise early.
 function PendingMarkdown({ text }: { text: string }) {
   useVisibleTextMaterial(false);
   return (

@@ -1,7 +1,6 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 
 interface WorkingDirectoryPicker {
-  /** Returns null when the native chooser is cancelled or unavailable. */
   choose(): Promise<string | null>;
 }
 

@@ -2,12 +2,6 @@ import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import type { RootRunSettlement } from "../application/run/rootAttention";
 import { terminalSettlementStatus } from "../application/run/rootAttention";
 
-/**
- * What a screen reader is told about a turn, and the whole of it: its STATE. A live region
- * fed the answer itself re-reads it from the top on every streamed chunk, which is worse
- * than saying nothing — so the transcript stays a document the reader navigates, and this
- * says only that it changed.
- */
 export type RunAnnouncement = RootRunSettlement["status"] | "running" | null;
 
 export function runAnnouncement(

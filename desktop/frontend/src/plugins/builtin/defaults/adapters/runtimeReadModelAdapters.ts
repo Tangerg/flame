@@ -53,6 +53,3 @@ export function toWorkspaceFileChangeSummary(change: RpcFileChange): WorkspaceFi
     binary: change.binary,
   };
 }
-
-// Capability-gated workspace reads should render as empty optional surfaces,
-// not as broken panes, when the runtime negotiated the feature off.

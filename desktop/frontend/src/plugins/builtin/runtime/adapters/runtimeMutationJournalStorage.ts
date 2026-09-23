@@ -12,7 +12,6 @@ function storedValuesEqual(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-/** The adapter never interprets protocol methods, params, or keys. */
 export function installRuntimeMutationJournalStorage(ctx: { storage: KeyValueStore }): () => void {
   return configureRuntimeMutationJournalStorage({
     get: (key) => ctx.storage.get(storageKey(key)),

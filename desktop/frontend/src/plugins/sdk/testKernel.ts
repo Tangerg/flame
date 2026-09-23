@@ -1,7 +1,3 @@
-// Test harness: a real Host, because the questions tests ask about plugins
-// (does this contribution show up, does that handler run) are answered by Core's
-// transaction and not by anything we could stub convincingly.
-
 import type { AnyPlugin, Host } from "dougong";
 import { definePlugin, type PluginContext } from "./definePlugin";
 import { startKernel, stopKernel } from "./bootstrap";
@@ -9,11 +5,6 @@ import { trackInstalledPlugin } from "./kernel";
 
 let running: Host | undefined;
 
-/**
- * ADDITIVE: a fixture builds its world across several calls, and a replace-all would run the
- * previous batch's cleanups and unbind the ports the next batch renders through.
- * `src/test/setup.ts` tears the kernel down between specs.
- */
 export async function loadPluginsForTest(...plugins: AnyPlugin[]): Promise<Host> {
   if (running) {
     await addPluginsForTest(running, plugins);

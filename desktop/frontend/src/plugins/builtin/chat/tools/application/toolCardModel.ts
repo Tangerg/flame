@@ -15,7 +15,6 @@ export interface ToolCardModel {
   denied: boolean;
   intent: ToolIntent;
   detail?: ToolDetail;
-  /** The failure, for a slot that can hold all of it. Never the row's `detail`. */
   error?: string;
   diffStat?: { added: number; removed: number };
   metaItems: ToolMetaItem[];
@@ -33,8 +32,6 @@ export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
     running: tool.status === "running",
     denied: tool.status === "denied",
     intent,
-    // The SUBJECT — one truncating line, so never the failure, and never one file out of
-    // several: `files` already says how many and the disclosure names them.
     detail: namesOneOfMany(intent.detail, tool) ? undefined : intent.detail,
     ...(tool.status === "err" && tool.error ? { error: tool.error } : {}),
     diffStat,
@@ -42,12 +39,6 @@ export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
   };
 }
 
-/**
- * A failure outranks a measurement: a non-zero exit says something went wrong and a duration
- * only says how long it took, so the row must not spend its single slot on the second and
- * drop the first. Otherwise the last item wins, which is the most specific one the fold
- * derived — counts before spans before totals.
- */
 export function headlineToolMetaItem(items: readonly ToolMetaItem[]): ToolMetaItem | undefined {
   return items.find((item) => item.tone === "negative") ?? items[items.length - 1];
 }

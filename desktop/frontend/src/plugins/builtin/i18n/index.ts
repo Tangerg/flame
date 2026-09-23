@@ -1,15 +1,6 @@
-// Every bundled language is its own plugin. English's dictionary is bootstrapped
-// by `lib/i18n.ts` for first paint, but its plugin still registers the picker entry.
-
 import type { AnyPlugin } from "dougong";
 import { defineLocale } from "./defineLocale";
 
-/**
- * One row per shipped language, in picker order — `order` is derived from that position
- * rather than written a second time beside it, spaced so a third-party language can land
- * between two built-ins. `load` fetches the dictionary on first selection; English omits it
- * because `lib/i18n` has already bootstrapped the fallback before any plugin runs.
- */
 const BUNDLED = [
   { id: "en", label: "English" },
   { id: "zh", label: "简体中文", load: () => import("@/lib/i18n/locales/zh").then((m) => m.zh) },

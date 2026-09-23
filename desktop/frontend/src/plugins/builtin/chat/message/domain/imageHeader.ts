@@ -1,17 +1,11 @@
-// An `<img>` with no width/height occupies nothing until it decodes, so a bottom-pinned
-// transcript jumps by its full height. Only the HEADER is decoded; `null` is a real answer.
-
 export interface PixelSize {
   width: number;
   height: number;
 }
 
-/** Enough base64 for the largest header here. JPEG needs the most: its size sits past a
- *  run of variable-length segments. */
 const HEADER_CHARS = 4096;
 
 function headerBytes(base64: string): Uint8Array | null {
-  // Base64 decodes in 4-char groups; a partial group throws.
   const slice = base64.slice(0, HEADER_CHARS - (HEADER_CHARS % 4));
   try {
     const binary = atob(slice);
@@ -34,7 +28,6 @@ const starts = (b: Uint8Array, at: number, signature: readonly number[]) =>
   signature.every((byte, i) => b[at + i] === byte);
 
 function pngSize(b: Uint8Array): PixelSize | null {
-  // 8-byte signature, then an IHDR chunk whose first two fields are the dimensions.
   if (!starts(b, 0, [0x89, 0x50, 0x4e, 0x47])) return null;
   if (b.length < 24) return null;
   return { width: be32(b, 16), height: be32(b, 20) };
@@ -48,18 +41,15 @@ function gifSize(b: Uint8Array): PixelSize | null {
 
 function jpegSize(b: Uint8Array): PixelSize | null {
   if (!starts(b, 0, [0xff, 0xd8])) return null;
-  // Sizes are NOT at a fixed offset: EXIF, colour profiles and thumbnails sit in front at
-  // whatever length they please.
   let at = 2;
   while (at + 9 < b.length) {
     if (b[at] !== 0xff) return null;
     const marker = b[at + 1]!;
-    // SOFn — every frame kind carries the same size fields. C4/C8/CC are not frames.
     if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
       return { height: be16(b, at + 5), width: be16(b, at + 7) };
     }
     if (marker === 0xd8 || (marker >= 0xd0 && marker <= 0xd9)) {
-      at += 2; // standalone marker, no length field
+      at += 2;
       continue;
     }
     at += 2 + be16(b, at + 2);
@@ -72,16 +62,13 @@ function webpSize(b: Uint8Array): PixelSize | null {
     return null;
   }
   if (starts(b, 12, [0x56, 0x50, 0x38, 0x20]) && b.length >= 30) {
-    // Lossy: a VP8 key frame, dimensions in the low 14 bits of two little-endian words.
     return { width: le16(b, 26) & 0x3fff, height: le16(b, 28) & 0x3fff };
   }
   if (starts(b, 12, [0x56, 0x50, 0x38, 0x4c]) && b.length >= 25) {
-    // Lossless: 14 bits each, packed across four bytes, both stored one less than actual.
     const bits = le32(b, 21);
     return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
   }
   if (starts(b, 12, [0x56, 0x50, 0x38, 0x58]) && b.length >= 30) {
-    // Extended: 24-bit canvas size, also stored one less than actual.
     const w = b[24]! | (b[25]! << 8) | (b[26]! << 16);
     const h = b[27]! | (b[28]! << 8) | (b[29]! << 16);
     return { width: w + 1, height: h + 1 };
@@ -89,8 +76,6 @@ function webpSize(b: Uint8Array): PixelSize | null {
   return null;
 }
 
-/** Pixel size from the header, or null. AVIF is absent on purpose: its size sits in a nested
- *  ISOBMFF box tree, which is a parser rather than a header read. */
 export function imageSizeFromBase64(base64: string): PixelSize | null {
   const bytes = headerBytes(base64);
   if (!bytes) return null;

@@ -3,16 +3,6 @@ import { cn } from "@/lib/classNames";
 import { color, corner, motion, space, surface } from "@/styles/tokens.stylex";
 import { ProgressPrimitive } from "@/ui/primitives";
 
-/**
- * A meter, in the three weights the product shows one.
- *
- * `bar` stands on its own. `row` sits inside a line of statistics beside its label. `seam` is
- * the hairline a disclosure carries along its own edge — square, because it is continuous
- * with that edge rather than an object lying on it.
- *
- * Height and shape ARE the meter's decision; where it sits is not, so `className` still takes
- * the margins and the flex that place it.
- */
 type ProgressWeight = "bar" | "row" | "seam";
 
 interface ProgressBarProps {

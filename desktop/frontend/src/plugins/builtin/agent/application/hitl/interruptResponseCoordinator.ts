@@ -73,12 +73,6 @@ class InterruptResponseBatch {
     return this.#submission?.superseded ?? false;
   }
 
-  /**
-   * Retirement alone is not a settlement fact: keep cards latched across the
-   * disconnected gap. Once a durable projection commits in that successor
-   * generation, either the barrier disappeared (the command committed) or the
-   * exact barrier remains (the old command no longer owns it and is retryable).
-   */
   reconcile(entry: AgentSessionViewEntry | undefined): boolean {
     const open = entry ? new Set(openResponseIds(entry, this.rootRunId)) : new Set<string>();
     if ([...this.#responses.keys()].some((itemId) => !open.has(itemId))) {
@@ -218,14 +212,6 @@ function coordinator(): InterruptResponseCoordinator {
   return current;
 }
 
-/**
- * Stage one person's answer to a Runtime pending set.
- *
- * A pending set is one atomic resume barrier, even when its cards came from
- * different child runs. The UI may collect those decisions one card at a time,
- * but the Runtime command is opened only after every answerable item has a
- * response, and it always addresses the owning root Run.
- */
 export function stageInterruptResponse(
   ref: InterruptRef,
   response: InterruptResumeInput["response"],

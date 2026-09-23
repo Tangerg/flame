@@ -20,10 +20,6 @@ const contextDockPersistSchema = z.object({
 
 type PersistedDockScope = z.infer<typeof persistedDockScopeSchema>;
 
-// What the dock has OPEN per session — never which destination is showing, which belongs
-// to the location so no flag here can disagree with the view on screen. `lastViewId` is the
-// memory a re-open reads, written FROM the location and never back into it.
-
 interface WorkspaceFileViewer {
   path: string;
   line: number;
@@ -50,7 +46,6 @@ export class WorkspaceFileFocus {
 }
 
 interface ContextDockSessionScope {
-  /** The open tab set. Collapsing the dock is lossless: this survives it. */
   dockViewIds: string[];
   lastViewId: string | null;
   fileFocus: WorkspaceFileFocus;
@@ -58,34 +53,22 @@ interface ContextDockSessionScope {
   expandedToolIds: Set<string>;
 }
 
-/**
- * The scope fields at the top level are the WORKING COPY of the active session's scope, and
- * `sessionScopes` holds it only as of the last checkpoint. Both checkpoints — switching
- * sessions and persisting — flush through `saveCurrentSessionScope`, so a mutation writes
- * the top level alone. Reading `sessionScopes.get(activeSessionScopeId)` reads stale state.
- */
 interface ContextDockState extends ContextDockSessionScope {
-  /** null until the current renderer has adopted its URL-backed location. */
   activeSessionScopeId: string | null;
   sessionScopes: Map<string, ContextDockSessionScope>;
 }
 
 interface ContextDockActions {
-  /** Remember a destination and hold its tab open; the catalog never creates a tab. */
   adoptDockLocation: (id: string) => void;
-  /** Drop `id`; answers which tab should take its place, or null for none. */
   closeDockTab: (id: string) => string | null;
   closeOtherDockTabs: (id: string) => void;
   closeAllDockTabs: () => void;
-  /** Move `id` to `toIndex`, clamped into the open set. */
   reorderDockTab: (id: string, toIndex: number) => void;
-  /** The destination a re-open should return to, given a fallback. */
   dockTabToShow: (defaultViewId: string) => string;
   focusFile: (path: string) => void;
   setFileViewer: (viewer: WorkspaceFileViewer | null) => void;
   revealTool: (id: string) => void;
   toggleExpandedTool: (id: string) => void;
-  /** Swap to `sessionId`'s scope; answers the destination it remembers. */
   activateSessionScope: (sessionId: string) => string | null;
   forgetSessionScopes: (openSessionIds: string[]) => void;
 }
@@ -234,8 +217,6 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
       partialize: (state) => ({ sessionScopes: persistedSessionScopes(state) }),
       version: 2,
       migrate: discardOlderVersions,
-      // Persisted as tuples, live as a Map: `project` is where that difference belongs, so
-      // the parse-or-default policy stays the shared one.
       merge: rehydrateOrDefault(CONTEXT_DOCK_STORAGE_KEY, contextDockPersistSchema, (data) => ({
         sessionScopes: new Map<string, ContextDockSessionScope>(
           data.sessionScopes.map(([sessionId, scope]) => [sessionId, restorePersistedScope(scope)]),

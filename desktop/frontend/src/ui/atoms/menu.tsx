@@ -9,7 +9,6 @@ import { FLOATING_LAYER, FLOATING_OPTIONS } from "./floating-surface";
 import { floatingRow, floatingRowStyles, type RowLayout } from "./option-row";
 
 const menuStyles = stylex.create({
-  // A submenu positions itself against its trigger, so the trigger has to be a containing block.
   item: { position: "relative" },
   separator: {
     position: "relative",
@@ -18,17 +17,12 @@ const menuStyles = stylex.create({
     height: "1px",
     backgroundColor: surface.divider,
   },
-  // Both of these are what a menu IS, not what a call site decides. `--available-height` is
-  // measured by the positioner from the anchor to the screen edge.
-  // A hairline of air between rows, so two highlighted neighbours read as two, as zcode spaces
-  // its option stacks.
   content: {
     display: "grid",
     alignContent: "start",
     rowGap: "2px",
     minWidth: "12rem",
     maxHeight: "min(380px, var(--available-height))",
-    // The same property the floating face sets, so the two resolve as one declaration.
     overflow: "hidden auto",
     overscrollBehavior: "contain",
     scrollPaddingBlock: space.s1,
@@ -37,10 +31,6 @@ const menuStyles = stylex.create({
   label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
 });
 
-// The popup takes focus so the keyboard can drive it, which makes it match `:focus-visible`
-// even when a mouse opened it — a ring around the whole menu, every time, on right-click. The
-// highlighted ITEM is the indicator here, so the popup opts out the way the design system
-// says a row state may: `data-chrome-focus`.
 const MENU_CONTENT = [FLOATING_OPTIONS, menuStyles.content];
 
 const menuItem = (layout: RowLayout = "grid") => [menuStyles.item, floatingRow(layout, "sm")];
@@ -168,8 +158,6 @@ function ContextSeparator({
   );
 }
 
-// `styles`, not a class: a row's own properties and a call site's refinement of them have to
-// resolve in one `stylex.props`, or two lists setting the same property race on stylesheet order.
 type RowRefinement = { layout?: RowLayout; styles?: StyleXStyles };
 
 function DropdownItem({ layout, styles, className, ...props }: DropdownItemProps & RowRefinement) {
@@ -248,8 +236,6 @@ export const DropdownMenu = {
   SubmenuTrigger: DropdownSubmenuTrigger,
 } as const;
 
-// A Mac keyboard has no ContextMenu key and WebKit maps nothing to Shift+F10, so without this
-// every action that lives only in a context menu is pointer-only there.
 function ContextTrigger({
   onKeyDown,
   ...props

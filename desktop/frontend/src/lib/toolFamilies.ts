@@ -1,24 +1,3 @@
-/**
- * In lib because the transcript needs the glyph and the catalog needs the family, and those
- * two contexts may not import each other.
- *
- * ONE GLYPH PER TOOL, held by a test. Colour is deliberately NOT part of the
- * differentiation: tone means STATE, so spending it on identity leaves a failed read and a
- * successful one equally alarming. This is the built-in VOCABULARY, not the live inventory —
- * `tools.list` stays the authority for what is exposed.
- *
- * WHAT THIS LIST HAS TO FOLLOW, and what nothing checks. The names are the Runtime's, declared
- * in `runtime/internal/domain/run/tool/tool.go`; the two are in exact agreement today, verified
- * by comparing both sets. No guard holds them there, and none can from here: the Runtime
- * Protocol does not publish the built-in vocabulary — six of the thirty names appear anywhere in
- * `contract/manifest.json`, five of them incidentally, as tools that happen to have a structured
- * result presentation.
- *
- * So a tool added to the Runtime and not added here falls out of every lookup below at once: no
- * family, so an approval card asks permission for a raw wire name instead of a capability; no
- * glyph, so the row takes the generic one; no verb, so the catalog reads "Ran". The tests around
- * this file iterate THIS list, so all of them stay green while it happens.
- */
 export interface ToolFamily {
   id: string;
   tools: readonly { name: string; icon: string }[];
@@ -107,21 +86,10 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
   },
 ];
 
-/** `undefined` for a tool this table has never heard of. Nothing here FABRICATES a family;
- *  the catalog gives unplaced tools their own heading. */
 export function toolFamilyId(name: string): string | undefined {
   return FAMILY_BY_TOOL.get(name);
 }
 
-/**
- * The catalog suffix for a built-in tool's verb: `tool.action.<id>`, `tool.doing.<id>`, or `tool.done.<id>`.
- * `undefined` for a tool this table has never heard of, which then takes the generic verb.
- *
- * DERIVED from the Runtime's own name rather than listed a second time. The hand-written
- * list had drifted to two verbs — `edit` and `write` — for tools the Runtime has a test
- * asserting it never exposes, which is the same pair the icon table above is guarded
- * against. One list cannot disagree with itself.
- */
 export function toolVerbId(name: string): string | undefined {
   if (!FAMILY_BY_TOOL.has(name)) return undefined;
   return name.replace(/_([a-z])/g, (_, initial: string) => initial.toUpperCase());

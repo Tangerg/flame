@@ -23,17 +23,8 @@ export function useReconcilePersistedAgentSessions(): void {
     const sessions = data ?? [];
     if (!restored.current) {
       restored.current = true;
-      // Seed the location from memory before the first reconciliation: a cold
-      // start always opens at "/" with no session, and where the user was is
-      // remembered rather than owned (see lib/navigation). Later authoritative
-      // reads must reconcile deletion without replaying this boot-only move.
       agentSessionState().restoreLastSession();
     }
-    // Reconcile every successful Runtime read: sessions.changed can remove an
-    // active Session from another client long after boot.
-    // Empty sessions that belong to another client remain visible. This client
-    // cannot infer their draft ownership after a cold start, so only the
-    // owner-scoped navigation cleanup may delete an unused draft.
     agentSessionState().reconcileSessions(sessions.map((session) => session.id));
   }, [isSuccess, data]);
 }

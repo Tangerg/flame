@@ -1,15 +1,5 @@
-/** A foreign async operation lost the generation that was allowed to commit. */
 export const ASYNC_OWNERSHIP_RETIRED = Symbol("async-ownership.retired");
 
-/**
- * The rejection half of `ASYNC_OWNERSHIP_RETIRED`: the generation that owned this work was
- * replaced before it settled, so its result must not commit.
- *
- * ONE type for every owner. Fifteen of them each declared their own class and eleven wrapped
- * it in their own predicate, and not one of the nineteen consumers ever asked WHICH — every
- * site asks "was this retired?" and stops. The owner rides as data so the message still names
- * it, which is what the tests that assert these messages actually pin.
- */
 export class GenerationRetiredError extends Error {
   override readonly name = "GenerationRetiredError";
 
@@ -22,11 +12,6 @@ export function wasGenerationRetired(error: unknown): boolean {
   return error instanceof GenerationRetiredError;
 }
 
-/**
- * Observe a dependency that may ignore AbortSignal without allowing it to
- * retain generation ownership. Late rejection remains handled; a late value
- * can be explicitly retired by its consumer-owned disposer.
- */
 export function settleBeforeAbort<T>(
   operation: Promise<T>,
   signal: AbortSignal,
@@ -66,8 +51,6 @@ export function settleBeforeAbort<T>(
 export type NextTaskSettlement<T> =
   { status: "fulfilled"; value: T } | { status: "rejected" } | { status: "pending" };
 
-/** Observe ordinary microtask settlement, but never let a foreign promise hold
- * teardown beyond the next task. The promise remains observed after timeout. */
 export function settleWithinNextTask<T>(operation: Promise<T>): Promise<NextTaskSettlement<T>> {
   return new Promise((resolve) => {
     let settled = false;
@@ -85,21 +68,13 @@ export function settleWithinNextTask<T>(operation: Promise<T>): Promise<NextTask
   });
 }
 
-/** Best-effort retirement for a foreign async iterator. Cooperative iterators
- * join immediately; a broken return() remains observed without blocking the
- * successor generation. */
 export async function disposeAsyncIterator<T>(iterator: AsyncIterator<T>): Promise<void> {
   try {
     const closing = iterator.return?.();
     if (closing) await settleWithinNextTask(Promise.resolve(closing));
-  } catch {
-    // The owner's abort signal remains the authoritative teardown path.
-  }
+  } catch {}
 }
 
-/** The same retirement for a source that has not been opened yet. Asking a foreign iterable
- *  for its iterator can itself throw, which is a second failure the caller can do nothing
- *  about — and, like the first, one the owner's abort already fences. */
 export async function disposeAsyncIterable<T>(iterable: AsyncIterable<T>): Promise<void> {
   let iterator: AsyncIterator<T>;
   try {

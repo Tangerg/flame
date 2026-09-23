@@ -55,7 +55,6 @@ export function AgentOverflowLabel({ text }: Props) {
   return (
     <span
       ref={viewportRef}
-      // Both classes are `globals.css` mechanisms: the fade mask and the marquee track.
       className={cn("agent-overflow-label truncate-fade", stylex.props(styles.label).className)}
       data-overflowing={geometry.distance > 0 ? "" : undefined}
     >

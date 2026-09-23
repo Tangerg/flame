@@ -29,7 +29,6 @@ import { color, face, space, type as typeStep, weight } from "@/styles/tokens.st
 const reb = stylex.create({
   plain: { fontWeight: weight.regular },
   sans: { fontFamily: "var(--font-sans)" },
-  // On the first line of the text beside it, not on the card's top edge.
   glyph: { marginTop: space.s0_5, color: color.negative },
 });
 

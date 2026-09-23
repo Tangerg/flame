@@ -5,10 +5,6 @@ import { agentSessionState } from "../ports/sessionState";
 import { reportSessionError } from "./reportSessionError";
 import { agentCommandOwner } from "../agentCommandOwner";
 
-/** `fromRunId` = branch up to AND INCLUDING that root run (AUX_API §4.2);
- *  omitted = whole-session copy. The fork inherits the source's chat history,
- *  so unlike a fresh create it is no draft — it shows in the Work Index
- *  immediately, and we open its tab. */
 export function forkSessionAt(id: string, fromRunId?: string): Promise<void> {
   const owner = agentCommandOwner();
   const runtime = agentRuntime();

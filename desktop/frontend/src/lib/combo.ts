@@ -1,10 +1,5 @@
 const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPod|iPad/.test(navigator.platform);
 
-// Maps, not objects: indexed by a segment of a plugin-written combo string, and an object
-// answers `constructor` with a FUNCTION that would be returned as the glyph.
-//
-// This is the ONE place a modifier SPELLING is written down; the three tables below are
-// keyed on the canonical form, so a glyph, a label and the dispatcher cannot disagree.
 const MODIFIER_ALIAS = new Map([
   ["cmd", "mod"],
   ["meta", "mod"],
@@ -16,26 +11,14 @@ const MODIFIER_ALIAS = new Map([
   ["option", "alt"],
 ]);
 
-/** Cmd/meta fold to "mod" so a registration is cross-platform by default. An unmapped
- *  segment passes through unchanged, which keeps a literal "ctrl+k" distinct from "mod+k". */
 function canonicalModifier(part: string): string {
   const lower = part.trim().toLowerCase();
   return MODIFIER_ALIAS.get(lower) ?? lower;
 }
 
-// Matches the common docs convention, e.g. "mod+shift+k".
 const MODIFIER_ORDER = ["mod", "ctrl", "alt", "shift"] as const;
 const CANONICAL_MODIFIERS = new Set<string>(MODIFIER_ORDER);
 
-/**
- * "Cmd+K" / "cmd+K" / "Mod+k" -> "mod+k". Leftmost segments are modifiers; the last is the
- * key. Applied on both contribute and lookup so a registration and a keydown always agree.
- *
- * A segment this does not recognise SURVIVES, after the ones it does. Sorting by the known
- * order alone silently deleted it, and these combos are the dedup key of a single-keyed
- * extension point — so one typo ("shft+k") resolved to "k" and shadowed whatever legitimate
- * bare-key shortcut was already registered there.
- */
 export function normalizeCombo(combo: string): string {
   const parts = combo.split("+").map((part) => part.trim().toLowerCase());
   const key = parts.pop() ?? "";
@@ -93,9 +76,6 @@ const ARIA_MODIFIERS = new Map([
   ["shift", "Shift"],
 ]);
 
-/** The fourth spelling of one combo, for `aria-keyshortcuts`: ARIA names modifiers in full and
- *  separates alternative bindings with a space, so `Mod` — one binding on two platforms —
- *  publishes both rather than picking the host's. */
 export function ariaKeyShortcuts(combo: string): string {
   const parts = normalizeCombo(combo).split("+");
   const key = parts.pop() ?? "";
@@ -108,8 +88,6 @@ export function ariaKeyShortcuts(combo: string): string {
   return parts.includes("mod") ? `${spell("Meta")} ${spell("Control")}` : spell("Meta");
 }
 
-// `$mod` resolves to Meta on Mac and Control elsewhere — narrower than "either, on both",
-// which made ⌃K open the command palette on a Mac where Cocoa owns that chord.
 const DISPATCH_MODIFIERS = new Map([
   ["mod", "$mod"],
   ["ctrl", "Control"],
@@ -117,9 +95,6 @@ const DISPATCH_MODIFIERS = new Map([
   ["shift", "Shift"],
 ]);
 
-// The punctuation whose `KeyboardEvent.key` a modifier REWRITES: with Shift held, `]` arrives
-// as `}` and matches neither the registration nor its own code. Letters do not have this
-// problem — Shift+b is still reported as `B` — which is why the rule below is per-character.
 const DISPATCH_CODES = new Map([
   ["[", "BracketLeft"],
   ["]", "BracketRight"],
@@ -140,10 +115,6 @@ function dispatchKey(key: string): string {
   return DISPATCH_CODES.get(key) ?? key;
 }
 
-/** Letters, digits and punctuation become PHYSICAL key codes: `KeyboardEvent.key` carries
- *  whatever the active layout prints, so ⌘K under Cyrillic reports `"к"` and matches no
- *  registration — and ⌘⇧] reports `}` on every layout there is. The key segment otherwise
- *  keeps its spelling — tinykeys names `Escape` and `Enter` in full. */
 export function dispatchBinding(combo: string): string {
   return combo
     .trim()

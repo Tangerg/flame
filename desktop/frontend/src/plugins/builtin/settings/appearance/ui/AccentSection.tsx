@@ -10,9 +10,6 @@ import { corner, motion, space, surface } from "@/styles/tokens.stylex";
 const RAINBOW_HINT =
   "conic-gradient(from 0deg, #ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #6366f1, #a855f7, #ec4899, #ef4444)";
 
-// The target publishes the lift and the chrome reads it. StyleX has no ancestor selector, so
-// `group-hover/accent:scale-105` becomes a channel — which also states plainly that the target
-// owns "the pointer is on me" and the chrome owns what that looks like.
 const a = stylex.create({
   target: {
     "--accent-lift": { default: "1", ":hover": "1.05" },
@@ -34,7 +31,6 @@ const a = stylex.create({
     borderWidth: "2px",
     borderStyle: "solid",
     borderColor: "transparent",
-    // Keeps the fill out from under the ring, so a selected swatch shows the surface between.
     backgroundClip: "padding-box",
     transitionProperty: "scale, box-shadow",
     transitionDuration: motion.fast,

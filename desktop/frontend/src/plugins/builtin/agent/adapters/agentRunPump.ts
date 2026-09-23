@@ -17,8 +17,6 @@ import {
 import { AGENT_SESSION_USAGE_KEY } from "../application/session/sessionUsage";
 import { createRunEventBatcher } from "./runEventBatcher";
 
-/** headEventId exists only on a REATTACH: a start or resume stream begins at the beginning
- *  of its segment, so there is no earlier position to name. */
 interface RunStreamAck {
   runId: RunId;
   segmentId: SegmentId;
@@ -28,12 +26,9 @@ interface RunStreamAck {
 export type RunStream = StreamingResult<RunStreamAck, RunEvent>;
 
 export interface RunStreamReattachment extends RunStream {
-  /** The successor position selected by replay or snapshot recovery. */
   cursor: string;
 }
 
-/** lastEventId is empty when this client folded nothing and was given no head; the reattach
- *  is then tail-only and the durable snapshot supplies the projection. */
 export interface RunStreamPosition {
   runId: RunId;
   segmentId: SegmentId;
@@ -46,11 +41,8 @@ interface AgentRunPumpOptions {
   isCancelled: () => boolean;
   readEpoch: () => bigint;
   applyEvents: (events: RunEvent[]) => boolean;
-  /** Stream terminal events are compact; runs.get is the authoritative RunRef. */
   readRunSnapshot?: (runId: RunId, signal: AbortSignal) => Promise<RunRef>;
   applyRunSnapshot?: (run: RunRef) => void;
-  /** null means no longer attachable at all — finished, waiting on a person, or moved to
-   *  another segment — after the durable projection reconciled that transition. */
   reattach?: (
     position: RunStreamPosition,
     signal: AbortSignal,
@@ -83,9 +75,6 @@ export function createAgentRunPump({
   let activeBatcher: ReturnType<typeof createRunEventBatcher> | null = null;
 
   return {
-    // A run OUTLIVES its stream: ending without the segment's terminal is an abnormal EOS,
-    // and the run keeps executing on the server. Reattaching from the last folded event
-    // turns that into a gap of milliseconds rather than a transcript frozen until reload.
     async pump(stream, signal) {
       const pumpLease = (currentPumpLease = {});
       const runId = stream.result.runId;
@@ -168,9 +157,6 @@ export function createAgentRunPump({
         eventBatcher?.dispose();
         if (activeBatcher === eventBatcher) activeBatcher = null;
         if (currentPumpLease === pumpLease) {
-          // The durable change stream may already have requested a projection
-          // refresh. Land this stream's rAF-delayed tail before declaring the
-          // session idle, otherwise the newer snapshot can overtake it.
           let snapshot: RunRef | undefined;
           if (readRunSnapshot && !isCancelled() && !signal.aborted) {
             try {
@@ -183,9 +169,6 @@ export function createAgentRunPump({
             }
           }
 
-          // A newer pump may have opened while the exact read was in flight.
-          // Its stream owns the projection now, so the older RunRef cannot be
-          // folded and the older finally cannot publish an idle boundary.
           if (currentPumpLease === pumpLease) {
             if (snapshot && !isCancelled() && !signal.aborted) applyRunSnapshot?.(snapshot);
             currentRunId = null;
@@ -230,13 +213,9 @@ export function createAgentRunPump({
           iteratorDone = true;
           break;
         }
-        // An aborted request or a torn-down session is a deliberate stop, not a gap
-        // to recover: nothing is reattached after it.
         if (isCancelled() || signal.aborted) return { finished: true, recovery };
         const ev = next.value;
         eventBatcher.enqueue(ev);
-        // A descendant subagent's terminal rides this same stream; only the root
-        // segment's ends it.
         if (ev.segmentId === rootSegmentId && ev.event.type === "segment.finished") {
           finished = true;
         }

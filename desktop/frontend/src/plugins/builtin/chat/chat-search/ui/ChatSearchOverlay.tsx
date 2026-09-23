@@ -29,9 +29,6 @@ const cs = stylex.create({
     paddingBlock: space.s1_5,
     boxShadow: "var(--shadow-overlay)",
   },
-  // It sits in the window's drag region, so it has to opt out or the pill cannot be clicked —
-  // dragging the window would win. Two names for one thing: Wails reads its own property and
-  // the platform reads the standard one.
   undraggable: { "-webkit-app-region": "no-drag", "--wails-draggable": "no-drag" },
 });
 

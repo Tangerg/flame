@@ -37,7 +37,6 @@ export function sourceTimestamp(source: AgentFoldSource): number {
   return timestamp;
 }
 
-/** Run observations retain their transport identity; Item boundaries use durable Item identity. */
 export function timelineEntry(
   source: AgentFoldSource,
   kind: TimelineEntry["kind"],

@@ -124,9 +124,6 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
           )}
           <div {...stylex.props(vs.metaLine)}>
             {item.pinned && (
-              // The accent is a functional highlight — play, active, CTA — not an ink for
-              // prose: on a card in dark it measures 3.4:1, below AA at this size. The mark
-              // keeps it, where 3:1 is the bar a graphic answers to; the word does not.
               <span {...stylex.props(vs.pinLine, vocab.muted, typeStep.uiSm)}>
                 <Icon name="star" size="xs" className={stylex.props(vocab.accent).className} />
                 {t("agentMemory.pinnedLabel")}

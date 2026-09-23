@@ -687,7 +687,6 @@ export const ja: Record<string, string> = {
   "vcs.notARepo": "Git リポジトリではありません",
   "vcs.notARepoSub": "セッションの作業ディレクトリはバージョン管理下にありません。",
 
-  // Filled 2026-07 — these keys had fallen behind en.
   "composer.placeholder.steer": "実行中のターンを誘導するメッセージを送信…",
   "composer.action.steer": "実行中のターンを誘導",
   "composer.paste.lines_other": "貼り付け · {{count}} 行",

@@ -47,8 +47,6 @@ export function toGoalCommandReceipt(goal: Pick<Goal, "sessionId">): GoalCommand
   return { sessionId: goal.sessionId };
 }
 
-/** Translate the Goal carried by sessions.snapshot before it joins the mounted
- * Session's single transactionally coherent material projection. */
 export function runtimeGoalMaterial(goal: Goal | undefined, available: boolean): GoalState {
   return {
     available,
@@ -116,8 +114,6 @@ export function installGoalRuntimeAdapter(
   let gateway = hasRuntimeGeneration
     ? new RuntimeGoalCommandsGateway(getContainer().client())
     : null;
-  // Goal edits must settle while a Run is active. The Session owner replaces its
-  // subscription from the committed snapshot before admitting the next command.
   const commandOwner = GoalCommandOwner.install(gateway, (sessionId) =>
     synchronizeMountedAgentSession(sessionId, "replace-live"),
   );

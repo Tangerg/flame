@@ -714,7 +714,6 @@ export const de: Record<string, string> = {
   "vcs.notARepo": "Kein Git-Repository",
   "vcs.notARepoSub": "Das Arbeitsverzeichnis der Sitzung steht nicht unter Versionskontrolle.",
 
-  // Filled 2026-07 — these keys had fallen behind en.
   "composer.placeholder.steer": "Nachricht senden, um den laufenden Zug zu steuern…",
   "composer.action.steer": "Laufenden Zug steuern",
   "composer.paste.lines_one": "Eingefügt · {{count}} Zeile",

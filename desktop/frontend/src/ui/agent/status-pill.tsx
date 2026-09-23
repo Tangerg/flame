@@ -19,11 +19,6 @@ const styles = stylex.create({
   },
 });
 
-/**
- * A run's state, said in a word beside the mark that means it.
- *
- * The mark is `StatusDot`, so there is one vocabulary — `DotTone` — and one thing that draws it.
- */
 export function AgentStatusPill({
   children,
   tone = "idle",

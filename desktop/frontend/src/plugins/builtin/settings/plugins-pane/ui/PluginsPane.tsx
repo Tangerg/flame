@@ -55,7 +55,6 @@ const pp = stylex.create({
     alignItems: "center",
     gap: space.s2,
   },
-  // A trace scrolls rather than growing the pane: it is evidence, not the point of the row.
   stack: {
     marginTop: space.s1_5,
     maxHeight: "calc(var(--spacing) * 56)",
@@ -142,8 +141,6 @@ export function PluginsPane() {
   );
 }
 
-// The badge names WHICH of a plugin's contracts broke, so it is read by a person and
-// belongs in the catalogue: four of these matched their wire value only by coincidence.
 const SOURCE_LABEL_KEYS: Record<PluginErrorSource, string> = {
   setup: "plugins.errorSource.setup",
   render: "plugins.errorSource.render",

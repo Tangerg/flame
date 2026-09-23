@@ -214,7 +214,6 @@ export async function deleteSchedule(id: string): Promise<void> {
   return ScheduleMutationOwner.current().remove(id);
 }
 
-// Re-reads the schedules so `lastRunAt` updates once the runtime reports the run.
 export async function runScheduleNow(id: string): Promise<ScheduledRunIdentity> {
   return ScheduleMutationOwner.current().runNow(id);
 }

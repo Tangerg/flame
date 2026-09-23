@@ -196,9 +196,6 @@ for (const pane of VISUAL_SETTINGS_PANES) {
   }
 }
 
-// Surfaces that only exist once something is clicked. No fixture lands on one, so until this
-// ran nothing had ever audited a form in this product — only the pane holding the button that
-// opens it.
 const OPENED_SURFACES: ReadonlyArray<{
   name: string;
   route: FixtureRoute;
@@ -490,9 +487,6 @@ const DOCK_LOCALE_STATES = [
   "dock-diagnostics",
 ] as const;
 
-// German for the wide pass: the shipped language whose compounds run longest, over the panes
-// and dock views `LOCALE_ROUTES` leaves out. One locale, because seven cost 5.6 minutes and
-// this found nothing in 448 renders — the point is to notice a NEW surface that clips.
 const WIDE_LOCALE_ROUTES: FixtureRoute[] = [
   ...VISUAL_SETTINGS_PANES.map((pane) => ({
     fixture: "workspace" as const,
@@ -1727,7 +1721,6 @@ test("the reasoning window fades the edge it actually clips", async ({ page }) =
 });
 
 test("no floating surface carries two StyleX rules for one property", async ({ page }) => {
-  // Wide enough that the turn rail is laid out beside the reading column.
   await page.setViewportSize({ width: 1440, height: 900 });
   const collisions = new Set<string>();
   const collect = async (where: string) => {

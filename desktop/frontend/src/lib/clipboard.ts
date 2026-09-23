@@ -1,9 +1,5 @@
-// Unfocused windows and non-secure contexts THROW on write, so every call site needs the
-// availability guard and the permission-failure swallow; only the feedback differs.
-
 import { toast } from "sonner";
 
-/** Resolves false when unavailable or rejected — never throws. */
 export async function copyText(text: string): Promise<boolean> {
   if (!text || typeof navigator === "undefined" || !navigator.clipboard) return false;
   try {
@@ -19,8 +15,6 @@ export interface RichClipboardText {
   htmlText?: string;
 }
 
-/** Both formats desktop editors understand; falls back to plain text where ClipboardItem
- *  is unavailable rather than losing the action. */
 export async function copyRichText({ plainText, htmlText }: RichClipboardText): Promise<boolean> {
   if (!plainText || typeof navigator === "undefined" || !navigator.clipboard) return false;
   const clipboard = navigator.clipboard;
@@ -46,7 +40,6 @@ export async function copyRichText({ plainText, htmlText }: RichClipboardText): 
   }
 }
 
-/** copyText plus an optional toast. Toast-only on success: feedback, not an event. */
 export async function writeToClipboard(
   text: string,
   options?: { successLabel?: string },

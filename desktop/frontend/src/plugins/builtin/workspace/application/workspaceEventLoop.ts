@@ -35,11 +35,6 @@ export interface WorkspaceEventLoop {
   retarget(target: WorkspaceWatchTarget): void;
 }
 
-/**
- * `none` means the app-wide topics stay subscribed without a file watch while
- * active-session identity is unresolved. It is intentionally distinct from a
- * resolved workspace with no cwd, which means the Runtime's default workspace.
- */
 export type WorkspaceWatchTarget = { type: "none" } | { type: "workspace"; cwd?: string };
 
 function sameTarget(left: WorkspaceWatchTarget, right: WorkspaceWatchTarget): boolean {
@@ -57,10 +52,6 @@ export function createWorkspaceEventLoop(deps: WorkspaceEventLoopDeps): Workspac
 
   return {
     start(signal, connectionGeneration) {
-      // The loop itself owns the one active subscription generation. Callers
-      // normally withdraw capability before restarting, but correctness must
-      // not depend on that ordering: a repeated start atomically supersedes
-      // the prior generation even if its caller forgot to abort its signal.
       generationAbort?.abort();
       const cohort = new AbortController();
       generationAbort = cohort;
@@ -112,9 +103,6 @@ async function subscribeLoop(
         deps.openingTimeoutMs ?? EVENT_OPENING_TIMEOUT_MS,
       );
       if (events === ABORTED) continue;
-      // A transport may resolve its opening promise at the same instant a
-      // retarget abort wins. Do not publish the stale subscription's initial
-      // resync or any already-buffered event into the new workspace target.
       if (iter.signal.aborted) continue;
       const iterator = events[Symbol.asyncIterator]();
       let iteratorDone = false;
@@ -134,10 +122,6 @@ async function subscribeLoop(
             break;
           }
           const ev = next.value;
-          // Sequence belongs to this subscription generation. Once a forward
-          // gap has forced an authoritative resync, a duplicated or delayed
-          // lower frame is already covered by that snapshot and must not move
-          // the watermark backwards or replace every mounted read model again.
           if (ev.sequence <= lastSequence) continue;
           if (ev.sequence > lastSequence + 1) {
             deps.invalidateAll();
@@ -158,19 +142,11 @@ async function subscribeLoop(
     if (iter.signal.reason === RETARGET) {
       continue;
     }
-    // An RPC stream ending without outer cancellation is also a connection
-    // signal. Let the Runtime context withdraw this exact connection and recover
-    // instead of allowing this consumer to guess global connection health.
     deps.reportDisconnect(connectionGeneration, failure);
     return;
   }
 }
 
-/** Give the response-stream handshake a terminal lifecycle without applying a
- * wall-clock limit to the accepted stream. Reject the deadline before aborting
- * so this cohort reports a connection failure rather than looking like an
- * ordinary retarget; settleBeforeAbort keeps a non-cooperative late opening
- * observed and retires the foreign iterable when it eventually arrives. */
 function settleOpening<T>(
   operation: Promise<AsyncIterable<T>>,
   controller: AbortController,
@@ -194,9 +170,6 @@ function settleOpening<T>(
     }, timeoutMs);
   });
   return Promise.race([
-    // A subscription that arrives after the abort is a foreign resource nobody is holding, so
-    // it is retired without being waited on — the signal is already the authoritative
-    // teardown path.
     settleBeforeAbort(operation, controller.signal, (late) => void disposeAsyncIterable(late)),
     deadline,
   ]).finally(() => {

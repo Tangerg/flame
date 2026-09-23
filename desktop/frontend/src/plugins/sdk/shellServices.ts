@@ -1,8 +1,3 @@
-// One plugin rather than four: these change for the same reason, and a provider per
-// contract buys indirection, not cohesion — consumers still declare only what they use.
-// WORKSPACE is provided by the workspace context instead: its state is a context
-// aggregate, and reaching one from here would invert the platform's direction.
-
 import { definePlugin } from "dougong";
 import { addLocaleBundle } from "@/lib/i18n";
 import { getConfig, hasConfig, setConfig, useConfigStore } from "./config";
@@ -27,9 +22,6 @@ const config: ConfigService = {
 };
 
 const i18n: I18nService = {
-  // i18next has no per-key removal, so a bundle is permanent for the session.
-  // Safe: `t()` only matters while the contributing plugin's UI is mounted, and a
-  // same-name reload overwrites the same keys.
   addBundle: (locale, dict) => addLocaleBundle(locale, dict),
 };
 

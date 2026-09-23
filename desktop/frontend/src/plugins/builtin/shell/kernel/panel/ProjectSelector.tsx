@@ -22,7 +22,6 @@ interface ProjectMenuContentProps {
 }
 
 const pl = stylex.create({
-  // Wide enough for a path, and never wider than the window with its own margin left over.
   menu: { width: "min(320px, calc(100vw - 32px))" },
   heading: {
     paddingInline: space.s2,
@@ -32,10 +31,6 @@ const pl = stylex.create({
     fontWeight: weight.medium,
   },
   tray: { display: "flex", minWidth: 0, alignItems: "center" },
-  // The tray tucks UNDER the composer: it is inset from the composer's edges, overlaps it by
-  // 18px, and pads its own bottom past that overlap so its content clears the composer's top
-  // edge. No blur of its own — the composer above it already carries one, and two stacked
-  // read as a smear where they overlap.
   traySurface: {
     position: "relative",
     top: space.s1,
@@ -114,8 +109,6 @@ export function ComposerProjectTray() {
   if (workIndex.activeSessionId) return null;
 
   return (
-    // `attached` is the decision, not the width: the tray tucks under the composer inset from
-    // its edges, which a jsdom test can only ever check by reading back a class name.
     <AgentComposerTopTraySurface
       data-tray="attached"
       className={stylex.props(pl.traySurface).className}

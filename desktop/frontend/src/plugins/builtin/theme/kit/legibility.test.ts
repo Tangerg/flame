@@ -111,7 +111,6 @@ describe("focusOnCanvas", () => {
     }
   });
 
-  // The accent is the user's to pick, and the 50% mix this replaced read 2.2 on the default.
   it("corrects an accent too pale to see instead of trusting it", () => {
     const pale = "#ffe066";
     expect(contrastRatio(pale, "#ffffff")).toBeLessThan(WCAG_AA_NON_TEXT);

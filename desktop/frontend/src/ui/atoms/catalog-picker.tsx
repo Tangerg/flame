@@ -12,9 +12,6 @@ import { vocab } from "./vocabulary";
 
 const styles = stylex.create({
   emptyFlush: { padding: { default: null, ":is([data-empty])": 0 } },
-  // A row with nothing in it takes no space. `:empty` and `[data-empty]` are two different
-  // questions — one asks whether the element has children, the other whether the LIST it heads
-  // is empty — so both live here rather than one standing in for the other.
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },
   hideWhenListEmpty: { display: { default: null, ":is([data-empty])": "none" } },
   searchBox: {
@@ -28,7 +25,6 @@ const styles = stylex.create({
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
     backgroundColor: surface.canvas,
-    // The glyph lands on the column the rows' glyphs hold, the edge taken out of the inset.
     paddingInline: "calc(var(--spacing) * 2 - var(--control-edge-width))",
     borderColor: { default: surface.field, ":focus-within": surface.fieldFocus },
     color: { default: color.fgMuted, ":focus-within": color.fg },
@@ -172,7 +168,6 @@ interface CatalogPickerItem {
   description?: ReactNode;
   keywords?: readonly string[];
   active?: boolean;
-  /** The entry's group, for the lists that are not scoped to one. */
   caption?: string;
 }
 
@@ -347,10 +342,6 @@ export function CatalogPicker({
   );
 }
 
-/**
- * A query searches EVERY group and deduplicates by id, so a shelf that republishes another
- * group's entries does not answer twice.
- */
 export function RailCatalogPicker({
   groups,
   openAtGroupId,
@@ -365,7 +356,6 @@ export function RailCatalogPicker({
   align = "end",
 }: CatalogSurfaceProps & {
   groups: CatalogPickerGroup[];
-  /** Where the rail opens — the group holding what is in force, which only the caller knows. */
   openAtGroupId?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -380,15 +370,12 @@ export function RailCatalogPicker({
     ? [...new Map(groups.flatMap((group) => group.items).map((item) => [item.id, item])).values()]
     : (active?.items ?? []);
 
-  // On open only: re-running on a GROUP change would pull focus off the rail the reader is
-  // still using.
   useEffect(() => {
     if (!open) return;
     const frame = requestAnimationFrame(() => searchRef.current?.focus());
     return () => cancelAnimationFrame(frame);
   }, [open]);
 
-  // The entry in force can sit below the fold of a long group.
   useEffect(() => {
     if (!open) return;
     const frame = requestAnimationFrame(() =>
@@ -438,7 +425,6 @@ export function RailCatalogPicker({
               aria-label={placeholder}
               placeholder={placeholder}
               onKeyDown={(event) => {
-                // Escape clears the query first and closes only once there is none.
                 if (event.key !== "Escape" || !searching) return;
                 event.preventDefault();
                 event.stopPropagation();
@@ -448,14 +434,8 @@ export function RailCatalogPicker({
             />
           </div>
 
-          {/* A measure that does not move: the surface is anchored to a composer control, so a
-              body that grows with its group walks the whole popover up the screen. Named,
-              because that is a claim about geometry and the only place it can be checked is a
-              browser — a jsdom test can reach the element but never its height. */}
           <div data-slot="catalog-body" {...stylex.props(styles.railBody)}>
             {!searching && groups.length > 1 && (
-              // Toggle buttons, not a tablist: a `tablist` whose panel is the combobox's
-              // `listbox` is a pairing axe reports.
               <div {...stylex.props(styles.rail)}>
                 {groups.map((group) => (
                   <Pressable
@@ -492,8 +472,6 @@ export function RailCatalogPicker({
             </ComboboxPrimitive.Empty>
             <ComboboxPrimitive.List
               ref={listRef}
-              // One `stylex.props` call, not two joined: StyleX resolves precedence WITHIN a
-              // call, and two class lists concatenated leave it to stylesheet order.
               className={
                 stylex.props(styles.hideWhenListEmpty, styles.list, styles.listInset).className
               }

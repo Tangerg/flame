@@ -71,8 +71,6 @@ const qc = stylex.create({
     lineHeight: "1rem",
     color: color.fgFaint,
   },
-  // The card takes focus so the keyboard can answer it, and the highlighted OPTION is the
-  // indicator — the same reason a menu popup opts out of the ring.
   pager: {
     display: "flex",
     flexShrink: 0,
@@ -324,10 +322,6 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
       ref={requestRef}
       variant="prompt"
       inset="none"
-      // Focused programmatically when a question arrives, so the prompt is read and the next
-      // Tab reaches the first option — the same reason a menu popup takes focus. NOT a tab
-      // stop: as one it was a stop that showed nothing, since a card opting out of the ring
-      // has no row state to stand in for it.
       tabIndex={-1}
       data-slot="question-request-surface"
       data-chrome-focus

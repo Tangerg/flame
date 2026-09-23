@@ -17,21 +17,6 @@ import {
 import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
 import { toneInk } from "./tone-ink";
 
-/**
- * ORDER IS LOAD-BEARING. `stylex.props` resolves a property to whichever style declares it last,
- * so the sequence in `dress()` below is the precedence, spelled once: size states a corner,
- * `round` replaces it, `join` flattens one side of it, a boxless variant removes it entirely,
- * and `shape="row"` states the row's own. The same for ink: a variant sets it, `chip` softens
- * it, `quiet` withdraws it, and a `tone` beside `quiet` moves it to hover.
- *
- * A caller's `className` composes after all of it, but it cannot outrank any property declared
- * here — a generated selector carries `:not(#\#)` specificity.
- *
- * Two rules are NOT here. Every glyph inside a button sits a step back from its label, which is
- * a DESCENDANT rule that no atomic class can express; and the browser's own button chrome is
- * turned off a ring below. Both live in `globals.css`, the second under `@layer base` so that
- * this ring can simply state a border or a fill instead of out-specifying one.
- */
 type ButtonVariant =
   | "ghost"
   | "soft"
@@ -67,8 +52,6 @@ const styles = stylex.create({
     fontFamily: "var(--font-sans)",
     fontWeight: weight.medium,
     lineHeight: leading.tight,
-    // A transition-property declaration is the whole list, so a call site cannot add to it —
-    // it can only replace it.
     transitionProperty:
       "background-color, border-color, color, opacity, scale, translate, text-decoration-color",
     transitionDuration: motion.fast,
@@ -110,7 +93,6 @@ const styles = stylex.create({
     padding: 0,
   },
 
-  // Neither step answers a press a disabled control cannot accept.
   press: {
     scale: {
       default: null,
@@ -130,12 +112,7 @@ const styles = stylex.create({
     backgroundColor: {
       default: "transparent",
       ":hover": surface.hover,
-      // `data-chrome-focus` is the design system's way of saying "a row state stands in for the
-      // focus ring here". A control that opts out of the ring has to show something else, so
-      // the button honours the marker rather than leaving each call site to remember.
       ":is([data-chrome-focus]):focus-visible": surface.hover,
-      // Both halves: a tooltip marks its trigger `data-popup-open` too, and a disclosure marks
-      // `aria-expanded`; only a menu or popover this button opened carries the pair.
       ':is([data-popup-open][aria-expanded="true"])': surface.selected,
       ':is([data-popup-open][aria-expanded="true"]):hover': surface.selectedHover,
     },
@@ -161,10 +138,6 @@ const styles = stylex.create({
       ':is(:disabled, [aria-disabled="true"])': surface.surface2,
     },
     color: { default: color.ctaText, ':is(:disabled, [aria-disabled="true"])': color.fgFaint },
-    // …and having answered, it does not answer twice. The fade a ring below applies is the
-    // GENERIC way to say "cannot be used", for a control with no answer of its own. Stacked on
-    // this plate it took the glyph from 4.9:1 to 1.9:1 — a disabled control still has to be
-    // readable, because reading it is how you work out what would enable it.
     opacity: { default: null, ':is(:disabled, [aria-disabled="true"])': 1 },
   },
   wash: { backgroundColor: "transparent" },
@@ -202,15 +175,11 @@ const styles = stylex.create({
     borderRadius: 0,
     borderWidth: 0,
     backgroundColor: { default: "transparent", ":hover": "transparent" },
-    // On the SAME axis the sizes use. A physical `padding: 0` and a logical `padding-inline`
-    // expand to different longhands, so the shorthand would not have replaced the step's inset
-    // — it would have sat beside it and lost.
     paddingInline: 0,
     paddingBlock: 0,
     lineHeight: "inherit",
     fontWeight: weight.regular,
   },
-  // The hit area is a pseudo-element because the text itself is only as tall as its line.
   link: {
     position: "relative",
     display: "inline-block",
@@ -238,7 +207,6 @@ const styles = stylex.create({
 
   fill: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
 
-  // Declared after the variants so it outranks whichever fill they gave.
   active: {
     backgroundColor: { default: surface.selected, ":hover": surface.selectedHover },
     color: color.fg,
@@ -251,9 +219,6 @@ const styles = stylex.create({
     fontWeight: weight.regular,
   },
 
-  // The seam is a hairline drawn by the trailing half rather than a border, because a border
-  // would land outside the fill and read as an outline around the pair. The 1px pull is what
-  // closes the gap the two edges would otherwise leave.
   joinStart: { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
   joinEnd: {
     position: "relative",
@@ -316,7 +281,6 @@ export interface ButtonVariants {
   variant?: ButtonVariant;
   size?: ButtonSize;
   tone?: ButtonTone;
-  /** Left unset this follows the box, which is what decides it — see `pressFor`. */
   press?: "scale" | "nudge" | "none";
   join?: "start" | "end";
   round?: boolean;
@@ -334,7 +298,6 @@ function pressFor({ variant, chip, shape, round }: ButtonVariants): "scale" | "n
   return chip || shape === "row" ? "none" : "scale";
 }
 
-/** The precedence, in one place. Read it top to bottom: later decides. */
 export function dress({
   variant = "ghost",
   size = "md",
@@ -374,19 +337,9 @@ export function dress({
   ];
 }
 
-// `data-slot` / `data-variant` are set after the spread, so a caller's would be dropped
-// silently. Omitted from the props type to make that a compile error.
 export type ButtonProps = Omit<ButtonPrimitiveProps, "children" | "data-slot" | "data-variant"> &
   ButtonVariants & {
     children?: ReactNode;
-    /**
-     * StyleX styles composed INTO this button's own, for a shell shape the design system builds
-     * on top of it — the agent row's density height and inset, say.
-     *
-     * Not an escape hatch: it is composed in the same `stylex.props()` call, so a property it
-     * declares replaces this component's rather than losing to it, which is exactly what a
-     * `className` cannot do.
-     */
     styles?: StyleXArray<StyleXStyles | null | false>;
   };
 

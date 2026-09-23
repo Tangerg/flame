@@ -1,9 +1,3 @@
-// Four things happen between a caller and the socket that a binding line like
-// `call("sessions.get", { sessionId })` does not show: a capability preflight that refuses
-// locally what the server said it cannot do, an idempotency key from the durable journal so
-// a retry is the SAME command, a mutation promise carrying that key and a `retry`, and
-// cursor auto-paging.
-
 import type { RpcCallOptions, RpcClient } from "./client";
 import { RpcError } from "./errors";
 import { createMutationPromise, type MutationPromise } from "./mutation";
@@ -26,8 +20,6 @@ import {
   type WireResult,
 } from "@flame/runtime-contract/methods";
 
-// From the GENERATED table, so a rename in the Registry is a compile error rather than a
-// runtime `method_not_found`.
 type WirePerform = <M extends WireMethodName>(
   method: M,
   params: WireParams<M>,
@@ -60,24 +52,11 @@ export type WireCall = <M extends WireMethodName>(
 ) => WireCallResult<M>;
 
 export interface MethodsOptions {
-  /**
-   * What the server said it can do, or null before discovery — the capability
-   * preflight reads it before each call. Omit it and every call goes out, leaving
-   * the runtime to refuse what it cannot do.
-   */
   capabilities?: () => ServerCapabilities | null | undefined;
-  /**
-   * Metadata attached to the next request. The factory reads it once per call,
-   * using the same snapshot for capability preflight and emission.
-   */
   requestMeta?: () => RequestMeta | undefined;
-  /** Optional durable owner for unresolved command identities. The RPC SDK
-   * remains storage-agnostic; Desktop supplies the adapter at composition. */
   mutationJournal?: MutationJournal;
 }
 
-/** What a mutation-shaped binding needs beyond `call`: `runs.start` subscribes before the
- *  POST, so it opens its own mutation around a stream it already holds. */
 export interface WireCallPath {
   call: WireCall;
   perform: WirePerform;
@@ -97,8 +76,6 @@ type OpenMutation = <M extends WireMethodName, Result>(
 ) => MutationPromise<Result>;
 
 export function createWireCallPath(client: RpcClient, options: MethodsOptions): WireCallPath {
-  // Every outbound call passes the preflight, because the alternative is a
-  // round-trip whose only possible answer is the refusal we already hold.
   const refuse = <M extends WireMethodName>(
     method: M,
     params: WireParams<M>,
@@ -113,9 +90,6 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
     if (missing.length === 0) return;
     throw new RpcError({
       message: `${method} requires ${missing.join(", ")}`,
-      // This is the same typed refusal the runtime would return, with every gap in
-      // one frame. Manufacturing a detail here would put runtime words in a local
-      // refusal, so the UI still owns the prose.
       data: {
         type: "capability_not_negotiated",
         requiredCapabilities: missing.map((name) => ({ type: "feature", name })),

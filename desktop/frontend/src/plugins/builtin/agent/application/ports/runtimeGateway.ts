@@ -13,9 +13,6 @@ export interface AgentSessionSnapshot {
   plan?: AgentPlan;
 }
 
-/** One authoritative material read plus adapter-owned shared facts derived from
- * the same Runtime transaction. Projection is pure: only Application's one
- * view-token commit may publish either the Agent snapshot or its companions. */
 export interface AgentSessionMaterialRead {
   snapshot: AgentSessionSnapshot;
   projectAssociatedSharedMaterial(shared: Record<string, unknown>): Record<string, unknown>;
@@ -32,7 +29,6 @@ export interface AgentSessionUsage {
 
 export interface AgentRuntimeGateway {
   createSession(input: { cwd: string }): Promise<{ id: string }>;
-  /** Resolve once the Session is authoritatively absent. Already absent is success. */
   deleteSession(sessionId: string): Promise<void>;
   updateSession(input: {
     sessionId: string;
@@ -42,11 +38,6 @@ export interface AgentRuntimeGateway {
     cwd?: string;
   }): Promise<{ revision: number }>;
   forkSession(input: { sessionId: string; fromRunId?: string }): Promise<{ id: string }>;
-  /**
-   * Every durable fact needed to rebuild the Agent projection, as ONE canonical snapshot the
-   * caller commits atomically; the adapter owns capability-aware query scope. Null means the
-   * Runtime authoritatively reports the Session gone — operational failures still reject.
-   */
   loadSessionSnapshot(
     sessionId: string,
     signal?: AbortSignal,
@@ -59,18 +50,8 @@ export interface AgentRuntimeGateway {
   }): Promise<{
     droppedRuns: Array<{ runId: string; userInput?: AgentInput }>;
   }>;
-  /** Inject a user instruction into the segment the caller believes is executing.
-   *  The segment is part of the address: a run that parked and resumed between
-   *  typing and sending must refuse rather than deliver the instruction into a
-   *  continuation the person never saw. */
   steerRun(runId: string, segmentId: string, input: AgentInput): Promise<{ userItemId: string }>;
-  /** Whether a refusal means "the run this addressed is no longer executing" —
-   *  finished, waiting on a person, or already on a different segment. One
-   *  question because one answer follows: read the current Run before choosing another action. */
   isRunGone(error: unknown): boolean;
-  /** Whether a refusal means "the replay window no longer reaches that cursor". The
-   *  events are gone for good; the items they produced are not, so the answer is a
-   *  cold history read plus a tail attach — not a retry of the same cursor. */
   isReplayLost(error: unknown): boolean;
   setApprovalMode(mode: ApprovalMode): Promise<ApprovalMode>;
   forgetApprovalRule(id: string): Promise<void>;

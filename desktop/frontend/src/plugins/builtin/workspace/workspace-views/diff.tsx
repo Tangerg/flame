@@ -27,7 +27,6 @@ import { color, face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { codeStyles as cs, viewStyles as vs } from "./views/viewStyles";
 const df = stylex.create({
   pathLine: { display: "flex", minWidth: 0, flex: 1, alignItems: "baseline", gap: space.s1_5 },
-  // The old path yields first and by a wide margin: what matters is where the file IS now.
   oldPath: { flexShrink: 100, color: color.fgFaint },
   glyphStep: { opacity: "var(--glyph-step)" },
   newPath: { flexShrink: 1 },

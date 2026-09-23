@@ -17,11 +17,6 @@ function runOpeningIdentity(method: "start" | "resume", params: unknown): string
   return JSON.stringify([`runs.${method}`, params]);
 }
 
-/**
- * The runs gateway the RPC agent source drives, bound to the live client. Lives in
- * `adapters/` rather than the plugin's `setup()` because it reaches the composition root
- * and coerces app session ids into the wire's branded ones — neither belongs to assembly.
- */
 export interface RuntimeRunsGateway extends RpcRunsGateway {
   replaceRuntimeGeneration(): void;
   dispose(): void;
@@ -73,16 +68,9 @@ export function runtimeRunsGateway(): RuntimeRunsGateway {
   return new DefaultRuntimeRunsGateway();
 }
 
-/**
- * The wire carries ids as plain strings — `ids.ts` brands them at the parse site,
- * and for a run's ids this adapter IS that site. The app's ports speak branded ids
- * so a RunId can never be passed where an ItemId belongs.
- */
 function brandStartedRun(result: StartRunResponse) {
   return {
     runId: asRunId(result.runId),
-    // The segment, not just the run: a stream is a segment's, and reattaching after a
-    // dropped connection has to name the one it was following.
     segmentId: asSegmentId(result.segmentId),
     userItemId: asItemId(result.userItemId),
   };

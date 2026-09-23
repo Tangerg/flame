@@ -74,10 +74,6 @@ function isDuplicateRunFinish(
   );
 }
 
-/** Zero is not a footprint, it is the absence of one — the same reading `contextUsageReadout`
- *  refuses, because a gauge at zero claims "empty" and that would be false. The finishing
- *  frame carries the field unconditionally, so without this a Run that never reported one
- *  would erase the last value a live frame did state. */
 function statedFootprint(tokens: number | undefined): number | null {
   return tokens !== undefined && tokens > 0 ? tokens : null;
 }

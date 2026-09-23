@@ -16,7 +16,6 @@ export function hasWorkspaceViewForTool(tool: ToolCall): boolean {
 export function openWorkspaceViewForTool(tool: ToolCall): void {
   switch (toolDestination(tool)) {
     case "diff":
-      // Multi-file patches have a descriptive label, not one file to focus.
       openWorkspaceDiffForFile(tool.fnKind === "path" ? tool.fn : "");
       break;
     case "file":

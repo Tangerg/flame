@@ -15,7 +15,6 @@ export interface PaginationPolicy {
   readonly maximumRetainedCursorCodeUnits: number;
 }
 
-/** Construct one finite traversal policy; zero is never a default/unbounded mode. */
 export function createPaginationPolicy(policy: PaginationPolicy): Readonly<PaginationPolicy> {
   for (const [field, value] of Object.entries(policy)) {
     if (!Number.isSafeInteger(value) || value <= 0) {
@@ -30,15 +29,10 @@ export function createPaginationPolicy(policy: PaginationPolicy): Readonly<Pagin
   return Object.freeze({ ...policy });
 }
 
-// One SDK traversal can cover 204,800 ordinary 100-row Runtime pages while
-// remaining finite. Array collection is intentionally tighter than streaming;
-// cursors are exact strings but their aggregate retained material is 1 MiB.
 export const SDK_PAGINATION_POLICY = createPaginationPolicy({
   maximumPageRequests: 2_048,
   maximumRowsPerPage: 1_000,
   maximumCollectedRows: 100_000,
-  // Runtime cursors are ASCII, so its wire-character contract is the exact
-  // JavaScript code-unit contract too.
   maximumCursorCodeUnits: MAXIMUM_PAGINATION_CURSOR_CHARACTERS,
   maximumRetainedCursorCodeUnits: 1 * 1_024 * 1_024,
 });
@@ -74,11 +68,6 @@ export class PaginationError extends Error {
   }
 }
 
-/**
- * Still a real Promise: `await call` returns its FIRST wire page while the auto-paging
- * members walk the rest, starting from the cursor the original request supplied and
- * preserving every other request field on continuation calls.
- */
 export interface AutoPagingPromise<P extends CursorPage>
   extends Promise<P>, AsyncIterable<PageItem<P>> {
   pages(): AsyncIterable<P>;

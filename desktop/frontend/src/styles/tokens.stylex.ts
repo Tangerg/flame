@@ -1,19 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
 
-/**
- * The design decisions, as the only values a StyleX prop will accept.
- *
- * Each one resolves to the CSS variable `globals.css` already owns rather than to a literal.
- * That is deliberate and load-bearing: those variables are computed — a shape step is
- * `--style-shape-md × --radius-scale × --corner-scale` — and they are redefined per theme and
- * per visual style. Inlining the value here would freeze one theme's answer into the token and
- * take the corner ladder, the density scale and every alternate style with it.
- *
- * So StyleX owns the VOCABULARY (what a component may name) and `globals.css` keeps owning the
- * RESOLUTION (what that name is worth right now, under this theme, at this scale).
- */
-
-/** Ink, by role. A name says what the text IS, never how dark it is. */
 export const color = stylex.defineVars({
   fg: "var(--color-text)",
   fgSoft: "var(--color-text-soft)",
@@ -21,7 +7,6 @@ export const color = stylex.defineVars({
   fgFaint: "var(--color-text-faint)",
   accent: "var(--color-accent)",
   onAccent: "var(--color-text-on-accent)",
-  /** The ink that reads on the CTA fill. The fill itself is a surface, not an ink. */
   ctaText: "var(--color-cta-text)",
   onMedia: "var(--color-on-media)",
   negative: "var(--color-negative)",
@@ -30,7 +15,6 @@ export const color = stylex.defineVars({
   info: "var(--color-info)",
 });
 
-/** How long a change takes. Durations are decisions; `150ms` at a call site is not. */
 export const motion = stylex.defineVars({
   fast: "var(--dur-fast)",
   instant: "var(--dur-instant)",
@@ -38,9 +22,7 @@ export const motion = stylex.defineVars({
   riseIn: "var(--animate-rise-in)",
   color: "var(--dur-color)",
   easeOut: "var(--ease-out)",
-  /** A fill CHANGING, which is not a thing arriving. */
   easeState: "var(--ease-state)",
-  /** Whole `animation` shorthands, so each duration keeps tracking motion-scale. */
   shimmer: "var(--animate-shimmer)",
   sweep: "var(--animate-sweep)",
   pulseDot: "var(--animate-pulse-dot)",
@@ -48,7 +30,6 @@ export const motion = stylex.defineVars({
   breathe: "var(--animate-breathe)",
 });
 
-/** Surfaces and edges, by role. A name says what a plane IS, never how light it is. */
 export const surface = stylex.defineVars({
   sunken: "var(--color-sunken)",
   sunkenHover: "var(--color-sunken-hover)",
@@ -59,7 +40,6 @@ export const surface = stylex.defineVars({
   canvas: "var(--color-bg)",
   floating: "var(--app-floating-surface)",
   scrim: "var(--color-scrim)",
-  /** Row states are an ink wash whose strength tracks `--depth-step`, not a surface step. */
   hover: "var(--wash-hover)",
   ctaFill: "var(--color-cta)",
   ctaHover: "var(--color-cta-hover)",
@@ -74,12 +54,10 @@ export const surface = stylex.defineVars({
   selectedHover: "var(--wash-selected-hover)",
   lineSoft: "var(--color-line-soft)",
   mediaField: "var(--color-media-preview)",
-  /** The app's card plane, and the hairline a fill-less surface uses instead of it. */
   card: "var(--app-card-surface)",
   field: "var(--color-border)",
   fieldStrong: "var(--color-border-soft)",
   fieldFocus: "var(--color-focus-ring)",
-  /** A badge's wash: 18% of the hue over whatever is behind it. */
   accentBadge: "var(--color-accent-badge)",
   successBadge: "var(--color-success-badge)",
   warningBadge: "var(--color-warning-badge)",
@@ -87,17 +65,13 @@ export const surface = stylex.defineVars({
   infoBadge: "var(--color-info-badge)",
 });
 
-/** Corner steps, each already carrying the style scale and the superellipse compensation. */
 export const radius = stylex.defineVars({
   step2xs: "var(--shape-2xs)",
   xs: "var(--shape-xs)",
-  /** Corners named for the plane they belong to: a card and a transcript bubble differ. */
   card: "var(--surface-card-radius)",
-  /** The transcript column's corner. What is NOT shared is the shape: see `corner.bubble`. */
   bubble: "var(--shape-bubble)",
   sm: "var(--shape-sm)",
   lg: "var(--shape-lg)",
-  /** Corners a control owns, which the visual style may move independently of the ladder. */
   field: "var(--field-radius)",
   segmented: "var(--segmented-radius)",
   segment: "var(--segment-radius)",
@@ -132,22 +106,6 @@ export const space = stylex.defineVars({
   s24: "calc(var(--spacing) * 24)",
 });
 
-/**
- * A type STEP, not a font size.
- *
- * `text-ui-xs` was never one decision: a type utility carries a size and the tracking chosen
- * with it, and reading only the size out of the ladder is how the first migrated component
- * came out 2.1px wider than the one it replaced — the tracking was gone and nothing said so,
- * because `fontSize` alone is a legal, complete-looking style.
- *
- * So a step is a bundle here too, and a call site names the step rather than assembling one.
- */
-/** How tall a line is. A ratio at a call site is not a decision; these are. */
-/**
- * How heavy a face is. `regular` is 430 rather than 400 — the variable face is set a notch up so
- * body text holds its colour on a dark ground — which is exactly why these are tokens: a literal
- * `400` here reads as correct and renders a step light.
- */
 export const weight = stylex.defineVars({
   regular: "var(--fw-regular)",
   medium: "var(--fw-medium)",
@@ -162,26 +120,8 @@ export const leading = stylex.defineVars({
   tight: "var(--leading-tight)",
 });
 
-/**
- * A corner STEP, not a radius — the same lesson `type` learned, in the other ladder.
- *
- * Every corner in the product is a superellipse: `globals.css` sets `corner-shape:
- * superellipse(1.5)` on everything and compensates the radius by `--corner-scale`. The pill
- * step opts back out, because a superellipse at pill radius is a rounded square rather than a
- * circle. Setting the radius alone turns every circle in the design system into a squircle:
- * silently, because at a 6px dot or a 12px ring the difference is sub-pixel.
- *
- * So the pill is a bundle and `radius` does not expose it: the two halves are one decision.
- */
 export const corner = stylex.create({
   pill: { borderRadius: "var(--shape-pill)", "corner-shape": "round" },
-  /**
-   * SPEECH, and a bundle for the same reason the pill is one.
-   *
-   * Only the reader's own message. An approval or a question card sits in the same column and
-   * takes the same RADIUS (`radius.bubble`), but it carries controls and is answered rather
-   * than read — it keeps the squircle.
-   */
   bubble: { borderRadius: "var(--shape-bubble)", "corner-shape": "round" },
 });
 
@@ -190,9 +130,6 @@ export const type = stylex.create({
   uiXs: { fontSize: "var(--fs-ui-xs)", letterSpacing: "var(--tracking-ui)" },
   uiSm: { fontSize: "var(--fs-ui-sm)", letterSpacing: "var(--tracking-ui)" },
   uiMd: { fontSize: "var(--fs-ui-md)", letterSpacing: "var(--tracking-ui)" },
-  // A display step carries THREE halves, not one: `md` and `lg` bring their own leading
-  // because a heading's line box is tighter than the body's. Six call sites had copied only
-  // the size, which at the largest font size left a 26px heading on the transcript's leading.
   displaySm: {
     fontSize: "var(--fs-display-sm)",
     letterSpacing: "var(--tracking-ui)",
@@ -206,14 +143,6 @@ export const type = stylex.create({
   prose: { fontSize: "var(--fs-prose)", letterSpacing: "var(--tracking-ui)" },
 });
 
-/**
- * The two faces, as the pair of decisions each one actually is.
- *
- * A face is never only a family. The UI steps carry `--tracking-ui`, a negative tracking chosen
- * for a proportional face; mono glyphs are already spaced by the grid and take that tracking as
- * a crowding defect. That is why this is a token and not two properties a component sets side
- * by side.
- */
 export const face = stylex.create({
   text: { fontFamily: "var(--font-sans)" },
   mono: { fontFamily: "var(--font-mono)", letterSpacing: 0 },

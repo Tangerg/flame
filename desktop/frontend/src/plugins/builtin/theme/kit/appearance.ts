@@ -1,6 +1,3 @@
-// `Scheme` and `VisualStyleMotion` deliberately live in `lib/appearance` instead: rings
-// that cannot import a plugin read them off the painter's publication seam.
-
 export type ColorThemeId = string;
 export type VisualStyleId = string;
 
@@ -8,8 +5,6 @@ export const UI_DENSITY_MODES = ["compact", "comfortable", "spacious"] as const;
 export type UiDensity = (typeof UI_DENSITY_MODES)[number];
 export const DEFAULT_UI_DENSITY: UiDensity = "comfortable";
 
-/** The step the app opens on. Named because the ink ladder is anchored to it: below it
- *  ink holds still, above it ink keeps pace with the surfaces the slider is moving. */
 export const DEFAULT_CONTRAST = 25;
 
 export interface CustomTheme {
@@ -17,9 +12,6 @@ export interface CustomTheme {
   fg: string;
 }
 
-/** What the painter reads and the pane edits. Declared apart from the store so
- *  `installDocumentAppearance` accepts any carrier of these values — which is how the
- *  visual harness drives the real pipeline off a fixture. */
 export interface AppearancePreference {
   theme: ColorThemeId;
   visualStyle: VisualStyleId;

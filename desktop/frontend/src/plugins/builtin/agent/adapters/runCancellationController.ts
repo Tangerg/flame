@@ -22,14 +22,6 @@ export interface RunCancellationController {
   retire(): void;
 }
 
-/** One cancellation command per Run inside one replaceable Runtime generation.
- *
- * A successful response is a snapshot taken at commit time, so it may only fold while the
- * material view still holds the epoch and revision the command started from. A failed
- * current-generation command is revalidated through the neutral Agent projection, where
- * another client reaching terminal counts as objective success and an active authoritative
- * Run preserves the original failure.
- */
 export function createRunCancellationController<Response>({
   markInteracted,
   readTarget,
@@ -70,8 +62,6 @@ export function createRunCancellationController<Response>({
             superseded = await cohort.settle(revalidateTerminal(runId));
           } catch (revalidationError) {
             if (revalidationError === retiredError) return;
-            // Revalidation is evidence only. Its failure must neither replace
-            // nor hide the command failure the caller can still act on.
           }
           if (superseded) {
             onSettled();

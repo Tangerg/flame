@@ -2,10 +2,6 @@ import type { ComponentPropsWithoutRef } from "react";
 import { cn } from "@/lib/classNames";
 import { IconButton } from "@/ui";
 
-/** Which window corner this header has to keep clear. `window` yields to the traffic lights
- *  only while the drawer is collapsed and animates as it opens; `drawer` is the drawer's own
- *  header, permanently behind them. Two treatments, so one closed value rather than a boolean
- *  each — the pair `windowCorner drawerCorner` has no meaning. */
 type AgentHeaderCorner = "window" | "drawer";
 
 interface AgentSurfaceHeaderProps extends ComponentPropsWithoutRef<"div"> {
@@ -52,7 +48,6 @@ export function AgentDockToggle({
   unavailableLabel?: string;
 }) {
   return (
-    // The box centres the toggle on the header strip and keeps it out of the drag region.
     <div className="agent-dock-control">
       <IconButton
         icon="panel-r"

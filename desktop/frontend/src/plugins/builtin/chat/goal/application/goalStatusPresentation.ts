@@ -1,9 +1,5 @@
 import type { GoalReadModel, GoalStatus } from "./goalReadModel";
 
-/**
- * A paused goal is a thing to notice, a blocked one a thing to fix. Exhaustive so a new
- * Runtime lifecycle state cannot fall through to an untranslated key.
- */
 export const GOAL_STATUS_I18N = {
   active: { label: "goal.summary.active" },
   paused: { label: "goal.summary.paused" },

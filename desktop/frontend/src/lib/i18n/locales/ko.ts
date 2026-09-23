@@ -682,7 +682,6 @@ export const ko: Record<string, string> = {
   "vcs.notARepo": "Git 저장소가 아님",
   "vcs.notARepoSub": "세션의 작업 디렉터리가 버전 관리하에 있지 않습니다.",
 
-  // Filled 2026-07 — these keys had fallen behind en.
   "composer.placeholder.steer": "실행 중인 턴을 조정할 메시지 보내기…",
   "composer.action.steer": "실행 중인 턴 조정",
   "composer.paste.lines_other": "붙여넣기 · {{count}}줄",

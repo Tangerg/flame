@@ -12,10 +12,6 @@ const ROUTES = [
   "fixture=workspace&state=settings",
 ];
 
-// WCAG 2.2 SC 2.5.8 lets a control under 24×24 pass on spacing: a 24px circle on its centre
-// may not touch another control. The turn rail is exempt as an equivalent — every turn it
-// jumps to is one scroll away in the transcript beside it. Hover-revealed controls count while
-// transparent: they are measured where they will be once the pointer arrives.
 test("an undersized control keeps 24px of clearance from its neighbours", async ({ page }) => {
   const crowded: string[] = [];
   let undersized = 0;

@@ -78,11 +78,6 @@ function domainOf(url: string): string {
   }
 }
 
-// These answer in PROSE the model reads, not JSON, so each projection parses it — anchored
-// on the ONE piece of structure the runtime emits and degrading to "no structure found", so
-// a backend wording change costs a plain-text preview rather than a wrong one.
-
-/** `search_memory`: `N. content`, one entry per recalled item, content may wrap. */
 export function projectRecalledMemories(result: string | undefined): string[] {
   const entries: string[] = [];
   for (const line of resultLines(result)) {
@@ -99,7 +94,6 @@ export interface ConversationHit {
   snippet: string;
 }
 
-/** `search_conversations`: `N. [speaker · YYYY-MM-DD] snippet`. */
 export function projectConversationHits(result: string | undefined): ConversationHit[] {
   const hits: ConversationHit[] = [];
   for (const line of resultLines(result)) {
@@ -118,7 +112,6 @@ export interface ToolSearchGroup {
   names: string[];
 }
 
-/** `search_tools`: prose, then `Not loaded:` and `  [source] a, b, c` per source. */
 export function projectToolSearchGroups(result: string | undefined): ToolSearchGroup[] {
   const groups: ToolSearchGroup[] = [];
   for (const line of resultLines(result)) {
@@ -141,7 +134,6 @@ export interface HttpPreview {
   body: string;
 }
 
-/** `http_request` answers `{status, headers, body, truncated, duration}`. */
 export function projectHttpPreview(result: string | undefined): HttpPreview | undefined {
   const parsed = parseJsonResult(result);
   if (typeof parsed?.status !== "number") return undefined;
@@ -160,7 +152,6 @@ export interface FetchedPage {
   format: string;
 }
 
-/** `web_fetch` answers `{content, format}` — markdown by default. */
 export function projectFetchedPage(result: string | undefined): FetchedPage | undefined {
   const parsed = parseJsonResult(result);
   if (typeof parsed?.content !== "string") return undefined;

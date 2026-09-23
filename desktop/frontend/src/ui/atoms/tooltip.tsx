@@ -5,10 +5,7 @@ import { leading, space, type } from "@/styles/tokens.stylex";
 import { TooltipPrimitive } from "@/ui/primitives";
 import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
 
-// The tip's own measure. `FLOATING_TIP` already paints the elevated floating surface; an
-// inverted fill was a fourth material with no owner.
 const tip = stylex.create({
-  // zcode's tip: 12px copy on a 12px by 6px inset.
   measure: {
     paddingInline: space.s3,
     paddingBlock: space.s1_5,
@@ -36,7 +33,6 @@ interface RichTooltipProps {
   side?: "top" | "right" | "bottom" | "left";
   sideOffset?: number;
   delay?: number;
-  /** Composed with the tip's own measure in one `stylex.props`, so a card can restate it. */
   styles?: StyleXStyles;
 }
 

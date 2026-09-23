@@ -28,19 +28,9 @@ import { runtimeAgentEvent, runtimeCancelResult, runtimeRunFact } from "./runtim
 
 interface SessionEntry {
   view: AgentSessionView;
-  /** Bumped before an authoritative rewrite. The useAgentSession rAF batcher stamps its
-   *  queue with the epoch seen at enqueue time and drops the batch if it changed — a flush
-   *  scheduled before the replacement must not append the old run's tail into the rebuilt
-   *  view. */
   viewEpoch: bigint;
-  /** Advances on every material projection write, so a fetch started before a user action
-   *  or live event cannot overwrite it. */
   viewRevision: bigint;
-  /** Advances only when a DURABLE authoritative projection commits. Command recovery uses
-   *  this boundary rather than mistaking a live event or optimistic write for proof of
-   *  remote settlement. */
   authoritativeRevision: bigint;
-  /** A newer read supersedes an older in-flight read even while the view is unchanged. */
   refreshSequence: bigint;
   stop: StopCurrentRootRunAction | null;
   send: SendAgentInputAction | null;
@@ -51,12 +41,8 @@ interface SessionEntry {
 
 interface AgentStore {
   sessions: Record<string, SessionEntry>;
-  /** Monotonic high-water mark across mounted projection generations: session material may
-   *  be pruned, but a retired identity must never become available to a later remount. */
   projectionGenerationSequence: bigint;
 
-  /** Folds a whole batch under ONE `set()` so a burst of item.delta events produces one
-   *  React commit per frame. Returns false if the batch did not match the mounted Session. */
   applyRunEvents: (sessionId: string, events: RunEvent[]) => boolean;
   applyRunSnapshot: (sessionId: string, run: RunRef) => void;
   commitCancelResponse: (
@@ -77,7 +63,6 @@ interface AgentStore {
   ) => boolean;
   retireProjectionGeneration: (sessionIds: readonly string[]) => void;
   replaceServerScope: (sessionIds: readonly string[]) => void;
-  /** Collapses the placeholder into the target id when the streamed item won the race. */
   reconcileMessageIdentity: (sessionId: string, fromId: string, toId: string) => void;
   dropMessage: (sessionId: string, id: string) => void;
   dropSession: (sessionId: string) => void;
@@ -87,11 +72,7 @@ interface AgentStore {
   setSynchronize: (sessionId: string, action: SynchronizeSessionAction | null) => void;
   setCancelRun: (sessionId: string, action: CancelRunAction | null) => void;
   clearProblem: (sessionId: string) => void;
-  /** For a channel-a failure (API.md §8.1): the stream never opened, so no
-   *  `segment.finished{error}` will arrive to carry it. */
   setCommandError: (sessionId: string, error: AgentProblem | null) => void;
-  /** Optimistic only — flips the card out of requires-action; the continuation Run streams
-   *  the real follow-up. */
   resolveInterrupt: (
     sessionId: string,
     itemId: string,
@@ -119,10 +100,6 @@ const emptyEntry = (viewEpoch: bigint): SessionEntry => ({
   cancelRun: null,
 });
 
-// Never resurrects a dropped slice: `ensureSession` is the sole creator, so a write that
-// cannot find its session (a late rAF flush, an in-flight snapshot resolving, unmount
-// cleanup after the prune subscriber ran) must no-op rather than re-seed a ghost entry —
-// prune only fires on the next openSessionIds change and would never collect it.
 function patchSession(
   sessions: Record<string, SessionEntry>,
   sessionId: string,
@@ -165,7 +142,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set((state) => {
       if (events.length === 0) return state;
       const prev = state.sessions[sessionId];
-      if (!prev) return state; // session torn down — drop the late batch
+      if (!prev) return state;
       let view = prev.view;
       for (const event of events) view = reduceAgentEvent(view, runtimeAgentEvent(event));
       applied = true;
@@ -352,13 +329,6 @@ export const useAgentStore = create<AgentStore>((set) => ({
     }),
 }));
 
-/**
- * The exact Plugin Host generation allowed to commit authoritative snapshot reads. Refresh
- * sequence and view revision order writes WITHIN a generation but cannot see an old port
- * object retained across adapter replacement, since both target this process-wide store —
- * so installing a successor synchronously revokes every token its predecessor held, and a
- * stale disposer can retire only itself.
- */
 export class AgentViewRefreshOwner {
   #disposed = false;
 
@@ -403,8 +373,6 @@ export class AgentViewRefreshOwner {
 
 const agentViewRefreshPublication = createPublicationSlot<AgentViewRefreshOwner>();
 
-// The view slice can be megabytes of streamed markdown per session, so an unpruned one
-// accumulates forever.
 const unsubPruneSessions = useAgentSessionStore.subscribe((state, prev) => {
   if (state.openSessionIds === prev.openSessionIds) return;
   const live = new Set(state.openSessionIds);

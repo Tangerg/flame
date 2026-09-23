@@ -17,7 +17,6 @@ import { settingStyles as ss } from "../../kit/settingStyles";
 
 const rs = stylex.create({
   title: { display: "flex", minWidth: 0, flexDirection: "column", gap: space.s1 },
-  // A model id is long and the trigger is not: it truncates rather than widening the row.
   model: { maxWidth: "160px" },
   row: {
     display: "flex",

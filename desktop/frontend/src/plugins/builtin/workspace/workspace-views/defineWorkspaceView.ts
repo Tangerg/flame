@@ -1,9 +1,3 @@
-// Convenience wrapper for the built-in workspace-view plugins: each is just
-// `definePlugin` → `contribute(WORKSPACE_VIEW, spec)` with a name derived from
-// the view id. Lives in this plugin package — NOT the core SDK — mirroring
-// `defineColorThemePlugin` in theme/kit: the kernel exposes only the generic
-// `contribute` write path; per-domain ergonomics belong to the domain.
-
 import type { WorkspaceViewSpec } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
 import { definePlugin } from "@/plugins/sdk";

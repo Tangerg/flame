@@ -1,14 +1,10 @@
 import { expect, test } from "./test";
 
-// The two ends and the middle of the slider, plus the point the floor stops binding.
 const CONTRAST = [0, 12, 25, 50, 100] as const;
 
-// Measured in 8-bit channels against the surface the row sits on. Around 4 is where a flat
-// fill of this size stops being visible at all; the floor holds the low end at 8.1 and 16.2.
 const MIN_HOVER = 6;
 const MIN_SELECTED = 12;
 
-// Codex and zcode both put the open row at twice the ink of the hovered one.
 const MIN_RATIO = 1.7;
 
 const READ = `() => {

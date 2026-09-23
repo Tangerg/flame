@@ -1,8 +1,3 @@
-// Synthesized rather than an audio asset so there is nothing to bundle or decode. The
-// CALLER owns the gate (toggle + focus), like osNotify. Browsers start an AudioContext
-// suspended until a user gesture, but by run-completion the user has already clicked send;
-// if it is somehow still suspended the notes silently don't sound.
-
 let ctx: AudioContext | null = null;
 
 function audioContext(): AudioContext | null {

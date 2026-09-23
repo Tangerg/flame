@@ -16,14 +16,6 @@ function clearResetTimer(owner: CopyFeedbackOwnership): void {
   owner.resetTimer = undefined;
 }
 
-/** Inline clipboard feedback owned by one exact piece of visible material.
- *
- * Streaming output, code and run digests can all replace their text without
- * replacing the button component. Each copy intent therefore carries both the
- * material it copied and a monotonic revision. A retired or older clipboard
- * response may have changed the system clipboard, but it cannot publish
- * "copied" into the material that replaced it or extend a newer intent's timer.
- */
 export function useCopyFeedback(
   material: string,
   resetAfterMs = 1500,
@@ -37,9 +29,6 @@ export function useCopyFeedback(
   });
   const [accepted, setAccepted] = useState<{ material: string; lease: object } | null>(null);
 
-  // Layout ownership changes before the replacement material can paint or
-  // receive an event. Promise continuations run only after this transition has
-  // retired the previous revision.
   useLayoutEffect(() => {
     const owner = ownerRef.current;
     if (owner.material === material) return;

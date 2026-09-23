@@ -52,10 +52,6 @@ export function selectCurrentRootAttention(view: AgentSessionView): AgentRootAtt
   return root ? { status: root.status, runId: root.id } : { status: "idle", runId: null };
 }
 
-/**
- * Descendant material is selected
- * separately under its durable parent Item anchor.
- */
 export function selectRootNarrativeMessages(view: AgentSessionView): Message[] {
   const rootRunIds = new Set(selectRootRuns(view).map((run) => run.id));
   const messages = view.messages.filter(
@@ -67,10 +63,6 @@ export function selectRootNarrativeMessages(view: AgentSessionView): Message[] {
 export function selectDelegatedRunNarratives(
   view: AgentSessionView,
 ): DelegatedRunNarrativesByItemId {
-  // Bucket messages by run in ONE pass rather than re-scanning the transcript per
-  // delegated run. This runs on every stream delta, so the difference is O(messages +
-  // runs) against O(messages × runs) — a session with twenty subagents and a long
-  // transcript was walking the whole thing twenty times per token.
   const messagesByRunId = new Map<string, Message[]>();
   for (const message of view.messages) {
     if (message.runId === null) continue;
@@ -91,11 +83,6 @@ export function selectDelegatedRunNarratives(
   return byItemId;
 }
 
-/**
- * A derived forest over normalized Run facts. Snapshot hydration validates
- * connected lineage; retaining a missing-parent node as a root keeps malformed
- * live material auditable instead of silently hiding it.
- */
 export function selectRunTree(view: AgentSessionView): AgentRunTreeNode[] {
   const runs = Object.values(view.runsById).sort(compareRuns);
   const byRunId = new Map<string, AgentRunTreeNode>();

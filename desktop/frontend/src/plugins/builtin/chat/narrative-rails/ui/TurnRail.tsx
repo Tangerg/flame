@@ -36,8 +36,6 @@ const tr = stylex.create({
     backgroundColor: surface.card,
     padding: 0,
   },
-  // A 9px box for a 2px tick: the height is the rail's rhythm, not the mark's. It yields when a
-  // long session outgrows the pane, because the rail clips and a clipped turn cannot be reached.
   tick: { display: "flex", height: "9px", minHeight: "2px", flexShrink: 1, alignItems: "center" },
   preview: {
     display: "flex",

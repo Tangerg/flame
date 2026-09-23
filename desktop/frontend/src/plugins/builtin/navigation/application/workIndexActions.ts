@@ -79,12 +79,6 @@ export function useWorkIndexActions(): WorkIndexActions {
         (!activeSessionId ||
           (activeWorkspaceStatus === "ready" && Boolean(activeCwd && activeCwd.trim()))),
       canCreateSessionInFolder: runtimeAvailable,
-      // Codex's top-level New action continues in the project that owns the
-      // active Session. Omitting cwd here delegated that decision to the
-      // Runtime process default, so the same click could silently jump projects.
-      // Bind the exact rendered workspace before the async create; while the
-      // active summary is resolving, the action is disabled rather than
-      // inventing a default owner.
       createSession: () => {
         if (!runtimeCommandsAvailable()) return;
         if (!activeSessionId) {

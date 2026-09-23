@@ -1,8 +1,3 @@
-// Built-in plugin: an icon gallery for @lobehub/icons. Opens as a
-// workspace tab so users can browse the available LLM-model / provider /
-// application brand icons. Also registers a curated subset in the
-// Settings → "Brand icons" pane.
-
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
 import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";

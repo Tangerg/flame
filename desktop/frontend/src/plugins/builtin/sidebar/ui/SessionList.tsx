@@ -8,7 +8,6 @@ import { space } from "@/styles/tokens.stylex";
 
 const sl = stylex.create({
   more: { paddingInline: space.s2, paddingBlock: space.s1 },
-  // Lines up with the nested rows above it: their inset plus the glyph they leave room for.
   moreNested: { paddingLeft: "calc(0.5rem + var(--icon-sm) + var(--density-row-gap))" },
 });
 

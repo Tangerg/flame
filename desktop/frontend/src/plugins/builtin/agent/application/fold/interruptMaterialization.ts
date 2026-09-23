@@ -15,8 +15,6 @@ export function materializeInterrupt(
 ): AgentSessionView {
   const withToolStatus = markToolRequiresAction(state, source.runId, interrupt.itemId);
   if (interrupt.type === "approval") {
-    // Approval payloads are self-contained ToolInvocation envelopes. Upsert on
-    // reconnect/replay so a re-seen interrupt re-affirms the same card.
     if (
       withToolStatus.messages.some(
         (message) =>
@@ -67,8 +65,6 @@ export function materializeInterrupt(
     })(withBlock);
   }
   if (interrupt.type === "question") {
-    // The question payload can materialize the card even if item.started was
-    // missed while the process was down.
     const hasBlock = withToolStatus.messages.some(
       (message) =>
         message.runId === source.runId &&

@@ -68,12 +68,6 @@ function PatchChangeRow({ change }: { change: PatchChange }) {
   );
 }
 
-/**
- * The files a still-running call is working through, read off the patch it was given.
- *
- * Deliberately without the receipt's verbs: those report what HAPPENED, and this call has
- * not happened yet. Line counts carry the row instead — the receipt never has them.
- */
 function ProposedChangeRow({ change }: { change: ToolFileChange }) {
   return (
     <div {...stylex.props(pt.proposedRow, typeStep.uiMd)}>
@@ -96,9 +90,6 @@ export function ApplyPatchPreview({ tool }: ToolPreviewProps) {
           idle="tools.preview.idle.noChanges"
         />
       )}
-      {/* One track for the verbs, shared by every row through `subgrid`, so every path starts on
-          one edge whichever verbs a patch mixes. `auto` keeps a single-row receipt as wide as
-          its own verb, and no locale needs a width picked for it. */}
       <div {...stylex.props(pt.track)}>
         {changes.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((change) => (
           <PatchChangeRow

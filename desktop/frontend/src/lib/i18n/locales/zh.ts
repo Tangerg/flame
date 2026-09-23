@@ -860,7 +860,6 @@ export const zh: Record<string, string> = {
   "vcs.notARepo": "不是 Git 仓库",
   "vcs.notARepoSub": "会话的工作目录不在版本控制之下。",
 
-  // Filled 2026-07 — these keys had fallen behind en.
   "composer.drop.images": "拖入图片以附加",
   "skillLibrary.sub": "{{active}} 个启用 · {{archived}} 个已归档",
   "skillLibrary.section.active": "启用中",

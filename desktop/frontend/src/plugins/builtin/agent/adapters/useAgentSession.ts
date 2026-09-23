@@ -25,22 +25,14 @@ import { createRunCancellationController } from "./runCancellationController";
 import { revalidateRunTermination } from "../application/run/revalidateRunTermination";
 
 export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string): AgentSession {
-  // An Effect Event gives the effect the latest factory without turning factory identity
-  // into a second, accidental lifecycle key.
   const createDriver = useEffectEvent(makeDriver);
 
   useEffect(() => {
-    // The welcome screen mounts the chat with an EMPTY id: no slice to seed, and
-    // `items.list("")` would be a guaranteed-failing RPC on every mount.
     if (!sessionId) return;
     const driver = createDriver();
     const client = () => getContainer().client();
     const store = () => useAgentStore.getState();
 
-    // A deep-link or history move mounts this lifecycle WITHOUT passing through the
-    // selection action, so the invariant is established here: open-set subscribers prune
-    // by membership, and an active-but-unheld Session would be dropped underneath this
-    // still-mounted driver.
     const sessionMemory = useAgentSessionStore.getState();
     sessionMemory.holdOpen(sessionId);
     sessionMemory.rememberSession(sessionId);
@@ -48,8 +40,6 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
 
     let abort: AbortController | null = null;
     let cancelled = false;
-    // The initial durable read must not commit AFTER a local command, even before that
-    // command's first stream event has advanced the store revision.
     let interacted = false;
     let projectionSynchronization: ReturnType<
       typeof createSessionProjectionSynchronization
@@ -62,8 +52,6 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
       applyEvents: (events) => store().applyRunEvents(sessionId, events),
       readRunSnapshot: (runId, signal) => client().runs.get(runId, signal),
       applyRunSnapshot: (run) => store().applyRunSnapshot(sessionId, run),
-      // A run keeps EXECUTING when its stream drops; reattaching makes that a gap rather
-      // than a transcript frozen until the next reload.
       reattach: createRunStreamReattach({
         sessionId,
         client,
@@ -79,9 +67,6 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
       onIdle: () => projectionSynchronization?.liveStreamSettled(),
     });
 
-    // Draft OWNERSHIP survives reload, but the proof that this process just created an
-    // empty Session does not — a cold draft must verify whether another client added
-    // history while this one was away.
     const recoverExistingSession = !useAgentSessionStore
       .getState()
       .freshDraftSessionIds.has(sessionId);
@@ -134,21 +119,14 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
       const currentRoot = store().sessions[sessionId]?.view;
       if (currentRoot && selectCurrentRootRun(currentRoot)?.status === "waiting") return false;
       const wireInput = agentInputToContentBlocks(input);
-      // Relabelled to the ack's `userItemId` when `runs.start` resolves, so the streamed
-      // Item dedupes by EXACT id rather than by a content-text heuristic. The bubble
-      // carries the same input the run does, so inlined images survive the relabel.
       const optimistic = createOptimisticUserMessage(wireInput);
       store().appendLocalMessage(sessionId, optimistic.message);
       runOpening.begin(
         (signal) => driver.start(wireInput, options, signal),
         (result) => {
           store().reconcileMessageIdentity(sessionId, optimistic.localId, result.userItemId);
-          // The run was accepted, so this session now holds a conversation: it
-          // graduates out of draft and into the session list only at acceptance.
           useAgentSessionStore.getState().graduateDraft(sessionId);
         },
-        // A channel-a error means the run never opened, so the optimistic bubble goes rather
-        // than stranding below an error banner for a message nobody accepted.
         () => store().dropMessage(sessionId, optimistic.localId),
       );
       return true;
@@ -174,10 +152,6 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
     };
 
     const createCancellationGeneration = () => {
-      // A cancellation command and every fact it derives belong to the client
-      // which first admits work into this generation. Capture lazily so an idle
-      // Session does not require a client, but never resolve `client()` again
-      // after an RPC has crossed the generation boundary.
       let generationClient: ReturnType<typeof client> | null = null;
       const admittedClient = () => (generationClient ??= client());
       return createRunCancellationController({
@@ -204,9 +178,6 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
           ),
         revalidateTerminal: (runId) => revalidateRunTermination(sessionId, runId),
         onSettled: () => {
-          // Root cancellation ends the stream; child cancellation advances the
-          // parent onto a new segment. In both cases the currently attached
-          // segment has lost ownership, so release it before reconciliation.
           abort?.abort();
           projectionSynchronization?.request();
           void queryClient.invalidateQueries({

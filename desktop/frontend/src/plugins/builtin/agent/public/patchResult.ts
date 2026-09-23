@@ -14,14 +14,6 @@ const PATCH_STATUSES: ReadonlySet<string> = new Set<ChangeStatus>([
   "moved",
 ]);
 
-/**
- * The persisted result of one `apply_patch` ToolCall.
- *
- * Shared Agent language because the central Narrative and the right-side Run Summary read
- * the same durable receipt. An entry the contract does not describe is dropped, not the
- * whole receipt; callers must not substitute current worktree state, which belongs to a
- * different scope and point in time.
- */
 export function projectPatchChanges(result: string | undefined): PatchChange[] {
   const changes = patchToolResult(result)?.changes;
   if (!Array.isArray(changes)) return [];

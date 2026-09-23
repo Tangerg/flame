@@ -18,7 +18,6 @@ const styles = stylex.create({
     borderRadius: radius.floatingPanel,
     backgroundColor: surface.canvas,
   },
-  // The popup is the flex column; this wrapper exists to key the content, not to lay it out.
   contents: { display: "contents" },
   queryRow: {
     display: "flex",
@@ -63,8 +62,6 @@ export function SearchOverlay({
   options,
   empty,
 }: SearchOverlayProps) {
-  // A controlled dialog has no trigger node to hand focus back to, and this render is the last
-  // moment the element that opened it still holds focus — the popup takes it once it mounts.
   const [wasOpen, setWasOpen] = useState(open);
   const [opener, setOpener] = useState<HTMLElement | null>(null);
   if (open !== wasOpen) {

@@ -17,12 +17,6 @@ export interface ResolvedComposerModelSelection<T extends ComposerModelOption> {
   reasoningEffort?: string;
 }
 
-/**
- * A deliberate in-process preference wins across sessions; before one exists, a durable
- * Session owns the default for its next Run, and only the no-session welcome surface falls
- * back to the catalog. `undefined` means the Session summary is still resolving — callers
- * must not race that read by materializing the catalog fallback as an override.
- */
 export function resolveComposerModelSelection<T extends ComposerModelOption>(
   models: readonly T[],
   preference: ComposerModelPreference,
@@ -50,10 +44,6 @@ export function resolveComposerModelSelection<T extends ComposerModelOption>(
     if (sessionModel) {
       return {
         model: sessionModel,
-        // A durable Session selection is an exact historical fact. Preserve an
-        // effort the current catalog no longer advertises so the UI does not
-        // silently claim Runtime will execute a different intensity; admission
-        // can then report the stale selection honestly.
         reasoningEffort:
           activeSessionSelection.reasoningEffort ?? sessionModel.reasoningLevelOrDefault(),
       };
@@ -65,9 +55,6 @@ export function resolveComposerModelSelection<T extends ComposerModelOption>(
     : undefined;
 }
 
-/** Only a deliberate Composer preference becomes a Run override. A model
- * derived from the active Session stays Session-owned and is intentionally
- * omitted so Runtime reads that same durable pair at admission. */
 export function resolveComposerRunOptions(preference: ComposerModelPreference): {
   provider?: string;
   model?: string;

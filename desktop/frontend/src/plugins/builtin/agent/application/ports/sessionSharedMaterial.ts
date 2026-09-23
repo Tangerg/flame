@@ -11,11 +11,6 @@ interface RegisteredContributor {
 
 const contributors = new Map<string, RegisteredContributor>();
 
-/**
- * Extend the mounted Agent Session's generic shared material without teaching
- * the Agent inner ring another bounded context's vocabulary. Each key has one
- * owner and is projected before the same view-token commit as Run/HITL/Plan/Tool.
- */
 export function registerAgentSessionSharedMaterial<T>(
   key: string,
   project: AgentSessionSharedMaterialContributor<T>,
@@ -35,9 +30,6 @@ export function registerAgentSessionSharedMaterial<T>(
   };
 }
 
-/** Stage pure companion values beside one Runtime snapshot. A plugin disposed
- * before the snapshot wins contributes nothing; no staged function writes a
- * store of its own. */
 export function stageAgentSessionSharedMaterial<T>(
   sessionId: string,
   material: T,
@@ -60,9 +52,6 @@ export function useAgentSessionSharedMaterial<T>(path: string): AgentProjectionM
   return agentSessionView().useSharedMaterial<T>(path);
 }
 
-/** This is the
- * imperative sibling of `useAgentSessionSharedMaterial`; it never starts a
- * query or writes a second projection. */
 export function getAgentSessionSharedMaterial<T>(sessionId: string, path: string): T | undefined {
   return agentSessionView().getSession(sessionId)?.view.shared[path] as T | undefined;
 }

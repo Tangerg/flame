@@ -14,8 +14,6 @@ import { readingColumn as rc } from "./readingColumn";
 
 const fc = stylex.create({
   notice: { marginBottom: space.s2 },
-  // The tray's own top pixel appears only when something is IN it — a `:has()` on itself,
-  // which is a condition on this element and so does have a StyleX form.
   tray: {
     display: "flex",
     width: "100%",
@@ -23,7 +21,6 @@ const fc = stylex.create({
     alignItems: "center",
     paddingTop: { default: null, ":has([data-slot=composer-top-tray-surface])": "1px" },
   },
-  // Transparent to the pointer so the transcript scrolls under it; the composer inside is not.
   overlay: { pointerEvents: "none", position: "absolute", insetInline: 0, bottom: 0, zIndex: 2 },
   holder: { pointerEvents: "auto", position: "relative" },
   floor: {
@@ -75,12 +72,6 @@ function ComposerOverlayTop() {
   return <Slot name="composer.overlay.top" wrapper className={stylex.props(fc.tray).className} />;
 }
 
-/**
- * What stands above the composer, in the only order that works.
- *
- * The overlay tray tucks its last 22px behind the composer's top edge, so whatever renders
- * between them is painted over. Every composer takes the order from here.
- */
 export function ComposerStack({ children }: { children: ReactNode }) {
   return (
     <>

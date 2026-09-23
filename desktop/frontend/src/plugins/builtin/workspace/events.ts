@@ -1,9 +1,3 @@
-// Built-in plugin: the app's ONE runtime.subscribe consumer.
-//
-// The plugin entry is now only the composition root. Runtime subscription,
-// active-cwd resolution, reconnect/retarget looping, and query invalidation
-// live in their owning layers under this bounded context.
-
 import { definePlugin } from "@/plugins/sdk";
 import { AGENT_SESSIONS } from "@/plugins/builtin/agent/public/services";
 import { installProjectIndexRefresh } from "./adapters/projectIndexRefresh";

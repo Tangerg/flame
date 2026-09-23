@@ -1,6 +1,3 @@
-// Layout contributions need a STABLE id, or re-registering a slot entry stacks rather than
-// replaces. Free functions over an explicit ctx, so a plugin has to import what it uses.
-
 import type { Contributor } from "./definePlugin";
 import { LAYOUT_SLOT } from "./kernelPoints";
 import type { Disposable } from "./types/common";

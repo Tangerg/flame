@@ -51,8 +51,6 @@ class SkillCurationGeneration {
           await this.#cohort.settle(execute());
         } finally {
           if (!this.#cohort.retired) {
-            // Only Runtime can resolve discovery precedence, library order, and
-            // proposal revisions. A failed command may also have committed.
             await Promise.all(
               [
                 WORKSPACE_SKILLS_KEY,
@@ -69,9 +67,6 @@ class SkillCurationGeneration {
   }
 }
 
-/** Owns Skill library curation and proposal review for one exact Plugin Host
- * and Runtime generation. Both command families write the same Skill identity,
- * so they deliberately share one resource-partitioned tail. */
 export class SkillCurationOwner {
   readonly #gateway: SkillCurationGateway;
   #generation: SkillCurationGeneration;

@@ -7,12 +7,6 @@ import {
   type MCPHandshakeTimeout,
 } from "./mcpHandshakeTimeout";
 
-/**
- * A stored credential the server will not read back.
- *
- * Three states rather than a string plus a flag: "replace and clear" has to be
- * unconstructable, and an empty field has to mean "leave it alone" rather than "erase it".
- */
 export class RetainedValue {
   private static readonly PRESERVED = new RetainedValue({ disposition: "preserve" });
 
@@ -35,7 +29,6 @@ export class RetainedValue {
     return this.state.disposition === "replace" ? this.state.text : "";
   }
 
-  /** Blank is not a replacement — it is the field left untouched. */
   edited(text: string): RetainedValue {
     return text.trim()
       ? new RetainedValue({ disposition: "replace", text })
@@ -46,7 +39,6 @@ export class RetainedValue {
     return clear ? new RetainedValue({ disposition: "clear" }) : RetainedValue.PRESERVED;
   }
 
-  /** `null` erases, `undefined` leaves the stored value alone — the wire's distinction. */
   submittedText(): string | null | undefined {
     if (this.state.disposition === "clear") return null;
     if (this.state.disposition === "preserve") return undefined;
@@ -62,7 +54,6 @@ export class RetainedValue {
   }
 }
 
-/** What the form binds to. Every rule about it belongs to `MCPServerEdit`. */
 export interface MCPServerFields {
   name: string;
   transport: MCPTransport;
@@ -79,15 +70,6 @@ export interface MCPServerFields {
   autoApproveTools: string[];
 }
 
-/**
- * One edit in progress against the server it edits.
- *
- * The stored server is a MEMBER, not a parameter: validity and every disposition rule are
- * questions about the pair, and passing it to five free functions let a caller ask one of
- * them about a different server than the others. A masked secret plus a changed target is
- * the whole of those rules — the runtime will not read the secret back, so re-pointing a
- * server at a new target without saying what becomes of it is not an answerable request.
- */
 export class MCPServerEdit {
   private constructor(
     readonly fields: MCPServerFields,
@@ -119,7 +101,6 @@ export class MCPServerEdit {
     return new MCPServerEdit({ ...this.fields, [key]: value }, this.stored);
   }
 
-  /** The tool lists move together — a per-key call would publish a half-applied selection. */
   withToolSelection(selection: Pick<MCPServerFields, "disabledTools" | "autoApproveTools">) {
     return new MCPServerEdit({ ...this.fields, ...selection }, this.stored);
   }
@@ -166,8 +147,6 @@ export class MCPServerEdit {
     );
   }
 
-  /** Throws rather than coercing: `isValid` already answered, and a silent fallback would
-   *  save a timeout the person did not ask for. */
   toInput(): MCPServerInput {
     const handshakeTimeout = this.handshakeTimeout;
     if (handshakeTimeout === undefined) {
@@ -231,8 +210,6 @@ function linesToList(text: string): string[] | undefined {
   return list.length ? list : undefined;
 }
 
-// Accumulated in a Map and materialised once: an entry named `__proto__` assigns nothing to
-// an object literal, so the pair would vanish silently.
 function linesToMap(text: string): Record<string, string> | undefined {
   const out = new Map<string, string>();
   for (const line of text.split("\n")) {

@@ -1,5 +1,3 @@
-// This barrel adds only the selectors with real logic on top of the generic substrate.
-
 export {
   lookupExtensionByKey,
   lookupExtensionOwner,

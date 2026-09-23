@@ -1,5 +1,3 @@
-/** A row of the menu: the label already resolved, because only the render knows the active
- *  locale, and the combo so a person can learn the key from the row they just ran. */
 export interface CommandChoice {
   key: string;
   label: string;
@@ -8,10 +6,6 @@ export interface CommandChoice {
   run: () => void;
 }
 
-/**
- * An empty query answers with everything, unlike the session finder: this surface exists to
- * show what the application can do, and a blank list would make it impossible to learn.
- */
 export function matchCommands(commands: readonly CommandChoice[], query: string): CommandChoice[] {
   const needle = query.trim().toLowerCase();
   const matched =

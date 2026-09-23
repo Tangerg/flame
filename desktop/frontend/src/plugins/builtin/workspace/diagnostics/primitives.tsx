@@ -25,8 +25,6 @@ const styles = stylex.create({
   cell: { minWidth: 0 },
   frame: { display: "flex", flex: 1, minHeight: 0, flexDirection: "column" },
   canvas: { position: "relative", width: "100%" },
-  // The virtualiser positions rows by transform, so each one is taken out of the flow and
-  // pinned to the same origin; only `translateY` distinguishes them.
   slot: { position: "absolute", left: 0, top: 0, width: "100%" },
 });
 
@@ -58,12 +56,6 @@ export function Row({
   );
 }
 
-/**
- * A column of the panel's own table.
- *
- * The width is the TABLE's decision, so it arrives as a style the panel declared beside its
- * header — not as a class the call site spells.
- */
 export function Cell({ styles: extra, children }: { styles?: StyleXStyles; children?: ReactNode }) {
   return <div {...stylex.props(styles.cell, extra)}>{children}</div>;
 }

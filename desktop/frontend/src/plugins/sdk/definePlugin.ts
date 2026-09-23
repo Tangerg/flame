@@ -1,6 +1,3 @@
-// Owns one thing over Core's `definePlugin`: `contribute` takes a point HANDLE and applies
-// that handle's key derivation and normalization into the envelope the read side needs.
-
 import {
   definePlugin as defineContractPlugin,
   type AnyPlugin,
@@ -36,20 +33,14 @@ export interface PluginSpec<
   Requires extends Requirements = Requirements,
   Provides extends Provisions = Provisions,
 > {
-  /** Built-ins use the `flame.builtin.*` namespace. */
   readonly name: string;
   readonly requires?: Requires;
   readonly provides?: Provides;
-  /** `ProvidedServices` is Core's own mapping from a Service token to the value it promises.
-   *  Spelling the return as `unknown` per key — which this did — accepts any shape for a
-   *  declared provision, so a provider that answers the wrong surface compiles and fails at
-   *  the first call from the consumer that trusted the contract. */
   readonly setup: (
     ctx: PluginContext<Requires>,
   ) => Awaitable<keyof Provides extends never ? void : ProvidedServices<Provides>>;
 }
 
-// Uniqueness only has to hold within one point's keyspace under one owner.
 const mintedIds = new ExactSequence();
 
 function itemId(item: unknown): string | undefined {
@@ -84,8 +75,6 @@ function createContribute(ctx: ContractContext<Requirements>, name: string) {
   };
 }
 
-// `signal` is a GETTER on Core's frozen context, so it is re-declared as one rather than
-// frozen at whatever it read at wrap time.
 function bindContext<Requires extends Requirements>(
   ctx: ContractContext<Requires>,
   name: string,

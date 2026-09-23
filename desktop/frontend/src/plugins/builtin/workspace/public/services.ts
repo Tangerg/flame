@@ -1,7 +1,3 @@
-// What this context PUBLISHES to other plugins, as dougong Services — see
-// `agent/public/services` for when a capability is a Service and when it is an
-// `application/ports/` inversion instead.
-
 import { service } from "dougong";
 
 export interface WorkspaceScope {

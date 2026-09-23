@@ -1,8 +1,3 @@
-// Grouped the way the pane's sections read them. There is no port between here and the
-// theme context: this pane exists to edit that context's preference, it already imports
-// that context's vocabulary, and a port nothing ever substitutes is indirection, not
-// inversion — it restated the same thirteen fields a third and fourth time.
-
 import { resolveThemeScheme } from "@/plugins/builtin/theme/public/scheme";
 import { editAppearance, useAppearance } from "@/plugins/builtin/theme/public/appearance";
 

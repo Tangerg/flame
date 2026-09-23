@@ -81,10 +81,6 @@ class AgentMemoryMutationGeneration {
   }
 }
 
-/** Own every Agent Memory mutation and cache projection for one exact Plugin
- * Host / Runtime generation. Successor-first replacement retires both queued
- * admissions and non-cooperative in-flight settlements without draining them
- * through a newly installed gateway. */
 export class AgentMemoryMutationOwner {
   readonly #gateway: AgentMemoryGateway;
   #generation: AgentMemoryMutationGeneration;

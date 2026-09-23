@@ -1,5 +1,3 @@
-// Imported ONLY from `*.test.ts`; production code never sees this module.
-
 import type { MemoryTransport } from "./memory";
 import type { TransportRequest } from "../transport";
 import type { RunMetrics, SegmentOutcome, StreamEvent } from "@flame/runtime-contract/wire";
@@ -7,8 +5,6 @@ import type { WireMethodName } from "@flame/runtime-contract/methods";
 import { RUN_EVENT_METHOD } from "../stream";
 import { JSONRPC_VERSION, type RpcId, type RpcMessage } from "../types";
 
-/** Polls the outbox microtask-by-microtask for ~50 ticks. Use it to grab the id the client
- *  allocated, then answer with {@link respondSuccess} / {@link respondError}. */
 export async function waitForRequest<M extends WireMethodName>(
   t: MemoryTransport,
   method: M,
@@ -36,10 +32,6 @@ function injectNotification(
   t.inject({ jsonrpc: JSONRPC_VERSION, method, params }, undefined, requestRpcId);
 }
 
-/** Inject a `notifications.run.event` carrying a v2 StreamEvent (§5). A
- *  fixed timestamp keeps fixtures stable. The
- *  envelope carries BOTH runId and segmentId — the stream tree keys on the
- *  segmentId (a resume opens a new segment of the same run). */
 export function injectRunEvent(
   t: MemoryTransport,
   runId: string,
@@ -57,8 +49,6 @@ export function injectRunEvent(
   });
 }
 
-/** Inject a `segment.finished` StreamEvent for the root segment — terminates the
- *  stream (v2 has no separate "closed" method, §5). */
 export function injectRunFinished(
   t: MemoryTransport,
   runId: string,

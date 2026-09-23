@@ -24,9 +24,6 @@ function previewTokens(spec: ColorThemeSpec): { bg: string; surface: string; acc
   };
 }
 
-// A theme's swatch is a miniature of the window: the canvas, the surface inside it, and the
-// accent in the corner. `media-edge` stays a utility because it is a mechanism `globals.css`
-// owns — an inset outline the scheme picks — and the swatch only asks for it.
 const th = stylex.create({
   swatch: {
     position: "relative",

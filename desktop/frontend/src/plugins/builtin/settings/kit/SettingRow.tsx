@@ -5,7 +5,6 @@ import { color, space, surface } from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "./settingStyles";
 
 const styles = stylex.create({
-  // The seam between two rows, drawn by the row BELOW so the group's own top edge stays clean.
   row: {
     display: "grid",
     gap: space.s6,

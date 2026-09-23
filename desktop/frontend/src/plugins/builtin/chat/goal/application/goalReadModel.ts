@@ -7,16 +7,10 @@ export type GoalStatus = "active" | "paused" | "blocked" | "completing";
 
 interface GoalUsage {
   runs: number;
-  /** Absent when the Runtime could not price the model. NOT zero: nothing was measured, and
-   *  a spend of nothing is a different claim from a spend nobody could total. */
   costUsd?: number;
   steps: number;
 }
 
-/**
- * Spelled in this context's own words rather than the wire enum: a read model publishing
- * the protocol's vocabulary makes every consumer of this key a consumer of the protocol.
- */
 type GoalStopCode =
   | "stoppedByUser"
   | "runtimeRestarted"
@@ -35,7 +29,6 @@ export interface GoalReadModel {
   sessionId: string;
   objective: string;
   status: GoalStatus;
-  /** Absent while the goal is still running. */
   stop: GoalStop | null;
   used: GoalUsage;
   provider: string;
@@ -45,14 +38,11 @@ export interface GoalReadModel {
   updatedAt: string;
 }
 
-// The material folds three states into one shape: "feature off"
-// (available=false, from capability discovery), "on, no goal", and "has a goal".
 export interface GoalState {
   available: boolean;
   goal: GoalReadModel | null;
 }
 
-/** There is deliberately no independent Goal query or store. */
 export function useGoalMaterial(): AgentProjectionMaterial<GoalState> {
   return useAgentSessionSharedMaterial<GoalState>("goal");
 }

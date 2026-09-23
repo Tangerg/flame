@@ -7,11 +7,6 @@ export type UsagePeriodKey =
   | readonly [typeof UsagePeriodKeyPart.AllTime]
   | readonly [typeof UsagePeriodKeyPart.Recent, number];
 
-/**
- * UsagePeriod owns the distinction between all durable history and a recent,
- * positive calendar-day window. Callers cannot manufacture a zero-day period
- * and adapters never need to interpret numeric zero as absence.
- */
 export class UsagePeriod {
   private constructor(private readonly days: number | undefined) {}
 

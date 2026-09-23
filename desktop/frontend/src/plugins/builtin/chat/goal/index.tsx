@@ -24,7 +24,6 @@ import type { GoalState } from "./application/goalReadModel";
 
 const GOAL_SURFACE = "composer.overlay.top:goal";
 
-/** The tools this surface answers for — see the note in plan-progress. */
 export const GOAL_STANDING_TOOLS = ["create_goal", "get_goal", "report_goal_outcome"] as const;
 
 const GOAL_SLASH_COMMAND: SlashCommandSpec = {
@@ -37,7 +36,6 @@ export default definePlugin({
   setup(ctx) {
     const composerMode = GoalComposerModeOwner.install();
     const runtimeAdapter = installGoalRuntimeAdapter(ctx.runtime.connectionGeneration() !== null);
-    // Retired generation stops its commands; a REPLACED one re-arms them.
     const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, (next) => {
       if (next === null) runtimeAdapter.retireRuntimeGeneration();
       else runtimeAdapter.replaceRuntimeGeneration();
@@ -52,7 +50,6 @@ export default definePlugin({
       order: 4,
       component: GoalModeIndicator,
     });
-    // The Goal bar represents successful calls; command failures remain in the transcript.
     for (const key of GOAL_STANDING_TOOLS) {
       ctx.contribute(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
     }

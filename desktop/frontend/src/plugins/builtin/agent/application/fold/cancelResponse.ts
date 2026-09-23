@@ -3,9 +3,6 @@ import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { settleRunPendingInterrupts } from "./fold";
 import { foldRunSnapshot } from "./runSnapshot";
 
-/** Merge only facts the cancel command committed. Descendant lifecycle not
- * present in a root response remains query-owned and arrives through the
- * authoritative refresh; no local terminal state is invented. */
 export function foldCancelRunResponse(
   state: AgentSessionView,
   response: AgentCancelResult,

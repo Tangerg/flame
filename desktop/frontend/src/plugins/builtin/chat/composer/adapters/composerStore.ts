@@ -15,7 +15,6 @@ const STORAGE_KEY = "flame.composer";
 
 interface ComposerState {
   composer: Composer;
-  /** GLOBAL, not per session: an explicit model pick is not per-conversation work. */
   modelPreference: ComposerModelPreference;
 }
 
@@ -24,18 +23,13 @@ interface ComposerActions {
   setModel: (preference: ComposerModelPreference) => void;
   clear: () => void;
   addImages: (images: readonly Omit<ComposerImage, "id">[]) => void;
-  /** Fire-and-forget and per-file tolerant. Dropped entirely if the composer is cleared or
-   *  the active session switches mid-decode, so a late image cannot leak into the next
-   *  message or another conversation's draft. */
   addImageFiles: (files: File[]) => void;
   removeImage: (id: string) => void;
-  /** Keeps a large blob out of the textarea; re-inlined into the message on send. */
   addPaste: (text: string) => void;
   removePaste: (id: string) => void;
   loadSession: (sessionId: string) => void;
   pruneDrafts: (liveSessionIds: Set<string>) => void;
   pushHistory: (text: string) => void;
-  /** False when there is no history to recall, so the key falls through to cursor movement. */
   historyPrev: () => boolean;
   historyNext: () => boolean;
 }
@@ -43,9 +37,6 @@ interface ComposerActions {
 export const useComposerStore = create<ComposerState & ComposerActions>()(
   persist(
     (set, get) => {
-      // Replaced on every clear(). `addImageFiles` captures it when its decode starts and
-      // drops the result if it advanced, so an image still decoding at submit time is
-      // discarded rather than leaking into the NEXT message.
       let stagingLease: object = {};
       const edit = (change: Parameters<Composer["edit"]>[0]) =>
         set((s) => ({ composer: s.composer.edit(change) }));
@@ -70,10 +61,7 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
         addImageFiles: (files) => {
           const lease = stagingLease;
           const sessionId = get().composer.activeSessionId;
-          // `allSettled`, not `all`: one unreadable file must not discard the batch, and
-          // the chain must never reject (there is no global rejection handler).
           void Promise.allSettled(files.map(fileToInputImage)).then((results) => {
-            // A stale lease or a switched session must drop the result entirely.
             if (lease !== stagingLease || get().composer.activeSessionId !== sessionId) return;
             const ok = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
             if (ok.length > 0) get().addImages(ok);
@@ -119,7 +107,6 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
       storage: createJSONStorage(() => localStorage),
       version: 2,
       migrate: discardOlderVersions,
-      // Text-only: images are transient and the model fallback comes from the active Session.
       partialize: (s) => ({ drafts: persistedComposerDrafts(s.composer) }),
       merge: (persisted, current) => {
         const composer = parsePersistedComposer(persisted);

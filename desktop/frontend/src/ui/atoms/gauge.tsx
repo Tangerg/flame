@@ -3,9 +3,6 @@ import { cn } from "@/lib/classNames";
 
 const CIRCUMFERENCE = 2 * Math.PI * 6;
 
-// Rotated so zero starts at twelve o'clock rather than three. The stroke is `currentColor`,
-// so the ink is the caller's own text colour — not an escape hatch but the thing the gauge
-// reads: it sits in a row and takes that row's meaning.
 const styles = stylex.create({
   dial: {
     width: "var(--icon-sm)",

@@ -13,12 +13,6 @@ import { chevron } from "@/ui/atoms/chevron";
 
 type ActivityTone = "neutral" | "warning" | "negative";
 
-/**
- *   line  Work-narrative activity; disclosed material owns any terminal/diff surface.
- *   card  A composite product with a narrative of its own, such as a delegated Run.
- *
- * Stated by every caller rather than defaulted: the atom cannot infer which of the two a row is.
- */
 type ActivityShell = "line" | "card";
 
 type ActivityLeading = { icon: IconName; leading?: never } | { icon?: never; leading: ReactNode };
@@ -26,9 +20,6 @@ type ActivityLeading = { icon: IconName; leading?: never } | { icon?: never; lea
 const styles = stylex.create({
   frame: { minWidth: 0, overflow: "clip" },
   frameLine: { borderRadius: radius.sm },
-  // Edged for the same reason `Surface` is: the card fill equals the canvas in light, so the
-  // fill alone drew nothing. This states the plane rather than reaching for `Surface`, which
-  // would put a second box between the header and its sticky offset.
   frameCard: {
     borderRadius: radius.card,
     backgroundColor: surface.card,
@@ -37,8 +28,6 @@ const styles = stylex.create({
     borderColor: surface.field,
   },
   header: { display: "flex", minWidth: 0, alignItems: "center" },
-  // A header that stays put while its own disclosure scrolls under it has to be opaque, and
-  // opaque against whichever plane it is sitting on.
   stuck: { position: "sticky", top: 0, zIndex: 1 },
   stuckLine: { backgroundColor: surface.canvas },
   stuckCard: { backgroundColor: surface.card },
@@ -75,8 +64,6 @@ const styles = stylex.create({
   trayNeutral: { backgroundColor: surface.surface2 },
   trayWarning: { backgroundColor: surface.warningBadge },
   trayNegative: { backgroundColor: surface.negativeBadge },
-  // The row's NAME. What keeps it from reaching zero is not a floor here but `trailing` below
-  // being shrinkable; a `min-width` floor would widen every label shorter than it.
   label: {
     display: "flex",
     minWidth: 0,
@@ -99,13 +86,6 @@ const styles = stylex.create({
     color: "var(--row-ink)",
   },
   spacer: { minWidth: 0, flex: 1 },
-  /**
-   * The row's ANNOTATION, and therefore the part that yields first: a locale decides its length.
-   * Shrinking is weighted by base size, so an oversized trailing gives up most of any deficit
-   * and a short one almost nothing.
-   *
-   * Deliberately NOT `overflow: hidden`: a `StatusDot` paints a pulse OUTSIDE its own box.
-   */
   trailing: {
     display: "flex",
     minWidth: 0,
@@ -115,22 +95,11 @@ const styles = stylex.create({
     fontFamily: "var(--font-mono)",
     color: color.fgFaint,
   },
-  // The chevron answers two different states, so two publishers and one reader.
-  //
-  // The HEADER publishes on hover, because hovering the actions beside the trigger has to
-  // reveal it too. The TRIGGER publishes on `:focus-visible` only — no `default`, so outside
-  // focus the property is simply not set here and the header's value inherits through. DOM
-  // focus outlives the pointer, which is why this cannot be the header's `:focus-within`: a
-  // row clicked shut would keep its chevron lit.
   headerPublishes: {
     "--chevron": { default: "0", ":hover": "1" },
-    // The summary lifts to full ink with the row, so the label and the detail read the same
-    // channel rather than each watching an ancestor.
     "--row-ink": { default: color.fgMuted, ":hover": color.fg },
   },
   triggerPublishes: { "--chevron": { default: null, ":focus-visible": "1" } },
-  // Decorative: the whole header is the button, so clicks pass through the chevron at every
-  // reveal state rather than landing on something nobody aimed at.
   chevron: {
     pointerEvents: "none",
     display: "flex",
@@ -139,8 +108,6 @@ const styles = stylex.create({
     transitionProperty: "rotate, opacity",
     transitionDuration: motion.fast,
     transitionTimingFunction: motion.easeState,
-    // A device with no pointer can never hover, so the mark it would have revealed is simply
-    // shown.
     opacity: { default: "var(--chevron, 1)", "@media (hover: none)": 1 },
   },
   chevronOpen: { opacity: 1 },
@@ -153,7 +120,6 @@ const styles = stylex.create({
     paddingLeft: space.s0_5,
     paddingRight: space.s2,
   },
-  // Only the SIDES: block padding varies by call site, so it is not a default here.
   bodyLine: { paddingRight: 0 },
   bodyCard: { paddingInline: space.s3 },
   bodyRows: { paddingBlock: space.s1_5 },
@@ -178,9 +144,7 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     toggleLabel?: string;
     tone?: ActivityTone;
     shell: ActivityShell;
-    /** Absent when the row has nothing behind it, which makes it a row and not a disclosure. */
     children?: ReactNode;
-    /** The standing inset for a disclosure whose body is a list of rows. */
     contentInset?: "rows";
     contentClassName?: string;
   };
@@ -224,11 +188,7 @@ export function AgentActivityDisclosure({
     >
       <div
         data-slot="agent-activity-header"
-        // Whether this header outlives its own scroll is a decision, so it is said out loud
-        // rather than left to whichever class happened to carry the positioning.
         data-sticky={stickyHeader ? "" : undefined}
-        // Publishes the reveal channel for the actions the card hangs here, and the chevron's
-        // own channel beside it.
         className={cn(
           stylex.props(
             reveal.host,
@@ -256,9 +216,6 @@ export function AgentActivityDisclosure({
           <span
             aria-hidden
             data-slot="agent-activity-mark"
-            // The two decisions this mark makes, said out loud: whether it wears a tray, and
-            // which tone. They drive the styles above and they are what a test can hold onto —
-            // a generated class name is not a contract.
             data-framed={framed ? "" : undefined}
             data-tone={tone}
             {...stylex.props(
@@ -273,8 +230,6 @@ export function AgentActivityDisclosure({
           <span data-slot="agent-activity-label" {...stylex.props(styles.label, type.uiMd)}>
             {label}
           </span>
-          {/* The slot is always here, empty or not: it is what pushes the trailing status to
-              the column a reader scans. */}
           {detail != null ? (
             <span {...stylex.props(styles.detail, type.uiMd)}>{detail}</span>
           ) : (
@@ -283,8 +238,6 @@ export function AgentActivityDisclosure({
           {trailing != null && (
             <span {...stylex.props(styles.trailing, type.uiXs)}>{trailing}</span>
           )}
-          {/* Held on a row with nothing behind it too, for the reason the spacer is: without it
-              that row's trailing status lands a chevron's width right of every row beside it. */}
           {children != null ? (
             <span
               aria-hidden
@@ -328,12 +281,6 @@ export function AgentActivityDisclosure({
   );
 }
 
-/**
- * The row's own box, which is a button only when there is something behind it.
- *
- * A row with no panel still looks and hovers like the others, but it publishes no `aria-expanded`
- * and carries no chevron: a control that opens nothing is a promise the row cannot keep.
- */
 function TriggerShell({
   disclosable,
   id,
@@ -367,7 +314,6 @@ function TriggerShell({
       aria-expanded={open}
       aria-controls={panelId}
       aria-label={toggleLabel}
-      // The trigger fills the disclosure, which clips, so an outward ring is cut on three sides.
       data-focus-inset=""
       onClick={onToggle}
       className={className}

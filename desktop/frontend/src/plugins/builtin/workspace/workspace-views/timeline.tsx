@@ -51,13 +51,10 @@ const KIND_I18N: Record<TimelineEntryKind, string> = {
   "run-error": "timeline.kind.runError",
   tool: "timeline.kind.toolStart",
   "approval-request": "timeline.kind.approvalRequest",
-  // A statement like every other row, with the verdict on the status mark beside it: a bare
-  // "Approval" translates as GRANTED in several languages and would file a denial under it.
   "approval-result": "timeline.kind.approvalResult",
   compaction: "timeline.kind.compaction",
 };
 
-// Status glyphs keep outcomes distinguishable without relying on color.
 const STATUS_MARK: Record<NonNullable<TimelineEntry["status"]>, { icon: IconName; tone: Tone }> = {
   ok: { icon: "check", tone: "success" },
   err: { icon: "alert", tone: "negative" },
@@ -76,8 +73,6 @@ function entrySubject(t: Translate, entry: TimelineEntry, tool: ToolCall | undef
 
 function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | undefined }) {
   const t = useT();
-  // The call's own glyph rather than the kind's generic one, so a read, a shell and an edit
-  // are told apart before the text is.
   const icon = entry.kind === "tool" && tool ? toolCallIconFor(tool) : KIND_ICON[entry.kind];
   const subject = entrySubject(t, entry, tool);
   return (
@@ -93,8 +88,6 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
             )}
           </span>
           {subject.value && (
-            // Named because it is the one place a tool reaches the timeline by name, and a
-            // closure test checks that the name is the transcript's rather than the wire's.
             <span data-timeline-subject="" {...stylex.props(vs.subject)}>
               <ToolText value={subject} styles={[vocab.muted, typeStep.uiMd]} />
             </span>
@@ -110,9 +103,6 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
         )}
       </div>
       {entry.status && (
-        // `Icon` is `aria-hidden` by design and takes no name, so the label lives on a wrapper
-        // that claims the role. Passing `aria-label` to the component compiles — TypeScript does
-        // not check hyphenated JSX attributes against a component's props — and is dropped.
         <span
           role="img"
           aria-label={entry.status}
@@ -121,9 +111,6 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
           <Icon name={STATUS_MARK[entry.status].icon} size="xs" />
         </span>
       )}
-      {/* Held open for any row that carries a mark, so the mark itself keeps one edge: a run
-          boundary has an outcome and no duration, and letting its slot collapse moved the
-          glyph half an inch away from the column of glyphs above it. */}
       {entry.status !== undefined && (
         <span
           title={entry.kind === "tool" ? t("timeline.executionDuration") : undefined}

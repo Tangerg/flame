@@ -1,15 +1,10 @@
-// Keys live under `flame.plugin.<plugin-name>.<key>`, so two plugins can never read each
-// other's data and a stale plugin's keys are trivially purgeable.
-
 const ROOT = "flame.plugin";
 
 export interface KeyValueStore {
-  /** Persistent data is untrusted until the consuming boundary validates it. */
   get: (key: string) => unknown;
   set: (key: string, value: unknown) => void;
   remove: (key: string) => void;
   clear: () => void;
-  /** WITHOUT the plugin prefix. */
   keys: () => string[];
 }
 

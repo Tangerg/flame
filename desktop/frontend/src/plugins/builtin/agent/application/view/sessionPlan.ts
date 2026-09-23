@@ -6,8 +6,6 @@ import { tupleKey } from "@/lib/tupleKey";
 
 export type { PlanStep } from "@/plugins/sdk/types/agentSessionView";
 
-// The Plan is a SESSION projection written only by the root Run, not a transcript Item —
-// it has no run of its own and nothing about it is per-turn.
 const NO_STEPS: readonly PlanStep[] = Object.freeze([]);
 
 export function planSteps(plan: AgentPlan | undefined): readonly PlanStep[] {
@@ -16,9 +14,6 @@ export function planSteps(plan: AgentPlan | undefined): readonly PlanStep[] {
   return Object.freeze(steps.map((step) => Object.freeze({ ...step })));
 }
 
-// Plan updates replace content within one Session projection. The fold uses revision for
-// freshness; presentation identity changes only at a Session or projection boundary, so a
-// live update preserves focus while recovery cannot inherit a retired tooltip's state.
 export class SessionPlan {
   readonly identity: string;
   readonly steps: readonly PlanStep[];
@@ -37,7 +32,6 @@ export class SessionPlan {
   }
 
   activeStep(): PlanStep | undefined {
-    // An active step outranks an earlier untouched step.
     return (
       this.steps.find((step) => step.status === "active") ??
       this.steps.find((step) => step.status === "pending")
@@ -52,8 +46,6 @@ export class SessionPlan {
   }
 }
 
-// Memoised on session identity and the snapshot object the fold swaps in, so a reader keeps
-// one stable model across unrelated renders.
 export function useSessionPlan(): SessionPlan {
   const sessionId = useActiveSessionId();
   const material = agentSessionView().usePlan();

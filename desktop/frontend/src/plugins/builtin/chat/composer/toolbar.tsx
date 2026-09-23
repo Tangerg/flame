@@ -74,8 +74,6 @@ function ApprovalModePill() {
             aria-label={t("approvals.mode.aria")}
             variant={full ? "wash" : "ghost"}
             tone={full ? "warning" : undefined}
-            // The mode IS what this pill reports, so its glyph does not step back the way a
-            // glyph beside a label does.
             leading={<Icon name={full ? "alert" : "shield"} size="sm" full />}
             label={t(current.labelKey)}
             labelVisibility={full ? "always" : "wide"}

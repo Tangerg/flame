@@ -3,12 +3,6 @@ import { useLayoutEffect, useRef, useState } from "react";
 export type AsyncFeedback =
   { state: "idle" | "busy" } | { state: "ok" } | { state: "error"; reason: string };
 
-/**
- * A LEASE guards every {@link run}: a result whose lease is no longer current is dropped, so
- * a slow operation cannot overwrite feedback for a newer intent. The optional material
- * generation retires completed and in-flight results WITHOUT remounting or discarding the
- * caller's draft fields.
- */
 export function useAsyncFeedback(materialGeneration?: unknown) {
   const generation = useRef(materialGeneration);
   const lease = useRef<object>({});

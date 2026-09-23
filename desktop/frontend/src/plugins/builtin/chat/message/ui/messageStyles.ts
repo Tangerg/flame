@@ -1,12 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { color, leading, motion, space, weight } from "@/styles/tokens.stylex";
 
-/**
- * The four distances a seam between two render units can take.
- *
- * `renderUnitRhythm` decides WHICH seam a pair makes; this decides what that seam is worth.
- * Two owners, one fact each — the application knows the relationship, the view knows the step.
- */
 export const seamStep = stylex.create({
   none: {},
   tight: { marginTop: space.s1_5 },
@@ -44,7 +38,6 @@ export const messageStyles = stylex.create({
     paddingTop: space.s2,
     paddingBottom: space.s4,
   },
-  /** `anywhere` because it may be a path with nothing to break at. */
   cardPrompt: {
     marginTop: space.s2,
     textWrap: "pretty",
@@ -71,10 +64,6 @@ export const messageStyles = stylex.create({
     color: color.fgMuted,
   },
 
-  // `minWidth: 0` so it can give way inside the row's trailing slot, which a locale can
-  // overfill: "Eingabe erforderlich" is twice the width of "Needs input". The truncation goes
-  // on the TEXT beside the dot rather than on this box, because a `StatusDot` paints its pulse
-  // outside its own bounds and clipping here cut the halo off every running row.
   statusWord: {
     display: "inline-flex",
     minWidth: 0,
@@ -105,9 +94,6 @@ export const messageStyles = stylex.create({
     transitionDuration: motion.fast,
     transitionTimingFunction: motion.easeState,
   },
-  // A hidden action bar is out of the tab order too, not merely transparent: an action that is
-  // not offered yet must not be reachable by keyboard either. `reveal.shown` is the third state
-  // and lives in the design system, because hovering to reveal is not this row's invention.
   actionsHidden: { visibility: "hidden", opacity: 0 },
   actionsPinned: { opacity: 1 },
   actionsOutdentStart: { marginLeft: "calc((var(--control-height-sm) - var(--icon-sm)) / -2)" },

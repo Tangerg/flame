@@ -5,10 +5,6 @@ export interface ComposerActionLayout {
   secondary: "stop" | null;
 }
 
-/**
- * The rule this exists to hold: while a run is in flight, STOP is always reachable, so typing
- * a steer never takes the stop button's place.
- */
 export function composerActionLayout({
   running,
   hasInput,

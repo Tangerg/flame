@@ -21,8 +21,6 @@ const styles = stylex.create({
   },
   on: { borderColor: color.accent, backgroundColor: color.accent },
   off: { borderColor: surface.field, backgroundColor: surface.sunken },
-  // The thumb travels by `translate` rather than by moving in the layout, so the slide is one
-  // compositable property and the track never reflows mid-gesture.
   thumb: {
     display: "block",
     height: space.s4,

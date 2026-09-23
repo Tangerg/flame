@@ -1,8 +1,3 @@
-// Hand-rolled rather than Base UI's Combobox — the documented §4 exemption. A Combobox owns
-// an input and treats its VALUE as the query, but here the query is one `@token` inside
-// otherwise free text. That costs the ARIA the primitive supplies, so the composer wires the
-// pattern by hand off `MENTION_LISTBOX_ID` and aria-activedescendant on the textarea.
-
 export const MENTION_LISTBOX_ID = "composer-mention-listbox";
 
 export function mentionOptionId(index: number): string {
@@ -18,12 +13,10 @@ const FETCH_LIMIT = 2000;
 
 interface Mention {
   query: string;
-  start: number; // index of the '@'
-  end: number; // caret
+  start: number;
+  end: number;
 }
 
-/** The `@` must START a token (string start or after whitespace), so `user@host` does not
- *  trigger. */
 export function activeMention(value: string, caret: number): Mention | null {
   let i = caret - 1;
   for (; i >= 0; i--) {
@@ -50,10 +43,7 @@ export interface FileMentions {
   index: number;
   setIndex: (i: number) => void;
   accept: (path: string) => void;
-  /** Give up on the current `@token` without accepting anything — Escape, or a press outside
-   *  the panel. The token stays in the text; only the picker stops offering answers for it. */
   dismiss: () => void;
-  /** True when the picker consumed the key; the caller must then preventDefault. */
   handleKeyDown: (e: { key: string; shiftKey: boolean }) => boolean;
 }
 
@@ -62,7 +52,6 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
     candidateKey: string;
     index: number;
   } | null>(null);
-  // Suppresses the popup for the ONE mention dismissed with Esc; a new `@` reopens.
   const [dismissedStart, setDismissedStart] = useState<number | null>(null);
 
   const mention = useMemo(() => activeMention(value, caret), [value, caret]);
@@ -81,8 +70,6 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
     );
   }, [open, mention, files]);
 
-  // Selection belongs to ONE concrete candidate set: deriving the visible index from that
-  // identity resets it during render, avoiding an effect and its one-frame stale selection.
   const candidateKey = [cwd, mention?.start, mention?.query, ...items].join("\0");
   const index =
     selection?.candidateKey === candidateKey && selection.index < items.length
@@ -101,11 +88,6 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
   const accept = useCallback(
     (path: string) => {
       if (!mention) return;
-      // The `@` STAYS. It is not decoration: `draftMentions` reads the draft back through the
-      // same rule to build the chip row, so a bare path is a file the reader attached and gets
-      // no confirmation of. Accepting from the picker is the primary way to attach one, and it
-      // was the one way that could not produce a chip. The trailing space closes the token, so
-      // `activeMention` does not reopen the picker on what was just accepted.
       const insert = `@${path} `;
       apply(
         value.slice(0, mention.start) + insert + value.slice(mention.end),
@@ -134,7 +116,7 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
           accept(items[index] ?? items[0]!);
           return true;
         case "Enter":
-          if (e.shiftKey) return false; // Shift+Enter still inserts a newline
+          if (e.shiftKey) return false;
           accept(items[index] ?? items[0]!);
           return true;
         case "Escape":

@@ -16,7 +16,6 @@ const styles = stylex.create({
     transitionProperty: "background-color, color, scale",
     transitionDuration: motion.fast,
     transitionTimingFunction: motion.easeState,
-    // A disabled control does not answer a press.
     scale: {
       default: null,
       ":active": "var(--press-scale)",
@@ -41,9 +40,6 @@ const styles = stylex.create({
     borderStyle: "solid",
     borderColor: color.negative,
   },
-  // The pill's own tracking, against the UI step's: a capsule reads as a label rather than a
-  // line of interface, and the negative tracking crowds it. Applied AFTER the type step, which
-  // brings its own — here order is the only thing that decides.
   tracking: { letterSpacing: "var(--tracking-none)" },
   sm: { height: "calc(var(--spacing) * 6.5)", paddingInline: space.s3 },
   md: { height: space.s8, paddingInline: space.s3_5 },

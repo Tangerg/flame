@@ -85,8 +85,6 @@ function trackedMutation<T>(
 
 let currentAuthority: RendererMutationAuthority | null = null;
 
-/** Owns only the current renderer's right to deliver and settle commands.
- * Durable command identity remains in DurableMutationJournal. */
 class RendererMutationAuthority implements MutationJournal {
   readonly #journal: DurableMutationJournal;
   readonly #claims = new Set<string>();
@@ -180,11 +178,6 @@ class RendererMutationAuthority implements MutationJournal {
   }
 }
 
-/**
- * Retains unresolved mutation identities across renderer and Runtime restarts. Construction
- * publishes the successor authority BEFORE retiring its predecessor. No owner, lease or
- * heartbeat is persisted: the journal answers only which command identity is unresolved.
- */
 export function createMutationJournal(options: MutationJournalOptions): MutationJournal {
   const successor = new RendererMutationAuthority(
     openDurableMutationJournal({ ...options, now: options.now ?? Date.now }),

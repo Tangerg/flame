@@ -1,7 +1,3 @@
-// WHICH SESSION IS ACTIVE IS NOT HERE — that is the app's location (lib/navigation), so
-// history holds it. This store is memory: the tab set, and `lastSessionId`, written as the
-// user moves and read once at boot to seed the location. One direction only.
-
 import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -9,8 +5,6 @@ import { disposeOnHmr } from "@/lib/hmr";
 import { discardOlderVersions } from "@/lib/persistedStore";
 import { openSession, pruneDraftSessions } from "../application/session/sessionSelectionModel";
 
-// Mirrors `partialize` below. A malformed entry falls back to defaults rather than
-// crashing the boot.
 const sessionPersistSchema = z.object({
   lastSessionId: z.string(),
   openSessionIds: z.array(z.string()),
@@ -18,27 +12,17 @@ const sessionPersistSchema = z.object({
 });
 
 interface AgentSessionState {
-  /** Load-bearing lifecycle state: agentStore drops view state, composerStore drops
-   *  drafts, and this store drops draft refs for ids no longer in the set. */
   openSessionIds: string[];
 
-  /** Cold-start seed and NOTHING else: reading it to answer "which session is active"
-   *  would make it a second owner of the location. */
   lastSessionId: string;
 
-  /** REAL backend sessions created up front so they can receive a run, hidden from the
-   *  Work Index until first send. Persisted until graduation so a reload cannot publish an
-   *  unused draft as an ordinary Session. */
   draftSessionIds: Set<string>;
-  /** Ephemeral, unlike draft ownership: proves an in-process create may skip the first
-   *  durable read. */
   freshDraftSessionIds: Set<string>;
 }
 
 interface AgentSessionActions {
   holdOpen: (id: string) => void;
   release: (id: string) => void;
-  /** Boot reconciliation against the runtime's live ids. */
   retainOnly: (openSessionIds: string[]) => void;
   rememberSession: (id: string) => void;
 
@@ -49,8 +33,6 @@ interface AgentSessionActions {
 export const useAgentSessionStore = create<AgentSessionState & AgentSessionActions>()(
   persist(
     (set, get) => ({
-      // Starts empty and is driven by the backend's sessions.list plus user clicks: a ghost
-      // id makes the chat load a session the runtime does not have (session_not_found).
       openSessionIds: [],
       lastSessionId: "",
       draftSessionIds: new Set<string>(),
@@ -84,7 +66,6 @@ export const useAgentSessionStore = create<AgentSessionState & AgentSessionActio
         lastSessionId: s.lastSessionId,
         draftSessionIds: [...s.draftSessionIds],
       }),
-      // Bump to DISCARD stale payloads rather than migrate (CLAUDE.md §3).
       version: 7,
       migrate: discardOlderVersions,
       merge: (persisted, current) => {
@@ -107,9 +88,6 @@ export const useAgentSessionStore = create<AgentSessionState & AgentSessionActio
   ),
 );
 
-// Without this, draft refs grow unbounded and a leftover id makes useAgentSession skip
-// history hydration if that id is ever reopened. A live draft is always in openSessionIds
-// (holdOpen is paired with selecting it), so "not open" ⇒ dead.
 const unsubPruneSessionRefs = useAgentSessionStore.subscribe((state, prev) => {
   if (state.openSessionIds === prev.openSessionIds) return;
   const draftSessionIds = pruneDraftSessions(state);

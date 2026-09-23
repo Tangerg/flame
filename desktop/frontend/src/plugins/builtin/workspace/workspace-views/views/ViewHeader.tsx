@@ -14,11 +14,6 @@ export interface ViewHeaderProps {
   dockIdentity?: ReactNode;
   sub?: ReactNode;
   actions?: ReactNode;
-  /**
-   * What the title IS. Prose is a view's name; `mono` is machine text — a path, a command.
-   * It follows the TITLE and not the view: a translated sentence in mono reads as a literal
-   * the reader is meant to type.
-   */
   titleFace?: "prose" | "mono";
 }
 

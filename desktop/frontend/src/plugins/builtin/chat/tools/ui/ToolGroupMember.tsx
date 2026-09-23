@@ -17,7 +17,6 @@ interface Props {
 
 const gm = stylex.create({
   body: { paddingBlock: space.s1_5 },
-  // The member takes the row's ink, which the row itself decides from its state.
   inherit: { color: "inherit" },
   row: {
     display: "flex",
@@ -61,9 +60,6 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
         )}
         {headline && (
           <span
-            // The tone is the decision and the ink is its rendering. A test that reads the ink
-            // back through a class name breaks when the ink moves and says nothing when the
-            // DECISION regresses, which is the failure this row has actually had.
             data-tone={headline.tone}
             {...stylex.props(gm.meta, toolMetaInk.member[headline.tone], typeStep.uiXs, face.mono)}
           >

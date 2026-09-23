@@ -1,6 +1,3 @@
-// The protocol is transport-agnostic (TRANSPORT.md), so the SDK takes a `Transport` and
-// NOTHING else. Sidecar metadata is an HTTP-only concern and lives in sidecar.ts.
-
 import { createRpcClient } from "./client";
 import { createMethods, type Methods, type MethodsOptions } from "./methods";
 import type { Transport } from "./transport";

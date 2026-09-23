@@ -37,12 +37,8 @@ export function useModelInvocations(run: AgentRunView, cursor?: string) {
   const params = useMemo(() => ({ runId: run.id, cursor, limit: 50 }), [run.id, cursor]);
   const query = useInvocationPage(params);
   const { refetch } = query;
-  // Committed Run progress invalidates the current page without retaining a
-  // separate cache key for every model step or polling an idle Runtime.
   useEffect(() => {
     let active = true;
-    // Refetch alone joins an unfinished first read, which may predate this
-    // progress. Retire that reader before requesting the committed state.
     void client
       .cancelQueries({ queryKey: [MODEL_INVOCATIONS_KEY, params], exact: true })
       .then(() => {

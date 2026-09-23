@@ -1,7 +1,6 @@
 import i18next from "i18next";
 import { initReactI18next, useTranslation } from "react-i18next";
 
-/** A translated sentence containing markup. Splitting one around JSX is untranslatable. */
 export { Trans } from "react-i18next";
 import { en } from "@/lib/i18n/locales/en";
 
@@ -13,9 +12,7 @@ function detectInitial(): Locale {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) return stored;
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   const nav = typeof navigator !== "undefined" ? navigator.language : "";
   const low = nav.toLowerCase();
   if (low.startsWith("zh")) {
@@ -30,7 +27,6 @@ void i18next.use(initReactI18next).init({
   resources: { en: { translation: en } },
   lng: initial,
   fallbackLng: "en",
-  // Keys are dotted LITERALS, not nested paths.
   keySeparator: false,
   nsSeparator: false,
   interpolation: { escapeValue: false },
@@ -39,15 +35,11 @@ void i18next.use(initReactI18next).init({
 
 function syncHtmlLang(loc: Locale): void {
   if (typeof document === "undefined") return;
-  // Only "zh" needs an explicit region; every other locale equals its lang value.
   document.documentElement.lang = loc === "zh" ? "zh-CN" : loc;
 }
 syncHtmlLang(initial);
 
 function getLocale(): Locale {
-  // `language` is the requested identity; `resolvedLanguage` may be the English fallback
-  // while that locale's lazy plugin has not loaded. Reading the fallback makes cold-start
-  // setup believe English was selected, so it never loads the requested dictionary.
   return i18next.language ?? i18next.resolvedLanguage ?? "en";
 }
 
@@ -60,9 +52,7 @@ export function setLocale(loc: Locale): void {
   void i18next.changeLanguage(loc);
   try {
     localStorage.setItem(STORAGE_KEY, loc);
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   syncHtmlLang(loc);
 }
 
@@ -77,13 +67,11 @@ export function useLocale(): Locale {
   return i18n.language ?? i18n.resolvedLanguage ?? "en";
 }
 
-/** Stable across renders until the language changes — safe in `useMemo` / `useCallback` deps. */
 export function useT(): typeof t {
   useTranslation();
   return t;
 }
 
-/** i18next has no per-key removal, so a plugin unload does NOT roll its bundle back. */
 export function addLocaleBundle(locale: string, dict: Record<string, string>): void {
   i18next.addResourceBundle(locale, "translation", dict, true, true);
 }

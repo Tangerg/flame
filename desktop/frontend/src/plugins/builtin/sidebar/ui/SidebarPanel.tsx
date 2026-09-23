@@ -7,7 +7,6 @@ import { space } from "@/styles/tokens.stylex";
 
 const sp = stylex.create({
   panel: { display: "flex", minHeight: 0, minWidth: 0, flex: 1, flexDirection: "column" },
-  // Takes the bar's spare width so the title beside it truncates rather than pushing.
   spacer: { minWidth: space.s2, flex: 1 },
   foot: { marginTop: "auto", flexShrink: 0 },
 });

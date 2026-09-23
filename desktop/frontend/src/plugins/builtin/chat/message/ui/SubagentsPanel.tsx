@@ -33,7 +33,6 @@ import { MESSAGE_CONTENT_CLASS } from "./messageContent";
 import { messageStyles as ms } from "./messageStyles";
 
 const styles = stylex.create({
-  /** The dock's summary line, in the vocabulary the other views open with. */
   headLine: { minWidth: 0, flex: 1 },
   scroller: {
     paddingInline: "var(--reading-gutter-wide)",

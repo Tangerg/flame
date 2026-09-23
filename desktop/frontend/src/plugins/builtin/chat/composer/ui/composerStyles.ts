@@ -1,8 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { color, space, surface, weight } from "@/styles/tokens.stylex";
 
-/** The material — the glass, the edge, the corner — belongs to
- *  `AgentComposerSurface`; what is here is where the editor sits inside it. */
 export const composerStyles = stylex.create({
   editorInset: {
     paddingTop: "var(--composer-editor-top)",
@@ -10,9 +8,6 @@ export const composerStyles = stylex.create({
     paddingBottom: "var(--composer-editor-bottom)",
     paddingLeft: "var(--composer-editor-start)",
   },
-  // `lh` so the bounds are a number of LINES: the editor grows from one line to six of whatever
-  // size and leading the reader has chosen, rather than to a pixel height that means six lines
-  // at one setting and four at another.
   editor: { minHeight: "1.5lh", maxHeight: "6lh" },
   toolbarSpacer: { minWidth: space.s2, flex: 1 },
 
@@ -32,8 +27,6 @@ export const composerStyles = stylex.create({
   thumbImage: { height: "100%", width: "100%", objectFit: "cover" },
   thumbRemove: { position: "absolute", top: space.s0_5, right: space.s0_5 },
 
-  // The drop target covers the window rather than the composer: a file dragged anywhere over
-  // the app is meant for the message being written, so the whole window is the target.
   dropScrim: {
     position: "fixed",
     inset: 0,

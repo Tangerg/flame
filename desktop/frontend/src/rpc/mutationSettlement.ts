@@ -10,11 +10,6 @@ export class MutationSettlementClosedError extends Error {
   }
 }
 
-/**
- * Whether the winning attempt's signal still belongs to the generation after the command
- * settles. `retained` is for a result that carries a live stream owned by that signal: only
- * the opening deadline is released, so disposing the settler still revokes the stream.
- */
 type AcceptedAttempt = "released" | "retained";
 
 export interface MutationSettlerConfig {
@@ -22,7 +17,6 @@ export interface MutationSettlerConfig {
 }
 
 interface MutationSettleOptions {
-  /** The caller's own cancellation, joined with this settler's lifetime. */
   parent?: AbortSignal;
   timeoutMs?: number;
 }
@@ -32,11 +26,6 @@ interface PendingMutation<T> {
 }
 
 export interface MutationSettler {
-  /**
-   * Settle one product command. `identity` names the command while its outcome remains
-   * unknown; a later call with the same identity replays the retained MutationPromise instead
-   * of opening a second logical mutation.
-   */
   settle<T>(
     identity: string,
     open: (signal: AbortSignal) => MutationPromise<T>,
@@ -64,9 +53,6 @@ function createAttempt(
   let resolveDeadline!: () => void;
   let rejectDeadline!: (reason: unknown) => void;
   const deadline = new Promise<never>((resolve, reject) => {
-    // A released deadline can only settle after its operation already won the race (or before
-    // no race was installed). Resolving the `never` branch is an ownership signal, never a
-    // product result.
     resolveDeadline = () => resolve(undefined as never);
     rejectDeadline = reject;
   });
@@ -106,9 +92,6 @@ function createAttempt(
   return {
     signal: controller.signal,
     deadlineExpired: () => expired,
-    // Do not depend on a transport honoring AbortSignal to settle. The signal stops
-    // cooperative work; the race independently releases the product command latch when a
-    // socket or custom transport ignores cancellation.
     wait: (operation) => Promise.race([operation, deadline]),
     accept: () => {
       releaseDeadline();
@@ -138,8 +121,6 @@ function driveMutation<T>(
       return value;
     } catch (error) {
       const timedOut = first.deadlineExpired();
-      // A cancel leaves the command's outcome unknown — the Runtime may already hold it — so
-      // the identity is retained for a later owner rather than retried here.
       const canceled = ownership.aborted;
       first.dispose();
       if (!timedOut || canceled) {
@@ -151,8 +132,6 @@ function driveMutation<T>(
     const retry = createAttempt(ownership, timeoutMs, acceptedAttempt);
     let replay: MutationPromise<T>;
     try {
-      // The journal refuses a replay it no longer owns by throwing from here, before any
-      // promise exists, which would otherwise leave this attempt's deadline armed.
       replay = mutation.retry({ signal: retry.signal });
     } catch (error) {
       retry.dispose();
@@ -173,11 +152,6 @@ function driveMutation<T>(
   })();
 }
 
-/**
- * Own unresolved mutation identities for one Runtime adapter generation. Product layers choose
- * a semantic identity; transport and idempotency handles stay here, so a component unmount or
- * a bounded settlement failure cannot turn the next explicit retry into a new Runtime command.
- */
 export function createMutationSettler(config: MutationSettlerConfig = {}): MutationSettler {
   const acceptedAttempt = config.acceptedAttempt ?? "released";
   const pending = new Map<string, PendingMutation<unknown>[]>();
@@ -209,9 +183,6 @@ export function createMutationSettler(config: MutationSettlerConfig = {}): Mutat
       const activeReplay = replaying.get(identity) as Promise<T> | undefined;
       if (activeReplay) return activeReplay;
 
-      // Only a command that already returned settlement-unknown may be reused. Two fresh
-      // same-shaped calls can still be separate product intents; their application owner, not
-      // the transport adapter, decides whether to join.
       const retained = take<T>(identity);
 
       const timeoutMs = options.timeoutMs ?? MUTATION_ATTEMPT_TIMEOUT_MS;

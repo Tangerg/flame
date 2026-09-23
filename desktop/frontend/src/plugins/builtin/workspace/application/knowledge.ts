@@ -79,15 +79,10 @@ class KnowledgeGeneration {
       );
     } catch (error) {
       if (this.#cohort.retired) throw error;
-      // Accepted writes have already committed every fact proved by their
-      // response. Runtime events and a later read retain the repair path.
     }
   }
 }
 
-/** Owns direct Knowledge reads and CAS writes for one exact Plugin Host and
- * Runtime generation. Local drafts remain UI material; only this owner may
- * settle Runtime commands or project their authoritative document facts. */
 export class KnowledgeOwner {
   readonly #gateway: WorkspaceKnowledgeGateway;
   #generation: KnowledgeGeneration;

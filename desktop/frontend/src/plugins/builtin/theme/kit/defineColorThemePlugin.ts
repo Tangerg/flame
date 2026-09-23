@@ -1,6 +1,3 @@
-// The spec types live in `./types.ts` rather than here so `./tokens.ts` can pull them
-// without forming a cycle with this file.
-
 import type { AnyPlugin } from "dougong";
 import { definePlugin } from "@/plugins/sdk";
 import { COLOR_THEME } from "@/plugins/sdk/kernelPoints";

@@ -3,12 +3,6 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { color, space, type } from "@/styles/tokens.stylex";
 
-/**
- * A section's heading: its type, its ink, its truncation and where its trailing slot sits.
- *
- * NOT its inset: how deep a heading sits belongs to the container it sits in, not to the
- * heading.
- */
 const styles = stylex.create({
   row: {
     display: "flex",

@@ -9,13 +9,10 @@ interface ActiveConversationSnapshot {
   toolCalls: Record<string, ToolCall>;
 }
 
-/** The turns alone — for consumers that navigate the transcript rather than render it. */
 export function useActiveConversationMessages(): Message[] {
   return agentSessionView().useRootNarrativeMessages();
 }
 
-/** The transcript as rows, each carrying only the session facts that row shows. The
- *  narrowing is load-bearing, not tidiness — see `TurnFacts`. */
 export function useActiveConversationRows(): readonly TranscriptRow[] {
   return agentSessionView().useTranscriptRows();
 }

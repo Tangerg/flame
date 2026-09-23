@@ -5,12 +5,6 @@ import { SelectableModel } from "./selectableModel";
 export { ProviderConfiguration, type ProviderRole } from "./providerModels";
 export { SelectableModel } from "./selectableModel";
 
-/**
- * A stored role is configuration intent, not proof that its provider is usable
- * right now. Stored credentials can be cleared (or an environment credential
- * can disappear between launches) without erasing the role. Join the role with
- * providers.list whenever a feature needs the effective availability.
- */
 export function providerRoleIsAvailable(
   role: ProviderRole | undefined,
   providers: readonly ProviderConfiguration[],

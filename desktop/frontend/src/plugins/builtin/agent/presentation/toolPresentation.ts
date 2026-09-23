@@ -4,18 +4,13 @@ import { fmtDuration } from "@/lib/format";
 import { toolVerbId } from "@/lib/toolFamilies";
 import { toolCategory } from "@/plugins/builtin/agent/domain/toolCategory";
 
-// Typed, not a bare string: a path truncates from the OTHER end, and a plain string leaves
-// the renderer guessing — every path then loses its filename to an ellipsis.
 export type ToolDetail = { kind: "path" | "machine" | "prose"; value: string };
 
 export interface ToolIntent {
-  /** For the file categories the projection puts the path HERE rather than in `detail`. */
   label: ToolDetail;
   detail?: ToolDetail;
 }
 
-// Two values because two are produced. A third that nothing emits invites a renderer to
-// handle it and drop one that matters, which is exactly what happened to "negative".
 export type ToolMetaTone = "muted" | "negative";
 
 export interface ToolMetaItem {
@@ -24,18 +19,8 @@ export interface ToolMetaItem {
   tone: ToolMetaTone;
 }
 
-// A row states the act before the thing acted on, so the verb is the label and the
-// identifying argument is the detail — one glance answers "doing what, to what" without
-// decoding a glyph. The tense is what separates a call in flight from one that finished:
-// without it a row reads the same while it is deciding, working and done, and only a dot
-// ever says which.
-//
-// A tool this build has never heard of takes the generic entry; its own wire name is then
-// the thing being acted on.
 const GENERIC_VERB_ID = "generic";
 
-// `path` is the runtime's own spelling, which ApprovalSubject reads too, so a rename cannot
-// drift these apart silently.
 const TOOL_DETAIL_KEYS: ReadonlyArray<{ key: string; kind: ToolDetail["kind"] }> = [
   { key: "path", kind: "path" },
   { key: "query", kind: "machine" },
@@ -45,18 +30,12 @@ const TOOL_DETAIL_KEYS: ReadonlyArray<{ key: string; kind: ToolDetail["kind"] }>
 
 export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
   const labelKey = toolVerbId(tool.name);
-  // Only success earns a completion verb. Unsuccessful or unaccepted calls name the
-  // requested action without claiming that it happened or is still running.
   const tense = tool.status === "running" ? "doing" : tool.status === "ok" ? "done" : "action";
   const verb: ToolDetail = {
     kind: "prose",
     value: t(`tool.${tense}.${labelKey ?? GENERIC_VERB_ID}`),
   };
   const command = text(tool.command);
-  // Prose outranks the verb; an argument does not. A shell call's `fn` is the model's own
-  // account of what the run is FOR, which no table can restate — but everywhere else `fn` is
-  // the identifying argument, and putting it in the title leaves the row never saying what
-  // was done to it. `fn` restating the tool's own name means the projection found nothing.
   const described = command !== undefined && tool.fn !== command.value;
   const argument: ToolDetail | undefined =
     tool.fn === tool.name && labelKey !== undefined
@@ -71,15 +50,10 @@ export function toolIntent(t: Translate, tool: ToolCall): ToolIntent {
 
 export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
   const items: ToolMetaItem[] = [];
-  // Added/removed are NOT chips: a diffstat is one fact with two numbers. Line
-  // spans stay notation — they read the same in every language.
   if (tool.files != null) {
     items.push({ id: "files", label: t("tool.meta.files", { count: tool.files }), tone: "muted" });
   }
   if (tool.hits != null) {
-    // One count, two words for what was counted. `grep` and `glob` match a pattern; a web
-    // search returns results, which is the Runtime's own name for them — reporting those as
-    // matches states a precision the search never claimed.
     const found =
       toolCategory(tool.name) === "webSearch" ? "tool.meta.results" : "tool.meta.matches";
     items.push({ id: "hits", label: t(found, { count: tool.hits }), tone: "muted" });
@@ -103,10 +77,7 @@ export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
   return items;
 }
 
-// Absent, not zeroed, when nothing was measured: a zero would draw a dash on the row.
 export function toolDiffStat(tool: ToolCall): { added: number; removed: number } | undefined {
-  // The counts come from the patch the call was GIVEN, so they survive a call that never
-  // applied it. A refusal or a failure must not wear the size of a change that never landed.
   if (tool.status === "denied" || tool.status === "err") return undefined;
   const added = tool.added ?? 0;
   const removed = tool.removed ?? 0;
@@ -115,8 +86,6 @@ export function toolDiffStat(tool: ToolCall): { added: number; removed: number }
   return { added, removed };
 }
 
-// The runtime's own answer, the same table the approval gate reads, so the row's weight and
-// the gate's decision cannot disagree.
 export function isReadOnlyTool(tool: ToolCall): boolean {
   return tool.safetyClass === "safe";
 }
@@ -125,9 +94,6 @@ export function toolGroupNeedsAttention(tools: readonly ToolCall[]): boolean {
   return tools.some((tool) => tool.status === "running" || tool.status === "err");
 }
 
-// Derived from the runtime's safety classes, so a tool added on the backend lands in the
-// right family with no table here. Order is FIXED, not by count: a row that reorders as
-// counts change has to be re-read every time.
 const ACTIVITY_FAMILIES = ["read", "search", "lookup", "write", "run", "fetch"] as const;
 
 type ActivityFamily = (typeof ACTIVITY_FAMILIES)[number];

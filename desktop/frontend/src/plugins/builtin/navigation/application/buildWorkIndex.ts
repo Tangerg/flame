@@ -65,9 +65,6 @@ export function buildWorkIndex({
     };
   });
 
-  // Recency alone, unlike a project's list: a section called "Recent" whose top
-  // row is three weeks old because someone pinned it is not a recent list.
-  // Pinning still shows on the row, and it still orders the project it lives in.
   const recents = [...byDirectory.values()].flat().sort(compareTimeDesc).map(toWorkSession);
 
   return { groups, recents };

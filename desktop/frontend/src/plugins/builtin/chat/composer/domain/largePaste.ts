@@ -1,7 +1,3 @@
-// Either bound trips it: a TALL paste that would scroll the capped textarea, or a WIDE
-// single-line blob. Deliberately conservative — a miss leaves the text inline and blocks
-// nothing.
-
 export const LARGE_PASTE_LINES = 12;
 export const LARGE_PASTE_CHARS = 1600;
 

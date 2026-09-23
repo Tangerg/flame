@@ -739,7 +739,6 @@ export const fr: Record<string, string> = {
   "vcs.notARepo": "Pas un dépôt Git",
   "vcs.notARepoSub": "Le répertoire de travail de la session n'est pas sous contrôle de version.",
 
-  // Filled 2026-07 — these keys had fallen behind en.
   "composer.placeholder.steer": "Envoyer un message pour orienter le tour en cours…",
   "composer.action.steer": "Orienter le tour en cours",
   "composer.paste.lines_one": "Collé · {{count}} ligne",

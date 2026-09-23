@@ -19,11 +19,6 @@ export function syncWorkspaceSessionLifecycle(
   ports.forgetSessionScopes(state.openSessionIds);
 }
 
-/**
- * Keep the dock's per-session memory pointed at the session the user is in.
- * Navigation itself owns clearing a promoted view; lifecycle synchronization
- * only activates the current scope and forgets scopes for closed sessions.
- */
 export function bindWorkspaceSessionNavigation(ports: WorkspaceSessionNavigationPorts): () => void {
   ports.forgetSessionScopes(ports.getLifecycleSnapshot().openSessionIds);
   ports.activateSessionScope(ports.getActiveSessionId());

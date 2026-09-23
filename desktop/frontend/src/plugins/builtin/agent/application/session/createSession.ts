@@ -12,19 +12,10 @@ import { reportSessionError } from "./reportSessionError";
 import { agentCommandOwner, type AgentCommandOwner } from "../agentCommandOwner";
 
 export interface CreateSessionOptions {
-  /** Required: Desktop never delegates an omitted workspace to the Runtime default,
-   *  because project selection is an explicit user gesture. */
   cwd: string;
-  /** Only the top-level New action may set this: it already knows the cwd belongs to the
-   *  active Session, which project-row creation does not. */
   reuseFreshDraft?: boolean;
 }
 
-/**
- * A draft is a REAL session — `runs.start` works immediately — that stays out of the
- * visible Work Index until its first message graduates it. Returns the new id, or null if
- * the create failed.
- */
 async function createAndOpen({
   owner,
   runtime,
@@ -37,26 +28,16 @@ async function createAndOpen({
 }): Promise<string> {
   const session = await runtime.createSession({ cwd });
   owner.assertCurrent();
-  // Marked BEFORE selecting, so the mounted lifecycle can skip a durable read for this
-  // same-process empty identity.
   state.markDraftSession(session.id);
-  state.selectSession(session.id); // opens + sets active → remounts chat
-  // A cwd create may also have minted a brand-new project.
+  state.selectSession(session.id);
   void invalidateAgentSessions();
   return session.id;
 }
 
-// Only EXACT workspace destinations may share an in-flight create: requests for different
-// projects must never receive one another's Session identity.
 function joinKey(opts: CreateSessionOptions): string {
   return `cwd:${opts.cwd}`;
 }
 
-/**
- * "New session" is a DESTINATION, not an instruction to allocate, so it is a no-op in front
- * of an empty composer. Only a DRAFT counts: an ordinary session also reads as message-less
- * while its history loads, and reusing it drops the user back where they asked to leave.
- */
 function alreadyOnAFreshSession(
   opts: CreateSessionOptions,
   state: AgentSessionStatePort,
@@ -86,12 +67,6 @@ function doCreate(opts: CreateSessionOptions): Promise<string | null> {
     });
 }
 
-/** Imperative New for non-React callers (palette commands, keymap).
- *
- * The active Session is the only authoritative source of the inherited cwd.
- * If no Session is active, or its summary has not resolved, New is a focus move
- * to the project-selection destination rather than a backend mutation.
- */
 export function createSession(): Promise<string | null> {
   const sessionId = agentSessionState().getActiveSessionId();
   if (!sessionId) return Promise.resolve(null);

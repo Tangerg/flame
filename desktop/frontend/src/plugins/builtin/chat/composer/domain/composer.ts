@@ -1,15 +1,9 @@
 import type { ComposerImage, PastedText } from "./draft";
 
-/** The welcome screen has no Session, and what is typed there must survive reaching one. */
 export const SCRATCH_SESSION_ID = "";
 
 const HISTORY_CAP = 50;
 
-/**
- * Immutable: the store swaps whole drafts, so a
- * selector that returned `images` last render returns the same array this render unless
- * the images actually changed.
- */
 export class ComposerDraft {
   private static readonly EMPTY = new ComposerDraft("", Object.freeze([]), Object.freeze([]));
 
@@ -19,15 +13,10 @@ export class ComposerDraft {
     readonly pastes: readonly PastedText[],
   ) {}
 
-  /** One instance, because `Composer.draft` answers it for every session that has not been
-   *  typed into. A fresh object there would hand selectors a new `images` array on every
-   *  store notification, which `Object.is` never matches — a re-render on every keystroke
-   *  in any other session. */
   static empty(): ComposerDraft {
     return ComposerDraft.EMPTY;
   }
 
-  /** Only the text is durable; images and pastes are heavy and meant to be sent at once. */
   static restoreText(value: string): ComposerDraft {
     return new ComposerDraft(value, [], []);
   }
@@ -45,18 +34,10 @@ export class ComposerDraft {
   }
 }
 
-/**
- * Where the input ring is being read from, as a closed state: the saved draft exists only
- * while recalling.
- */
 type Recall = { readonly active: false } | { readonly active: true; at: number; saved: string };
 
 const NOT_RECALLING: Recall = { active: false };
 
-/**
- * One root because the invariants span all three: the active draft is DERIVED, and every
- * mutation but recall's own returns to `NOT_RECALLING`.
- */
 export class Composer {
   private constructor(
     private readonly drafts: ReadonlyMap<string, ComposerDraft>,
@@ -83,7 +64,6 @@ export class Composer {
     return this.recall.active;
   }
 
-  /** Durable text per session, for the persisted half. Empty drafts are not worth storing. */
   durableDraftTexts(): Map<string, string> {
     const texts = new Map<string, string>();
     for (const [sessionId, draft] of this.drafts) {
@@ -100,13 +80,11 @@ export class Composer {
     return this.replaceDraft(ComposerDraft.empty(), NOT_RECALLING);
   }
 
-  /** Returns the same instance when already there, so the caller need not compare ids. */
   activate(sessionId: string): Composer {
     if (sessionId === this.activeSessionId) return this;
     return new Composer(this.drafts, this.rings, sessionId, NOT_RECALLING);
   }
 
-  /** The scratch draft and the session being edited survive regardless of the live set. */
   prune(liveSessionIds: ReadonlySet<string>): Composer {
     const keep = (sessionId: string) =>
       sessionId === SCRATCH_SESSION_ID ||
@@ -120,7 +98,6 @@ export class Composer {
     );
   }
 
-  /** Blank text and an immediate repeat are not history. */
   record(text: string): Composer {
     const value = text.trim();
     if (!value) return this;
@@ -129,7 +106,6 @@ export class Composer {
     return this.withRing([...ring, value].slice(-HISTORY_CAP)).withRecall(NOT_RECALLING);
   }
 
-  /** Null when there is nothing older, so a keymap can fall through to cursor movement. */
   recallOlder(): Composer | null {
     const ring = this.ring();
     if (ring.length === 0) return null;
@@ -142,7 +118,6 @@ export class Composer {
     });
   }
 
-  /** Null when not recalling. Stepping past the newest entry restores what was typed. */
   recallNewer(): Composer | null {
     if (!this.recall.active) return null;
     const at = this.recall.at - 1;

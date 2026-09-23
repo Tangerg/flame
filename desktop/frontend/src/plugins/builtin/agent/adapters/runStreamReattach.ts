@@ -9,11 +9,9 @@ interface RunStreamReattachOptions {
   sessionId: string;
   client: () => Pick<FlameClient, "runs">;
   isCancelled: () => boolean;
-  /** Refresh final durable material when the addressed Run can no longer be followed. */
   recoverProjection: (signal: AbortSignal) => Promise<void>;
 }
 
-/** Replay preserves its consumed cursor; cold recovery takes the coherent snapshot tail's head. */
 export function createRunStreamReattach({
   sessionId,
   client,
@@ -94,8 +92,6 @@ export function createRunStreamReattach({
   };
 }
 
-// The subscribe ack is the wire's own shape, so this is the parse site for its ids —
-// the same rule the gateway follows for a run it opens.
 function brandAck(result: { runId: string; segmentId: string; headEventId?: string }) {
   return {
     runId: asRunId(result.runId),

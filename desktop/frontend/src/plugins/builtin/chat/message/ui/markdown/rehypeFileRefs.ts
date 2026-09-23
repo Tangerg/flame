@@ -2,10 +2,6 @@ import type { Element, Root, Text } from "hast";
 import { parseFileRefs } from "@/plugins/builtin/agent/public/fileRefs";
 import { rewriteTextNodes } from "./rewriteTextNodes";
 
-/**
- * Where a path is already something, or already literal. `a` is the load-bearing one: a
- * reference inside a link would be a control inside a link, and the reader sees one thing.
- */
 const SKIP_TAGS = new Set(["pre", "code", "a", "sup", "script", "style"]);
 
 export function rehypeFileRefs() {

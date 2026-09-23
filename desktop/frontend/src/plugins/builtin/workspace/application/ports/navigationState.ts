@@ -10,14 +10,11 @@ export interface WorkspaceFileFocusSnapshot {
   readonly revision: bigint;
 }
 
-/** A resizable column of the content card: its width and the setter a drag
- *  commits to. Both edges of the card (drawer, dock) are sized this way. */
 export interface WorkspaceColumnWidth {
   width: number;
   setWidth: (width: number) => void;
 }
 
-/** A column whose measure is derived from the window until the person moves it. */
 export interface WorkspaceOptionalColumnWidth {
   width: number | null;
   setWidth: (width: number) => void;

@@ -34,8 +34,6 @@ export function AgentComposerSurface({
     <div
       {...props}
       ref={ref}
-      // `agent-composer-glass` is the composer's material — a backdrop filter and the edge
-      // the visual style owns — and stays in `globals.css` with the rest of the window's chrome.
       className={cn("agent-composer-glass", stylex.props(styles.surface).className, className)}
     >
       {children}

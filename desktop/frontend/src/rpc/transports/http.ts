@@ -1,7 +1,3 @@
-// Streamable HTTP (TRANSPORT.md §6): a streaming method's POST body IS its event stream, so
-// `send()` returns once headers are in, not at stream end. 200 is the only success —
-// 204/202 are reserved for client notifications this SDK never sends (§6.3).
-
 import {
   context,
   propagation,
@@ -33,11 +29,8 @@ import {
   type WireStreamingMethodName,
 } from "@flame/runtime-contract/methods";
 
-/** A transport-safety ceiling ONLY: it stops a malformed peer growing an unterminated
- *  parser frame forever before discovery can exist. */
 const MAXIMUM_EVENT_STREAM_FRAME_CHARACTERS = 128 * 1024 * 1024;
 
-// The injected `traceparent` rides HEADERS, never the JSON-RPC body (TRANSPORT.md §2).
 const tracer = trace.getTracer("flame-frontend");
 
 function endSpan(span: Span, err?: unknown): void {
@@ -52,7 +45,6 @@ function endSpan(span: Span, err?: unknown): void {
 
 export interface HttpTransportConfig {
   baseUrl: string;
-  /** The local-loopback gate token. NOT a user-auth credential (TRANSPORT.md §11). */
   localToken?: string;
   fetch?: typeof fetch;
   maximumEventStreamFrameCharacters?: number;
@@ -62,8 +54,6 @@ interface EventStreamTextParser {
   feed(chunk: string): void;
 }
 
-/** eventsource-parser stays the framing authority; this only gives each completed frame an
- *  async boundary where delivery can apply backpressure. */
 async function feedEventStreamText(
   parser: EventStreamTextParser,
   text: string,
@@ -101,8 +91,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     throw new RangeError("event-stream frame capacity must be a positive safe integer");
   }
 
-  // Capacity 0 on purpose: a rendezvous channel cannot become a second queue with its own
-  // loss semantics.
   const channel = createPushPullChannel<TransportEvent>({ capacity: 0 });
   const closeController = new AbortController();
   const readers = new Set<ReadableStreamDefaultReader<Uint8Array>>();
@@ -116,12 +104,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     return headers;
   }
 
-  // Runs DETACHED — a run may stream for minutes — so `send()` never awaits it. A stream
-  // dying any way other than a caller abort must not strand consumers: the call whose
-  // response never arrived would hang forever and the UI would stay stuck "running", so
-  // this reports a lifecycle event owned by that exact request and never impersonates a
-  // JSON-RPC response. `runtime.subscribe` has no terminal frame, so ANY non-abort end —
-  // graceful EOS included — means "resubscribe" (AUX_API §3.1).
   async function drainStream(
     body: ReadableStream<Uint8Array>,
     requestId: RpcId,
@@ -186,7 +168,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       }
       if (!(await feedEventStreamText(parser, decoder.decode(), deliverParsedEvent))) return;
     } catch (err) {
-      // Aborts are expected teardown via the fetch signal, not failures.
       aborted = signal?.aborted === true || (err instanceof Error && err.name === "AbortError");
       if (!aborted && !channel.closed) {
         streamError =
@@ -239,8 +220,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       ? AbortSignal.any([signal, closeController.signal])
       : closeController.signal;
 
-    // Created SYNCHRONOUSLY before the first await, so its parent is whatever context is
-    // active at the call site rather than whatever happens to be active on resumption.
     const span = tracer.startSpan(`rpc ${method}`, {
       kind: SpanKind.CLIENT,
       attributes: { "rpc.system": "jsonrpc", "rpc.method": method },
@@ -274,8 +253,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     };
     if (metadata.requestId) span.setAttribute("flame.request_id", metadata.requestId);
 
-    // This client sends Requests only; a bodyless notification acknowledgement is
-    // therefore always a protocol mismatch.
     if (res.status === 204 || res.status === 202) {
       const err = new RpcTransportError(
         `http ${res.status}: RPC call ended without a response`,
@@ -286,7 +263,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       throw err;
     }
 
-    // Any non-2xx is a transport-layer failure represented as Problem Details.
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       const problem = parseTransportProblem(text);
@@ -302,9 +278,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       throw err;
     }
 
-    // Streaming method (TRANSPORT.md §6.4): the body is this call's event
-    // stream (response frame + notifications). Drain it in the background so
-    // send() returns once headers are in, not at stream end.
     if ((res.headers.get("Content-Type") ?? "").includes("text/event-stream")) {
       if (!isWireStreamingMethodName(method)) {
         const err = new RpcTransportError(
@@ -325,8 +298,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
         endSpan(span, err);
         throw err;
       }
-      // A stream may drain for minutes; that wall-clock belongs to the run,
-      // not the HTTP request span. The reader remains bound to requestSignal.
       endSpan(span);
       const draining = drainStream(res.body, rpcId, method, metadata, requestSignal);
       activeDrains.add(draining);
@@ -337,9 +308,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       return;
     }
 
-    // Non-streaming: a single JSON-RPC message in the body. A malformed
-    // envelope fails THIS call (rejected via send()'s caller) rather than
-    // pushing garbage that never correlates and hangs the pending promise.
     let text: string;
     try {
       text = await res.text();
@@ -404,8 +372,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
   }
 
   function recv(): AsyncIterable<TransportEvent> {
-    // RpcClient calls recv() once and consumes the iterator for the transport's
-    // life; every inbound message arrives via a POST response (see send()).
     return channel.iterator();
   }
 
@@ -414,10 +380,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     closeController.abort();
     const cancelReaders = () => [...readers].map((reader) => reader.cancel());
 
-    // Calls already past admission may still be unwinding a fetch/body read.
-    // Join them before taking the final reader snapshot: a fetch implementation
-    // that resolves concurrently with abort can otherwise install a new drain
-    // after close has already returned.
     await Promise.allSettled([...activeSends, ...cancelReaders()]);
     await Promise.allSettled(cancelReaders());
     await Promise.allSettled([...activeDrains]);

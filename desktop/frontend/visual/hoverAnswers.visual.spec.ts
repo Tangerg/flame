@@ -1,9 +1,6 @@
 import { expect, test } from "./test";
 import { CONTROL } from "./controls";
 
-// `reveal` opens a surface the route does not land on. A filled CTA lives inside a form
-// nothing shows until you ask for it, which is how a pill that answered nothing on hover sat
-// in four of them unnoticed.
 const ROUTES: ReadonlyArray<{ query: string; reveal?: RegExp }> = [
   { query: "fixture=agent&state=narrative" },
   { query: "fixture=agent&state=tool-shells" },

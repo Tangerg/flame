@@ -3,22 +3,16 @@ import type { RunEvent } from "@/rpc";
 type ScheduleFrame = (flush: () => void) => number;
 type CancelFrame = (handle: number) => void;
 
-/** A hidden WebView may suspend animation frames while Runtime streaming stays
- * active. This is the maximum material kept waiting for one visual frame. */
 const MAXIMUM_RUN_EVENTS_PER_FRAME = 256;
 
 export interface RunEventBatcher {
   enqueue(event: RunEvent): void;
-  /** Apply the queued stream tail synchronously. Projection synchronization
-   *  calls this before it is allowed to read a newer durable snapshot, so an
-   *  animation-frame delay cannot reorder live facts behind that snapshot. */
   flush(): void;
   dispose(): void;
 }
 
 interface RunEventBatcherOptions {
   readEpoch: () => bigint;
-  /** True only when the whole batch was folded into the current projection. */
   apply: (batch: RunEvent[]) => boolean;
   onFailure: (error: unknown) => void;
   onApplied?: (lastEvent: RunEvent) => void;

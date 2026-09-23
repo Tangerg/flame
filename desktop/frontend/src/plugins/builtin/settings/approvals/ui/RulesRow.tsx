@@ -24,9 +24,6 @@ import {
 import { SettingRow } from "../../kit";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
-// What the scope MEANS. `Tone`'s own contract says the application layer emits the
-// vocabulary and the Badge picks the fill and the ink; a table of classes here is this file
-// painting a second palette beside the one every other badge in the app uses.
 const SCOPE_TONE: Record<ApprovalRuleSummary["scope"], Tone> = {
   session: "neutral",
   project: "accent",

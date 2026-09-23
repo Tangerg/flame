@@ -9,8 +9,6 @@ import { motion, radius, space, surface, type as typeStep } from "@/styles/token
 import { delegatedRunSummary } from "../application/delegatedRunSummary";
 
 const styles = stylex.create({
-  // Outdented by the link's own inset, so the glyph sits on the column the activity rows and
-  // section headings hold and the hover fill spends the gutter instead.
   row: {
     display: "flex",
     alignItems: "center",
@@ -18,9 +16,6 @@ const styles = stylex.create({
     minWidth: 0,
     marginInlineStart: "calc(var(--spacing) * -2)",
   },
-  // Four identical open-in-panel glyphs stacked into a column of their own beside four rows
-  // that differ only in their status. The row already answers the pointer; the glyph says
-  // where the click lands, which is worth saying at the moment the pointer is there.
   openHint: {
     transitionProperty: "opacity",
     transitionDuration: motion.fast,
@@ -42,9 +37,7 @@ const styles = stylex.create({
     transitionTimingFunction: motion.easeState,
   },
   detail: { display: "flex", flexDirection: "column", gap: space.s0_5, minWidth: 0, flex: 1 },
-  /** Takes the slack, so the outcome lands on the row's end rather than after the name. */
   name: { minWidth: 0, flex: 1 },
-  /** Held open whether or not the run can be cancelled, so the outcome column holds. */
   cancelSlot: {
     display: "flex",
     flexShrink: 0,

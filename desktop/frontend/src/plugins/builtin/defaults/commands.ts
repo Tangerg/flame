@@ -18,16 +18,12 @@ import { navigator } from "@/lib/navigation";
 import { defaultStaticCommands } from "./application/defaultContributions";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 
-// Close the surface the user is looking at, innermost first: a full view, then
-// the active dock tab, then the session itself.
 function closeFocusedSurface(): void {
   if (closeActiveWorkspaceView()) return;
   if (closeActiveWorkspaceDockView()) return;
   closeActiveAgentSession();
 }
 
-// Open a fresh session — creating one only if the user isn't already looking at
-// one — and put the caret in the composer either way.
 function openNewChatSession(): void {
   if (!runtimeCommandsAvailable()) return;
   if (!getActiveSessionId()) {

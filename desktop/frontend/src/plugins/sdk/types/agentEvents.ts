@@ -58,7 +58,6 @@ export type AgentItem =
       content?: AgentMessagePart[];
       createdAt: string;
       id: string;
-      /** Absent only on the provisional item.started shell. */
       phase?: AgentMessagePhase;
       runId: string;
       status: AgentItemStatus;
@@ -118,11 +117,8 @@ export interface AgentRunFact {
   status: AgentRunStatus;
   activeSegmentId: string | null;
   outcome: AgentRunOutcome | null;
-  /** Exact selection admitted for this Run. Optional at the source boundary so
-   * alternate Agent providers can omit a capability they do not expose. */
   modelSelection?: AgentModelSelection;
   metrics: AgentRunMetrics;
-  /** Latest authoritative prompt footprint; absent until a model response reports one. */
   contextTokens?: number;
   createdAt: string;
   finishedAt: string | null;

@@ -3,7 +3,6 @@ import { definePlugin } from "@/plugins/sdk";
 import { SHORTCUT } from "@/plugins/sdk/kernelPoints";
 import { closeActiveWorkspaceView } from "./public/navigation";
 
-/** Escape has one application meaning: close the active workspace view. */
 export function workspaceEscapeShortcut(closeActiveView: () => boolean): ShortcutSpec {
   return {
     key: "Escape",

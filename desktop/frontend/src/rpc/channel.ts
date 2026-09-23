@@ -1,27 +1,14 @@
-// SINGLE-CONSUMER: `iterator()` returns a fresh object over a SHARED queue, so two
-// iterators race for buffered values.
-//
-//   push  — synchronous, for intentionally unbounded channels; throws on a bounded one
-//           rather than silently violating capacity.
-//   send  — applies producer backpressure; resolves false when close wins first.
-//   close / fail — drain pending values first, then terminate. Idempotent.
-
 export interface PushPullChannel<T> {
-  /** Attempt synchronous delivery without exceeding capacity. */
   tryPush(value: T): boolean;
   push(value: T): void;
   send(value: T): Promise<boolean>;
-  /** Idempotent. */
   close(): void;
-  /** Idempotent. */
   fail(error: unknown): void;
   readonly closed: boolean;
   iterator(): AsyncIterableIterator<T>;
 }
 
 export type PushPullChannelOptions = {
-  /** Maximum values retained without a consumer. Zero is a rendezvous channel.
-   *  `unbounded` must be chosen explicitly by an owner that accepts it. */
   capacity: number | "unbounded";
 };
 

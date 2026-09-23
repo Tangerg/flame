@@ -3,17 +3,8 @@ import type { ApprovalDecision, InterruptRef, RememberScope } from "../../domain
 import { WIRE_DECISION } from "./wireDecision";
 import { useInterruptResume } from "./useInterruptResume";
 
-// Session pinning, the pending latch and the deferred settle belong to useInterruptResume;
-// only the approval-specific wire payload is built here (API.md §6).
-
 export interface ApprovalSubmitOptions {
-  /** Forwarded only when the user tweaked the tool's arguments before
-   *  approving (approve-with-modified-args, §6.1) — omitted otherwise so the
-   *  runtime executes the original args. One-shot: never part of remember. */
   editedArgs?: Record<string, unknown>;
-  /** Persist this decision (approve OR deny) as a rule at the given scope
-   *  (AUX_API §6) — the runtime stops asking for matching calls. Omitted = this
-   *  once only. */
   rememberScope?: RememberScope;
 }
 
@@ -50,8 +41,6 @@ class ApprovalActionRegistry {
 
 const approvalActionRegistry = new ApprovalActionRegistry();
 
-/** Internal keyboard bridge registration. Product cards bind through the
- * identity-capturing registrar returned by useApprovalSubmit. */
 export function registerApprovalActions(ref: InterruptRef, actions: ApprovalActions): () => void {
   return approvalActionRegistry.register(ref, actions);
 }

@@ -1,13 +1,3 @@
-/*
- * The reset: Preflight's values, transcribed rather than improved on. What is NOT transcribed
- * is the part that normalises browsers this application never runs in — `-moz-*`
- * rules, `::file-selector-button`, the twelve `::-webkit-datetime-edit-*` rules, `optgroup`,
- * `progress`, search decorations. This ships in one WebKit webview and renders one markup set.
- *
- * The load-bearing line is the first: `border: 0 solid` is why a component may state a
- * `border-width` alone and get a solid border. Remove it and every edge in the product
- * disappears at once.
- */
 @layer base {
   *,
   ::before,
@@ -31,8 +21,6 @@
     color: inherit;
     border-top-width: 1px;
   }
-
-  /* A heading is a level, not a size: this design gives it both from its own ladder. */
   h1,
   h2,
   h3,
@@ -120,11 +108,6 @@
   select,
   textarea {
     font: inherit;
-    /* The `font` shorthand above RESETS these two, so they have to be re-inherited by name.
-       `body` sets `font-feature-settings: "tnum" 1`, and without this line every button, input
-       and textarea in the product silently loses tabular figures — which is a width change in
-       every digit, everywhere, and reads as a font-rendering mystery rather than a dropped
-       declaration. Preflight had this line; leaving it out is how I found out why. */
     font-feature-settings: inherit;
     font-variation-settings: inherit;
     letter-spacing: inherit;
@@ -138,9 +121,6 @@
   input:where([type="button"], [type="reset"], [type="submit"]) {
     appearance: button;
   }
-
-  /* A placeholder is half the ink of what would be typed there, and opaque so the half is the
-     colour's doing rather than the element's. */
   ::placeholder {
     opacity: 1;
     color: color-mix(in oklab, currentcolor 50%, transparent);
@@ -153,9 +133,6 @@
   [hidden]:where(:not([hidden="until-found"])) {
     display: none !important;
   }
-
-  /* Present to a screen reader, absent to everyone else. A RECIPE rather than a property, so it
-     stays a class the way `truncate-fade` does. */
   .sr-only {
     position: absolute;
     width: 1px;
@@ -168,11 +145,6 @@
     border-width: 0;
   }
 }
-
-/*
- * Every step in `space` is a multiple of this, so without it the whole product loses its rhythm
- * at once.
- */
 :root {
   --spacing: 0.25rem;
 }
@@ -184,31 +156,15 @@
   font-weight: 100 900;
   src: url("/fonts/jetbrains-mono.woff2") format("woff2-variations");
 }
-
-/* An image needs its own edge or a light photo dissolves into a light surface. The colour
-   is PURE, never the theme's ink: neutrals here are tinted proportionally to the accent
-   (21% saturation on Tokyo Night), and a tinted outline picks up that hue as a dirty rim. */
 .media-edge {
   outline: 1px solid var(--color-media-edge);
   outline-offset: -1px;
 }
-
-/* For media sitting on the scrim, which is near-black in BOTH schemes — the scheme's own
-   edge would be black on black in light mode, which is no edge at all. */
 .media-edge-on-scrim {
   outline: 1px solid rgb(255 255 255 / 0.1);
   outline-offset: -1px;
 }
-
-/* The two faces. They were in a `@theme` block that deliberately was NOT `inline`, because
-   `inline` compiles a token's value into the utilities that use it and `font-mono` would then
-   emit the literal stack — Settings → Font could only ever have reached text inheriting from
-   `html`. With no utilities left to compile into, that distinction has nothing to protect. */
 :root {
-  /* The platform's own text face, which is what the reference this design follows resolves to.
-     `-apple-system` answers in WebKit only and `BlinkMacSystemFont` in Chromium only — measured,
-     in both engines — so the pair is ONE entry that needs two spellings, not redundancy to tidy
-     away. macOS exposes SF to web content through those keywords, never by family name. */
   --font-sans:
     -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", system-ui, "Segoe UI",
     "Microsoft YaHei", sans-serif;
@@ -216,13 +172,6 @@
     "JetBrains Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Code", Consolas,
     monospace;
 }
-
-/*
- * Plain custom properties that carry a value: the washes and badges mixed from a tone, the two
- * type steps whose tracking is zero rather than the UI default, the display steps that bring
- * their own leading, and the animation shorthands that keep `--motion-scale` inside them. A
- * component names these through `tokens.stylex.ts`; nothing here is a second name for a value.
- */
 :root {
   --color-line-soft: transparent;
   --color-negative-wash: color-mix(in srgb, var(--tone-negative) 10%, transparent);
@@ -247,11 +196,6 @@
   --animate-breathe: flame-breathe calc(2000ms * var(--motion-scale)) cubic-bezier(0.4, 0, 0.6, 1)
     infinite;
 }
-
-/* A CADENCE, not a loop: the sweep takes the first quarter and the text rests muted for the
-   other three. This label stays on screen for as long as the turn runs — minutes, on a long
-   one — and a band travelling across it without pause is the kind of motion a reader ends up
-   working to ignore. One pass every four seconds reads as a pulse instead. */
 @keyframes flame-shimmer {
   0% {
     background-position: -50% 0;
@@ -280,8 +224,6 @@
     transform: scale(0.9);
   }
 }
-/* A whole turn, and a fade. Their durations come from `--motion-scale` so reduced motion
-   reaches them. */
 @keyframes flame-spin {
   to {
     transform: rotate(360deg);
@@ -316,8 +258,6 @@
     transform var(--icon-swap-dur) var(--icon-swap-ease);
   will-change: opacity, filter, transform;
 }
-/* The control's own :hover / :focus-visible drives this, so React never renders for a hover:
-   a glyph that rebuilds its DOM mid-press loses the click entirely. */
 /* prettier-ignore */
 .t-icon-swap .t-icon[data-glyph="rest"] {
   opacity: 1; filter: blur(0); transform: scale(1);
@@ -360,21 +300,9 @@
     var(--color-text) calc(var(--depth-step) * 2),
     var(--color-surface)
   );
-
-  /* Interaction ink, floored so the contrast slider flattens surfaces and not state.
-     Levels and the 1:2 hover-to-selected ratio are read off Codex and zcode. */
   --wash-step: max(3%, var(--depth-step));
   --wash-hover: color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 1.25), transparent);
   --wash-selected: color-mix(in srgb, var(--color-text) calc(var(--wash-step) * 2.5), transparent);
-
-  /* An ink wash is ink laid OVER what is there, and `background-color` holds one value — so a
-     wash written into it REPLACES the resting fill rather than compositing with it. Measured
-     by hovering every control in the fixtures: a selected row dropped from 4% ink to 3%, so
-     the pointer made the selection fainter, and a sunken row lost its recess entirely and
-     read as if it had popped out of the surface. These are the same ink over the two resting
-     fills that take a hover, computed once here instead of at each call site — the way
-     `--app-dock-tabstrip-surface` below already lays it over the tabstrip. 1.75 is what the
-     two washes composite to, not a chosen strength. */
   --wash-selected-hover: color-mix(
     in srgb,
     var(--color-text) calc(var(--wash-step) * 3.75),
@@ -431,7 +359,6 @@
   --color-diff-added-meta: #2a713e;
   --color-diff-deleted-tint: color-mix(in srgb, var(--tone-negative) 9%, transparent);
   --color-diff-deleted-meta: #b0342b;
-  /* The words that changed, over the tint their row already carries. */
   --color-diff-added-word: color-mix(in srgb, var(--tone-success) 26%, transparent);
   --color-diff-deleted-word: color-mix(in srgb, var(--tone-negative) 24%, transparent);
 
@@ -454,10 +381,6 @@
   --icon-md: 16px;
   --icon-lg: 20px;
   --icon-xl: 28px;
-
-  /* Lucide GRID units, from `lib/iconScale` — the pre-paint defaults for the 14px base. The
-     first three are Lucide's own 2; the last two are where the rendered stroke reaches its
-     cap and stops growing with the box. */
   --icon-stroke-xs: 2;
   --icon-stroke-sm: 2;
   --icon-stroke-md: 2;
@@ -473,11 +396,7 @@
   --leading-body: 1.55;
   --leading-relaxed: 1.65;
   --leading-prose: 1.625;
-
-  /* The absence of tracking, which is a decision where `--tracking-ui` is the default: mono
-     glyphs and a placeholder are already spaced by something other than this ladder. */
   --tracking-none: 0em;
-  /* Zero at UI size, which is what Codex and zcode both call normal. */
   --tracking-ui: 0em;
   --tracking-display: -0.02em;
 
@@ -490,10 +409,6 @@
   --style-shape-composer: 20px;
   --style-shape-bubble: 16px;
   --radius-scale: 1;
-  /* Raised only where the corner CURVE changes, at the bottom of this file. Two
-     scales because they answer different questions: `radius-scale` is how round
-     the user wants corners, `corner-scale` is what it costs to keep that answer
-     true after the curve stops being a circular arc. */
   --corner-scale: 1;
   --shape-2xs: calc(var(--style-shape-2xs) * var(--radius-scale));
   --shape-xs: calc(var(--style-shape-xs) * var(--radius-scale));
@@ -506,21 +421,9 @@
   --shape-pill: 9999px;
 
   --button-radius: var(--shape-sm);
-  /* The hairline between the two halves of a split button: the CTA's own ink, thinned until it
-     reads as a seam rather than a border. */
   --button-join-seam: color-mix(in oklab, var(--color-cta-text) 20%, transparent);
   --field-radius: var(--shape-md);
   --segmented-radius: var(--shape-md);
-  /* The chip inside the track is not a rung of its own. It sits behind the track's border and
-     padding, so its corner is the track's corner set back by exactly that distance — the same
-     derivation `--composer-attachment-radius` uses for an attachment sitting inside the
-     composer.
-
-     Written as two independent rungs it drifted with the user's radius preference: the track
-     takes `--corner-scale` at `md` and `sm` does not, so the gap between the pair went
-     2.4px / 4.0px / 5.6px across sharp / default / soft where concentricity asks for a
-     constant 3px, and the chip read progressively squarer inside its own track. One
-     relationship needs one owner, not two rungs that happen to agree at one setting. */
   --segment-radius: max(
     0px,
     calc(var(--segmented-radius) - var(--control-edge-width) - var(--spacing) * 0.5)
@@ -530,18 +433,12 @@
   --floating-panel-radius: var(--shape-xl);
   --floating-tip-radius: var(--shape-md);
   --dock-tab-radius: var(--shape-lg);
-  /* ONE ladder for every control, so a field standing beside a button matches its height. */
   --control-height-xs: 22px;
   --control-height-sm: 26px;
   --control-height-md: 30px;
   --control-height-lg: 34px;
-  /* One step past the chrome ladder, for a control laid over an image: it is read at arm's
-     length against a photograph rather than inside a dense row. */
   --control-height-xl: 40px;
   --menu-row-height: 30px;
-  /* A settings select is a form FIELD, not a menu, and its floor answers a different
-     question: how wide the control sits in the row whether or not it is open. Three of them
-     carried two values; this is the wider, so no label narrows. */
   --select-min-width: 220px;
   --dock-tab-height: 28px;
   --composer-attachment-radius: max(
@@ -564,9 +461,6 @@
   --reading-gutter-wide: 20px;
   --composer-editor-top: 12px;
   --composer-editor-bottom: 8px;
-  /* Not a pair. Measured: these put the editor's text edges on the toolbar GLYPH edges below
-     it — 12 and 14 — because the leading and trailing controls inset their glyphs by different
-     amounts. Equalising them moves the text off the column the buttons already hold. */
   --composer-editor-start: 12px;
   --composer-editor-end: 14px;
   --composer-footer: 6px;
@@ -579,30 +473,13 @@
   --dur-med-base: 200ms;
   --dur-slow-base: 300ms;
   --dur-drawer-base: 500ms;
-  /* Arriving. Codex's `--ease-enter-snappy` to three decimals. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Changing. The curve above front-loads, so a fill meant to fade reads as a jump. */
   --ease-state: cubic-bezier(0.4, 0, 0.2, 1);
 
   --dur-instant: calc(var(--dur-instant-base) * var(--motion-scale));
   --press-scale: 0.98;
-  /* What "cannot be used" looks like, once. Eight owners had said it in four values, and the
-     four that render a `<button>` were restating what the base layer below already says —
-     which also kept a call site's own `disabled:` override from ever reaching the element.
-
-     0.64 is the only one of the four that keeps a disabled label above 3:1 in BOTH themes
-     (measured on a settings action: 3.61 light / 4.36 dark; at 0.5 it falls to 2.59 light,
-     and the 0.45 this line used to carry to 2.32). A disabled control still has to be read,
-     because reading it is how you work out what would enable it. The step that means "recede
-     out of the way" is a different, named one — `off="faded"`. */
   --control-disabled-opacity: 0.64;
-  /* How far a glyph sits behind the word beside it. The rule below applies this to every glyph
-     inside a button; five call sites OUTSIDE one had each picked their own number for the same
-     idea — 0.5, 0.6 and 0.7 — so they read it from here instead. */
   --glyph-step: 0.8;
-  /* Listed, and not in force: a notice already dealt with, a hook the trust gate has not
-     admitted. Two meanings, one relationship to the rows around them, and they had been 0.5
-     and 0.55 — four points apart, which is nobody's decision. */
   --state-receded: 0.55;
 
   --dur-color: calc(var(--dur-color-base) * var(--motion-scale));
@@ -616,13 +493,6 @@
   --icon-swap-blur: 2px;
   --icon-swap-start-scale: 0.25;
   --icon-swap-ease: ease-in-out;
-
-  /* The shell's stacking order, bottom to top. Every rung is here because two elements
-     that can overlap needed an order between them; a rung nothing overlaps is a number
-     pretending to be a system, which is why the two chrome controls share one — they sit
-     at opposite ends of the same strip and cannot meet. `z-index: 1` is deliberately NOT
-     a rung: it means "above my own siblings" inside a local stacking context and takes
-     part in no order beyond it. */
   --layer-drawer: 10;
   --layer-card: 15;
   --layer-resizer: 25;
@@ -662,10 +532,6 @@
     var(--app-dock-surface)
   );
   --dock-tab-active-surface: var(--app-dock-surface);
-  /* The active tab's own fill with the hover ink over it. Without this the tab reverts to the
-     plain wash under the pointer and loses the raise that says it is the open one — the same
-     defect as the selected row, on a wrapper rather than on the control, which is why the
-     hover audit did not see it. */
   --dock-tab-active-hover-surface: color-mix(
     in oklab,
     var(--color-text) calc(var(--wash-step) * 1.25),
@@ -694,9 +560,6 @@
   --seam-line: var(--color-border-soft);
   --seam-wash: color-mix(in oklab, var(--shadow-cast) 20%, transparent);
   --boundary-emphasis: color-mix(in oklab, var(--color-text) 28%, var(--color-border-soft));
-
-  /* Codex's thread measure. A transcript is prose interleaved with listings, tables and tool
-     rows, which want the width more than a line of prose wants to be short. */
   --content-max: 768px;
   --content-max-wide: 1024px;
   --reading-column-max: calc(var(--content-max) + 2 * var(--reading-gutter-wide));
@@ -707,9 +570,6 @@ html {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
-  /* No `-moz-osx-font-smoothing` beside it: the reflex pairing normalises a browser this ships
-     in none of, per the reset's own rule at the top of this file. Measured, not assumed —
-     `CSS.supports` is false for it and `setProperty` drops the value on the floor. */
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
@@ -731,13 +591,6 @@ body {
   line-height: var(--leading-body);
   font-feature-settings: "tnum" 1;
 }
-
-/* IN `base`, not unlayered, because these are defaults a call site has to be able to refuse.
-   Unlayered rules outrank `@layer utilities`, so this block silently defeated three intents
-   at once: `truncate` on the session title (`white-space` and `text-wrap` are both shorthands
-   for `text-wrap-mode`, so `balance` reset the `nowrap` and the header title WRAPPED instead
-   of truncating — invisible at the default type size, three lines deep in a 46px header at
-   the largest), and both `text-pretty` and `font-medium` on the question card's heading. */
 @layer base {
   h1,
   h2,
@@ -757,12 +610,6 @@ body {
   summary {
     text-wrap: pretty;
   }
-
-  /* Base UI's button, stripped of the browser's chrome. IN `base` for the same reason as the
-     block above and for one more: this is a lower RING, not a call site. A ring that dresses
-     the control has to be able to state a border, a padding or a fill without fighting a
-     utility class from underneath — `@layer utilities` and StyleX's unlayered rules both
-     outrank this, so an atom simply decides and nothing here is silently discarded. */
   [data-control="button"] {
     border: 0 solid;
     background-color: transparent;
@@ -776,10 +623,6 @@ body {
     opacity: var(--control-disabled-opacity);
   }
 }
-
-/* Mono means tabular figures, decided here so no call site has to remember: a `tabular-nums`
-   written beside `font-mono` is inert, and inert classes read as if they were doing something.
-   `tabular-nums` on a PROPORTIONAL face is a real instruction and stays at its call site. */
 .font-mono {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
@@ -799,21 +642,6 @@ body {
   background: color-mix(in oklab, var(--color-accent) 30%, transparent);
   color: var(--color-text);
 }
-
-/* The WebView reports :focus-visible for a plain mouse click too, so the ring is gated on the
-   last input device index.html tracks — see the marker's script there.
-
-   Suppressing the browser's own outline in POINTER modality is the other half of that gate, and
-   it has to live here beside it. It was being said at each call site instead — twenty times, as
-   `outline: "none"` in a StyleX object — which outranks BOTH rules here and took the design's
-   ring down with the browser's. Measured: 109 of 121 keyboard-reachable controls that had not
-   opted out showed nothing at all.
-
-   Why it outranks them: `#\#` is an ID selector, so every `:not(#\#)` StyleX stamps on a
-   declaration is an ID-level unit, and these rules carry no ID — the one above is (0,4,3).
-   ONE is therefore already enough. How many a given declaration gets is StyleX's own
-   precedence encoding rather than a constant: measured across a live route, 1 to 8 of them,
-   most at 3 or 4, with the deeper counts on pseudo-classes and pseudo-elements. */
 html:not([data-pointer])
   :focus-visible:not([data-chrome-focus]):not(input):not(textarea):not([contenteditable]) {
   outline: 1.5px solid var(--color-focus-ring);
@@ -833,10 +661,7 @@ textarea:focus-visible {
   outline: none;
   box-shadow: none;
 }
-/* For a control whose focusable element is not the one on screen — a slider's range input
-   inside its thumb, a colour input laid invisibly over its swatch. The ring on the input would
-   be drawn on nothing, so the visible part wears it. */
-html:not([data-pointer]) [data-focus-proxy]:has(:focus-visible) {
+html:not([data-pointer]) [data-focus-proxy]:focus-within {
   outline: 1.5px solid var(--color-focus-ring);
   outline-offset: 1px;
 }
@@ -885,7 +710,6 @@ html.theme-dark body {
   background: var(--color-bg);
 }
 html.theme-dark {
-  /* The surface ladder doubles in dark; ink laid over a plane does not. */
   --wash-step: max(3%, calc(var(--depth-step) / 2));
 
   --color-accent: #3574f0;
@@ -914,7 +738,6 @@ html.theme-dark {
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
     #aaaeb5
   );
-  /* Clears AA on a selected row, which is the brightest plane it lands on. */
   --color-text-faint: color-mix(
     in oklab,
     var(--color-text) max(0%, calc((var(--depth-step) - 8%) * 3)),
@@ -932,13 +755,6 @@ html.theme-dark {
   --color-diff-added-meta: #6db473;
   --color-diff-deleted-tint: color-mix(in srgb, var(--tone-negative) 8%, transparent);
   --color-diff-deleted-meta: #e68a8a;
-  /* Deeper than the row, not lighter — which is the opposite of the light scheme and is forced,
-     not a preference. `--tone-*` sits at 68% lightness, so ANY alpha of it over a dark row raises
-     the background toward this theme's dimmest syntax colours: measured, the fill has to fall to
-     6% before the red clears AA, and 6% over an 8% row tint is not a mark. Resolving downward
-     instead keeps the hue and buys headroom — worst ink 5.99 on the added mark, 6.11 on the
-     deleted, against 4.92 and 5.02 on the bare row. Opaque, so the mark does not drift with the
-     tint underneath it. */
   --color-diff-added-word: #0e2713;
   --color-diff-deleted-word: #391516;
 
@@ -961,13 +777,7 @@ html.theme-dark {
   --color-media-scrim: rgb(0 0 0 / 0.55);
   --color-media-preview: rgb(0 0 0 / 0.9);
   --color-on-media: #ffffff;
-  /* The floor a coarse pointer puts under every control. Named because the two spans below
-     have to grow with it: each reserves room for ONE chrome control, and a span sized for the
-     26px one leaves a 44px target overlapping its neighbour by exactly the difference — 14px,
-     measured, between the dock's browse button and its collapse control. */
   --touch-target: 44px;
-  /* One chrome control, plus its 6px inset and 4px of clearance. Derived rather than written
-     so a visual style that resizes controls moves the reservation with them. */
   --window-sidebar-control-span: calc(var(--control-height-sm) + 10px);
   --dock-control-span: calc(var(--control-height-sm) + 10px);
   --surface-header-height: 46px;
@@ -996,10 +806,6 @@ html.theme-dark {
     1
   );
 }
-
-/* AFTER the block above, not beside the floor that motivates it: both declare on `:root`, so
-   at equal specificity the later one is the one that lands. Written the other way round this
-   silently kept the desktop reservation on a touch screen — which is the whole defect. */
 @media (pointer: coarse) {
   :root {
     --window-sidebar-control-span: calc(var(--touch-target) + 10px);
@@ -1220,10 +1026,6 @@ html.theme-dark {
 .agent-shell[data-sidebar="collapsed"] .agent-surface-header[data-window-corner] {
   padding-inline-start: calc(var(--window-controls-gutter) + var(--window-sidebar-control-span));
 }
-
-/* No ring prefix, unlike its neighbours: a pane casting a seam onto the next one is a
-   design-system boundary mechanism, reached from `ui/atoms` (the settings rail) as well as
-   from the shell. An `agent-` prefix here would claim an owner that does not hold. */
 .pane-split {
   position: relative;
   z-index: 1;
@@ -1270,10 +1072,6 @@ html.theme-dark {
 .agent-dock-row[data-dock="collapsed"] .agent-surface-header[data-window-corner] {
   padding-inline-end: var(--dock-control-span);
 }
-
-/* A view paints the canvas it is read on — except in the dock, where the card behind it is
-   already the surface. One owner states the rule and its exception; a `bg-canvas` at the call
-   site could only ever be overruled here. */
 .agent-workspace-view {
   container: workspace-view / inline-size;
   background: var(--color-bg);
@@ -1329,24 +1127,6 @@ html.theme-dark {
 .agent-overflow-track {
   transform: translateX(0);
 }
-
-/* The fade follows the direction of travel, and swaps rather than leaving.
-
-   At rest the text runs off the RIGHT, so that is the edge that gets softened. Once the track
-   is moving, the end that is actively passing an edge is the HEAD, on the left — and the tail
-   is arriving at the right edge, where `fill: forwards` parks it flush. So a right fade would
-   permanently dim the last characters of every label the moment the reveal finished, which is
-   why this used to say `none`.
-
-   `none` is not the answer either: the label is `overflow: hidden`, so removing the mask does
-   not reveal anything — it replaces a soft edge with a hard cut, at exactly the moment text is
-   moving through it. Measured on the work index: three overflowing labels, all hard-clipped on
-   both sides for the whole animation.
-
-   The reference client fades both edges because its marquee LOOPS, so nothing ever comes to
-   rest against an edge. This one reveals once and stops, so it gets the other half of that
-   idea: soften the edge the text is leaving, keep the edge it lands on crisp. The spelling is
-   the dock tabstrip's own left-fade, below. */
 .agent-row:is(:hover, :focus-visible) .agent-overflow-label[data-overflowing] {
   -webkit-mask-image: linear-gradient(to right, transparent, #000 16px);
   mask-image: linear-gradient(to right, transparent, #000 16px);
@@ -1392,9 +1172,6 @@ html.theme-dark {
     transparent
   );
 }
-
-/* The one scrollbar, for every scroller in the window: a thin thumb revealed while the pointer
-   is over its scroller. Zero-specificity, so a scroller that must differ says so in one rule. */
 :where(*) {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
@@ -1415,8 +1192,6 @@ html.theme-dark {
   border-radius: var(--shape-pill);
   border: 2px solid transparent;
   background-clip: content-box;
-  /* A thumb is proportional to how much is off screen, so a long log shrinks it to a couple of
-     pixels and it stops being something a pointer can catch. */
   min-height: 32px;
   min-width: 32px;
 }
@@ -1431,10 +1206,6 @@ html.theme-dark {
 
 .msg-scroll-viewport {
   --transcript-fade: 24px;
-  /* The transcript runs BEHIND the composer, which is translucent. The bottom fade therefore
-     has to end where the composer starts — anchored to the viewport's own edge it left the
-     band between them at full opacity, and a card's buttons read straight through the input
-     surface. `--composer-overlay` is the measured height of what covers it. */
   --transcript-bottom-edge: calc(100% - var(--composer-overlay, 0px));
   -webkit-mask-image: linear-gradient(
     to bottom,
@@ -1467,76 +1238,23 @@ html.theme-dark {
 .agent-composer-glass:focus-within {
   --composer-ring: var(--color-accent);
 }
-
-/* `markdown.css` and `overlays.css` load from the entry, immediately after this file: CSS
-   ignores an `@import` that follows any other rule, and these two sheets refine this one. */
-
-/* The corner language, in one place, after the imports so the pill exception below reaches
-   the sheets that declare pills.
-
-   In the CSS parameterisation `superellipse(1)` IS `round` and `superellipse(2)` is
-   `squircle`, so 1.5 sits halfway: a curve that holds more material near the corner than a
-   circular arc does and therefore reads TIGHTER at the same radius. `--corner-scale` is
-   what buys that back — the steps from `md` up grow 25% so the corner keeps the apparent
-   roundness the ladder was drawn for. Below `md` the two curves differ by a third of a
-   pixel, so those steps take the shape and skip the scale rather than grow for nothing.
-
-   A circle is not a corner. An avatar, a status dot or the type caret drawn as a
-   superellipse is a rounded square, so everything on the pill step opts back out. The rule
-   is `:where()` so it carries no specificity at all: a call site that has decided on a
-   shape keeps it without having to out-specify a universal selector.
-
-   The curve and the scale are one decision and share one guard, so each engine gets an
-   internally consistent ladder: Chromium draws the superellipse at the compensated radius,
-   and WebKit — which has no `corner-shape` as of Safari 26.5, so this is inert in the
-   WKWebView the desktop app ships in — keeps the arc at the base radius. */
-/* Every glyph inside a button sits a step back from its label, so an icon never outshouts the
-   word beside it. Keyed on the slot rather than written into the button's own styles: it is a
-   DESCENDANT rule, which no atomic class can express. The escape is `Icon`'s own `full` prop:
-   it was `:not([class*="opacity-"])`, which only a utility-class call site can satisfy — a
-   StyleX one generates a hashed class and would have been re-dimmed without a word. */
 [data-slot="button"] svg:not([data-glyph="full"]) {
   opacity: var(--glyph-step);
 }
-
-/* Mermaid emits an SVG carrying the width and height IT decided, which is never the reading
-   column's. Both surfaces override them, and differently: inline the drawing scales down to
-   the column, and in the lightbox it keeps its own size and centres. Descendant rules, which
-   no atomic class can express — the same reason as the glyph step above. */
 [data-slot="mermaid-stage"] svg {
   height: auto;
   max-width: 100%;
 }
-
-/* An enlarged diagram narrower than the dialog sits in the middle of it. The dialog's width is
-   `fit-content` with a `min-width` floor, so a small graph leaves room on both sides and would
-   otherwise hug the start edge — which is the whole rule. It used to also say `display: block`,
-   which the reset already gives every `svg`, and `max-width: none`, which undoes a constraint
-   that is only ever placed on `img` and `video`. Both were verified inert by deleting them. */
 [data-slot="mermaid-full"] svg {
   margin-inline: auto;
 }
-
-/* The pill reports a run in flight, and the thing that should pulse is the glyph inside the
-   button rather than the button's own box. Same reason as the rule above: a descendant, which
-   no atomic class can express. */
 [data-pulse] svg {
   animation: var(--animate-pulse-dot);
 }
-
-/* A vendor's mark fills the box the icon ladder gave it. Here rather than on the component for
-   the same reason as the rule above: it is a CHILD rule, and the mark is a third-party glyph
-   whose own sizing prop we deliberately do not use — `size={0}` so the box decides. */
 [data-slot="provider-mark"] > svg {
   width: 100%;
   height: 100%;
 }
-
-/* The reading rail spans the whole transcript so it can hang a mark beside any turn, which
-   makes it a sheet of glass over the text: it declines the pointer and each thing it carries
-   takes it back. A CHILD rule because the rail is a plugin SLOT — the wrapper is the only
-   party that knows every contribution has to be clickable, and an atomic class cannot say
-   anything about a descendant. */
 [data-slot="chat-rail"] > * {
   pointer-events: auto;
 }
@@ -1549,27 +1267,10 @@ html.theme-dark {
   :where(*, *::before, *::after) {
     corner-shape: superellipse(1.5);
   }
-
-  /* A superellipse at pill radius is a rounded square, not a circle, so the pill opts back
-     out. Two Tailwind class names used to be listed here beside this one — `corner.pill` in
-     `tokens.stylex.ts` carries that opt-out now, bundled with the radius, because a StyleX
-     component never wears a utility name and setting the radius alone made every circle in
-     the product a squircle. The caret keeps its rule: it is markdown's, added by a rehype
-     pass, and has no component to carry a bundle. */
   .type-caret {
     corner-shape: round;
   }
 }
-
-/* Last in the file on purpose: a rest state may be declared by any of the sheets imported
-   above, and this has to be the one that wins.
-
-   A control that only appears when the pointer arrives has no way to appear on a device
-   with no pointer: the × on a dock tab, the copy on a code block, a message's actions. The
-   reveal itself is eleven different class lists — which group, which pseudo-class, opacity
-   or visibility — so what is marked here is the one part that is the same decision
-   everywhere. `rest` is the other end of it: what the reveal displaces, which has to give
-   way at the same moment or the two overlap. */
 @media (hover: none) {
   [data-reveal="hover"] {
     opacity: 1;

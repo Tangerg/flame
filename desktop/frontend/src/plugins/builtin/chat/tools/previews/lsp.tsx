@@ -67,9 +67,6 @@ function LspHoverPreview({ tool }: ToolPreviewProps) {
   );
 }
 
-// Map, not object: keyed by the first word of a tool's output line, so `constructor` would
-// pull an inherited member out and paint its source into the className.
-// The severity is a `Tone`, and `toneInk` is the one place that turns one into ink.
 const SEVERITY_TONE = new Map<string, Tone>([
   ["error", "negative"],
   ["warning", "warning"],
@@ -111,8 +108,6 @@ function LspPreview(props: ToolPreviewProps) {
 export const lspPreviews = definePlugin({
   name: "flame.builtin.lsp-previews",
   setup(ctx) {
-    // `diagnostics` is an OPERATION of `lsp`, not a separate tool, so the preview reads
-    // the operation to decide which face to wear.
     for (const preview of toolPreviews({ lsp: LspPreview })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }

@@ -1,6 +1,3 @@
-// Singleton instead of Context because non-component code (zustand effects,
-// plugin setup) calls these too; tests inject fakes via `setContainer()`.
-
 import { runtimeRequestMeta } from "@/main/runtimeProtocol";
 import { negotiatedCapabilities } from "@/plugins/builtin/runtime/public/capabilities";
 import { currentRuntimeEndpoint } from "@/plugins/builtin/runtime/public/endpoint";
@@ -17,14 +14,8 @@ import {
 } from "@/rpc";
 
 export interface Container {
-  /**
-   * One cached client per active endpoint and local-token signature. Runtime configuration
-   * is restored before discovery, and changing it produces a NEW client rather than leaving
-   * callers pinned to the startup default.
-   */
   client: () => FlameClient;
   sidecar: () => SidecarClient;
-  /** App-owned Wails capability boundary. It never becomes Runtime Protocol. */
   desktop: DesktopHostClient;
 }
 
@@ -54,10 +45,6 @@ function defaultContainer(): DefaultContainerOwner {
     let closing!: Promise<void>;
     closing = client
       .close()
-      // A close that fails has still ended this client's claim on the endpoint — the
-      // successor is already the one being used, and `dispose` awaits this set to know when
-      // the old sockets are gone. Rejecting here would leave shutdown waiting on a
-      // connection that is not coming back.
       .catch(() => undefined)
       .finally(() => retiring.delete(closing));
     retiring.add(closing);
@@ -144,31 +131,21 @@ export function getContainer(): Container {
   return instance;
 }
 
-/** Test seam — swap any subset of gateways with fakes. Other slots stay
- *  on the current defaults. */
 export function setContainer(next: Partial<Container>): void {
   if (next.desktop) defaultOwner.replaceDesktopHost();
   instance = { ...instance, ...next };
 }
 
-/** Load app-owned bootstrap data before any plugin can construct an RPC client. */
 export async function initializeDesktopHost(): Promise<void> {
   const owner = defaultOwner;
   const desktop = instance.desktop;
   await owner.initializeDesktopHost(desktop);
 }
 
-/** Begin final application teardown. The composition root only closes the
- * client it created; gateways injected by an embedding test remain externally
- * owned. Calling this from beforeunload is useful even though browsers do not
- * await it: FlameClient releases its journal lease synchronously before joining
- * the HTTP receive loop. */
 export function disposeContainer(): Promise<void> {
   return defaultOwner.dispose();
 }
 
-/** Test seam — restore every gateway to its default wiring. Call from
- *  `afterEach` so one test's stubs don't bleed into the next. */
 export async function resetContainer(): Promise<void> {
   const retired = defaultOwner;
   defaultOwner = defaultContainer();

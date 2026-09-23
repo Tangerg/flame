@@ -1,9 +1,3 @@
-// Fires only while the window is UNFOCUSED: with the window focused the stream itself is
-// the signal.
-//
-// The plugin entry exists so the bridge joins the builtin manifest and primes notification
-// permission AT LOAD, while the window is focused and the prompt is allowed.
-
 import { playCompletionChime } from "./chime";
 import { disposeOnHmr } from "@/lib/hmr";
 import { ensureOsNotifyPermission, osNotify } from "./osNotify";
@@ -16,8 +10,6 @@ import { useCompletionSoundStore } from "./completionSound";
 import { PRODUCT_NAME } from "@/product";
 
 function onSettled({ sessionId, status, errorMessage }: RootRunSettlement): void {
-  // Focus gate: only alert when the window is blurred / hidden. document.hasFocus
-  // is false when another OS window has focus or the app is minimized.
   if (document.hasFocus()) return;
 
   let title = `${PRODUCT_NAME} finished`;
@@ -38,21 +30,14 @@ function onSettled({ sessionId, status, errorMessage }: RootRunSettlement): void
     case "finished":
       break;
   }
-  // tag per session: a session that finishes several runs while you're away
-  // replaces its own notification instead of stacking a pile.
   osNotify(title, { body, tag: `run:${sessionId}` });
-  // Optional audible companion, same blurred-only gate as the notification.
   if (useCompletionSoundStore.getState().completionSound) playCompletionChime();
 }
 
 export const completionNotify = definePlugin({
   name: "flame.builtin.completion-notify",
   setup(ctx) {
-    // Prime notification permission at load (window focused → prompt allowed).
     ensureOsNotifyPermission();
-    // Subscribe to run settlements only once the app is READY. The agent
-    // view-state port is bound by plugin setup. onReady fires after markAppReady,
-    // when every setup has run, so module evaluation cannot race that dependency.
     let unsubscribe: (() => void) | undefined;
     ctx.contribute(READY_HANDLER, () => {
       unsubscribe = subscribeRootRunSettlements(onSettled);

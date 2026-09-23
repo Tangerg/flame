@@ -12,7 +12,6 @@ import {
   weight,
 } from "@/styles/tokens.stylex";
 const sr = stylex.create({
-  // Auto-fill: the grid decides its own column count from the transcript's width.
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",

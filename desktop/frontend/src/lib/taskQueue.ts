@@ -1,5 +1,3 @@
-/** Owns every settlement admitted by one replaceable generation. Retirement rejects only
- *  genuinely pending work, even when the dependency ignores cancellation. */
 export class RetirableTaskCohort {
   readonly #retiredError: Error;
   readonly #settlers = new Set<() => void>();
@@ -43,8 +41,6 @@ export class RetirableTaskCohort {
     });
   }
 
-  /** Bracket a whole operation: the leading check is what keeps a retired generation from
-   *  invoking the dependency at all, which `settle` alone cannot do. */
   async run<T>(operation: () => PromiseLike<T>): Promise<T> {
     this.assertCurrent();
     const value = await this.settle(operation());
@@ -65,14 +61,11 @@ export class SerialTaskChain {
 
   chain<T>(identity: string, start: (tail: Promise<void>) => Promise<T>): Promise<T> {
     const result = start(this.#tails.get(identity) ?? Promise.resolve());
-    // The tail must NEVER reject: the next call for this identity awaits it, so a rejection
-    // would fail work that has not run yet.
     const settlement = result.then(
       () => undefined,
       () => undefined,
     );
     this.#tails.set(identity, settlement);
-    // Only while still ours: anything queued behind has already replaced it.
     void settlement.then(() => {
       if (this.#tails.get(identity) === settlement) this.#tails.delete(identity);
     });

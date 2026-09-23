@@ -60,7 +60,5 @@ async function repairProjection(owner: AgentCommandOwner, queryKey: string): Pro
     await owner.settle(queryClient.invalidateQueries({ queryKey: [queryKey] }));
   } catch (error) {
     if (!owner.isCurrent()) throw error;
-    // An accepted response already committed its exact fact. Agent events and
-    // the next read retain the projection repair path.
   }
 }

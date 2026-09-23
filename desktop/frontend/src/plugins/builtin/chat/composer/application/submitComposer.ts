@@ -1,6 +1,3 @@
-// One submit path for the Enter key, the send button and plugin key bindings, so they
-// cannot diverge. Owns slash routing and the clear-only-after-accepted invariant.
-
 import { buildInput, type InputImage } from "@/plugins/builtin/chat/composer/public/input";
 import type { PastedText } from "../domain/draft";
 import { agentTextInput, type AgentInput } from "@/plugins/builtin/agent/public/input";
@@ -26,7 +23,6 @@ export interface SubmitDeps {
   canSend: () => boolean;
 }
 
-/** Safe to call on empty text with no attachments. */
 export function submitComposer({
   value,
   clear,
@@ -47,14 +43,6 @@ export function submitComposer({
     hasImages: images.length > 0,
     hasPastes: pastes.length > 0,
   };
-  // Clearing the draft is what makes the send button unavailable, and a `disabled` control
-  // cannot hold focus — so sending with the keyboard left focus on `<body>`, and the next Tab
-  // restarted at the top of the document instead of continuing from the composer. Measured on
-  // the narrative and dock routes.
-  //
-  // The two belong together, which is why they are one function: every path — a submit mode,
-  // a slash command, an ordinary message — ends in `clear()`, the moment a submit is accepted,
-  // so that is the moment focus comes back.
   const consume = () => {
     clear();
     focusComposer();
@@ -95,8 +83,6 @@ export function submitComposer({
     return;
   }
 
-  // Slash routing applies only to a TEXT command: attachments are not command arguments,
-  // so a "/cmd" still routes as the command and drops them.
   const slash = intent.slash;
   if (slash) {
     const spec = lookupExtensionByKey(SLASH_COMMAND, slash.cmd);

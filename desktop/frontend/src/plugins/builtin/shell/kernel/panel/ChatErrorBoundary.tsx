@@ -7,7 +7,6 @@ import { Button, Well } from "@/ui";
 import { color, radius, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
 
 const eb = stylex.create({
-  // The boundary replaces the whole transcript, so it holds a reading measure of its own.
   card: {
     margin: space.s8,
     maxWidth: "720px",

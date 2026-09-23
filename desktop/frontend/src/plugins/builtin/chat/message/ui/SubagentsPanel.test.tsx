@@ -118,9 +118,6 @@ it("projects live child material, returns to the list, and never carries it into
   expect(navigator().get().subagent).toBeNull();
 });
 
-// The corner and fill audits find speech by this marker. A delegated user message went
-// unmarked and so wore a bubble nobody was comparing — a third radius and padding, stacked
-// over a second one, against the transcript's.
 it("marks a delegated user message as the same speech bubble the transcript draws", () => {
   material.rows = rows();
   material.rows[0]!.facts.delegatedRuns.delegate![0]!.messages.unshift({

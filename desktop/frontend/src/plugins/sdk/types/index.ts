@@ -1,5 +1,3 @@
-// One entry point for consumers: the per-domain split matters to authors, not callers.
-
 export * from "./events";
 export * from "./agentEvents";
 export * from "./commands";

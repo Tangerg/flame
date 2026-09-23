@@ -4,25 +4,6 @@ import { Button as BaseButton } from "@base-ui/react/button";
 export type ButtonPrimitiveProps = ComponentPropsWithoutRef<typeof BaseButton> & {
   children?: ReactNode;
   ref?: Ref<HTMLButtonElement>;
-  /**
-   * This button's own action is in flight.
-   *
-   * NOT `disabled`, and the difference is the whole reason it exists. `disabled` says the action
-   * is unavailable, and the platform enforces that by making the element unfocusable — so a
-   * control that disables itself while its work runs drops the keyboard user onto `<body>`.
-   *
-   * `aria-disabled` says the same thing to a screen reader while leaving the element in the tab
-   * order, and the click is refused here instead of by the platform. It looks identical, because
-   * each atom's disabled styling reads both.
-   *
-   * It lives on the PRIMITIVE rather than on `Button`, because `Button`, `PillButton` and
-   * `TextButton` all wrap this one and a fact spelled three times is the thing being fixed.
-   *
-   * A condition that is genuinely unavailable — an invalid form, a row with nothing selected —
-   * stays `disabled`. A control that disables ITSELF by being used — a pager reaching its last
-   * page, a Clear with nothing left — is the same trap as in-flight work and passes Base UI's
-   * `focusableWhenDisabled`.
-   */
   pending?: boolean;
 };
 
@@ -40,15 +21,8 @@ export function ButtonPrimitive({
       {...props}
       ref={ref}
       type={type}
-      // Only when pending: an explicit `undefined` here overrides the `aria-disabled` Base UI
-      // sets itself for `focusableWhenDisabled`.
       {...(pending && { "aria-disabled": true })}
-      // Nothing in the platform refuses a click on an `aria-disabled` element, so the refusal
-      // lives here. Without it the prop would trade a lost focus for a double submit.
       onClick={pending ? undefined : onClick}
-      // The reset itself lives in `globals.css` under `@layer base`, keyed on this attribute:
-      // as utility classes it sat at the same weight as its own consumers and a ring above had
-      // to out-specify it to state a border or a fill. A layer is what "underneath" means.
       data-control="button"
       className={className}
     >

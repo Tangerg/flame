@@ -39,10 +39,8 @@ const tc = stylex.create({
   openSlot: { flexShrink: 0, width: "var(--control-height-xs)" },
   failureLine: {
     marginTop: space.s0_5,
-    // Lands on the LABEL: the 16px mark plus the trigger's own 6px gap.
     marginLeft: "calc(var(--spacing) * 5.5)",
     overflowWrap: "anywhere",
-    // Normal ink: the "failed" word beside the row carries the tone, as it does in the timeline.
     color: color.fg,
   },
 });
@@ -69,10 +67,6 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
       <AgentActivityDisclosure
         data-tool={tool.name}
         icon={toolCallIconFor(tool)}
-        // Every invocation stays on the work-narrative line and takes the neutral tone,
-        // whatever its safety class or outcome: the material result earns a surface only once
-        // the row is opened, and colouring the identity glyph turns a failure or a refusal
-        // back into a status card.
         shell="line"
         contentInset="rows"
         label={<ToolText value={model.intent.label} styles={tc.full} />}
@@ -120,8 +114,6 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
               className={stylex.props(reveal.shown).className}
             />
           )),
-          // The open-beside slot is held on every row, so a tool without a view keeps its status
-          // on the column of the tools beside it.
           onOpenView ? (
             <IconButton
               key="open-view"
@@ -144,13 +136,8 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
         open={expanded}
         onToggle={onToggleExpand}
       >
-        {/* A refused call never ran, so there is no result to disclose. */}
         {model.denied ? undefined : <ToolPreview tool={tool} />}
       </AgentActivityDisclosure>
-      {/* UNDER the row, not inside its disclosure and not in its detail slot.
-          The detail is one truncating line, so an error there hid the subject and still could
-          not be read; the disclosure is shut by default, so an error there is a failure behind
-          a chevron. Here it wraps, it is selectable, and it is on screen without a click. */}
       {model.error !== undefined && (
         <p data-slot="tool-error" {...stylex.props(tc.failureLine, typeStep.uiSm)}>
           {model.error}

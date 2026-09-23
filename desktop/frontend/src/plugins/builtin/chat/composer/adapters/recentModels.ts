@@ -4,14 +4,11 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
 import type { Paired } from "@/lib/persistedStore";
 
-/** Identity is the pair, because two providers may serve the same id. */
 export interface RecentModel {
   provider: string;
   id: string;
 }
 
-// Long enough that the shelf answers "the ones I move between" without becoming a second copy
-// of the catalogue — the same depth dimagent keeps.
 const KEEP = 8;
 const STORAGE_KEY = "flame.composer.recent-models";
 
@@ -19,7 +16,6 @@ const persistSchema = z.object({
   recent: z.array(z.object({ provider: z.string(), id: z.string() })).max(KEEP),
 });
 
-/** Held equal at compile time — see `Paired`. */
 const _paired: Paired<RecentModelsState, z.infer<typeof persistSchema>> = true;
 void _paired;
 

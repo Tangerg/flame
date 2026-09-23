@@ -56,8 +56,6 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
       align="stacked"
     >
       {mode === undefined ? (
-        // The count comes from the list itself, so the placeholder follows added modes,
-        // wrapped descriptions and larger type without a height to re-measure.
         <SkeletonList count={APPROVAL_MODES.length} label={t("common.loading")} />
       ) : (
         <ChoiceList

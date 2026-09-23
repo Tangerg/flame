@@ -11,10 +11,8 @@ import { space, type as typeStep } from "@/styles/tokens.stylex";
 import { previewStyles as pv } from "./previewStyles";
 
 const ts = stylex.create({
-  // A tool search can return dozens: the list scrolls rather than pushing the transcript.
   scroller: { maxHeight: "calc(var(--spacing) * 60)", overflowY: "auto" },
   group: { display: "flex", alignItems: "flex-start", gap: space.s2_5, paddingBlock: space.s1 },
-  // One measure for every source name, so the chips beside them start on one line.
   source: { width: "calc(var(--spacing) * 20)", flexShrink: 0, paddingTop: space.s0_5 },
   chips: { display: "flex", minWidth: 0, flexWrap: "wrap", gap: space.s1 },
 });

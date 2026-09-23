@@ -73,9 +73,6 @@ function BreakdownSection({
   );
 }
 
-/** The one card that answers "what has this cost" — a headline figure and the token lines
- *  that only appear when the provider reported them. Its own component because the pane
- *  around it is a four-state machine, and the optional metrics are not part of that. */
 function UsageTotals({
   total,
   sessions,

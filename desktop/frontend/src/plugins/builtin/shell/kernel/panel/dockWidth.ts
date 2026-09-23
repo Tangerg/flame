@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import { DOCK_MIN_WIDTH_PX, DOCK_SAFE_AREA_PX, DOCK_PREFERRED_WIDTH_PX } from "@/lib/shellGeometry";
 
-// Dragging updates the rendered measure directly; only a completed gesture persists a ratio.
 export const DOCK_MEASURE_PROPERTY = "--dock-measure";
 const DOCK_USABLE_MAX = `max(${DOCK_MIN_WIDTH_PX}px, calc(100% - ${DOCK_SAFE_AREA_PX}px))`;
 

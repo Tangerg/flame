@@ -37,20 +37,11 @@ export function selectAgentSession(id: string): void {
 export function closeActiveAgentSession(): boolean {
   const id = getActiveSessionId();
   if (!id) return false;
-  // Before the close, not after: closing drops the session from openSessionIds,
-  // which prunes the draft mark this reads — the selection subscriber that covers
-  // every other way of leaving a draft would then see an ordinary session.
   discardAbandonedDraft(id);
   agentSessionState().closeSession(id);
   return true;
 }
 
-/**
- * The active session summary, or undefined while unknown (no active session /
- * sessions list not loaded yet). The one place the activeSessionId ⨝
- * sessions-cache join lives — chips, banners, and workspace reads all derive
- * from this instead of re-writing the find.
- */
 export function useActiveSession(): AgentSessionSummary | undefined {
   const activeSessionId = useActiveSessionId();
   const { data } = useAgentSessions();
@@ -58,12 +49,6 @@ export function useActiveSession(): AgentSessionSummary | undefined {
   return data?.find((s) => s.id === activeSessionId);
 }
 
-/**
- * No active session means the app's default workspace. An active id ABSENT from the current
- * Session projection means something else entirely — the projection is still catching up,
- * most visibly right after create or on a cold restore. The two stay distinct so no caller
- * resolves "unknown" to the default workspace and mutates the wrong project.
- */
 export function activeSessionWorkspaceSelection(
   activeSessionId: string,
   sessions: readonly AgentSessionSummary[] | undefined,

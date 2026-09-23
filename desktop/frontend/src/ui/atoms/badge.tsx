@@ -4,14 +4,6 @@ import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
 import type { Tone } from "@/lib/tone";
 import { color, corner, face, space, surface, type, weight } from "@/styles/tokens.stylex";
 
-/**
- * A small standing label: a status, a count, a scope, a name.
- *
- * `face` exists because `font-mono` swaps the family and nothing else, so mono glyphs render at
- * `--tracking-ui`, a negative tracking chosen for a proportional face. A call site cannot fix
- * that: the tracking lives in the type step, not in the font utility. `face.mono` carries both
- * halves.
- */
 const styles = stylex.create({
   base: {
     display: "inline-flex",
@@ -37,15 +29,6 @@ export type BadgeProps = {
   size?: keyof typeof SIZE_TYPE;
   face?: keyof typeof face;
   children: ReactNode;
-  /**
-   * A step this badge does not have a name for yet.
-   *
-   * `styles` and not `className`, for the reason `Button` states at its own: composed into the
-   * same `stylex.props()` call, so a property a caller declares REPLACES this component's
-   * instead of racing it. Both call sites that used the old `className` were handing over a
-   * StyleX class list, and one of them — a heavier status badge — was a second `font-weight`
-   * on the same span with only bundler order deciding which weight you saw.
-   */
   styles?: StyleXArray<StyleXStyles | null | false>;
   title?: string;
 };

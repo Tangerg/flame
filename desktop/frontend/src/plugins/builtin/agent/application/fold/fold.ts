@@ -35,9 +35,6 @@ function ensureTurn(
       : null;
   if (open) return { state, id: open };
   const id = `turn:${itemId}`;
-  // This item's turn may exist while not being the OPEN one: a user message (send or
-  // mid-run steer) closes the turn and a later block for the same item comes back here.
-  // Re-adopt it — minting the id twice puts two messages under one React key.
   if (state.messages.some((m) => m.id === id)) {
     return {
       state: {
@@ -48,8 +45,6 @@ function ensureTurn(
     };
   }
 
-  // Dated by the Item that opened it, never by a client clock: a client-stamped turn in a
-  // runtime-stamped stream makes the date separator disagree with the messages beside it.
   const msg: Message = {
     id,
     role: "assistant",
@@ -100,8 +95,6 @@ export function patchRunBlock(
   return patched ? { ...state, messages } : state;
 }
 
-// Upsert rather than append: item.started may fall before the replay cursor or be absent
-// entirely from persisted-history hydration.
 function upsertBlock(
   state: AgentSessionView,
   item: { id: string; runId: string; createdAt: string },
@@ -138,8 +131,6 @@ export function markToolRequiresAction(
   );
 }
 
-// Called on a TERMINAL run end, not an interrupt: a card left in `requires-action` after
-// the owning run finished would offer buttons that resume a dead run.
 export function settleRunPendingInterrupts(
   state: AgentSessionView,
   runId: string,
@@ -178,18 +169,12 @@ export function settleRunPendingInterrupts(
   };
 }
 
-// item.started (append) and item.completed (upsert) differ only in the block status they
-// stamp, so both call through the folds below. The upsert is what keeps stream replay and
-// persisted-history hydration idempotent — a re-seen item patches in place.
-
 type ItemOf<T extends AgentItem["type"]> = Extract<AgentItem, { type: T }>;
 
 export function appendUserMessage(
   state: AgentSessionView,
   item: ItemOf<"userMessage">,
 ): AgentSessionView {
-  // Admission can relabel the optimistic local bubble to this durable Item id before
-  // the Item itself arrives, so re-seeing the id must still attach the authoritative owner.
   const durable = state.messages.find((message) => message.id === item.id);
   if (durable) {
     const withOwner =
@@ -232,16 +217,10 @@ export function foldText(
     item,
     (b) => b.kind === "text" && b.itemId === item.id,
     () => ({ kind: "text", itemId: item.id, text, status }),
-    // An empty completed snapshot must never wipe already-streamed text: completed is
-    // contracted to restate full content, but a malformed frame must not blank the bubble.
     (b) => (b.kind === "text" ? { ...b, text: text || b.text, status } : b),
   );
 }
 
-// item.started cannot carry a phase, so live text first streams into the same commentary
-// turn as reasoning and tools; item.completed is the first frame that can classify it.
-// Moving the block here is what makes live, replay and mixed hydration converge without
-// guessing from order or wording.
 function foldFinalText(
   state: AgentSessionView,
   item: ItemOf<"agentMessage">,
@@ -302,8 +281,6 @@ export function foldReasoning(
   item: ItemOf<"reasoning">,
   status: BlockStatus,
 ): AgentSessionView {
-  // Absent on the item.started shell — seeded to "" so deltas accumulate onto a string
-  // rather than `undefined`.
   const text = item.text ?? "";
   return upsertBlock(
     state,
@@ -346,8 +323,6 @@ export function foldQuestion(
   );
 }
 
-// Its OWN system message, not folded into an assistant turn: a compaction sits BETWEEN
-// turns. Leaves the assistant-turn cursor untouched — only a userMessage is a turn boundary.
 export function foldCompaction(
   state: AgentSessionView,
   item: ItemOf<"compaction">,
@@ -370,8 +345,6 @@ export function foldCompaction(
   return { ...state, messages: [...state.messages, msg] };
 }
 
-// Returns the resolved ToolCall as well as the state: the caller stamps the matching
-// tool timeline record from it.
 export function writeToolCall(
   state: AgentSessionView,
   item: ItemOf<"toolCall">,
@@ -393,14 +366,9 @@ export function writeToolCall(
     name: item.tool.name,
     fn: toolLabel(item.tool),
     ...(toolLabelKind(item.tool) === "path" ? { fnKind: "path" as const } : {}),
-    // At the TERMINAL state args come from the structured Item, which makes live streaming
-    // and completed-only history replay converge; while running, the accumulated
-    // toolArguments-delta preview stands until completed reconciles it (API.md §4.4.1).
     args:
       item.status === "running" ? (prev?.args ?? "") || argsText(item.tool) : argsText(item.tool),
     status: toolStatus(item),
-    // Baseline is the stream preview; `toolFields` below reconciles it to the authoritative
-    // value once the completed Item carries one (API.md §5.2).
     result: prev?.result,
     error: item.error ? (item.error.message ?? item.error.code) : undefined,
     durationMillis: item.durationMillis,
