@@ -169,20 +169,26 @@ func decodeCommandResponse(pluginID, command string, output []byte) (terminal.Co
 	return terminal.CommandResult{Message: message}, nil
 }
 
+// cappedBuffer keeps at most limit bytes of a plugin's output. The buffer is a
+// field rather than an embedded type on purpose: bytes.Buffer implements
+// io.ReaderFrom, and os/exec copies a non-file Stdout with io.Copy, which takes
+// that fast path and would read the whole stream past the cap.
 type cappedBuffer struct {
-	bytes.Buffer
-
+	buffer   bytes.Buffer
 	limit    int
 	overflow bool
 }
 
 func (c *cappedBuffer) Write(value []byte) (int, error) {
 	length := len(value)
-	remaining := max(c.limit-c.Len(), 0)
+	remaining := max(c.limit-c.buffer.Len(), 0)
 	if len(value) > remaining {
 		value = value[:remaining]
 		c.overflow = true
 	}
-	_, _ = c.Buffer.Write(value)
+	_, _ = c.buffer.Write(value)
 	return length, nil
 }
+
+func (c *cappedBuffer) Bytes() []byte  { return c.buffer.Bytes() }
+func (c *cappedBuffer) String() string { return c.buffer.String() }

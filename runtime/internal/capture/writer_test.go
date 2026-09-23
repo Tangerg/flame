@@ -24,6 +24,9 @@ func TestWriterKeepsThePrefixAndReportsTheRest(t *testing.T) {
 	if got := string(writer.Bytes()); got != "abcd" {
 		t.Fatalf("captured bytes = %q", got)
 	}
+	if writer.Dropped() != 4 {
+		t.Fatalf("dropped = %d, want the bytes that did not fit", writer.Dropped())
+	}
 }
 
 func TestWriterWithoutRoomCapturesNothing(t *testing.T) {
@@ -41,6 +44,12 @@ func TestWriterWithoutRoomCapturesNothing(t *testing.T) {
 // copy for output the caller deliberately dropped.
 func TestWriterCannotBeBypassedByIOCopy(t *testing.T) {
 	writer := NewWriter(4)
+	// bytes.Buffer implements io.ReaderFrom, and io.Copy prefers it: an
+	// embedded buffer would hand the whole stream past the bound before Write
+	// ever ran, which is why the buffer here is a field.
+	if _, bypasses := any(writer).(io.ReaderFrom); bypasses {
+		t.Fatal("writer exposes io.ReaderFrom and can bypass its limit")
+	}
 	written, err := io.Copy(writer, strings.NewReader("oversized"))
 	if err != nil {
 		t.Fatalf("io.Copy: %v", err)

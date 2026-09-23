@@ -2,7 +2,10 @@ package sandbox
 
 import (
 	"io"
+	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/capture"
 )
 
 type repeatingReader struct{}
@@ -14,24 +17,29 @@ func (repeatingReader) Read(data []byte) (int, error) {
 	return len(data), nil
 }
 
-func TestLimitedBufferCannotBypassWriteLimitThroughReaderFrom(t *testing.T) {
-	const inputBytes = 2 * maxCommandOutputBytes
-
-	var output limitedBuffer
-	if _, bypassesWrite := any(&output).(io.ReaderFrom); bypassesWrite {
-		t.Fatal("limited buffer exposes io.ReaderFrom and can bypass Write")
-	}
-	written, err := io.Copy(&output, io.LimitReader(repeatingReader{}, inputBytes))
+// TestOutputWithMarkerReportsWhatTheModelCannotSee covers the sandbox's half of
+// bounded capture: the writer counts the dropped bytes, and this is where a
+// command's output says how many of them the reader is missing.
+func TestOutputWithMarkerReportsWhatTheModelCannotSee(t *testing.T) {
+	const produced = 2 * maxCommandOutputBytes
+	output := capture.NewWriter(maxCommandOutputBytes)
+	written, err := io.Copy(output, io.LimitReader(repeatingReader{}, produced))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if written != inputBytes {
-		t.Fatalf("io.Copy wrote %d bytes; want %d", written, inputBytes)
+	if written != produced {
+		t.Fatalf("io.Copy wrote %d bytes; want %d", written, produced)
 	}
-	if output.buffer.Len() != maxCommandOutputBytes {
-		t.Fatalf("limited buffer retained %d bytes; want %d", output.buffer.Len(), maxCommandOutputBytes)
+	marked := string(outputWithMarker(output))
+	if len(marked) <= maxCommandOutputBytes || !strings.Contains(marked, "bytes truncated") {
+		t.Fatalf("marked output is %d bytes and reads %q", len(marked), marked[max(0, len(marked)-64):])
 	}
-	if output.dropped != maxCommandOutputBytes {
-		t.Fatalf("limited buffer dropped %d bytes; want %d", output.dropped, maxCommandOutputBytes)
+
+	within := capture.NewWriter(maxCommandOutputBytes)
+	if _, err := within.Write([]byte("complete")); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(outputWithMarker(within)); got != "complete" {
+		t.Fatalf("untruncated output = %q, want no marker", got)
 	}
 }

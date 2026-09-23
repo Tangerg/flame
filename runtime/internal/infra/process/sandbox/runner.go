@@ -3,30 +3,18 @@ package sandbox
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/Tangerg/flame/runtime/internal/capture"
 )
 
 const maxCommandOutputBytes = 256 << 10
 
-type limitedBuffer struct {
-	buffer  bytes.Buffer
-	dropped int
-}
-
-func (l *limitedBuffer) Write(data []byte) (int, error) {
-	available := maxCommandOutputBytes - l.buffer.Len()
-	if available > 0 {
-		_, _ = l.buffer.Write(data[:min(available, len(data))])
+// outputWithMarker tells the model how much of a command's output it is not
+// seeing, which the bounded writer counts but deliberately does not phrase.
+func outputWithMarker(output *capture.Writer) []byte {
+	captured := bytes.Clone(output.Bytes())
+	if dropped := output.Dropped(); dropped > 0 {
+		return fmt.Appendf(captured, "\n... [%d bytes truncated] ...\n", dropped)
 	}
-	if len(data) > available {
-		l.dropped += len(data) - max(available, 0)
-	}
-	return len(data), nil
-}
-
-func (l *limitedBuffer) BytesWithMarker() []byte {
-	out := bytes.Clone(l.buffer.Bytes())
-	if l.dropped == 0 {
-		return out
-	}
-	return fmt.Appendf(out, "\n... [%d bytes truncated] ...\n", l.dropped)
+	return captured
 }

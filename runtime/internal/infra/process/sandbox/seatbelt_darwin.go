@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/capture"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -134,30 +135,30 @@ func (s seatbeltRunner) Run(ctx context.Context, dir string, input toolshell.Inp
 		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	}
 	cmd.WaitDelay = sandboxProcessWaitDelay
-	var stdout, stderr limitedBuffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	stdout, stderr := capture.NewWriter(maxCommandOutputBytes), capture.NewWriter(maxCommandOutputBytes)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 
 	started := time.Now()
 	err = cmd.Run()
 	cleanupErr := killProcessGroup(cmd)
 	out := toolshell.Output{
-		Stdout:               stdout.BytesWithMarker(),
-		Stderr:               stderr.BytesWithMarker(),
+		Stdout:               outputWithMarker(stdout),
+		Stderr:               outputWithMarker(stderr),
 		Duration:             time.Since(started),
 		CancellationObserved: runCtx.Err() != nil,
 	}
-	if cleanupErr != nil {
-		return out, cleanupErr
-	}
-	if err == nil {
-		return out, nil
-	}
+	// A non-zero exit is an execution fact, not a failure, and Scope's Executor
+	// contract keeps every available fact on the error path too: reading the
+	// status before deciding what to return is what stops a failed group
+	// cleanup from reporting the command as having exited zero.
+	var runErr error
 	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		out.ExitCode = exitErr.ExitCode()
-		return out, nil
+	} else if err != nil {
+		runErr = fmt.Errorf("sandbox: start command: %w", err)
 	}
-	return out, fmt.Errorf("sandbox: start command: %w", err)
+	return out, errors.Join(runErr, cleanupErr)
 }
 
 func killProcessGroup(cmd *exec.Cmd) error {
