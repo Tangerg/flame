@@ -268,7 +268,7 @@ export function AgentActivityDisclosure({
               toneInk[tone],
             )}
           >
-            {leading ?? (icon ? <Icon name={icon} size="sm" /> : null)}
+            {leading ?? (icon ? <Icon name={icon} size="md" /> : null)}
           </span>
           <span data-slot="agent-activity-label" {...stylex.props(styles.label, type.uiMd)}>
             {label}

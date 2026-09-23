@@ -245,7 +245,7 @@ function CatalogRow(item: CatalogPickerItem, groupLabel?: string) {
       {...stylex.props(floatingRow("pick", item.description ? "lg" : "sm"), styles.row)}
     >
       {item.leading ?? (
-        <Icon name={item.icon ?? "panel-r"} size="sm" {...stylex.props(styles.rowGlyph)} />
+        <Icon name={item.icon ?? "panel-r"} size="md" {...stylex.props(styles.rowGlyph)} />
       )}
       <span {...stylex.props(styles.rowText)}>
         <span {...stylex.props(styles.rowLine)}>

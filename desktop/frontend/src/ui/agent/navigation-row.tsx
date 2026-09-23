@@ -46,7 +46,7 @@ const rowStyles = stylex.create({
     alignItems: "flex-start",
     paddingBlock: space.s2,
   },
-  nested: { paddingLeft: "calc(0.5rem + var(--icon-sm) + var(--density-row-gap))" },
+  nested: { paddingLeft: "calc(0.5rem + var(--icon-md) + var(--density-row-gap))" },
   actioned: { paddingRight: space.s8 },
   // The fade is the element's own, not the reveal channel's: a transition-property declaration
   // is the whole list, so whatever also moves has to be named beside it.
@@ -155,7 +155,7 @@ export function AgentRow({
       {icon && (
         <Icon
           name={icon}
-          size="sm"
+          size="md"
           {...stylex.props(rowStyles.glyph, detail ? rowStyles.glyphStacked : null)}
         />
       )}

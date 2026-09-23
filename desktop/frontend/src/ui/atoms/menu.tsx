@@ -231,7 +231,7 @@ function ContextIconItem({
       onClick={onSelect}
       className={className}
     >
-      <Icon name={icon} size="xs" />
+      <Icon name={icon} size="md" />
       <span {...stylex.props(menuStyles.label)}>{children}</span>
     </ContextItem>
   );
