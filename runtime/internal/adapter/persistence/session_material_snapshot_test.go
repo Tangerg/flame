@@ -102,7 +102,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	}
 	readerMessages := sqlite.NewMessageStore(readerDB)
 	readerCompactions, err := NewConversationCompactions(
-		readerMessages,
+		mustConversationStore(t, readerMessages),
 		sqlite.NewRunStore(readerDB),
 		func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunInTx(ctx, readerDB, fn)
@@ -111,7 +111,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	readerHistory, err := runsapp.NewConversationHistory(readerMessages, readerCompactions)
+	readerHistory, err := runsapp.NewConversationHistory(mustConversationStore(t, readerMessages), readerCompactions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,4 +226,15 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 			read.snapshot.Session.Revision(), firstPlan.Revision(), read.snapshot.Goal.Revision(),
 		)
 	}
+}
+
+// mustConversationStore wraps the durable history store in the Session-keyed
+// port the conversation use cases address it by.
+func mustConversationStore(tb testing.TB, messages *sqlite.MessageStore) *ConversationStore {
+	tb.Helper()
+	store, err := NewConversationStore(messages)
+	if err != nil {
+		tb.Fatalf("conversation store: %v", err)
+	}
+	return store
 }

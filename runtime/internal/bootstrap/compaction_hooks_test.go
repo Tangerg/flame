@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
+	chathistory "github.com/Tangerg/scope/core/history"
 )
 
 func TestRuntimeStopsRequiredCompactionWhenHookConfigurationCannotBeRead(t *testing.T) {
@@ -84,7 +85,7 @@ func TestRuntimeStopsRequiredCompactionWhenHookConfigurationCannotBeRead(t *test
 	if summaries != 0 {
 		t.Fatalf("summary model calls = %d, want none before hook policy is known", summaries)
 	}
-	history, err := stores.ChatHistory.Read(ctx, session.ID)
+	history, err := stores.ChatHistory.Read(ctx, chathistory.ConversationID(session.ID))
 	if err != nil {
 		t.Fatal(err)
 	}

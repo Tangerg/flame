@@ -25,6 +25,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
+	chathistory "github.com/Tangerg/scope/core/history"
 )
 
 func segmentTestCost(t *testing.T, usd float64) accounting.Cost {
@@ -478,7 +479,7 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 	history := sqlite.NewTranscriptStore(db)
 	messages := sqlite.NewMessageStore(db)
 	effects := mustNewEffects(Config{
-		State: store, Transcript: history, Conversation: messages,
+		State: store, Transcript: history, Conversation: mustConversationStore(t, messages),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunInTx(ctx, db, fn)
 		},
@@ -502,7 +503,7 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 	if items, listErr := history.List(ctx, draft.SessionID); listErr != nil || len(items) != 0 {
 		t.Fatalf("transcript after stale write-set = %#v, %v; want empty", items, listErr)
 	}
-	if count, countErr := messages.Count(ctx, draft.SessionID); countErr != nil || count != 0 {
+	if count, countErr := messages.Count(ctx, chathistory.ConversationID(draft.SessionID)); countErr != nil || count != 0 {
 		t.Fatalf("conversation after stale write-set = %d, %v; want empty", count, countErr)
 	}
 	current, found, readErr := store.Run(ctx, draft.RunID)
@@ -2113,7 +2114,7 @@ type waitingCancellationSQLiteFixture struct {
 	effects               *Effects
 	interrupts            *persistence.InterruptStore
 	transcript            *sqlite.TranscriptStore
-	conversation          *sqlite.MessageStore
+	conversation          *persistence.ConversationStore
 	checkpoints           *persistence.ExecutorCheckpointStore
 	runState              *sqlite.RunStore
 	rootRun               run.Run
@@ -2544,7 +2545,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		sqliteOpeningStores{interrupts: interruptStore, transcript: transcriptStore},
 		Config{
 			ItemReplacer:        transcriptStore,
-			Conversation:        conversationStore,
+			Conversation:        mustConversationStore(t, conversationStore),
 			State:               state,
 			ExecutorCheckpoints: checkpointStore,
 			Tx: func(ctx context.Context, fn func(context.Context) error) error {
@@ -2572,7 +2573,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		effects:               effects,
 		interrupts:            interruptStore,
 		transcript:            transcriptStore,
-		conversation:          conversationStore,
+		conversation:          mustConversationStore(t, conversationStore),
 		checkpoints:           checkpointStore,
 		runState:              state,
 		rootRun:               rootRun,
@@ -2640,7 +2641,7 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 	}
 
 	effects := sqliteEffects(sqliteOpeningStores{transcript: history}, Config{
-		Conversation: messages,
+		Conversation: mustConversationStore(t, messages),
 		State:        state,
 		Tx:           func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
 	})
@@ -2698,7 +2699,7 @@ func TestCommitEventAppendsConversationBeforeResolvingTerminalWatermark(t *testi
 		t.Fatalf("admit: %v", admitErr)
 	}
 	effects := mustNewEffects(Config{
-		Conversation: messages,
+		Conversation: mustConversationStore(t, messages),
 		State:        state,
 		Tx:           func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
 	})
@@ -2713,7 +2714,7 @@ func TestCommitEventAppendsConversationBeforeResolvingTerminalWatermark(t *testi
 	}); commitEventErr != nil {
 		t.Fatalf("CommitEvent: %v", commitEventErr)
 	}
-	stored, err := messages.Read(ctx, draft.SessionID)
+	stored, err := messages.Read(ctx, chathistory.ConversationID(draft.SessionID))
 	if err != nil || len(stored) != 1 || stored[0].Text() != "done" {
 		t.Fatalf("conversation = %#v, %v", stored, err)
 	}
@@ -2748,7 +2749,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 	commitCtx, cancelCommit := context.WithCancel(ctx)
 	t.Cleanup(cancelCommit)
 	effects := mustNewEffects(Config{
-		Conversation: messages,
+		Conversation: mustConversationStore(t, messages),
 		State:        state,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
 			runInTxErr := sqlite.RunInTx(ctx, db, fn)
@@ -2813,7 +2814,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 	}
 	assertSingleMessage := func(label string) {
 		t.Helper()
-		got, readErr := messages.Read(ctx, draft.SessionID)
+		got, readErr := messages.Read(ctx, chathistory.ConversationID(draft.SessionID))
 		if readErr != nil || len(got) != 1 || got[0].Text() != "durable answer" {
 			t.Fatalf("%s conversation = %#v err=%v, want one durable answer", label, got, readErr)
 		}
@@ -2895,7 +2896,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 	messages := sqlite.NewMessageStore(db)
 	invocations := sqlite.NewModelInvocationStore(db)
 	baseConfig := Config{
-		Conversation: messages, ModelInvocations: invocations,
+		Conversation: mustConversationStore(t, messages), ModelInvocations: invocations,
 		State: state, RunProgress: state,
 	}
 	baseConfig.Tx = func(ctx context.Context, fn func(context.Context) error) error {
@@ -2975,7 +2976,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 	}
 	assertSingleMessage := func(label string) {
 		t.Helper()
-		got, readErr := messages.Read(ctx, draft.SessionID)
+		got, readErr := messages.Read(ctx, chathistory.ConversationID(draft.SessionID))
 		if readErr != nil || len(got) != 1 || got[0].Text() != "durable model answer" {
 			t.Fatalf("%s conversation = %#v err=%v, want one durable answer", label, got, readErr)
 		}
@@ -3061,7 +3062,7 @@ func TestRootTerminalCommitReclaimsChildStartReservations(t *testing.T) {
 	}
 	effects := mustNewEffects(Config{
 		Interrupts:          persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
-		Conversation:        messages,
+		Conversation:        mustConversationStore(t, messages),
 		State:               state,
 		ExecutorCheckpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
 		ChildRunStarts:      childStarts,
@@ -3191,4 +3192,15 @@ func requireSQLiteHealthy(t *testing.T, ctx context.Context, db *sql.DB) {
 	if err := foreignKeys.Err(); err != nil {
 		t.Fatalf("foreign_key_check rows: %v", err)
 	}
+}
+
+// mustConversationStore wraps the durable history store in the Session-keyed
+// port every consumer above persistence addresses it by.
+func mustConversationStore(t *testing.T, messages *sqlite.MessageStore) *persistence.ConversationStore {
+	t.Helper()
+	store, err := persistence.NewConversationStore(messages)
+	if err != nil {
+		t.Fatalf("conversation store: %v", err)
+	}
+	return store
 }

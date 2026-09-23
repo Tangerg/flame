@@ -208,15 +208,15 @@ func TestMessageStore_RoundTrip(t *testing.T) {
 		t.Fatalf("Read empty = %v (err %v), want empty", got, err)
 	}
 
-	err = store.Write(ctx, "conv-a", chat.NewUserMessage(chat.NewTextPart("hello")), chat.NewAssistantMessage(chat.NewTextPart("hi")))
+	_, err = store.Write(ctx, "conv-a", chat.NewUserMessage(chat.NewTextPart("hello")), chat.NewAssistantMessage(chat.NewTextPart("hi")))
 	if err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	err = store.Write(ctx, "conv-a", chat.NewUserMessage(chat.NewTextPart("again")))
+	_, err = store.Write(ctx, "conv-a", chat.NewUserMessage(chat.NewTextPart("again")))
 	if err != nil {
 		t.Fatalf("Write 2: %v", err)
 	}
-	err = store.Write(ctx, "conv-b", chat.NewUserMessage(chat.NewTextPart("other")))
+	_, err = store.Write(ctx, "conv-b", chat.NewUserMessage(chat.NewTextPart("other")))
 	if err != nil {
 		t.Fatalf("Write conv-b: %v", err)
 	}

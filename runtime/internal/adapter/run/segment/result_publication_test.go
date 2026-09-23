@@ -19,6 +19,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
+	chathistory "github.com/Tangerg/scope/core/history"
 )
 
 func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
@@ -44,7 +45,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			rollback := true
 			transactions := 0
 			effects := mustNewEffects(Config{
-				ExecutionTrees: trees, State: state, Transcript: history, Conversation: messages, ToolInvocations: sqlite.NewToolInvocationStore(db),
+				ExecutionTrees: trees, State: state, Transcript: history, Conversation: mustConversationStore(t, messages), ToolInvocations: sqlite.NewToolInvocationStore(db),
 				Tx: func(ctx context.Context, fn func(context.Context) error) error {
 					transactions++
 					err := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
@@ -82,7 +83,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			if found, err := state.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, draft.SegmentID, commit.ResultPublication.ID, commit.ResultPublication.Digest); err != nil || found {
 				t.Fatalf("rolled-back receipt = %t, %v", found, err)
 			}
-			if count, err := messages.Count(ctx, draft.SessionID); err != nil || count != 0 {
+			if count, err := messages.Count(ctx, chathistory.ConversationID(draft.SessionID)); err != nil || count != 0 {
 				t.Fatalf("rolled-back messages = %d, %v", count, err)
 			}
 			if items, err := history.List(ctx, draft.SessionID); err != nil || len(items) != 0 {
@@ -110,7 +111,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM tool_invocations WHERE state = 'completed'`).Scan(&journalCount); err != nil || journalCount != 1 {
 				t.Fatalf("journal = %d, %v", journalCount, err)
 			}
-			stored, err := messages.Read(ctx, draft.SessionID)
+			stored, err := messages.Read(ctx, chathistory.ConversationID(draft.SessionID))
 			if err != nil || !reflect.DeepEqual(stored, commit.ConversationMessages) {
 				t.Fatalf("canonical messages changed or duplicated: %+v, %v", stored, err)
 			}

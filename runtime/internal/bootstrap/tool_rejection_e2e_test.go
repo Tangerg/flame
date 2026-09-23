@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
+	chathistory "github.com/Tangerg/scope/core/history"
 )
 
 func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) {
@@ -102,7 +103,9 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 					t.Fatal(err)
 				}
 			}
-			readHistory = func(ctx context.Context) ([]chat.Message, error) { return stores.ChatHistory.Read(ctx, session.ID) }
+			readHistory = func(ctx context.Context) ([]chat.Message, error) {
+				return stores.ChatHistory.Read(ctx, chathistory.ConversationID(session.ID))
+			}
 			for range 2 {
 				started, events, err := api.StartRun(ctx, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "continue"}}})
 				if err != nil {

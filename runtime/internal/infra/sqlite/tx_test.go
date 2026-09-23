@@ -41,7 +41,7 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 		if insertErr := sess.Insert(ctx, value); insertErr != nil {
 			return insertErr
 		}
-		if writeErr := msg.Write(ctx, "s1", chat.NewUserMessage(chat.NewTextPart("hi"))); writeErr != nil {
+		if _, writeErr := msg.Write(ctx, "s1", chat.NewUserMessage(chat.NewTextPart("hi"))); writeErr != nil {
 			return writeErr
 		}
 		return boom // a later step fails (e.g. a DB IO error during import)
@@ -62,7 +62,8 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 		if insertErr := sess.Insert(ctx, value); insertErr != nil {
 			return insertErr
 		}
-		return msg.Write(ctx, "s2", chat.NewUserMessage(chat.NewTextPart("hi")))
+		_, writeErr := msg.Write(ctx, "s2", chat.NewUserMessage(chat.NewTextPart("hi")))
+		return writeErr
 	}); runInTxErr != nil {
 		t.Fatalf("commit tx: %v", runInTxErr)
 	}

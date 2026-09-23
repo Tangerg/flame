@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
+	chathistory "github.com/Tangerg/scope/core/history"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -131,7 +132,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 				t.Fatalf("model calls=%d, Tool executions=%d", calls.Load(), executions.Load())
 			}
 			if !delegated {
-				history, err := stores.ChatHistory.Read(ctx, session.ID)
+				history, err := stores.ChatHistory.Read(ctx, chathistory.ConversationID(session.ID))
 				if err != nil {
 					t.Fatal(err)
 				}

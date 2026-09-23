@@ -24,7 +24,7 @@ func TestMessageStorePreservesOpaqueProviderCallIDs(t *testing.T) {
 		chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{ID: id, Name: "inspect", Arguments: `{}`})),
 		chat.NewToolMessage(chat.ToolResult{ID: id, Name: "inspect", Output: chat.NewTextToolOutput("contents")}),
 	}
-	if err := store.Write(t.Context(), "conv", want...); err != nil {
+	if _, err := store.Write(t.Context(), "conv", want...); err != nil {
 		t.Fatal(err)
 	}
 	got, err := store.Read(t.Context(), "conv")
@@ -50,7 +50,7 @@ func TestMessageStore_ReplaceIsTransactional(t *testing.T) {
 	store := sqlite.NewMessageStore(db)
 	ctx := context.Background()
 
-	if writeErr := store.Write(ctx, "conv",
+	if _, writeErr := store.Write(ctx, "conv",
 		chat.NewUserMessage(chat.NewTextPart("one")), chat.NewUserMessage(chat.NewTextPart("two")), chat.NewUserMessage(chat.NewTextPart("three"))); writeErr != nil {
 		t.Fatalf("Write: %v", writeErr)
 	}
@@ -93,7 +93,7 @@ func TestMessageStore_CountMatchesReadLength(t *testing.T) {
 		t.Fatalf("Count of empty = (%d, %v), want (0, nil)", n, countErr)
 	}
 
-	if writeErr := store.Write(ctx, "conv",
+	if _, writeErr := store.Write(ctx, "conv",
 		chat.NewUserMessage(chat.NewTextPart("one")), chat.NewUserMessage(chat.NewTextPart("two")), chat.NewUserMessage(chat.NewTextPart("three"))); writeErr != nil {
 		t.Fatalf("Write: %v", writeErr)
 	}
@@ -117,7 +117,7 @@ func TestMessageStoreReadRejectsMalformedRows(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewMessageStore(db)
-	if err := store.Write(t.Context(), "conv", chat.NewUserMessage(chat.NewTextPart("valid"))); err != nil {
+	if _, err := store.Write(t.Context(), "conv", chat.NewUserMessage(chat.NewTextPart("valid"))); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.ExecContext(t.Context(),
@@ -143,7 +143,7 @@ func TestMessageStore_ReplaceRollsBackAsOneStep(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewMessageStore(db)
-	if err := store.Write(t.Context(), "conv",
+	if _, err := store.Write(t.Context(), "conv",
 		chat.NewUserMessage(chat.NewTextPart("one")), chat.NewUserMessage(chat.NewTextPart("two"))); err != nil {
 		t.Fatal(err)
 	}
@@ -182,11 +182,11 @@ func TestMessageStoreTruncateKeepsAPrefixInPlace(t *testing.T) {
 	ctx := t.Context()
 
 	for _, text := range []string{"one", "two", "three"} {
-		if err := store.Write(ctx, "conv", chat.NewUserMessage(chat.NewTextPart(text))); err != nil {
+		if _, err := store.Write(ctx, "conv", chat.NewUserMessage(chat.NewTextPart(text))); err != nil {
 			t.Fatalf("Write %s: %v", text, err)
 		}
 	}
-	if err := store.Write(ctx, "other", chat.NewUserMessage(chat.NewTextPart("keep"))); err != nil {
+	if _, err := store.Write(ctx, "other", chat.NewUserMessage(chat.NewTextPart("keep"))); err != nil {
 		t.Fatalf("Write other: %v", err)
 	}
 
@@ -213,7 +213,7 @@ func TestMessageStoreTruncateKeepsAPrefixInPlace(t *testing.T) {
 
 	// A later append continues after the kept prefix rather than reusing its
 	// coordinates, so a watermark taken now still means what it says.
-	if err := store.Write(ctx, "conv", chat.NewUserMessage(chat.NewTextPart("four"))); err != nil {
+	if _, err := store.Write(ctx, "conv", chat.NewUserMessage(chat.NewTextPart("four"))); err != nil {
 		t.Fatalf("Write after truncation: %v", err)
 	}
 	after, _ := store.Read(ctx, "conv")

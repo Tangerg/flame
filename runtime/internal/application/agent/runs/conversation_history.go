@@ -14,10 +14,15 @@ import (
 
 var errConversationSessionIDRequired = errors.New("runs: conversation session ID is required")
 
-// ConversationStore is the exact persistence capability consumed by conversation use
-// cases. Read transfers ownership of decoded messages to the caller. Write and
-// Replace borrow messages only until return; retained values must be copied.
-// Replace must atomically install the complete sequence.
+// ConversationStore is the exact persistence capability consumed by conversation
+// use cases, addressed by the Session that owns the conversation. Read transfers
+// ownership of decoded messages to the caller. Write and Replace borrow messages
+// only until return; retained values must be copied. Replace must atomically
+// install the complete sequence.
+//
+// Write reports a batch whose effect the store could not observe by joining
+// [ErrConversationWriteUncertain]: such a write must not be retried as though it
+// had definitely been rejected.
 type ConversationStore interface {
 	Read(ctx context.Context, sessionID string) ([]chat.Message, error)
 	Write(ctx context.Context, sessionID string, messages ...chat.Message) error
@@ -27,7 +32,13 @@ type ConversationStore interface {
 	// durable step, so retention neither reads the history back nor needs the
 	// caller to hold a transaction for the two halves to agree.
 	Truncate(ctx context.Context, sessionID string, keepN int) error
+	Clear(ctx context.Context, sessionID string) error
 }
+
+// ErrConversationWriteUncertain marks an append whose durable effect is unknown.
+// A caller that retries it may duplicate the batch, so it is a distinct fact
+// from a write the store proved it rejected.
+var ErrConversationWriteUncertain = errors.New("runs: conversation write outcome is unknown")
 
 // ConversationCompactionStore is the exact persistence capability for coordinate-changing
 // conversation rewrites. Reading Runs and applying the decided replacement are
@@ -196,7 +207,7 @@ func (m *ConversationHistory) Clear(ctx context.Context, sessionID string) error
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return err
 	}
-	if err := m.store.Replace(ctx, sessionID); err != nil {
+	if err := m.store.Clear(ctx, sessionID); err != nil {
 		return fmt.Errorf("runs: clear conversation for Session %q: %w", sessionID, err)
 	}
 	return nil

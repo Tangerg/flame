@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
+	chathistory "github.com/Tangerg/scope/core/history"
 )
 
 const modelCallsBeforeMidRunCompaction = 12
@@ -119,7 +120,7 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 			modelCallsBeforeMidRunCompaction,
 		)
 	}
-	history, err := stores.ChatHistory.Read(ctx, session.ID)
+	history, err := stores.ChatHistory.Read(ctx, chathistory.ConversationID(session.ID))
 	if err != nil {
 		t.Fatal(err)
 	}

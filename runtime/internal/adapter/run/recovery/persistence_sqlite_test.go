@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
+	chathistory "github.com/Tangerg/scope/core/history"
 )
 
 type alwaysResumable struct{}
@@ -160,9 +161,9 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	}
 
 	messageStore := sqlite.NewMessageStore(db)
-	if writeErr := messageStore.Write(
+	if _, writeErr := messageStore.Write(
 		ctx,
-		pending.SessionID,
+		chathistory.ConversationID(pending.SessionID),
 		corechat.NewUserMessage(corechat.NewTextPart("ask me")),
 		corechat.NewAssistantMessage(corechat.NewToolCallPart(corechat.ToolCall{
 			ID: "provider_call_claim", Name: "ask_user", Arguments: "{}",
@@ -173,7 +174,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 	store, err := New(Config{
 		Sessions: sessionStore, Runs: runStore, Interrupts: interruptStore,
-		Transcript: transcriptStore, Messages: messageStore,
+		Transcript: transcriptStore, Messages: mustConversationStore(t, messageStore),
 		GoalRuns: sqlite.NewGoalStore(db), ExecutorCheckpoints: checkpointStore,
 		ModelInvocations: sqlite.NewModelInvocationStore(db),
 		ToolInvocations:  sqlite.NewToolInvocationStore(db),
@@ -212,7 +213,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 		!failed || failure.Kind != run.FailureLost || stored.MessageMark() != 3 {
 		t.Fatalf("recovered Run = found:%t value:%+v err:%v", found, stored, err)
 	}
-	messages, err := messageStore.Read(ctx, pending.SessionID)
+	messages, err := messageStore.Read(ctx, chathistory.ConversationID(pending.SessionID))
 	if err != nil || len(messages) != 3 || messages[2].Role != corechat.RoleTool ||
 		len(messages[2].Parts) != 1 || messages[2].Parts[0].ToolResult == nil ||
 		messages[2].Parts[0].ToolResult.ID != "provider_call_claim" ||
@@ -294,7 +295,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	failingStore, err := New(Config{
 		Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db),
 		Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
-		Transcript: sqlite.NewTranscriptStore(db), Messages: sqlite.NewMessageStore(db),
+		Transcript: sqlite.NewTranscriptStore(db), Messages: mustConversationStore(t, sqlite.NewMessageStore(db)),
 		ExecutorCheckpoints: checkpointStore,
 		ModelInvocations:    sqlite.NewModelInvocationStore(db),
 		ToolInvocations:     sqlite.NewToolInvocationStore(db),
@@ -331,7 +332,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	store, err := New(Config{
 		Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db),
 		Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
-		Transcript: sqlite.NewTranscriptStore(db), Messages: sqlite.NewMessageStore(db),
+		Transcript: sqlite.NewTranscriptStore(db), Messages: mustConversationStore(t, sqlite.NewMessageStore(db)),
 		ExecutorCheckpoints: checkpointStore,
 		ModelInvocations:    sqlite.NewModelInvocationStore(db),
 		ToolInvocations:     sqlite.NewToolInvocationStore(db),
@@ -456,7 +457,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("SaveCheckpoint: %v", saveCheckpointErr)
 	}
-	if writeErr := messageStore.Write(
+	if _, writeErr := messageStore.Write(
 		ctx,
 		"session",
 		corechat.NewUserMessage(corechat.NewTextPart("recover this")),
@@ -472,7 +473,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		Runs:       runStore,
 		Interrupts: interruptStore,
 		Transcript: transcriptStore,
-		Messages:   messageStore,
+		Messages:   mustConversationStore(t, messageStore),
 		GoalRuns: goalRunRecorderFunc(func(context.Context, goal.RunRecord) error {
 			return rollbackFailure
 		}),
@@ -522,7 +523,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		Runs:                runStore,
 		Interrupts:          interruptStore,
 		Transcript:          transcriptStore,
-		Messages:            messageStore,
+		Messages:            mustConversationStore(t, messageStore),
 		GoalRuns:            goalStore,
 		ExecutorCheckpoints: checkpointStore,
 		ModelInvocations:    modelInvocations,
@@ -661,7 +662,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	}
 	persistence, err := New(Config{
 		Sessions: sessionStore, Runs: runStore, Interrupts: interruptStore, Transcript: transcriptStore,
-		Messages: sqlite.NewMessageStore(db), GoalRuns: sqlite.NewGoalStore(db), ExecutorCheckpoints: checkpointStore,
+		Messages: mustConversationStore(t, sqlite.NewMessageStore(db)), GoalRuns: sqlite.NewGoalStore(db), ExecutorCheckpoints: checkpointStore,
 		ModelInvocations: sqlite.NewModelInvocationStore(db), ToolInvocations: sqlite.NewToolInvocationStore(db),
 		ChildRunStarts: sqlite.NewChildRunStartReservationStore(db),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
@@ -689,4 +690,15 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	if _, err := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); err != nil {
 		t.Fatalf("checkpoint after rejection: %v", err)
 	}
+}
+
+// mustConversationStore wraps the durable history store in the Session-keyed
+// port recovery addresses it by.
+func mustConversationStore(t *testing.T, messages *sqlite.MessageStore) *persistence.ConversationStore {
+	t.Helper()
+	store, err := persistence.NewConversationStore(messages)
+	if err != nil {
+		t.Fatalf("conversation store: %v", err)
+	}
+	return store
 }

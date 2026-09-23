@@ -17,14 +17,17 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func newCompactionFixture(t *testing.T) (*sql.DB, *sqlite.MessageStore, *sqlite.RunStore, *runsapp.ConversationHistory) {
+func newCompactionFixture(t *testing.T) (*sql.DB, *persistence.ConversationStore, *sqlite.RunStore, *runsapp.ConversationHistory) {
 	t.Helper()
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	messages := sqlite.NewMessageStore(db)
+	messages, err := persistence.NewConversationStore(sqlite.NewMessageStore(db))
+	if err != nil {
+		t.Fatal(err)
+	}
 	runs := sqlite.NewRunStore(db)
 	compactions, err := persistence.NewConversationCompactions(
 		messages,
@@ -47,7 +50,7 @@ func newCompactionFixture(t *testing.T) (*sql.DB, *sqlite.MessageStore, *sqlite.
 	return db, messages, runs, service
 }
 
-func seedCompactionHistory(t *testing.T, messages *sqlite.MessageStore, runs *sqlite.RunStore) []chat.Message {
+func seedCompactionHistory(t *testing.T, messages *persistence.ConversationStore, runs *sqlite.RunStore) []chat.Message {
 	t.Helper()
 	history := make([]chat.Message, 0, 8)
 	for index := range 4 {
