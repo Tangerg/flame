@@ -144,7 +144,7 @@ func (t *toolGroupBlock) Draw(view grid.View) {
 		if y >= height {
 			return
 		}
-		tool.Draw(view.Sub(grid.Rect(toolContentInset, y, childWidth, min(rows, height-y))))
+		tool.Draw(view.Sub(grid.Area(toolContentInset, y, childWidth, min(rows, height-y))))
 		y += rows
 	}
 }

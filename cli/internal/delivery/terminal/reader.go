@@ -372,7 +372,7 @@ func (r *readerSectionBlock) Draw(view grid.View) {
 	if y > 0 {
 		view.Text(0, 0, r.title, r.theme.Strong)
 	}
-	r.content.Draw(view.Sub(grid.Rect(0, y, width, max(height-y-1, 0))))
+	r.content.Draw(view.Sub(grid.Area(0, y, width, max(height-y-1, 0))))
 }
 
 func (r *readerSectionBlock) Rows(width int) []text.Row {

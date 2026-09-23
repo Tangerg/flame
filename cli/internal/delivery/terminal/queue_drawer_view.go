@@ -138,7 +138,7 @@ func (q *queueDrawer) drawSelectedPreview(view grid.View) int {
 }
 
 func (q *queueDrawer) drawEntry(view grid.View, entry promptqueue.Entry, index, rowY, width int) []queueHit {
-	row := grid.Rect(0, rowY, width, 1)
+	row := grid.Area(0, rowY, width, 1)
 	rowTarget := queueTarget{kind: queueTargetRow, id: entry.ID}
 	style := q.theme.Text
 	if index == q.selected || q.hovered.id == entry.ID {
@@ -188,7 +188,7 @@ func (q *queueDrawer) drawActions(view grid.View, row image.Rectangle, id prompt
 			style = style.Merge(grid.Style{Attr: grid.Bold | grid.Reverse})
 		}
 		view.Text(x, row.Min.Y, button.label, style)
-		area := grid.Rect(x, row.Min.Y, buttonWidth, 1)
+		area := grid.Area(x, row.Min.Y, buttonWidth, 1)
 		*hits = append(*hits, queueHit{area: area, target: button.target})
 		right = x
 	}

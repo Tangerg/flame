@@ -180,7 +180,7 @@ func (a *app) drawCompletion(frame headless.Frame) {
 	// body. The panel border, model footer and help row occupy real terminal
 	// cells; only the viewport above that chrome is available to the popup.
 	y := availableHeight - popupHeight
-	area := grid.Rect(1, y, popupWidth, popupHeight)
+	area := grid.Area(1, y, popupWidth, popupHeight)
 	inner := box.InnerRect(area.Size())
 	box.Draw(frame.View.Sub(area))
 	a.completion.Draw(frame.Sub(area).Sub(inner))

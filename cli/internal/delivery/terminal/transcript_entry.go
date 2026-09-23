@@ -47,7 +47,7 @@ func (t *transcriptEntry) Draw(view grid.View) {
 		t.content.Draw(view)
 		return
 	}
-	t.content.Draw(view.Sub(grid.Rect(inset, 0, contentWidth, height)))
+	t.content.Draw(view.Sub(grid.Area(inset, 0, contentWidth, height)))
 	if !t.selected {
 		return
 	}

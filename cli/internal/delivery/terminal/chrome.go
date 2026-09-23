@@ -89,7 +89,7 @@ func (s *sessionHeader) Draw(view grid.View) {
 		}
 	}
 	if height > 1 {
-		s.drawGoal(view.Sub(grid.Rect(0, 1, width, 1)))
+		s.drawGoal(view.Sub(grid.Area(0, 1, width, 1)))
 	}
 }
 
@@ -330,7 +330,7 @@ func (s *statusView) Draw(view grid.View) {
 			s.status.Draw(view)
 			return
 		}
-		s.status.Draw(view.Sub(grid.Rect(0, 0, width-rightWidth-1, 1)))
+		s.status.Draw(view.Sub(grid.Area(0, 0, width-rightWidth-1, 1)))
 		view.Text(width-rightWidth, 0, right, s.theme.Subtle)
 		return
 	}
@@ -352,7 +352,7 @@ func (s *statusView) Draw(view grid.View) {
 		return
 	}
 	rightWidth := text.Width(right)
-	kit.Label{Text: left, Style: style, Ellipsis: s.glyphs.Ellipsis}.Draw(view.Sub(grid.Rect(0, 0, width-rightWidth-1, 1)))
+	kit.Label{Text: left, Style: style, Ellipsis: s.glyphs.Ellipsis}.Draw(view.Sub(grid.Area(0, 0, width-rightWidth-1, 1)))
 	view.Text(width-rightWidth, 0, right, s.theme.Subtle)
 }
 

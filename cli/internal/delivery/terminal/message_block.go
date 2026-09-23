@@ -136,10 +136,10 @@ func (m *markdownBlock) Draw(view grid.View) {
 		return
 	}
 	view.Text(0, 0, m.speaker, m.theme.Muted)
-	m.doc.Draw(view.Sub(grid.Rect(2, 1, max(width-2, 0), max(height-2, 0))))
+	m.doc.Draw(view.Sub(grid.Area(2, 1, max(width-2, 0), max(height-2, 0))))
 	if m.diagnostic != nil {
 		y := 1 + m.doc.HeightForWidth(max(width-2, 1))
-		m.diagnostic.Draw(view.Sub(grid.Rect(2, y, max(width-2, 0), max(height-y-1, 0))))
+		m.diagnostic.Draw(view.Sub(grid.Area(2, y, max(width-2, 0), max(height-y-1, 0))))
 	}
 }
 
