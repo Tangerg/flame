@@ -17,6 +17,7 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
+	oteltool "github.com/Tangerg/scope/otel/tool"
 )
 
 // The per-Run application-context seam (cwd, session, isolation, goal incarnation)
@@ -34,6 +35,7 @@ import (
 // each running its tools in its own project directory — without a
 // per-session engine.
 type Resolver struct {
+	telemetry     oteltool.Middleware
 	defaultCWD    string
 	skillsUserDir string                     // user-scope skills dir; merged under each Run's project skills
 	skillUsage    builtin.SkillUsageRecorder // records skill loads for the idle-lifecycle curator; nil → off
@@ -135,7 +137,12 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 	if d.ReadTracker == nil {
 		return nil, errors.New("toolset: resolver read tracker is nil")
 	}
+	telemetry, err := oteltool.NewMiddleware(oteltool.MiddlewareConfig{})
+	if err != nil {
+		return nil, fmt.Errorf("toolset: instrument tool calls: %w", err)
+	}
 	resolver := &Resolver{
+		telemetry:     telemetry,
 		defaultCWD:    d.DefaultCWD,
 		skillsUserDir: d.SkillsUserDir,
 		skillUsage:    d.SkillUsage,
@@ -287,7 +294,7 @@ func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group) (Manife
 	if err != nil {
 		return Manifest{}, err
 	}
-	return resolved.manifest(), nil
+	return resolved.manifest(r.telemetry)
 }
 
 func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (_ manifestBuilder, err error) {

@@ -43,7 +43,9 @@ func TestResolverOffersSearchToolsOverDeferredCatalog(t *testing.T) {
 	names := make(map[string]bool, len(resolved))
 	for _, tool := range resolved {
 		names[tool.Definition().Name] = true
-		if d, ok := tool.(deferredNamer); ok {
+		// Telemetry and policy decorators keep an optional capability reachable
+		// only through the wrapping chain, which is where Scope resolves it.
+		if d, found, err := toolcontract.Capability[deferredNamer](tool); err == nil && found {
 			search = d
 		}
 	}

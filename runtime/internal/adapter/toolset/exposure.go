@@ -1,9 +1,11 @@
 package toolset
 
 import (
+	"fmt"
 	"slices"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	oteltool "github.com/Tangerg/scope/otel/tool"
 )
 
 // Manifest is one Run's frozen, framework-neutral model Tool surface. Visible
@@ -62,10 +64,30 @@ func (m *manifestBuilder) deferTools(tools ...toolcontract.Tool) {
 	}
 }
 
-func (m manifestBuilder) manifest() Manifest {
-	return Manifest{
-		Visible:  slices.Clone(m.visible),
-		Deferred: slices.Clone(m.deferred),
-		close:    m.close,
+// manifest freezes the surface and instruments every Tool on it. Scope's Tool
+// telemetry owns the call boundary's span and duration without recording model
+// arguments or results, and keeps the capability chain reachable through
+// Unwrap, so identity resolution still sees the original Tool.
+func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, error) {
+	visible, err := instrumentTools(telemetry, m.visible)
+	if err != nil {
+		return Manifest{}, err
 	}
+	deferred, err := instrumentTools(telemetry, m.deferred)
+	if err != nil {
+		return Manifest{}, err
+	}
+	return Manifest{Visible: visible, Deferred: deferred, close: m.close}, nil
+}
+
+func instrumentTools(telemetry oteltool.Middleware, tools []toolcontract.Tool) ([]toolcontract.Tool, error) {
+	instrumented := make([]toolcontract.Tool, 0, len(tools))
+	for _, candidate := range tools {
+		wrapped, err := telemetry.Wrap(candidate)
+		if err != nil {
+			return nil, fmt.Errorf("toolset: instrument tool %q: %w", candidate.Definition().Name, err)
+		}
+		instrumented = append(instrumented, wrapped)
+	}
+	return instrumented, nil
 }

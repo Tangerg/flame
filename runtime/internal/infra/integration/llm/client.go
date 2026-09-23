@@ -303,7 +303,11 @@ func buildModel(ctx context.Context, spec ClientSpec) (chat.Model, error) {
 	if err != nil {
 		return nil, fmt.Errorf("llm: build %s model: %w", spec.provider, err)
 	}
-	return classifyModelFailures(model), nil
+	instrumented, err := instrumentModel(spec.provider, model)
+	if err != nil {
+		return nil, err
+	}
+	return classifyModelFailures(instrumented), nil
 }
 
 // BuildChat constructs one provider model and projects both its ordinary chat
