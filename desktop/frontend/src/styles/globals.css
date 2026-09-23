@@ -556,7 +556,7 @@
   --hairline-width: 0.5px;
   --composer-edge-width: var(--hairline-width);
 
-  --density-row-height: 34px;
+  --density-row-height: 30px;
   --density-row-gap: 8px;
   --density-navigation-gutter: 12px;
   --density-navigation-section-gap: 18px;
@@ -642,8 +642,8 @@
   --shadow-modal:
     var(--shadow-ring), 0 16px 32px -8px color-mix(in oklab, var(--shadow-cast) 95%, transparent);
   --shadow-composer-depth:
-    0 8px 16px -4px color-mix(in oklab, var(--shadow-cast) 60%, transparent),
-    0 0 26px -8px var(--shadow-cast);
+    0 2px 8px 0 color-mix(in oklab, var(--shadow-cast) 20%, transparent),
+    0 4px 80px 8px color-mix(in oklab, var(--shadow-cast) 12%, transparent);
   --shadow-well: none;
   --shadow-raised-chip: none;
   --shadow-surface-card: none;

@@ -135,8 +135,9 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "seam-line": "var(--color-border-soft)",
 
   "shadow-control": "none",
+  // Codex's composer elevation: a close contact shadow and a very wide, faint lift.
   "shadow-composer-depth":
-    "0 8px 16px -4px color-mix(in oklab, var(--shadow-cast) 60%, transparent), 0 0 26px -8px var(--shadow-cast)",
+    "0 2px 8px 0 color-mix(in oklab, var(--shadow-cast) 20%, transparent), 0 4px 80px 8px color-mix(in oklab, var(--shadow-cast) 12%, transparent)",
   "shadow-ring": "0 0 0 0.5px var(--seam-line)",
   "shadow-raised":
     "var(--shadow-ring), 0 1px 2px -1px color-mix(in oklab, var(--shadow-cast) 40%, transparent)",

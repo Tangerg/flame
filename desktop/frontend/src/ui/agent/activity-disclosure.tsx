@@ -270,13 +270,13 @@ export function AgentActivityDisclosure({
           >
             {leading ?? (icon ? <Icon name={icon} size="sm" /> : null)}
           </span>
-          <span data-slot="agent-activity-label" {...stylex.props(styles.label, type.uiSm)}>
+          <span data-slot="agent-activity-label" {...stylex.props(styles.label, type.uiMd)}>
             {label}
           </span>
           {/* The slot is always here, empty or not: it is what pushes the trailing status to
               the column a reader scans. */}
           {detail != null ? (
-            <span {...stylex.props(styles.detail, type.uiSm)}>{detail}</span>
+            <span {...stylex.props(styles.detail, type.uiMd)}>{detail}</span>
           ) : (
             <span aria-hidden {...stylex.props(styles.spacer)} />
           )}

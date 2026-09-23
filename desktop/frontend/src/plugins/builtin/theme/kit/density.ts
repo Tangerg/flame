@@ -11,7 +11,7 @@ const SCALE: Readonly<Record<UiDensity, number>> = {
 
 /** Comfortable-mode base values, in px. Navigation alone responds to density; reading and input keep their own rhythm. */
 const BASE_PX = {
-  rowHeight: 34,
+  rowHeight: 30,
   rowGap: 8,
   navigationGutter: 12,
   navigationSectionGap: 18,

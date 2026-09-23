@@ -87,8 +87,8 @@ export const messageStyles = stylex.create({
   bubble: {
     maxWidth: "70%",
     backgroundColor: "var(--app-user-message-surface)",
-    paddingInline: space.s3,
-    paddingBlock: space.s2,
+    paddingInline: space.s4,
+    paddingBlock: space.s2_5,
   },
   column: {
     position: "relative",

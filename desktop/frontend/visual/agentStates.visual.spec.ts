@@ -560,7 +560,7 @@ for (const theme of ["light", "dark"] as const) {
       background: material.expectedBackground,
       expectedBackground: material.expectedBackground,
       maxWidth: "70%",
-      padding: ["8px", "12px", "8px", "12px"],
+      padding: ["10px", "16px", "10px", "16px"],
       radius: material.superellipse ? "20px" : "16px",
       superellipse: material.superellipse,
     });
