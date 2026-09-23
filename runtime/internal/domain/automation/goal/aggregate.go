@@ -177,8 +177,8 @@ func New(
 		Capabilities:   capabilities.Normalized(),
 		IncarnationID:  incarnationID,
 		Revision:       firstRevision,
-		CreatedAt:      canonicalTime(now),
-		UpdatedAt:      canonicalTime(now),
+		CreatedAt:      now.UTC(),
+		UpdatedAt:      now.UTC(),
 	})
 }
 
@@ -206,8 +206,8 @@ func Restore(snapshot Snapshot) (Goal, error) {
 		used:          snapshot.Used,
 		incarnationID: incarnationID,
 		revision:      snapshot.Revision,
-		createdAt:     canonicalTime(snapshot.CreatedAt),
-		updatedAt:     canonicalTime(snapshot.UpdatedAt),
+		createdAt:     snapshot.CreatedAt.UTC(),
+		updatedAt:     snapshot.UpdatedAt.UTC(),
 	}
 	if err := value.ValidateSnapshot(); err != nil {
 		return Goal{}, err
@@ -483,7 +483,7 @@ func (g Goal) next(now time.Time) (Goal, error) {
 }
 
 func (g Goal) transitionTime(now time.Time) (time.Time, error) {
-	now = canonicalTime(now)
+	now = now.UTC()
 	if now.IsZero() {
 		return time.Time{}, fmt.Errorf("%w: transition time is required", ErrInvalid)
 	}
@@ -501,11 +501,4 @@ func validateSessionIdentity(value string) error {
 		return fmt.Errorf("%w: session ID: %v", ErrInvalid, err)
 	}
 	return nil
-}
-
-func canonicalTime(value time.Time) time.Time {
-	if value.IsZero() {
-		return time.Time{}
-	}
-	return value.UTC()
 }

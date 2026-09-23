@@ -184,7 +184,7 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	if err != nil {
 		return preparedSession{}, err
 	}
-	authoring, err := openSessionWorkbench(cfg.StateDirectory)
+	authoring, err := openWorkbench(cfg.StateDirectory)
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("open CLI workbench: %w", err)
 	}
@@ -198,21 +198,6 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	}
 	prepared.recoveryIssues = recovery
 	return prepared, nil
-}
-
-func openSessionWorkbench(directory string) (*workbench.Store, error) {
-	if strings.TrimSpace(directory) == "" {
-		return workbench.OpenMemory(workbench.Config{})
-	}
-	persistence, err := statefile.Open(directory)
-	if err != nil {
-		return nil, err
-	}
-	store, err := workbench.Open(persistence, workbench.Config{})
-	if err != nil {
-		return nil, errors.Join(err, persistence.Close())
-	}
-	return store, nil
 }
 
 func validatedSessionConfig(cfg Config) (*runtimebinding.Profile, settings.Config, keyBindings, error) {
@@ -376,4 +361,17 @@ func requireLoadedPlugin(results []extensions.LifecycleResult, id string) error 
 		return fmt.Errorf("session: required plugin %q is %s", id, result.Phase)
 	}
 	return fmt.Errorf("session: required plugin %q was not discovered", id)
+}
+
+// openWorkbench selects this surface's authoring state: an empty directory is
+// the session that keeps nothing on disk.
+func openWorkbench(directory string) (*workbench.Store, error) {
+	if strings.TrimSpace(directory) == "" {
+		return workbench.OpenMemory(workbench.Config{})
+	}
+	persistence, err := statefile.Open(directory)
+	if err != nil {
+		return nil, err
+	}
+	return workbench.Open(persistence, workbench.Config{})
 }

@@ -242,7 +242,7 @@ func CloneEvent(event Event) Event {
 		item.Block = item.Block.Clone()
 		return item
 	case PlanChanged:
-		item.Plan = *clonePlan(&item.Plan)
+		item.Plan = *ClonePlan(&item.Plan)
 		return item
 	case RunInterrupted:
 		item.Interactions = CloneInteractions(item.Interactions)

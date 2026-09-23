@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 const (
@@ -27,11 +28,11 @@ type interactionExecutionPolicy struct {
 }
 
 func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactionExecutionPolicy, error) {
-	deltaBuffer, err := positiveOrDefault(config.DeltaBufferCapacity, defaultInteractionDeltaBuffer, "delta buffer capacity")
+	deltaBuffer, err := optional.Positive(config.DeltaBufferCapacity, defaultInteractionDeltaBuffer, "delta buffer capacity")
 	if err != nil {
 		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: Interaction policy: %w", err)
 	}
-	toolConcurrency, err := positiveOrDefault(config.MaxConcurrentToolCalls, defaultInteractionConcurrentToolCalls, "maximum concurrent Tool calls")
+	toolConcurrency, err := optional.Positive(config.MaxConcurrentToolCalls, defaultInteractionConcurrentToolCalls, "maximum concurrent Tool calls")
 	if err != nil {
 		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: Interaction policy: %w", err)
 	}
@@ -43,11 +44,11 @@ func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactio
 			"agentexec: Interaction policy: maximum concurrent Tool calls exceeds the Framework tree limit range",
 		)
 	}
-	unknownPoll, err := positiveOrDefault(config.UnknownEffectPollInterval, defaultUnknownEffectPollInterval, "unknown-Effect poll interval")
+	unknownPoll, err := optional.Positive(config.UnknownEffectPollInterval, defaultUnknownEffectPollInterval, "unknown-Effect poll interval")
 	if err != nil {
 		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: Interaction policy: %w", err)
 	}
-	statePoll, err := positiveOrDefault(config.StatePollInterval, defaultInteractionStatePoll, "state poll interval")
+	statePoll, err := optional.Positive(config.StatePollInterval, defaultInteractionStatePoll, "state poll interval")
 	if err != nil {
 		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: Interaction policy: %w", err)
 	}
@@ -65,26 +66,4 @@ func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactio
 		statePollInterval:         statePoll,
 		toolResultOffload:         toolResultOffload,
 	}, nil
-}
-
-// positiveNumber covers finite capacities and polling intervals.
-type positiveNumber interface {
-	~int | ~int64
-}
-
-// positiveOrDefault admits an optional override, or the fallback when none was
-// given. Both must be positive, because a zero limit is not a smaller limit —
-// it is a policy that admits nothing.
-func positiveOrDefault[T positiveNumber](value *T, fallback T, field string) (T, error) {
-	var zero T
-	if fallback <= zero {
-		return zero, fmt.Errorf("%s default must be positive", field)
-	}
-	if value == nil {
-		return fallback, nil
-	}
-	if *value <= zero {
-		return zero, fmt.Errorf("%s must be positive", field)
-	}
-	return *value, nil
 }

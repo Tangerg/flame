@@ -489,7 +489,7 @@ func TestConversationMatchesColdSnapshotSemantics(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			changed := snapshot
 			changed.Transcript = cloneBlocks(snapshot.Transcript)
-			changed.Plan = clonePlan(snapshot.Plan)
+			changed.Plan = ClonePlan(snapshot.Plan)
 			changed.Runs = []Run{snapshot.Runs[0].Clone()}
 			test.mutate(&changed)
 			if conversation.MatchesSnapshot(changed) {

@@ -27,22 +27,6 @@ func durationPointer(value time.Duration) *time.Duration {
 	return &value
 }
 
-// TestPositiveOrDefaultRefusesAnUnusableDefault covers the arm no policy value
-// can reach: the fallback is a composition-root constant, so only the rule
-// itself can refuse one that admits nothing.
-func TestPositiveOrDefaultRefusesAnUnusableDefault(t *testing.T) {
-	if _, err := positiveOrDefault[int](nil, 0, "tool concurrency"); err == nil {
-		t.Fatal("a zero signed default was accepted")
-	}
-	if _, err := positiveOrDefault[time.Duration](nil, 0, "poll interval"); err == nil {
-		t.Fatal("a zero duration default was accepted")
-	}
-	value, err := positiveOrDefault[int](nil, 3, "tool concurrency")
-	if err != nil || value != 3 {
-		t.Fatalf("positiveOrDefault(absent, 3) = (%d, %v)", value, err)
-	}
-}
-
 func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	model := newDelegatingStubModel()
 	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{

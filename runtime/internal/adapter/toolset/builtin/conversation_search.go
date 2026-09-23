@@ -10,10 +10,10 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 const (
@@ -31,7 +31,7 @@ func (c conversationSearchRequest) normalized() (query string, limit int, err er
 	if query == "" {
 		return "", 0, errors.New("query is required")
 	}
-	return query, toolarg.OptionalInt(c.Limit, conversationSearchDefaultLimit), nil
+	return query, optional.Value(c.Limit, conversationSearchDefaultLimit), nil
 }
 
 // ConversationSearch is the transcript full-text search capability this tool consumes.

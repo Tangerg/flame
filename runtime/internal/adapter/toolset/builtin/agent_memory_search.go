@@ -13,10 +13,10 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 const (
@@ -34,7 +34,7 @@ func (a agentMemorySearchRequest) normalized() (query string, limit int, err err
 	if query == "" {
 		return "", 0, errors.New("query is required")
 	}
-	return query, toolarg.OptionalInt(a.Limit, agentMemorySearchDefaultLimit), nil
+	return query, optional.Value(a.Limit, agentMemorySearchDefaultLimit), nil
 }
 
 // AgentMemorySearch is the agent-memory search capability this tool consumes.

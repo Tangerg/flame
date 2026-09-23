@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 const (
@@ -56,11 +57,11 @@ type skillMiningPolicy struct {
 }
 
 func newSkillMiningPolicy(values SkillMiningPolicyValues) (skillMiningPolicy, error) {
-	threshold, err := positiveOrDefault(values.ComplexityThreshold, defaultSkillMiningComplexityThreshold, "complexity threshold")
+	threshold, err := optional.Positive(values.ComplexityThreshold, defaultSkillMiningComplexityThreshold, "complexity threshold")
 	if err != nil {
 		return skillMiningPolicy{}, fmt.Errorf("skill mining policy: %w", err)
 	}
-	cadence, err := positiveOrDefault(values.Cadence, defaultSkillMiningCadence, "cadence")
+	cadence, err := optional.Positive(values.Cadence, defaultSkillMiningCadence, "cadence")
 	if err != nil {
 		return skillMiningPolicy{}, fmt.Errorf("skill mining policy: %w", err)
 	}

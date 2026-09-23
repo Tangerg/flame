@@ -15,7 +15,7 @@ import (
 
 func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 	stateDirectory := t.TempDir()
-	store, err := openSessionWorkbench(stateDirectory)
+	store, err := openWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := openSessionWorkbench(stateDirectory)
+	store, err := openWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

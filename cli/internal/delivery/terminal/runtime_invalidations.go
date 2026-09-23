@@ -41,15 +41,15 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 }
 
 func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
-	a.refreshGoalReader(containsTopic(topics, protocol.TopicGoalsChanged))
-	a.refreshSkillReader(containsTopic(topics, protocol.TopicSkillsChanged))
-	a.refreshMCPReader(containsTopic(topics, protocol.TopicMCPChanged))
-	a.refreshScheduleReader(containsTopic(topics, protocol.TopicSchedulesChanged))
-	a.refreshKnowledgeReader(containsTopic(topics, protocol.TopicKnowledgeChanged))
-	a.refreshHooksReader(containsTopic(topics, protocol.TopicHooksChanged))
-	a.refreshModelReader(containsTopic(topics, protocol.TopicModelsChanged))
-	a.refreshApprovalReader(containsTopic(topics, protocol.TopicApprovalsChanged))
-	a.refreshAgentMemoryReader(containsTopic(topics, protocol.TopicAgentMemoryChanged))
+	a.refreshGoalReader(slices.Contains(topics, protocol.TopicGoalsChanged))
+	a.refreshSkillReader(slices.Contains(topics, protocol.TopicSkillsChanged))
+	a.refreshMCPReader(slices.Contains(topics, protocol.TopicMCPChanged))
+	a.refreshScheduleReader(slices.Contains(topics, protocol.TopicSchedulesChanged))
+	a.refreshKnowledgeReader(slices.Contains(topics, protocol.TopicKnowledgeChanged))
+	a.refreshHooksReader(slices.Contains(topics, protocol.TopicHooksChanged))
+	a.refreshModelReader(slices.Contains(topics, protocol.TopicModelsChanged))
+	a.refreshApprovalReader(slices.Contains(topics, protocol.TopicApprovalsChanged))
+	a.refreshAgentMemoryReader(slices.Contains(topics, protocol.TopicAgentMemoryChanged))
 	a.applySessionInvalidation(
 		invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}),
 		resyncAffectsSession(topics),
@@ -169,10 +169,10 @@ func (a *app) refreshRuntimeReader(query runtimeReaderQuery) {
 
 func goalInvalidationAffectsSession(event changefeed.Event, sessionID string) bool {
 	if event.Type == protocol.RuntimeResync {
-		return containsTopic(event.Topics, protocol.TopicGoalsChanged)
+		return slices.Contains(event.Topics, protocol.TopicGoalsChanged)
 	}
 	return event.Type == protocol.RuntimeGoalsChanged &&
-		(len(event.SessionIDs) == 0 || containsString(event.SessionIDs, sessionID))
+		(len(event.SessionIDs) == 0 || slices.Contains(event.SessionIDs, sessionID))
 }
 
 func (a *app) applySessionInvalidation(catalogChanged, currentSessionChanged bool) {
@@ -193,8 +193,8 @@ func (a *app) applySessionInvalidation(catalogChanged, currentSessionChanged boo
 
 func invalidatesSessionCatalog(event changefeed.Event) bool {
 	if event.Type == protocol.RuntimeResync {
-		return containsTopic(event.Topics, protocol.TopicSessionsChanged) ||
-			containsTopic(event.Topics, protocol.TopicRunsChanged)
+		return slices.Contains(event.Topics, protocol.TopicSessionsChanged) ||
+			slices.Contains(event.Topics, protocol.TopicRunsChanged)
 	}
 	return event.Type == protocol.RuntimeSessionsChanged ||
 		event.Type == protocol.RuntimeRunsChanged
@@ -214,14 +214,14 @@ func invalidationAffectsSession(event changefeed.Event, sessionID, runID string)
 	}
 	switch event.Type {
 	case protocol.RuntimeSessionsChanged:
-		return len(event.SessionIDs) == 0 || containsString(event.SessionIDs, sessionID)
+		return len(event.SessionIDs) == 0 || slices.Contains(event.SessionIDs, sessionID)
 	case protocol.RuntimePlanChanged, protocol.RuntimeGoalsChanged:
-		return len(event.SessionIDs) == 0 || containsString(event.SessionIDs, sessionID)
+		return len(event.SessionIDs) == 0 || slices.Contains(event.SessionIDs, sessionID)
 	case protocol.RuntimeRunsChanged, protocol.RuntimeInterruptsChanged:
 		if len(event.SessionIDs) != 0 {
-			return containsString(event.SessionIDs, sessionID)
+			return slices.Contains(event.SessionIDs, sessionID)
 		}
-		return len(event.RunIDs) == 0 || containsString(event.RunIDs, runID)
+		return len(event.RunIDs) == 0 || slices.Contains(event.RunIDs, runID)
 	default:
 		return false
 	}

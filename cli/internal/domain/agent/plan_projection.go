@@ -7,7 +7,9 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func clonePlan(plan *protocol.Plan) *protocol.Plan {
+// ClonePlan detaches a committed plan so a projection, a fixture, or a caller
+// holding it cannot mutate the steps another reader is still showing.
+func ClonePlan(plan *protocol.Plan) *protocol.Plan {
 	if plan == nil {
 		return nil
 	}

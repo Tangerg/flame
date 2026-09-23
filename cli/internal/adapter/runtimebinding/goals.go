@@ -163,15 +163,8 @@ func cloneGoal(value protocol.Goal) protocol.Goal {
 	if value.Reason != nil {
 		value.Reason = new(*value.Reason)
 	}
-	value.Used.CostUSD = cloneOptional(value.Used.CostUSD)
+	value.Used.CostUSD = clonePointer(value.Used.CostUSD)
 	return value
-}
-
-func cloneOptional[T any](value *T) *T {
-	if value == nil {
-		return nil
-	}
-	return new(*value)
 }
 
 func equalOptional[T comparable](left, right *T) bool {

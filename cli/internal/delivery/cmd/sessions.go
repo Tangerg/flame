@@ -286,7 +286,7 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 			if err != nil {
 				return err
 			}
-			authoring, err := openCommandWorkbench(stateDirectory)
+			authoring, err := openWorkbench(stateDirectory)
 			if err != nil {
 				return fmt.Errorf("open CLI workbench: %w", err)
 			}
@@ -325,21 +325,6 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Confirm deletion")
 	cmd.ValidArgsFunction = completeSessionIDs(provider)
 	return cmd
-}
-
-func openCommandWorkbench(directory string) (*workbench.Store, error) {
-	if strings.TrimSpace(directory) == "" {
-		return workbench.OpenMemory(workbench.Config{})
-	}
-	persistence, err := statefile.Open(directory)
-	if err != nil {
-		return nil, err
-	}
-	store, err := workbench.Open(persistence, workbench.Config{})
-	if err != nil {
-		return nil, errors.Join(err, persistence.Close())
-	}
-	return store, nil
 }
 
 func completeFirstSessionArgument(provider runtimeProvider) cobra.CompletionFunc {
@@ -388,4 +373,17 @@ func relativeAge(t time.Time) string {
 	default:
 		return strconv.Itoa(int(d.Hours()/24)) + "d ago"
 	}
+}
+
+// openWorkbench selects this surface's authoring state: an empty directory is
+// the session that keeps nothing on disk.
+func openWorkbench(directory string) (*workbench.Store, error) {
+	if strings.TrimSpace(directory) == "" {
+		return workbench.OpenMemory(workbench.Config{})
+	}
+	persistence, err := statefile.Open(directory)
+	if err != nil {
+		return nil, err
+	}
+	return workbench.Open(persistence, workbench.Config{})
 }

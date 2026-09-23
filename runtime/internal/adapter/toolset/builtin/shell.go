@@ -12,10 +12,10 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 // Shell tools over a shared [exec.Shells]: the primary `shell` tool plus
@@ -65,7 +65,7 @@ func (s shellArgs) timeout() (exec.Timeout, error) {
 }
 
 func (s shellArgs) autoBackgroundAfter() (time.Duration, error) {
-	after := toolarg.OptionalInt(s.AutoBackgroundAfterSeconds, defaultAutoBackgroundSeconds)
+	after := optional.Value(s.AutoBackgroundAfterSeconds, defaultAutoBackgroundSeconds)
 	if int64(after) > math.MaxInt64/int64(time.Second) {
 		return 0, errors.New("shell: auto_background_after_seconds exceeds duration range")
 	}

@@ -160,7 +160,7 @@ func (r *Runtime) GetSession(ctx context.Context, id string) (agent.SessionSnaps
 		Session:    state.meta,
 		Transcript: make([]agent.Block, len(state.items)),
 		Runs:       make([]agent.Run, 0, len(state.runs)),
-		Plan:       cloneCommittedPlan(state.plan),
+		Plan:       agent.ClonePlan(state.plan),
 	}
 	for i, item := range state.items {
 		snapshot.Transcript[i] = item.block.Clone()
@@ -391,7 +391,7 @@ func (r *Runtime) resolveForkBoundary(source *sessionState, fromRunID string) (f
 	}
 
 	boundaryRunID := source.runs[boundaryIndex]
-	return forkBoundary{plan: cloneCommittedPlan(source.planAtRun[boundaryRunID])}, nil
+	return forkBoundary{plan: agent.ClonePlan(source.planAtRun[boundaryRunID])}, nil
 }
 
 func (r *Runtime) DeleteSession(ctx context.Context, in agent.DeleteSession) error {
@@ -434,19 +434,6 @@ func (r *Runtime) seedHistory() {
 		durableItem{runID: run.id, block: agent.Block{ID: "demo_answer", RunID: run.id, Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "The fixed sleep races the janitor. Wait for its sweep signal instead."}},
 	)
 	state.planAtRun = map[string]*protocol.Plan{run.id: nil}
-}
-
-func cloneCommittedPlan(plan *protocol.Plan) *protocol.Plan {
-	if plan == nil {
-		return nil
-	}
-	cloned := *plan
-	if plan.State != nil {
-		state := *plan.State
-		state.Steps = slices.Clone(plan.State.Steps)
-		cloned.State = &state
-	}
-	return &cloned
 }
 
 func commitInitialPlan(sessionID string, at time.Time, steps []protocol.PlanStep) (*protocol.Plan, error) {

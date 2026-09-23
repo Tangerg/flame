@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
@@ -131,7 +132,7 @@ func (r runtimeChangeMonitor) run(ctx context.Context) error {
 		return r.runWithoutWatch(ctx)
 	}
 	requested := changefeed.Subscription{Topics: topics}
-	if r.observesWorkspace() && containsTopic(topics, protocol.TopicFilesChanged) {
+	if r.observesWorkspace() && slices.Contains(topics, protocol.TopicFilesChanged) {
 		requested.Watches = []changefeed.Watch{{ID: workspaceWatchID, Workspace: r.workspace}}
 	}
 	subscriptions, err := r.subscriptionLimits.Partition(requested)
@@ -158,7 +159,7 @@ func (r runtimeChangeMonitor) runSubscriptions(ctx context.Context, subscription
 
 	fileOwner := 0
 	for index, subscription := range subscriptions {
-		if containsTopic(subscription.Topics, protocol.TopicFilesChanged) {
+		if slices.Contains(subscription.Topics, protocol.TopicFilesChanged) {
 			fileOwner = index
 			break
 		}
@@ -286,7 +287,7 @@ func (r runtimeChangeMonitor) consumeChangeEvent(
 		return false, nil
 	}
 	if disposition == changefeed.SequenceGap {
-		if ownsFileProjection && containsTopic(topics, protocol.TopicFilesChanged) {
+		if ownsFileProjection && slices.Contains(topics, protocol.TopicFilesChanged) {
 			if err := r.refreshFiles(ctx); err != nil {
 				return false, err
 			}
@@ -434,26 +435,8 @@ func (r runtimeChangeMonitor) invalidatesFiles(event changefeed.Event) bool {
 		// same authoritative projection as a watch-produced signal.
 		return event.Workspace == "" || event.Workspace == r.workspace
 	case protocol.RuntimeResync:
-		return containsTopic(event.Topics, protocol.TopicFilesChanged) || containsString(event.WatchIDs, workspaceWatchID)
+		return slices.Contains(event.Topics, protocol.TopicFilesChanged) || slices.Contains(event.WatchIDs, workspaceWatchID)
 	default:
 		return false
 	}
-}
-
-func containsTopic(values []protocol.RuntimeTopic, target protocol.RuntimeTopic) bool {
-	for _, value := range values {
-		if value == target {
-			return true
-		}
-	}
-	return false
-}
-
-func containsString(values []string, target string) bool {
-	for _, value := range values {
-		if value == target {
-			return true
-		}
-	}
-	return false
 }

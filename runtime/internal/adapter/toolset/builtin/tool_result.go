@@ -18,9 +18,9 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 // defaultReadWindow bounds a read that names no limit, so a naive
@@ -90,7 +90,7 @@ func (t *toolResultReader) read(ctx context.Context, a toolResultReadArgs) (stri
 		return "No stored tool result with result_id " + a.ResultID + " — it may have been deleted with its session.", nil
 	}
 
-	limit := toolarg.OptionalInt(a.LimitBytes, defaultReadWindow)
+	limit := optional.Value(a.LimitBytes, defaultReadWindow)
 	start, end := window(body, a.OffsetBytes, limit)
 	header := fmt.Sprintf("[tool result %s — %d bytes total, showing bytes %d–%d]\n", a.ResultID, len(body), start, end)
 	if end < len(body) {

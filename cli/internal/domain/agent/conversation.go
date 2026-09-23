@@ -67,7 +67,7 @@ func NewConversation() *Conversation {
 }
 
 func (c *Conversation) Blocks() []Block      { return cloneBlocks(c.blocks) }
-func (c *Conversation) Plan() *protocol.Plan { return clonePlan(c.plan) }
+func (c *Conversation) Plan() *protocol.Plan { return ClonePlan(c.plan) }
 func (c *Conversation) PlanItems() []protocol.PlanStep {
 	if c.plan == nil || c.plan.State == nil {
 		return nil

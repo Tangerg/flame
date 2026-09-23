@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 const (
@@ -53,11 +54,11 @@ type memoryCurationPolicy struct {
 }
 
 func newMemoryCurationPolicy(values MemoryCurationPolicyValues) (memoryCurationPolicy, error) {
-	minPending, err := positiveOrDefault(values.MinPendingFacts, defaultMemoryCurationMinPending, "minimum pending facts")
+	minPending, err := optional.Positive(values.MinPendingFacts, defaultMemoryCurationMinPending, "minimum pending facts")
 	if err != nil {
 		return memoryCurationPolicy{}, fmt.Errorf("memory curation policy: %w", err)
 	}
-	maxPending, err := positiveOrDefault(values.MaxPendingFacts, defaultMemoryCurationMaxPending, "maximum pending facts")
+	maxPending, err := optional.Positive(values.MaxPendingFacts, defaultMemoryCurationMaxPending, "maximum pending facts")
 	if err != nil {
 		return memoryCurationPolicy{}, fmt.Errorf("memory curation policy: %w", err)
 	}
@@ -67,11 +68,11 @@ func newMemoryCurationPolicy(values MemoryCurationPolicyValues) (memoryCurationP
 	if minPending > maxPending {
 		return memoryCurationPolicy{}, fmt.Errorf("memory curation policy: minimum pending facts %d exceeds maximum %d", minPending, maxPending)
 	}
-	maxTokens, err := positiveOrDefault(values.MaxTokens, defaultMemoryCurationMaxTokens, "maximum tokens")
+	maxTokens, err := optional.Positive(values.MaxTokens, defaultMemoryCurationMaxTokens, "maximum tokens")
 	if err != nil {
 		return memoryCurationPolicy{}, fmt.Errorf("memory curation policy: %w", err)
 	}
-	maxAge, err := positiveOrDefault(values.MaxAge, defaultMemoryCurationMaxAge, "maximum age")
+	maxAge, err := optional.Positive(values.MaxAge, defaultMemoryCurationMaxAge, "maximum age")
 	if err != nil {
 		return memoryCurationPolicy{}, fmt.Errorf("memory curation policy: %w", err)
 	}

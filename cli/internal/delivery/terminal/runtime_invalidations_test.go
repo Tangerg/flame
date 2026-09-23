@@ -1006,13 +1006,13 @@ func TestRuntimeChangeMonitorPreservesAuthoredWorkspaceScopeAcrossPartitions(t *
 	}
 	for _, topic := range []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged} {
 		index := slices.IndexFunc(registrations, func(registration runtimeSubscriptionRegistration) bool {
-			return containsTopic(registration.subscription.Topics, topic)
+			return slices.Contains(registration.subscription.Topics, topic)
 		})
 		if index < 0 {
 			t.Fatalf("%s partition is missing", topic)
 		}
 		subscription := registrations[index].subscription
-		if !containsTopic(subscription.Topics, protocol.TopicFilesChanged) ||
+		if !slices.Contains(subscription.Topics, protocol.TopicFilesChanged) ||
 			!slices.Equal(subscription.Watches, []changefeed.Watch{{ID: workspaceWatchID, Workspace: "/workspace"}}) {
 			t.Fatalf("%s partition lost workspace scope: %+v", topic, subscription)
 		}
@@ -1024,7 +1024,7 @@ func TestRuntimeChangeMonitorPreservesAuthoredWorkspaceScopeAcrossPartitions(t *
 	}
 	fileRegistrations := make([]runtimeSubscriptionRegistration, 0, len(registrations))
 	for _, registration := range registrations {
-		if containsTopic(registration.subscription.Topics, protocol.TopicFilesChanged) {
+		if slices.Contains(registration.subscription.Topics, protocol.TopicFilesChanged) {
 			fileRegistrations = append(fileRegistrations, registration)
 			registration.events <- changefeed.Event{
 				Type: protocol.RuntimeFilesChanged, Sequence: 1,
@@ -1632,7 +1632,7 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 	replacementID := firstRuntimeSession(t, base)
 	stop()
 
-	store, err := openSessionWorkbench(stateDirectory)
+	store, err := openWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

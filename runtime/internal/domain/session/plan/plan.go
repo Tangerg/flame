@@ -107,7 +107,7 @@ func Restore(snapshot Snapshot) (State, error) {
 	state := State{
 		steps:     cloneSteps(snapshot.Steps),
 		revision:  revision,
-		updatedAt: canonicalTime(snapshot.UpdatedAt),
+		updatedAt: snapshot.UpdatedAt.UTC(),
 	}
 	if err := state.Validate(); err != nil {
 		return State{}, err
@@ -179,7 +179,7 @@ func (s State) Replace(steps []Step, updatedAt time.Time) (State, error) {
 	if err := ValidateSteps(steps); err != nil {
 		return State{}, err
 	}
-	updatedAt = canonicalTime(updatedAt)
+	updatedAt = updatedAt.UTC()
 	if updatedAt.IsZero() {
 		return State{}, fmt.Errorf("%w: replacement time is required", ErrInvalid)
 	}
@@ -201,7 +201,7 @@ func create(steps []Step, updatedAt time.Time) (State, error) {
 	if err := ValidateSteps(steps); err != nil {
 		return State{}, err
 	}
-	updatedAt = canonicalTime(updatedAt)
+	updatedAt = updatedAt.UTC()
 	if updatedAt.IsZero() {
 		return State{}, fmt.Errorf("%w: replacement time is required", ErrInvalid)
 	}
@@ -287,11 +287,4 @@ func cloneSteps(steps []Step) []Step {
 		return nil
 	}
 	return append([]Step(nil), steps...)
-}
-
-func canonicalTime(value time.Time) time.Time {
-	if value.IsZero() {
-		return time.Time{}
-	}
-	return value.UTC()
 }

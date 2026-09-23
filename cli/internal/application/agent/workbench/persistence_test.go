@@ -45,11 +45,7 @@ func OpenDirectory(directory string, config Config) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	store, err := Open(persistence, config)
-	if err != nil {
-		return nil, errors.Join(err, persistence.Close())
-	}
-	return store, nil
+	return Open(persistence, config)
 }
 
 type removeFailurePersistence struct {

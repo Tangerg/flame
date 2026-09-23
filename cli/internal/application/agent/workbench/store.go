@@ -146,17 +146,19 @@ func OpenMemory(config Config) (*Store, error) {
 }
 
 // Open loads an explicitly durable Store through its filesystem-neutral port.
-// The returned Store owns and closes storage when it implements io.Closer.
+// Ownership of storage transfers here in both outcomes: the Store closes it
+// when it implements io.Closer, and a failed construction closes it before
+// returning, so no caller has to remember which failures leak the handle.
 func Open(storage Persistence, config Config) (*Store, error) {
 	if missingPersistence(storage) {
 		return nil, errors.New("workbench persistence is not configured")
 	}
 	store, err := newStore(storage, config)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		err = store.loadState()
 	}
-	if err := store.loadState(); err != nil {
-		return nil, err
+	if err != nil {
+		return nil, errors.Join(err, closePersistence(storage))
 	}
 	return store, nil
 }

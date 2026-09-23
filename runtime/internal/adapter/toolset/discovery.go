@@ -21,10 +21,10 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -183,7 +183,7 @@ func (d *Discovery) search(ctx context.Context, args discoveryArgs) (string, err
 	if query == "" {
 		return "", toolfailure.Definite(ErrEmptyQuery)
 	}
-	limit := toolarg.OptionalInt(args.Limit, discoveryDefaultLimit)
+	limit := optional.Value(args.Limit, discoveryDefaultLimit)
 
 	var matches []discoverableTool
 	if rest, ok := strings.CutPrefix(query, discoverySelectPrefix); ok {

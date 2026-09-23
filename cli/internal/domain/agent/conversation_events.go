@@ -342,7 +342,7 @@ func (c *Conversation) applyPlanChanged(runID string, event PlanChanged) error {
 	if c.plan != nil && c.plan.State != nil && state.Revision <= c.plan.State.Revision {
 		return fmt.Errorf("%w: plan revision %d does not advance %d", ErrInvalidTransition, state.Revision, c.plan.State.Revision)
 	}
-	c.plan = clonePlan(&event.Plan)
+	c.plan = ClonePlan(&event.Plan)
 	return nil
 }
 

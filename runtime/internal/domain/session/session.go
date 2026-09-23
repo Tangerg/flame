@@ -95,7 +95,7 @@ type Session struct {
 // Fresh interactive creation and scheduled creation share this same domain
 // meaning; only the caller's source of their identity differs.
 func New(draft Draft) (Session, error) {
-	createdAt := canonicalTime(draft.CreatedAt)
+	createdAt := draft.CreatedAt.UTC()
 	snapshot := Snapshot{
 		ID: draft.ID, Title: strings.TrimSpace(draft.Title),
 		Workspace: draft.Workspace, Selection: draft.Selection,
@@ -114,8 +114,8 @@ func Restore(snapshot Snapshot) (Session, error) {
 	value := Session{
 		id: snapshot.ID, title: snapshot.Title, workspace: snapshot.Workspace,
 		selection: snapshot.Selection, parentID: snapshot.ParentID,
-		createdAt: canonicalTime(snapshot.CreatedAt),
-		updatedAt: canonicalTime(snapshot.UpdatedAt),
+		createdAt: snapshot.CreatedAt.UTC(),
+		updatedAt: snapshot.UpdatedAt.UTC(),
 		favorite:  snapshot.Favorite, isolated: snapshot.Isolated,
 		revision: revision,
 	}
@@ -198,7 +198,7 @@ func (s Session) Fork(id, title string, createdAt time.Time) (Session, error) {
 			title = s.title + " (fork)"
 		}
 	}
-	createdAt = canonicalTime(createdAt)
+	createdAt = createdAt.UTC()
 	return Restore(Snapshot{
 		ID: id, Title: title, Workspace: s.workspace, ParentID: s.id,
 		CreatedAt: createdAt, UpdatedAt: createdAt,
@@ -239,7 +239,7 @@ func (s Session) ReplaceWithRestore(restored Session, updatedAt time.Time) (Sess
 }
 
 func (s *Session) advance(previous Session, updatedAt time.Time) error {
-	updatedAt = canonicalTime(updatedAt)
+	updatedAt = updatedAt.UTC()
 	if updatedAt.IsZero() {
 		return fmt.Errorf("%w: update time is required", ErrInvalid)
 	}
@@ -349,11 +349,4 @@ func (s Session) sameValue(other Session) bool {
 		s.selection.Equal(other.selection) && s.parentID == other.parentID &&
 		s.createdAt.Equal(other.createdAt) && s.favorite == other.favorite &&
 		s.isolated == other.isolated
-}
-
-func canonicalTime(value time.Time) time.Time {
-	if value.IsZero() {
-		return time.Time{}
-	}
-	return value.UTC()
 }

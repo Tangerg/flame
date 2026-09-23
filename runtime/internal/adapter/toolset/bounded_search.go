@@ -13,12 +13,12 @@ import (
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolarg"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 const (
@@ -143,7 +143,7 @@ func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (
 	if err != nil {
 		return runtimePathSearchResponse{}, err
 	}
-	limit := toolarg.OptionalInt(request.MaxResults, defaultRuntimeSearchResults)
+	limit := optional.Value(request.MaxResults, defaultRuntimeSearchResults)
 	entries, err := workspaceadapter.SearchFiles(ctx, root, path, request.Pattern)
 	if err != nil {
 		if errors.Is(err, workspaceadapter.ErrListingTooLarge) {
@@ -197,7 +197,7 @@ func runtimeGrep(ctx context.Context, root string, request runtimeGrepRequest) (
 	if err != nil {
 		return runtimeSearchResponse{}, err
 	}
-	limit := toolarg.OptionalInt(request.MaxResults, defaultRuntimeSearchResults)
+	limit := optional.Value(request.MaxResults, defaultRuntimeSearchResults)
 	result, err := (workspaceadapter.FileBrowser{}).Grep(ctx, root, workspaceapp.GrepPlan{
 		Path: path, Pattern: pattern, Limit: limit,
 	})

@@ -420,7 +420,7 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 	}
 	next := NewConversation()
 	next.blocks = cloneBlocks(snapshot.Transcript)
-	next.plan = clonePlan(snapshot.Plan)
+	next.plan = ClonePlan(snapshot.Plan)
 	if next.plan != nil && next.plan.State != nil {
 		next.restoredPlanRevision = next.plan.State.Revision
 	}

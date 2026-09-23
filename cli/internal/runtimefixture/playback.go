@@ -316,7 +316,7 @@ func (r *Runtime) emitLocked(run *runState, event agent.Event) error {
 	case agent.BlockCompleted:
 		persistBlock(session, run.id, item.Block)
 	case agent.PlanChanged:
-		session.plan = cloneCommittedPlan(&item.Plan)
+		session.plan = agent.ClonePlan(&item.Plan)
 	case agent.RunProgress:
 		if item.ContextTokens != nil {
 			run.contextTokens = *item.ContextTokens
@@ -409,7 +409,7 @@ func (r *Runtime) finishLocked(run *runState, event agent.RunFinished) error {
 	if session.planAtRun == nil {
 		session.planAtRun = make(map[string]*protocol.Plan)
 	}
-	session.planAtRun[run.id] = cloneCommittedPlan(session.plan)
+	session.planAtRun[run.id] = agent.ClonePlan(session.plan)
 	session.active = ""
 	return r.setSessionStatusLocked(session, protocol.SessionStatusIdle)
 }

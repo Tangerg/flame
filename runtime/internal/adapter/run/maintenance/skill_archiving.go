@@ -6,6 +6,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"sync"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 const (
@@ -29,11 +31,11 @@ type skillArchivePolicy struct {
 }
 
 func newSkillArchivePolicy(values SkillArchivePolicyValues) (skillArchivePolicy, error) {
-	archiveAfter, err := positiveOrDefault(values.ArchiveAfter, defaultSkillArchiveAfter, "archive after")
+	archiveAfter, err := optional.Positive(values.ArchiveAfter, defaultSkillArchiveAfter, "archive after")
 	if err != nil {
 		return skillArchivePolicy{}, err
 	}
-	checkInterval, err := positiveOrDefault(values.CheckInterval, defaultSkillArchiveCheckInterval, "check interval")
+	checkInterval, err := optional.Positive(values.CheckInterval, defaultSkillArchiveCheckInterval, "check interval")
 	if err != nil {
 		return skillArchivePolicy{}, err
 	}
