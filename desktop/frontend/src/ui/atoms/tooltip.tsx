@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
+import type { StyleXStyles } from "@stylexjs/stylex";
 import type { ReactElement, ReactNode } from "react";
-import { cn } from "@/lib/classNames";
 import { leading, space, type } from "@/styles/tokens.stylex";
 import { TooltipPrimitive } from "@/ui/primitives";
 import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
@@ -8,8 +8,9 @@ import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
 // The tip's own measure. `FLOATING_TIP` already paints the elevated floating surface; an
 // inverted fill was a fourth material with no owner.
 const tip = stylex.create({
+  // zcode's tip: 12px copy on a 12px by 6px inset.
   measure: {
-    paddingInline: space.s2,
+    paddingInline: space.s3,
     paddingBlock: space.s1_5,
     fontFamily: "var(--font-sans)",
     lineHeight: leading.snug,
@@ -35,7 +36,8 @@ interface RichTooltipProps {
   side?: "top" | "right" | "bottom" | "left";
   sideOffset?: number;
   delay?: number;
-  className?: string;
+  /** Composed with the tip's own measure in one `stylex.props`, so a card can restate it. */
+  styles?: StyleXStyles;
 }
 
 export function TooltipProvider({ children }: TooltipProviderProps) {
@@ -54,7 +56,7 @@ export function Tooltip({ label, side = "top", sideOffset = 6, delayDuration, ch
       side={side}
       sideOffset={sideOffset}
       delay={delayDuration}
-      className={stylex.props(tip.label).className}
+      styles={tip.label}
     >
       {label}
     </RichTooltip>
@@ -67,9 +69,9 @@ export function RichTooltip({
   side = "top",
   sideOffset = 6,
   delay,
-  className,
+  styles,
 }: RichTooltipProps) {
-  const popup = stylex.props(FLOATING_TIP, tip.measure, type.uiMd);
+  const popup = stylex.props(FLOATING_TIP, type.uiSm, tip.measure, styles);
   return (
     <TooltipPrimitive.Root>
       <TooltipPrimitive.Trigger render={trigger} delay={delay} />
@@ -79,11 +81,7 @@ export function RichTooltip({
           side={side}
           sideOffset={sideOffset}
         >
-          <TooltipPrimitive.Popup
-            role="tooltip"
-            {...popup}
-            className={cn(popup.className, className)}
-          >
+          <TooltipPrimitive.Popup role="tooltip" {...popup}>
             {children}
           </TooltipPrimitive.Popup>
         </TooltipPrimitive.Positioner>

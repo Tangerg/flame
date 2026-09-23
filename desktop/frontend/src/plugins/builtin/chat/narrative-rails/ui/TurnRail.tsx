@@ -85,7 +85,7 @@ export function TurnRail() {
             key={turn.id}
             side="right"
             sideOffset={12}
-            className={stylex.props(tr.card).className}
+            styles={tr.card}
             trigger={
               <Pressable
                 type="button"

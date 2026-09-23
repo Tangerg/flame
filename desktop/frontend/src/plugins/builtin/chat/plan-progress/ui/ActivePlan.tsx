@@ -148,7 +148,7 @@ function PlanPill({
           side="top"
           sideOffset={8}
           delay={0}
-          className={stylex.props(ap.panel).className}
+          styles={ap.panel}
         >
           <ul {...stylex.props(ap.steps)}>
             {steps.map((step) => (

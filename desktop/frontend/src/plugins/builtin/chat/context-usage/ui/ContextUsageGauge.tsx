@@ -56,7 +56,7 @@ export function ContextUsageGauge() {
       trigger={trigger}
       side="top"
       sideOffset={4}
-      className={stylex.props(cu.panel).className}
+      styles={cu.panel}
     >
       <div {...stylex.props(vocab.column, gap.s0_5, ct.centre)}>
         <span {...stylex.props(vocab.muted)}>{t("context.usage.label")}</span>
