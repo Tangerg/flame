@@ -18,17 +18,17 @@ const (
 type ModelInvocationUsage struct {
 	InputTokens      int64  `json:"inputTokens"`
 	OutputTokens     int64  `json:"outputTokens"`
-	CacheReadTokens  *int64 `json:"cacheReadTokens,omitempty"`
-	CacheWriteTokens *int64 `json:"cacheWriteTokens,omitempty"`
-	ReasoningTokens  *int64 `json:"reasoningTokens,omitempty"`
+	CacheReadTokens  *int64 `json:"cacheReadTokens,omitzero"`
+	CacheWriteTokens *int64 `json:"cacheWriteTokens,omitzero"`
+	ReasoningTokens  *int64 `json:"reasoningTokens,omitzero"`
 }
 
 // ModelInvocation is an observed provider attempt. Unknown means recovery could
 // not establish its result; SettledAt then records that observation, not a
 // provider completion time. Content belongs to Items. Absent usage means it was not recorded, not zero consumption.
 type ModelInvocation struct {
-	FirstOutputLatencyMillis *int64                `json:"firstOutputLatencyMillis,omitempty"`
-	Usage                    *ModelInvocationUsage `json:"usage,omitempty"`
+	FirstOutputLatencyMillis *int64                `json:"firstOutputLatencyMillis,omitzero"`
+	Usage                    *ModelInvocationUsage `json:"usage,omitzero"`
 	CallID                   string                `json:"callId"`
 	RunID                    string                `json:"runId"`
 	SegmentID                string                `json:"segmentId"`

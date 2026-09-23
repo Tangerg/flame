@@ -2,7 +2,8 @@ package toolset_test
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"strings"
 	"testing"
@@ -24,7 +25,7 @@ func (m mcpTool) Definition() chat.ToolDefinition {
 	return chat.ToolDefinition{
 		Name:        m.name,
 		Description: m.desc,
-		InputSchema: json.RawMessage(`{"type":"object"}`),
+		InputSchema: jsontext.Value(`{"type":"object"}`),
 	}
 }
 

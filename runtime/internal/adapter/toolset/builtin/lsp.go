@@ -43,8 +43,8 @@ func BuildLSP(ci *codeintel.Analyzer, defaultCWD string) ([]toolcontract.Tool, e
 type lspInput struct {
 	Operation LSPOperation `json:"operation" jsonschema:"enum=definition,enum=references,enum=implementation,enum=hover,enum=incoming_calls,enum=outgoing_calls,enum=document_symbols,enum=workspace_symbols,enum=diagnostics" jsonschema_description:"Language-server query to run."`
 	Path      string       `json:"path,omitempty" jsonschema_description:"File path, absolute or relative to the workspace root. Required except for workspace_symbols."`
-	Line      *int         `json:"line,omitempty" jsonschema:"minimum=1" jsonschema_description:"1-based line of the symbol. Required for position operations and omitted otherwise."`
-	Character *int         `json:"character,omitempty" jsonschema:"minimum=1" jsonschema_description:"1-based character (column) of the symbol. Required for position operations and omitted otherwise."`
+	Line      *int         `json:"line,omitzero" jsonschema:"minimum=1" jsonschema_description:"1-based line of the symbol. Required for position operations and omitted otherwise."`
+	Character *int         `json:"character,omitzero" jsonschema:"minimum=1" jsonschema_description:"1-based character (column) of the symbol. Required for position operations and omitted otherwise."`
 	Query     string       `json:"query,omitempty" jsonschema_description:"Symbol name or substring to search for. Required for workspace_symbols."`
 }
 

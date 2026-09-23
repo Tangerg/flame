@@ -1,7 +1,7 @@
 package delivery
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"testing"
 	"time"
@@ -80,7 +80,7 @@ func TestPortableArtifactDecoderRejectsMessageFieldsItWouldDiscard(t *testing.T)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			artifact := validArtifact()
-			artifact.Messages = []json.RawMessage{json.RawMessage(test.message)}
+			artifact.Messages = []jsontext.Value{jsontext.Value(test.message)}
 
 			_, err := portableArtifactFromWire(artifact)
 			if !errors.Is(err, protocol.ErrInvalidParams) {
@@ -92,7 +92,7 @@ func TestPortableArtifactDecoderRejectsMessageFieldsItWouldDiscard(t *testing.T)
 
 func TestPortableArtifactDecoderPreservesOpenMessageMetadata(t *testing.T) {
 	artifact := validArtifact()
-	artifact.Messages = []json.RawMessage{json.RawMessage(`{
+	artifact.Messages = []jsontext.Value{jsontext.Value(`{
 		"parts": [{"metadata": {"futurePart": {"ratio": 1.0}}, "text": "hello", "kind": "text"}],
 		"metadata": {"futureMessage": {"nested": true}},
 		"role": "user"

@@ -50,7 +50,7 @@ type openrpcMethod struct {
 	// named param rather than a positional one.
 	ParamStructure string         `json:"paramStructure"`
 	Params         []openrpcParam `json:"params"`
-	Result         *openrpcResult `json:"result,omitempty"`
+	Result         *openrpcResult `json:"result,omitzero"`
 	Errors         []openrpcError `json:"errors,omitempty"`
 
 	// The x-flame extensions carry what OpenRPC has no vocabulary for: retry
@@ -63,7 +63,7 @@ type openrpcMethod struct {
 	Pagination   string          `json:"x-flame-pagination"`
 	Features     []string        `json:"x-flame-features,omitempty"`
 	Capabilities []capabilityRow `json:"x-flame-capabilityRules,omitempty"`
-	StreamEvent  *schema         `json:"x-flame-streamEvent,omitempty"`
+	StreamEvent  *schema         `json:"x-flame-streamEvent,omitzero"`
 
 	// RequestFrame references the whole params object. By-name params describe the
 	// fields one at a time and so cannot express a cross-field rule; the frame

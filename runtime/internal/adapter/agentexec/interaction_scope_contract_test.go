@@ -2,7 +2,8 @@ package agentexec
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"reflect"
 	"strings"
@@ -85,7 +86,7 @@ func TestCheckpointWireRejectsFieldAliases(t *testing.T) {
 type scopeOutputTool struct{ output chat.ToolOutput }
 
 func (scopeOutputTool) Definition() chat.ToolDefinition {
-	return chat.ToolDefinition{Name: "inspect", Description: "Inspect the workspace.", InputSchema: json.RawMessage(`{"type":"object","additionalProperties":false}`)}
+	return chat.ToolDefinition{Name: "inspect", Description: "Inspect the workspace.", InputSchema: jsontext.Value(`{"type":"object","additionalProperties":false}`)}
 }
 
 func (s scopeOutputTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {
@@ -112,7 +113,7 @@ func TestObservedToolPreservesBoundDefinition(t *testing.T) {
 		t.Fatal(err)
 	}
 	executable.definition.Name = "replacement"
-	executable.definition.InputSchema = json.RawMessage(`{"type":"object","required":["replacement"]}`)
+	executable.definition.InputSchema = jsontext.Value(`{"type":"object","required":["replacement"]}`)
 	got := visible[0].Definition()
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("observed Tool changed its admitted definition: got=%+v want=%+v", got, want)
@@ -133,8 +134,8 @@ func TestInteractionManifestUsesScopeAdmission(t *testing.T) {
 	}{
 		{"nil", toolset.Manifest{Visible: []toolcontract.Tool{nil}}, toolcontract.ErrInvalidTool},
 		{"typed nil", toolset.Manifest{Deferred: []toolcontract.Tool{absent}}, toolcontract.ErrInvalidTool},
-		{"invalid name", toolset.Manifest{Visible: []toolcontract.Tool{&scopeDefinitionTool{definition: chat.ToolDefinition{Name: "invalid tool", InputSchema: json.RawMessage(`{}`)}}}}, toolcontract.ErrInvalidTool},
-		{"invalid schema", toolset.Manifest{Deferred: []toolcontract.Tool{&scopeDefinitionTool{definition: chat.ToolDefinition{Name: "invalid_schema", InputSchema: json.RawMessage(`{"type":"invalid"}`)}}}}, toolcontract.ErrInvalidTool},
+		{"invalid name", toolset.Manifest{Visible: []toolcontract.Tool{&scopeDefinitionTool{definition: chat.ToolDefinition{Name: "invalid tool", InputSchema: jsontext.Value(`{}`)}}}}, toolcontract.ErrInvalidTool},
+		{"invalid schema", toolset.Manifest{Deferred: []toolcontract.Tool{&scopeDefinitionTool{definition: chat.ToolDefinition{Name: "invalid_schema", InputSchema: jsontext.Value(`{"type":"invalid"}`)}}}}, toolcontract.ErrInvalidTool},
 		{"visible collision", toolset.Manifest{Visible: []toolcontract.Tool{valid, valid}}, interaction.ErrInvalidToolSet},
 		{"deferred collision", toolset.Manifest{Deferred: []toolcontract.Tool{valid, valid}}, interaction.ErrInvalidToolSet},
 		{"cross visibility collision", toolset.Manifest{Visible: []toolcontract.Tool{valid}, Deferred: []toolcontract.Tool{valid}}, interaction.ErrInvalidToolSet},
@@ -164,10 +165,10 @@ func TestToolOffloadPreservesScopeOutputContract(t *testing.T) {
 		output  chat.ToolOutput
 		invalid bool
 	}{
-		{name: "invalid details", output: chat.ToolOutput{Details: json.RawMessage(`{"unterminated":"` + text)}, invalid: true},
-		{name: "structured content", output: chat.ToolOutput{Content: chat.NewTextToolOutput(text).Content, Details: json.RawMessage(`{"revision":9007199254740993}`)}},
+		{name: "invalid details", output: chat.ToolOutput{Details: jsontext.Value(`{"unterminated":"` + text)}, invalid: true},
+		{name: "structured content", output: chat.ToolOutput{Content: chat.NewTextToolOutput(text).Content, Details: jsontext.Value(`{"revision":9007199254740993}`)}},
 		{name: "cited text", output: chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: text, Citations: []chat.Citation{{Source: chat.CitationSource{Kind: chat.CitationSourceReference, Value: "source-1"}, Quote: "workspace observation"}}}}}},
-		{name: "annotated text", output: chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: text, Metadata: metadata.Map{"revision": json.RawMessage(`9007199254740993`)}}}}},
+		{name: "annotated text", output: chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: text, Metadata: metadata.Map{"revision": jsontext.Value(`9007199254740993`)}}}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			store := new(fakeOffloader)

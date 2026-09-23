@@ -2,7 +2,7 @@ package maintenance
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"iter"
@@ -250,7 +250,7 @@ func TestTrimForBudgetPreviewsOldNotRecentAndDoesNotMutate(t *testing.T) {
 	if len(gotArgs) >= len(bigArgs) || !strings.Contains(gotArgs, "_trimmed") {
 		t.Fatalf("args not trimmed: %q", gotArgs)
 	}
-	if !json.Valid([]byte(gotArgs)) {
+	if !jsontext.Value(gotArgs).IsValid() {
 		t.Fatalf("trimmed args must stay valid JSON, got %q", gotArgs)
 	}
 	if got := textToolOutput(t, trimmed[1].Parts[0].ToolResult.Output); len(got) >= len(bigResult) || !strings.Contains(got, "trimmed on compaction") {

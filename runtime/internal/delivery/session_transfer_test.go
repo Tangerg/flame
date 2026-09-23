@@ -2,7 +2,7 @@ package delivery
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"strings"
 	"testing"
@@ -228,7 +228,7 @@ func assertArtifactToolResult(t *testing.T, items []protocol.ArtifactItem, itemI
 		if artifactItem.Tool == nil {
 			t.Fatalf("artifact item %q has no tool", itemID)
 		}
-		got, err := json.Marshal(artifactItem.Tool.Result)
+		got, err := json.Marshal(artifactItem.Tool.Result, json.Deterministic(true))
 		if err != nil {
 			t.Fatalf("marshal tool result: %v", err)
 		}

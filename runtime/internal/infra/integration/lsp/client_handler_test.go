@@ -1,14 +1,14 @@
 package lsp
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"strings"
 	"testing"
 )
 
 func TestDecodePublishDiagnosticsValidatesNotification(t *testing.T) {
-	valid := json.RawMessage(`{"uri":"file:///main.go","version":2,"diagnostics":[{"range":{"start":{"line":1,"character":2},"end":{"line":1,"character":3}},"severity":1,"message":"broken"}]}`)
+	valid := jsontext.Value(`{"uri":"file:///main.go","version":2,"diagnostics":[{"range":{"start":{"line":1,"character":2},"end":{"line":1,"character":3}},"severity":1,"message":"broken"}]}`)
 	params, err := decodePublishDiagnostics(&valid)
 	if err != nil {
 		t.Fatalf("decodePublishDiagnostics: %v", err)
@@ -19,7 +19,7 @@ func TestDecodePublishDiagnosticsValidatesNotification(t *testing.T) {
 
 	tests := []struct {
 		name string
-		raw  *json.RawMessage
+		raw  *jsontext.Value
 		want string
 	}{
 		{name: "missing", want: "missing"},
@@ -41,7 +41,7 @@ func TestDecodePublishDiagnosticsValidatesNotification(t *testing.T) {
 }
 
 func TestDecodeConfigurationItemCountRequiresTypedList(t *testing.T) {
-	valid := json.RawMessage(`{"items":[{"section":"gopls"},{}]}`)
+	valid := jsontext.Value(`{"items":[{"section":"gopls"},{}]}`)
 	count, err := decodeConfigurationItemCount(&valid)
 	if err != nil {
 		t.Fatalf("decodeConfigurationItemCount: %v", err)
@@ -49,7 +49,7 @@ func TestDecodeConfigurationItemCountRequiresTypedList(t *testing.T) {
 	if count != 2 {
 		t.Fatalf("item count = %d, want 2", count)
 	}
-	for _, raw := range []*json.RawMessage{nil, rawMessage("null"), rawMessage(`{}`), rawMessage(`{"items":null}`), rawMessage(`{"items":[null]}`), rawMessage(`{"items":[false]}`), rawMessage("{")} {
+	for _, raw := range []*jsontext.Value{nil, rawMessage("null"), rawMessage(`{}`), rawMessage(`{"items":null}`), rawMessage(`{"items":[null]}`), rawMessage(`{"items":[false]}`), rawMessage("{")} {
 		if _, err := decodeConfigurationItemCount(raw); err == nil {
 			t.Errorf("decodeConfigurationItemCount(%v) succeeded, want error", raw)
 		}
@@ -81,7 +81,7 @@ func TestDiagnosticsProtocolErrorRemainsVisibleUntilValidPush(t *testing.T) {
 	}
 }
 
-func rawMessage(value string) *json.RawMessage {
-	raw := json.RawMessage(value)
+func rawMessage(value string) *jsontext.Value {
+	raw := jsontext.Value(value)
 	return &raw
 }

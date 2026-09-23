@@ -11,7 +11,7 @@ type WorkspaceQuery struct {
 type GetFileHeadRequest struct {
 	Workspace WorkspaceRef `json:"workspace"`
 	Path      string       `json:"path"`
-	Lines     *int         `json:"lines,omitempty"`
+	Lines     *int         `json:"lines,omitzero"`
 }
 
 // GrepRequest — workspace.files.search body. Query is a Go/RE2-compatible
@@ -23,7 +23,7 @@ type GrepRequest struct {
 	Workspace WorkspaceRef `json:"workspace"`
 	Query     string       `json:"query"`
 	Path      string       `json:"path,omitempty"`
-	Limit     *int         `json:"limit,omitempty"`
+	Limit     *int         `json:"limit,omitzero"`
 }
 
 // ListFilesRequest is the workspace.files.list body. It lists files under
@@ -48,9 +48,9 @@ type ListFilesRequest struct {
 type ReadFileRequest struct {
 	Workspace WorkspaceRef `json:"workspace"`
 	Path      string       `json:"path"`
-	StartLine *int         `json:"startLine,omitempty"`
-	EndLine   *int         `json:"endLine,omitempty"`
-	MaxBytes  *int         `json:"maxBytes,omitempty"`
+	StartLine *int         `json:"startLine,omitzero"`
+	EndLine   *int         `json:"endLine,omitzero"`
+	MaxBytes  *int         `json:"maxBytes,omitzero"`
 }
 
 // FileContent is the workspace.files.read result. Content is valid UTF-8 text;
@@ -85,7 +85,7 @@ type FileEntry struct {
 	Path       string        `json:"path"`
 	Name       string        `json:"name"`
 	Type       FileEntryType `json:"type"`
-	SizeBytes  *int64        `json:"sizeBytes,omitempty"`
+	SizeBytes  *int64        `json:"sizeBytes,omitzero"`
 	ModifiedAt time.Time     `json:"modifiedAt"`
 }
 

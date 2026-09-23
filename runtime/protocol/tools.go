@@ -16,5 +16,5 @@ type ToolSpec struct {
 type InvokeToolRequest struct {
 	Name      string         `json:"name"`
 	Arguments map[string]any `json:"arguments"`
-	Workspace *WorkspaceRef  `json:"workspace,omitempty"`
+	Workspace *WorkspaceRef  `json:"workspace,omitzero"`
 }

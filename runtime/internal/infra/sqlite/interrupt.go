@@ -136,8 +136,8 @@ type interruptPayload struct {
 	ItemOccurredAt int64            `json:"itemOccurredAt"`
 	RunID          string           `json:"runId"`
 	Kind           interrupt.Kind   `json:"kind"`
-	Approval       *approvalPayload `json:"approval,omitempty"`
-	Question       *questionPayload `json:"question,omitempty"`
+	Approval       *approvalPayload `json:"approval,omitzero"`
+	Question       *questionPayload `json:"question,omitzero"`
 }
 
 type approvalPayload struct {

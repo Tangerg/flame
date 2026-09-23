@@ -1,14 +1,14 @@
 package sqlite
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"testing"
 )
 
 func TestStoredJSONRejectsAmbiguousOrCorruptValues(t *testing.T) {
 	type record struct {
-		Name   string          `json:"name"`
-		Nested json.RawMessage `json:"nested"`
+		Name   string         `json:"name"`
+		Nested jsontext.Value `json:"nested"`
 	}
 	for _, encoded := range []string{
 		`{"name":"first","name":"second"}`,

@@ -42,7 +42,7 @@ const discoverySelectPrefix = "select:"
 
 type discoveryArgs struct {
 	Query string `json:"query" jsonschema:"minLength=1" jsonschema_description:"Describe the capability you need, or use select:name1,name2 to load exact tool names. Prefix a keyword with + to require it."`
-	Limit *int   `json:"limit,omitempty" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum keyword matches to load. Defaults to 5. Exact select: queries ignore this value."`
+	Limit *int   `json:"limit,omitzero" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum keyword matches to load. Defaults to 5. Exact select: queries ignore this value."`
 }
 
 // searchableTool is one withheld tool with its precomputed match terms.

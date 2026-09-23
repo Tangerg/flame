@@ -2,7 +2,8 @@ package dispatch
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
@@ -26,7 +27,7 @@ func TestMetadataExtractionCannotNormalizeInvalidParameters(t *testing.T) {
 		`{"_meta":{"ProtocolVersion":"ignored"},"provider":"deepseek"}`,
 		`{"_meta":{},"provider":"deepseek","APIKEY":null}`,
 	} {
-		request := &transport.Request{ID: testID("strict"), Method: "providers.update", Params: json.RawMessage(raw)}
+		request := &transport.Request{ID: testID("strict"), Method: "providers.update", Params: jsontext.Value(raw)}
 		failure := dispatchMetadataFailure(t, request)
 		if failure == nil || failure.Code != codeInvalidParams {
 			t.Fatalf("invalid parameters accepted: %q: %+v", raw, failure)
@@ -38,7 +39,7 @@ func TestExtractRequestMetaStripsTransportMember(t *testing.T) {
 	req := &transport.Request{
 		ID:     testID("1"),
 		Method: "runs.cancel",
-		Params: json.RawMessage(fmt.Sprintf(`{
+		Params: jsontext.Value(fmt.Sprintf(`{
 			"_meta": {
 				"protocolVersion": %q,
 				"clientInfo": { "name": "cli", "version": "0.1.0" },
@@ -74,7 +75,7 @@ func TestExtractRequestMetaRejectsMalformedMeta(t *testing.T) {
 	req := &transport.Request{
 		ID:     testID("1"),
 		Method: "runs.cancel",
-		Params: json.RawMessage(`{"_meta":"bad","runId":"run_1"}`),
+		Params: jsontext.Value(`{"_meta":"bad","runId":"run_1"}`),
 	}
 
 	_, rpcErr := extractRequestMeta(req)
@@ -90,7 +91,7 @@ func TestExtractRequestMetaRejectsNullMeta(t *testing.T) {
 	req := &transport.Request{
 		ID:     testID("1"),
 		Method: "runs.cancel",
-		Params: json.RawMessage(`{"_meta":null,"runId":"run_1"}`),
+		Params: jsontext.Value(`{"_meta":null,"runId":"run_1"}`),
 	}
 
 	_, rpcErr := extractRequestMeta(req)
@@ -121,7 +122,7 @@ func TestDispatchRejectsUnsupportedProtocolVersion(t *testing.T) {
 			req := &transport.Request{
 				ID:     testID("1"),
 				Method: "runs.cancel",
-				Params: json.RawMessage(fmt.Sprintf(`{"_meta":{"protocolVersion":%q},"runId":"run_1"}`, version)),
+				Params: jsontext.Value(fmt.Sprintf(`{"_meta":{"protocolVersion":%q},"runId":"run_1"}`, version)),
 			}
 
 			rpcErr := dispatchMetadataFailure(t, req)
@@ -154,7 +155,7 @@ func TestDispatchDoesNotMutateCallerRequestWhenStrippingMeta(t *testing.T) {
 	req := &transport.Request{
 		ID:     testID("1"),
 		Method: "unknown.method",
-		Params: json.RawMessage(fmt.Sprintf(`{"_meta":{"protocolVersion":%q},"value":1}`, protocol.ProtocolVersion)),
+		Params: jsontext.Value(fmt.Sprintf(`{"_meta":{"protocolVersion":%q},"value":1}`, protocol.ProtocolVersion)),
 	}
 	original := string(req.Params)
 	newTestRouter(t, nil).Dispatch(context.Background(), req)
@@ -172,7 +173,7 @@ func TestDispatchRefusesANonSuppressibleEvent(t *testing.T) {
 	req := &transport.Request{
 		ID:     testID("1"),
 		Method: "runs.cancel",
-		Params: json.RawMessage(`{
+		Params: jsontext.Value(`{
 			"_meta": {
 				"clientCapabilities": { "excludedEphemeralEvents": ["item.completed"] }
 			},
@@ -215,7 +216,7 @@ func TestDispatchValidatesMetadataWireShape(t *testing.T) {
 			req := &transport.Request{
 				ID:     testID("1"),
 				Method: "runs.cancel",
-				Params: json.RawMessage(`{"_meta":` + test.meta + `,"runId":"run_1"}`),
+				Params: jsontext.Value(`{"_meta":` + test.meta + `,"runId":"run_1"}`),
 			}
 
 			rpcErr := dispatchMetadataFailure(t, req)
@@ -240,7 +241,7 @@ func TestExtractRequestMetaRejectsUnknownFields(t *testing.T) {
 	req := &transport.Request{
 		ID:     testID("1"),
 		Method: "runs.cancel",
-		Params: json.RawMessage(`{"_meta":{"capabilities":{}},"runId":"run_1"}`),
+		Params: jsontext.Value(`{"_meta":{"capabilities":{}},"runId":"run_1"}`),
 	}
 
 	_, rpcErr := extractRequestMeta(req)

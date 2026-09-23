@@ -181,19 +181,19 @@ type Item struct {
 	// FinishedAt-StartedAt.
 	StartedAt      time.Time `json:"startedAt,omitzero"`
 	FinishedAt     time.Time `json:"finishedAt,omitzero"`
-	DurationMillis *int64    `json:"durationMillis,omitempty"`
+	DurationMillis *int64    `json:"durationMillis,omitzero"`
 
 	Content     []ContentBlock  `json:"content,omitempty"`
 	Phase       MessagePhase    `json:"phase,omitempty"`
 	Text        string          `json:"text,omitempty"`
 	Redacted    bool            `json:"redacted,omitzero"`
-	Question    *Question       `json:"question,omitempty"`
-	Tool        *ToolInvocation `json:"tool,omitempty"`
+	Question    *Question       `json:"question,omitzero"`
+	Tool        *ToolInvocation `json:"tool,omitzero"`
 	SafetyClass SafetyClass     `json:"safetyClass,omitempty"`
 	// ApprovalDecision is present only when this exact ToolCall crossed a human
 	// approval boundary. Auto-approved calls carry no decision.
 	ApprovalDecision ApprovalDecision `json:"approvalDecision,omitempty"`
-	Error            *ProblemData     `json:"error,omitempty"` // tool-level failure
+	Error            *ProblemData     `json:"error,omitzero"` // tool-level failure
 	// Summary / DroppedMessages describe a compaction Item at a safe model-call
 	// or Run boundary. Summary is the required user-readable semantic fold,
 	// without the model-only system-message preamble. DroppedMessages is the net
@@ -290,7 +290,7 @@ type DiffRow struct {
 	Text      string      `json:"text,omitempty"`
 	LeftLine  int         `json:"leftLine,omitzero"`
 	RightLine int         `json:"rightLine,omitzero"`
-	Code      *string     `json:"code,omitempty"`
+	Code      *string     `json:"code,omitzero"`
 }
 
 // ModelUsage is one model's usage slice: provider-reported
@@ -304,7 +304,7 @@ type ModelUsage struct {
 	CacheReadTokens  int64    `json:"cacheReadTokens,omitzero"`
 	CacheWriteTokens int64    `json:"cacheWriteTokens,omitzero"`
 	ReasoningTokens  int64    `json:"reasoningTokens,omitzero"`
-	CostUSD          *float64 `json:"costUsd,omitempty"`
+	CostUSD          *float64 `json:"costUsd,omitzero"`
 }
 
 // Usage is cumulative token usage: the embedded ModelUsage is

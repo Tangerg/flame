@@ -2,7 +2,7 @@ package maintenance
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"strings"
 	"testing"
 
@@ -237,7 +237,7 @@ func TestModelContextEstimateCountsToolDetailsOnlyWithoutContent(t *testing.T) {
 	output := chat.NewTextToolOutput("visible result")
 	message := chat.NewToolMessage(chat.ToolResult{ID: "details", Name: "inspect", Output: output})
 	baseline := mustEstimateModelContextTokens(t, []chat.Message{message}, nil, chat.Options{})
-	details := json.RawMessage(`"` + strings.Repeat("hidden", 2000) + `"`)
+	details := jsontext.Value(`"` + strings.Repeat("hidden", 2000) + `"`)
 	message.Parts[0].ToolResult.Output.Details = details
 	withContent := mustEstimateModelContextTokens(t, []chat.Message{message}, nil, chat.Options{})
 	if withContent != baseline {
@@ -246,7 +246,7 @@ func TestModelContextEstimateCountsToolDetailsOnlyWithoutContent(t *testing.T) {
 	if string(message.Parts[0].ToolResult.Output.Details) != string(details) {
 		t.Fatal("estimating context discarded structured tool details")
 	}
-	message.Parts[0].ToolResult.Output.Details = json.RawMessage(`{"invalid"`)
+	message.Parts[0].ToolResult.Output.Details = jsontext.Value(`{"invalid"`)
 	if _, err := estimateModelContextTokens([]chat.Message{message}, nil, chat.Options{}); err == nil {
 		t.Fatal("hidden details bypassed request validation")
 	}
@@ -264,7 +264,7 @@ func TestModelContextEstimateCountsToolManifestAndOptions(t *testing.T) {
 	tools := []chat.ToolDefinition{{
 		Name:        "inspect",
 		Description: description,
-		InputSchema: json.RawMessage(`{"type":"object","properties":{"path":{"type":"string"}}}`),
+		InputSchema: jsontext.Value(`{"type":"object","properties":{"path":{"type":"string"}}}`),
 	}}
 	options := chat.Options{Stop: []string{strings.Repeat("停止", 500)}}
 	complete := mustEstimateModelContextTokens(t, messages, tools, options)

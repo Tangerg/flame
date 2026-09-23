@@ -105,7 +105,7 @@ type RuntimeLimits struct {
 	// MaxConcurrentRuns is absent when the runtime enforces no process-wide Run
 	// cap. When present it is the strictly positive maximum enforced by the
 	// admission owner; clients must not invent a fallback for absence.
-	MaxConcurrentRuns *int `json:"maxConcurrentRuns,omitempty"`
+	MaxConcurrentRuns *int `json:"maxConcurrentRuns,omitzero"`
 	// Idempotency tells clients how long a command's first response remains
 	// replayable under the same Idempotency-Key. A client must not invent this
 	// window: retrying after it expires may execute the command again.

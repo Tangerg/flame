@@ -44,7 +44,7 @@ type httpEndpointEntry struct {
 	Path             string  `json:"path"`
 	Authentication   string  `json:"authentication"`
 	ResponseStatuses []int   `json:"responseStatuses"`
-	Response         *schema `json:"response,omitempty"`
+	Response         *schema `json:"response,omitzero"`
 }
 
 type methodEntry struct {
@@ -132,7 +132,7 @@ type unionEntry struct {
 	Type           string             `json:"type"`
 	Discriminator  string             `json:"discriminator"`
 	Variants       []variantRow       `json:"variants"`
-	PatternVariant *patternVariantRow `json:"patternVariant,omitempty"`
+	PatternVariant *patternVariantRow `json:"patternVariant,omitzero"`
 	Forbidden      []string           `json:"forbidden,omitempty"`
 }
 

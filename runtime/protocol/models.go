@@ -39,13 +39,13 @@ type Model struct {
 	// TokenLimits is omitted when the provider publishes no context-envelope
 	// facts. Every present member is strictly positive and at least one member
 	// must be present; numeric zero is never a wire spelling of unknown.
-	TokenLimits *ModelTokenLimits `json:"tokenLimits,omitempty"`
+	TokenLimits *ModelTokenLimits `json:"tokenLimits,omitzero"`
 	// KnowledgeCutoff is the training cutoff (RFC3339 date), empty when unknown.
 	KnowledgeCutoff string `json:"knowledgeCutoff,omitempty"`
 	// Deprecated marks a model the provider has retired; clients hide or flag it.
 	Deprecated   bool               `json:"deprecated,omitzero"`
-	Capabilities *ModelCapabilities `json:"capabilities,omitempty"`
-	Pricing      *ModelPricing      `json:"pricing,omitempty"`
+	Capabilities *ModelCapabilities `json:"capabilities,omitzero"`
+	Pricing      *ModelPricing      `json:"pricing,omitzero"`
 }
 
 // ModelTokenLimits is the provider-published context envelope for one exact
@@ -53,9 +53,9 @@ type Model struct {
 // attainable quotas. A streaming/multimodal model may legitimately publish an
 // output maximum above its input context window.
 type ModelTokenLimits struct {
-	ContextWindow   *int64 `json:"contextWindow,omitempty"`
-	MaxInputTokens  *int64 `json:"maxInputTokens,omitempty"`
-	MaxOutputTokens *int64 `json:"maxOutputTokens,omitempty"`
+	ContextWindow   *int64 `json:"contextWindow,omitzero"`
+	MaxInputTokens  *int64 `json:"maxInputTokens,omitzero"`
+	MaxOutputTokens *int64 `json:"maxOutputTokens,omitzero"`
 }
 
 // Modality is a media type a model takes as input or emits as output

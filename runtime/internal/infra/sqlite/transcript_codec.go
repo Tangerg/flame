@@ -13,18 +13,18 @@ import (
 
 type transcriptItemPayload struct {
 	Status                 transcript.ItemStatus   `json:"status"`
-	FinishedAt             *int64                  `json:"finishedAt,omitempty"`
-	ExecutionDurationNanos *int64                  `json:"executionDurationNanos,omitempty"`
+	FinishedAt             *int64                  `json:"finishedAt,omitzero"`
+	ExecutionDurationNanos *int64                  `json:"executionDurationNanos,omitzero"`
 	Kind                   transcript.ItemKind     `json:"kind"`
 	Phase                  transcript.MessagePhase `json:"phase,omitempty"`
 	Content                []contentPayload        `json:"content,omitempty"`
 	Text                   string                  `json:"text,omitempty"`
 	Redacted               bool                    `json:"redacted,omitempty"`
-	Question               *questionPayload        `json:"question,omitempty"`
-	Tool                   *toolInvocationPayload  `json:"tool,omitempty"`
+	Question               *questionPayload        `json:"question,omitzero"`
+	Tool                   *toolInvocationPayload  `json:"tool,omitzero"`
 	SafetyClass            tool.SafetyClass        `json:"safetyClass,omitempty"`
 	ApprovalDecision       approval.Decision       `json:"approvalDecision,omitempty"`
-	Failure                *toolFailurePayload     `json:"failure,omitempty"`
+	Failure                *toolFailurePayload     `json:"failure,omitzero"`
 	Summary                string                  `json:"summary,omitempty"`
 	DroppedMessages        int                     `json:"droppedMessages,omitempty"`
 }

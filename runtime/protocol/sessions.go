@@ -42,7 +42,7 @@ type Session struct {
 type ListSessionsRequest struct {
 	PageQuery
 	Search    string        `json:"search,omitempty"`
-	Workspace *WorkspaceRef `json:"workspace,omitempty"`
+	Workspace *WorkspaceRef `json:"workspace,omitzero"`
 }
 
 // GetSessionRequest identifies the session returned by sessions.get.
@@ -66,8 +66,8 @@ type SessionSnapshot struct {
 	Items      []Item                `json:"items"`
 	Runs       []RunRef              `json:"runs"`
 	Interrupts []PendingInterruptSet `json:"interrupts"`
-	Plan       *Plan                 `json:"plan,omitempty"`
-	Goal       *Goal                 `json:"goal,omitempty"`
+	Plan       *Plan                 `json:"plan,omitzero"`
+	Goal       *Goal                 `json:"goal,omitzero"`
 }
 
 // DeleteSessionRequest identifies the session removed by sessions.delete.
@@ -78,7 +78,7 @@ type DeleteSessionRequest struct {
 // CreateSessionRequest — sessions.create body. Workspace is optional and defaults
 // to ServerInfo.defaultWorkspace for cold-start use.
 type CreateSessionRequest struct {
-	Workspace *WorkspaceRef `json:"workspace,omitempty"`
+	Workspace *WorkspaceRef `json:"workspace,omitzero"`
 	Title     string        `json:"title,omitempty"`
 }
 
@@ -87,13 +87,13 @@ type CreateSessionRequest struct {
 type UpdateSessionRequest struct {
 	SessionID        string        `json:"sessionId"`
 	ExpectedRevision uint64        `json:"expectedRevision"`
-	Title            *string       `json:"title,omitempty"`
-	Workspace        *WorkspaceRef `json:"workspace,omitempty"`
-	Provider         *string       `json:"provider,omitempty"`
-	Model            *string       `json:"model,omitempty"`
-	ReasoningEffort  *string       `json:"reasoningEffort,omitempty"`
-	Favorite         *bool         `json:"favorite,omitempty"`
-	Isolated         *bool         `json:"isolated,omitempty"`
+	Title            *string       `json:"title,omitzero"`
+	Workspace        *WorkspaceRef `json:"workspace,omitzero"`
+	Provider         *string       `json:"provider,omitzero"`
+	Model            *string       `json:"model,omitzero"`
+	ReasoningEffort  *string       `json:"reasoningEffort,omitzero"`
+	Favorite         *bool         `json:"favorite,omitzero"`
+	Isolated         *bool         `json:"isolated,omitzero"`
 }
 
 // ForkSessionRequest is the sessions.fork body. Omit fromRunId for a
@@ -173,7 +173,7 @@ type ExportSessionRequest struct {
 // transcript (not re-importable). Exactly one is populated, per Format.
 type ExportSessionResponse struct {
 	Format   ExportFormat     `json:"format"`
-	Artifact *SessionArtifact `json:"artifact,omitempty"`
+	Artifact *SessionArtifact `json:"artifact,omitzero"`
 	Markdown string           `json:"markdown,omitempty"`
 }
 
@@ -252,7 +252,7 @@ type ArtifactRun struct {
 	// preserve it verbatim — never defaulted to empty, never re-derived from the
 	// child or interrupt facts, never rewritten to the importing client's
 	// capabilities. A child has none of its own; it reads its root's.
-	ProtocolProfile *RunProtocolProfile `json:"protocolProfile,omitempty"`
+	ProtocolProfile *RunProtocolProfile `json:"protocolProfile,omitzero"`
 	Outcome         ArtifactOutcome     `json:"outcome"`
 	CreatedAt       time.Time           `json:"createdAt,omitzero"`
 	FinishedAt      time.Time           `json:"finishedAt,omitzero"`
@@ -264,7 +264,7 @@ type ArtifactRun struct {
 // is intentionally independent from the live RunOutcome wire union.
 type ArtifactOutcome struct {
 	Type   ArtifactOutcomeType `json:"type"`
-	Error  *ArtifactProblem    `json:"error,omitempty"`
+	Error  *ArtifactProblem    `json:"error,omitzero"`
 	Detail string              `json:"detail,omitempty"`
 }
 
@@ -297,17 +297,17 @@ type ArtifactItem struct {
 	// exact Tool execution time and can be shorter than the lifecycle.
 	StartedAt      time.Time `json:"startedAt,omitzero"`
 	FinishedAt     time.Time `json:"finishedAt,omitzero"`
-	DurationMillis *int64    `json:"durationMillis,omitempty"`
+	DurationMillis *int64    `json:"durationMillis,omitzero"`
 
 	Content          []ContentBlock   `json:"content,omitempty"`
 	Phase            MessagePhase     `json:"phase,omitempty"`
 	Text             string           `json:"text,omitempty"`
 	Redacted         bool             `json:"redacted,omitzero"`
-	Question         *Question        `json:"question,omitempty"`
-	Tool             *ToolInvocation  `json:"tool,omitempty"`
+	Question         *Question        `json:"question,omitzero"`
+	Tool             *ToolInvocation  `json:"tool,omitzero"`
 	SafetyClass      SafetyClass      `json:"safetyClass,omitempty"`
 	ApprovalDecision ApprovalDecision `json:"approvalDecision,omitempty"`
-	Error            *ArtifactProblem `json:"error,omitempty"`
+	Error            *ArtifactProblem `json:"error,omitzero"`
 	Summary          string           `json:"summary,omitempty"`
 	DroppedMessages  int              `json:"droppedMessages,omitzero"`
 }

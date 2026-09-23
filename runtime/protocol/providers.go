@@ -9,8 +9,8 @@ type TestProviderRequest struct {
 // ID ascending. The key is returned masked, never reconstructable.
 type Provider struct {
 	ID                    string                        `json:"id"`
-	BaseURL               *string                       `json:"baseUrl,omitempty"`
-	Credential            *ProviderCredential           `json:"credential,omitempty"`
+	BaseURL               *string                       `json:"baseUrl,omitzero"`
+	Credential            *ProviderCredential           `json:"credential,omitzero"`
 	Configured            bool                          `json:"configured"`
 	CredentialRequirement ProviderCredentialRequirement `json:"credentialRequirement"`
 	// RequiresBaseURL marks providers with no built-in endpoint — the generic
@@ -23,7 +23,7 @@ type Provider struct {
 	// DefaultEmbeddingModel is a sensible default model id to prefill. It is
 	// absent when the id is user-supplied, e.g. an Azure deployment.
 	EmbeddingCapable      bool    `json:"embeddingCapable,omitzero"`
-	DefaultEmbeddingModel *string `json:"defaultEmbeddingModel,omitempty"`
+	DefaultEmbeddingModel *string `json:"defaultEmbeddingModel,omitzero"`
 }
 
 // ProviderCredentialRequirement distinguishes API-key vendors from endpoints
@@ -66,7 +66,7 @@ const (
 // an empty string or JSON null with hidden update semantics.
 type ProviderConfigChange struct {
 	Type  ProviderConfigChangeType `json:"type"`
-	Value *string                  `json:"value,omitempty"`
+	Value *string                  `json:"value,omitzero"`
 }
 
 // UpdateProviderRequest — providers.update body. Provider is the
@@ -77,12 +77,12 @@ type ProviderConfigChange struct {
 // sets or clears its stored value.
 type UpdateProviderRequest struct {
 	Provider string                `json:"provider"`
-	BaseURL  *ProviderConfigChange `json:"baseUrl,omitempty"`
-	APIKey   *ProviderConfigChange `json:"apiKey,omitempty"`
+	BaseURL  *ProviderConfigChange `json:"baseUrl,omitzero"`
+	APIKey   *ProviderConfigChange `json:"apiKey,omitzero"`
 }
 
 // ProviderTestResult — providers.test result.
 type ProviderTestResult struct {
 	OK    bool         `json:"ok"`
-	Error *ProblemData `json:"error,omitempty"`
+	Error *ProblemData `json:"error,omitzero"`
 }

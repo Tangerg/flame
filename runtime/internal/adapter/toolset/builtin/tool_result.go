@@ -49,7 +49,7 @@ type ToolResultStore interface {
 type toolResultReadArgs struct {
 	ResultID    string `json:"result_id" jsonschema:"minLength=2,maxLength=64,pattern=^[A-Z2-7]+$" jsonschema_description:"Offloaded result identifier copied exactly from the inline marker."`
 	OffsetBytes int    `json:"offset_bytes,omitempty" jsonschema:"minimum=0" jsonschema_description:"Zero-based byte offset at which to start reading. Defaults to 0."`
-	LimitBytes  *int   `json:"limit_bytes,omitempty" jsonschema:"minimum=1,maximum=20000" jsonschema_description:"Maximum bytes to return. Defaults to 20000 and cannot exceed 20000."`
+	LimitBytes  *int   `json:"limit_bytes,omitzero" jsonschema:"minimum=1,maximum=20000" jsonschema_description:"Maximum bytes to return. Defaults to 20000 and cannot exceed 20000."`
 }
 
 type toolResultReader struct {

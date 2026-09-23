@@ -30,13 +30,13 @@ type KnowledgeEntry struct {
 // GetKnowledgeRequest — knowledge.get body.
 type GetKnowledgeRequest struct {
 	Scope     KnowledgeScope `json:"scope"`
-	Workspace *WorkspaceRef  `json:"workspace,omitempty"`
+	Workspace *WorkspaceRef  `json:"workspace,omitzero"`
 }
 
 // UpdateKnowledgeRequest — knowledge.update body.
 type UpdateKnowledgeRequest struct {
 	Scope            KnowledgeScope `json:"scope"`
-	Workspace        *WorkspaceRef  `json:"workspace,omitempty"`
+	Workspace        *WorkspaceRef  `json:"workspace,omitzero"`
 	ExpectedRevision string         `json:"expectedRevision"`
 	Content          string         `json:"content"`
 }

@@ -12,14 +12,14 @@ type Schedule struct {
 	ID              string        `json:"id"`
 	Title           string        `json:"title"`
 	Instructions    string        `json:"instructions"`
-	Workspace       *WorkspaceRef `json:"workspace,omitempty"`
+	Workspace       *WorkspaceRef `json:"workspace,omitzero"`
 	Provider        string        `json:"provider,omitempty"`
 	Model           string        `json:"model,omitempty"`
 	ReasoningEffort string        `json:"reasoningEffort,omitempty"`
 	Cron            string        `json:"cron"`
 	Enabled         bool          `json:"enabled"`
-	LastRunAt       *time.Time    `json:"lastRunAt,omitempty"`
-	NextRunAt       *time.Time    `json:"nextRunAt,omitempty"`
+	LastRunAt       *time.Time    `json:"lastRunAt,omitzero"`
+	NextRunAt       *time.Time    `json:"nextRunAt,omitzero"`
 	CreatedAt       time.Time     `json:"createdAt,omitzero"`
 	Revision        uint64        `json:"revision"`
 }
@@ -28,7 +28,7 @@ type Schedule struct {
 type CreateScheduleRequest struct {
 	Title           string        `json:"title,omitempty"`
 	Instructions    string        `json:"instructions"`
-	Workspace       *WorkspaceRef `json:"workspace,omitempty"`
+	Workspace       *WorkspaceRef `json:"workspace,omitzero"`
 	Provider        string        `json:"provider,omitempty"`
 	Model           string        `json:"model,omitempty"`
 	ReasoningEffort string        `json:"reasoningEffort,omitempty"`
@@ -52,15 +52,15 @@ const (
 type UpdateScheduleRequest struct {
 	ID               string                `json:"id"`
 	ExpectedRevision uint64                `json:"expectedRevision"`
-	Title            *string               `json:"title,omitempty"`
-	Instructions     *string               `json:"instructions,omitempty"`
-	Workspace        *WorkspaceRef         `json:"workspace,omitempty"`
+	Title            *string               `json:"title,omitzero"`
+	Instructions     *string               `json:"instructions,omitzero"`
+	Workspace        *WorkspaceRef         `json:"workspace,omitzero"`
 	WorkspaceMode    ScheduleWorkspaceMode `json:"workspaceMode,omitempty"`
-	Provider         *string               `json:"provider,omitempty"`
-	Model            *string               `json:"model,omitempty"`
-	ReasoningEffort  *string               `json:"reasoningEffort,omitempty"`
-	Cron             *string               `json:"cron,omitempty"`
-	Enabled          *bool                 `json:"enabled,omitempty"`
+	Provider         *string               `json:"provider,omitzero"`
+	Model            *string               `json:"model,omitzero"`
+	ReasoningEffort  *string               `json:"reasoningEffort,omitzero"`
+	Cron             *string               `json:"cron,omitzero"`
+	Enabled          *bool                 `json:"enabled,omitzero"`
 }
 
 // DeleteScheduleRequest — schedules.delete body.

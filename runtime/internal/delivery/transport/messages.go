@@ -50,5 +50,8 @@ func marshalPayload(value any) (jsontext.Value, error) {
 	if encoded, ok := value.(jsontext.Value); ok {
 		return encoded, nil
 	}
-	return json.Marshal(value)
+	// A response carrying a map — tool arguments, a tool result, a JSON Schema —
+	// must reach the client as the same bytes every time, which is what the
+	// previous encoder did implicitly and what v2 does only on request.
+	return json.Marshal(value, json.Deterministic(true))
 }

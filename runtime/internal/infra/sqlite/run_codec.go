@@ -23,7 +23,7 @@ type runUsageRow struct {
 	CacheReadTokens  int64                     `json:"cacheReadTokens,omitzero"`
 	CacheWriteTokens int64                     `json:"cacheWriteTokens,omitzero"`
 	ReasoningTokens  int64                     `json:"reasoningTokens,omitzero"`
-	CostUSD          *float64                  `json:"costUsd,omitempty"`
+	CostUSD          *float64                  `json:"costUsd,omitzero"`
 	ByModel          map[string]runModelRowUse `json:"byModel,omitempty"`
 }
 
@@ -33,7 +33,7 @@ type runModelRowUse struct {
 	CacheReadTokens  int64    `json:"cacheReadTokens,omitzero"`
 	CacheWriteTokens int64    `json:"cacheWriteTokens,omitzero"`
 	ReasoningTokens  int64    `json:"reasoningTokens,omitzero"`
-	CostUSD          *float64 `json:"costUsd,omitempty"`
+	CostUSD          *float64 `json:"costUsd,omitzero"`
 }
 
 // runAccountingRow is the parked Run's consumption, encoded as the
@@ -43,7 +43,7 @@ type runModelRowUse struct {
 type runAccountingRow struct {
 	Steps            int          `json:"steps,omitzero"`
 	ActiveDurationNs int64        `json:"activeDurationNs,omitzero"`
-	Usage            *runUsageRow `json:"usage,omitempty"`
+	Usage            *runUsageRow `json:"usage,omitzero"`
 }
 
 func runAccountingRowOf(metrics rundomain.Metrics) runAccountingRow {

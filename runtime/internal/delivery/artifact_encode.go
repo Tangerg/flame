@@ -18,7 +18,7 @@ import (
 func artifactFromPortable(portable sessions.PortableSnapshot) (protocol.SessionArtifact, error) {
 	messages := make([]jsontext.Value, 0, len(portable.Messages))
 	for _, message := range portable.Messages {
-		encoded, err := json.Marshal(message)
+		encoded, err := json.Marshal(message, json.Deterministic(true))
 		if err != nil {
 			return protocol.SessionArtifact{}, fmt.Errorf("marshal message: %w", err)
 		}

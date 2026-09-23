@@ -28,7 +28,7 @@ func NewGoalStore(db *sql.DB) *GoalStore { return &GoalStore{db: db} }
 
 type goalUsed struct {
 	Runs    int      `json:"runs"`
-	CostUSD *float64 `json:"cost_usd,omitempty"`
+	CostUSD *float64 `json:"cost_usd,omitzero"`
 	Steps   int      `json:"steps"`
 }
 

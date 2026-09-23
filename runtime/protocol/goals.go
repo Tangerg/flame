@@ -12,7 +12,7 @@ type Goal struct {
 	SessionID       string      `json:"sessionId"`
 	Objective       string      `json:"objective"`
 	Status          GoalStatus  `json:"status"`
-	Reason          *GoalReason `json:"reason,omitempty"`
+	Reason          *GoalReason `json:"reason,omitzero"`
 	Provider        string      `json:"provider"`
 	Model           string      `json:"model"`
 	ReasoningEffort string      `json:"reasoningEffort,omitempty"`
@@ -58,7 +58,7 @@ const (
 // GoalUsage reports consumption across all Runs for an objective.
 type GoalUsage struct {
 	Runs    int      `json:"runs"`
-	CostUSD *float64 `json:"costUsd,omitempty"`
+	CostUSD *float64 `json:"costUsd,omitzero"`
 	Steps   int      `json:"steps"`
 }
 

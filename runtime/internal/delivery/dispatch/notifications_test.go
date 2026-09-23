@@ -2,7 +2,7 @@ package dispatch
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"testing"
 	"time"
 
@@ -14,7 +14,7 @@ func TestDispatchNotificationSuppressesMetadataErrors(t *testing.T) {
 	router := &Router{}
 	message := &transport.Request{
 		Method: "client.unknown",
-		Params: json.RawMessage(`{"_meta":null}`),
+		Params: jsontext.Value(`{"_meta":null}`),
 	}
 
 	if got := router.Dispatch(context.Background(), message); got.Response != nil {

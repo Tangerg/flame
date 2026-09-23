@@ -144,7 +144,7 @@ type RuntimeEvent struct {
 
 	// files.changed
 	WatchID   string        `json:"watchId,omitempty"`
-	Workspace *WorkspaceRef `json:"workspace,omitempty"`
+	Workspace *WorkspaceRef `json:"workspace,omitzero"`
 	Paths     []string      `json:"paths,omitempty"`
 	// skills.changed
 	Names []string `json:"names,omitempty"`

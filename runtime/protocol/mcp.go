@@ -53,7 +53,7 @@ const (
 // that value is strictly positive.
 type MCPHandshakeTimeout struct {
 	Type    MCPHandshakeTimeoutType `json:"type"`
-	Seconds *int                    `json:"seconds,omitempty"`
+	Seconds *int                    `json:"seconds,omitzero"`
 }
 
 // MCPServerStateType is the complete lifecycle of a configured MCP server. A
@@ -73,8 +73,8 @@ const (
 // error belongs only to failed and needsAuth.
 type MCPServerState struct {
 	Type      MCPServerStateType `json:"type"`
-	ToolCount *int               `json:"toolCount,omitempty"`
-	Error     *ProblemData       `json:"error,omitempty"`
+	ToolCount *int               `json:"toolCount,omitzero"`
+	Error     *ProblemData       `json:"error,omitzero"`
 }
 
 // MCPTransport is the protocol's closed MCP transport vocabulary.
@@ -137,11 +137,11 @@ type MCPEnvironmentChange struct {
 type MCPConnectionInput struct {
 	Type          MCPTransport            `json:"type"`
 	URL           string                  `json:"url,omitempty"`
-	Authorization *MCPAuthorizationChange `json:"authorization,omitempty"`
-	Headers       *MCPHeadersChange       `json:"headers,omitempty"`
+	Authorization *MCPAuthorizationChange `json:"authorization,omitzero"`
+	Headers       *MCPHeadersChange       `json:"headers,omitzero"`
 	Command       string                  `json:"command,omitempty"`
 	Args          []string                `json:"args,omitempty"`
-	Env           *MCPEnvironmentChange   `json:"env,omitempty"`
+	Env           *MCPEnvironmentChange   `json:"env,omitzero"`
 	Dir           string                  `json:"dir,omitempty"`
 }
 
@@ -163,12 +163,12 @@ type MCPServerCandidate struct {
 // Name is immutable and addressed by Server.
 type UpdateMCPServerRequest struct {
 	Server           string               `json:"server"`
-	Enabled          *bool                `json:"enabled,omitempty"`
-	Description      *string              `json:"description,omitempty"`
-	Connection       *MCPConnectionInput  `json:"connection,omitempty"`
-	HandshakeTimeout *MCPHandshakeTimeout `json:"handshakeTimeout,omitempty"`
-	DisabledTools    *[]string            `json:"disabledTools,omitempty"`
-	AutoApproveTools *[]string            `json:"autoApproveTools,omitempty"`
+	Enabled          *bool                `json:"enabled,omitzero"`
+	Description      *string              `json:"description,omitzero"`
+	Connection       *MCPConnectionInput  `json:"connection,omitzero"`
+	HandshakeTimeout *MCPHandshakeTimeout `json:"handshakeTimeout,omitzero"`
+	DisabledTools    *[]string            `json:"disabledTools,omitzero"`
+	AutoApproveTools *[]string            `json:"autoApproveTools,omitzero"`
 }
 
 // MCPTool is one tool exposed by an MCP server. Tool list results are ordered by
@@ -183,7 +183,7 @@ type MCPTool struct {
 // MCPTestResult is the semantic result of mcp.servers.test.
 type MCPTestResult struct {
 	OK    bool         `json:"ok"`
-	Error *ProblemData `json:"error,omitempty"`
+	Error *ProblemData `json:"error,omitzero"`
 }
 
 // MCPAuthorizationAttemptStatusType is the complete lifecycle of one
@@ -201,7 +201,7 @@ const (
 // error; the full provider/OAuth error remains private telemetry.
 type MCPAuthorizationAttemptStatus struct {
 	Type  MCPAuthorizationAttemptStatusType `json:"type"`
-	Error *ProblemData                      `json:"error,omitempty"`
+	Error *ProblemData                      `json:"error,omitzero"`
 }
 
 // MCPAuthorizationAttempt is the observable asynchronous result of interactive
@@ -211,5 +211,5 @@ type MCPAuthorizationAttempt struct {
 	Server     string                        `json:"server"`
 	Status     MCPAuthorizationAttemptStatus `json:"status"`
 	CreatedAt  time.Time                     `json:"createdAt,omitzero"`
-	FinishedAt *time.Time                    `json:"finishedAt,omitempty"`
+	FinishedAt *time.Time                    `json:"finishedAt,omitzero"`
 }

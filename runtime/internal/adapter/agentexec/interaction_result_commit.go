@@ -23,11 +23,11 @@ type toolResultMetadata struct {
 	MemberID     string               `json:"member_id"`
 	Start        runs.ToolCallStarted `json:"start"`
 	Arguments    string               `json:"arguments"`
-	Result       *tool.Result         `json:"result,omitempty"`
-	Offload      *toolresult.Ref      `json:"offload,omitempty"`
+	Result       *tool.Result         `json:"result,omitzero"`
+	Offload      *toolresult.Ref      `json:"offload,omitzero"`
 	OutputText   string               `json:"output_text,omitempty"`
 	MutatedPaths []string             `json:"mutated_paths,omitempty"`
-	Failure      *tool.Failure        `json:"failure,omitempty"`
+	Failure      *tool.Failure        `json:"failure,omitzero"`
 }
 
 func (t toolResultMetadata) clone() toolResultMetadata {

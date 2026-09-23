@@ -1,7 +1,8 @@
 package maintenance
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"reflect"
 	"strings"
 	"testing"
@@ -12,7 +13,7 @@ import (
 func TestToolOutputMaintenanceUsesVisibleContent(t *testing.T) {
 	image := mustBudgetImage(t, []byte("small image"))
 	mediaOutput := budgetToolImage(image).Parts[0].ToolResult.Output
-	details := json.RawMessage(`{"hidden":"` + strings.Repeat("x", 5000) + `"}`)
+	details := jsontext.Value(`{"hidden":"` + strings.Repeat("x", 5000) + `"}`)
 	for _, tc := range []struct {
 		name   string
 		output chat.ToolOutput
@@ -46,14 +47,14 @@ func TestToolOutputMaintenanceUsesVisibleContent(t *testing.T) {
 }
 
 func TestToolOutputMaintenancePreservesDetailsOnlyFallback(t *testing.T) {
-	output := chat.ToolOutput{Details: json.RawMessage(`{"value":"visible"}`)}
+	output := chat.ToolOutput{Details: jsontext.Value(`{"value":"visible"}`)}
 	if got := renderToolOutput(output); got != string(output.Details) {
 		t.Fatalf("details-only transcript = %q", got)
 	}
 	if trimmed, changed := trimToolOutput(output); changed || !reflect.DeepEqual(trimmed, output) {
 		t.Fatal("small details-only output changed")
 	}
-	output.Details = json.RawMessage(`{"value":"` + strings.Repeat("x", 5000) + `"}`)
+	output.Details = jsontext.Value(`{"value":"` + strings.Repeat("x", 5000) + `"}`)
 	trimmed, changed := trimToolOutput(output)
 	text, textual := trimmed.Text()
 	if !changed || !textual || len(text) > ladderResultCap || !strings.Contains(text, "trimmed on compaction") {

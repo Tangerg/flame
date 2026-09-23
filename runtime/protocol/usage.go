@@ -9,7 +9,7 @@ type SessionUsageRequest struct {
 type UsageSummaryRequest struct {
 	// SinceDays limits the report to runs finished within the last N days;
 	// absence means all time, while a present value is strictly positive.
-	SinceDays *int `json:"sinceDays,omitempty"`
+	SinceDays *int `json:"sinceDays,omitzero"`
 }
 
 // UsageBucket is one grouped slice of usage — a provider id, a "provider/model"

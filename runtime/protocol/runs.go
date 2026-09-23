@@ -51,7 +51,7 @@ type RunSummary struct {
 	Provider        string      `json:"provider"`
 	ReasoningEffort string      `json:"reasoningEffort,omitempty"`
 	Status          RunStatus   `json:"status"`
-	Outcome         *RunOutcome `json:"outcome,omitempty"`
+	Outcome         *RunOutcome `json:"outcome,omitzero"`
 	CreatedAt       time.Time   `json:"createdAt,omitzero"`
 	FinishedAt      time.Time   `json:"finishedAt,omitzero"`
 }
@@ -121,7 +121,7 @@ type RunProtocolProfile struct {
 // Usage.CostUSD — there is no separate costUsd, which would be a second source
 // of one number.
 type RunMetrics struct {
-	Usage *Usage `json:"usage,omitempty"`
+	Usage *Usage `json:"usage,omitzero"`
 	Steps int    `json:"steps"`
 	// ActiveDurationMillis is time spent executing, summed over the run's segments.
 	// Waiting on a person is not execution, so a run parked overnight and then
@@ -166,7 +166,7 @@ type RunOutcome struct {
 	// Error explains the error terminal and appears on no other. Its own Detail
 	// carries the human-readable note, which is why Detail below stays
 	// absent here rather than repeating it.
-	Error *ProblemData `json:"error,omitempty"`
+	Error *ProblemData `json:"error,omitzero"`
 	// Detail is a human-readable note for the non-error terminals
 	// canceled outcome. The runs.cancel reason flows here.
 	Detail string `json:"detail,omitempty"`
@@ -209,7 +209,7 @@ type SegmentOutcome struct {
 	Type              SegmentOutcomeType `json:"type"`
 	// Error and Detail belong to the terminal tags, and carry exactly what the
 	// same-named RunOutcome fields do.
-	Error  *ProblemData `json:"error,omitempty"`
+	Error  *ProblemData `json:"error,omitzero"`
 	Detail string       `json:"detail,omitempty"`
 	// Interrupts is the pending set THIS segment's run raised, and appears only
 	// on the interrupt tag.
@@ -230,7 +230,7 @@ type StartRunRequest struct {
 	Provider        string            `json:"provider,omitempty"`
 	Model           string            `json:"model,omitempty"`
 	ReasoningEffort string            `json:"reasoningEffort,omitempty"`
-	Params          *GenerationParams `json:"params,omitempty"`
+	Params          *GenerationParams `json:"params,omitzero"`
 }
 
 // StartRunResponse is the synchronous result of runs.start.
@@ -252,14 +252,14 @@ type ResumeRunResponse struct {
 	// UserItemID is present exactly when ResumeRunRequest.Input is present. The
 	// request and response commit atomically, so this identifies that opening
 	// userMessage Item without inventing one for a response-only resume.
-	UserItemID *string `json:"userItemId,omitempty"`
+	UserItemID *string `json:"userItemId,omitzero"`
 }
 
 // GenerationParams is optional LLM generation tuning.
 type GenerationParams struct {
-	Temperature *float64 `json:"temperature,omitempty"`
-	MaxTokens   *int64   `json:"maxTokens,omitempty"`
-	TopP        *float64 `json:"topP,omitempty"`
+	Temperature *float64 `json:"temperature,omitzero"`
+	MaxTokens   *int64   `json:"maxTokens,omitzero"`
+	TopP        *float64 `json:"topP,omitzero"`
 	Stop        []string `json:"stop,omitempty"`
 }
 
@@ -283,7 +283,7 @@ const (
 type CancelRunResponse struct {
 	Type    CancelRunResponseType `json:"type"`
 	Run     RunRef                `json:"run"`
-	RootRun *RunRef               `json:"rootRun,omitempty"`
+	RootRun *RunRef               `json:"rootRun,omitzero"`
 }
 
 // SteerRunRequest is the runs.steer body — structured user content to inject
@@ -383,7 +383,7 @@ type SubscribeRunRequest struct {
 // userItemId, and an ack that declared one would publish a field nothing on this
 // path can write.
 type SubscribeRunResponse struct {
-	Snapshot  *SessionSnapshot `json:"snapshot,omitempty"`
+	Snapshot  *SessionSnapshot `json:"snapshot,omitzero"`
 	RunID     string           `json:"runId"`
 	SegmentID string           `json:"segmentId"`
 	// HeadEventID is the stream's position at the instant the subscription was
@@ -395,7 +395,7 @@ type SubscribeRunResponse struct {
 	// it, compare it for magnitude, or derive a sequence from it. The value is
 	// opaque precisely so that the runtime can change what it encodes without
 	// breaking a client that only ever handed it back.
-	HeadEventID *string `json:"headEventId,omitempty"`
+	HeadEventID *string `json:"headEventId,omitzero"`
 }
 
 // InterruptResponseType discriminates a client's answer to an interrupt
@@ -429,7 +429,7 @@ type InterruptResponse struct {
 type InterruptResponseValue struct {
 	Type       InterruptResponseType `json:"type"`                 // see InterruptResponseType
 	Decision   ApprovalDecision      `json:"decision,omitempty"`   // approval: see ApprovalDecision
-	Remember   *RememberScope        `json:"remember,omitempty"`   // approval: keep this decision
+	Remember   *RememberScope        `json:"remember,omitzero"`    // approval: keep this decision
 	EditedArgs map[string]any        `json:"editedArgs,omitempty"` // approval: one-shot arg override
 	Reason     string                `json:"reason,omitempty"`     // approval (deny rationale)
 	Answers    [][]string            `json:"answers,omitempty"`    // answer: one values array per Question.fields entry, in the same order
@@ -486,11 +486,11 @@ const (
 // a member whose value happens to be empty while avoiding an open-ended map at
 // the protocol boundary.
 type InterruptPayload struct {
-	Tool         *ToolInvocation `json:"tool,omitempty"`
+	Tool         *ToolInvocation `json:"tool,omitzero"`
 	Risk         ApprovalRisk    `json:"risk,omitempty"`
 	Reason       string          `json:"reason,omitempty"`
 	Rememberable bool            `json:"rememberable,omitzero"`
-	Question     *Question       `json:"question,omitempty"`
+	Question     *Question       `json:"question,omitzero"`
 }
 
 // Interrupt is one pending HITL item. ItemID is the correlation key — the
@@ -502,7 +502,7 @@ type Interrupt struct {
 	ItemID  string            `json:"itemId"`
 	RunID   string            `json:"runId"`
 	Type    InterruptType     `json:"type"` // see InterruptType
-	Payload *InterruptPayload `json:"payload,omitempty"`
+	Payload *InterruptPayload `json:"payload,omitzero"`
 }
 
 // PendingInterruptSet is everything one waiting run tree needs answered, and the

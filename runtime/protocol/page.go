@@ -12,7 +12,7 @@ const MaximumPaginationCursorCharacters = runtimeidentity.MaximumCursorCharacter
 type PageQuery struct {
 	// Limit is absent when the caller accepts the read's published default. A
 	// present value is strictly positive; zero is never a disable/default switch.
-	Limit  *int   `json:"limit,omitempty"`
+	Limit  *int   `json:"limit,omitzero"`
 	Cursor string `json:"cursor,omitempty"`
 }
 

@@ -2,7 +2,7 @@ package delivery
 
 import (
 	"crypto/rand"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"maps"
 	"reflect"
@@ -227,7 +227,7 @@ func TestImportRefusesAnUnknownRunProtocolFeature(t *testing.T) {
 
 func encodeArtifact(t *testing.T, artifact protocol.SessionArtifact) string {
 	t.Helper()
-	encoded, err := json.Marshal(artifact)
+	encoded, err := json.Marshal(artifact, json.Deterministic(true))
 	if err != nil {
 		t.Fatalf("marshal artifact: %v", err)
 	}
@@ -272,7 +272,7 @@ func assertArtifactFixtureIsComplete(t *testing.T, artifact protocol.SessionArti
 
 // walkArtifactShape collects every "Type.Field" the artifact document can carry.
 // It descends through pointers, slices and maps, and stops at anything that is not
-// a struct — time.Time and json.RawMessage contribute no fields of their own, and
+// a struct — time.Time and jsontext.Value contribute no fields of their own, and
 // an `any` is opaque by definition.
 func walkArtifactShape(shape reflect.Type, into map[string]bool, seen map[reflect.Type]bool) {
 	switch shape.Kind() {

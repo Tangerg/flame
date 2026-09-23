@@ -226,7 +226,7 @@ type commandExecutionResult struct {
 // CommandResult is the transcript result of shell.
 type CommandResult struct {
 	Output   string `json:"output"`
-	ExitCode *int   `json:"exitCode,omitempty"`
+	ExitCode *int   `json:"exitCode,omitzero"`
 }
 
 func presentCommandResult(result tool.Result) (tool.Result, string) {

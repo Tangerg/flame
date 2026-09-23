@@ -106,7 +106,7 @@ func portableMessageFromArtifact(path string, encoded jsontext.Value) (chat.Mess
 	if err := json.Unmarshal(encoded, &message); err != nil {
 		return chat.Message{}, invalidArtifact(path, "%v", err)
 	}
-	reencoded, err := json.Marshal(message)
+	reencoded, err := json.Marshal(message, json.Deterministic(true))
 	if err != nil {
 		return chat.Message{}, invalidArtifact(path, "re-encode: %v", err)
 	}

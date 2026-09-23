@@ -64,23 +64,23 @@ type schema struct {
 	Format           string         `json:"format,omitempty"`
 	ContentEncoding  string         `json:"contentEncoding,omitempty"`
 	Enum             []string       `json:"enum,omitempty"`
-	MinLength        *int           `json:"minLength,omitempty"`
-	MaxLength        *int           `json:"maxLength,omitempty"`
+	MinLength        *int           `json:"minLength,omitzero"`
+	MaxLength        *int           `json:"maxLength,omitzero"`
 	Const            string         `json:"const,omitempty"`
 	Pattern          string         `json:"pattern,omitempty"`
 	TypeScriptType   string         `json:"-"`
-	Minimum          *int64         `json:"minimum,omitempty"`
-	ExclusiveMinimum *int64         `json:"exclusiveMinimum,omitempty"`
-	Maximum          *int64         `json:"maximum,omitempty"`
-	MinItems         *int           `json:"minItems,omitempty"`
-	MaxItems         *int           `json:"maxItems,omitempty"`
-	MinProperties    *int           `json:"minProperties,omitempty"`
+	Minimum          *int64         `json:"minimum,omitzero"`
+	ExclusiveMinimum *int64         `json:"exclusiveMinimum,omitzero"`
+	Maximum          *int64         `json:"maximum,omitzero"`
+	MinItems         *int           `json:"minItems,omitzero"`
+	MaxItems         *int           `json:"maxItems,omitzero"`
+	MinProperties    *int           `json:"minProperties,omitzero"`
 	UniqueItems      bool           `json:"uniqueItems,omitzero"`
 	Items            *schema        `json:"items,omitzero"`
 	Properties       map[string]any `json:"properties,omitempty"`
 	AdditionalProps  any            `json:"additionalProperties,omitzero"`
 	PropertyNames    *schema        `json:"propertyNames,omitzero"`
-	UnevaluatedProps *bool          `json:"unevaluatedProperties,omitempty"`
+	UnevaluatedProps *bool          `json:"unevaluatedProperties,omitzero"`
 	Required         []string       `json:"required,omitempty"`
 	OneOf            []*schema      `json:"oneOf,omitempty"`
 	AnyOf            []*schema      `json:"anyOf,omitempty"`

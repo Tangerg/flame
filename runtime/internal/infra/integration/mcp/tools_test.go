@@ -2,7 +2,8 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"reflect"
@@ -32,7 +33,7 @@ func TestSourceToolsCompilesSchemasBeforePublishing(t *testing.T) {
 		`{"type":"object","properties":{"value":{"$ref":"https://example.invalid/schema.json"}}}`,
 	} {
 		t.Run(schema, func(t *testing.T) {
-			session := toolCatalogSession(t, &sdkmcp.Tool{Name: "read", InputSchema: json.RawMessage(schema)})
+			session := toolCatalogSession(t, &sdkmcp.Tool{Name: "read", InputSchema: jsontext.Value(schema)})
 			tools, err := sourceTools(t.Context(), testMCPServerName("catalog"), session)
 			if len(tools) != 0 || !errors.Is(err, toolcontract.ErrInvalidTool) || !errors.Is(err, jsonschema.ErrInvalid) {
 				t.Fatalf("sourceTools = %v, %v; want Scope schema admission failure", tools, err)
@@ -47,12 +48,12 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 	for _, descriptor := range []*sdkmcp.Tool{
 		{
 			Name:        "lookup",
-			InputSchema: json.RawMessage(`{"type":"object"}`),
+			InputSchema: jsontext.Value(`{"type":"object"}`),
 			Annotations: &sdkmcp.ToolAnnotations{ReadOnlyHint: true},
 		},
 		{
 			Name:        "mutate",
-			InputSchema: json.RawMessage(`{"type":"object"}`),
+			InputSchema: jsontext.Value(`{"type":"object"}`),
 		},
 	} {
 		server.AddTool(descriptor, func(context.Context, *sdkmcp.CallToolRequest) (*sdkmcp.CallToolResult, error) {
@@ -117,7 +118,7 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 		session := toolCatalogSession(t, &sdkmcp.Tool{
 			Name:        "oversized-description",
 			Description: strings.Repeat("x", mcpserver.MaxRemoteToolDescriptionBytes+1),
-			InputSchema: json.RawMessage(`{"type":"object"}`),
+			InputSchema: jsontext.Value(`{"type":"object"}`),
 		})
 		if _, err := sourceTools(t.Context(), testMCPServerName("catalog"), session); err == nil {
 			t.Fatal("sourceTools accepted a description larger than 64 KiB")
@@ -127,7 +128,7 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 	t.Run("connection schema", func(t *testing.T) {
 		session := toolCatalogSession(t, &sdkmcp.Tool{
 			Name: "oversized-schema",
-			InputSchema: json.RawMessage(`{"type":"object","description":"` +
+			InputSchema: jsontext.Value(`{"type":"object","description":"` +
 				strings.Repeat("x", (1<<20)+1) + `"}`),
 		})
 		if _, err := sourceTools(t.Context(), testMCPServerName("catalog"), session); err == nil {
@@ -175,8 +176,8 @@ func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
 		t.Run(payload, func(t *testing.T) {
 			serverTransport, clientTransport := sdkmcp.NewInMemoryTransports()
 			server := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "exact-results"}, nil)
-			server.AddTool(&sdkmcp.Tool{Name: "read", InputSchema: json.RawMessage(`{"type":"object"}`)}, func(context.Context, *sdkmcp.CallToolRequest) (*sdkmcp.CallToolResult, error) {
-				return &sdkmcp.CallToolResult{StructuredContent: json.RawMessage(payload)}, nil
+			server.AddTool(&sdkmcp.Tool{Name: "read", InputSchema: jsontext.Value(`{"type":"object"}`)}, func(context.Context, *sdkmcp.CallToolRequest) (*sdkmcp.CallToolResult, error) {
+				return &sdkmcp.CallToolResult{StructuredContent: jsontext.Value(payload)}, nil
 			})
 			serverSession, err := server.Connect(t.Context(), serverTransport, nil)
 			if err != nil {
@@ -210,7 +211,7 @@ func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
 			}
 			// JSON member order is transport-owned; number lexemes and explicit
 			// empty objects must survive without float64 conversion.
-			var got, want map[string]json.RawMessage
+			var got, want map[string]jsontext.Value
 			if err := json.Unmarshal(output.Details, &got); err != nil {
 				t.Fatal(err)
 			}

@@ -3,7 +3,8 @@ package delivery
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -488,23 +489,23 @@ func TestReplayRejectsUnknownStoredOutcomeFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var envelope map[string]json.RawMessage
+	var envelope map[string]jsontext.Value
 	if err := json.Unmarshal(valid, &envelope); err != nil {
 		t.Fatal(err)
 	}
 
 	withUnknownEnvelope := maps.Clone(envelope)
-	withUnknownEnvelope["future"] = json.RawMessage(`true`)
+	withUnknownEnvelope["future"] = jsontext.Value(`true`)
 	unknownEnvelope, err := json.Marshal(withUnknownEnvelope)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	var storedResult map[string]json.RawMessage
+	var storedResult map[string]jsontext.Value
 	if err := json.Unmarshal(envelope["value"], &storedResult); err != nil {
 		t.Fatal(err)
 	}
-	storedResult["future"] = json.RawMessage(`true`)
+	storedResult["future"] = jsontext.Value(`true`)
 	unknownResult, err := json.Marshal(storedResult)
 	if err != nil {
 		t.Fatal(err)

@@ -82,8 +82,8 @@ func decode[T any](raw []byte) (T, error) {
 
 type interruptWire struct {
 	Kind     interrupt.Kind      `json:"kind"`
-	Approval *approvalPromptWire `json:"approval,omitempty"`
-	Question *questionPromptWire `json:"question,omitempty"`
+	Approval *approvalPromptWire `json:"approval,omitzero"`
+	Question *questionPromptWire `json:"question,omitzero"`
 }
 
 type approvalPromptWire struct {

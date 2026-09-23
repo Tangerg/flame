@@ -1,7 +1,8 @@
 package lsp
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 )
@@ -52,7 +53,7 @@ func TestParseLocationsSupportsProtocolUnion(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := parseLocations(json.RawMessage(test.raw))
+			got, err := parseLocations(jsontext.Value(test.raw))
 			if err != nil {
 				t.Fatalf("parseLocations: %v", err)
 			}
@@ -71,14 +72,14 @@ func TestParseLocationsRejectsMalformedAndUnknownShapes(t *testing.T) {
 		`[{"uri":"file:///a.go","targetUri":"file:///b.go"}]`,
 		`[{]`,
 	} {
-		if _, err := parseLocations(json.RawMessage(raw)); err == nil {
+		if _, err := parseLocations(jsontext.Value(raw)); err == nil {
 			t.Errorf("parseLocations(%q) succeeded, want error", raw)
 		}
 	}
 }
 
 func TestParseSymbolsSupportsFlatAndHierarchicalShapes(t *testing.T) {
-	flat, err := parseSymbols(json.RawMessage(`[{"name":"Run","kind":12,"location":{"uri":"file:///flat.go","range":{}}}]`), "file:///ignored.go")
+	flat, err := parseSymbols(jsontext.Value(`[{"name":"Run","kind":12,"location":{"uri":"file:///flat.go","range":{}}}]`), "file:///ignored.go")
 	if err != nil {
 		t.Fatalf("parse flat symbols: %v", err)
 	}
@@ -86,7 +87,7 @@ func TestParseSymbolsSupportsFlatAndHierarchicalShapes(t *testing.T) {
 		t.Fatalf("flat symbols = %+v", flat)
 	}
 
-	tree, err := parseSymbols(json.RawMessage(`[{"name":"Service","kind":5,"range":{},"selectionRange":{},"children":[{"name":"Run","kind":6,"range":{},"selectionRange":{}}]}]`), "file:///tree.go")
+	tree, err := parseSymbols(jsontext.Value(`[{"name":"Service","kind":5,"range":{},"selectionRange":{},"children":[{"name":"Run","kind":6,"range":{},"selectionRange":{}}]}]`), "file:///tree.go")
 	if err != nil {
 		t.Fatalf("parse hierarchical symbols: %v", err)
 	}
@@ -106,7 +107,7 @@ func TestParseSymbolsRejectsMalformedAndAmbiguousShapes(t *testing.T) {
 		{raw: `[{"name":"Run","kind":12,"range":{},"selectionRange":{}}]`},
 		{raw: `[{]`, docURI: "file:///doc.go"},
 	} {
-		if _, err := parseSymbols(json.RawMessage(test.raw), test.docURI); err == nil {
+		if _, err := parseSymbols(jsontext.Value(test.raw), test.docURI); err == nil {
 			t.Errorf("parseSymbols(%q) succeeded, want error", test.raw)
 		}
 	}
@@ -122,7 +123,7 @@ func TestHoverTextSupportsProtocolUnion(t *testing.T) {
 		{raw: `[{"language":"go","value":"func Run()"},"details"]`, want: "func Run()\n\ndetails"},
 	}
 	for _, test := range tests {
-		got, err := hoverText(json.RawMessage(test.raw))
+		got, err := hoverText(jsontext.Value(test.raw))
 		if err != nil {
 			t.Fatalf("hoverText(%q): %v", test.raw, err)
 		}
@@ -140,7 +141,7 @@ func TestParseHoverHandlesNullAndContents(t *testing.T) {
 		{raw: "null"},
 		{raw: `{"contents":{"kind":"markdown","value":" **value** "}}`, want: "**value**"},
 	} {
-		got, err := parseHover(json.RawMessage(test.raw))
+		got, err := parseHover(jsontext.Value(test.raw))
 		if err != nil {
 			t.Fatalf("parseHover(%q): %v", test.raw, err)
 		}
@@ -149,7 +150,7 @@ func TestParseHoverHandlesNullAndContents(t *testing.T) {
 		}
 	}
 	for _, raw := range []string{"", `{}`, `{"contents":null}`, `[]`} {
-		if _, err := parseHover(json.RawMessage(raw)); err == nil {
+		if _, err := parseHover(jsontext.Value(raw)); err == nil {
 			t.Errorf("parseHover(%q) succeeded, want error", raw)
 		}
 	}
@@ -157,7 +158,7 @@ func TestParseHoverHandlesNullAndContents(t *testing.T) {
 
 func TestHoverTextRejectsMalformedAndUnknownShapes(t *testing.T) {
 	for _, raw := range []string{`null`, `true`, `{}`, `{"value":null}`, `[false]`, `{"value":`} {
-		_, err := hoverText(json.RawMessage(raw))
+		_, err := hoverText(jsontext.Value(raw))
 		if err == nil {
 			t.Errorf("hoverText(%q) succeeded, want error", raw)
 		}

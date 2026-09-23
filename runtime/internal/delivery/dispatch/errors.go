@@ -89,7 +89,7 @@ func marshalFailure(failure *delivery.Failure) *transport.Error {
 	if !ok || protocol.ValidateWireTree(problem) != nil {
 		return invalidProblemResponse("the runtime could not encode a valid error response")
 	}
-	encoded, err := json.Marshal(problem)
+	encoded, err := json.Marshal(problem, json.Deterministic(true))
 	if err != nil {
 		return invalidProblemResponse("the runtime could not serialize a valid error response")
 	}
@@ -102,7 +102,7 @@ func problemError(sentinel error, detail string) *transport.Error {
 
 func invalidProblemResponse(detail string) *transport.Error {
 	fallback := protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: detail}
-	encoded, err := json.Marshal(fallback)
+	encoded, err := json.Marshal(fallback, json.Deterministic(true))
 	if err != nil {
 		return transport.NewError(codeInternalError, protocol.ProblemInternalError, nil)
 	}

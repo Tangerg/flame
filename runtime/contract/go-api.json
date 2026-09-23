@@ -2300,7 +2300,7 @@
             {
               "name": "Workspace",
               "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitempty\""
+              "tag": "json:\"workspace,omitzero\""
             },
             {
               "name": "Content",
@@ -2417,7 +2417,7 @@
             {
               "name": "Workspace",
               "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitempty\""
+              "tag": "json:\"workspace,omitzero\""
             }
           ],
           "methods": [
@@ -2481,12 +2481,12 @@
             {
               "name": "Content",
               "type": "*string",
-              "tag": "json:\"content,omitempty\""
+              "tag": "json:\"content,omitzero\""
             },
             {
               "name": "Pinned",
               "type": "*bool",
-              "tag": "json:\"pinned,omitempty\""
+              "tag": "json:\"pinned,omitzero\""
             }
           ],
           "methods": [
@@ -2622,7 +2622,7 @@
             {
               "name": "DurationMillis",
               "type": "*int64",
-              "tag": "json:\"durationMillis,omitempty\""
+              "tag": "json:\"durationMillis,omitzero\""
             },
             {
               "name": "Content",
@@ -2647,12 +2647,12 @@
             {
               "name": "Question",
               "type": "*Question",
-              "tag": "json:\"question,omitempty\""
+              "tag": "json:\"question,omitzero\""
             },
             {
               "name": "Tool",
               "type": "*ToolInvocation",
-              "tag": "json:\"tool,omitempty\""
+              "tag": "json:\"tool,omitzero\""
             },
             {
               "name": "SafetyClass",
@@ -2667,7 +2667,7 @@
             {
               "name": "Error",
               "type": "*ArtifactProblem",
-              "tag": "json:\"error,omitempty\""
+              "tag": "json:\"error,omitzero\""
             },
             {
               "name": "Summary",
@@ -2699,7 +2699,7 @@
             {
               "name": "Error",
               "type": "*ArtifactProblem",
-              "tag": "json:\"error,omitempty\""
+              "tag": "json:\"error,omitzero\""
             },
             {
               "name": "Detail",
@@ -2813,7 +2813,7 @@
             {
               "name": "ProtocolProfile",
               "type": "*RunProtocolProfile",
-              "tag": "json:\"protocolProfile,omitempty\""
+              "tag": "json:\"protocolProfile,omitzero\""
             },
             {
               "name": "Outcome",
@@ -2986,7 +2986,7 @@
             {
               "name": "RootRun",
               "type": "*RunRef",
-              "tag": "json:\"rootRun,omitempty\""
+              "tag": "json:\"rootRun,omitzero\""
             }
           ],
           "methods": [
@@ -3172,7 +3172,7 @@
             {
               "name": "Workspace",
               "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitempty\""
+              "tag": "json:\"workspace,omitzero\""
             },
             {
               "name": "Provider",
@@ -3209,7 +3209,7 @@
             {
               "name": "Workspace",
               "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitempty\""
+              "tag": "json:\"workspace,omitzero\""
             },
             {
               "name": "Title",
@@ -3342,7 +3342,7 @@
             {
               "name": "Code",
               "type": "*string",
-              "tag": "json:\"code,omitempty\""
+              "tag": "json:\"code,omitzero\""
             }
           ],
           "methods": [
@@ -3455,7 +3455,7 @@
             {
               "name": "Artifact",
               "type": "*SessionArtifact",
-              "tag": "json:\"artifact,omitempty\""
+              "tag": "json:\"artifact,omitzero\""
             },
             {
               "name": "Markdown",
@@ -3643,12 +3643,12 @@
             {
               "name": "Added",
               "type": "*int",
-              "tag": "json:\"added,omitempty\""
+              "tag": "json:\"added,omitzero\""
             },
             {
               "name": "Removed",
               "type": "*int",
-              "tag": "json:\"removed,omitempty\""
+              "tag": "json:\"removed,omitzero\""
             },
             {
               "name": "Binary",
@@ -3690,7 +3690,7 @@
             {
               "name": "SizeBytes",
               "type": "*int64",
-              "tag": "json:\"sizeBytes,omitempty\""
+              "tag": "json:\"sizeBytes,omitzero\""
             },
             {
               "name": "ModifiedAt",
@@ -3799,17 +3799,17 @@
             {
               "name": "Temperature",
               "type": "*float64",
-              "tag": "json:\"temperature,omitempty\""
+              "tag": "json:\"temperature,omitzero\""
             },
             {
               "name": "MaxTokens",
               "type": "*int64",
-              "tag": "json:\"maxTokens,omitempty\""
+              "tag": "json:\"maxTokens,omitzero\""
             },
             {
               "name": "TopP",
               "type": "*float64",
-              "tag": "json:\"topP,omitempty\""
+              "tag": "json:\"topP,omitzero\""
             },
             {
               "name": "Stop",
@@ -3851,7 +3851,7 @@
             {
               "name": "Limit",
               "type": "*int",
-              "tag": "json:\"limit,omitempty\""
+              "tag": "json:\"limit,omitzero\""
             }
           ],
           "methods": [
@@ -3878,7 +3878,7 @@
             {
               "name": "Lines",
               "type": "*int",
-              "tag": "json:\"lines,omitempty\""
+              "tag": "json:\"lines,omitzero\""
             }
           ],
           "methods": [
@@ -3900,7 +3900,7 @@
             {
               "name": "Workspace",
               "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitempty\""
+              "tag": "json:\"workspace,omitzero\""
             }
           ],
           "methods": [
@@ -4005,7 +4005,7 @@
             {
               "name": "Reason",
               "type": "*GoalReason",
-              "tag": "json:\"reason,omitempty\""
+              "tag": "json:\"reason,omitzero\""
             },
             {
               "name": "Provider",
@@ -4106,7 +4106,7 @@
             {
               "name": "CostUSD",
               "type": "*float64",
-              "tag": "json:\"costUsd,omitempty\""
+              "tag": "json:\"costUsd,omitzero\""
             },
             {
               "name": "Steps",
@@ -4170,7 +4170,7 @@
             {
               "name": "Limit",
               "type": "*int",
-              "tag": "json:\"limit,omitempty\""
+              "tag": "json:\"limit,omitzero\""
             }
           ],
           "methods": [
@@ -4351,7 +4351,7 @@
             {
               "name": "Payload",
               "type": "*InterruptPayload",
-              "tag": "json:\"payload,omitempty\""
+              "tag": "json:\"payload,omitzero\""
             }
           ],
           "methods": [
@@ -4368,7 +4368,7 @@
             {
               "name": "Tool",
               "type": "*ToolInvocation",
-              "tag": "json:\"tool,omitempty\""
+              "tag": "json:\"tool,omitzero\""
             },
             {
               "name": "Risk",
@@ -4388,7 +4388,7 @@
             {
               "name": "Question",
               "type": "*Question",
-              "tag": "json:\"question,omitempty\""
+              "tag": "json:\"question,omitzero\""
             }
           ],
           "methods": [
@@ -4442,7 +4442,7 @@
             {
               "name": "Remember",
               "type": "*RememberScope",
-              "tag": "json:\"remember,omitempty\""
+              "tag": "json:\"remember,omitzero\""
             },
             {
               "name": "EditedArgs",
@@ -4489,7 +4489,7 @@
             {
               "name": "Workspace",
               "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitempty\""
+              "tag": "json:\"workspace,omitzero\""
             }
           ],
           "methods": [
@@ -4541,7 +4541,7 @@
             {
               "name": "DurationMillis",
               "type": "*int64",
-              "tag": "json:\"durationMillis,omitempty\""
+              "tag": "json:\"durationMillis,omitzero\""
             },
             {
               "name": "Content",
@@ -4566,12 +4566,12 @@
             {
               "name": "Question",
               "type": "*Question",
-              "tag": "json:\"question,omitempty\""
+              "tag": "json:\"question,omitzero\""
             },
             {
               "name": "Tool",
               "type": "*ToolInvocation",
-              "tag": "json:\"tool,omitempty\""
+              "tag": "json:\"tool,omitzero\""
             },
             {
               "name": "SafetyClass",
@@ -4586,7 +4586,7 @@
             {
               "name": "Error",
               "type": "*ProblemData",
-              "tag": "json:\"error,omitempty\""
+              "tag": "json:\"error,omitzero\""
             },
             {
               "name": "Summary",
@@ -4982,7 +4982,7 @@
             {
               "name": "Workspace",
               "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitempty\""
+              "tag": "json:\"workspace,omitzero\""
             }
           ],
           "methods": [
@@ -5019,7 +5019,7 @@
             {
               "name": "FinishedAt",
               "type": "*time.Time",
-              "tag": "json:\"finishedAt,omitempty\""
+              "tag": "json:\"finishedAt,omitzero\""
             }
           ],
           "methods": [
@@ -5075,7 +5075,7 @@
             {
               "name": "Error",
               "type": "*ProblemData",
-              "tag": "json:\"error,omitempty\""
+              "tag": "json:\"error,omitzero\""
             }
           ],
           "methods": [
@@ -5181,12 +5181,12 @@
             {
               "name": "Authorization",
               "type": "*MCPAuthorizationChange",
-              "tag": "json:\"authorization,omitempty\""
+              "tag": "json:\"authorization,omitzero\""
             },
             {
               "name": "Headers",
               "type": "*MCPHeadersChange",
-              "tag": "json:\"headers,omitempty\""
+              "tag": "json:\"headers,omitzero\""
             },
             {
               "name": "Command",
@@ -5201,7 +5201,7 @@
             {
               "name": "Env",
               "type": "*MCPEnvironmentChange",
-              "tag": "json:\"env,omitempty\""
+              "tag": "json:\"env,omitzero\""
             },
             {
               "name": "Dir",
@@ -5250,7 +5250,7 @@
             {
               "name": "Seconds",
               "type": "*int",
-              "tag": "json:\"seconds,omitempty\""
+              "tag": "json:\"seconds,omitzero\""
             }
           ],
           "methods": [
@@ -5432,12 +5432,12 @@
             {
               "name": "ToolCount",
               "type": "*int",
-              "tag": "json:\"toolCount,omitempty\""
+              "tag": "json:\"toolCount,omitzero\""
             },
             {
               "name": "Error",
               "type": "*ProblemData",
-              "tag": "json:\"error,omitempty\""
+              "tag": "json:\"error,omitzero\""
             }
           ],
           "methods": [
@@ -5464,7 +5464,7 @@
             {
               "name": "Error",
               "type": "*ProblemData",
-              "tag": "json:\"error,omitempty\""
+              "tag": "json:\"error,omitzero\""
             }
           ]
         },
@@ -5564,7 +5564,7 @@
             {
               "name": "TokenLimits",
               "type": "*ModelTokenLimits",
-              "tag": "json:\"tokenLimits,omitempty\""
+              "tag": "json:\"tokenLimits,omitzero\""
             },
             {
               "name": "KnowledgeCutoff",
@@ -5579,12 +5579,12 @@
             {
               "name": "Capabilities",
               "type": "*ModelCapabilities",
-              "tag": "json:\"capabilities,omitempty\""
+              "tag": "json:\"capabilities,omitzero\""
             },
             {
               "name": "Pricing",
               "type": "*ModelPricing",
-              "tag": "json:\"pricing,omitempty\""
+              "tag": "json:\"pricing,omitzero\""
             }
           ],
           "methods": [
@@ -5653,12 +5653,12 @@
             {
               "name": "FirstOutputLatencyMillis",
               "type": "*int64",
-              "tag": "json:\"firstOutputLatencyMillis,omitempty\""
+              "tag": "json:\"firstOutputLatencyMillis,omitzero\""
             },
             {
               "name": "Usage",
               "type": "*ModelInvocationUsage",
-              "tag": "json:\"usage,omitempty\""
+              "tag": "json:\"usage,omitzero\""
             },
             {
               "name": "CallID",
@@ -5720,17 +5720,17 @@
             {
               "name": "CacheReadTokens",
               "type": "*int64",
-              "tag": "json:\"cacheReadTokens,omitempty\""
+              "tag": "json:\"cacheReadTokens,omitzero\""
             },
             {
               "name": "CacheWriteTokens",
               "type": "*int64",
-              "tag": "json:\"cacheWriteTokens,omitempty\""
+              "tag": "json:\"cacheWriteTokens,omitzero\""
             },
             {
               "name": "ReasoningTokens",
               "type": "*int64",
-              "tag": "json:\"reasoningTokens,omitempty\""
+              "tag": "json:\"reasoningTokens,omitzero\""
             }
           ]
         },
@@ -5773,17 +5773,17 @@
             {
               "name": "ContextWindow",
               "type": "*int64",
-              "tag": "json:\"contextWindow,omitempty\""
+              "tag": "json:\"contextWindow,omitzero\""
             },
             {
               "name": "MaxInputTokens",
               "type": "*int64",
-              "tag": "json:\"maxInputTokens,omitempty\""
+              "tag": "json:\"maxInputTokens,omitzero\""
             },
             {
               "name": "MaxOutputTokens",
               "type": "*int64",
-              "tag": "json:\"maxOutputTokens,omitempty\""
+              "tag": "json:\"maxOutputTokens,omitzero\""
             }
           ],
           "methods": [
@@ -5825,7 +5825,7 @@
             {
               "name": "CostUSD",
               "type": "*float64",
-              "tag": "json:\"costUsd,omitempty\""
+              "tag": "json:\"costUsd,omitzero\""
             }
           ],
           "methods": [
@@ -5880,7 +5880,7 @@
             {
               "name": "Limit",
               "type": "*int",
-              "tag": "json:\"limit,omitempty\""
+              "tag": "json:\"limit,omitzero\""
             },
             {
               "name": "Cursor",
@@ -5939,7 +5939,7 @@
             {
               "name": "State",
               "type": "*PlanState",
-              "tag": "json:\"state,omitempty\""
+              "tag": "json:\"state,omitzero\""
             }
           ],
           "methods": [
@@ -6040,7 +6040,7 @@
             {
               "name": "ActiveRun",
               "type": "*ActiveRunRef",
-              "tag": "json:\"activeRun,omitempty\""
+              "tag": "json:\"activeRun,omitzero\""
             },
             {
               "name": "Errors",
@@ -6081,12 +6081,12 @@
             {
               "name": "BaseURL",
               "type": "*string",
-              "tag": "json:\"baseUrl,omitempty\""
+              "tag": "json:\"baseUrl,omitzero\""
             },
             {
               "name": "Credential",
               "type": "*ProviderCredential",
-              "tag": "json:\"credential,omitempty\""
+              "tag": "json:\"credential,omitzero\""
             },
             {
               "name": "Configured",
@@ -6111,7 +6111,7 @@
             {
               "name": "DefaultEmbeddingModel",
               "type": "*string",
-              "tag": "json:\"defaultEmbeddingModel,omitempty\""
+              "tag": "json:\"defaultEmbeddingModel,omitzero\""
             }
           ],
           "methods": [
@@ -6133,7 +6133,7 @@
             {
               "name": "Value",
               "type": "*string",
-              "tag": "json:\"value,omitempty\""
+              "tag": "json:\"value,omitzero\""
             }
           ],
           "methods": [
@@ -6192,7 +6192,7 @@
             {
               "name": "Error",
               "type": "*ProblemData",
-              "tag": "json:\"error,omitempty\""
+              "tag": "json:\"error,omitzero\""
             }
           ]
         },
@@ -6309,17 +6309,17 @@
             {
               "name": "StartLine",
               "type": "*int",
-              "tag": "json:\"startLine,omitempty\""
+              "tag": "json:\"startLine,omitzero\""
             },
             {
               "name": "EndLine",
               "type": "*int",
-              "tag": "json:\"endLine,omitempty\""
+              "tag": "json:\"endLine,omitzero\""
             },
             {
               "name": "MaxBytes",
               "type": "*int",
-              "tag": "json:\"maxBytes,omitempty\""
+              "tag": "json:\"maxBytes,omitzero\""
             }
           ],
           "methods": [
@@ -6421,12 +6421,12 @@
             {
               "name": "ClientInfo",
               "type": "*ClientInfo",
-              "tag": "json:\"clientInfo,omitempty\""
+              "tag": "json:\"clientInfo,omitzero\""
             },
             {
               "name": "ClientCapabilities",
               "type": "*ClientCapabilities",
-              "tag": "json:\"clientCapabilities,omitempty\""
+              "tag": "json:\"clientCapabilities,omitzero\""
             }
           ]
         },
@@ -6437,7 +6437,7 @@
             {
               "name": "Ref",
               "type": "*WorkspaceRef",
-              "tag": "json:\"ref,omitempty\""
+              "tag": "json:\"ref,omitzero\""
             }
           ]
         },
@@ -6490,7 +6490,7 @@
             {
               "name": "UserItemID",
               "type": "*string",
-              "tag": "json:\"userItemId,omitempty\""
+              "tag": "json:\"userItemId,omitzero\""
             }
           ],
           "methods": [
@@ -6587,7 +6587,7 @@
             {
               "name": "Usage",
               "type": "*Usage",
-              "tag": "json:\"usage,omitempty\""
+              "tag": "json:\"usage,omitzero\""
             },
             {
               "name": "Steps",
@@ -6624,7 +6624,7 @@
             {
               "name": "Error",
               "type": "*ProblemData",
-              "tag": "json:\"error,omitempty\""
+              "tag": "json:\"error,omitzero\""
             },
             {
               "name": "Detail",
@@ -6651,17 +6651,17 @@
             {
               "name": "Step",
               "type": "*int",
-              "tag": "json:\"step,omitempty\""
+              "tag": "json:\"step,omitzero\""
             },
             {
               "name": "Usage",
               "type": "*Usage",
-              "tag": "json:\"usage,omitempty\""
+              "tag": "json:\"usage,omitzero\""
             },
             {
               "name": "ContextTokens",
               "type": "*int64",
-              "tag": "json:\"contextTokens,omitempty\""
+              "tag": "json:\"contextTokens,omitzero\""
             },
             {
               "name": "Activity",
@@ -6867,7 +6867,7 @@
             {
               "name": "Outcome",
               "type": "*RunOutcome",
-              "tag": "json:\"outcome,omitempty\""
+              "tag": "json:\"outcome,omitzero\""
             },
             {
               "name": "CreatedAt",
@@ -6909,7 +6909,7 @@
             {
               "name": "Workspace",
               "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitempty\""
+              "tag": "json:\"workspace,omitzero\""
             },
             {
               "name": "Paths",
@@ -6982,7 +6982,7 @@
             {
               "name": "MaxConcurrentRuns",
               "type": "*int",
-              "tag": "json:\"maxConcurrentRuns,omitempty\""
+              "tag": "json:\"maxConcurrentRuns,omitzero\""
             },
             {
               "name": "Idempotency",
@@ -7070,7 +7070,7 @@
             {
               "name": "Workspace",
               "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitempty\""
+              "tag": "json:\"workspace,omitzero\""
             },
             {
               "name": "Provider",
@@ -7100,12 +7100,12 @@
             {
               "name": "LastRunAt",
               "type": "*time.Time",
-              "tag": "json:\"lastRunAt,omitempty\""
+              "tag": "json:\"lastRunAt,omitzero\""
             },
             {
               "name": "NextRunAt",
               "type": "*time.Time",
-              "tag": "json:\"nextRunAt,omitempty\""
+              "tag": "json:\"nextRunAt,omitzero\""
             },
             {
               "name": "CreatedAt",
@@ -7147,7 +7147,7 @@
             {
               "name": "Error",
               "type": "*ProblemData",
-              "tag": "json:\"error,omitempty\""
+              "tag": "json:\"error,omitzero\""
             },
             {
               "name": "Detail",
@@ -7387,12 +7387,12 @@
             {
               "name": "Plan",
               "type": "*Plan",
-              "tag": "json:\"plan,omitempty\""
+              "tag": "json:\"plan,omitzero\""
             },
             {
               "name": "Goal",
               "type": "*Goal",
-              "tag": "json:\"goal,omitempty\""
+              "tag": "json:\"goal,omitzero\""
             }
           ]
         },
@@ -7760,7 +7760,7 @@
             {
               "name": "Params",
               "type": "*GenerationParams",
-              "tag": "json:\"params,omitempty\""
+              "tag": "json:\"params,omitzero\""
             }
           ],
           "methods": [
@@ -7853,32 +7853,32 @@
             {
               "name": "Run",
               "type": "*RunRef",
-              "tag": "json:\"run,omitempty\""
+              "tag": "json:\"run,omitzero\""
             },
             {
               "name": "Progress",
               "type": "*RunProgress",
-              "tag": "json:\"progress,omitempty\""
+              "tag": "json:\"progress,omitzero\""
             },
             {
               "name": "Outcome",
               "type": "*SegmentOutcome",
-              "tag": "json:\"outcome,omitempty\""
+              "tag": "json:\"outcome,omitzero\""
             },
             {
               "name": "Metrics",
               "type": "*RunMetrics",
-              "tag": "json:\"metrics,omitempty\""
+              "tag": "json:\"metrics,omitzero\""
             },
             {
               "name": "ContextTokens",
               "type": "*int64",
-              "tag": "json:\"contextTokens,omitempty\""
+              "tag": "json:\"contextTokens,omitzero\""
             },
             {
               "name": "Item",
               "type": "*Item",
-              "tag": "json:\"item,omitempty\""
+              "tag": "json:\"item,omitzero\""
             },
             {
               "name": "ItemID",
@@ -7888,12 +7888,12 @@
             {
               "name": "Delta",
               "type": "*ItemDelta",
-              "tag": "json:\"delta,omitempty\""
+              "tag": "json:\"delta,omitzero\""
             },
             {
               "name": "Plan",
               "type": "*Plan",
-              "tag": "json:\"plan,omitempty\""
+              "tag": "json:\"plan,omitzero\""
             }
           ],
           "methods": [
@@ -7950,7 +7950,7 @@
             {
               "name": "Snapshot",
               "type": "*SessionSnapshot",
-              "tag": "json:\"snapshot,omitempty\""
+              "tag": "json:\"snapshot,omitzero\""
             },
             {
               "name": "RunID",
@@ -7965,7 +7965,7 @@
             {
               "name": "HeadEventID",
               "type": "*string",
-              "tag": "json:\"headEventId,omitempty\""
+              "tag": "json:\"headEventId,omitzero\""
             }
           ],
           "methods": [
@@ -8148,7 +8148,7 @@
             {
               "name": "Workspace",
               "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitempty\""
+              "tag": "json:\"workspace,omitzero\""
             },
             {
               "name": "ExpectedRevision",
@@ -8180,32 +8180,32 @@
             {
               "name": "Enabled",
               "type": "*bool",
-              "tag": "json:\"enabled,omitempty\""
+              "tag": "json:\"enabled,omitzero\""
             },
             {
               "name": "Description",
               "type": "*string",
-              "tag": "json:\"description,omitempty\""
+              "tag": "json:\"description,omitzero\""
             },
             {
               "name": "Connection",
               "type": "*MCPConnectionInput",
-              "tag": "json:\"connection,omitempty\""
+              "tag": "json:\"connection,omitzero\""
             },
             {
               "name": "HandshakeTimeout",
               "type": "*MCPHandshakeTimeout",
-              "tag": "json:\"handshakeTimeout,omitempty\""
+              "tag": "json:\"handshakeTimeout,omitzero\""
             },
             {
               "name": "DisabledTools",
               "type": "*[]string",
-              "tag": "json:\"disabledTools,omitempty\""
+              "tag": "json:\"disabledTools,omitzero\""
             },
             {
               "name": "AutoApproveTools",
               "type": "*[]string",
-              "tag": "json:\"autoApproveTools,omitempty\""
+              "tag": "json:\"autoApproveTools,omitzero\""
             }
           ],
           "methods": [
@@ -8227,12 +8227,12 @@
             {
               "name": "BaseURL",
               "type": "*ProviderConfigChange",
-              "tag": "json:\"baseUrl,omitempty\""
+              "tag": "json:\"baseUrl,omitzero\""
             },
             {
               "name": "APIKey",
               "type": "*ProviderConfigChange",
-              "tag": "json:\"apiKey,omitempty\""
+              "tag": "json:\"apiKey,omitzero\""
             }
           ],
           "methods": [
@@ -8259,17 +8259,17 @@
             {
               "name": "Title",
               "type": "*string",
-              "tag": "json:\"title,omitempty\""
+              "tag": "json:\"title,omitzero\""
             },
             {
               "name": "Instructions",
               "type": "*string",
-              "tag": "json:\"instructions,omitempty\""
+              "tag": "json:\"instructions,omitzero\""
             },
             {
               "name": "Workspace",
               "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitempty\""
+              "tag": "json:\"workspace,omitzero\""
             },
             {
               "name": "WorkspaceMode",
@@ -8279,27 +8279,27 @@
             {
               "name": "Provider",
               "type": "*string",
-              "tag": "json:\"provider,omitempty\""
+              "tag": "json:\"provider,omitzero\""
             },
             {
               "name": "Model",
               "type": "*string",
-              "tag": "json:\"model,omitempty\""
+              "tag": "json:\"model,omitzero\""
             },
             {
               "name": "ReasoningEffort",
               "type": "*string",
-              "tag": "json:\"reasoningEffort,omitempty\""
+              "tag": "json:\"reasoningEffort,omitzero\""
             },
             {
               "name": "Cron",
               "type": "*string",
-              "tag": "json:\"cron,omitempty\""
+              "tag": "json:\"cron,omitzero\""
             },
             {
               "name": "Enabled",
               "type": "*bool",
-              "tag": "json:\"enabled,omitempty\""
+              "tag": "json:\"enabled,omitzero\""
             }
           ],
           "methods": [
@@ -8326,37 +8326,37 @@
             {
               "name": "Title",
               "type": "*string",
-              "tag": "json:\"title,omitempty\""
+              "tag": "json:\"title,omitzero\""
             },
             {
               "name": "Workspace",
               "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitempty\""
+              "tag": "json:\"workspace,omitzero\""
             },
             {
               "name": "Provider",
               "type": "*string",
-              "tag": "json:\"provider,omitempty\""
+              "tag": "json:\"provider,omitzero\""
             },
             {
               "name": "Model",
               "type": "*string",
-              "tag": "json:\"model,omitempty\""
+              "tag": "json:\"model,omitzero\""
             },
             {
               "name": "ReasoningEffort",
               "type": "*string",
-              "tag": "json:\"reasoningEffort,omitempty\""
+              "tag": "json:\"reasoningEffort,omitzero\""
             },
             {
               "name": "Favorite",
               "type": "*bool",
-              "tag": "json:\"favorite,omitempty\""
+              "tag": "json:\"favorite,omitzero\""
             },
             {
               "name": "Isolated",
               "type": "*bool",
-              "tag": "json:\"isolated,omitempty\""
+              "tag": "json:\"isolated,omitzero\""
             }
           ],
           "methods": [
@@ -8462,7 +8462,7 @@
             {
               "name": "SinceDays",
               "type": "*int",
-              "tag": "json:\"sinceDays,omitempty\""
+              "tag": "json:\"sinceDays,omitzero\""
             }
           ],
           "methods": [
@@ -8547,12 +8547,12 @@
             {
               "name": "Added",
               "type": "*int",
-              "tag": "json:\"added,omitempty\""
+              "tag": "json:\"added,omitzero\""
             },
             {
               "name": "Removed",
               "type": "*int",
-              "tag": "json:\"removed,omitempty\""
+              "tag": "json:\"removed,omitzero\""
             },
             {
               "name": "Binary",

@@ -1,7 +1,7 @@
 package llm
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"

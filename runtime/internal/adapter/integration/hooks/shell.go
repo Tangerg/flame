@@ -97,7 +97,7 @@ type hookInputWire struct {
 	Event           domainhooks.Event  `json:"event"`
 	SessionID       string             `json:"sessionId,omitempty"`
 	CWD             string             `json:"cwd,omitempty"`
-	Tool            *hookToolInputWire `json:"tool,omitempty"`
+	Tool            *hookToolInputWire `json:"tool,omitzero"`
 	Prompt          string             `json:"prompt,omitempty"`
 	PromptTruncated bool               `json:"promptTruncated,omitempty"`
 	Reason          string             `json:"reason,omitempty"`

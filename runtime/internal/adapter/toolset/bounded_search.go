@@ -42,13 +42,13 @@ var errRuntimeSearchResultTooLarge = errors.New("toolset: search result exceeds 
 type runtimeGrepRequest struct {
 	Pattern    string `json:"pattern" jsonschema:"minLength=1,maxLength=65536" jsonschema_description:"Go/RE2 regular expression matched independently against each complete text line. Use inline flags such as (?i) for case-insensitive matching."`
 	Path       string `json:"path,omitempty" jsonschema:"maxLength=4096" jsonschema_description:"Workspace-relative file or directory to search. Defaults to the workspace root."`
-	MaxResults *int   `json:"max_results,omitempty" jsonschema:"minimum=1,maximum=1000" jsonschema_description:"Maximum complete matching lines to retain. Defaults to 100; total still reports the exact match count."`
+	MaxResults *int   `json:"max_results,omitzero" jsonschema:"minimum=1,maximum=1000" jsonschema_description:"Maximum complete matching lines to retain. Defaults to 100; total still reports the exact match count."`
 }
 
 type runtimeGlobRequest struct {
 	Pattern    string `json:"pattern" jsonschema:"minLength=1,maxLength=4096" jsonschema_description:"Workspace-relative doublestar path pattern, such as **/*.go or src/**/*.ts."`
 	Path       string `json:"path,omitempty" jsonschema:"maxLength=4096" jsonschema_description:"Workspace-relative file or directory to search under. Defaults to the workspace root."`
-	MaxResults *int   `json:"max_results,omitempty" jsonschema:"minimum=1,maximum=1000" jsonschema_description:"Maximum complete paths to retain. Defaults to 100; total still reports the exact match count."`
+	MaxResults *int   `json:"max_results,omitzero" jsonschema:"minimum=1,maximum=1000" jsonschema_description:"Maximum complete paths to retain. Defaults to 100; total still reports the exact match count."`
 }
 
 type runtimeSearchResponse struct {

@@ -2,7 +2,8 @@ package dispatch
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"iter"
 	"testing"
 
@@ -68,7 +69,7 @@ func call(t *testing.T, features map[string]bool, method, params string) *transp
 	t.Helper()
 	d := newTestRouter(t, &capabilityRuntime{features: features})
 	res := d.Dispatch(t.Context(), &transport.Request{
-		ID: testID("1"), Method: method, Params: json.RawMessage(params),
+		ID: testID("1"), Method: method, Params: jsontext.Value(params),
 	})
 	if res.Response == nil {
 		t.Fatalf("%s returned no response", method)

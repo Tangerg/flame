@@ -137,7 +137,7 @@ type executorModelUsageWire struct {
 	ReasoningTokens  int64    `json:"reasoning_tokens"`
 	CacheReadTokens  int64    `json:"cache_read_tokens"`
 	CacheWriteTokens int64    `json:"cache_write_tokens"`
-	CostUSD          *float64 `json:"cost_usd,omitempty"`
+	CostUSD          *float64 `json:"cost_usd,omitzero"`
 	Calls            int      `json:"calls"`
 }
 

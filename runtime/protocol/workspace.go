@@ -41,5 +41,5 @@ type WorkspaceSummary struct {
 // Ref is omitted. Omission is allowed only here and on session creation; scoped
 // business requests always carry a concrete WorkspaceRef.
 type ResolveWorkspaceRequest struct {
-	Ref *WorkspaceRef `json:"ref,omitempty"`
+	Ref *WorkspaceRef `json:"ref,omitzero"`
 }

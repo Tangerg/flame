@@ -26,7 +26,7 @@ type GetDiffRequest struct {
 	Path      string       `json:"path,omitempty"`
 	Mode      DiffMode     `json:"mode,omitempty"`   // "worktree" (default) | "base"
 	Format    DiffFormat   `json:"format,omitempty"` // "rows" (default) | "raw"
-	Limit     *int         `json:"limit,omitempty"`
+	Limit     *int         `json:"limit,omitzero"`
 }
 
 // DiffBaseline names the exact comparison source. An unborn repository compares
@@ -74,8 +74,8 @@ type FileDiff struct {
 	Path         string     `json:"path"`
 	Status       FileStatus `json:"status"` // see FileStatus
 	PreviousPath string     `json:"previousPath,omitempty"`
-	Added        *int       `json:"added,omitempty"`
-	Removed      *int       `json:"removed,omitempty"`
+	Added        *int       `json:"added,omitzero"`
+	Removed      *int       `json:"removed,omitzero"`
 	Binary       bool       `json:"binary,omitzero"`
 	Rows         []DiffRow  `json:"rows"`
 }
@@ -88,7 +88,7 @@ type WorkspaceFileChange struct {
 	Path         string     `json:"path"`
 	Status       FileStatus `json:"status"` // see FileStatus
 	PreviousPath string     `json:"previousPath,omitempty"`
-	Added        *int       `json:"added,omitempty"`
-	Removed      *int       `json:"removed,omitempty"`
+	Added        *int       `json:"added,omitzero"`
+	Removed      *int       `json:"removed,omitzero"`
 	Binary       bool       `json:"binary,omitzero"`
 }

@@ -23,7 +23,7 @@ const (
 
 type conversationSearchRequest struct {
 	Query string `json:"query" jsonschema:"minLength=1" jsonschema_description:"Keywords that should appear in earlier conversation transcripts."`
-	Limit *int   `json:"limit,omitempty" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum matching excerpts to return. Defaults to 8."`
+	Limit *int   `json:"limit,omitzero" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum matching excerpts to return. Defaults to 8."`
 }
 
 func (c conversationSearchRequest) normalized() (query string, limit int, err error) {

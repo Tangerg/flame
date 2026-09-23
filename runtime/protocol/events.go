@@ -44,22 +44,22 @@ const (
 type StreamEvent struct {
 	Type StreamEventType `json:"type"`
 
-	Run      *RunRef         `json:"run,omitempty"`
-	Progress *RunProgress    `json:"progress,omitempty"`
-	Outcome  *SegmentOutcome `json:"outcome,omitempty"`
+	Run      *RunRef         `json:"run,omitzero"`
+	Progress *RunProgress    `json:"progress,omitzero"`
+	Outcome  *SegmentOutcome `json:"outcome,omitzero"`
 	// Metrics rides every segment.finished, terminal or not: a client reads what
 	// the run consumed from one field instead of looking for it in whichever
 	// branch of the outcome happens to carry it.
-	Metrics *RunMetrics `json:"metrics,omitempty"`
+	Metrics *RunMetrics `json:"metrics,omitzero"`
 	// ContextTokens is the final durable prompt footprint at this segment
 	// boundary. It repeats the latest progress preview because progress is not
 	// replayable: a reconnecting client must recover the same RunRef value from
 	// the authoritative completion frame alone.
-	ContextTokens *int64     `json:"contextTokens,omitempty"`
-	Item          *Item      `json:"item,omitempty"`
+	ContextTokens *int64     `json:"contextTokens,omitzero"`
+	Item          *Item      `json:"item,omitzero"`
 	ItemID        string     `json:"itemId,omitempty"`
-	Delta         *ItemDelta `json:"delta,omitempty"`
-	Plan          *Plan      `json:"plan,omitempty"`
+	Delta         *ItemDelta `json:"delta,omitzero"`
+	Plan          *Plan      `json:"plan,omitzero"`
 }
 
 // Authoritative reports whether the event itself is a fact a client may fold.
@@ -94,14 +94,14 @@ func (s StreamEvent) Replayable() bool {
 // that land authoritatively on segment.finished.metrics, so it may run briefly
 // ahead of them but never contradicts them.
 type RunProgress struct {
-	Step  *int   `json:"step,omitempty"`
-	Usage *Usage `json:"usage,omitempty"`
+	Step  *int   `json:"step,omitzero"`
+	Usage *Usage `json:"usage,omitzero"`
 	// ContextTokens is the latest round's prompt-token count — the live
 	// context-window occupancy (how full the window is right now), distinct from
 	// the cumulative-over-rounds Usage.inputTokens (which only grows). Pair it
 	// with the served model's contextWindow (models.list) for an occupancy gauge;
 	// it drops after a compaction. Ephemeral, like the rest of RunProgress.
-	ContextTokens *int64 `json:"contextTokens,omitempty"`
+	ContextTokens *int64 `json:"contextTokens,omitzero"`
 	Activity      string `json:"activity,omitempty"` // human-readable current action
 }
 
@@ -115,7 +115,7 @@ type RunProgress struct {
 // magic revision zero.
 type Plan struct {
 	SessionID string     `json:"sessionId"`
-	State     *PlanState `json:"state,omitempty"`
+	State     *PlanState `json:"state,omitzero"`
 }
 
 // PlanState is one committed whole-list replacement. Revision and UpdatedAt are

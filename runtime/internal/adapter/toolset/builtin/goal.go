@@ -72,7 +72,7 @@ func (r reportOutcome) goalStatus() (goalstate.Status, bool) {
 
 type reportArgs struct {
 	Outcome reportOutcome `json:"outcome" jsonschema:"required,enum=completed,enum=blocked" jsonschema_description:"completed = the whole objective is achieved and verified; blocked = progress requires the user or an external state change."`
-	Reason  *string       `json:"reason,omitempty" jsonschema_description:"Concrete blocker and what must change. Required for blocked; omit for completed."`
+	Reason  *string       `json:"reason,omitzero" jsonschema_description:"Concrete blocker and what must change. Required for blocked; omit for completed."`
 }
 
 // GoalReader is get_goal's complete consumer view.
@@ -118,7 +118,7 @@ type goalView struct {
 
 type usageView struct {
 	Runs    int      `json:"runs"`
-	CostUSD *float64 `json:"cost_usd,omitempty"`
+	CostUSD *float64 `json:"cost_usd,omitzero"`
 	Steps   int      `json:"steps"`
 }
 

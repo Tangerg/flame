@@ -1,7 +1,8 @@
 package dispatch
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"reflect"
 	"slices"
 	"strings"
@@ -43,7 +44,7 @@ func TestDecodeParamsRejectsDriftedRequests(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var got protocol.StartRunRequest
-			err := decodeParams(json.RawMessage(tt.raw), &got)
+			err := decodeParams(jsontext.Value(tt.raw), &got)
 			if err == nil || !strings.Contains(err.Error(), tt.detail) {
 				t.Fatalf("decodeParams() error = %v, want detail %q", err, tt.detail)
 			}
@@ -60,7 +61,7 @@ func TestDecodeParamsAcceptsEmptyAndKnownFields(t *testing.T) {
 	}
 
 	var start protocol.StartRunRequest
-	if err := decodeParams(json.RawMessage(`{"sessionId":"ses_1","input":[{"type":"text","text":"hello"}]}`), &start); err != nil {
+	if err := decodeParams(jsontext.Value(`{"sessionId":"ses_1","input":[{"type":"text","text":"hello"}]}`), &start); err != nil {
 		t.Fatalf("decode known params: %v", err)
 	}
 	if start.SessionID != "ses_1" || len(start.Input) != 1 {
@@ -76,7 +77,7 @@ func TestDecodeParamsRequiresExactFieldNames(t *testing.T) {
 		`{"provider":"deepseek","apiKey":{"type":"set","Value":"secret-token"}}`,
 	} {
 		var got protocol.UpdateProviderRequest
-		if err := decodeParams(json.RawMessage(raw), &got); err == nil {
+		if err := decodeParams(jsontext.Value(raw), &got); err == nil {
 			t.Fatalf("accepted non-contract field spelling: %s", raw)
 		}
 	}
@@ -90,7 +91,7 @@ func TestDecodeProviderUpdateRejectsExplicitNullChanges(t *testing.T) {
 		`{"provider":"deepseek","baseUrl":null}`,
 		`{"provider":"deepseek","apiKey":{"type":"clear","value":null}}`,
 	} {
-		msg := &transport.Request{Params: json.RawMessage(params)}
+		msg := &transport.Request{Params: jsontext.Value(params)}
 		if _, bad := decodeForTest[protocol.UpdateProviderRequest](msg); bad == nil {
 			t.Fatalf("decode accepted an explicit null provider change: %s", params)
 		}
@@ -102,7 +103,7 @@ func TestDecodeParamsReportsTypedMapNullsInKeyOrder(t *testing.T) {
 
 	var got protocol.MCPHeadersChange
 	err := decodeParams(
-		json.RawMessage(`{"type":"set","value":{"zulu":null,"alpha":null}}`),
+		jsontext.Value(`{"type":"set","value":{"zulu":null,"alpha":null}}`),
 		&got,
 	)
 	if err == nil || err.Error() != "params.value.alpha must be omitted instead of null" {
@@ -113,7 +114,7 @@ func TestDecodeParamsReportsTypedMapNullsInKeyOrder(t *testing.T) {
 func TestDecodeParamsAllowsNullInsideOpaqueJSONValues(t *testing.T) {
 	t.Parallel()
 
-	msg := &transport.Request{Params: json.RawMessage(`{"name":"diagnostic","arguments":{"optional":null}}`)}
+	msg := &transport.Request{Params: jsontext.Value(`{"name":"diagnostic","arguments":{"optional":null}}`)}
 	request, bad := decodeForTest[protocol.InvokeToolRequest](msg)
 	if bad != nil {
 		t.Fatalf("decode rejected null inside open tool arguments: %+v", bad)
@@ -145,7 +146,7 @@ func TestDecodeParamsRejectsExplicitNullsAcrossTypedContainers(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			var got nullTraversalFixture
-			err := decodeParams(json.RawMessage(test.raw), &got)
+			err := decodeParams(jsontext.Value(test.raw), &got)
 			if err == nil || err.Error() != test.want+" must be omitted instead of null" {
 				t.Fatalf("decodeParams error = %v, want null rejection at %s", err, test.want)
 			}
@@ -153,7 +154,7 @@ func TestDecodeParamsRejectsExplicitNullsAcrossTypedContainers(t *testing.T) {
 	}
 
 	var got nullTraversalFixture
-	if err := decodeParams(json.RawMessage(`{"opaque":{"value":null}}`), &got); err != nil {
+	if err := decodeParams(jsontext.Value(`{"opaque":{"value":null}}`), &got); err != nil {
 		t.Fatalf("decodeParams rejected opaque null: %v", err)
 	}
 }
@@ -165,7 +166,7 @@ func TestDecodeParamsRejectsExplicitNullsAcrossTypedContainers(t *testing.T) {
 func TestDecodeReportsFieldLevelConstraintViolations(t *testing.T) {
 	t.Parallel()
 
-	msg := &transport.Request{Method: "sessions.update", Params: json.RawMessage(`{"sessionId":"","expectedRevision":0}`)}
+	msg := &transport.Request{Method: "sessions.update", Params: jsontext.Value(`{"sessionId":"","expectedRevision":0}`)}
 	_, bad := decodeForTest[protocol.UpdateSessionRequest](msg)
 	if bad == nil {
 		t.Fatal("decode accepted a request with an empty id and a zero revision")
@@ -245,7 +246,7 @@ func TestDecodeRequiredAndOptionalArrayConstraints(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			bad := tt.decode(&transport.Request{Params: json.RawMessage(tt.params)})
+			bad := tt.decode(&transport.Request{Params: jsontext.Value(tt.params)})
 			if tt.wantField == "" {
 				if bad != nil {
 					t.Fatalf("decode rejected valid params: %+v", bad)
@@ -274,7 +275,7 @@ func TestDecodeRequiredAndOptionalArrayConstraints(t *testing.T) {
 func TestDecodeAcceptsRequestsWithoutConstraints(t *testing.T) {
 	t.Parallel()
 
-	msg := &transport.Request{Method: "runs.list", Params: json.RawMessage(`{"sessionId":"ses_1"}`)}
+	msg := &transport.Request{Method: "runs.list", Params: jsontext.Value(`{"sessionId":"ses_1"}`)}
 	in, bad := decodeForTest[protocol.ListRunsRequest](msg)
 	if bad != nil {
 		t.Fatalf("decode rejected an unconstrained request: %+v", bad)
@@ -286,7 +287,7 @@ func TestDecodeAcceptsRequestsWithoutConstraints(t *testing.T) {
 
 func TestGoalStartRejectsUnknownFields(t *testing.T) {
 	var request protocol.StartGoalRequest
-	err := decodeParams(json.RawMessage(`{"sessionId":"ses_1","objective":"finish","unexpected":true}`), &request)
+	err := decodeParams(jsontext.Value(`{"sessionId":"ses_1","objective":"finish","unexpected":true}`), &request)
 	if err == nil || !strings.Contains(err.Error(), `unknown object member name "unexpected"`) {
 		t.Fatalf("unknown field = %v", err)
 	}

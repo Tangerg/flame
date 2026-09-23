@@ -29,7 +29,7 @@ type interactionCheckpointPayloadWire struct {
 	Carried             []interactionModelCallsWire         `json:"carried,omitempty"`
 	Contexts            []interactionModelContextWire       `json:"contexts,omitempty"`
 	PendingSteers       []interactionPendingSteerWire       `json:"pending_steers,omitempty"`
-	PendingContinuation *interactionPendingContinuationWire `json:"pending_continuation,omitempty"`
+	PendingContinuation *interactionPendingContinuationWire `json:"pending_continuation,omitzero"`
 }
 
 type interactionMemberCallsWire struct {

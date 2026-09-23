@@ -41,7 +41,7 @@ type replayStore struct {
 type storedOutcome struct {
 	Version int                   `json:"version"`
 	Value   jsontext.Value        `json:"value,omitzero"`
-	Problem *protocol.ProblemData `json:"problem,omitempty"`
+	Problem *protocol.ProblemData `json:"problem,omitzero"`
 }
 
 func newReplayStore(store idempotency.Store) *replayStore {
@@ -178,13 +178,13 @@ func encodeStoredOutcome(result Result) ([]byte, error) {
 		problem := result.Failure.Problem()
 		stored.Problem = &problem
 	} else {
-		encoded, err := json.Marshal(result.Value)
+		encoded, err := json.Marshal(result.Value, json.Deterministic(true))
 		if err != nil {
 			return nil, err
 		}
 		stored.Value = encoded
 	}
-	return json.Marshal(stored)
+	return json.Marshal(stored, json.Deterministic(true))
 }
 
 func decodeStoredValue(resultType reflect.Type, encoded jsontext.Value) (any, error) {

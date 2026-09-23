@@ -26,7 +26,7 @@ const (
 
 type agentMemorySearchRequest struct {
 	Query string `json:"query" jsonschema:"minLength=1" jsonschema_description:"Natural-language topic, decision, convention, or user preference to recall from curated memory visible in the current project context."`
-	Limit *int   `json:"limit,omitempty" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum memories to return. Defaults to 8."`
+	Limit *int   `json:"limit,omitzero" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum memories to return. Defaults to 8."`
 }
 
 func (a agentMemorySearchRequest) normalized() (query string, limit int, err error) {

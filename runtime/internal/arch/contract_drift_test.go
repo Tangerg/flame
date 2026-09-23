@@ -2,7 +2,8 @@ package arch
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -387,8 +388,8 @@ func TestGeneratedSchemasResolve(t *testing.T) {
 	dir := filepath.Join(root, "contract")
 
 	var bundle struct {
-		Schema string                     `json:"$schema"`
-		Defs   map[string]json.RawMessage `json:"$defs"`
+		Schema string                    `json:"$schema"`
+		Defs   map[string]jsontext.Value `json:"$defs"`
 	}
 	if err := json.Unmarshal(readArtifact(t, dir, "schema.json"), &bundle); err != nil {
 		t.Fatalf("decode schema.json: %v", err)
@@ -547,7 +548,7 @@ func TestEveryWireStructIsPublished(t *testing.T) {
 	root := moduleRoot(t)
 
 	var bundle struct {
-		Defs map[string]json.RawMessage `json:"$defs"`
+		Defs map[string]jsontext.Value `json:"$defs"`
 	}
 	if err := json.Unmarshal(readArtifact(t, filepath.Join(root, "contract"), "schema.json"), &bundle); err != nil {
 		t.Fatalf("decode schema.json: %v", err)
@@ -628,7 +629,7 @@ func TestValueConstraintsAgreeAcrossArtifacts(t *testing.T) {
 	dir := filepath.Join(root, "contract")
 
 	var bundle struct {
-		Defs map[string]json.RawMessage `json:"$defs"`
+		Defs map[string]jsontext.Value `json:"$defs"`
 	}
 	if err := json.Unmarshal(readArtifact(t, dir, "schema.json"), &bundle); err != nil {
 		t.Fatalf("decode schema.json: %v", err)
@@ -663,7 +664,7 @@ func assertFlattenedValueConstraints(
 	t *testing.T,
 	shape string,
 	spec dispatch.FieldConstraintSpec,
-	definitions map[string]json.RawMessage,
+	definitions map[string]jsontext.Value,
 	validator string,
 	checks map[string]string,
 	union dispatch.UnionSpec,
@@ -705,10 +706,10 @@ func assertFlattenedValueConstraints(
 	}
 }
 
-func schemaHasTopLevelProperty(t *testing.T, definition json.RawMessage, field string) bool {
+func schemaHasTopLevelProperty(t *testing.T, definition jsontext.Value, field string) bool {
 	t.Helper()
 	var object struct {
-		Properties map[string]json.RawMessage `json:"properties"`
+		Properties map[string]jsontext.Value `json:"properties"`
 	}
 	if err := json.Unmarshal(definition, &object); err != nil {
 		t.Fatalf("decode definition: %v", err)
@@ -880,7 +881,7 @@ func assertCompiledConstraint(
 	shape string,
 	constraint dispatch.FieldConstraint,
 	expected compiledConstraintExpectation,
-	definition json.RawMessage,
+	definition jsontext.Value,
 	validator string,
 	checks map[string]string,
 ) {
@@ -998,7 +999,7 @@ func checkEntries(t *testing.T, source string) map[string]string {
 
 // constraintInSchema reports whether the definition constrains the last segment of
 // a dotted path with the given keyword, at any depth.
-func constraintInSchema(t *testing.T, definition json.RawMessage, path, keyword string, constraint dispatch.FieldConstraint) bool {
+func constraintInSchema(t *testing.T, definition jsontext.Value, path, keyword string, constraint dispatch.FieldConstraint) bool {
 	t.Helper()
 
 	var decoded any

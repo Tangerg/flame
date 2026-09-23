@@ -1,7 +1,7 @@
 package agentexec
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"testing"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -11,7 +11,7 @@ import (
 func TestFrozenInstructionsPreserveExactMetadataNumbers(t *testing.T) {
 	for _, partMetadata := range []bool{false, true} {
 		frozen := chat.NewSystemMessage("instructions")
-		values := metadata.Map{"source": json.RawMessage(`{"id":9007199254740992,"revision":1}`)}
+		values := metadata.Map{"source": jsontext.Value(`{"id":9007199254740992,"revision":1}`)}
 		if partMetadata {
 			frozen.Parts[0].Metadata = values
 		} else {
@@ -26,9 +26,9 @@ func TestFrozenInstructionsPreserveExactMetadataNumbers(t *testing.T) {
 		} {
 			candidate := frozen.Clone()
 			if partMetadata {
-				candidate.Parts[0].Metadata["source"] = json.RawMessage(test.value)
+				candidate.Parts[0].Metadata["source"] = jsontext.Value(test.value)
 			} else {
-				candidate.Metadata["source"] = json.RawMessage(test.value)
+				candidate.Metadata["source"] = jsontext.Value(test.value)
 			}
 			equal, err := sameInteractionMessages([]chat.Message{candidate}, []chat.Message{frozen})
 			if err != nil || equal != test.equal {

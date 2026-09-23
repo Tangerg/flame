@@ -26,7 +26,7 @@ type ProblemData struct {
 	// ActiveRun is required by session_has_active_run and appears on no other type:
 	// it names the run that made the request impossible, so the client can offer
 	// steer / resume / cancel instead of just reporting a failure.
-	ActiveRun *ActiveRunRef `json:"activeRun,omitempty"`
+	ActiveRun *ActiveRunRef `json:"activeRun,omitzero"`
 	// Errors carries field-level validation failures (typically
 	// invalid_params / form validation), addressable by field so the UI
 	// can flag each one.

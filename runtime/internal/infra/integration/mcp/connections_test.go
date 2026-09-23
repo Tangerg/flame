@@ -3,7 +3,7 @@ package mcp
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -64,7 +64,7 @@ func TestReusableOAuthIsBoundToEndpointOrigin(t *testing.T) {
 }
 
 func (c catalogTool) Definition() chat.ToolDefinition {
-	return chat.ToolDefinition{Name: string(c), InputSchema: json.RawMessage(`{"type":"object"}`)}
+	return chat.ToolDefinition{Name: string(c), InputSchema: jsontext.Value(`{"type":"object"}`)}
 }
 
 func (catalogTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput, error) {

@@ -54,7 +54,7 @@ type AgentMemoryList struct {
 // scope requires Workspace; user scope forbids it (contract shape rules).
 type AgentMemoryListRequest struct {
 	Scope     AgentMemoryScope `json:"scope"`
-	Workspace *WorkspaceRef    `json:"workspace,omitempty"`
+	Workspace *WorkspaceRef    `json:"workspace,omitzero"`
 }
 
 // AgentMemoryReviewRequest — agentMemory.review body. decision is
@@ -75,8 +75,8 @@ const (
 // AgentMemoryUpdateRequest — agentMemory.update body. A nil field is unchanged.
 type AgentMemoryUpdateRequest struct {
 	ID      string  `json:"id"`
-	Content *string `json:"content,omitempty"`
-	Pinned  *bool   `json:"pinned,omitempty"`
+	Content *string `json:"content,omitzero"`
+	Pinned  *bool   `json:"pinned,omitzero"`
 }
 
 // AgentMemoryItemRequest — agentMemory.delete body.
@@ -87,6 +87,6 @@ type AgentMemoryItemRequest struct {
 // AgentMemoryAddRequest — agentMemory.add body.
 type AgentMemoryAddRequest struct {
 	Scope     AgentMemoryScope `json:"scope"`
-	Workspace *WorkspaceRef    `json:"workspace,omitempty"`
+	Workspace *WorkspaceRef    `json:"workspace,omitzero"`
 	Content   string           `json:"content"`
 }

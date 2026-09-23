@@ -320,7 +320,7 @@ func (i *InteractionExecutor) interactionConfiguration(
 		Model                  string                     `json:"model"`
 		Streaming              bool                       `json:"streaming"`
 		MaxConcurrentToolCalls int                        `json:"maxConcurrentToolCalls"`
-		ToolResultOffload      *toolResultOffloadIdentity `json:"toolResultOffload,omitempty"`
+		ToolResultOffload      *toolResultOffloadIdentity `json:"toolResultOffload,omitzero"`
 		InteractiveApproval    bool                       `json:"interactiveApproval"`
 		ContextCompaction      bool                       `json:"contextCompaction"`
 		VisibleTools           []corechat.ToolDefinition  `json:"visibleTools,omitempty"`

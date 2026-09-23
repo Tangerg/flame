@@ -2,7 +2,7 @@ package agentexec
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"reflect"
 	"sync/atomic"

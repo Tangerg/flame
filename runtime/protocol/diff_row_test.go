@@ -1,7 +1,8 @@
 package protocol
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"testing"
 )
 
@@ -22,7 +23,7 @@ func TestDiffRowPreservesBlankCodeAndRequiresPresence(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var fields map[string]json.RawMessage
+		var fields map[string]jsontext.Value
 		if err := json.Unmarshal(encoded, &fields); err != nil {
 			t.Fatal(err)
 		}

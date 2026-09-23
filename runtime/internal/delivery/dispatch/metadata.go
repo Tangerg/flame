@@ -34,7 +34,7 @@ func extractRequestMeta(request *transport.Request) (protocol.RequestMeta, *tran
 		request.Params = nil
 		return metadata, nil
 	}
-	encodedParameters, err := json.Marshal(parameters)
+	encodedParameters, err := json.Marshal(parameters, json.Deterministic(true))
 	if err != nil {
 		return protocol.RequestMeta{}, invalidParams(requestMetaField + ": " + err.Error())
 	}

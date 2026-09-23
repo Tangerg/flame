@@ -3,7 +3,7 @@ package builtin
 import (
 	"cmp"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"path/filepath"
