@@ -125,7 +125,7 @@ export function AgentRow({
   // `truncate-fade` is the mask, and it has to SURVIVE: spreading `stylex.props` after a
   // `className` replaces it, which drops the clip and lets the label push the row wide.
   const label = stylex.props(rowStyles.label);
-  const detailBox = stylex.props(rowStyles.detail, typeStep.ui2xs);
+  const detailBox = stylex.props(rowStyles.detail, typeStep.uiXs);
   const button = (
     <Button
       {...props}

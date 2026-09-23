@@ -329,8 +329,7 @@
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
   font-family: var(--font-mono);
-  /* The CODE size, not a fraction of whatever surrounds it. `0.92em` resolved to 14.72px in
-     prose — fractional, and LARGER than the 13px a fenced block renders the same material at. */
+  /* The code step, the same size a fenced block renders the material at. */
   font-size: var(--fs-code);
   padding: 1px 6px;
   background: color-mix(in srgb, var(--wash-hover) 60%, var(--color-text) 6%);

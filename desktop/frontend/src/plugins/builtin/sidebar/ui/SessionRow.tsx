@@ -157,7 +157,7 @@ export function SessionRow({
                   title={accessibleStatus}
                 />
               ) : (
-                showTime && <span {...stylex.props(sr.stamp, typeStep.ui2xs)}>{when}</span>
+                showTime && <span {...stylex.props(sr.stamp, typeStep.uiXs)}>{when}</span>
               )}
             </span>
           }

@@ -21,7 +21,7 @@ const STEPS: Readonly<
   "ui-sm": { ratio: 0.857, floorPx: 10 },
   "ui-md": { ratio: 1, floorPx: UI_FONT_SIZE_MIN_PX },
   prose: { ratio: 1, floorPx: 0 },
-  code: { ratio: 0.95, floorPx: 10 },
+  code: { ratio: 0.857, floorPx: 10 },
   "display-sm": { aboveProse: true, ratio: 1.286, floorPx: 0 },
   "display-md": { aboveProse: true, ratio: 1.429, floorPx: 0 },
 };

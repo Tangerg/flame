@@ -44,7 +44,7 @@ export function AgentDockCatalog({
       <HoverTrack>
         {groups.map((group) => (
           <section key={group.id} {...stylex.props(styles.group)}>
-            <div {...stylex.props(styles.groupLabel, type.ui2xs)}>{group.label}</div>
+            <div {...stylex.props(styles.groupLabel, type.uiXs)}>{group.label}</div>
             {group.items.map((item) => (
               <AgentRow
                 key={item.id}

@@ -1253,7 +1253,7 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
   expect.soft(styles?.tableHeaderLineHeight).toBe("22.75px");
   expect.soft(styles?.proseParagraphMargin).toBe("7px 3.5px");
   expect.soft(styles?.inlineCodeDecoration).toBe("clone");
-  expect.soft(styles?.inlineCodeFontSize).toBe("13px");
+  expect.soft(styles?.inlineCodeFontSize).toBe("12px");
   expect.soft(styles?.inlineCodeRadius).toBe("6px");
   expect.soft(styles?.inlineCodeWordBreak).toBe("break-word");
   expect.soft(styles?.inlineCodeWrap).toBe("anywhere");

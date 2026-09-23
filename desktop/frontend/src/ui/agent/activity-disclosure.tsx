@@ -281,7 +281,7 @@ export function AgentActivityDisclosure({
             <span aria-hidden {...stylex.props(styles.spacer)} />
           )}
           {trailing != null && (
-            <span {...stylex.props(styles.trailing, type.ui2xs)}>{trailing}</span>
+            <span {...stylex.props(styles.trailing, type.uiXs)}>{trailing}</span>
           )}
           {/* Held on a row with nothing behind it too, for the reason the spacer is: without it
               that row's trailing status lands a chevron's width right of every row beside it. */}

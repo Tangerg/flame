@@ -65,7 +65,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
             // back through a class name breaks when the ink moves and says nothing when the
             // DECISION regresses, which is the failure this row has actually had.
             data-tone={headline.tone}
-            {...stylex.props(gm.meta, toolMetaInk.member[headline.tone], typeStep.ui2xs, face.mono)}
+            {...stylex.props(gm.meta, toolMetaInk.member[headline.tone], typeStep.uiXs, face.mono)}
           >
             {headline.label}
           </span>

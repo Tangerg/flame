@@ -14,7 +14,7 @@ describe("uiTypeLadder", () => {
       "ui-sm": 12,
       "ui-md": 14,
       prose: 14,
-      code: 13,
+      code: 12,
       "display-sm": 18,
       "display-md": 20,
     });
@@ -63,7 +63,7 @@ describe("uiTypeLadderCssVariables", () => {
       "--fs-ui-sm": "12px",
       "--fs-ui-md": "14px",
       "--fs-prose": "14px",
-      "--fs-code": "13px",
+      "--fs-code": "12px",
       "--fs-display-sm": "18px",
       "--fs-display-md": "20px",
     });
