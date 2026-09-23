@@ -137,7 +137,6 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "shadow-control": "none",
   "shadow-composer-depth":
     "0 8px 16px -4px color-mix(in oklab, var(--shadow-cast) 60%, transparent), 0 0 26px -8px var(--shadow-cast)",
-  // NOT `shadow-sm/lg/xl` — those are Tailwind's own theme keys.
   "shadow-ring": "0 0 0 0.5px var(--seam-line)",
   "shadow-raised":
     "var(--shadow-ring), 0 1px 2px -1px color-mix(in oklab, var(--shadow-cast) 40%, transparent)",

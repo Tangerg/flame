@@ -31,8 +31,7 @@ const styles = stylex.create({
   inkDone: { color: color.fgFaint },
   inkActive: { fontWeight: weight.medium, color: color.fg },
   inkPending: { color: color.fgMuted },
-  // The agent writes the steps, so one can name a path or an identifier with nowhere to
-  // break. Measured spilling 1368px out of the plan pane before this.
+  // The agent writes the steps, so one can name a path or an identifier with nowhere to break.
   label: { minWidth: 0, flex: 1, overflowWrap: "break-word" },
   struck: { textDecorationLine: "line-through" },
 });

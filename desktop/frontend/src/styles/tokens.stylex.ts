@@ -171,8 +171,7 @@ export const leading = stylex.defineVars({
  * circle. Setting the radius alone turns every circle in the design system into a squircle:
  * silently, because at a 6px dot or a 12px ring the difference is sub-pixel.
  *
- * So the pill is a bundle and `radius` no longer exposes it: the two halves cannot be separated
- * because they were never two decisions.
+ * So the pill is a bundle and `radius` does not expose it: the two halves are one decision.
  */
 export const corner = stylex.create({
   pill: { borderRadius: "var(--shape-pill)", "corner-shape": "round" },

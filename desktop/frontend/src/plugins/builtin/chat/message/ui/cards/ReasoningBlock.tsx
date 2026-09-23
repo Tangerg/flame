@@ -31,12 +31,9 @@ const rb = stylex.create({
    * anchored the usual way would sit still for a minute and report nothing.
    *
    * A non-shrinking child in a flex box that packs to the end spills over its start edge, where
-   * the mask takes it. The lead is zero until it has something to soften: this used to be a
-   * constant on the theory that a line short enough to fit leaves the start edge empty, which is
-   * only true with room to spare. `flex-end` puts the line's first pixel at `container - line`,
-   * so any line within the lead of filling the row starts INSIDE the ramp — measured 13.3px in
-   * at 656px of 670, and 1.9px in at 668. The line grows a token at a time, so every one of them
-   * crosses that window on its way to overflowing and ghosts its own opening on the way through.
+   * the mask takes it. The lead is zero until the line is actually cut: `flex-end` puts the
+   * line's first pixel at `container - line`, so a constant lead would fade the opening of any
+   * line that nearly fills the row — and a streaming line crosses that window token by token.
    */
   glimpse: {
     display: "flex",
@@ -51,9 +48,7 @@ const rb = stylex.create({
   // Two alignments the row already decides, rather than none.
   //
   // The rail hangs from the centre of the 16px mark, and the prose lands where the LABEL starts
-  // — mark plus the trigger's own gap. It used to sit 20px in with 24px of padding, which put
-  // the rail two pixels left of the label (a near-miss reads as a mistake) and the prose
-  // twenty-three past it, aligned with nothing and spending that much of the reading measure.
+  // — mark plus the trigger's own gap. A near-miss of either reads as a mistake.
   aside: {
     marginLeft: space.s2,
     borderLeftWidth: "var(--control-edge-width)",

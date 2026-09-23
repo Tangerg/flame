@@ -56,9 +56,8 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
       align="stacked"
     >
       {mode === undefined ? (
-        // The count comes from the list itself. It was a 184px slab, which is the same coupling
-        // this option table refuses at its other end — a number that has to be re-measured when
-        // a mode is added, a description wraps, or the reader picks a larger type size.
+        // The count comes from the list itself, so the placeholder follows added modes,
+        // wrapped descriptions and larger type without a height to re-measure.
         <SkeletonList count={APPROVAL_MODES.length} label={t("common.loading")} />
       ) : (
         <ChoiceList

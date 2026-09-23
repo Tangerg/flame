@@ -34,11 +34,8 @@ const WHITESPACE_ONLY = /^\s*$/;
  * — so the same paragraph margin that separates two ragged Latin blocks reads as a hole between
  * two of these. `markdown.css` closes it, and this decides which paragraphs are in the run.
  *
- * It was `\p{Script=Han}` — kanji and hanzi only. A Japanese paragraph that happens to be all
- * kana is still Japanese, and the CSS pairs ADJACENT paragraphs, so one of them in the middle of
- * a reply reopened the gap above AND below it while the rest stayed closed: measured on
- * `それではつづきをおねがいします。` and `コンパイルエラーガアリマス。`, both unmarked beside
- * marked neighbours.
+ * Kana counts as well as Han: a Japanese paragraph can be all kana, and because the CSS pairs
+ * ADJACENT paragraphs, one unmarked paragraph mid-reply reopens the gap on both sides of it.
  *
  * Hangul is deliberately NOT here. Korean puts spaces between words, so it has the ragged
  * rhythm this rule exists to leave alone — and a Korean reply is uniformly unmarked rather than
@@ -49,11 +46,9 @@ const UNSPACED_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/
 /**
  * A table cell that is a NUMBER, so a column of them lines up and cannot wrap.
  *
- * `markdown.css` gives the class tabular figures, a floor width and `nowrap`; what decides
- * which cells get it used to be `/^\d+$/`, which is a whole unsigned integer and nothing else.
- * The table an agent actually writes is a benchmark or a diff summary — `91.2%`, `4.2s`,
- * `1,234`, `-3` — and not one of those matched, so the digits in a column sat on proportional
- * widths and did not align.
+ * `markdown.css` gives the class tabular figures, a floor width and `nowrap`. The table an agent
+ * actually writes is a benchmark or a diff summary — `91.2%`, `4.2s`, `1,234`, `-3` — so a
+ * number here is more than a bare integer.
  *
  * Deliberately a little generous at the tail: a trailing unit of up to three letters (`ms`,
  * `GB`, `px`) still reads as a quantity. Being wrong that way costs a minimum width on a short

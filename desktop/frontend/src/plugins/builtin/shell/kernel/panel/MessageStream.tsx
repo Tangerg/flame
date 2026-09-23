@@ -82,8 +82,7 @@ function transcriptDayBreaks(rows: readonly TranscriptRow[]): readonly boolean[]
   });
 }
 
-// The gap between turns, as steps rather than class names. Same reason as `seamStep`: a
-// distance decided here in Tailwind's alphabet stops existing the day that alphabet does.
+// The gap between turns, as steps rather than class names, for the same reason as `seamStep`.
 const TURN_GAP = stylex.create({
   none: {},
   continuation: { marginTop: space.s2 },

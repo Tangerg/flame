@@ -16,16 +16,8 @@ export interface ViewHeaderProps {
   actions?: ReactNode;
   /**
    * What the title IS. Prose is a view's name; `mono` is machine text — a path, a command.
-   *
-   * It was `?: boolean`, defaulting to mono: a name that said WEIGHT and switched
-   * FACE, with nineteen of twenty-one call sites passing the flag to opt out of the default.
-   * A default that all but two callers override is not a default.
-   *
-   * It follows the TITLE and not the view, which is a distinction two callers got wrong by
-   * passing it as a constant: the terminal set it and its title is the translated word
-   * "Terminal", and the file view set it unconditionally while its title falls back to a
-   * translated sentence when nothing is open. A sentence in mono reads as a literal the
-   * reader is meant to type. One caller is left, and it asks whether a file is open.
+   * It follows the TITLE and not the view: a translated sentence in mono reads as a literal
+   * the reader is meant to type.
    */
   titleFace?: "prose" | "mono";
 }

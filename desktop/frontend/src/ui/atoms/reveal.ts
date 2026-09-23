@@ -18,9 +18,8 @@ import * as stylex from "@stylexjs/stylex";
  * purpose — a focusable sibling inside a `tablist` is an unallowed child (axe
  * `aria-required-children`), and Delete/Backspace on the focused tab is the ARIA practice.
  *
- * A device with no pointer can never hover, so the channel carries that fallback itself: what
- * `[data-reveal]` in `globals.css` used to say for everyone, each target now says for itself —
- * it has to, because a generated rule out-specifies that one.
+ * A device with no pointer can never hover, so the channel carries that fallback itself: each
+ * target states it, because a generated rule out-specifies any global `[data-reveal]` rule.
  *
  * The channel owns the VALUES and never the transition. A transition list is one declaration,
  * so an element that fades and also recolours must state all of it in one place — and most of

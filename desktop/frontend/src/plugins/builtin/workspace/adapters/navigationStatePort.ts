@@ -148,9 +148,8 @@ export function installWorkspaceNavigationPort(): () => void {
 /**
  * Whether focus LANDED, which is what the caller retries on.
  *
- * It used to report success as soon as the anchor existed, and `?.focus()` on a control that
- * is not there yet is silent — so the frame where a tool's anchor has committed and its button
- * has not answered "done" and cancelled the retry that exists for exactly that frame.
+ * The anchor existing is not enough: `?.focus()` on a control that is not there yet is silent,
+ * and the retry exists for the frame where the anchor has committed and its button has not.
  */
 function focusConversationTool(itemId: string): boolean {
   const anchor = document.getElementById(itemId);

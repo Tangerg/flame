@@ -144,9 +144,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
         open={expanded}
         onToggle={onToggleExpand}
       >
-        {/* A refused call never ran, so there is no result to disclose. It used to open on a
-          preview that said "No changes to show" — which the header, reading `denied`, had
-          already said, and which a chevron had promised was worth a click. */}
+        {/* A refused call never ran, so there is no result to disclose. */}
         {model.denied ? undefined : <ToolPreview tool={tool} />}
       </AgentActivityDisclosure>
       {/* UNDER the row, not inside its disclosure and not in its detail slot.

@@ -96,11 +96,9 @@ export function ApplyPatchPreview({ tool }: ToolPreviewProps) {
           idle="tools.preview.idle.noChanges"
         />
       )}
-      {/* One track for the verbs, shared by every row through `subgrid`. The verb used to be a
-          `shrink-0` inline label, so each path began wherever its own verb ended — invisible
-          while a receipt had one row, a ragged left edge as soon as a patch edits, moves and
-          deletes in one call. `auto` means a single-row receipt is still exactly as wide as its
-          own verb, and no locale needs a width picked for it. */}
+      {/* One track for the verbs, shared by every row through `subgrid`, so every path starts on
+          one edge whichever verbs a patch mixes. `auto` keeps a single-row receipt as wide as
+          its own verb, and no locale needs a width picked for it. */}
       <div {...stylex.props(pt.track)}>
         {changes.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((change) => (
           <PatchChangeRow

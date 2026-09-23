@@ -92,9 +92,7 @@ function isFileRef(path: string): boolean {
   // arrives here as `//host/p`, which has a separator and would otherwise qualify. A tool that
   // prints one URL prints several — `git clone`, `npm notice`, a dev server's listen line.
   if (path.startsWith("//")) return false;
-  // The separator branch used to accept any alphanumeric, which is the same precision hole the
-  // header warns about on the other branch. Measured in ordinary tool output: `rate limit 30/60`
-  // linked `30/60`, `ratio was 3/4` linked `3/4`, and `on 2024/01/15` offered to open a date.
+  // A letter is required: ordinary tool output is full of `30/60`, `3/4` and `2024/01/15`.
   if (path.includes("/")) return HAS_LETTER.test(path);
   const dot = path.lastIndexOf(".");
   if (dot <= 0 || dot === path.length - 1) return false;

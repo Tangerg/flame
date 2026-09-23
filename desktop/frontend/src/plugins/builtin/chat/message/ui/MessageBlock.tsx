@@ -187,9 +187,8 @@ function MessageBlockInner({
 
 export const MessageBlock = memo(MessageBlockInner);
 
-// One fact — how visible the action bar is — in one language. It had been three: a Tailwind
-// pair, a StyleX class read out of `stylex.props`, and another Tailwind class, so nothing
-// could tell whether `opacity-100` was overriding the reveal channel or agreeing with it.
+// One fact — how visible the action bar is — in one language, so no class can silently
+// override the reveal channel.
 const ACTIONS_VISIBILITY = {
   hidden: messageStyles.actionsHidden,
   hover: reveal.shown,

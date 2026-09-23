@@ -10,9 +10,8 @@ import { MODAL_SCRIM, modalPanel } from "./floating-surface";
  *
  * `figure` fits the thing and caps it at what the viewport allows. `document` holds a readable
  * measure and scrolls. `media` gives the whole screen to an image on a near-black field — so it
- * has no corner to round and nothing to cast a shadow onto, which is why its call site had been
- * cancelling seven of the panel's properties one by one. Under Tailwind that worked; under
- * StyleX every one of them was discarded and the dialog collapsed to its content.
+ * has no corner to round and nothing to cast a shadow onto. The kind owns those differences
+ * because a call site cannot cancel a StyleX panel's properties from outside.
  */
 type LightboxKind = "figure" | "document" | "media";
 

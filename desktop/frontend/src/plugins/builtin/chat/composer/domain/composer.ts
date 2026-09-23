@@ -56,10 +56,8 @@ type Recall = { readonly active: false } | { readonly active: true; at: number; 
 const NOT_RECALLING: Recall = { active: false };
 
 /**
- * One root because the invariants span all three. `value` used to be mirrored beside the
- * archive it was a copy of, and leaving recall on an edit was four separate assignments —
- * both are structural here: the active draft is DERIVED, and every mutation but recall's
- * own returns to `NOT_RECALLING`.
+ * One root because the invariants span all three: the active draft is DERIVED, and every
+ * mutation but recall's own returns to `NOT_RECALLING`.
  */
 export class Composer {
   private constructor(

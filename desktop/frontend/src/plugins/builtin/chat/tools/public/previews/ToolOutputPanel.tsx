@@ -20,9 +20,7 @@ import { PreviewPlaceholder } from "./PreviewPlaceholder";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { space } from "@/styles/tokens.stylex";
 
-// The surface is the `Well`'s, stated once there: this file used to restate its corner, fill,
-// padding, mono face and leading, which is why the empty case below could already be a `Well`
-// while the case with output was a hand-built copy of one.
+// The surface is the `Well`'s, stated once there.
 const op = stylex.create({
   frame: { overflow: "hidden" },
   // A shell prints `->` and `!=`; it did not ask for a glyph.

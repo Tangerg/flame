@@ -7,10 +7,8 @@ import { space } from "@/styles/tokens.stylex";
 /**
  * The centring and the entrance are ONE `translate`.
  *
- * Under Tailwind they were two utilities — `-translate-x-1/2` and `translate-y-{0,1}` — which
- * compose only because each writes its own custom property. In CSS `translate` is a single
- * property: two declarations do not merge, the later one wins, and the button loses the half
- * of its own width that was centring it. So each state states both axes.
+ * `translate` is a single property: two declarations do not merge, the later one wins, and the
+ * button loses the half of its own width that centres it. So each state states both axes.
  */
 const styles = stylex.create({
   // No transition here. `Button` already names every property a button animates and says why

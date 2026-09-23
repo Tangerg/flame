@@ -4,9 +4,8 @@ import { color, space, weight } from "@/styles/tokens.stylex";
 /**
  * The two suggestion panels above the composer: `@` for a file, `/` for a command.
  *
- * They are one shape and had been written twice, down to the identical heading inset — which
- * `SectionLabel` deliberately does not own, because how deep a heading sits belongs to its
- * container. This IS that container, so the inset lives here once.
+ * They are one shape. The heading inset lives here because `SectionLabel` deliberately does not
+ * own it: how deep a heading sits belongs to its container.
  */
 export const suggestionStyles = stylex.create({
   panel: { padding: space.s1 },

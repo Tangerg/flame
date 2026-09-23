@@ -4,10 +4,7 @@ const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPod|iPad/.test(n
 // answers `constructor` with a FUNCTION that would be returned as the glyph.
 //
 // This is the ONE place a modifier SPELLING is written down; the three tables below are
-// keyed on the canonical form and carry four rows each. They used to carry every spelling
-// themselves, and the copies had already drifted apart: `control` was in neither glyph
-// table, so it printed as the word "Control" instead of ⌃, and `meta` labelled itself "Win"
-// on Windows while the dispatcher fired it on Control.
+// keyed on the canonical form, so a glyph, a label and the dispatcher cannot disagree.
 const MODIFIER_ALIAS = new Map([
   ["cmd", "mod"],
   ["meta", "mod"],

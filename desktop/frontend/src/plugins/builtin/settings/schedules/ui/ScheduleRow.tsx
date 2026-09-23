@@ -177,10 +177,8 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
         </div>
       )}
 
-      {/* The least-protected destructive action in the app until now: one click on a quiet
-          icon between Run and Edit, no menu in front of it, no undo behind it. A session's
-          delete — the app's other row-level one — asks first, and it is already behind a
-          context menu. This is a saved schedule and its instructions, gone on a slip. */}
+      {/* One click on a quiet icon between Run and Edit, with no undo behind it: a saved
+          schedule and its instructions would be gone on a slip, so it asks first. */}
       <ConfirmDialog
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}

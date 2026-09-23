@@ -25,12 +25,10 @@ const offscreen = stylex.create({
  * layout and drops the real controls from the accessibility tree, so even an exact
  * scroll-to-bottom cannot reveal them.
  *
- * A STYLE rather than a class name, and the difference is not cosmetic: as two Tailwind
- * arbitrary-property classes this was the only styling in the transcript that no compiler
- * checked. It outlived the utility it was written against, and what a dead class removes is
- * containment — which changes nothing anyone can see and everything about how the turn below
- * it rasterises. The caller composes it into its own `stylex.props`, so the containment and
- * the gutter that positions it resolve against each other instead of racing in `cn()`.
+ * A STYLE rather than a class name, so the compiler checks it: a dead class would remove
+ * containment, which changes nothing anyone can see and everything about how the turn below it
+ * rasterises. The caller composes it into its own `stylex.props`, so the containment and the
+ * gutter that positions it resolve against each other instead of racing in `cn()`.
  */
 export function transcriptTurnContentVisibility(isLast: boolean): StyleXStyles | undefined {
   return isLast ? undefined : offscreen.skip;

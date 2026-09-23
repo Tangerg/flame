@@ -170,12 +170,9 @@ export function ApprovalCard({
  * The eyebrow above the reason: which FAMILY of capability is being asked for.
  *
  * Read off the same table the transcript reads, so the row and the card that authorises it
- * cannot identify one call two ways. It used to switch on `toolCategory`, which answers a
- * different question — the SHAPE of a tool's arguments and result — and named two of its seven
- * cases; every other tool fell through to its wire name, so the card asked permission to run
- * `web_fetch` while the row beneath it said "Fetched" over a download glyph. A name the
- * families have never heard of is still shown as itself: for an MCP tool nobody here has a
- * better word than the one its server chose.
+ * cannot identify one call two ways. `toolCategory` is not used: it answers a different
+ * question, the SHAPE of a tool's arguments and result. A name the families have never heard of
+ * is shown as itself: for an MCP tool nobody here has a better word than its server's.
  */
 function approvalIdentity(
   t: (key: string, params?: Record<string, string | number>) => string,

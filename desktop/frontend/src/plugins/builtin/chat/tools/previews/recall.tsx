@@ -64,14 +64,11 @@ function ConversationRecallPreview({ tool }: ToolPreviewProps) {
     <TextPreview>
       {hits.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((hit, i) => (
         <div key={i} className={stylex.props(rc.hit, pv.row, pv.rowPad).className}>
-          {/* The pair used to truncate as one string, and what it cut was the DAY —
-              "user · 2026-0…", "assistant · 2…", two rows not even agreeing on where they
-              stopped. Split, the date is `shrink-0` and the speaker gives way instead.
-              The column is 9.5rem rather than the 11.13 that would fit "assistant" whole:
-              measured, that is 26% of the row spent on metadata, and the speaker is a
-              two-value enum whose first four characters already tell them apart. What must
-              never be lost is the date, and it no longer is. Each row is its own grid, so the
-              width has to be a literal for the columns to line up at all. */}
+          {/* The date never shrinks and the speaker gives way: the speaker is a two-value enum
+              whose first four characters tell them apart, while a cut date is lost. 9.5rem and
+              not the 11.13 that fits "assistant" whole, which spends a quarter of the row on
+              metadata. Each row is its own grid, so the width is a literal for the columns to
+              line up. */}
           <span {...stylex.props(rc.who, vocab.faint)}>
             <span {...stylex.props(vocab.min, vocab.truncate)}>{hit.speaker}</span>
             <span {...stylex.props(vocab.hold)}>· {hit.day}</span>

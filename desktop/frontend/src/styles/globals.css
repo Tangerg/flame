@@ -1,9 +1,6 @@
 /*
- * The reset, which `@import "tailwindcss"` used to supply.
- *
- * It is a transcription of Preflight's values rather than an improvement on them: every rule
- * here was already in effect, so replacing the import must not move a pixel. What is NOT
- * transcribed is the part that normalises browsers this application never runs in — `-moz-*`
+ * The reset: Preflight's values, transcribed rather than improved on. What is NOT transcribed
+ * is the part that normalises browsers this application never runs in — `-moz-*`
  * rules, `::file-selector-button`, the twelve `::-webkit-datetime-edit-*` rules, `optgroup`,
  * `progress`, search decorations. This ships in one WebKit webview and renders one markup set.
  *
@@ -157,10 +154,8 @@
     display: none !important;
   }
 
-  /* Present to a screen reader, absent to everyone else. It came from Tailwind and now has no
-     other owner: a RECIPE rather than a property, so it stays a class the way `panel-scroll`
-     and `truncate-fade` do, rather than becoming a StyleX step that fourteen call sites would
-     each have to compose. Round 149 tried the other way and made a second owner of it. */
+  /* Present to a screen reader, absent to everyone else. A RECIPE rather than a property, so it
+     stays a class the way `panel-scroll` and `truncate-fade` do. */
   .sr-only {
     position: absolute;
     width: 1px;
@@ -175,13 +170,8 @@
 }
 
 /*
- * The one value Tailwind's own theme supplied that this design never had a name for.
- *
- * Every step in `space` is a multiple of it, so without this line the whole product loses its
- * rhythm at once. The other five that were carried over with it are gone: each one was a
- * SECOND answer to a question this design already answers — a shadow beside `.media-edge`, a
- * 1.5 leading between `snug` and `body`, a zero tracking with no name of its own, and two
- * animations whose durations were the only ones in the product that ignored `--motion-scale`.
+ * Every step in `space` is a multiple of this, so without it the whole product loses its rhythm
+ * at once.
  */
 :root {
   --spacing: 0.25rem;
@@ -228,19 +218,10 @@
 }
 
 /*
- * The values the theme block used to hold, as plain custom properties.
- *
- * Eighty-nine declarations lived there and sixty-eight were a bare alias of another variable —
- * a second name for a fact that already had one, existing only because Tailwind requires its
- * theme keys spelled `--color-*`, `--text-*`, `--radius-*`. Twelve more were read by nothing at
- * all: they were there so a utility could be generated from them.
- *
- * What is left carries a value: the washes and badges mixed from a tone, the two type steps
- * whose tracking is zero rather than the UI default, the display steps that bring their own
- * leading, and the animation shorthands that keep `--motion-scale` inside them.
- *
- * The names those aliases invented are not lost — they are in `tokens.stylex.ts`, which is where
- * a component names a decision. What is gone is the second COPY of each value.
+ * Plain custom properties that carry a value: the washes and badges mixed from a tone, the two
+ * type steps whose tracking is zero rather than the UI default, the display steps that bring
+ * their own leading, and the animation shorthands that keep `--motion-scale` inside them. A
+ * component names these through `tokens.stylex.ts`; nothing here is a second name for a value.
  */
 :root {
   --color-line-soft: transparent;
@@ -300,8 +281,8 @@
     transform: scale(0.9);
   }
 }
-/* A whole turn, and a fade. Both arrived from Tailwind at a flat duration, which made them the
-   only two animations in the product that a reduced-motion setting could not reach. */
+/* A whole turn, and a fade. Their durations come from `--motion-scale` so reduced motion
+   reaches them. */
 @keyframes flame-spin {
   to {
     transform: rotate(360deg);
@@ -465,9 +446,7 @@
   --fs-prose: 16px;
   --fs-code: 13px;
 
-  /* The editorial half of the same ladder. `markdown-h1`, `-h2` and `-table` used to be three
-     more variables here holding 24, 20 and 14 — the same three numbers as `display-lg`,
-     `display-md` and `ui-md`, which is to say the heading ladder was written out twice. */
+  /* The editorial half of the same ladder: markdown's larger headings take the display steps. */
   --fs-markdown-h5: 15px;
   --fs-markdown-h3: 17px;
   --fs-display-sm: 18px;
@@ -560,11 +539,7 @@
   --floating-panel-radius: var(--shape-xl);
   --floating-tip-radius: var(--shape-sm);
   --dock-tab-radius: var(--shape-lg);
-  /* ONE ladder. A text field used to have a second one two pixels shorter at `md` and `lg`,
-     with no comment and no commit behind it — while the button's `lg` step says in so many
-     words that it exists so a button standing beside a field matches its height. In the one
-     place they stand together, Settings → Connection, they did not: a 32px url field between
-     two 34px buttons. A step is a step for every control that takes one. */
+  /* ONE ladder for every control, so a field standing beside a button matches its height. */
   --control-height-xs: 22px;
   --control-height-sm: 26px;
   --control-height-md: 30px;
@@ -1503,14 +1478,8 @@ html.theme-dark {
   --composer-ring: var(--color-accent);
 }
 
-/* `markdown.css` and `overlays.css` used to be `@import`ed HERE, at the end of the file.
-   CSS ignores an `@import` that follows any other rule — the spec requires them first — and
-   the only reason they worked is that Tailwind's plugin inlined them before the browser ever
-   saw the file. `postcss.config.mjs` had even written down what happens without it: "the
-   `@import`s in `globals.css` stopped being inlined and every code block lost its padding."
-
-   They load from the entry now, immediately after this file, which is the order they need:
-   these two sheets refine what this one establishes. */
+/* `markdown.css` and `overlays.css` load from the entry, immediately after this file: CSS
+   ignores an `@import` that follows any other rule, and these two sheets refine this one. */
 
 /* The corner language, in one place, after the imports so the pill exception below reaches
    the sheets that declare pills.

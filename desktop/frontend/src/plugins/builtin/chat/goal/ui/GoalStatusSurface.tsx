@@ -110,8 +110,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
     if (commandInFlight.current) return false;
     // A runtime that will not take commands is a FAILURE to report, not a reason to go quiet.
     // The three icon controls are disabled while it is away, but the objective itself stays
-    // live — it is content — so the editor it opens is reachable, and its Save used to return
-    // here and do nothing at all: no write, no error, and a dialog that stayed open.
+    // live — it is content — so the editor it opens is reachable and its Save lands here.
     if (!runtimeCommandsAvailable()) {
       notifyError(fallback);
       return false;

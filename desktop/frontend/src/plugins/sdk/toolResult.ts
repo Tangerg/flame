@@ -8,8 +8,7 @@
 //
 // `Partial<T>`, and NOT the contract's own validator, because these feed display surfaces:
 // a transcript receipt with one entry the client cannot read must still show the rest, and
-// whole-payload validation would blank the row instead. Callers keep their per-entry
-// guards; what they no longer keep is a private guess at the property names.
+// whole-payload validation would blank the row instead. Callers keep their per-entry guards.
 
 import type {
   CommandResult,

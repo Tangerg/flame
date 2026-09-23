@@ -5,23 +5,11 @@ import { cn } from "@/lib/classNames";
 /**
  * A strip on the composer's top edge, tucked behind it.
  *
- * It owns the SHAPE and not the material. Its two callers look nothing alike — the Goal tray
- * is edged and backdrop-filtered, the project tray is a plain fill with no edge at all — and
- * the surface used to declare the Goal tray's material as if it were shared, which the project
- * tray then cancelled: `border-width: 0` and a different `background`, at the call site.
- *
- * That cancellation was invisible for as long as the material was Tailwind and the override was
- * StyleX, because a generated class outranks any utility. Migrating the material to StyleX put
- * the two on equal footing and the borders came back — through `cn`, which concatenates two
- * separately generated class lists and leaves precedence to stylesheet order. There is no right
- * answer to that race; the answer is not to hold one, so what is left here is what neither
- * caller has ever disagreed with.
- *
- * WIDTH is not on that list, and used to be. The composer centres its children rather than
- * stretching them, so a tray that does not state a width is as wide as its content — and the
- * two callers want different ones: the Goal tray spans the composer, the project tray insets
- * itself from both edges. Holding `100%` here made the inset one a second declaration of the
- * same property on the same element, which is the same race as the border, one property over.
+ * It owns the SHAPE and not the material or the width. Its two callers look nothing alike — the
+ * Goal tray is edged, backdrop-filtered and spans the composer; the project tray is a plain fill
+ * inset from both edges. Anything declared here that a caller also declares is merged by `cn`,
+ * which leaves precedence to stylesheet order, so only what neither caller disagrees with lives
+ * here.
  */
 const styles = stylex.create({
   surface: {

@@ -17,10 +17,8 @@ const menuStyles = stylex.create({
     height: "1px",
     backgroundColor: surface.divider,
   },
-  // Both of these are what a menu IS, not what a call site decides. The width had been spelled
-  // out at every call site through a shared variable, and the cap had never been offered at
-  // all — `--available-height` is measured by the positioner from the anchor to the screen
-  // edge, which is the thing `60vh` was estimating and `280px` ignored.
+  // Both of these are what a menu IS, not what a call site decides. `--available-height` is
+  // measured by the positioner from the anchor to the screen edge.
   content: {
     minWidth: "12rem",
     maxHeight: "min(380px, var(--available-height))",

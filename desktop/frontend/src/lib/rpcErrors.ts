@@ -41,7 +41,7 @@ export const MAPPED_TYPES: readonly string[] = [
   "provider_not_configured",
   "provider_test_failed",
   "mcp_authorization_attempt_not_found",
-  // Outcomes a person acts on, each distinct from the generic fallback the reader used to get.
+  // Outcomes a person acts on, each distinct from the generic fallback.
   "skill_not_found",
   "skill_unavailable",
   "revision_conflict",

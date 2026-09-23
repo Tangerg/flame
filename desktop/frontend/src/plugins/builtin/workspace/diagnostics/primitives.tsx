@@ -63,8 +63,7 @@ export function Row({
  * A column of the panel's own table.
  *
  * The width is the TABLE's decision, so it arrives as a style the panel declared beside its
- * header — not as a class the call site spells. Both panels had been passing `w-12`, `grow`,
- * `w-28` in from outside, which put the column model in eleven separate strings.
+ * header — not as a class the call site spells.
  */
 export function Cell({ styles: extra, children }: { styles?: StyleXStyles; children?: ReactNode }) {
   return <div {...stylex.props(styles.cell, extra)}>{children}</div>;

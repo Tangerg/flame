@@ -84,9 +84,7 @@ export function MarkdownImage({
   const unavailable = !isInlineMarkdownImage(src) || failedSource === src;
 
   // An image that did not load is worth saying, and saying it is all this can do: there is
-  // nothing to open. It was a disabled `Pressable` outside a link and this same span inside one,
-  // on the grounds that nested interactive content is a defect — which is true, and is not the
-  // only reason. A control that can never be enabled is not a control anywhere.
+  // nothing to open, and a control that can never be enabled is not a control.
   if (unavailable) {
     return (
       <span

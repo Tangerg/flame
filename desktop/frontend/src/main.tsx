@@ -8,9 +8,8 @@ import "./styles/markdown.css";
 import "./styles/overlays.css";
 // LAST of the three. `globals.css` ends with the touch-device reveal override, whose whole
 // job is to beat a rest state any of the sheets above it declares — a markdown table's action
-// strip is exactly that, and at equal specificity the later sheet wins. These two used to sit
-// as `@import` rules at the bottom of `globals.css`, which CSS ignores; moving them to the
-// entry is what made the order real, and the order the file already documented is this one.
+// strip is exactly that, and at equal specificity the later sheet wins. The order lives here
+// because an `@import` after other rules is ignored.
 import "./styles/globals.css";
 import "./styles/stylex.css";
 

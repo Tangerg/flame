@@ -79,9 +79,7 @@ function ComposerOverlayTop() {
  * What stands above the composer, in the only order that works.
  *
  * The overlay tray tucks its last 22px behind the composer's top edge, so whatever renders
- * between them is painted over — a runtime notice sat in that gap with more than half its
- * height covered. Both composers used to spell this order out, and one of them spelled it
- * wrong; there is nowhere left to put it wrong now.
+ * between them is painted over. Every composer takes the order from here.
  */
 export function ComposerStack({ children }: { children: ReactNode }) {
   return (

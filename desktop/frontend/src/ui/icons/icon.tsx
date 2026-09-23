@@ -291,9 +291,7 @@ interface Props {
   className?: string;
   /**
    * This glyph IS the statement, not decoration beside one, so it keeps full strength inside a
-   * button where `--glyph-step` would otherwise step it back. The opt-out used to be any
-   * `opacity-*` class, which `globals.css` excluded by name — a hook only a utility-class call
-   * site can reach, and one that a StyleX call site would have lost silently.
+   * button where `--glyph-step` would otherwise step it back.
    */
   full?: boolean;
 }

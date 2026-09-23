@@ -31,10 +31,8 @@ export type UnitSeam = "tight" | "close" | "apart" | "wide";
  * adjacent margins collapse, so per-card values made the gap depend on which pair happened
  * to meet.
  *
- * What it no longer owns is the number of pixels. These were Tailwind class names — `"mt-4"`,
- * decided in an application module — which is a layer violation and a silent one: the day the
- * theme stopped generating that utility the transcript's whole rhythm collapsed to zero and
- * nothing said so. The view maps a seam to a step; this table says which seam a pair makes.
+ * It does not own the number of pixels: that is a view decision. The view maps a seam to a
+ * step; this table says which seam a pair makes.
  */
 const SEAM: Record<UnitVoice, Record<UnitVoice, UnitSeam>> = {
   process: { process: "tight", prose: "wide", panel: "apart" },

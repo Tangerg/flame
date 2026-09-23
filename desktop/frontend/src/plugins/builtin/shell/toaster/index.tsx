@@ -9,8 +9,7 @@ import { color, radius, surface, type as typeStep, weight } from "@/styles/token
  * The shared material is three slices and this host can only accept two of them: sonner owns
  * the toast's entrance, its exit, its stacking and its swipe, so composing `motion` would put
  * a `transition-property` on an element another library is already animating. The two it does
- * take — the panel corner and an opaque plate — are the design's own tokens, not the
- * `rounded-xl bg-canvas` this used to spell in a framework that no longer exists.
+ * take are the panel corner and an opaque plate.
  *
  * Opaque on purpose: `--app-floating-surface` is 90% and reads correctly only behind the blur
  * that `face` carries on a pseudo-element, which is the slice this cannot take either.

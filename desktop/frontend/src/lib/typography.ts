@@ -18,11 +18,8 @@ export const UI_TYPE_STEPS = [
   "ui-md",
   "prose",
   "code",
-  // The editorial steps. They had been fixed pixel values on the grounds that a heading is an
-  // anchor rather than a scaled thing — which held at the small end and inverted at the large
-  // one: at base 18 a `display-sm` heading was 18px above 21px prose, and markdown's own h3 and
-  // h5 were smaller than the paragraphs they headed. An anchor that is sometimes below what it
-  // anchors is not an anchor; the hierarchy has to be one relationship scaled, not two.
+  // The editorial steps scale with the rest: a fixed heading would sit below the prose it heads
+  // at the larger base sizes.
   "markdown-h5",
   "markdown-h3",
   "display-sm",
