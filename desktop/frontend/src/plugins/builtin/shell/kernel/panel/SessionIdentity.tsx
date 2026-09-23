@@ -33,7 +33,7 @@ const si = stylex.create({
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
-    fontWeight: weight.semibold,
+    fontWeight: weight.medium,
     color: color.fg,
   },
 });

@@ -139,8 +139,8 @@ export const viewStyles = stylex.create({
 
   pushEnd: { marginInlineStart: "auto" },
 
-  title: { color: color.fg, fontWeight: weight.semibold },
-  titleMedium: { color: color.fg, fontWeight: weight.medium },
+  // Medium, as zcode sets a label or a row's name: weight marks it without shouting.
+  title: { color: color.fg, fontWeight: weight.medium },
   description: {
     marginTop: space.s0_5,
     color: color.fgMuted,

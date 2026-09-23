@@ -17,7 +17,7 @@ export const suggestionStyles = stylex.create({
     backgroundColor: "transparent",
     padding: 0,
     fontFamily: "var(--font-mono)",
-    fontWeight: weight.semibold,
+    fontWeight: weight.medium,
     color: color.accent,
   },
   directory: { color: color.fgFaint },

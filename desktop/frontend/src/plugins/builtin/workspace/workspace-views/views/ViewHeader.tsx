@@ -77,7 +77,7 @@ function FullViewBar({ icon, title, sub, actions, titleFace = "prose" }: ViewHea
           {...stylex.props(
             vocab.min,
             vocab.truncate,
-            vs.titleMedium,
+            vs.title,
             typeStep.uiMd,
             titleFace === "mono" && face.mono,
           )}
