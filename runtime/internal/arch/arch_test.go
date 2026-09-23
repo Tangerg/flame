@@ -1949,3 +1949,58 @@ func moduleRoot(t *testing.T) string {
 		dir = parent
 	}
 }
+
+// TestRuntimeUsesOneJSONVocabulary keeps encoding/json out of production code.
+// encoding/json/v2 refuses duplicate members, trailing values, and unknown
+// members without a hand-written pass, and its options state the rules Runtime
+// depends on — deterministic member order where bytes are hashed, compared, or
+// persisted, and omitzero where a present-but-empty value is a fact.
+//
+// The exceptions decode a JSON number into an any. Only encoding/json exposes
+// UseNumber, and rounding a tool-call identifier or a schema bound through
+// float64 would change cache identity, exported transcripts, and published
+// schemas.
+func TestRuntimeUsesOneJSONVocabulary(t *testing.T) {
+	root := moduleRoot(t)
+	exact := map[string]string{
+		filepath.Join("internal", "delivery", "tool_projection.go"):        "projects a Tool schema with exact numeric bounds",
+		filepath.Join("internal", "delivery", "transport", "transport.go"): "parses the JSON-RPC envelope with exact numeric ids",
+		filepath.Join("internal", "domain", "run", "tool", "value.go"):     "decodes Tool arguments with exact numeric identifiers",
+	}
+	found := make(map[string]bool, len(exact))
+	walkErr := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		parsed, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
+		if err != nil {
+			return err
+		}
+		for _, imported := range parsed.Imports {
+			if strings.Trim(imported.Path.Value, `"`) != "encoding/json" {
+				continue
+			}
+			relative, relErr := filepath.Rel(root, path)
+			if relErr != nil {
+				return relErr
+			}
+			if _, allowed := exact[relative]; !allowed {
+				t.Errorf("%s imports encoding/json; Runtime decodes with encoding/json/v2", relative)
+				continue
+			}
+			found[relative] = true
+		}
+		return nil
+	})
+	if walkErr != nil {
+		t.Fatalf("walk runtime: %v", walkErr)
+	}
+	for relative, reason := range exact {
+		if !found[relative] {
+			t.Errorf("%s no longer needs encoding/json (%s); drop it from the exception list", relative, reason)
+		}
+	}
+}
