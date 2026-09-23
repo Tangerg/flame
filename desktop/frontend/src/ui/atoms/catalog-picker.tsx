@@ -6,6 +6,7 @@ import { ComboboxPrimitive } from "@/ui/primitives";
 import { Icon, type IconName } from "@/ui/icons";
 import { dress } from "./button";
 import { Popover } from "./popover";
+import { floatingRow } from "./option-row";
 import { Pressable } from "./pressable";
 import { vocab } from "./vocabulary";
 
@@ -27,7 +28,8 @@ const styles = stylex.create({
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
     backgroundColor: surface.canvas,
-    paddingInline: space.s2_5,
+    // The glyph lands on the column the rows' glyphs hold, the edge taken out of the inset.
+    paddingInline: "calc(var(--spacing) * 2 - var(--control-edge-width))",
     borderColor: { default: surface.field, ":focus-within": surface.fieldFocus },
     color: { default: color.fgMuted, ":focus-within": color.fg },
   },
@@ -56,20 +58,7 @@ const styles = stylex.create({
   },
   inputShort: { height: space.s6 },
 
-  row: {
-    display: "grid",
-    cursor: "default",
-    gridTemplateColumns: "16px minmax(0, 1fr) 14px",
-    alignItems: "center",
-    gap: space.s2,
-    borderRadius: radius.sm,
-    paddingInline: space.s2_5,
-    color: color.fg,
-    userSelect: "none",
-    backgroundColor: { default: null, ":is([data-highlighted])": surface.hover },
-  },
-  rowTall: { minHeight: "calc(var(--spacing) * 11)", paddingBlock: space.s1_5 },
-  rowShort: { minHeight: space.s9 },
+  row: { cursor: "default", userSelect: "none" },
   rowGlyph: { color: color.fgMuted },
   rowText: { minWidth: 0 },
   rowLine: { display: "flex", minWidth: 0, alignItems: "baseline", gap: space.s1_5 },
@@ -83,7 +72,7 @@ const styles = stylex.create({
     maxWidth: "var(--available-width)",
     flexDirection: "column",
     overflow: "hidden",
-    padding: space.s1_5,
+    padding: space.s1,
   },
   splitPopup: {
     display: "flex",
@@ -93,7 +82,7 @@ const styles = stylex.create({
     overflow: "hidden",
   },
   empty: {
-    paddingInline: space.s2_5,
+    paddingInline: space.s2,
     paddingBlock: space.s6,
     textAlign: "center",
     color: color.fgFaint,
@@ -112,13 +101,13 @@ const styles = stylex.create({
     overscrollBehavior: "contain",
     scrollPaddingBlock: space.s1,
   },
-  listInset: { minWidth: 0, padding: space.s1_5 },
+  listInset: { minWidth: 0, padding: space.s1 },
   group: { paddingBottom: space.s1_5, ":last-child": { paddingBottom: 0 } },
   groupLabel: {
     display: "flex",
     alignItems: "center",
     gap: space.s2,
-    paddingInline: space.s2_5,
+    paddingInline: space.s2,
     paddingBottom: space.s1,
     paddingTop: space.s2,
     color: color.fgFaint,
@@ -138,7 +127,7 @@ const styles = stylex.create({
     borderRightWidth: "var(--control-edge-width)",
     borderRightStyle: "solid",
     borderRightColor: surface.divider,
-    padding: space.s1_5,
+    padding: space.s1,
   },
   railBody: { display: "flex", height: "240px", minHeight: 0 },
   railRow: {
@@ -248,7 +237,7 @@ function CatalogRow(item: CatalogPickerItem, groupLabel?: string) {
       key={item.id}
       value={item}
       data-current={item.active ? "" : undefined}
-      {...stylex.props(styles.row, type.uiMd, item.description ? styles.rowTall : styles.rowShort)}
+      {...stylex.props(floatingRow("pick", item.description ? "lg" : "sm"), styles.row)}
     >
       {item.leading ?? (
         <Icon name={item.icon ?? "panel-r"} size="sm" {...stylex.props(styles.rowGlyph)} />
