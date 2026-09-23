@@ -6,20 +6,19 @@ export interface ApprovalModeOption {
   descKey: string;
 }
 
-export const APPROVAL_MODES: ApprovalModeOption[] = [
-  { value: "safe", labelKey: "approvals.mode.safe", descKey: "approvals.mode.safe.desc" },
-  {
+// Keyed by the closed mode so every mode has exactly one option and a lookup cannot miss.
+export const APPROVAL_MODE_OPTION: Record<ApprovalMode, ApprovalModeOption> = {
+  safe: { value: "safe", labelKey: "approvals.mode.safe", descKey: "approvals.mode.safe.desc" },
+  balanced: {
     value: "balanced",
     labelKey: "approvals.mode.balanced",
     descKey: "approvals.mode.balanced.desc",
   },
-  { value: "yolo", labelKey: "approvals.mode.auto", descKey: "approvals.mode.auto.desc" },
-];
+  yolo: { value: "yolo", labelKey: "approvals.mode.auto", descKey: "approvals.mode.auto.desc" },
+};
 
-// Fallback stance when a persisted / fetched mode doesn't resolve to a known
-// option (union ↔ array drift). Referenced by value so it never couples to
-// array position; if "balanced" is ever removed this throws at load rather than
-// silently pointing at whatever now sits at that index.
-export const DEFAULT_APPROVAL_MODE: ApprovalModeOption = APPROVAL_MODES.find(
-  (m) => m.value === "balanced",
-)!;
+export const APPROVAL_MODES: ApprovalModeOption[] = [
+  APPROVAL_MODE_OPTION.safe,
+  APPROVAL_MODE_OPTION.balanced,
+  APPROVAL_MODE_OPTION.yolo,
+];

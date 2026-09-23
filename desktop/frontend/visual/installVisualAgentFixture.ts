@@ -21,7 +21,10 @@ import {
   type AgentSessionSummary,
 } from "@/plugins/builtin/agent/public/session";
 import { AGENT_SESSIONS } from "@/plugins/builtin/agent/public/services";
-import { APPROVAL_MODE_KEY } from "@/plugins/builtin/agent/public/approvalPolicy";
+import {
+  APPROVAL_MODE_KEY,
+  type ApprovalMode,
+} from "@/plugins/builtin/agent/public/approvalPolicy";
 import {
   composerBootstrap,
   composerKeymap,
@@ -295,7 +298,7 @@ export async function installVisualAgentFixture(
   queryClient.setQueryData([AGENT_SESSIONS_KEY], projectless ? [] : [visualSession(state)]);
   queryClient.setQueryData<WorkspaceProjectSummary[]>([WORKSPACE_PROJECTS_KEY], []);
   queryClient.setQueryData([MODELS_KEY], VISUAL_MODELS);
-  queryClient.setQueryData([APPROVAL_MODE_KEY], "ask");
+  queryClient.setQueryData<ApprovalMode>([APPROVAL_MODE_KEY], "balanced");
   await loadPluginsForTest(
     flameLight,
     defaultAccents,

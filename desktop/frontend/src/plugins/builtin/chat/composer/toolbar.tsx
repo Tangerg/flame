@@ -8,8 +8,8 @@ import { AgentComposerChip } from "@/ui/agent";
 import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
 import { useSelectedModel } from "./public/selectedModel";
 import {
+  APPROVAL_MODE_OPTION,
   APPROVAL_MODES,
-  DEFAULT_APPROVAL_MODE,
   setApprovalMode,
   useApprovalMode,
   type ApprovalMode,
@@ -55,7 +55,7 @@ function ApprovalModePill() {
   const t = useT();
   const { data: mode, isError } = useApprovalMode();
   if (isError || mode === undefined) return null;
-  const current = APPROVAL_MODES.find((m) => m.value === mode) ?? DEFAULT_APPROVAL_MODE;
+  const current = APPROVAL_MODE_OPTION[mode];
   const full = mode === "yolo";
   const onSelect = async (next: ApprovalMode) => {
     if (next === mode) return;
