@@ -2,7 +2,8 @@ package lsp
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"slices"
@@ -42,7 +43,7 @@ func (c *client) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 	}
 }
 
-func decodePublishDiagnostics(raw *json.RawMessage) (publishDiagnosticsParams, error) {
+func decodePublishDiagnostics(raw *jsontext.Value) (publishDiagnosticsParams, error) {
 	if raw == nil {
 		return publishDiagnosticsParams{}, errors.New("publishDiagnostics params are missing")
 	}
@@ -56,7 +57,7 @@ func decodePublishDiagnostics(raw *json.RawMessage) (publishDiagnosticsParams, e
 	return params, nil
 }
 
-func decodeConfigurationItemCount(raw *json.RawMessage) (int, error) {
+func decodeConfigurationItemCount(raw *jsontext.Value) (int, error) {
 	if raw == nil {
 		return 0, errors.New("configuration params are missing")
 	}

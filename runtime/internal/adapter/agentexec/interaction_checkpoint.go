@@ -2,7 +2,8 @@ package agentexec
 
 import (
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -22,7 +23,7 @@ import (
 type interactionCheckpointPayloadWire struct {
 	Options             corechat.Options                    `json:"options"`
 	ToolMetadata        []toolResultMetadata                `json:"tool_metadata,omitempty"`
-	Tree                json.RawMessage                     `json:"tree"`
+	Tree                jsontext.Value                      `json:"tree"`
 	Instructions        []corechat.Message                  `json:"instructions,omitempty"`
 	Members             []interactionMemberCallsWire        `json:"members,omitempty"`
 	Carried             []interactionModelCallsWire         `json:"carried,omitempty"`
@@ -383,7 +384,7 @@ func decodeInteractionCheckpointWire(payload []byte) (interactionCheckpointPaylo
 }
 
 func decodeInteractionCheckpointTree(
-	wire json.RawMessage,
+	wire jsontext.Value,
 ) (agent.TreeSnapshot, map[agent.ProcessID]struct{}, error) {
 	tree, err := agent.ParseTreeSnapshot(wire)
 	if err != nil {

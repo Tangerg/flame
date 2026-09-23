@@ -2,7 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"time"
 
@@ -86,7 +86,7 @@ func encodeRunCapabilities(capabilities rundomain.Capabilities) (string, error) 
 	}
 	row := runCapabilitiesRow{ChildRuns: capabilities.ChildRuns}
 	row.InterruptKinds = append(row.InterruptKinds, capabilities.InterruptKinds...)
-	encoded, err := json.Marshal(row)
+	encoded, err := encodeStoredJSON(row)
 	if err != nil {
 		return "", fmt.Errorf("encode run capabilities: %w", err)
 	}
@@ -153,7 +153,7 @@ func encodeRunUsage(usage *accounting.Usage) (string, error) {
 	if row == nil {
 		return "", nil
 	}
-	encoded, err := json.Marshal(row)
+	encoded, err := encodeStoredJSON(row)
 	if err != nil {
 		return "", fmt.Errorf("encode run usage: %w", err)
 	}
@@ -195,7 +195,7 @@ func encodeRunFailure(failure *rundomain.Failure) (string, error) {
 	if err := failure.Validate(); err != nil {
 		return "", fmt.Errorf("encode run failure: %w", err)
 	}
-	encoded, err := json.Marshal(runProblemRow{
+	encoded, err := encodeStoredJSON(runProblemRow{
 		Kind:              failure.Kind,
 		Detail:            failure.Detail,
 		DocURL:            failure.DocURL,

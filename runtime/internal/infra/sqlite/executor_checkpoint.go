@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -331,7 +330,7 @@ func encodeExecutorPolicy(checkpoint ExecutorCheckpointRecord) ([]byte, error) {
 	for index, kind := range checkpoint.Capabilities.InterruptKinds {
 		interruptKinds[index] = string(kind)
 	}
-	return json.Marshal(executorPolicyWire{
+	return encodeStoredJSON(executorPolicyWire{
 		Scope: executorScopeWire{
 			SessionID:         checkpoint.Scope.SessionID,
 			CWD:               checkpoint.Scope.CWD,
@@ -409,7 +408,7 @@ func encodeExecutorUsage(usage accounting.Snapshot) ([]byte, error) {
 			Calls:            model.Calls,
 		}
 	}
-	return json.Marshal(wire)
+	return encodeStoredJSON(wire)
 }
 
 func decodeExecutorUsage(data string) (accounting.Snapshot, error) {

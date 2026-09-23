@@ -3,7 +3,7 @@ package lsp
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"

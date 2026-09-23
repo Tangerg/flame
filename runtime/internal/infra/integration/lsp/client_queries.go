@@ -2,7 +2,7 @@ package lsp
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"strings"
 )
@@ -15,7 +15,7 @@ func (c *client) references(ctx context.Context, abs string, pos Position) ([]Lo
 	if _, err := c.ensureOpen(ctx, abs); err != nil {
 		return nil, err
 	}
-	var raw json.RawMessage
+	var raw jsontext.Value
 	if err := c.conn.Call(ctx, "textDocument/references", referenceParams{
 		TextDocument: textDocumentIdentifier{URI: pathToURI(abs)},
 		Position:     pos,
@@ -41,7 +41,7 @@ func (c *client) positionLocations(ctx context.Context, abs string, pos Position
 	if _, err := c.ensureOpen(ctx, abs); err != nil {
 		return nil, err
 	}
-	var raw json.RawMessage
+	var raw jsontext.Value
 	if err := c.conn.Call(ctx, method, positionParams{
 		TextDocument: textDocumentIdentifier{URI: pathToURI(abs)},
 		Position:     pos,
@@ -101,7 +101,7 @@ func (c *client) hover(ctx context.Context, abs string, pos Position) (string, e
 	if _, err := c.ensureOpen(ctx, abs); err != nil {
 		return "", err
 	}
-	var raw json.RawMessage
+	var raw jsontext.Value
 	if err := c.conn.Call(ctx, "textDocument/hover", positionParams{
 		TextDocument: textDocumentIdentifier{URI: pathToURI(abs)},
 		Position:     pos,
@@ -120,7 +120,7 @@ func (c *client) documentSymbols(ctx context.Context, abs string) ([]Symbol, err
 		return nil, err
 	}
 	uri := pathToURI(abs)
-	var raw json.RawMessage
+	var raw jsontext.Value
 	if err := c.conn.Call(ctx, "textDocument/documentSymbol", documentSymbolParams{
 		TextDocument: textDocumentIdentifier{URI: uri},
 	}, &raw); err != nil {

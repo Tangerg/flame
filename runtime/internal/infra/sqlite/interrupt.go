@@ -3,7 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"strings"
@@ -187,16 +187,16 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: encode interrupts: %w", err)
 	}
-	payload, err := json.Marshal(interrupts)
+	payload, err := encodeStoredJSON(interrupts)
 	if err != nil {
 		return fmt.Errorf("sqlite: encode interrupts: %w", err)
 	}
 	continuationValues := continuationRows(p.Continuations)
-	continuations, err := json.Marshal(continuationValues)
+	continuations, err := encodeStoredJSON(continuationValues)
 	if err != nil {
 		return fmt.Errorf("sqlite: encode interrupt continuations: %w", err)
 	}
-	bindings, err := json.Marshal(interruptBindingRows(p.Bindings))
+	bindings, err := encodeStoredJSON(interruptBindingRows(p.Bindings))
 	if err != nil {
 		return fmt.Errorf("sqlite: encode interrupt bindings: %w", err)
 	}
@@ -372,13 +372,13 @@ func (i *InterruptStore) Consume(ctx context.Context, sessionID, runID string) (
 func (i *InterruptStore) ClaimResume(
 	ctx context.Context,
 	sessionID, runID string,
-	answers json.RawMessage,
+	answers jsontext.Value,
 	claimedAt time.Time,
 ) (InterruptRecord, bool, error) {
 	if err := validatePendingOwner(sessionID, runID); err != nil {
 		return InterruptRecord{}, false, fmt.Errorf("sqlite: claim resume: %w", err)
 	}
-	if len(answers) == 0 || !json.Valid(answers) {
+	if len(answers) == 0 || !jsontext.Value(answers).IsValid() {
 		return InterruptRecord{}, false, errors.New("sqlite: claim resume answers must be valid JSON")
 	}
 	if claimedAt.IsZero() {

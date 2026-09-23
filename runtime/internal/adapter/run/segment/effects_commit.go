@@ -2,7 +2,7 @@ package segment
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"reflect"

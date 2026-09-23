@@ -3,7 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"time"
@@ -324,7 +324,7 @@ func encodeStrings(v []string) string {
 	if len(v) == 0 {
 		return ""
 	}
-	b, err := json.Marshal(v)
+	b, err := encodeStoredJSON(v)
 	if err != nil {
 		return ""
 	}
@@ -350,7 +350,7 @@ func encodeStringMap(m map[string]string) string {
 	if len(m) == 0 {
 		return ""
 	}
-	b, err := json.Marshal(m)
+	b, err := encodeStoredJSON(m)
 	if err != nil {
 		return ""
 	}

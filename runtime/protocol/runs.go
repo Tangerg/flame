@@ -76,7 +76,7 @@ type RunRef struct {
 	// ContextTokens is the latest completed model request's prompt footprint.
 	// It survives waiting, terminalization, and restart; absence means this Run
 	// has not produced an authoritative footprint yet.
-	ContextTokens int64 `json:"contextTokens,omitempty"`
+	ContextTokens int64 `json:"contextTokens,omitzero"`
 	// ProtocolProfile is the protocol contract this run was created under, and it
 	// is present in every status: a client that reconnects to a run has to know
 	// what the run may publish before it starts folding the stream.
@@ -322,7 +322,7 @@ type ListRunsRequest struct {
 	// false, and an explicit true is a declaration this runtime either honors or
 	// refuses with capability_not_negotiated — reading it as false would hand back
 	// a page that looks complete and silently is not.
-	IncludeDescendants bool `json:"includeDescendants,omitempty"`
+	IncludeDescendants bool `json:"includeDescendants,omitzero"`
 	PageQuery
 }
 
@@ -372,7 +372,7 @@ type ResumeRunRequest struct {
 // find out what actually happened.
 type SubscribeRunRequest struct {
 	// Snapshot requests a coherent Session read with a successor tail; it cannot be combined with a replay cursor.
-	Snapshot  bool   `json:"snapshot,omitempty"`
+	Snapshot  bool   `json:"snapshot,omitzero"`
 	RunID     string `json:"runId"`
 	SegmentID string `json:"segmentId"`
 }
@@ -489,7 +489,7 @@ type InterruptPayload struct {
 	Tool         *ToolInvocation `json:"tool,omitempty"`
 	Risk         ApprovalRisk    `json:"risk,omitempty"`
 	Reason       string          `json:"reason,omitempty"`
-	Rememberable bool            `json:"rememberable,omitempty"`
+	Rememberable bool            `json:"rememberable,omitzero"`
 	Question     *Question       `json:"question,omitempty"`
 }
 

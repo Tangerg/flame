@@ -1,7 +1,7 @@
 package interactioninput
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 
@@ -14,7 +14,7 @@ import (
 
 // EncodePrompt converts one validated product interrupt to its strict executor
 // boundary representation.
-func EncodePrompt(prompt runs.Interrupt) (json.RawMessage, error) {
+func EncodePrompt(prompt runs.Interrupt) (jsontext.Value, error) {
 	if err := prompt.Validate(); err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func DecodeResolution(raw []byte) (interrupt.Resolution, error) {
 
 // EncodeResolution converts a typed human decision to the JSON the executor
 // validates against its pending-input response schema before continuing.
-func EncodeResolution(resolution interrupt.Resolution) (json.RawMessage, error) {
+func EncodeResolution(resolution interrupt.Resolution) (jsontext.Value, error) {
 	if resolution.RememberScope != "" && !resolution.RememberScope.Valid() {
 		return nil, fmt.Errorf("agentexec interaction input codec: unknown remember scope %q", resolution.RememberScope)
 	}

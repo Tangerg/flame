@@ -2,7 +2,7 @@ package sqlite
 
 import (
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"time"
 
@@ -57,10 +57,10 @@ type questionOptionPayload struct {
 }
 
 type toolInvocationPayload struct {
-	ArgumentsText string          `json:"argumentsText,omitempty"`
-	Name          string          `json:"name"`
-	Arguments     json.RawMessage `json:"arguments"`
-	Result        json.RawMessage `json:"result,omitempty"`
+	ArgumentsText string         `json:"argumentsText,omitempty"`
+	Name          string         `json:"name"`
+	Arguments     jsontext.Value `json:"arguments"`
+	Result        jsontext.Value `json:"result,omitempty"`
 }
 
 type toolFailurePayload struct {
@@ -122,7 +122,7 @@ func encodeTranscriptItem(item transcript.Item) ([]byte, error) {
 		}
 		payload.Failure = &encoded
 	}
-	return json.Marshal(payload)
+	return encodeStoredJSON(payload)
 }
 
 func decodeTranscriptItem(data []byte) (transcript.ItemSnapshot, error) {
@@ -271,10 +271,10 @@ func decodeQuestionPayload(payload questionPayload) (transcript.Question, error)
 
 func encodeToolInvocationPayload(invocation transcript.ToolInvocation) toolInvocationPayload {
 	payload := toolInvocationPayload{
-		Name: invocation.Name, ArgumentsText: invocation.ArgumentsText, Arguments: json.RawMessage(invocation.Arguments.Canonical()),
+		Name: invocation.Name, ArgumentsText: invocation.ArgumentsText, Arguments: jsontext.Value(invocation.Arguments.Canonical()),
 	}
 	if invocation.Result != nil {
-		payload.Result = json.RawMessage(invocation.Result.Canonical())
+		payload.Result = jsontext.Value(invocation.Result.Canonical())
 	}
 	return payload
 }

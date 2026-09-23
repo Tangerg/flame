@@ -32,7 +32,7 @@ type ItemListScope struct {
 	// IncludeDescendants adds the items of the run's subtree at any depth. Legal
 	// only in run scope — the session timeline already holds every descendant, so
 	// asking there would name a narrowing that does not narrow.
-	IncludeDescendants bool `json:"includeDescendants,omitempty"`
+	IncludeDescendants bool `json:"includeDescendants,omitzero"`
 }
 
 // ItemOrder is the direction items.list walks the durable sequence.
@@ -186,7 +186,7 @@ type Item struct {
 	Content     []ContentBlock  `json:"content,omitempty"`
 	Phase       MessagePhase    `json:"phase,omitempty"`
 	Text        string          `json:"text,omitempty"`
-	Redacted    bool            `json:"redacted,omitempty"`
+	Redacted    bool            `json:"redacted,omitzero"`
 	Question    *Question       `json:"question,omitempty"`
 	Tool        *ToolInvocation `json:"tool,omitempty"`
 	SafetyClass SafetyClass     `json:"safetyClass,omitempty"`
@@ -198,8 +198,8 @@ type Item struct {
 	// or Run boundary. Summary is the required user-readable semantic fold,
 	// without the model-only system-message preamble. DroppedMessages is the net
 	// history reduction (messages before − after).
-	Summary         string `json:"summary,omitempty"`         // compaction
-	DroppedMessages int    `json:"droppedMessages,omitempty"` // compaction
+	Summary         string `json:"summary,omitempty"`        // compaction
+	DroppedMessages int    `json:"droppedMessages,omitzero"` // compaction
 }
 
 // ContentBlock is one block of message content.
@@ -236,8 +236,8 @@ type QuestionField struct {
 	Header      string            `json:"header,omitempty"` // ≤12-char chip
 	Type        QuestionFieldType `json:"type"`             // see QuestionFieldType
 	Options     []QuestionOption  `json:"options,omitempty"`
-	Multiple    bool              `json:"multiple,omitempty"`
-	AllowCustom bool              `json:"allowCustom,omitempty"`
+	Multiple    bool              `json:"multiple,omitzero"`
+	AllowCustom bool              `json:"allowCustom,omitzero"`
 }
 
 // QuestionOption is one choice option.
@@ -285,8 +285,8 @@ type ToolInvocation struct {
 type DiffRow struct {
 	Type      DiffRowType `json:"type"` // see DiffRowType
 	Text      string      `json:"text,omitempty"`
-	LeftLine  int         `json:"leftLine,omitempty"`
-	RightLine int         `json:"rightLine,omitempty"`
+	LeftLine  int         `json:"leftLine,omitzero"`
+	RightLine int         `json:"rightLine,omitzero"`
 	Code      *string     `json:"code,omitempty"`
 }
 
@@ -296,11 +296,11 @@ type DiffRow struct {
 // so the client never subtracts. costUsd is the total at the top level and
 // per-model in byModel; omitted (not faked to 0) when the model isn't priced.
 type ModelUsage struct {
-	InputTokens      int64    `json:"inputTokens,omitempty"`
-	OutputTokens     int64    `json:"outputTokens,omitempty"`
-	CacheReadTokens  int64    `json:"cacheReadTokens,omitempty"`
-	CacheWriteTokens int64    `json:"cacheWriteTokens,omitempty"`
-	ReasoningTokens  int64    `json:"reasoningTokens,omitempty"`
+	InputTokens      int64    `json:"inputTokens,omitzero"`
+	OutputTokens     int64    `json:"outputTokens,omitzero"`
+	CacheReadTokens  int64    `json:"cacheReadTokens,omitzero"`
+	CacheWriteTokens int64    `json:"cacheWriteTokens,omitzero"`
+	ReasoningTokens  int64    `json:"reasoningTokens,omitzero"`
 	CostUSD          *float64 `json:"costUsd,omitempty"`
 }
 

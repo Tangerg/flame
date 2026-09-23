@@ -1,9 +1,8 @@
 package llm
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -55,16 +54,9 @@ func readModelProbeDocument(source io.Reader) (modelProbeDocument, error) {
 		return modelProbeDocument{}, errors.New("response is not valid UTF-8")
 	}
 
-	decoder := json.NewDecoder(bytes.NewReader(content))
 	var list remoteModelList
-	if err := decoder.Decode(&list); err != nil {
+	if err := json.Unmarshal(content, &list); err != nil {
 		return modelProbeDocument{}, fmt.Errorf("decode response: %w", err)
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return modelProbeDocument{}, errors.New("response contains a trailing JSON value")
-		}
-		return modelProbeDocument{}, fmt.Errorf("decode trailing response material: %w", err)
 	}
 	if len(list.Data) > maximumRemoteModelCount {
 		return modelProbeDocument{}, fmt.Errorf(

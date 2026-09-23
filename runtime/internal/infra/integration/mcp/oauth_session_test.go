@@ -224,7 +224,7 @@ func TestRestoreOAuthHandlerRejectsMalformedPayload(t *testing.T) {
 	}
 	var handler auth.OAuthHandler
 	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, testMCPServerName("remote"), "https://mcp.example/tools")
-	if handler != nil || err == nil || !strings.Contains(err.Error(), "unknown field") {
+	if handler != nil || err == nil || !strings.Contains(err.Error(), "unknown object member name") {
 		t.Fatalf("restore malformed = handler %v, err %v", handler, err)
 	}
 }

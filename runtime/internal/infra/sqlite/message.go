@@ -3,7 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -83,7 +83,7 @@ func (m *MessageStore) Write(
 	err := RunInTx(ctx, m.db, func(ctx context.Context) error {
 		q := conn(ctx, m.db)
 		for _, msg := range messages {
-			data, err := json.Marshal(msg)
+			data, err := encodeStoredJSON(msg)
 			if err != nil {
 				return fmt.Errorf("sqlite: marshal message: %w", err)
 			}

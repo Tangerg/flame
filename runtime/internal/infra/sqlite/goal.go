@@ -3,7 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"time"
@@ -63,7 +63,7 @@ func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (boo
 	record := replacement.State()
 	expected := replacement.ExpectedVersion()
 	snapshot := record.Snapshot()
-	used, err := json.Marshal(goalUsed{Runs: snapshot.Used.Runs, CostUSD: snapshot.Used.Cost.OptionalUSD(), Steps: snapshot.Used.Steps})
+	used, err := encodeStoredJSON(goalUsed{Runs: snapshot.Used.Runs, CostUSD: snapshot.Used.Cost.OptionalUSD(), Steps: snapshot.Used.Steps})
 	if err != nil {
 		return false, fmt.Errorf("sqlite: encode goal used: %w", err)
 	}

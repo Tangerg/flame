@@ -17,12 +17,12 @@ type Provider struct {
 	// "openai-compatible" / "anthropic-compatible" passthroughs and Azure
 	// (per-resource URL). The client must collect a base URL when configuring
 	// them, and (since they carry no catalog) a free-form model id.
-	RequiresBaseURL bool `json:"requiresBaseUrl,omitempty"`
+	RequiresBaseURL bool `json:"requiresBaseUrl,omitzero"`
 	// EmbeddingCapable marks providers with an embeddings adapter — the set the
 	// agent-memory embedding-role picker offers (models.setEmbeddingRole).
 	// DefaultEmbeddingModel is a sensible default model id to prefill. It is
 	// absent when the id is user-supplied, e.g. an Azure deployment.
-	EmbeddingCapable      bool    `json:"embeddingCapable,omitempty"`
+	EmbeddingCapable      bool    `json:"embeddingCapable,omitzero"`
 	DefaultEmbeddingModel *string `json:"defaultEmbeddingModel,omitempty"`
 }
 

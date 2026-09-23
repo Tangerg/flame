@@ -18,7 +18,7 @@ type UsageSummaryRequest struct {
 type UsageBucket struct {
 	Key string `json:"key"`
 	ModelUsage
-	Runs int `json:"runs,omitempty"`
+	Runs int `json:"runs,omitzero"`
 }
 
 // UsageSummary is the cross-session spend report (usage.summary). Every bucket
@@ -32,6 +32,6 @@ type UsageSummary struct {
 	ByDay      []UsageBucket `json:"byDay,omitempty"`
 	// Sessions is the number of user-facing sessions with any recorded spend;
 	// Runs is the number of finished runs counted.
-	Sessions int `json:"sessions,omitempty"`
-	Runs     int `json:"runs,omitempty"`
+	Sessions int `json:"sessions,omitzero"`
+	Runs     int `json:"runs,omitzero"`
 }

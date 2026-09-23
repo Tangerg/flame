@@ -35,8 +35,8 @@ type ListFilesRequest struct {
 	Workspace      WorkspaceRef `json:"workspace"`
 	Path           string       `json:"path,omitempty"`
 	Glob           string       `json:"glob,omitempty"`
-	Recursive      bool         `json:"recursive,omitempty"`
-	IncludeIgnored bool         `json:"includeIgnored,omitempty"`
+	Recursive      bool         `json:"recursive,omitzero"`
+	IncludeIgnored bool         `json:"includeIgnored,omitzero"`
 	PageQuery
 }
 
@@ -64,9 +64,9 @@ type ReadFileRequest struct {
 type FileContent struct {
 	Content    string `json:"content"`
 	TotalLines int    `json:"totalLines"`
-	Truncated  bool   `json:"truncated,omitempty"`
-	StartLine  int    `json:"startLine,omitempty"`
-	EndLine    int    `json:"endLine,omitempty"`
+	Truncated  bool   `json:"truncated,omitzero"`
+	StartLine  int    `json:"startLine,omitzero"`
+	EndLine    int    `json:"endLine,omitzero"`
 }
 
 // FileEntryType is a listed workspace entry's kind.

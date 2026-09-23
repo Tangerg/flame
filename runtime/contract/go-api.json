@@ -2642,7 +2642,7 @@
             {
               "name": "Redacted",
               "type": "bool",
-              "tag": "json:\"redacted,omitempty\""
+              "tag": "json:\"redacted,omitzero\""
             },
             {
               "name": "Question",
@@ -2677,7 +2677,7 @@
             {
               "name": "DroppedMessages",
               "type": "int",
-              "tag": "json:\"droppedMessages,omitempty\""
+              "tag": "json:\"droppedMessages,omitzero\""
             }
           ],
           "methods": [
@@ -2741,7 +2741,7 @@
             {
               "name": "RetryAfterSeconds",
               "type": "int",
-              "tag": "json:\"retryAfterSeconds,omitempty\""
+              "tag": "json:\"retryAfterSeconds,omitzero\""
             }
           ],
           "methods": [
@@ -2808,7 +2808,7 @@
             {
               "name": "ContextTokens",
               "type": "int64",
-              "tag": "json:\"contextTokens,omitempty\""
+              "tag": "json:\"contextTokens,omitzero\""
             },
             {
               "name": "ProtocolProfile",
@@ -2895,7 +2895,7 @@
             {
               "name": "Favorite",
               "type": "bool",
-              "tag": "json:\"favorite,omitempty\""
+              "tag": "json:\"favorite,omitzero\""
             }
           ],
           "methods": [
@@ -3274,7 +3274,7 @@
             {
               "name": "Truncated",
               "type": "bool",
-              "tag": "json:\"truncated,omitempty\""
+              "tag": "json:\"truncated,omitzero\""
             }
           ]
         },
@@ -3332,12 +3332,12 @@
             {
               "name": "LeftLine",
               "type": "int",
-              "tag": "json:\"leftLine,omitempty\""
+              "tag": "json:\"leftLine,omitzero\""
             },
             {
               "name": "RightLine",
               "type": "int",
-              "tag": "json:\"rightLine,omitempty\""
+              "tag": "json:\"rightLine,omitzero\""
             },
             {
               "name": "Code",
@@ -3601,17 +3601,17 @@
             {
               "name": "Truncated",
               "type": "bool",
-              "tag": "json:\"truncated,omitempty\""
+              "tag": "json:\"truncated,omitzero\""
             },
             {
               "name": "StartLine",
               "type": "int",
-              "tag": "json:\"startLine,omitempty\""
+              "tag": "json:\"startLine,omitzero\""
             },
             {
               "name": "EndLine",
               "type": "int",
-              "tag": "json:\"endLine,omitempty\""
+              "tag": "json:\"endLine,omitzero\""
             }
           ],
           "methods": [
@@ -3653,7 +3653,7 @@
             {
               "name": "Binary",
               "type": "bool",
-              "tag": "json:\"binary,omitempty\""
+              "tag": "json:\"binary,omitzero\""
             },
             {
               "name": "Rows",
@@ -3973,7 +3973,7 @@
             {
               "name": "IncludeDescendants",
               "type": "bool",
-              "tag": "json:\"includeDescendants,omitempty\""
+              "tag": "json:\"includeDescendants,omitzero\""
             }
           ],
           "methods": [
@@ -4234,7 +4234,7 @@
             {
               "name": "TimeoutMillis",
               "type": "int",
-              "tag": "json:\"timeoutMillis,omitempty\""
+              "tag": "json:\"timeoutMillis,omitzero\""
             },
             {
               "name": "Scope",
@@ -4383,7 +4383,7 @@
             {
               "name": "Rememberable",
               "type": "bool",
-              "tag": "json:\"rememberable,omitempty\""
+              "tag": "json:\"rememberable,omitzero\""
             },
             {
               "name": "Question",
@@ -4561,7 +4561,7 @@
             {
               "name": "Redacted",
               "type": "bool",
-              "tag": "json:\"redacted,omitempty\""
+              "tag": "json:\"redacted,omitzero\""
             },
             {
               "name": "Question",
@@ -4596,7 +4596,7 @@
             {
               "name": "DroppedMessages",
               "type": "int",
-              "tag": "json:\"droppedMessages,omitempty\""
+              "tag": "json:\"droppedMessages,omitzero\""
             }
           ],
           "methods": [
@@ -4660,7 +4660,7 @@
             {
               "name": "IncludeDescendants",
               "type": "bool",
-              "tag": "json:\"includeDescendants,omitempty\""
+              "tag": "json:\"includeDescendants,omitzero\""
             }
           ],
           "methods": [
@@ -4794,12 +4794,12 @@
             {
               "name": "Recursive",
               "type": "bool",
-              "tag": "json:\"recursive,omitempty\""
+              "tag": "json:\"recursive,omitzero\""
             },
             {
               "name": "IncludeIgnored",
               "type": "bool",
-              "tag": "json:\"includeIgnored,omitempty\""
+              "tag": "json:\"includeIgnored,omitzero\""
             },
             {
               "name": "PageQuery",
@@ -4952,7 +4952,7 @@
             {
               "name": "IncludeDescendants",
               "type": "bool",
-              "tag": "json:\"includeDescendants,omitempty\""
+              "tag": "json:\"includeDescendants,omitzero\""
             },
             {
               "name": "PageQuery",
@@ -5574,7 +5574,7 @@
             {
               "name": "Deprecated",
               "type": "bool",
-              "tag": "json:\"deprecated,omitempty\""
+              "tag": "json:\"deprecated,omitzero\""
             },
             {
               "name": "Capabilities",
@@ -5601,7 +5601,7 @@
             {
               "name": "Reasoning",
               "type": "bool",
-              "tag": "json:\"reasoning,omitempty\""
+              "tag": "json:\"reasoning,omitzero\""
             },
             {
               "name": "ReasoningLevels",
@@ -5616,7 +5616,7 @@
             {
               "name": "Multimodal",
               "type": "bool",
-              "tag": "json:\"multimodal,omitempty\""
+              "tag": "json:\"multimodal,omitzero\""
             },
             {
               "name": "InputModalities",
@@ -5631,12 +5631,12 @@
             {
               "name": "ToolUse",
               "type": "bool",
-              "tag": "json:\"toolUse,omitempty\""
+              "tag": "json:\"toolUse,omitzero\""
             },
             {
               "name": "StructuredOutput",
               "type": "bool",
-              "tag": "json:\"structuredOutput,omitempty\""
+              "tag": "json:\"structuredOutput,omitzero\""
             }
           ],
           "methods": [
@@ -5741,22 +5741,22 @@
             {
               "name": "InputUSDPerMillionTokens",
               "type": "float64",
-              "tag": "json:\"inputUsdPerMillionTokens,omitempty\""
+              "tag": "json:\"inputUsdPerMillionTokens,omitzero\""
             },
             {
               "name": "OutputUSDPerMillionTokens",
               "type": "float64",
-              "tag": "json:\"outputUsdPerMillionTokens,omitempty\""
+              "tag": "json:\"outputUsdPerMillionTokens,omitzero\""
             },
             {
               "name": "CacheReadUSDPerMillionTokens",
               "type": "float64",
-              "tag": "json:\"cacheReadUsdPerMillionTokens,omitempty\""
+              "tag": "json:\"cacheReadUsdPerMillionTokens,omitzero\""
             },
             {
               "name": "CacheWriteUSDPerMillionTokens",
               "type": "float64",
-              "tag": "json:\"cacheWriteUsdPerMillionTokens,omitempty\""
+              "tag": "json:\"cacheWriteUsdPerMillionTokens,omitzero\""
             }
           ],
           "methods": [
@@ -5800,27 +5800,27 @@
             {
               "name": "InputTokens",
               "type": "int64",
-              "tag": "json:\"inputTokens,omitempty\""
+              "tag": "json:\"inputTokens,omitzero\""
             },
             {
               "name": "OutputTokens",
               "type": "int64",
-              "tag": "json:\"outputTokens,omitempty\""
+              "tag": "json:\"outputTokens,omitzero\""
             },
             {
               "name": "CacheReadTokens",
               "type": "int64",
-              "tag": "json:\"cacheReadTokens,omitempty\""
+              "tag": "json:\"cacheReadTokens,omitzero\""
             },
             {
               "name": "CacheWriteTokens",
               "type": "int64",
-              "tag": "json:\"cacheWriteTokens,omitempty\""
+              "tag": "json:\"cacheWriteTokens,omitzero\""
             },
             {
               "name": "ReasoningTokens",
               "type": "int64",
-              "tag": "json:\"reasoningTokens,omitempty\""
+              "tag": "json:\"reasoningTokens,omitzero\""
             },
             {
               "name": "CostUSD",
@@ -6030,7 +6030,7 @@
             {
               "name": "RetryAfterSeconds",
               "type": "int",
-              "tag": "json:\"retryAfterSeconds,omitempty\""
+              "tag": "json:\"retryAfterSeconds,omitzero\""
             },
             {
               "name": "RequiredCapabilities",
@@ -6101,12 +6101,12 @@
             {
               "name": "RequiresBaseURL",
               "type": "bool",
-              "tag": "json:\"requiresBaseUrl,omitempty\""
+              "tag": "json:\"requiresBaseUrl,omitzero\""
             },
             {
               "name": "EmbeddingCapable",
               "type": "bool",
-              "tag": "json:\"embeddingCapable,omitempty\""
+              "tag": "json:\"embeddingCapable,omitzero\""
             },
             {
               "name": "DefaultEmbeddingModel",
@@ -6245,12 +6245,12 @@
             {
               "name": "Multiple",
               "type": "bool",
-              "tag": "json:\"multiple,omitempty\""
+              "tag": "json:\"multiple,omitzero\""
             },
             {
               "name": "AllowCustom",
               "type": "bool",
-              "tag": "json:\"allowCustom,omitempty\""
+              "tag": "json:\"allowCustom,omitzero\""
             }
           ],
           "methods": [
@@ -6724,7 +6724,7 @@
             {
               "name": "ContextTokens",
               "type": "int64",
-              "tag": "json:\"contextTokens,omitempty\""
+              "tag": "json:\"contextTokens,omitzero\""
             },
             {
               "name": "ProtocolProfile",
@@ -7298,12 +7298,12 @@
             {
               "name": "Favorite",
               "type": "bool",
-              "tag": "json:\"favorite,omitempty\""
+              "tag": "json:\"favorite,omitzero\""
             },
             {
               "name": "Isolated",
               "type": "bool",
-              "tag": "json:\"isolated,omitempty\""
+              "tag": "json:\"isolated,omitzero\""
             },
             {
               "name": "Revision",
@@ -7639,7 +7639,7 @@
             {
               "name": "Revises",
               "type": "bool",
-              "tag": "json:\"revises,omitempty\""
+              "tag": "json:\"revises,omitzero\""
             }
           ],
           "methods": [
@@ -7923,7 +7923,7 @@
             {
               "name": "Snapshot",
               "type": "bool",
-              "tag": "json:\"snapshot,omitempty\""
+              "tag": "json:\"snapshot,omitzero\""
             },
             {
               "name": "RunID",
@@ -8403,7 +8403,7 @@
             {
               "name": "Runs",
               "type": "int",
-              "tag": "json:\"runs,omitempty\""
+              "tag": "json:\"runs,omitzero\""
             }
           ],
           "methods": [
@@ -8440,12 +8440,12 @@
             {
               "name": "Sessions",
               "type": "int",
-              "tag": "json:\"sessions,omitempty\""
+              "tag": "json:\"sessions,omitzero\""
             },
             {
               "name": "Runs",
               "type": "int",
-              "tag": "json:\"runs,omitempty\""
+              "tag": "json:\"runs,omitzero\""
             }
           ],
           "methods": [
@@ -8557,7 +8557,7 @@
             {
               "name": "Binary",
               "type": "bool",
-              "tag": "json:\"binary,omitempty\""
+              "tag": "json:\"binary,omitzero\""
             }
           ],
           "methods": [

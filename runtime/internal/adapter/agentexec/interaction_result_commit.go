@@ -1,7 +1,7 @@
 package agentexec
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"slices"

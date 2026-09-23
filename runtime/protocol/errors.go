@@ -18,7 +18,7 @@ type ProblemData struct {
 	// RetryAfterSeconds, when given, is the earliest sensible retry (e.g. a
 	// provider rate-limit backoff) the client honors before its own.
 	// Only the kinds that waiting can clear carry one.
-	RetryAfterSeconds int `json:"retryAfterSeconds,omitempty"`
+	RetryAfterSeconds int `json:"retryAfterSeconds,omitzero"`
 	// RequiredCapabilities is required by capability_not_negotiated and non-empty:
 	// it lists EVERY gap the request has, so a client learns what to declare in one
 	// round instead of discovering them one refusal at a time.

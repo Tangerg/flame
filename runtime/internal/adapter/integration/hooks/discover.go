@@ -3,9 +3,8 @@
 package hooks
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -155,17 +154,8 @@ func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
 		return hooksFile{}, false, errors.New("configuration is not valid UTF-8")
 	}
 	var file hooksFile
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&file); err != nil {
+	if err := json.Unmarshal(data, &file, json.RejectUnknownMembers(true)); err != nil {
 		return hooksFile{}, false, err
-	}
-	var trailing json.RawMessage
-	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return hooksFile{}, false, errors.New("configuration contains multiple JSON values")
-		}
-		return hooksFile{}, false, fmt.Errorf("configuration contains trailing data: %w", err)
 	}
 	if err := domainhooks.ValidateHooksPerFile(len(file.Hooks)); err != nil {
 		return hooksFile{}, false, err

@@ -2,7 +2,7 @@ package lsp
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"io"
@@ -89,7 +89,7 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (*client, er
 }
 
 func (c *client) initialize(ctx context.Context) error {
-	var res json.RawMessage
+	var res jsontext.Value
 	params := initializeParams{
 		ProcessID:        os.Getpid(),
 		RootURI:          pathToURI(c.root),

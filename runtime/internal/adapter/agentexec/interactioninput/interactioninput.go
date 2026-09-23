@@ -6,7 +6,7 @@ package interactioninput
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"slices"
@@ -18,7 +18,7 @@ import (
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
 
-var resolutionSchema = json.RawMessage(`{
+var resolutionSchema = jsontext.Value(`{
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -49,9 +49,9 @@ func WithCapabilities(ctx context.Context, allowed []interrupt.Kind) context.Con
 }
 
 type continuationWire struct {
-	Key          string          `json:"key"`
-	PromptDigest string          `json:"prompt_digest"`
-	Prompt       json.RawMessage `json:"prompt"`
+	Key          string         `json:"key"`
+	PromptDigest string         `json:"prompt_digest"`
+	Prompt       jsontext.Value `json:"prompt"`
 }
 
 // Continuation is the validated product input restored while Agent Framework re-enters
@@ -73,7 +73,7 @@ func Restore(ctx context.Context) (Continuation, bool, error) {
 	if err != nil {
 		return Continuation{}, true, fmt.Errorf("agentexec interaction input: decode continuation: %w", err)
 	}
-	if state.Key == "" || !json.Valid(state.Prompt) {
+	if state.Key == "" || !jsontext.Value(state.Prompt).IsValid() {
 		return Continuation{}, true, errors.New("agentexec interaction input: invalid continuation identity or prompt")
 	}
 	prompt, err := DecodePrompt(state.Prompt)
@@ -115,7 +115,7 @@ func Require(ctx context.Context, key string, prompt runs.Interrupt) (interrupt.
 	return interrupt.Resolution{}, interaction.RequireToolInput(promptJSON, resolutionSchema, stateJSON)
 }
 
-func admitRequirement(ctx context.Context, key string, prompt runs.Interrupt) (json.RawMessage, error) {
+func admitRequirement(ctx context.Context, key string, prompt runs.Interrupt) (jsontext.Value, error) {
 	promptJSON, err := EncodePrompt(prompt)
 	if err != nil {
 		return nil, err
@@ -139,7 +139,7 @@ func admitRequirement(ctx context.Context, key string, prompt runs.Interrupt) (j
 func restoredResolution(
 	continued Continuation,
 	key string,
-	promptJSON json.RawMessage,
+	promptJSON jsontext.Value,
 ) (interrupt.Resolution, error) {
 	if continued.Key != key {
 		return interrupt.Resolution{}, errors.New("agentexec interaction input: continuation addresses another request")
@@ -151,7 +151,7 @@ func restoredResolution(
 	return continued.Resolution, nil
 }
 
-func encodeRequirementState(key string, promptJSON json.RawMessage) (json.RawMessage, error) {
+func encodeRequirementState(key string, promptJSON jsontext.Value) (jsontext.Value, error) {
 	stateJSON, err := agent.EncodePayload(continuationWire{
 		Key:          key,
 		PromptDigest: promptDigest(promptJSON),
@@ -171,6 +171,6 @@ func capabilityPolicyFrom(ctx context.Context) (capabilityPolicy, bool) {
 	return policy, ok
 }
 
-func promptDigest(prompt json.RawMessage) string {
+func promptDigest(prompt jsontext.Value) string {
 	return agent.ComputeDigest(prompt).String()
 }

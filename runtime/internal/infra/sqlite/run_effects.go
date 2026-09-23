@@ -1,8 +1,6 @@
 package sqlite
 
 import (
-	"encoding/json"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -19,7 +17,7 @@ func encodeUnresolvedEffects(effects []run.UnresolvedEffect) (string, error) {
 	for _, e := range effects {
 		rows = append(rows, unresolvedEffectRow{e.ProcessID(), e.EffectID(), e.Cause(), e.Reason(), e.Detail()})
 	}
-	encoded, err := json.Marshal(rows)
+	encoded, err := encodeStoredJSON(rows)
 	return string(encoded), err
 }
 func decodeUnresolvedEffects(encoded string) ([]run.UnresolvedEffect, error) {

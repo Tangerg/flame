@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -99,7 +98,7 @@ func (p *PlanStore) Save(ctx context.Context, sessionID string, change plan.Repl
 	for index, step := range steps {
 		rows[index] = planStepRow{Description: step.Description, Status: step.Status}
 	}
-	data, err := json.Marshal(rows)
+	data, err := encodeStoredJSON(rows)
 	if err != nil {
 		return fmt.Errorf("sqlite: encode Plan: %w", err)
 	}

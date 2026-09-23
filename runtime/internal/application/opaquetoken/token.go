@@ -7,12 +7,10 @@
 package opaquetoken
 
 import (
-	"bytes"
 	"encoding/base64"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 )
 
 // ErrTooLarge reports that an encoded token would exceed its authority's
@@ -50,15 +48,7 @@ func Decode(token string, maximumCharacters int, target any) error {
 	if err != nil {
 		return err
 	}
-	decoder := json.NewDecoder(bytes.NewReader(payload))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(target); err != nil {
-		return err
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("opaque token contains a trailing JSON value")
-		}
+	if err := json.Unmarshal(payload, target, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
 	return nil

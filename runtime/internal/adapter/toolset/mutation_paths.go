@@ -1,7 +1,7 @@
 package toolset
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"slices"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"

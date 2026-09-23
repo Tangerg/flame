@@ -1,7 +1,8 @@
 package toolset
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"reflect"
 	"strconv"
 	"strings"
@@ -434,7 +435,7 @@ func decodeArguments[T any](arguments tool.Arguments, knownFields ...string) (T,
 
 func decodePresentation[T any](data []byte, knownFields ...string) (T, bool) {
 	var decoded T
-	var fields map[string]json.RawMessage
+	var fields map[string]jsontext.Value
 	if err := json.Unmarshal(data, &fields); err != nil {
 		return decoded, false
 	}

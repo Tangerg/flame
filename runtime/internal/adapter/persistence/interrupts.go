@@ -2,7 +2,7 @@ package persistence
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"

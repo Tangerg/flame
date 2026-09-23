@@ -1,7 +1,7 @@
 package toolset
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"

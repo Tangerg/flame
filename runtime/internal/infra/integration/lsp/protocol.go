@@ -2,7 +2,8 @@ package lsp
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/url"
@@ -14,7 +15,7 @@ import (
 // shapes flame consumes — definition / references / hover / symbols /
 // diagnostics, plus the document-sync notifications a server needs before it
 // will answer. It is deliberately NOT the full protocol: we type only what we
-// read, and let the rest pass through as json.RawMessage. LSP positions are
+// read, and let the rest pass through as jsontext.Value. LSP positions are
 // 0-based (line and character); the tool layer converts to/from 1-based.
 
 // Position is a 0-based (line, character) cursor in a document.
@@ -183,15 +184,15 @@ type configurationItem struct {
 // callHierarchyItem is one node in the call graph (a function/method), returned
 // by prepareCallHierarchy and carried back into incoming/outgoingCalls. We type
 // the fields the tool layer renders; the server round-trips the rest opaquely
-// via [json.RawMessage] so an item is handed back byte-for-byte.
+// via [jsontext.Value] so an item is handed back byte-for-byte.
 type callHierarchyItem struct {
-	Name           string          `json:"name"`
-	Kind           int             `json:"kind"`
-	URI            string          `json:"uri"`
-	Range          Range           `json:"range"`
-	SelectionRange Range           `json:"selectionRange"`
-	Detail         string          `json:"detail,omitempty"`
-	Data           json.RawMessage `json:"data,omitempty"` // server-private; preserved across the round trip
+	Name           string         `json:"name"`
+	Kind           int            `json:"kind"`
+	URI            string         `json:"uri"`
+	Range          Range          `json:"range"`
+	SelectionRange Range          `json:"selectionRange"`
+	Detail         string         `json:"detail,omitempty"`
+	Data           jsontext.Value `json:"data,omitempty"` // server-private; preserved across the round trip
 }
 
 // symbol maps a call-hierarchy node onto the normalized [Symbol] the tool layer
@@ -371,7 +372,7 @@ func defaultCapabilities() clientCapabilities {
 // parseLocations normalizes textDocument/definition|references results, which
 // may be null, a Location, Location[], or LocationLink[]. Unknown and malformed
 // shapes are errors rather than false "no result" responses.
-func parseLocations(raw json.RawMessage) ([]Location, error) {
+func parseLocations(raw jsontext.Value) ([]Location, error) {
 	value := normalizedJSON(raw)
 	if len(value) == 0 {
 		return nil, errors.New("decode locations: response is empty")
@@ -387,7 +388,7 @@ func parseLocations(raw json.RawMessage) ([]Location, error) {
 		}
 		return []Location{location}, nil
 	case '[':
-		var items []json.RawMessage
+		var items []jsontext.Value
 		if err := json.Unmarshal(value, &items); err != nil {
 			return nil, fmt.Errorf("decode location list: %w", err)
 		}
@@ -405,7 +406,7 @@ func parseLocations(raw json.RawMessage) ([]Location, error) {
 	}
 }
 
-func parseLocationItem(raw json.RawMessage) (Location, error) {
+func parseLocationItem(raw jsontext.Value) (Location, error) {
 	var shape struct {
 		URI       *string `json:"uri"`
 		TargetURI *string `json:"targetUri"`
@@ -439,7 +440,7 @@ func parseLocationItem(raw json.RawMessage) (Location, error) {
 	}
 }
 
-func parseLocation(raw json.RawMessage) (Location, error) {
+func parseLocation(raw jsontext.Value) (Location, error) {
 	var wire struct {
 		URI   *string `json:"uri"`
 		Range *Range  `json:"range"`
@@ -471,7 +472,7 @@ func validateLocation(location Location) error {
 // []SymbolInformation (each with a Location) or a hierarchical
 // []DocumentSymbol (ranges only — fileURI supplies the location). docURI is
 // used to locate hierarchical symbols.
-func parseSymbols(raw json.RawMessage, docURI string) ([]Symbol, error) {
+func parseSymbols(raw jsontext.Value, docURI string) ([]Symbol, error) {
 	value := normalizedJSON(raw)
 	if len(value) == 0 {
 		return nil, errors.New("decode symbols: response is empty")
@@ -482,7 +483,7 @@ func parseSymbols(raw json.RawMessage, docURI string) ([]Symbol, error) {
 	if value[0] != '[' {
 		return nil, fmt.Errorf("decode symbols: expected array or null, got %s", jsonKind(value))
 	}
-	var items []json.RawMessage
+	var items []jsontext.Value
 	if err := json.Unmarshal(value, &items); err != nil {
 		return nil, fmt.Errorf("decode symbol list: %w", err)
 	}
@@ -490,7 +491,7 @@ func parseSymbols(raw json.RawMessage, docURI string) ([]Symbol, error) {
 		return nil, nil
 	}
 	var first struct {
-		Location json.RawMessage `json:"location"`
+		Location jsontext.Value `json:"location"`
 	}
 	if err := json.Unmarshal(items[0], &first); err != nil {
 		return nil, fmt.Errorf("decode first symbol shape: %w", err)
@@ -556,7 +557,7 @@ func appendDocumentSymbols(out *[]Symbol, parent, docURI string, symbols []docum
 
 // hoverText flattens a Hover.contents payload — MarkupContent {kind, value},
 // a bare MarkedString, or an array of either — into plain text.
-func parseHover(raw json.RawMessage) (string, error) {
+func parseHover(raw jsontext.Value) (string, error) {
 	value := normalizedJSON(raw)
 	if len(value) == 0 {
 		return "", errors.New("decode hover: response is empty")
@@ -568,7 +569,7 @@ func parseHover(raw json.RawMessage) (string, error) {
 		return "", fmt.Errorf("decode hover: expected object or null, got %s", jsonKind(value))
 	}
 	var hover struct {
-		Contents json.RawMessage `json:"contents"`
+		Contents jsontext.Value `json:"contents"`
 	}
 	if err := json.Unmarshal(value, &hover); err != nil {
 		return "", fmt.Errorf("decode hover object: %w", err)
@@ -579,7 +580,7 @@ func parseHover(raw json.RawMessage) (string, error) {
 	return hoverText(hover.Contents)
 }
 
-func hoverText(raw json.RawMessage) (string, error) {
+func hoverText(raw jsontext.Value) (string, error) {
 	value := normalizedJSON(raw)
 	if len(value) == 0 {
 		return "", errors.New("decode hover contents: value is empty")
@@ -603,7 +604,7 @@ func hoverText(raw json.RawMessage) (string, error) {
 		}
 		return strings.TrimSpace(*content.Value), nil
 	case '[':
-		var items []json.RawMessage
+		var items []jsontext.Value
 		if err := json.Unmarshal(value, &items); err != nil {
 			return "", fmt.Errorf("decode hover list: %w", err)
 		}
@@ -623,7 +624,7 @@ func hoverText(raw json.RawMessage) (string, error) {
 	}
 }
 
-func normalizedJSON(raw json.RawMessage) []byte {
+func normalizedJSON(raw jsontext.Value) []byte {
 	return bytes.TrimSpace(raw)
 }
 

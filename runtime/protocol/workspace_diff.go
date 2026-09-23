@@ -52,7 +52,7 @@ type Diff struct {
 	Baseline  DiffBaseline `json:"baseline"`
 	Files     []FileDiff   `json:"files,omitempty"`
 	Patch     string       `json:"patch,omitempty"`
-	Truncated bool         `json:"truncated,omitempty"`
+	Truncated bool         `json:"truncated,omitzero"`
 }
 
 // FileStatus is the past-tense working-tree status vocabulary shared by
@@ -76,7 +76,7 @@ type FileDiff struct {
 	PreviousPath string     `json:"previousPath,omitempty"`
 	Added        *int       `json:"added,omitempty"`
 	Removed      *int       `json:"removed,omitempty"`
-	Binary       bool       `json:"binary,omitempty"`
+	Binary       bool       `json:"binary,omitzero"`
 	Rows         []DiffRow  `json:"rows"`
 }
 
@@ -90,5 +90,5 @@ type WorkspaceFileChange struct {
 	PreviousPath string     `json:"previousPath,omitempty"`
 	Added        *int       `json:"added,omitempty"`
 	Removed      *int       `json:"removed,omitempty"`
-	Binary       bool       `json:"binary,omitempty"`
+	Binary       bool       `json:"binary,omitzero"`
 }

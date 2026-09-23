@@ -20,7 +20,7 @@ type SkillProposal struct {
 	Instructions  string              `json:"instructions"`
 	Origin        SkillProposalOrigin `json:"origin,omitempty"`
 	SourceSession string              `json:"sourceSession,omitempty"`
-	Revises       bool                `json:"revises,omitempty"`
+	Revises       bool                `json:"revises,omitzero"`
 }
 
 // SkillProposalRef identifies the exact proposal and workspace review context

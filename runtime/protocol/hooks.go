@@ -32,7 +32,7 @@ type HookInfo struct {
 	Matcher       string    `json:"matcher,omitempty"`
 	Command       string    `json:"command,omitempty"`
 	Inject        string    `json:"inject,omitempty"`
-	TimeoutMillis int       `json:"timeoutMillis,omitempty"`
+	TimeoutMillis int       `json:"timeoutMillis,omitzero"`
 	Scope         HookScope `json:"scope"`
 	Source        string    `json:"source"` // absolute path of the hooks.json it came from
 	// Active reports whether this hook currently runs: global hooks always do;

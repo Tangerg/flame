@@ -1,12 +1,10 @@
 package mcp
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"slices"
@@ -98,13 +96,8 @@ func encodeOAuthSession(cfg *oauth2.Config, token *oauth2.Token) ([]byte, error)
 
 func decodeOAuthSession(payload []byte) (*oauth2.Config, *oauth2.Token, error) {
 	var session storedOAuthSession
-	decoder := json.NewDecoder(bytes.NewReader(payload))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&session); err != nil {
+	if err := json.Unmarshal(payload, &session, json.RejectUnknownMembers(true)); err != nil {
 		return nil, nil, fmt.Errorf("mcp oauth: decode session: %w", err)
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return nil, nil, errors.New("mcp oauth: decode session: trailing data")
 	}
 	if err := session.validate(); err != nil {
 		return nil, nil, err

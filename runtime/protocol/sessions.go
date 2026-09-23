@@ -25,13 +25,13 @@ type Session struct {
 	Workspace       WorkspaceInfo `json:"workspace"`
 	CreatedAt       time.Time     `json:"createdAt,omitzero"`
 	UpdatedAt       time.Time     `json:"updatedAt,omitzero"`
-	Favorite        bool          `json:"favorite,omitempty"` // user-pinned; sorts ahead in the session list
+	Favorite        bool          `json:"favorite,omitzero"` // user-pinned; sorts ahead in the session list
 	// Isolated runs this session's tools in a throwaway copy of the workspace.
 	// The project directory is left untouched, so this session publishes no
 	// workspace file-change events while it runs. Turning it on is gated on
 	// features.isolation: a host without a command-isolation backend cannot jail
 	// this session's shells and so cannot honor the policy.
-	Isolated bool   `json:"isolated,omitempty"`
+	Isolated bool   `json:"isolated,omitzero"`
 	Revision uint64 `json:"revision"`
 }
 
@@ -55,7 +55,7 @@ type GetSessionRequest struct {
 // semantics as runs.list.
 type GetSessionSnapshotRequest struct {
 	SessionID          string `json:"sessionId"`
-	IncludeDescendants bool   `json:"includeDescendants,omitempty"`
+	IncludeDescendants bool   `json:"includeDescendants,omitzero"`
 }
 
 // SessionSnapshot is one transactionally coherent material read of the facts a
@@ -226,7 +226,7 @@ type ArtifactSession struct {
 	ReasoningEffort string       `json:"reasoningEffort,omitempty"`
 	CreatedAt       time.Time    `json:"createdAt,omitzero"`
 	UpdatedAt       time.Time    `json:"updatedAt,omitzero"`
-	Favorite        bool         `json:"favorite,omitempty"`
+	Favorite        bool         `json:"favorite,omitzero"`
 }
 
 // ArtifactRun is the durable terminal record of one run. Outcome is stored as
@@ -245,7 +245,7 @@ type ArtifactRun struct {
 	Model           string     `json:"model"`
 	ReasoningEffort string     `json:"reasoningEffort,omitempty"`
 	Metrics         RunMetrics `json:"metrics"`
-	ContextTokens   int64      `json:"contextTokens,omitempty"`
+	ContextTokens   int64      `json:"contextTokens,omitzero"`
 	// ProtocolProfile is the contract the run published under, required on a root
 	// and absent on a child. An import that dropped it would restore a run claiming
 	// the Minimal Profile, which is a different run. Import and export must
@@ -302,14 +302,14 @@ type ArtifactItem struct {
 	Content          []ContentBlock   `json:"content,omitempty"`
 	Phase            MessagePhase     `json:"phase,omitempty"`
 	Text             string           `json:"text,omitempty"`
-	Redacted         bool             `json:"redacted,omitempty"`
+	Redacted         bool             `json:"redacted,omitzero"`
 	Question         *Question        `json:"question,omitempty"`
 	Tool             *ToolInvocation  `json:"tool,omitempty"`
 	SafetyClass      SafetyClass      `json:"safetyClass,omitempty"`
 	ApprovalDecision ApprovalDecision `json:"approvalDecision,omitempty"`
 	Error            *ArtifactProblem `json:"error,omitempty"`
 	Summary          string           `json:"summary,omitempty"`
-	DroppedMessages  int              `json:"droppedMessages,omitempty"`
+	DroppedMessages  int              `json:"droppedMessages,omitzero"`
 }
 
 type ArtifactProblem struct {
@@ -318,7 +318,7 @@ type ArtifactProblem struct {
 	DocURL string              `json:"docUrl,omitempty"`
 	// RetryAfterSeconds is meaningful only for rateLimited, timeout, and
 	// providerUnavailable Run failures. Tool failures never carry retry policy.
-	RetryAfterSeconds int `json:"retryAfterSeconds,omitempty"`
+	RetryAfterSeconds int `json:"retryAfterSeconds,omitzero"`
 }
 
 // ArtifactProblemType is the durable transcript error vocabulary. It remains

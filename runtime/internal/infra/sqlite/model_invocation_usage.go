@@ -1,7 +1,6 @@
 package sqlite
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -31,7 +30,7 @@ func encodeModelInvocationUsage(usage *chat.Usage) (*string, error) {
 		CacheReadTokens: usage.CacheReadInputTokens, CacheWriteTokens: usage.CacheWriteInputTokens,
 		ReasoningTokens: usage.ReasoningTokens,
 	}
-	data, err := json.Marshal(row)
+	data, err := encodeStoredJSON(row)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: encode model invocation usage: %w", err)
 	}
