@@ -22,63 +22,39 @@ type InputTokenCounter interface {
 	CountInputTokens(context.Context, *chat.Request) (int64, error)
 }
 
-// failureModel translates provider-specific errors at the infrastructure
-// boundary. The rest of the runtime sees one typed execution failure taxonomy
-// and never parses provider error strings.
-type failureModel struct {
-	model chat.Model
+// classifyModelFailures translates provider-specific errors at the
+// infrastructure boundary. The rest of the runtime sees one typed execution
+// failure taxonomy and never parses provider error strings.
+func classifyModelFailures(model chat.Model) (chat.Model, error) {
+	return decorateModel(model, modelDecoration{
+		name:   "classify model failures",
+		call:   func(inner chat.Model) chat.Model { return failureModel{model: inner} },
+		stream: func(inner chat.Streamer) chat.Streamer { return failureStreamer{streamer: inner} },
+		count:  func(inner InputTokenCounter) InputTokenCounter { return failureCounter{counter: inner} },
+	})
 }
 
-func classifyModelFailures(model chat.Model) chat.Model {
-	classified := failureModel{model: model}
-	streamer, streams := model.(chat.Streamer)
-	counter, counts := model.(InputTokenCounter)
-	switch {
-	case streams && counts:
-		return failureStreamingCountingModel{
-			failureCountingModel: failureCountingModel{failureModel: classified, counter: counter},
-			streamer:             streamer,
-		}
-	case streams:
-		return failureStreamingModel{failureModel: classified, streamer: streamer}
-	case counts:
-		return failureCountingModel{failureModel: classified, counter: counter}
-	default:
-		return classified
-	}
-}
+type failureModel struct{ model chat.Model }
 
 func (f failureModel) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 	response, err := f.model.Call(ctx, request)
 	return response, classifyModelError(err)
 }
 
-type failureStreamingModel struct {
-	failureModel
-	streamer chat.Streamer
-}
+type failureStreamer struct{ streamer chat.Streamer }
 
-func (f failureStreamingModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+func (f failureStreamer) Stream(
+	ctx context.Context,
+	request *chat.Request,
+) iter.Seq2[*chat.ResponseDelta, error] {
 	return classifyModelStream(f.streamer.Stream(ctx, request))
 }
 
-type failureCountingModel struct {
-	failureModel
-	counter InputTokenCounter
-}
+type failureCounter struct{ counter InputTokenCounter }
 
-func (f failureCountingModel) CountInputTokens(ctx context.Context, request *chat.Request) (int64, error) {
+func (f failureCounter) CountInputTokens(ctx context.Context, request *chat.Request) (int64, error) {
 	count, err := f.counter.CountInputTokens(ctx, request)
 	return count, classifyModelError(err)
-}
-
-type failureStreamingCountingModel struct {
-	failureCountingModel
-	streamer chat.Streamer
-}
-
-func (f failureStreamingCountingModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
-	return classifyModelStream(f.streamer.Stream(ctx, request))
 }
 
 func classifyModelStream(sequence iter.Seq2[*chat.ResponseDelta, error]) iter.Seq2[*chat.ResponseDelta, error] {

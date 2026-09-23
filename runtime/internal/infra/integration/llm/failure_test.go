@@ -33,7 +33,10 @@ func (p *providerError) HTTPStatus() int         { return p.status }
 func (p *providerError) HTTPHeader() http.Header { return p.header }
 
 func TestClassifyModelFailuresPreservesOptionalStreamingCapability(t *testing.T) {
-	classified := classifyModelFailures(callOnlyModel{})
+	classified, err := classifyModelFailures(callOnlyModel{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, ok := classified.(chat.Streamer); ok {
 		t.Fatal("call-only model unexpectedly gained streaming capability")
 	}
@@ -50,13 +53,16 @@ func TestClassifyModelFailuresPreservesOptionalInputTokenCountingCapability(t *t
 			return 0, providerErr
 		}),
 	}
-	classified := classifyModelFailures(model)
+	classified, err := classifyModelFailures(model)
+	if err != nil {
+		t.Fatal(err)
+	}
 	counter, ok := classified.(InputTokenCounter)
 	if !ok {
 		t.Fatal("classification stripped input token counting")
 	}
 	request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("hello")))
-	_, err := counter.CountInputTokens(t.Context(), request)
+	_, err = counter.CountInputTokens(t.Context(), request)
 	var failure *run.FailureError
 	if !errors.As(err, &failure) || failure.Kind != run.FailureRateLimited || !errors.Is(err, providerErr) {
 		t.Fatalf("count error = %#v", err)

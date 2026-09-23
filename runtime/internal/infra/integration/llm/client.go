@@ -307,7 +307,7 @@ func buildModel(ctx context.Context, spec ClientSpec) (chat.Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	return classifyModelFailures(instrumented), nil
+	return classifyModelFailures(instrumented)
 }
 
 // BuildChat constructs one provider model and projects both its ordinary chat
