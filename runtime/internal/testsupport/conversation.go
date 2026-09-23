@@ -5,22 +5,23 @@ package testsupport
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/history"
+	"github.com/Tangerg/scope/core/history/inmemory"
 )
 
-// ConversationStore is Runtime's test-only in-memory implementation of its session-ID
-// conversation ports. Production uses the SQLite MessageStore directly.
+// ConversationStore doubles the Session-keyed conversation port over Scope's
+// in-memory history store, so a fixture cannot drift from the storage semantics
+// production depends on. Only the retention capabilities Runtime adds beyond
+// Scope's contract are implemented here.
 type ConversationStore struct {
-	mu       sync.RWMutex
-	messages map[history.ConversationID][]chat.Message
+	messages *inmemory.Store
 }
 
 // NewConversationStore returns an empty app-port-compatible conversation store.
 func NewConversationStore() *ConversationStore {
-	return &ConversationStore{messages: make(map[history.ConversationID][]chat.Message)}
+	return &ConversationStore{messages: new(inmemory.Store)}
 }
 
 // Read returns the messages stored for sessionID.
@@ -29,9 +30,7 @@ func (s *ConversationStore) Read(ctx context.Context, sessionID string) ([]chat.
 	if err != nil {
 		return nil, err
 	}
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return cloneMessages(s.messages[id])
+	return s.messages.Read(ctx, id)
 }
 
 // Write appends messages to sessionID.
@@ -40,14 +39,11 @@ func (s *ConversationStore) Write(ctx context.Context, sessionID string, message
 	if err != nil {
 		return err
 	}
-	snapshot, err := cloneMessages(messages)
-	if err != nil {
-		return err
+	outcome, err := s.messages.Write(ctx, id, messages...)
+	if validateErr := outcome.Validate(len(messages), err); validateErr != nil {
+		return validateErr
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.messages[id] = append(s.messages[id], snapshot...)
-	return nil
+	return err
 }
 
 // Clear removes sessionID's messages.
@@ -56,66 +52,46 @@ func (s *ConversationStore) Clear(ctx context.Context, sessionID string) error {
 	if err != nil {
 		return err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.messages, id)
-	return nil
+	return s.messages.Clear(ctx, id)
 }
 
 // Replace atomically sets sessionID's messages.
 func (s *ConversationStore) Replace(ctx context.Context, sessionID string, messages ...chat.Message) error {
-	id, err := conversationID(ctx, sessionID)
-	if err != nil {
+	if err := s.Clear(ctx, sessionID); err != nil {
 		return err
 	}
-	snapshot, err := cloneMessages(messages)
-	if err != nil {
-		return err
+	if len(messages) == 0 {
+		return nil
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if len(snapshot) == 0 {
-		delete(s.messages, id)
-	} else {
-		s.messages[id] = snapshot
-	}
-	return nil
+	return s.Write(ctx, sessionID, messages...)
 }
 
 // Truncate keeps sessionID's first keepN messages.
 func (s *ConversationStore) Truncate(ctx context.Context, sessionID string, keepN int) error {
-	id, err := conversationID(ctx, sessionID)
-	if err != nil {
-		return err
-	}
 	if keepN < 0 {
 		return fmt.Errorf("conversation fixture: keep count %d is negative", keepN)
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	stored := s.messages[id]
+	stored, err := s.Read(ctx, sessionID)
+	if err != nil {
+		return err
+	}
 	if keepN >= len(stored) {
 		return nil
 	}
-	if keepN == 0 {
-		delete(s.messages, id)
-		return nil
-	}
-	s.messages[id] = stored[:keepN]
-	return nil
+	return s.Replace(ctx, sessionID, stored[:keepN]...)
 }
 
 // Count returns sessionID's message count.
 func (s *ConversationStore) Count(ctx context.Context, sessionID string) (int, error) {
-	id, err := conversationID(ctx, sessionID)
+	stored, err := s.Read(ctx, sessionID)
 	if err != nil {
 		return 0, err
 	}
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return len(s.messages[id]), nil
+	return len(stored), nil
 }
 
+// conversationID admits a Session as the conversation it owns, which is also
+// where the fixture honors cancellation.
 func conversationID(ctx context.Context, sessionID string) (history.ConversationID, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
@@ -125,15 +101,4 @@ func conversationID(ctx context.Context, sessionID string) (history.Conversation
 		return "", err
 	}
 	return id, nil
-}
-
-func cloneMessages(messages []chat.Message) ([]chat.Message, error) {
-	cloned := make([]chat.Message, len(messages))
-	for index := range messages {
-		if err := messages[index].Validate(); err != nil {
-			return nil, fmt.Errorf("conversation fixture: messages[%d]: %w", index, err)
-		}
-		cloned[index] = messages[index].Clone()
-	}
-	return cloned, nil
 }
