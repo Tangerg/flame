@@ -162,3 +162,17 @@ test("focus survives closing the panel that holds it", async ({ page }) => {
   expect(await page.locator('[role="tab"]').count(), "the dock never emptied").toBe(0);
   expect(lost, "focus fell out of the document when its tab was removed").toEqual([]);
 });
+
+test("a context menu opens from the keyboard and hands focus back", async ({ page }) => {
+  await page.goto("/visual/?fixture=shell&state=populated&theme=light");
+  await page.waitForSelector("html[data-visual-ready]");
+
+  const row = page.getByRole("button", { name: /Refine Runtime protocol/ }).first();
+  await row.focus();
+  await page.keyboard.press("Shift+F10");
+  await expect(page.getByRole("menuitem", { name: "Rename" })).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(row).toBeFocused();
+});

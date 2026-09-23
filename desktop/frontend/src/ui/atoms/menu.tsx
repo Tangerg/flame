@@ -233,9 +233,37 @@ export const DropdownMenu = {
   SubmenuTrigger: DropdownSubmenuTrigger,
 } as const;
 
+// A Mac keyboard has no ContextMenu key and WebKit maps nothing to Shift+F10, so without this
+// every action that lives only in a context menu is pointer-only there.
+function ContextTrigger({
+  onKeyDown,
+  ...props
+}: ComponentProps<typeof ContextMenuPrimitive.Trigger>) {
+  return (
+    <ContextMenuPrimitive.Trigger
+      {...props}
+      onKeyDown={(event) => {
+        onKeyDown?.(event);
+        if (event.defaultPrevented || event.key !== "F10" || !event.shiftKey) return;
+        event.preventDefault();
+        const target = event.target as HTMLElement;
+        const box = target.getBoundingClientRect();
+        target.dispatchEvent(
+          new MouseEvent("contextmenu", {
+            bubbles: true,
+            cancelable: true,
+            clientX: box.left,
+            clientY: box.bottom,
+          }),
+        );
+      }}
+    />
+  );
+}
+
 export const ContextMenu = {
   Root: ContextMenuPrimitive.Root,
-  Trigger: ContextMenuPrimitive.Trigger,
+  Trigger: ContextTrigger,
   Content: ContextContent,
   Item: ContextItem,
   IconItem: ContextIconItem,
