@@ -10,7 +10,20 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/history/storetest"
 )
+
+// TestMessageStoreSatisfiesTheHistoryStoreContract runs Scope's own conformance
+// suite against the durable store: it fixes which history capabilities this
+// store publishes, and proves that a canceled context or an invalid
+// conversation identity is refused before the database is touched. The store
+// implements the contract Scope defines, so Scope is what decides whether it
+// does.
+func TestMessageStoreSatisfiesTheHistoryStoreContract(t *testing.T) {
+	storetest.Run(t, new(sqlite.MessageStore), storetest.Capabilities{
+		Reader: true, Writer: true, Clearer: true,
+	})
+}
 
 func TestMessageStorePreservesOpaqueProviderCallIDs(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))

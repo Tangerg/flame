@@ -21,6 +21,17 @@ type MessageStore struct {
 	db *sql.DB
 }
 
+// admitConversation is the one gate every history call passes: a caller that
+// has already given up is refused before the database is reached, and an
+// identity this store cannot address never becomes a query. Scope's history
+// contract requires both decisions to complete before any provider I/O.
+func admitConversation(ctx context.Context, conversationID history.ConversationID) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return conversationID.Validate()
+}
+
 // NewMessageStore binds the chat history store to a database opened via [Open].
 func NewMessageStore(db *sql.DB) *MessageStore {
 	return &MessageStore{db: db}
@@ -31,7 +42,7 @@ func NewMessageStore(db *sql.DB) *MessageStore {
 // row fails the complete read: message count is a durable Run/compaction
 // coordinate, so omitting one row would shift every later watermark.
 func (m *MessageStore) Read(ctx context.Context, conversationID history.ConversationID) ([]chat.Message, error) {
-	if err := conversationID.Validate(); err != nil {
+	if err := admitConversation(ctx, conversationID); err != nil {
 		return nil, err
 	}
 	rows, err := conn(ctx, m.db).QueryContext(ctx,
@@ -70,11 +81,19 @@ func (m *MessageStore) Write(
 	conversationID history.ConversationID,
 	messages ...chat.Message,
 ) (history.WriteOutcome, error) {
-	if err := conversationID.Validate(); err != nil {
+	if err := admitConversation(ctx, conversationID); err != nil {
 		return history.WriteOutcome{}, err
 	}
 	if len(messages) == 0 {
 		return history.WriteOutcome{}, nil
+	}
+	// A row that cannot be decoded fails the complete read, so a message that
+	// is not a message is refused here rather than stored as one: the store
+	// would otherwise hold a conversation nothing can read back.
+	for index := range messages {
+		if err := messages[index].Validate(); err != nil {
+			return history.WriteOutcome{}, fmt.Errorf("sqlite: write message %d: %w", index+1, err)
+		}
 	}
 	staged := false
 	// RunInTx so the batch is atomic standalone, and folds into a caller's
@@ -115,7 +134,7 @@ func (m *MessageStore) Replace(
 	conversationID history.ConversationID,
 	messages ...chat.Message,
 ) error {
-	if err := conversationID.Validate(); err != nil {
+	if err := admitConversation(ctx, conversationID); err != nil {
 		return err
 	}
 	// Clear and Write fold into this transaction rather than committing on
@@ -136,7 +155,7 @@ func (m *MessageStore) Replace(
 // re-inserts every kept message nor depends on the caller holding a transaction
 // to stay atomic. Keeping at least as many as exist deletes nothing.
 func (m *MessageStore) Truncate(ctx context.Context, conversationID history.ConversationID, keepN int) error {
-	if err := conversationID.Validate(); err != nil {
+	if err := admitConversation(ctx, conversationID); err != nil {
 		return err
 	}
 	if keepN < 0 {
@@ -162,7 +181,7 @@ func (m *MessageStore) Truncate(ctx context.Context, conversationID history.Conv
 // sequence Read accepts; a corrupt row makes Read fail instead of changing the
 // coordinate system.
 func (m *MessageStore) Count(ctx context.Context, conversationID history.ConversationID) (int, error) {
-	if err := conversationID.Validate(); err != nil {
+	if err := admitConversation(ctx, conversationID); err != nil {
 		return 0, err
 	}
 	var n int
@@ -177,7 +196,7 @@ func (m *MessageStore) Count(ctx context.Context, conversationID history.Convers
 // Clear drops every message for conversationID. Idempotent — unknown id is
 // not an error (matches in-memory history store).
 func (m *MessageStore) Clear(ctx context.Context, conversationID history.ConversationID) error {
-	if err := conversationID.Validate(); err != nil {
+	if err := admitConversation(ctx, conversationID); err != nil {
 		return err
 	}
 	if _, err := conn(ctx, m.db).ExecContext(ctx,
