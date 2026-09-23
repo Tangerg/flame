@@ -88,6 +88,7 @@ function CustomAccentPicker({
   return (
     <label
       htmlFor={inputId}
+      data-focus-proxy=""
       title={label}
       aria-label={label}
       className={stylex.props(a.target, corner.pill).className}

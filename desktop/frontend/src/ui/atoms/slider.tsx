@@ -68,6 +68,7 @@ export function Slider({
           <SliderPrimitive.Indicator {...stylex.props(styles.fill, corner.pill)} />
         </SliderPrimitive.Track>
         <SliderPrimitive.Thumb
+          data-focus-proxy=""
           getAriaLabel={() => ariaLabel}
           {...stylex.props(styles.thumb, corner.pill)}
         />

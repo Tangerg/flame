@@ -598,6 +598,9 @@
   --reading-gutter-wide: 20px;
   --composer-editor-top: 12px;
   --composer-editor-bottom: 8px;
+  /* Not a pair. Measured: these put the editor's text edges on the toolbar GLYPH edges below
+     it — 12 and 14 — because the leading and trailing controls inset their glyphs by different
+     amounts. Equalising them moves the text off the column the buttons already hold. */
   --composer-editor-start: 12px;
   --composer-editor-end: 14px;
   --composer-footer: 6px;
@@ -863,6 +866,13 @@ input:focus-visible,
 textarea:focus-visible {
   outline: none;
   box-shadow: none;
+}
+/* For a control whose focusable element is not the one on screen — a slider's range input
+   inside its thumb, a colour input laid invisibly over its swatch. The ring on the input would
+   be drawn on nothing, so the visible part wears it. */
+html:not([data-pointer]) [data-focus-proxy]:has(:focus-visible) {
+  outline: 1.5px solid var(--color-focus-ring);
+  outline-offset: 1px;
 }
 
 @media (prefers-reduced-motion: reduce) {

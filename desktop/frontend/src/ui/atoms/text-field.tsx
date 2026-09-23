@@ -72,11 +72,21 @@ const styles = stylex.create({
   areaSm: { paddingInline: space.s2_5, paddingBlock: space.s1_5 },
   areaMd: { paddingInline: space.s3, paddingBlock: space.s2 },
   autosize: { fieldSizing: "content", resize: "none" },
+  // A <label>, which never takes focus itself, so the edge answers `:focus-within`. It states
+  // the whole edge rather than composing `boxed`: that one's `:focus` wins the property by
+  // order and can never match here, which left the field with no focus state at all.
   searchBox: {
     display: "flex",
     alignItems: "center",
-    color: { default: color.fgMuted, ":focus-within": color.fg },
+    borderRadius: radius.field,
+    borderWidth: "var(--control-edge-width)",
+    borderStyle: "solid",
     borderColor: { default: surface.field, ":focus-within": surface.fieldStrong },
+    backgroundColor: surface.canvas,
+    color: { default: color.fgMuted, ":focus-within": color.fg },
+    transitionProperty: "color, border-color",
+    transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeState,
   },
   searchSm: { height: "var(--control-height-sm)", gap: space.s1_5, paddingInline: space.s2 },
   searchMd: { height: "var(--control-height-md)", gap: space.s1_5, paddingInline: space.s2_5 },
@@ -216,7 +226,7 @@ export function SearchField({
   className,
   ...props
 }: SearchFieldProps) {
-  const box = stylex.props(styles.searchBox, styles.boxed, SEARCH_SIZE[size]);
+  const box = stylex.props(styles.searchBox, SEARCH_SIZE[size]);
   return (
     <label {...box} className={cn(box.className, className)}>
       <Icon name="search" size={SEARCH_GLYPH[size]} {...stylex.props(styles.glyph)} />
