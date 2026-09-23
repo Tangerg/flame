@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, motion, radius, surface } from "@/styles/tokens.stylex";
+import { color, motion, radius, space, surface } from "@/styles/tokens.stylex";
 
 /**
  * The material everything that leaves the document flow is made of.
@@ -89,6 +89,23 @@ const styles = stylex.create({
   // grows downward and a centred one would walk up the screen as results arrive.
   modalCentred: { inset: 0, margin: "auto", height: "fit-content" },
   modalTop: { insetInline: 0, top: "calc(var(--spacing) * 24)", marginInline: "auto" },
+});
+
+/**
+ * A dialog that asks for an answer — a confirmation, an edit — rather than showing a thing. They
+ * share one plane, one inset and one action row, so which of them opened cannot change how
+ * a dialog looks or where its buttons sit.
+ */
+export const formDialog = stylex.create({
+  plane: { borderRadius: radius.floatingPanel, backgroundColor: surface.card },
+  inset: { padding: space.s5 },
+  actions: {
+    marginTop: space.s4,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: space.s2,
+  },
 });
 
 /** Where a floating thing sits in the stack. Its own layer, not the modal one. */

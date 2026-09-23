@@ -1,26 +1,14 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { color, leading, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { color, leading, space, type, weight } from "@/styles/tokens.stylex";
 import { Button } from "./button";
 import { DialogPrimitive } from "@/ui/primitives";
-import { MODAL_SCRIM, modalPanel } from "./floating-surface";
+import { formDialog, MODAL_SCRIM, modalPanel } from "./floating-surface";
 
 const styles = stylex.create({
-  panel: {
-    width: "min(400px, calc(100vw - 32px))",
-    borderRadius: radius.floatingPanel,
-    backgroundColor: surface.canvas,
-    padding: space.s4,
-  },
+  panel: { width: "min(400px, calc(100vw - 32px))" },
   title: { fontWeight: weight.semibold, color: color.fg },
   body: { marginTop: space.s1_5, lineHeight: leading.relaxed, color: color.fgMuted },
-  actions: {
-    marginTop: space.s4,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: space.s2,
-  },
 });
 
 interface ConfirmDialogProps {
@@ -58,7 +46,7 @@ export function ConfirmDialog({
           // `dialog` announces it as another window and loses the urgency the copy is
           // carrying. A confirmation that only asks — none exists yet — is not an alert.
           role={destructive ? "alertdialog" : undefined}
-          {...stylex.props(modalPanel(), styles.panel)}
+          {...stylex.props(modalPanel(), formDialog.plane, formDialog.inset, styles.panel)}
         >
           <DialogPrimitive.Title {...stylex.props(type.displaySm, styles.title)}>
             {title}
@@ -66,7 +54,7 @@ export function ConfirmDialog({
           <DialogPrimitive.Description {...stylex.props(type.uiMd, styles.body)}>
             {body}
           </DialogPrimitive.Description>
-          <div {...stylex.props(styles.actions)}>
+          <div {...stylex.props(formDialog.actions)}>
             <DialogPrimitive.Close render={<Button variant="ghost">{cancelLabel}</Button>} />
             <Button
               variant={destructive ? "tonal" : "primary"}

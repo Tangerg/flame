@@ -1,20 +1,15 @@
 import * as stylex from "@stylexjs/stylex";
 import { type FormEvent, type KeyboardEvent, type ReactNode, useRef } from "react";
 import { Button } from "./button";
-import { MODAL_SCRIM, modalPanel } from "./floating-surface";
+import { formDialog, MODAL_SCRIM, modalPanel } from "./floating-surface";
 import { color, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { IconButton } from "./icon-button";
 import { TextArea } from "./text-field";
 import { DialogPrimitive } from "@/ui/primitives";
 
 const styles = stylex.create({
-  panel: {
-    width: "min(420px, calc(100vw - 32px))",
-    overflow: "hidden",
-    borderRadius: radius.composer,
-    backgroundColor: surface.card,
-  },
-  form: { position: "relative", display: "flex", flexDirection: "column", padding: space.s5 },
+  panel: { width: "min(420px, calc(100vw - 32px))", overflow: "hidden" },
+  form: { position: "relative", display: "flex", flexDirection: "column" },
   head: {
     display: "flex",
     width: "100%",
@@ -36,14 +31,6 @@ const styles = stylex.create({
   title: { fontWeight: weight.semibold, color: color.fg },
   close: { position: "absolute", top: space.s4, right: space.s4 },
   field: { display: "flex", width: "100%", flexDirection: "column", paddingTop: space.s3 },
-  actions: {
-    display: "flex",
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: space.s3,
-    paddingTop: space.s3,
-  },
 });
 
 interface TextEditorDialogProps {
@@ -105,9 +92,9 @@ export function TextEditorDialog({
         <DialogPrimitive.Popup
           data-slot="text-editor-dialog"
           initialFocus={editorRef}
-          {...stylex.props(modalPanel(), styles.panel)}
+          {...stylex.props(modalPanel(), formDialog.plane, styles.panel)}
         >
-          <form {...stylex.props(styles.form)} onSubmit={submit}>
+          <form {...stylex.props(styles.form, formDialog.inset)} onSubmit={submit}>
             <div {...stylex.props(styles.head)}>
               {icon && <span {...stylex.props(styles.icon)}>{icon}</span>}
               <DialogPrimitive.Title {...stylex.props(type.displaySm, styles.title)}>
@@ -137,10 +124,10 @@ export function TextEditorDialog({
                 onChange={(event) => onChange(event.target.value)}
               />
             </div>
-            <div {...stylex.props(styles.actions)}>
+            <div {...stylex.props(formDialog.actions)}>
               <Button
                 type="button"
-                variant="soft"
+                variant="ghost"
                 pending={busy}
                 onClick={() => onOpenChange(false)}
               >

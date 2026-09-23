@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useMemo, useState } from "react";
-import { ScrollArea, SearchField, SectionLabel, vocab } from "@/ui";
+import { EmptyState, ScrollArea, SearchField, SectionLabel, vocab } from "@/ui";
 import { AgentWorkspaceView } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { IconMap, rawToc } from "./iconMap";
@@ -41,12 +41,6 @@ const ig = stylex.create({
     paddingBottom: space.s3,
   },
   sectionPad: { paddingBottom: space.s2_5 },
-  empty: {
-    paddingInline: space.s5,
-    paddingBlock: space.s16,
-    textAlign: "center",
-    color: color.fgFaint,
-  },
   dot: {
     height: space.s2,
     width: space.s2,
@@ -124,9 +118,7 @@ export function IconGallery() {
           );
         })}
         {items.length === 0 && (
-          <div {...stylex.props(ig.empty, typeStep.uiMd)}>
-            {t("iconGallery.empty", { q: query })}
-          </div>
+          <EmptyState icon="search" title={t("iconGallery.empty", { q: query })} />
         )}
       </ScrollArea>
     </AgentWorkspaceView>

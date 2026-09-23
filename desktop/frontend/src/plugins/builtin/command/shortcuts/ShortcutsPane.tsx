@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useMemo, useState } from "react";
-import { Kbd, SearchField, vocab } from "@/ui";
+import { EmptyState, Kbd, SearchField, vocab } from "@/ui";
 import { useKeymap } from "@/plugins/host/keymap";
 import { useT } from "@/lib/i18n";
 import { splitCombo } from "@/lib/combo";
@@ -9,12 +9,6 @@ import { SettingsGroup } from "@/plugins/builtin/settings/kit";
 
 const sc = stylex.create({
   pane: { display: "flex", flexDirection: "column", gap: space.s3 },
-  empty: {
-    paddingInline: space.s4,
-    paddingBlock: space.s6,
-    textAlign: "center",
-    color: color.fgFaint,
-  },
   // A real table, because this IS tabular: an action and the keys that reach it.
   table: { width: "100%", borderCollapse: "collapse", textAlign: "left" },
   head: {
@@ -61,7 +55,7 @@ export function ShortcutsPane() {
 
       <SettingsGroup>
         {filtered.length === 0 ? (
-          <div {...stylex.props(sc.empty, typeStep.uiMd)}>{t("shortcuts.empty")}</div>
+          <EmptyState icon="search" title={t("shortcuts.empty")} />
         ) : (
           <table {...stylex.props(sc.table, typeStep.uiMd)}>
             <thead {...stylex.props(sc.head, typeStep.uiSm)}>
