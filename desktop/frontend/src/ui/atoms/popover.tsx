@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { PopoverPrimitive } from "@/ui/primitives";
-import { FLOATING_LAYER, FLOATING_PANEL } from "./floating-surface";
+import { FLOATING_LAYER, FLOATING_OPTIONS, FLOATING_PANEL } from "./floating-surface";
 
 type PositionerProps = ComponentProps<typeof PopoverPrimitive.Positioner>;
 type PopupProps = ComponentProps<typeof PopoverPrimitive.Popup>;
@@ -10,6 +10,8 @@ type PopupProps = ComponentProps<typeof PopoverPrimitive.Popup>;
 interface PopoverContentBaseProps {
   children: ReactNode;
   className?: string;
+  /** `options` when the popover is a list to choose from, which takes the menu's shell. */
+  surface?: "panel" | "options";
   side?: PositionerProps["side"];
   align?: PositionerProps["align"];
   sideOffset?: PositionerProps["sideOffset"];
@@ -22,13 +24,14 @@ type PopoverContentProps = PopoverContentBaseProps &
 function PopoverContent({
   children,
   className,
+  surface = "panel",
   side,
   align,
   sideOffset,
   alignOffset,
   ...popupProps
 }: PopoverContentProps) {
-  const panel = stylex.props(FLOATING_PANEL);
+  const panel = stylex.props(surface === "options" ? FLOATING_OPTIONS : FLOATING_PANEL);
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner

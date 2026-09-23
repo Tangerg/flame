@@ -171,6 +171,11 @@ test("a context menu opens from the keyboard and hands focus back", async ({ pag
   await row.focus();
   await page.keyboard.press("Shift+F10");
   await expect(page.getByRole("menuitem", { name: "Rename" })).toBeVisible();
+  const ink = (name: string) =>
+    page.getByRole("menuitem", { name }).evaluate((el) => getComputedStyle(el).color);
+  expect(await ink("Delete"), "a destructive item says so in its ink").not.toBe(
+    await ink("Rename"),
+  );
   await expect
     .poll(
       () => page.evaluate(() => Boolean(document.activeElement?.closest('[role="menu"]'))),

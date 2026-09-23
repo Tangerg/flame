@@ -19,7 +19,6 @@ const rs = stylex.create({
   title: { display: "flex", minWidth: 0, flexDirection: "column", gap: space.s1 },
   // A model id is long and the trigger is not: it truncates rather than widening the row.
   model: { maxWidth: "160px" },
-  pickRow: { paddingInline: space.s2 },
   row: {
     display: "flex",
     flexDirection: "column",
@@ -124,11 +123,7 @@ export function UtilityModelSection() {
           }
         />
         <DropdownMenu.Content align="end" sideOffset={6}>
-          <DropdownMenu.Item
-            onClick={() => void pick(null)}
-            layout="pick"
-            className={stylex.props(rs.pickRow).className}
-          >
+          <DropdownMenu.Item onClick={() => void pick(null)} layout="pick">
             <span />
             <span {...stylex.props(vocab.truncate)}>{t("providers.utility.main")}</span>
             {!isSet && (
@@ -140,7 +135,6 @@ export function UtilityModelSection() {
               key={`${m.provider}:${m.id}`}
               onClick={() => void pick({ provider: m.provider, model: m.id })}
               layout="pick"
-              className={stylex.props(rs.pickRow).className}
             >
               <ProviderIcon provider={m.provider} size="md" />
               <span {...stylex.props(vocab.truncate)}>{m.label}</span>
@@ -222,11 +216,7 @@ export function EmbeddingModelSection() {
           }
         />
         <DropdownMenu.Content align="end" sideOffset={6}>
-          <DropdownMenu.Item
-            onClick={() => void pick(null)}
-            layout="pick"
-            className={stylex.props(rs.pickRow).className}
-          >
+          <DropdownMenu.Item onClick={() => void pick(null)} layout="pick">
             <span />
             <span {...stylex.props(vocab.truncate)}>{t("providers.embedding.off")}</span>
             {!isSet && (
@@ -234,12 +224,7 @@ export function EmbeddingModelSection() {
             )}
           </DropdownMenu.Item>
           {capableProviders.map((p) => (
-            <DropdownMenu.Item
-              key={p.id}
-              onClick={() => void pick(p)}
-              layout="pick"
-              className={stylex.props(rs.pickRow).className}
-            >
+            <DropdownMenu.Item key={p.id} onClick={() => void pick(p)} layout="pick">
               <ProviderIcon provider={p.id} size="md" />
               <span {...stylex.props(vocab.truncate)}>
                 {p.id}

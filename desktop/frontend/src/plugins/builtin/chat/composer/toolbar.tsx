@@ -88,7 +88,7 @@ function ApprovalModePill() {
             key={m.value}
             onClick={() => void onSelect(m.value)}
             layout="pickPlain"
-            className={stylex.props(toolbarStyles.describedRow).className}
+            styles={toolbarStyles.describedRow}
           >
             <span {...stylex.props(vocab.min)}>
               <span {...stylex.props(toolbarStyles.optionTitle, typeStep.uiMd)}>

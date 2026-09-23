@@ -31,7 +31,6 @@ const pl = stylex.create({
     color: color.fgFaint,
     fontWeight: weight.medium,
   },
-  item: { paddingInline: space.s2 },
   tray: { display: "flex", minWidth: 0, alignItems: "center" },
   // The tray tucks UNDER the composer: it is inset from the composer's edges, overlaps it by
   // 18px, and pads its own bottom past that overlap so its content clears the composer's top
@@ -74,7 +73,7 @@ function ProjectMenuContent({
     >
       <div {...stylex.props(pl.heading, typeStep.uiXs)}>{t("composer.project.select")}</div>
       {loading && !groups ? (
-        <DropdownMenu.Item disabled layout="glyph" className={stylex.props(pl.item).className}>
+        <DropdownMenu.Item disabled layout="glyph">
           <Icon name="folder" size="sm" className={stylex.props(vocab.faint).className} />
           <span>{t("common.loading")}</span>
         </DropdownMenu.Item>
@@ -88,7 +87,6 @@ function ProjectMenuContent({
             }}
             title={project.cwdMissing ? t("project.row.missing") : project.id}
             layout="pick"
-            className={stylex.props(pl.item).className}
           >
             <Icon name="folder" size="sm" className={stylex.props(vocab.muted).className} />
             <span {...stylex.props(vocab.min, vocab.truncate)}>{project.name}</span>
@@ -101,12 +99,7 @@ function ProjectMenuContent({
         ))
       )}
       <DropdownMenu.Separator />
-      <DropdownMenu.Item
-        disabled={!canCreate}
-        onClick={onAdd}
-        layout="glyph"
-        className={stylex.props(pl.item).className}
-      >
+      <DropdownMenu.Item disabled={!canCreate} onClick={onAdd} layout="glyph">
         <Icon name="plus" size="sm" className={stylex.props(vocab.muted).className} />
         <span>{t("composer.project.add")}</span>
       </DropdownMenu.Item>

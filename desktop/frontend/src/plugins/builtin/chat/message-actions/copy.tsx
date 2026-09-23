@@ -56,7 +56,7 @@ function CopyItem({
   onSelect: () => void;
 }) {
   return (
-    <DropdownMenu.Item onClick={onSelect} className={stylex.props(ct.panelRow).className}>
+    <DropdownMenu.Item onClick={onSelect} styles={ct.panelRow}>
       <span {...stylex.props(vocab.ink, typeStep.uiMd)}>{label}</span>
       <span {...stylex.props(vocab.faint, typeStep.uiSm)}>{hint}</span>
     </DropdownMenu.Item>

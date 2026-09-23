@@ -102,7 +102,12 @@ const styles = stylex.create({
     scrollPaddingBlock: space.s1,
   },
   listInset: { minWidth: 0, padding: space.s1 },
-  group: { paddingBottom: space.s1_5, ":last-child": { paddingBottom: 0 } },
+  group: {
+    display: "grid",
+    rowGap: "2px",
+    paddingBottom: space.s1_5,
+    ":last-child": { paddingBottom: 0 },
+  },
   groupLabel: {
     display: "flex",
     alignItems: "center",
@@ -282,6 +287,7 @@ export function CatalogPicker({
       <CatalogTrigger trigger={trigger} label={label} className={className} />
 
       <Popover.Content
+        surface="options"
         aria-label={label}
         align={align}
         side={side}
@@ -403,6 +409,7 @@ export function RailCatalogPicker({
       <CatalogTrigger trigger={trigger} label={label} className={className} />
 
       <Popover.Content
+        surface="options"
         aria-label={label}
         align={align}
         side={side}

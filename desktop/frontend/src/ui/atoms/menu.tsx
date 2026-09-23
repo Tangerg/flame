@@ -1,10 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
+import type { StyleXStyles } from "@stylexjs/stylex";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { space, surface } from "@/styles/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 import { ContextMenuPrimitive, MenuPrimitive } from "@/ui/primitives";
-import { FLOATING_LAYER, FLOATING_PANEL } from "./floating-surface";
+import { FLOATING_LAYER, FLOATING_OPTIONS } from "./floating-surface";
 import { floatingRow, floatingRowStyles, type RowLayout } from "./option-row";
 
 const menuStyles = stylex.create({
@@ -19,7 +20,12 @@ const menuStyles = stylex.create({
   },
   // Both of these are what a menu IS, not what a call site decides. `--available-height` is
   // measured by the positioner from the anchor to the screen edge.
+  // A hairline of air between rows, so two highlighted neighbours read as two, as zcode spaces
+  // its option stacks.
   content: {
+    display: "grid",
+    alignContent: "start",
+    rowGap: "2px",
     minWidth: "12rem",
     maxHeight: "min(380px, var(--available-height))",
     overflowY: "auto",
@@ -34,7 +40,7 @@ const menuStyles = stylex.create({
 // even when a mouse opened it — a ring around the whole menu, every time, on right-click. The
 // highlighted ITEM is the indicator here, so the popup opts out the way the design system
 // says a row state may: `data-chrome-focus`.
-const MENU_CONTENT = [FLOATING_PANEL, menuStyles.content];
+const MENU_CONTENT = [FLOATING_OPTIONS, menuStyles.content];
 
 const menuItem = (layout: RowLayout = "grid") => [menuStyles.item, floatingRow(layout, "sm")];
 
@@ -161,8 +167,12 @@ function ContextSeparator({
   );
 }
 
-function DropdownItem({ layout, className, ...props }: DropdownItemProps & { layout?: RowLayout }) {
-  const item = stylex.props(menuItem(layout));
+// `styles`, not a class: a row's own properties and a call site's refinement of them have to
+// resolve in one `stylex.props`, or two lists setting the same property race on stylesheet order.
+type RowRefinement = { layout?: RowLayout; styles?: StyleXStyles };
+
+function DropdownItem({ layout, styles, className, ...props }: DropdownItemProps & RowRefinement) {
+  const item = stylex.props(menuItem(layout), styles);
   return <MenuPrimitive.Item {...props} {...item} className={cn(item.className, className)} />;
 }
 
@@ -177,8 +187,14 @@ function DropdownSubmenuTrigger({
   );
 }
 
-function ContextItem({ layout, className, ...props }: ContextItemProps & { layout?: RowLayout }) {
-  const item = stylex.props(menuItem(layout));
+function ContextItem({
+  layout,
+  styles,
+  destructive,
+  className,
+  ...props
+}: ContextItemProps & RowRefinement & { destructive?: boolean }) {
+  const item = stylex.props(menuItem(layout), destructive && floatingRowStyles.destructive, styles);
   return (
     <ContextMenuPrimitive.Item {...props} {...item} className={cn(item.className, className)} />
   );
@@ -207,13 +223,13 @@ function ContextIconItem({
   className,
   ...props
 }: ContextIconItemProps) {
-  const tone = stylex.props(destructive && floatingRowStyles.destructive);
   return (
     <ContextItem
       {...props}
       layout="glyph"
+      destructive={destructive}
       onClick={onSelect}
-      className={cn(tone.className, className)}
+      className={className}
     >
       <Icon name={icon} size="xs" />
       <span {...stylex.props(menuStyles.label)}>{children}</span>
