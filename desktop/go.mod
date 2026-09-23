@@ -3,8 +3,8 @@ module github.com/Tangerg/flame/desktop
 go 1.27.0
 
 require (
-	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260912094153-1dc998bda962
-	github.com/wailsapp/wails/v3 v3.0.0-beta.20
+	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260923173009-a68e87d3c188
+	github.com/wailsapp/wails/v3 v3.0.0-beta.25
 )
 
 require (
