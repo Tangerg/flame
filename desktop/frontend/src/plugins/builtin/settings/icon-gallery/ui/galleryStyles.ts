@@ -48,16 +48,6 @@ export const galleryStyles = stylex.create({
   },
   missing: { fontFamily: "var(--font-mono)", color: color.fgFaint },
 
-  sectionHead: {
-    display: "flex",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    fontFamily: "var(--font-mono)",
-    // Mono at the UI tracking reads loose; a group heading is the one place it shows.
-    letterSpacing: "normal",
-    fontWeight: weight.medium,
-    color: color.fgMuted,
-  },
   count: { fontFamily: "var(--font-mono)", color: color.fgFaint },
 });
 

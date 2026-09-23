@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useMemo, useState } from "react";
-import { ScrollArea, SearchField, vocab } from "@/ui";
+import { ScrollArea, SearchField, SectionLabel, vocab } from "@/ui";
 import { AgentWorkspaceView } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { IconMap, rawToc } from "./iconMap";
@@ -109,10 +109,12 @@ export function IconGallery() {
           if (list.length === 0) return null;
           return (
             <section key={key} {...stylex.props(ig.section)}>
-              <header {...stylex.props(g.sectionHead, ig.sectionPad, typeStep.uiSm)}>
-                <span>{t(GROUP_TITLE_KEYS[key])}</span>
-                <span {...stylex.props(g.count)}>{list.length}</span>
-              </header>
+              <SectionLabel
+                className={stylex.props(ig.sectionPad).className}
+                trailing={<span {...stylex.props(g.count)}>{list.length}</span>}
+              >
+                {t(GROUP_TITLE_KEYS[key])}
+              </SectionLabel>
               <div {...stylex.props(gallerySpread.large)}>
                 {list.map((entry) => (
                   <IconCard key={entry.id} entry={entry} />

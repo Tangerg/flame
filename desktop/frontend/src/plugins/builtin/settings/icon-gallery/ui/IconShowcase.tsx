@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { comboGlyph } from "@/lib/combo";
 import { Trans, useT } from "@/lib/i18n";
 import { IconMap, TocById } from "./iconMap";
-import { gap, Tag, vocab } from "@/ui";
+import { gap, SectionLabel, Tag, vocab } from "@/ui";
 import { COMMAND, useExtensionByKey } from "@/plugins/sdk";
 import { COMMAND_MENU_COMMAND } from "@/plugins/builtin/command/command-menu/public/commandMenu";
 import { color, leading, space, type as typeStep } from "@/styles/tokens.stylex";
@@ -131,10 +131,9 @@ export function IconShowcase() {
 
       {SECTIONS.map((sec) => (
         <section key={sec.titleKey} {...stylex.props(vocab.column, gap.s2)}>
-          <header {...stylex.props(g.sectionHead, typeStep.uiSm)}>
-            <span>{t(sec.titleKey)}</span>
-            <span {...stylex.props(g.count)}>{sec.ids.length}</span>
-          </header>
+          <SectionLabel trailing={<span {...stylex.props(g.count)}>{sec.ids.length}</span>}>
+            {t(sec.titleKey)}
+          </SectionLabel>
           <div {...stylex.props(gallerySpread.small)}>
             {sec.ids.map((id) => (
               <ShowcaseCard key={id} id={id} />
