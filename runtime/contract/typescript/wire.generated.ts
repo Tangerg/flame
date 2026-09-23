@@ -864,11 +864,11 @@ export interface ModelInvocation {
 export type ModelInvocationState = "started" | "completed" | "failed" | "unknown";
 
 export interface ModelInvocationUsage {
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
   inputTokens: number;
   outputTokens: number;
-  reasoningTokens: number;
+  reasoningTokens?: number;
 }
 
 export interface ModelPricing {

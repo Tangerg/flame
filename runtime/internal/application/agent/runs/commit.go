@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -59,12 +58,14 @@ func (m ModelInvocationState) String() string {
 // CallID.
 type ModelInvocationCommit struct {
 	FirstOutputLatencyMillis *int64
-	Usage                    *accounting.TokenUsage
-	CallID                   string
-	SegmentID                string
-	State                    ModelInvocationState
-	StartedAt                time.Time
-	FinishedAt               time.Time
+	// Usage is the provider's own report for this call, so an unsupported
+	// breakdown stays absent rather than being stored as a reported zero.
+	Usage      *corechat.Usage
+	CallID     string
+	SegmentID  string
+	State      ModelInvocationState
+	StartedAt  time.Time
+	FinishedAt time.Time
 }
 
 // ToolInvocationState records whether one model-requested Tool call has only

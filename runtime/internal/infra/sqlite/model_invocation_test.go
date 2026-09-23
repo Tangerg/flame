@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testing.T) {
@@ -26,7 +27,7 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 	calls := sqlite.NewModelInvocationStore(db)
 	startedAt := draft.CreatedAt.Add(time.Second)
 	latencies := []*int64{nil, new(int64(0)), new(int64(124))}
-	usages := []*accounting.TokenUsage{nil, {}, {PromptTokens: 17, CompletionTokens: 9, CacheReadTokens: 4, CacheWriteTokens: 2, ReasoningTokens: 3}}
+	usages := []*chat.Usage{nil, {}, {InputTokens: 17, OutputTokens: 9, CacheReadInputTokens: new(int64(4)), CacheWriteInputTokens: new(int64(2)), ReasoningTokens: new(int64(3))}}
 	for index, id := range []string{"call_a", "call_b", "call_c"} {
 		if err := calls.StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, id, startedAt); err != nil {
 			t.Fatal(err)
@@ -57,7 +58,9 @@ func TestModelInvocationHistorySurvivesRestartAndPagesByStableIdentity(t *testin
 	if page[0].FirstOutputLatencyMillis == nil || *page[0].FirstOutputLatencyMillis != 124 || page[1].FirstOutputLatencyMillis == nil || *page[1].FirstOutputLatencyMillis != 0 || second[0].FirstOutputLatencyMillis != nil {
 		t.Fatalf("first output latency lost absent/zero/measured distinction: %+v %+v", page, second)
 	}
-	if page[0].Usage == nil || *page[0].Usage != *usages[2] || page[1].Usage == nil || *page[1].Usage != *usages[1] || second[0].Usage != nil {
+	if page[0].Usage == nil || !accounting.ReportedUsageEqual(*page[0].Usage, *usages[2]) ||
+		page[1].Usage == nil || !accounting.ReportedUsageEqual(*page[1].Usage, *usages[1]) ||
+		second[0].Usage != nil {
 		t.Fatalf("restored usage lost unknown/zero/per-call values: %+v %+v", page, second)
 	}
 	other, err := calls.PageModelInvocations(ctx, "run_other", 0, "", 2)
@@ -138,7 +141,7 @@ func TestModelInvocationUsageAdoptsExistingDatabaseWithoutInventingHistory(t *te
 	if err := calls.StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_new", draft.CreatedAt); err != nil {
 		t.Fatal(err)
 	}
-	if err := calls.CompleteModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_new", draft.CreatedAt, draft.CreatedAt, nil, &accounting.TokenUsage{PromptTokens: 3}); err != nil {
+	if err := calls.CompleteModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_new", draft.CreatedAt, draft.CreatedAt, nil, &chat.Usage{InputTokens: 3}); err != nil {
 		t.Fatal(err)
 	}
 }

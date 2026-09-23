@@ -251,7 +251,7 @@ func modelUsage(
 	response *corechat.Response,
 	selection modelref.Selection,
 	pricing accounting.Pricing,
-) accounting.ModelUsage {
+) (accounting.ModelUsage, error) {
 	var metadata corechat.ResponseMetadata
 	if response.Metadata != nil {
 		metadata = *response.Metadata
@@ -264,29 +264,17 @@ func modelUsage(
 	if pricing != nil {
 		cost = pricing(selection.Provider(), servedModel, metadata.Usage)
 	}
+	var reported corechat.Usage
+	if metadata.Usage != nil {
+		reported = *metadata.Usage
+	}
+	tokens, err := accounting.NewTokens(reported)
+	if err != nil {
+		return accounting.ModelUsage{}, fmt.Errorf("agentexec: model usage: %w", err)
+	}
 	return accounting.ModelUsage{
-		Model: servedModel, TokenUsage: accountingTokenUsage(metadata.Usage), Cost: cost, Calls: 1,
-	}
-}
-
-func accountingTokenUsage(usage *corechat.Usage) accounting.TokenUsage {
-	if usage == nil {
-		return accounting.TokenUsage{}
-	}
-	result := accounting.TokenUsage{
-		PromptTokens:     usage.InputTokens,
-		CompletionTokens: usage.OutputTokens,
-	}
-	if usage.ReasoningTokens != nil {
-		result.ReasoningTokens = *usage.ReasoningTokens
-	}
-	if usage.CacheReadInputTokens != nil {
-		result.CacheReadTokens = *usage.CacheReadInputTokens
-	}
-	if usage.CacheWriteInputTokens != nil {
-		result.CacheWriteTokens = *usage.CacheWriteInputTokens
-	}
-	return result
+		Model: servedModel, Tokens: tokens, Cost: cost, Calls: 1,
+	}, nil
 }
 
 // Called only after accumulator validation. Opaque reasoning state and citation

@@ -67,13 +67,13 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		t.Fatal("nonstreaming call invented first output latency")
 	}
 	if models[0].ReportedUsage == nil || models[1].ReportedUsage == nil ||
-		models[0].ReportedUsage.PromptTokens != 7 || models[1].ReportedUsage.PromptTokens != 11 ||
-		models[1].ReportedUsage.CompletionTokens != 3 {
+		models[0].ReportedUsage.InputTokens != 7 || models[1].ReportedUsage.InputTokens != 11 ||
+		models[1].ReportedUsage.OutputTokens != 3 {
 		t.Fatalf("per-call usage was lost or replaced with cumulative usage: %#v", models)
 	}
 	modelCost, modelCostAvailable := models[1].Cost.USD()
-	if models[1].Steps != 2 || models[1].TokenUsage.PromptTokens != 18 ||
-		models[1].TokenUsage.CompletionTokens != 5 || !modelCostAvailable || modelCost != 0.5 {
+	if models[1].Steps != 2 || models[1].Tokens.InputTokens != 18 ||
+		models[1].Tokens.OutputTokens != 5 || !modelCostAvailable || modelCost != 0.5 {
 		t.Fatalf("model completions = %#v", models)
 	}
 	starts := payloadsOf[runs.ToolCallStarted](events)
@@ -100,7 +100,7 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 	segmentUsage := ended[0].Usage()
 	segmentCost, segmentCostAvailable := segmentUsage.Cost.USD()
 	if segmentUsage.Steps != 2 ||
-		segmentUsage.Tokens.PromptTokens != 18 || !segmentCostAvailable || segmentCost != 0.5 {
+		segmentUsage.Tokens.InputTokens != 18 || !segmentCostAvailable || segmentCost != 0.5 {
 		t.Fatalf("segment accounting = %#v", ended)
 	}
 }
@@ -601,12 +601,12 @@ func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
 	completed := payloadsOf[runs.ModelCallCompleted](events)
 	if len(completed) != 1 || completed[0].Message.Text() != strings.Repeat("x", chunks) ||
 		completed[0].FirstOutputLatencyMillis == nil || *completed[0].FirstOutputLatencyMillis < 0 ||
-		completed[0].TokenUsage.PromptTokens != 5 || completed[0].TokenUsage.CompletionTokens != 2 {
+		completed[0].Tokens.InputTokens != 5 || completed[0].Tokens.OutputTokens != 2 {
 		t.Fatalf("authoritative model completion = %#v", completed)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Usage() == nil || ended[0].Usage().Tokens.PromptTokens != 5 ||
-		ended[0].Usage().Tokens.CompletionTokens != 2 {
+	if len(ended) != 1 || ended[0].Usage() == nil || ended[0].Usage().Tokens.InputTokens != 5 ||
+		ended[0].Usage().Tokens.OutputTokens != 2 {
 		t.Fatalf("terminal usage = %#v", ended)
 	}
 }

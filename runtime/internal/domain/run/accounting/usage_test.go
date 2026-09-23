@@ -8,23 +8,23 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-func TestTokenUsageAdd(t *testing.T) {
+func TestTokensAdd(t *testing.T) {
 	tests := []struct {
 		name string
-		base TokenUsage
-		add  TokenUsage
-		want TokenUsage
+		base Tokens
+		add  Tokens
+		want Tokens
 	}{
 		{
 			name: "empty rollup",
-			add:  TokenUsage{PromptTokens: 10, CompletionTokens: 4, ReasoningTokens: 2, CacheReadTokens: 3, CacheWriteTokens: 1},
-			want: TokenUsage{PromptTokens: 10, CompletionTokens: 4, ReasoningTokens: 2, CacheReadTokens: 3, CacheWriteTokens: 1},
+			add:  Tokens{InputTokens: 10, OutputTokens: 4, ReasoningTokens: 2, CacheReadTokens: 3, CacheWriteTokens: 1},
+			want: Tokens{InputTokens: 10, OutputTokens: 4, ReasoningTokens: 2, CacheReadTokens: 3, CacheWriteTokens: 1},
 		},
 		{
 			name: "existing rollup",
-			base: TokenUsage{PromptTokens: 5, CompletionTokens: 2, ReasoningTokens: 1},
-			add:  TokenUsage{PromptTokens: 7, CompletionTokens: 3, ReasoningTokens: 2},
-			want: TokenUsage{PromptTokens: 12, CompletionTokens: 5, ReasoningTokens: 3},
+			base: Tokens{InputTokens: 5, OutputTokens: 2, ReasoningTokens: 1},
+			add:  Tokens{InputTokens: 7, OutputTokens: 3, ReasoningTokens: 2},
+			want: Tokens{InputTokens: 12, OutputTokens: 5, ReasoningTokens: 3},
 		},
 	}
 
@@ -35,22 +35,22 @@ func TestTokenUsageAdd(t *testing.T) {
 				t.Fatal(err)
 			}
 			if got != tt.want {
-				t.Fatalf("TokenUsage = %+v, want %+v", got, tt.want)
+				t.Fatalf("Tokens = %+v, want %+v", got, tt.want)
 			}
 			total, err := got.Total()
-			if err != nil || total != tt.want.PromptTokens+tt.want.CompletionTokens {
-				t.Fatalf("Total() = %d, %v; want %d", total, err, tt.want.PromptTokens+tt.want.CompletionTokens)
+			if err != nil || total != tt.want.InputTokens+tt.want.OutputTokens {
+				t.Fatalf("Total() = %d, %v; want %d", total, err, tt.want.InputTokens+tt.want.OutputTokens)
 			}
 		})
 	}
 }
 
 func TestTokenAndModelUsageRejectOverflow(t *testing.T) {
-	if _, err := (TokenUsage{PromptTokens: math.MaxInt64}).Add(TokenUsage{PromptTokens: 1}); err == nil {
-		t.Fatal("TokenUsage.Add accepted overflow")
+	if _, err := (Tokens{InputTokens: math.MaxInt64}).Add(Tokens{InputTokens: 1}); err == nil {
+		t.Fatal("Tokens.Add accepted overflow")
 	}
-	if _, err := (TokenUsage{PromptTokens: math.MaxInt64, CompletionTokens: 1}).Total(); err == nil {
-		t.Fatal("TokenUsage.Total accepted overflow")
+	if _, err := (Tokens{InputTokens: math.MaxInt64, OutputTokens: 1}).Total(); err == nil {
+		t.Fatal("Tokens.Total accepted overflow")
 	}
 	left := ModelUsage{Model: "model", Calls: math.MaxInt, Cost: mustCost(t, 0)}
 	right := ModelUsage{Model: "model", Calls: 1, Cost: mustCost(t, 0)}
@@ -62,24 +62,24 @@ func TestTokenAndModelUsageRejectOverflow(t *testing.T) {
 func TestModelUsageSubtractOwnsRemainderInvariants(t *testing.T) {
 	total := ModelUsage{
 		Model: "model",
-		TokenUsage: TokenUsage{
-			PromptTokens: 10, CompletionTokens: 6, ReasoningTokens: 2,
+		Tokens: Tokens{
+			InputTokens: 10, OutputTokens: 6, ReasoningTokens: 2,
 			CacheReadTokens: 4, CacheWriteTokens: 3,
 		},
 		Cost: mustCost(t, 1), Calls: 3,
 	}
 	used := ModelUsage{
 		Model: "model",
-		TokenUsage: TokenUsage{
-			PromptTokens: 4, CompletionTokens: 2, ReasoningTokens: 1,
+		Tokens: Tokens{
+			InputTokens: 4, OutputTokens: 2, ReasoningTokens: 1,
 			CacheReadTokens: 1, CacheWriteTokens: 1,
 		},
 		Cost: mustCost(t, 0.25), Calls: 1,
 	}
 	want := ModelUsage{
 		Model: "model",
-		TokenUsage: TokenUsage{
-			PromptTokens: 6, CompletionTokens: 4, ReasoningTokens: 1,
+		Tokens: Tokens{
+			InputTokens: 6, OutputTokens: 4, ReasoningTokens: 1,
 			CacheReadTokens: 3, CacheWriteTokens: 2,
 		},
 		Cost: mustCost(t, 0.75), Calls: 2,
@@ -95,12 +95,12 @@ func TestModelUsageSubtractOwnsRemainderInvariants(t *testing.T) {
 	for name, candidate := range map[string]ModelUsage{
 		"different model": {Model: "other", Calls: 1},
 		"token underflow": {
-			Model: "model", TokenUsage: TokenUsage{PromptTokens: 11}, Cost: mustCost(t, 0), Calls: 1,
+			Model: "model", Tokens: Tokens{InputTokens: 11}, Cost: mustCost(t, 0), Calls: 1,
 		},
 		"cost underflow": {Model: "model", Cost: mustCost(t, 1.25), Calls: 1},
 		"call underflow": {Model: "model", Cost: mustCost(t, 0), Calls: 4},
 		"usage without remaining calls": {
-			Model: "model", TokenUsage: TokenUsage{PromptTokens: 9}, Cost: mustCost(t, 1), Calls: 3,
+			Model: "model", Tokens: Tokens{InputTokens: 9}, Cost: mustCost(t, 1), Calls: 3,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -124,19 +124,19 @@ func TestSnapshotTotalAggregatesModelsWithCapacityChecks(t *testing.T) {
 	snapshot := Snapshot{Models: []ModelUsage{
 		{
 			Model: "alpha",
-			TokenUsage: TokenUsage{
-				PromptTokens:     3,
-				CompletionTokens: 2,
-				ReasoningTokens:  1,
+			Tokens: Tokens{
+				InputTokens:     3,
+				OutputTokens:    2,
+				ReasoningTokens: 1,
 			},
 			Cost:  mustCost(t, 0.25),
 			Calls: 1,
 		},
 		{
 			Model: "beta",
-			TokenUsage: TokenUsage{
-				PromptTokens:     5,
-				CompletionTokens: 1,
+			Tokens: Tokens{
+				InputTokens:  5,
+				OutputTokens: 1,
 			},
 			Cost:  mustCost(t, 0.5),
 			Calls: 2,
@@ -146,8 +146,8 @@ func TestSnapshotTotalAggregatesModelsWithCapacityChecks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Total: %v", err)
 	}
-	if total.PromptTokens != 8 ||
-		total.CompletionTokens != 3 ||
+	if total.InputTokens != 8 ||
+		total.OutputTokens != 3 ||
 		total.ReasoningTokens != 1 ||
 		total.Calls != 3 {
 		t.Fatalf("total = %+v", total)
@@ -157,8 +157,8 @@ func TestSnapshotTotalAggregatesModelsWithCapacityChecks(t *testing.T) {
 	}
 
 	overflow := Snapshot{Models: []ModelUsage{
-		{Model: "alpha", TokenUsage: TokenUsage{PromptTokens: math.MaxInt64}, Calls: 1},
-		{Model: "beta", TokenUsage: TokenUsage{PromptTokens: 1}, Calls: 1},
+		{Model: "alpha", Tokens: Tokens{InputTokens: math.MaxInt64}, Calls: 1},
+		{Model: "beta", Tokens: Tokens{InputTokens: 1}, Calls: 1},
 	}}
 	if _, err := overflow.Total(); err == nil {
 		t.Fatal("overflowing snapshot aggregate was accepted")
@@ -185,8 +185,8 @@ func TestUsageRejectsInvalidModelIdentities(t *testing.T) {
 func TestSnapshotValidateAdvanceFromRejectsRegression(t *testing.T) {
 	previous := Snapshot{Models: []ModelUsage{{
 		Model: "model",
-		TokenUsage: TokenUsage{
-			PromptTokens: 4, CompletionTokens: 2, ReasoningTokens: 1,
+		Tokens: Tokens{
+			InputTokens: 4, OutputTokens: 2, ReasoningTokens: 1,
 			CacheReadTokens: 1, CacheWriteTokens: 1,
 		},
 		Cost:  mustCost(t, 0.5),
@@ -201,7 +201,7 @@ func TestSnapshotValidateAdvanceFromRejectsRegression(t *testing.T) {
 
 	for name, mutate := range map[string]func(*Snapshot){
 		"model removed": func(value *Snapshot) { value.Models = nil },
-		"tokens":        func(value *Snapshot) { value.Models[0].PromptTokens-- },
+		"tokens":        func(value *Snapshot) { value.Models[0].InputTokens-- },
 		"cost": func(value *Snapshot) {
 			value.Models[0].Cost = mustCost(t, 0.25)
 		},

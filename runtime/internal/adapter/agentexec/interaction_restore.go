@@ -426,8 +426,8 @@ func modelUsageFromRunMetrics(
 		}
 		usage := accounting.ModelUsage{
 			Model: model,
-			TokenUsage: accounting.TokenUsage{
-				PromptTokens: value.InputTokens, CompletionTokens: value.OutputTokens,
+			Tokens: accounting.Tokens{
+				InputTokens: value.InputTokens, OutputTokens: value.OutputTokens,
 				ReasoningTokens: value.ReasoningTokens, CacheReadTokens: value.CacheReadTokens,
 				CacheWriteTokens: value.CacheWriteTokens,
 			},
@@ -450,7 +450,7 @@ func sameTranscriptUsage(total accounting.ModelUsage, value accounting.Totals) b
 	if err != nil {
 		return false
 	}
-	return total.PromptTokens == value.InputTokens && total.CompletionTokens == value.OutputTokens &&
+	return total.InputTokens == value.InputTokens && total.OutputTokens == value.OutputTokens &&
 		total.ReasoningTokens == value.ReasoningTokens && total.CacheReadTokens == value.CacheReadTokens &&
 		total.CacheWriteTokens == value.CacheWriteTokens && total.Cost.Equal(cost)
 }

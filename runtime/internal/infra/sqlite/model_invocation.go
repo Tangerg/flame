@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 type modelInvocationState string
@@ -114,7 +114,7 @@ func (m *ModelInvocationStore) CompleteModelInvocation(
 	sessionID, runID, segmentID, callID string,
 	startedAt, finishedAt time.Time,
 	firstOutputLatencyMillis *int64,
-	usage *accounting.TokenUsage,
+	usage *chat.Usage,
 ) error {
 	return m.finish(
 		ctx, sessionID, runID, segmentID, callID,
@@ -151,7 +151,7 @@ func (m *ModelInvocationStore) finish(
 	startedAt, finishedAt time.Time,
 	state string,
 	firstOutputLatencyMillis *int64,
-	usage *accounting.TokenUsage,
+	usage *chat.Usage,
 ) error {
 	if err := validateModelInvocationIdentity(sessionID, runID, segmentID, callID); err != nil {
 		return err
@@ -214,7 +214,7 @@ func validateModelInvocationIdentity(sessionID, runID, segmentID, callID string)
 // ModelInvocationRecord is a stored attempt, without semantic response content.
 type ModelInvocationRecord struct {
 	FirstOutputLatencyMillis *int64
-	Usage                    *accounting.TokenUsage
+	Usage                    *chat.Usage
 	CallID                   string
 	SegmentID                string
 	State                    string

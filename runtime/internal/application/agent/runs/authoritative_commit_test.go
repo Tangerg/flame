@@ -88,15 +88,15 @@ func (a *authoritativeFailureExecutor) Observe(
 		}
 		a.receipts <- startReceipt.Await(ctx)
 
-		usage := accounting.TokenUsage{PromptTokens: 2, CompletionTokens: 1}
+		usage := accounting.Tokens{InputTokens: 2, OutputTokens: 1}
 		completion, completionReceipt, err := NewExecutionFactCommit(ModelCallCompleted{
 			CallID: "model_call_1",
 			Message: new(corechat.NewAssistantMessage(
 				corechat.NewTextPart("durable final that must not be half-published"),
 			)),
-			TokenUsage: usage,
+			Tokens: usage,
 			ByModel: []accounting.ModelUsage{{
-				Model: "test-model", TokenUsage: usage, Calls: 1,
+				Model: "test-model", Tokens: usage, Calls: 1,
 			}},
 			Steps: 1,
 		})

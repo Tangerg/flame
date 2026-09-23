@@ -102,7 +102,7 @@ func TestCompleteModelResponseSurvivesScopeCancellation(t *testing.T) {
 			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
 			completed := payloadsOf[runs.ModelCallCompleted](events)
 			ended := payloadsOf[runs.SegmentEnded](events)
-			if len(completed) != 1 || completed[0].Message.Text() != "observed" || completed[0].ReportedUsage == nil || completed[0].ReportedUsage.PromptTokens != 2 || len(payloadsOf[runs.ModelCallFailed](events)) != 0 {
+			if len(completed) != 1 || completed[0].Message.Text() != "observed" || completed[0].ReportedUsage == nil || completed[0].ReportedUsage.InputTokens != 2 || len(payloadsOf[runs.ModelCallFailed](events)) != 0 {
 				t.Fatalf("known response lost: completed=%+v events=%+v", completed, events)
 			}
 			if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {

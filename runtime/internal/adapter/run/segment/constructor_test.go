@@ -11,9 +11,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestNewRejectsMalformedDependencies(t *testing.T) {
@@ -167,7 +167,7 @@ func (inertModelInvocations) StartModelInvocation(context.Context, string, strin
 	return nil
 }
 
-func (inertModelInvocations) CompleteModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *int64, *accounting.TokenUsage) error {
+func (inertModelInvocations) CompleteModelInvocation(context.Context, string, string, string, string, time.Time, time.Time, *int64, *chat.Usage) error {
 	return nil
 }
 

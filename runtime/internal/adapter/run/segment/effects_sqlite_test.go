@@ -2483,10 +2483,10 @@ func newWaitingCancellationSQLiteFixtureAt(
 		BuildID: testsupport.AlternateBuildID,
 		Scope:   runs.ExecutionScope{SessionID: rootRun.SessionID()},
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
-			Model:      "test-model",
-			TokenUsage: accounting.TokenUsage{PromptTokens: 3, CompletionTokens: 2},
-			Cost:       segmentTestCost(t, 0.25),
-			Calls:      1,
+			Model:  "test-model",
+			Tokens: accounting.Tokens{InputTokens: 3, OutputTokens: 2},
+			Cost:   segmentTestCost(t, 0.25),
+			Calls:  1,
 		}}},
 	})
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, originalCheckpoint); saveCheckpointErr != nil {
@@ -2533,10 +2533,10 @@ func newWaitingCancellationSQLiteFixtureAt(
 		BuildID: testsupport.AlternateBuildID,
 		Scope:   runs.ExecutionScope{SessionID: rootRun.SessionID()},
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
-			Model:      "test-model",
-			TokenUsage: accounting.TokenUsage{PromptTokens: 8, CompletionTokens: 5},
-			Cost:       segmentTestCost(t, 0.75),
-			Calls:      2,
+			Model:  "test-model",
+			Tokens: accounting.Tokens{InputTokens: 8, OutputTokens: 5},
+			Cost:   segmentTestCost(t, 0.75),
+			Calls:  2,
 		}}},
 	})
 	conversationStore := sqlite.NewMessageStore(db)

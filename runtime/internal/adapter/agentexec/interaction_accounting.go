@@ -38,10 +38,13 @@ type preparedModelContext struct {
 }
 
 type modelCallAccountingInput struct {
-	message       *corechat.Message
-	delta         accounting.ModelUsage
+	message *corechat.Message
+	delta   accounting.ModelUsage
+	// reported is the provider's own usage value, retained beside the folded
+	// counters so a dimension the provider does not support stays absent in the
+	// durable per-call record.
+	reported      *corechat.Usage
 	contextTokens int64
-	usageReported bool
 }
 
 func newInteractionAccounting(
@@ -305,13 +308,16 @@ func newModelCallAccountingInput(
 	if response.Output.Message != nil {
 		message = new(response.Output.Message.Clone())
 	}
-	delta := modelUsage(response, selection, pricing)
+	delta, err := modelUsage(response, selection, pricing)
+	if err != nil {
+		return modelCallAccountingInput{}, err
+	}
 	if err := delta.Validate(); err != nil {
 		return modelCallAccountingInput{}, fmt.Errorf("agentexec: account model call: %w", err)
 	}
 	return modelCallAccountingInput{
-		message: message, delta: delta, contextTokens: delta.PromptTokens,
-		usageReported: response.Metadata != nil && response.Metadata.Usage != nil,
+		message: message, delta: delta, contextTokens: delta.InputTokens,
+		reported: reportedResponseUsage(response),
 	}, nil
 }
 
@@ -337,14 +343,11 @@ func (i *interactionAccounting) accountModelCallLocked(
 		return runs.ModelCallCompleted{}, err
 	}
 	completed := runs.ModelCallCompleted{
-		CallID: callID, Message: input.message, TokenUsage: total.TokenUsage,
+		CallID: callID, Message: input.message, Tokens: total.Tokens,
 		ByModel: slices.Clone(models), Cost: total.Cost, Steps: total.Calls,
 		ContextTokens: input.contextTokens,
 	}
-	if input.usageReported {
-		usage := input.delta.TokenUsage
-		completed.ReportedUsage = &usage
-	}
+	completed.ReportedUsage = input.reported
 	i.usageByProcess[processID] = nextUsage
 	if preparedFound {
 		delete(i.preparedContextByProcess, processID)
@@ -382,7 +385,17 @@ func (i *interactionAccounting) segmentUsage(processID agent.ProcessID) (*runs.S
 		return nil, fmt.Errorf("agentexec: total segment usage: %w", err)
 	}
 	return &runs.SegmentUsage{
-		Tokens: total.TokenUsage, ByModel: snapshot.Models,
+		Tokens: total.Tokens, ByModel: snapshot.Models,
 		Cost: total.Cost, Steps: total.Calls,
 	}, nil
+}
+
+// reportedResponseUsage detaches the provider's own usage value so the durable
+// per-call record keeps an unsupported breakdown absent.
+func reportedResponseUsage(response *corechat.Response) *corechat.Usage {
+	if response == nil || response.Metadata == nil || response.Metadata.Usage == nil {
+		return nil
+	}
+	usage := accounting.CloneReportedUsage(*response.Metadata.Usage)
+	return &usage
 }

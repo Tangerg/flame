@@ -147,8 +147,8 @@ func (r *reducer) finishedRun(outcome run.Outcome, failure *run.Failure, detail 
 
 func transcriptUsage(reported SegmentUsage) *accounting.Usage {
 	usage := &accounting.Usage{Total: modelUsageFrom(
-		reported.Tokens.PromptTokens,
-		reported.Tokens.CompletionTokens,
+		reported.Tokens.InputTokens,
+		reported.Tokens.OutputTokens,
 		reported.Tokens.ReasoningTokens,
 		reported.Tokens.CacheReadTokens,
 		reported.Tokens.CacheWriteTokens,
@@ -158,8 +158,8 @@ func transcriptUsage(reported SegmentUsage) *accounting.Usage {
 		usage.ByModel = make(map[string]accounting.Totals, len(reported.ByModel))
 		for _, model := range reported.ByModel {
 			usage.ByModel[model.Model] = modelUsageFrom(
-				model.PromptTokens,
-				model.CompletionTokens,
+				model.InputTokens,
+				model.OutputTokens,
 				model.ReasoningTokens,
 				model.CacheReadTokens,
 				model.CacheWriteTokens,
@@ -175,16 +175,16 @@ func validatedSegmentUsage(reported SegmentUsage) (*accounting.Usage, error) {
 		return nil, fmt.Errorf("model-call count %d is negative", reported.Steps)
 	}
 	total := accounting.ModelUsage{
-		Model:      "total",
-		TokenUsage: reported.Tokens,
-		Cost:       reported.Cost,
-		Calls:      max(reported.Steps, 1),
+		Model:  "total",
+		Tokens: reported.Tokens,
+		Cost:   reported.Cost,
+		Calls:  max(reported.Steps, 1),
 	}
 	if err := total.Validate(); err != nil {
 		return nil, fmt.Errorf("total usage: %w", err)
 	}
 	if reported.Steps == 0 &&
-		(reported.Tokens != (accounting.TokenUsage{}) || reported.Cost != (accounting.Cost{})) {
+		(reported.Tokens != (accounting.Tokens{}) || reported.Cost != (accounting.Cost{})) {
 		return nil, errors.New("zero model calls carry non-zero token or cost usage")
 	}
 	if len(reported.ByModel) > 0 {
@@ -192,14 +192,14 @@ func validatedSegmentUsage(reported SegmentUsage) (*accounting.Usage, error) {
 		if err != nil {
 			return nil, fmt.Errorf("per-model usage: %w", err)
 		}
-		if aggregate.TokenUsage != reported.Tokens ||
+		if aggregate.Tokens != reported.Tokens ||
 			aggregate.Calls != reported.Steps ||
 			!aggregate.Cost.Equal(reported.Cost) {
 			aggregateCost, aggregatePriced := aggregate.Cost.USD()
 			reportedCost, reportedPriced := reported.Cost.USD()
 			return nil, fmt.Errorf(
 				"per-model aggregate {tokens:%+v cost:%g priced:%t calls:%d} does not match total {tokens:%+v cost:%g priced:%t calls:%d}",
-				aggregate.TokenUsage,
+				aggregate.Tokens,
 				aggregateCost,
 				aggregatePriced,
 				aggregate.Calls,

@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/scope/core/chat"
+
 	"github.com/Tangerg/flame/runtime/internal/strictjson"
 )
 
+// Both totals are reported on every call, so their absence is a corrupt
+// record. A breakdown is null exactly when the provider does not report that
+// dimension, which is not the same fact as a reported zero.
 type modelInvocationUsageRow struct {
 	InputTokens      *int64 `json:"inputTokens"`
 	OutputTokens     *int64 `json:"outputTokens"`
@@ -18,7 +22,7 @@ type modelInvocationUsageRow struct {
 	ReasoningTokens  *int64 `json:"reasoningTokens"`
 }
 
-func encodeModelInvocationUsage(usage *accounting.TokenUsage) (*string, error) {
+func encodeModelInvocationUsage(usage *chat.Usage) (*string, error) {
 	if usage == nil {
 		return nil, nil
 	}
@@ -26,8 +30,9 @@ func encodeModelInvocationUsage(usage *accounting.TokenUsage) (*string, error) {
 		return nil, fmt.Errorf("sqlite: model invocation usage: %w", err)
 	}
 	row := modelInvocationUsageRow{
-		InputTokens: &usage.PromptTokens, OutputTokens: &usage.CompletionTokens,
-		CacheReadTokens: &usage.CacheReadTokens, CacheWriteTokens: &usage.CacheWriteTokens, ReasoningTokens: &usage.ReasoningTokens,
+		InputTokens: &usage.InputTokens, OutputTokens: &usage.OutputTokens,
+		CacheReadTokens: usage.CacheReadInputTokens, CacheWriteTokens: usage.CacheWriteInputTokens,
+		ReasoningTokens: usage.ReasoningTokens,
 	}
 	data, err := json.Marshal(row)
 	if err != nil {
@@ -37,7 +42,7 @@ func encodeModelInvocationUsage(usage *accounting.TokenUsage) (*string, error) {
 	return &encoded, nil
 }
 
-func decodeModelInvocationUsage(encoded string) (*accounting.TokenUsage, error) {
+func decodeModelInvocationUsage(encoded string) (*chat.Usage, error) {
 	if err := strictjson.ValidateUniqueMembers([]byte(encoded)); err != nil {
 		return nil, fmt.Errorf("sqlite: decode model invocation usage: %w", err)
 	}
@@ -47,10 +52,14 @@ func decodeModelInvocationUsage(encoded string) (*accounting.TokenUsage, error) 
 	if err := decoder.Decode(&row); err != nil {
 		return nil, fmt.Errorf("sqlite: decode model invocation usage: %w", err)
 	}
-	if row == nil || row.InputTokens == nil || row.OutputTokens == nil || row.CacheReadTokens == nil || row.CacheWriteTokens == nil || row.ReasoningTokens == nil {
-		return nil, errors.New("sqlite: model invocation usage requires all token counts")
+	if row == nil || row.InputTokens == nil || row.OutputTokens == nil {
+		return nil, errors.New("sqlite: model invocation usage requires both token totals")
 	}
-	usage := &accounting.TokenUsage{PromptTokens: *row.InputTokens, CompletionTokens: *row.OutputTokens, CacheReadTokens: *row.CacheReadTokens, CacheWriteTokens: *row.CacheWriteTokens, ReasoningTokens: *row.ReasoningTokens}
+	usage := &chat.Usage{
+		InputTokens: *row.InputTokens, OutputTokens: *row.OutputTokens,
+		ReasoningTokens: row.ReasoningTokens, CacheReadInputTokens: row.CacheReadTokens,
+		CacheWriteInputTokens: row.CacheWriteTokens,
+	}
 	if err := usage.Validate(); err != nil {
 		return nil, fmt.Errorf("sqlite: restore model invocation usage: %w", err)
 	}

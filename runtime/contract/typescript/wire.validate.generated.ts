@@ -2039,7 +2039,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     inputTokens: integer(),
     outputTokens: integer(),
     reasoningTokens: integer(),
-  }, ["cacheReadTokens", "cacheWriteTokens", "inputTokens", "outputTokens", "reasoningTokens"]),
+  }, ["inputTokens", "outputTokens"]),
   ModelPricing: object({
     cacheReadUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
     cacheWriteUsdPerMillionTokens: allOf([numeric(), minimum(0)]),

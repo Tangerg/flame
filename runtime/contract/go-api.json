@@ -5719,18 +5719,18 @@
             },
             {
               "name": "CacheReadTokens",
-              "type": "int64",
-              "tag": "json:\"cacheReadTokens\""
+              "type": "*int64",
+              "tag": "json:\"cacheReadTokens,omitempty\""
             },
             {
               "name": "CacheWriteTokens",
-              "type": "int64",
-              "tag": "json:\"cacheWriteTokens\""
+              "type": "*int64",
+              "tag": "json:\"cacheWriteTokens,omitempty\""
             },
             {
               "name": "ReasoningTokens",
-              "type": "int64",
-              "tag": "json:\"reasoningTokens\""
+              "type": "*int64",
+              "tag": "json:\"reasoningTokens,omitempty\""
             }
           ]
         },

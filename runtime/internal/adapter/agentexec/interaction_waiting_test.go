@@ -607,7 +607,7 @@ func rootInteractionWaitingContinuation(
 		}
 		usage := &accounting.Usage{
 			Total: accounting.Totals{
-				InputTokens: total.PromptTokens, OutputTokens: total.CompletionTokens,
+				InputTokens: total.InputTokens, OutputTokens: total.OutputTokens,
 				ReasoningTokens: total.ReasoningTokens, CacheReadTokens: total.CacheReadTokens,
 				CacheWriteTokens: total.CacheWriteTokens, CostUSD: total.Cost.OptionalUSD(),
 			},
@@ -615,7 +615,7 @@ func rootInteractionWaitingContinuation(
 		}
 		for _, model := range checkpoint.Usage.Models {
 			usage.ByModel[model.Model] = accounting.Totals{
-				InputTokens: model.PromptTokens, OutputTokens: model.CompletionTokens,
+				InputTokens: model.InputTokens, OutputTokens: model.OutputTokens,
 				ReasoningTokens: model.ReasoningTokens, CacheReadTokens: model.CacheReadTokens,
 				CacheWriteTokens: model.CacheWriteTokens, CostUSD: model.Cost.OptionalUSD(),
 			}

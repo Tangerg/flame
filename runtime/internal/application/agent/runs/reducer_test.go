@@ -124,9 +124,10 @@ func TestReducerModelCompletionReplacesPartialObservation(t *testing.T) {
 func TestReducerAccountsModelResponseWithoutMessage(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
-	usage := accounting.TokenUsage{PromptTokens: 7, CompletionTokens: 2}
+	reported := corechat.Usage{InputTokens: 7, OutputTokens: 2}
+	usage := accounting.Tokens{InputTokens: 7, OutputTokens: 2}
 	reduced := mustReduce(t, reducer, ModelCallCompleted{
-		CallID: "model_call_1", ReportedUsage: &usage, TokenUsage: usage, Steps: 1,
+		CallID: "model_call_1", ReportedUsage: &reported, Tokens: usage, Steps: 1,
 	})
 	if len(completedItems(reduced)) != 0 || len(committedConversationMessages(reduced)) != 0 {
 		t.Fatalf("absent message created content: %+v", reduced)
@@ -138,7 +139,7 @@ func TestReducerAccountsModelResponseWithoutMessage(t *testing.T) {
 		}
 	}
 	if len(calls) != 1 || calls[0].State != ModelInvocationCompleted ||
-		calls[0].Usage == nil || *calls[0].Usage != usage {
+		calls[0].Usage == nil || !accounting.ReportedUsageEqual(*calls[0].Usage, reported) {
 		t.Fatalf("usage-only model journal = %+v", calls)
 	}
 	if late := mustReduce(t, reducer, MessageDelta{Text: "late"}); len(late) != 0 {
@@ -150,7 +151,7 @@ func TestReducerAccountsModelResponseWithoutMessage(t *testing.T) {
 	record := terminal[len(terminal)-1].Event.(SegmentFinished).Run
 	accounted, available := record.Metrics().Usage()
 	if record.Metrics().Steps() != 1 || !available ||
-		accounted.Total.InputTokens != usage.PromptTokens || accounted.Total.OutputTokens != usage.CompletionTokens {
+		accounted.Total.InputTokens != usage.InputTokens || accounted.Total.OutputTokens != usage.OutputTokens {
 		t.Fatalf("terminal lost model accounting: %+v", record.Metrics())
 	}
 }
@@ -496,13 +497,13 @@ func TestReducerTreatsExecutorAccountingAsCumulativeAcrossResume(t *testing.T) {
 
 	reducer := newReducer(config)
 	mustReduce(t, reducer, UsageReported{
-		TokenUsage: accounting.TokenUsage{PromptTokens: 15},
-		Steps:      3,
+		Tokens: accounting.Tokens{InputTokens: 15},
+		Steps:  3,
 	})
 	finished := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCompleted,
 		usage: &SegmentUsage{
-			Tokens: accounting.TokenUsage{PromptTokens: 15},
+			Tokens: accounting.Tokens{InputTokens: 15},
 			Steps:  3,
 		},
 		Duration: 2 * time.Second,
@@ -530,8 +531,8 @@ func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing
 
 	reducer := newReducer(config)
 	progress := mustReduce(t, reducer, UsageReported{
-		TokenUsage: accounting.TokenUsage{PromptTokens: 20},
-		Steps:      2,
+		Tokens: accounting.Tokens{InputTokens: 20},
+		Steps:  2,
 	})
 	event := progress[len(progress)-1].Event.(SegmentProgressed)
 	if event.Progress.Usage == nil || event.Progress.Usage.Total.InputTokens != 20 ||
@@ -542,7 +543,7 @@ func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing
 	finished := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCompleted,
 		usage: &SegmentUsage{
-			Tokens: accounting.TokenUsage{PromptTokens: 20},
+			Tokens: accounting.Tokens{InputTokens: 20},
 			Steps:  2,
 		},
 	})
@@ -569,8 +570,8 @@ func TestReducerRejectsInconsistentOrRegressingAccounting(t *testing.T) {
 			Steps: 1})
 
 		_, err := newReducer(config).reduce(UsageReported{
-			TokenUsage: accounting.TokenUsage{PromptTokens: 9},
-			Steps:      2,
+			Tokens: accounting.Tokens{InputTokens: 9},
+			Steps:  2,
 		})
 		if !errors.Is(err, errExecutorContract) {
 			t.Fatalf("error = %v, want executor protocol violation", err)
@@ -579,11 +580,11 @@ func TestReducerRejectsInconsistentOrRegressingAccounting(t *testing.T) {
 
 	t.Run("per-model mismatch", func(t *testing.T) {
 		_, err := newReducer(testReducerConfig()).reduce(UsageReported{
-			TokenUsage: accounting.TokenUsage{PromptTokens: 5},
+			Tokens: accounting.Tokens{InputTokens: 5},
 			ByModel: []accounting.ModelUsage{{
-				Model:      "model",
-				TokenUsage: accounting.TokenUsage{PromptTokens: 4},
-				Calls:      1,
+				Model:  "model",
+				Tokens: accounting.Tokens{InputTokens: 4},
+				Calls:  1,
 			}},
 			Steps: 1,
 		})
@@ -994,8 +995,8 @@ func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *te
 func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	usage := mustReduce(t, reducer, UsageReported{
-		TokenUsage: accounting.TokenUsage{PromptTokens: 1200, CompletionTokens: 80, ReasoningTokens: 30},
-		Cost:       mustReducerCost(t, 0.0125), Steps: 1, ContextTokens: 4096,
+		Tokens: accounting.Tokens{InputTokens: 1200, OutputTokens: 80, ReasoningTokens: 30},
+		Cost:   mustReducerCost(t, 0.0125), Steps: 1, ContextTokens: 4096,
 	})
 	progress, ok := usage[0].Event.(SegmentProgressed)
 	if !ok || progress.Progress.Usage == nil || progress.Progress.Usage.Total.InputTokens != 1200 || progress.Progress.Usage.Total.CostUSD == nil {
@@ -1033,10 +1034,10 @@ func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 	terminal := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCanceled, Duration: 1500 * time.Millisecond,
 		usage: &SegmentUsage{
-			Tokens: accounting.TokenUsage{
-				PromptTokens:     1200,
-				CompletionTokens: 80,
-				ReasoningTokens:  30,
+			Tokens: accounting.Tokens{
+				InputTokens:     1200,
+				OutputTokens:    80,
+				ReasoningTokens: 30,
 			},
 			Cost:  mustReducerCost(t, 4.2),
 			Steps: 1,

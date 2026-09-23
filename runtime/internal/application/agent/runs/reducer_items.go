@@ -572,7 +572,7 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionE
 // it is what the Run commits if the segment ends without a fresh one.
 func (r *reducer) usageProgress(e UsageReported) ([]ProjectionEvent, error) {
 	if err := r.applyUsage(SegmentUsage{
-		Tokens:  e.TokenUsage,
+		Tokens:  e.Tokens,
 		ByModel: e.ByModel,
 		Cost:    e.Cost,
 		Steps:   e.Steps,

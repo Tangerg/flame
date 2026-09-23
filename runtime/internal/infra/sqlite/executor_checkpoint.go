@@ -133,8 +133,8 @@ type executorPolicyWire struct {
 
 type executorModelUsageWire struct {
 	Model            string   `json:"model"`
-	PromptTokens     int64    `json:"prompt_tokens"`
-	CompletionTokens int64    `json:"completion_tokens"`
+	InputTokens      int64    `json:"input_tokens"`
+	OutputTokens     int64    `json:"output_tokens"`
 	ReasoningTokens  int64    `json:"reasoning_tokens"`
 	CacheReadTokens  int64    `json:"cache_read_tokens"`
 	CacheWriteTokens int64    `json:"cache_write_tokens"`
@@ -400,8 +400,8 @@ func encodeExecutorUsage(usage accounting.Snapshot) ([]byte, error) {
 	for index, model := range usage.Models {
 		wire.Models[index] = executorModelUsageWire{
 			Model:            model.Model,
-			PromptTokens:     model.PromptTokens,
-			CompletionTokens: model.CompletionTokens,
+			InputTokens:      model.InputTokens,
+			OutputTokens:     model.OutputTokens,
 			ReasoningTokens:  model.ReasoningTokens,
 			CacheReadTokens:  model.CacheReadTokens,
 			CacheWriteTokens: model.CacheWriteTokens,
@@ -428,9 +428,9 @@ func decodeExecutorUsage(data string) (accounting.Snapshot, error) {
 		}
 		usage.Models[index] = accounting.ModelUsage{
 			Model: model.Model,
-			TokenUsage: accounting.TokenUsage{
-				PromptTokens:     model.PromptTokens,
-				CompletionTokens: model.CompletionTokens,
+			Tokens: accounting.Tokens{
+				InputTokens:      model.InputTokens,
+				OutputTokens:     model.OutputTokens,
 				ReasoningTokens:  model.ReasoningTokens,
 				CacheReadTokens:  model.CacheReadTokens,
 				CacheWriteTokens: model.CacheWriteTokens,

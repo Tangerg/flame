@@ -5334,11 +5334,8 @@
         }
       },
       "required": [
-        "cacheReadTokens",
-        "cacheWriteTokens",
         "inputTokens",
-        "outputTokens",
-        "reasoningTokens"
+        "outputTokens"
       ]
     },
     "ModelPricing": {

@@ -80,13 +80,13 @@ func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) 
 func TestAdvanceProcessUsageRejectsOverflowWithoutMutatingInput(t *testing.T) {
 	current := map[string]accounting.ModelUsage{
 		"test-model": {
-			Model: "test-model", TokenUsage: accounting.TokenUsage{PromptTokens: math.MaxInt64},
+			Model: "test-model", Tokens: accounting.Tokens{InputTokens: math.MaxInt64},
 			Cost: interactionTestCost(0), Calls: 1,
 		},
 	}
 	before := current["test-model"]
 	_, _, _, err := advanceProcessUsage(current, accounting.ModelUsage{
-		Model: "test-model", TokenUsage: accounting.TokenUsage{PromptTokens: 1},
+		Model: "test-model", Tokens: accounting.Tokens{InputTokens: 1},
 		Cost: interactionTestCost(0), Calls: 1,
 	}, 2)
 	if err == nil {

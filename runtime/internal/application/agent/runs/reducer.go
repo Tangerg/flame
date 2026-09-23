@@ -367,7 +367,7 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 		conversationMessages = r.rootConversationMessages(message)
 	}
 	progressEvents, err := r.usageProgress(UsageReported{
-		TokenUsage: completed.TokenUsage, ByModel: completed.ByModel, Cost: completed.Cost,
+		Tokens: completed.Tokens, ByModel: completed.ByModel, Cost: completed.Cost,
 		Steps: completed.Steps, ContextTokens: completed.ContextTokens,
 	})
 	if err != nil {

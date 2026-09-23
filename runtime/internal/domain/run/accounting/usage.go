@@ -17,12 +17,8 @@ import (
 // is absent when pricing was not available; an absent price is intentionally
 // distinct from a reported zero price.
 type Totals struct {
-	InputTokens      int64
-	OutputTokens     int64
-	CacheReadTokens  int64
-	CacheWriteTokens int64
-	ReasoningTokens  int64
-	CostUSD          *float64
+	Tokens
+	CostUSD *float64
 }
 
 // Clone returns an ownership-isolated value.
@@ -36,9 +32,8 @@ func (t Totals) Clone() Totals {
 
 // Validate reports whether the cumulative counters are internally consistent.
 func (t Totals) Validate() error {
-	if t.InputTokens < 0 || t.OutputTokens < 0 || t.CacheReadTokens < 0 ||
-		t.CacheWriteTokens < 0 || t.ReasoningTokens < 0 {
-		return errors.New("accounting: token counts must not be negative")
+	if err := t.Tokens.Validate(); err != nil {
+		return err
 	}
 	if t.CostUSD != nil && (*t.CostUSD < 0 || math.IsNaN(*t.CostUSD) || math.IsInf(*t.CostUSD, 0)) {
 		return errors.New("accounting: cost must be finite and non-negative")
@@ -162,14 +157,108 @@ func (u Usage) Equal(other Usage) bool {
 	return true
 }
 
-// TokenUsage is a token roll-up. ReasoningTokens is the chain-of-thought
-// subset of CompletionTokens, so total counts only prompt + completion.
-type TokenUsage struct {
-	PromptTokens     int64
-	CompletionTokens int64
+// Tokens is Runtime's cumulative token counter. It keeps [chat.Usage]'s
+// vocabulary so one spelling survives from the provider report through storage
+// to the protocol: ReasoningTokens is the subset of OutputTokens, and the two
+// cache counters are subsets of InputTokens, so a total counts only input plus
+// output.
+type Tokens struct {
+	InputTokens      int64
+	OutputTokens     int64
 	ReasoningTokens  int64
 	CacheReadTokens  int64
 	CacheWriteTokens int64
+}
+
+// Validate reports whether the token relationships can represent one model's
+// cumulative usage.
+func (t Tokens) Validate() error {
+	if t.InputTokens < 0 || t.OutputTokens < 0 || t.ReasoningTokens < 0 ||
+		t.CacheReadTokens < 0 || t.CacheWriteTokens < 0 {
+		return errors.New("accounting: token counts must not be negative")
+	}
+	if t.ReasoningTokens > t.OutputTokens {
+		return errors.New("accounting: reasoning tokens exceed output tokens")
+	}
+	if t.CacheReadTokens > t.InputTokens || t.CacheWriteTokens > t.InputTokens {
+		return errors.New("accounting: cache tokens exceed input tokens")
+	}
+	return nil
+}
+
+// Total returns input plus output tokens.
+func (t Tokens) Total() (int64, error) {
+	if err := t.Validate(); err != nil {
+		return 0, err
+	}
+	total, ok := checkedAddInt64(t.InputTokens, t.OutputTokens)
+	if !ok {
+		return 0, errors.New("accounting: total token usage overflows")
+	}
+	return total, nil
+}
+
+// Add returns the checked sum of two independently valid counters.
+func (t Tokens) Add(other Tokens) (Tokens, error) {
+	if err := t.Validate(); err != nil {
+		return Tokens{}, fmt.Errorf("left token usage: %w", err)
+	}
+	if err := other.Validate(); err != nil {
+		return Tokens{}, fmt.Errorf("right token usage: %w", err)
+	}
+	next := Tokens{}
+	fields := []struct {
+		name        string
+		left, right int64
+		target      *int64
+	}{
+		{name: "input", left: t.InputTokens, right: other.InputTokens, target: &next.InputTokens},
+		{name: "output", left: t.OutputTokens, right: other.OutputTokens, target: &next.OutputTokens},
+		{name: "reasoning", left: t.ReasoningTokens, right: other.ReasoningTokens, target: &next.ReasoningTokens},
+		{name: "cache-read", left: t.CacheReadTokens, right: other.CacheReadTokens, target: &next.CacheReadTokens},
+		{name: "cache-write", left: t.CacheWriteTokens, right: other.CacheWriteTokens, target: &next.CacheWriteTokens},
+	}
+	for _, field := range fields {
+		value, ok := checkedAddInt64(field.left, field.right)
+		if !ok {
+			return Tokens{}, fmt.Errorf("accounting: %s token usage overflows", field.name)
+		}
+		*field.target = value
+	}
+	return next, nil
+}
+
+// Subtract removes one independently valid counter from a cumulative total.
+// The remainder must still satisfy the token subset relationships.
+func (t Tokens) Subtract(other Tokens) (Tokens, error) {
+	if err := t.Validate(); err != nil {
+		return Tokens{}, fmt.Errorf("total token usage: %w", err)
+	}
+	if err := other.Validate(); err != nil {
+		return Tokens{}, fmt.Errorf("subtracted token usage: %w", err)
+	}
+	next := Tokens{}
+	fields := []struct {
+		name        string
+		total, used int64
+		target      *int64
+	}{
+		{name: "input", total: t.InputTokens, used: other.InputTokens, target: &next.InputTokens},
+		{name: "output", total: t.OutputTokens, used: other.OutputTokens, target: &next.OutputTokens},
+		{name: "reasoning", total: t.ReasoningTokens, used: other.ReasoningTokens, target: &next.ReasoningTokens},
+		{name: "cache-read", total: t.CacheReadTokens, used: other.CacheReadTokens, target: &next.CacheReadTokens},
+		{name: "cache-write", total: t.CacheWriteTokens, used: other.CacheWriteTokens, target: &next.CacheWriteTokens},
+	}
+	for _, field := range fields {
+		if field.used > field.total {
+			return Tokens{}, fmt.Errorf("accounting: %s token subtraction exceeds total", field.name)
+		}
+		*field.target = field.total - field.used
+	}
+	if err := next.Validate(); err != nil {
+		return Tokens{}, fmt.Errorf("accounting: token remainder: %w", err)
+	}
+	return next, nil
 }
 
 // Cost is one explicit pricing fact. Its zero value means pricing was
@@ -289,101 +378,12 @@ func (c Cost) ValidateAdvanceFrom(previous Cost) error {
 	return nil
 }
 
-// Validate reports whether the token relationships can represent one model's
-// cumulative usage.
-func (t TokenUsage) Validate() error {
-	if t.PromptTokens < 0 || t.CompletionTokens < 0 || t.ReasoningTokens < 0 ||
-		t.CacheReadTokens < 0 || t.CacheWriteTokens < 0 {
-		return errors.New("accounting: token counts must not be negative")
-	}
-	if t.ReasoningTokens > t.CompletionTokens {
-		return errors.New("accounting: reasoning tokens exceed completion tokens")
-	}
-	if t.CacheReadTokens > t.PromptTokens || t.CacheWriteTokens > t.PromptTokens {
-		return errors.New("accounting: cache tokens exceed prompt tokens")
-	}
-	return nil
-}
-
-// Total returns prompt plus completion tokens.
-func (t TokenUsage) Total() (int64, error) {
-	if err := t.Validate(); err != nil {
-		return 0, err
-	}
-	total, ok := checkedAddInt64(t.PromptTokens, t.CompletionTokens)
-	if !ok {
-		return 0, errors.New("accounting: total token usage overflows")
-	}
-	return total, nil
-}
-
-// Add returns the checked sum of two independently valid token roll-ups.
-func (t TokenUsage) Add(other TokenUsage) (TokenUsage, error) {
-	if err := t.Validate(); err != nil {
-		return TokenUsage{}, fmt.Errorf("left token usage: %w", err)
-	}
-	if err := other.Validate(); err != nil {
-		return TokenUsage{}, fmt.Errorf("right token usage: %w", err)
-	}
-	next := TokenUsage{}
-	fields := []struct {
-		name        string
-		left, right int64
-		target      *int64
-	}{
-		{name: "prompt", left: t.PromptTokens, right: other.PromptTokens, target: &next.PromptTokens},
-		{name: "completion", left: t.CompletionTokens, right: other.CompletionTokens, target: &next.CompletionTokens},
-		{name: "reasoning", left: t.ReasoningTokens, right: other.ReasoningTokens, target: &next.ReasoningTokens},
-		{name: "cache-read", left: t.CacheReadTokens, right: other.CacheReadTokens, target: &next.CacheReadTokens},
-		{name: "cache-write", left: t.CacheWriteTokens, right: other.CacheWriteTokens, target: &next.CacheWriteTokens},
-	}
-	for _, field := range fields {
-		value, ok := checkedAddInt64(field.left, field.right)
-		if !ok {
-			return TokenUsage{}, fmt.Errorf("accounting: %s token usage overflows", field.name)
-		}
-		*field.target = value
-	}
-	return next, nil
-}
-
-// Subtract removes one independently valid token roll-up from a cumulative
-// total. The remainder must still satisfy the token subset relationships.
-func (t TokenUsage) Subtract(other TokenUsage) (TokenUsage, error) {
-	if err := t.Validate(); err != nil {
-		return TokenUsage{}, fmt.Errorf("total token usage: %w", err)
-	}
-	if err := other.Validate(); err != nil {
-		return TokenUsage{}, fmt.Errorf("subtracted token usage: %w", err)
-	}
-	next := TokenUsage{}
-	fields := []struct {
-		name        string
-		total, used int64
-		target      *int64
-	}{
-		{name: "prompt", total: t.PromptTokens, used: other.PromptTokens, target: &next.PromptTokens},
-		{name: "completion", total: t.CompletionTokens, used: other.CompletionTokens, target: &next.CompletionTokens},
-		{name: "reasoning", total: t.ReasoningTokens, used: other.ReasoningTokens, target: &next.ReasoningTokens},
-		{name: "cache-read", total: t.CacheReadTokens, used: other.CacheReadTokens, target: &next.CacheReadTokens},
-		{name: "cache-write", total: t.CacheWriteTokens, used: other.CacheWriteTokens, target: &next.CacheWriteTokens},
-	}
-	for _, field := range fields {
-		if field.used > field.total {
-			return TokenUsage{}, fmt.Errorf("accounting: %s token subtraction exceeds total", field.name)
-		}
-		*field.target = field.total - field.used
-	}
-	if err := next.Validate(); err != nil {
-		return TokenUsage{}, fmt.Errorf("accounting: token remainder: %w", err)
-	}
-	return next, nil
-}
-
-// ModelUsage is one model's slice of an execution's tokens and cost.
+// ModelUsage is one model's slice of an execution's tokens and cost. Usage is
+// the provider-reported fact itself, so an unsupported breakdown stays absent
+// instead of becoming a reported zero.
 type ModelUsage struct {
 	Model string
-	TokenUsage
+	Tokens
 	Cost  Cost
 	Calls int
 }
@@ -399,7 +399,7 @@ func (m ModelUsage) Add(other ModelUsage) (ModelUsage, error) {
 	if m.Model != other.Model {
 		return ModelUsage{}, fmt.Errorf("accounting: cannot combine models %q and %q", m.Model, other.Model)
 	}
-	tokens, err := m.TokenUsage.Add(other.TokenUsage)
+	tokens, err := m.Tokens.Add(other.Tokens)
 	if err != nil {
 		return ModelUsage{}, err
 	}
@@ -410,7 +410,7 @@ func (m ModelUsage) Add(other ModelUsage) (ModelUsage, error) {
 	if other.Calls > math.MaxInt-m.Calls {
 		return ModelUsage{}, errors.New("accounting: model call count overflows")
 	}
-	return ModelUsage{Model: m.Model, TokenUsage: tokens, Cost: cost, Calls: m.Calls + other.Calls}, nil
+	return ModelUsage{Model: m.Model, Tokens: tokens, Cost: cost, Calls: m.Calls + other.Calls}, nil
 }
 
 // Subtract removes one model slice from a cumulative slice of the same model.
@@ -420,7 +420,7 @@ func (m ModelUsage) Subtract(other ModelUsage) (ModelUsage, bool, error) {
 	if err := validateModelUsageSubtraction(m, other); err != nil {
 		return ModelUsage{}, false, err
 	}
-	tokens, err := m.TokenUsage.Subtract(other.TokenUsage)
+	tokens, err := m.Tokens.Subtract(other.Tokens)
 	if err != nil {
 		return ModelUsage{}, false, err
 	}
@@ -449,18 +449,18 @@ func validateModelUsageSubtraction(total, used ModelUsage) error {
 
 func newModelUsageRemainder(
 	model string,
-	tokens TokenUsage,
+	tokens Tokens,
 	cost Cost,
 	calls int,
 ) (ModelUsage, bool, error) {
 	if calls == 0 {
 		usd, priced := cost.USD()
-		if tokens != (TokenUsage{}) || priced && usd != 0 {
+		if tokens != (Tokens{}) || priced && usd != 0 {
 			return ModelUsage{}, false, errors.New("accounting: model usage remains without calls")
 		}
 		return ModelUsage{}, false, nil
 	}
-	remainder := ModelUsage{Model: model, TokenUsage: tokens, Cost: cost, Calls: calls}
+	remainder := ModelUsage{Model: model, Tokens: tokens, Cost: cost, Calls: calls}
 	if err := remainder.Validate(); err != nil {
 		return ModelUsage{}, false, fmt.Errorf("accounting: model usage remainder: %w", err)
 	}
@@ -488,11 +488,11 @@ func (s Snapshot) Total() (ModelUsage, error) {
 		total.Cost = Cost{available: true}
 	}
 	for index, model := range s.Models {
-		tokens, err := total.TokenUsage.Add(model.TokenUsage)
+		tokens, err := total.Tokens.Add(model.Tokens)
 		if err != nil {
 			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] token aggregate: %w", index, err)
 		}
-		total.TokenUsage = tokens
+		total.Tokens = tokens
 		nextCost, err := total.Cost.Add(model.Cost)
 		if err != nil {
 			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] cost aggregate: %w", index, err)
@@ -551,8 +551,8 @@ func (s Snapshot) ValidateAdvanceFrom(previous Snapshot) error {
 		if !found {
 			return fmt.Errorf("accounting snapshot: model %q disappeared", before.Model)
 		}
-		if after.PromptTokens < before.PromptTokens ||
-			after.CompletionTokens < before.CompletionTokens ||
+		if after.InputTokens < before.InputTokens ||
+			after.OutputTokens < before.OutputTokens ||
 			after.ReasoningTokens < before.ReasoningTokens ||
 			after.CacheReadTokens < before.CacheReadTokens ||
 			after.CacheWriteTokens < before.CacheWriteTokens ||
@@ -571,7 +571,7 @@ func (m ModelUsage) Validate() error {
 	if _, err := modelref.NewModelIdentity(m.Model); err != nil {
 		return fmt.Errorf("model usage: %w", err)
 	}
-	if err := m.TokenUsage.Validate(); err != nil {
+	if err := m.Tokens.Validate(); err != nil {
 		return fmt.Errorf("model usage: %w", err)
 	}
 	if err := m.Cost.Validate(); err != nil {

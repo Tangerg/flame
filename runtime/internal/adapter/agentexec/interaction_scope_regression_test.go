@@ -34,7 +34,7 @@ func TestModelResponseWithoutMessageRetainsAccountingAndScopeFailure(t *testing.
 			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
 			completed := payloadsOf[runs.ModelCallCompleted](events)
 			if len(completed) != 1 || completed[0].Message != nil || completed[0].ReportedUsage == nil ||
-				completed[0].ReportedUsage.PromptTokens != 7 || completed[0].ReportedUsage.CompletionTokens != 2 ||
+				completed[0].ReportedUsage.InputTokens != 7 || completed[0].ReportedUsage.OutputTokens != 2 ||
 				completed[0].Steps != 1 || completed[0].FirstOutputLatencyMillis != nil {
 				t.Fatalf("usage-only model completion = %+v", completed)
 			}
@@ -46,7 +46,7 @@ func TestModelResponseWithoutMessageRetainsAccountingAndScopeFailure(t *testing.
 				ends[0].Failure().Kind != run.FailureProviderRejected || len(ends[0].UnresolvedEffects()) != 0 {
 				t.Fatalf("Scope rejection = %+v", ends)
 			}
-			if usage := ends[0].Usage(); usage == nil || usage.Steps != 1 || usage.Tokens.PromptTokens != 7 || usage.Tokens.CompletionTokens != 2 {
+			if usage := ends[0].Usage(); usage == nil || usage.Steps != 1 || usage.Tokens.InputTokens != 7 || usage.Tokens.OutputTokens != 2 {
 				t.Fatalf("terminal lost completed model usage: %+v", usage)
 			}
 		})

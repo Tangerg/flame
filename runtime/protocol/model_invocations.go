@@ -12,12 +12,15 @@ const (
 )
 
 // ModelInvocationUsage is the provider-reported usage of one call, before Run aggregation.
+// The two totals accompany every reported call. A breakdown is present only
+// when the provider reports that dimension, so an absent one means unsupported
+// rather than zero — the same distinction the provider itself draws.
 type ModelInvocationUsage struct {
-	InputTokens      int64 `json:"inputTokens"`
-	OutputTokens     int64 `json:"outputTokens"`
-	CacheReadTokens  int64 `json:"cacheReadTokens"`
-	CacheWriteTokens int64 `json:"cacheWriteTokens"`
-	ReasoningTokens  int64 `json:"reasoningTokens"`
+	InputTokens      int64  `json:"inputTokens"`
+	OutputTokens     int64  `json:"outputTokens"`
+	CacheReadTokens  *int64 `json:"cacheReadTokens,omitempty"`
+	CacheWriteTokens *int64 `json:"cacheWriteTokens,omitempty"`
+	ReasoningTokens  *int64 `json:"reasoningTokens,omitempty"`
 }
 
 // ModelInvocation is an observed provider attempt. Unknown means recovery could

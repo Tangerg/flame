@@ -1707,15 +1707,15 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 		SpawnCallID: "provider_call_delegate",
 	}
 	finalUsage := SegmentUsage{
-		Tokens: accounting.TokenUsage{
-			PromptTokens:     13,
-			CompletionTokens: 5,
+		Tokens: accounting.Tokens{
+			InputTokens:  13,
+			OutputTokens: 5,
 		},
 		ByModel: []accounting.ModelUsage{{
 			Model: "child-model",
-			TokenUsage: accounting.TokenUsage{
-				PromptTokens:     13,
-				CompletionTokens: 5,
+			Tokens: accounting.Tokens{
+				InputTokens:  13,
+				OutputTokens: 5,
 			},
 			Calls: 1,
 		}},
@@ -1791,12 +1791,12 @@ func TestCoordinatorKeepsConcurrentSiblingSegmentsIsolated(t *testing.T) {
 	}
 	childUsage := func(model string, prompt int64) *SegmentUsage {
 		return &SegmentUsage{
-			Tokens: accounting.TokenUsage{PromptTokens: prompt, CompletionTokens: 1},
+			Tokens: accounting.Tokens{InputTokens: prompt, OutputTokens: 1},
 			ByModel: []accounting.ModelUsage{{
 				Model: model,
-				TokenUsage: accounting.TokenUsage{
-					PromptTokens:     prompt,
-					CompletionTokens: 1,
+				Tokens: accounting.Tokens{
+					InputTokens:  prompt,
+					OutputTokens: 1,
 				},
 				Calls: 1,
 			}},
@@ -1928,12 +1928,12 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 	}
 	usage := func(prompt int64, calls int) *SegmentUsage {
 		return &SegmentUsage{
-			Tokens: accounting.TokenUsage{PromptTokens: prompt, CompletionTokens: int64(calls)},
+			Tokens: accounting.Tokens{InputTokens: prompt, OutputTokens: int64(calls)},
 			ByModel: []accounting.ModelUsage{{
 				Model: "model",
-				TokenUsage: accounting.TokenUsage{
-					PromptTokens:     prompt,
-					CompletionTokens: int64(calls),
+				Tokens: accounting.Tokens{
+					InputTokens:  prompt,
+					OutputTokens: int64(calls),
 				},
 				Calls: calls,
 			}},

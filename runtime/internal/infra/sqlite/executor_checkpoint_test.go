@@ -56,8 +56,8 @@ func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.Exec
 		},
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
 			Model: "claude",
-			TokenUsage: accounting.TokenUsage{
-				PromptTokens: 12, CompletionTokens: 7, ReasoningTokens: 3,
+			Tokens: accounting.Tokens{
+				InputTokens: 12, OutputTokens: 7, ReasoningTokens: 3,
 				CacheReadTokens: 4, CacheWriteTokens: 2,
 			},
 			Cost:  cost,

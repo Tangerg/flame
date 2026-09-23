@@ -34,7 +34,7 @@ func TestNewExecutionFactCommitRejectsUnsupportedFactRepresentation(t *testing.T
 
 func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 	model := ModelCallCompleted{
-		ReportedUsage: &accounting.TokenUsage{PromptTokens: 17},
+		ReportedUsage: &corechat.Usage{InputTokens: 17},
 		Message:       new(corechat.NewAssistantMessage(corechat.NewTextPart("original"))),
 		ByModel:       []accounting.ModelUsage{{Model: "model-original", Calls: 1}},
 	}
@@ -44,16 +44,16 @@ func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 	}
 	model.Message.Parts[0].Text = "changed"
 	model.ByModel[0].Model = "model-changed"
-	model.ReportedUsage.PromptTokens = 99
+	model.ReportedUsage.InputTokens = 99
 	projectedModel := modelCommit.Fact().(ModelCallCompleted)
 	projectedModel.Message.Parts[0].Text = "projected"
 	projectedModel.ByModel[0].Model = "model-projected"
-	if projectedModel.ReportedUsage.PromptTokens != 17 {
+	if projectedModel.ReportedUsage.InputTokens != 17 {
 		t.Fatal("model usage aliases its producer")
 	}
-	projectedModel.ReportedUsage.PromptTokens = 44
+	projectedModel.ReportedUsage.InputTokens = 44
 	ownedModel := modelCommit.Fact().(ModelCallCompleted)
-	if ownedModel.Message.Text() != "original" || ownedModel.ByModel[0].Model != "model-original" || ownedModel.ReportedUsage.PromptTokens != 17 {
+	if ownedModel.Message.Text() != "original" || ownedModel.ByModel[0].Model != "model-original" || ownedModel.ReportedUsage.InputTokens != 17 {
 		t.Fatalf("owned model fact = %+v", ownedModel)
 	}
 

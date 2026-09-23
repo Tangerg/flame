@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -22,7 +23,12 @@ func (s *Handler) ListModelInvocations(ctx context.Context, in protocol.ListMode
 	for index, row := range page.Rows {
 		rows[index] = protocol.ModelInvocation{FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, CallID: row.CallID, RunID: in.RunID, SegmentID: row.SegmentID, State: protocol.ModelInvocationState(row.State), StartedAt: row.StartedAt, SettledAt: row.FinishedAt}
 		if usage := row.Usage; usage != nil {
-			rows[index].Usage = &protocol.ModelInvocationUsage{InputTokens: usage.PromptTokens, OutputTokens: usage.CompletionTokens, CacheReadTokens: usage.CacheReadTokens, CacheWriteTokens: usage.CacheWriteTokens, ReasoningTokens: usage.ReasoningTokens}
+			owned := accounting.CloneReportedUsage(*usage)
+			rows[index].Usage = &protocol.ModelInvocationUsage{
+				InputTokens: owned.InputTokens, OutputTokens: owned.OutputTokens,
+				CacheReadTokens: owned.CacheReadInputTokens, CacheWriteTokens: owned.CacheWriteInputTokens,
+				ReasoningTokens: owned.ReasoningTokens,
+			}
 		}
 	}
 	return protocol.NewPageWithCursor(rows, page.NextCursor), nil

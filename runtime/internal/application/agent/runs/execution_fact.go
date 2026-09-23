@@ -124,11 +124,13 @@ type ModelCallCompleted struct {
 	executionFactBase
 	CallID                   string
 	FirstOutputLatencyMillis *int64
-	// ReportedUsage is per-call and absent when unavailable. TokenUsage and
-	// ByModel below remain cumulative for this executing process.
-	ReportedUsage *accounting.TokenUsage
+	// ReportedUsage is the provider's own per-call report, absent when the
+	// provider reported nothing. It keeps the reported shape so an unsupported
+	// breakdown stays absent instead of becoming a zero; Tokens and ByModel
+	// below are Runtime's cumulative counters for this executing process.
+	ReportedUsage *corechat.Usage
 	Message       *corechat.Message
-	TokenUsage    accounting.TokenUsage
+	Tokens        accounting.Tokens
 	ByModel       []accounting.ModelUsage
 	Cost          accounting.Cost
 	Steps         int
@@ -357,7 +359,7 @@ type SegmentEnded struct {
 // together: a report that had tokens but no per-model split would be a different
 // report, not this one with a field missing.
 type SegmentUsage struct {
-	Tokens  accounting.TokenUsage
+	Tokens  accounting.Tokens
 	ByModel []accounting.ModelUsage
 	Cost    accounting.Cost
 	Steps   int
@@ -406,7 +408,7 @@ func (s SegmentEnded) Usage() *SegmentUsage {
 
 type UsageReported struct {
 	executionFactBase
-	TokenUsage    accounting.TokenUsage
+	Tokens        accounting.Tokens
 	ByModel       []accounting.ModelUsage
 	Cost          accounting.Cost
 	Steps         int

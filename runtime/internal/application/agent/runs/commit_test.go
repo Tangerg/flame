@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -483,14 +482,14 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 }
 
 func TestModelInvocationUsageBelongsOnlyToCompletedCallsAndIsIsolated(t *testing.T) {
-	usage := &accounting.TokenUsage{PromptTokens: 7}
+	usage := &corechat.Usage{InputTokens: 7}
 	invocation := ModelInvocationCommit{CallID: "call_usage", SegmentID: "segment_1", State: ModelInvocationCompleted, StartedAt: time.Unix(1, 0), FinishedAt: time.Unix(2, 0), Usage: usage}
 	if err := invocation.validate(); err != nil {
 		t.Fatal(err)
 	}
 	clone := (EventCommit{ModelInvocations: []ModelInvocationCommit{invocation}}).clone()
-	usage.PromptTokens = 99
-	if clone.ModelInvocations[0].Usage.PromptTokens != 7 {
+	usage.InputTokens = 99
+	if clone.ModelInvocations[0].Usage.InputTokens != 7 {
 		t.Fatal("commit aliases reported usage")
 	}
 	invocation.State = ModelInvocationUnknown
@@ -498,7 +497,7 @@ func TestModelInvocationUsageBelongsOnlyToCompletedCallsAndIsIsolated(t *testing
 		t.Fatal("unknown outcome accepted completed-call usage")
 	}
 	invocation.State = ModelInvocationCompleted
-	usage.PromptTokens = -1
+	usage.InputTokens = -1
 	if err := invocation.validate(); err == nil {
 		t.Fatal("accepted negative call usage")
 	}
