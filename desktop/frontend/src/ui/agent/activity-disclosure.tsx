@@ -76,9 +76,7 @@ const styles = stylex.create({
   trayWarning: { backgroundColor: surface.warningBadge },
   trayNegative: { backgroundColor: surface.negativeBadge },
   // The row's NAME. What keeps it from reaching zero is not a floor here but `trailing` below
-  // being shrinkable — measured in German, `Subagent` came out 1.1px wide while it was the only
-  // item in the row that could give way. A `min-width` floor also fixed it and was dropped: it
-  // widens every label shorter than the floor, which moved rows that were never squeezed.
+  // being shrinkable; a `min-width` floor would widen every label shorter than it.
   label: {
     display: "flex",
     minWidth: 0,
@@ -102,17 +100,11 @@ const styles = stylex.create({
   },
   spacer: { minWidth: 0, flex: 1 },
   /**
-   * The row's ANNOTATION, and therefore the part that yields first.
+   * The row's ANNOTATION, and therefore the part that yields first: a locale decides its length.
+   * Shrinking is weighted by base size, so an oversized trailing gives up most of any deficit
+   * and a short one almost nothing.
    *
-   * This was `flex-shrink: 0` while holding text a locale decides the length of — a status
-   * phrase plus a step count — so a long one took the row and starved the name beside it.
-   * Shrinking is weighted by base size, which is exactly the right distribution here: the
-   * oversized trailing gives up most of any deficit and a short one gives up almost nothing.
-   *
-   * Deliberately NOT `overflow: hidden`, which is the obvious companion to shrinking and was
-   * measured to cost more than it buys: a `StatusDot` paints a pulse OUTSIDE its own box, and
-   * clipping the slot cut the halo off every running row. The children shrink with the slot
-   * and keep their text, so there is nothing here that needs clipping.
+   * Deliberately NOT `overflow: hidden`: a `StatusDot` paints a pulse OUTSIDE its own box.
    */
   trailing: {
     display: "flex",
@@ -129,11 +121,7 @@ const styles = stylex.create({
   // reveal it too. The TRIGGER publishes on `:focus-visible` only — no `default`, so outside
   // focus the property is simply not set here and the header's value inherits through. DOM
   // focus outlives the pointer, which is why this cannot be the header's `:focus-within`: a
-  // row clicked shut kept its chevron lit while every identical row beside it stayed blank.
-  //
-  // This replaces a pair of `group/` markers and, with them, the `:has(:focus-visible)`
-  // workaround they existed to avoid — the chevron is INSIDE the trigger, so an inherited
-  // custom property reaches it and no sibling selector is needed.
+  // row clicked shut would keep its chevron lit.
   headerPublishes: {
     "--chevron": { default: "0", ":hover": "1" },
     // The summary lifts to full ink with the row, so the label and the detail read the same
@@ -152,11 +140,11 @@ const styles = stylex.create({
     transitionDuration: motion.fast,
     transitionTimingFunction: motion.easeState,
     // A device with no pointer can never hover, so the mark it would have revealed is simply
-    // shown. The `[data-reveal]` rule in `globals.css` said this for everyone and can no
-    // longer outrank a generated one.
+    // shown.
     opacity: { default: "var(--chevron, 1)", "@media (hover: none)": 1 },
   },
   chevronOpen: { opacity: 1 },
+  chevronSlot: { flexShrink: 0, width: "var(--icon-xs)" },
   actions: {
     display: "flex",
     flexShrink: 0,
@@ -285,12 +273,8 @@ export function AgentActivityDisclosure({
           <span data-slot="agent-activity-label" {...stylex.props(styles.label, type.uiSm)}>
             {label}
           </span>
-          {/* The slot is always here, empty or not: `flex-1` lived on the detail, so a row
-              without one stopped pushing its trailing to the right and put its status
-              wherever the label happened to end. One row of a four-row fan-out did that,
-              440px left of the three beside it, which is the column a reader scans to find
-              the sub-agent that failed. Same element either way, so the gap count — and
-              every row that does have a detail — is unchanged. */}
+          {/* The slot is always here, empty or not: it is what pushes the trailing status to
+              the column a reader scans. */}
           {detail != null ? (
             <span {...stylex.props(styles.detail, type.uiSm)}>{detail}</span>
           ) : (
@@ -299,7 +283,9 @@ export function AgentActivityDisclosure({
           {trailing != null && (
             <span {...stylex.props(styles.trailing, type.ui2xs)}>{trailing}</span>
           )}
-          {children != null && (
+          {/* Held on a row with nothing behind it too, for the reason the spacer is: without it
+              that row's trailing status lands a chevron's width right of every row beside it. */}
+          {children != null ? (
             <span
               aria-hidden
               data-slot="agent-activity-chevron"
@@ -309,6 +295,8 @@ export function AgentActivityDisclosure({
             >
               <Icon name="chevron-down" size="xs" />
             </span>
+          ) : (
+            <span aria-hidden {...stylex.props(styles.chevronSlot)} />
           )}
         </TriggerShell>
         {Children.count(actions) > 0 && (
