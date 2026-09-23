@@ -65,10 +65,7 @@ func (s shellArgs) timeout() (exec.Timeout, error) {
 }
 
 func (s shellArgs) autoBackgroundAfter() (time.Duration, error) {
-	after, err := toolarg.PositiveInt(s.AutoBackgroundAfterSeconds, defaultAutoBackgroundSeconds, 0, "auto_background_after_seconds")
-	if err != nil {
-		return 0, err
-	}
+	after := toolarg.OptionalInt(s.AutoBackgroundAfterSeconds, defaultAutoBackgroundSeconds)
 	if int64(after) > math.MaxInt64/int64(time.Second) {
 		return 0, errors.New("shell: auto_background_after_seconds exceeds duration range")
 	}

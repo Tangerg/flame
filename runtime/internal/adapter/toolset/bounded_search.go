@@ -143,10 +143,7 @@ func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (
 	if err != nil {
 		return runtimePathSearchResponse{}, err
 	}
-	limit, err := toolarg.PositiveInt(request.MaxResults, defaultRuntimeSearchResults, maxRuntimeSearchResults, "max_results")
-	if err != nil {
-		return runtimePathSearchResponse{}, err
-	}
+	limit := toolarg.OptionalInt(request.MaxResults, defaultRuntimeSearchResults)
 	entries, err := workspaceadapter.SearchFiles(ctx, root, path, request.Pattern)
 	if err != nil {
 		if errors.Is(err, workspaceadapter.ErrListingTooLarge) {
@@ -200,10 +197,7 @@ func runtimeGrep(ctx context.Context, root string, request runtimeGrepRequest) (
 	if err != nil {
 		return runtimeSearchResponse{}, err
 	}
-	limit, err := toolarg.PositiveInt(request.MaxResults, defaultRuntimeSearchResults, maxRuntimeSearchResults, "max_results")
-	if err != nil {
-		return runtimeSearchResponse{}, err
-	}
+	limit := toolarg.OptionalInt(request.MaxResults, defaultRuntimeSearchResults)
 	result, err := (workspaceadapter.FileBrowser{}).Grep(ctx, root, workspaceapp.GrepPlan{
 		Path: path, Pattern: pattern, Limit: limit,
 	})

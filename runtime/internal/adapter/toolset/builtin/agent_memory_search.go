@@ -34,11 +34,7 @@ func (a agentMemorySearchRequest) normalized() (query string, limit int, err err
 	if query == "" {
 		return "", 0, errors.New("query is required")
 	}
-	limit, err = toolarg.PositiveInt(a.Limit, agentMemorySearchDefaultLimit, agentMemorySearchMaxLimit, "limit")
-	if err != nil {
-		return "", 0, err
-	}
-	return query, limit, nil
+	return query, toolarg.OptionalInt(a.Limit, agentMemorySearchDefaultLimit), nil
 }
 
 // AgentMemorySearch is the agent-memory search capability this tool consumes.

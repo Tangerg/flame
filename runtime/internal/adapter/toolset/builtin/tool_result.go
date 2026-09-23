@@ -90,10 +90,7 @@ func (t *toolResultReader) read(ctx context.Context, a toolResultReadArgs) (stri
 		return "No stored tool result with result_id " + a.ResultID + " — it may have been deleted with its session.", nil
 	}
 
-	limit, err := toolarg.PositiveInt(a.LimitBytes, defaultReadWindow, defaultReadWindow, "limit_bytes")
-	if err != nil {
-		return "", err
-	}
+	limit := toolarg.OptionalInt(a.LimitBytes, defaultReadWindow)
 	start, end := window(body, a.OffsetBytes, limit)
 	header := fmt.Sprintf("[tool result %s — %d bytes total, showing bytes %d–%d]\n", a.ResultID, len(body), start, end)
 	if end < len(body) {

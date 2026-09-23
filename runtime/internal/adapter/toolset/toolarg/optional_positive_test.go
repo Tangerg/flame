@@ -2,20 +2,19 @@ package toolarg
 
 import "testing"
 
-func intPointer(value int) *int { return &value }
-
-func TestPositiveIntPreservesAbsenceAndRejectsNumericSentinels(t *testing.T) {
-	t.Parallel()
-
-	if value, err := PositiveInt(nil, 8, 20, "limit"); err != nil || value != 8 {
-		t.Fatalf("absent = (%d,%v), want default 8", value, err)
+func TestOptionalIntResolvesOnlyAbsence(t *testing.T) {
+	if got := OptionalInt(nil, 8); got != 8 {
+		t.Fatalf("absent = %d, want the default", got)
 	}
-	if value, err := PositiveInt(intPointer(12), 8, 20, "limit"); err != nil || value != 12 {
-		t.Fatalf("present = (%d,%v), want 12", value, err)
+	value := 3
+	if got := OptionalInt(&value, 8); got != 3 {
+		t.Fatalf("present = %d, want the supplied value", got)
 	}
-	for _, value := range []int{0, -1, 21} {
-		if _, err := PositiveInt(intPointer(value), 8, 20, "limit"); err == nil {
-			t.Fatalf("PositiveInt(%d) succeeded", value)
-		}
+	// The schema bound is the argument's only owner, so a value that reached
+	// this helper is already admitted — including one the helper never
+	// inspected.
+	edge := 0
+	if got := OptionalInt(&edge, 8); got != 0 {
+		t.Fatalf("admitted zero = %d, want it preserved", got)
 	}
 }

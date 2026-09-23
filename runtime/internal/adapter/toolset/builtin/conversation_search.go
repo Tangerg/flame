@@ -31,11 +31,7 @@ func (c conversationSearchRequest) normalized() (query string, limit int, err er
 	if query == "" {
 		return "", 0, errors.New("query is required")
 	}
-	limit, err = toolarg.PositiveInt(c.Limit, conversationSearchDefaultLimit, conversationSearchMaxLimit, "limit")
-	if err != nil {
-		return "", 0, err
-	}
-	return query, limit, nil
+	return query, toolarg.OptionalInt(c.Limit, conversationSearchDefaultLimit), nil
 }
 
 // ConversationSearch is the transcript full-text search capability this tool consumes.

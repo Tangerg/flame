@@ -183,10 +183,7 @@ func (d *Discovery) search(ctx context.Context, args discoveryArgs) (string, err
 	if query == "" {
 		return "", toolfailure.Definite(ErrEmptyQuery)
 	}
-	limit, err := toolarg.PositiveInt(args.Limit, discoveryDefaultLimit, discoveryMaxLimit, "limit")
-	if err != nil {
-		return "", toolfailure.Definite(err)
-	}
+	limit := toolarg.OptionalInt(args.Limit, discoveryDefaultLimit)
 
 	var matches []discoverableTool
 	if rest, ok := strings.CutPrefix(query, discoverySelectPrefix); ok {

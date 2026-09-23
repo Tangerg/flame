@@ -140,8 +140,10 @@ func TestShellDurationValuesPreservePresence(t *testing.T) {
 	if _, err := (shellArgs{TimeoutMillis: &zero}).timeout(); err == nil {
 		t.Fatal("present zero timeout was treated as omission")
 	}
-	if _, err := (shellArgs{AutoBackgroundAfterSeconds: &zero}).autoBackgroundAfter(); err == nil {
-		t.Fatal("present zero auto-background duration was treated as the default")
+	// The schema refuses a zero before the Tool runs, so the argument helper
+	// only has to keep a present value distinct from an absent one.
+	if after, afterErr := (shellArgs{AutoBackgroundAfterSeconds: &zero}).autoBackgroundAfter(); afterErr != nil || after != 0 {
+		t.Fatalf("present zero auto-background = %v, %v; want it preserved", after, afterErr)
 	}
 
 	maximumInt := int(^uint(0) >> 1)
