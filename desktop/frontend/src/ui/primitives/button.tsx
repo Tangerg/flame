@@ -19,8 +19,9 @@ export type ButtonPrimitiveProps = ComponentPropsWithoutRef<typeof BaseButton> &
    * `TextButton` all wrap this one and a fact spelled three times is the thing being fixed.
    *
    * A condition that is genuinely unavailable — an invalid form, a row with nothing selected —
-   * stays `disabled`. Several call sites had both facts in one expression (`!valid || saving`);
-   * those split.
+   * stays `disabled`. A control that disables ITSELF by being used — a pager reaching its last
+   * page, a Clear with nothing left — is the same trap as in-flight work and passes Base UI's
+   * `focusableWhenDisabled`.
    */
   pending?: boolean;
 };
@@ -39,7 +40,9 @@ export function ButtonPrimitive({
       {...props}
       ref={ref}
       type={type}
-      aria-disabled={pending ? true : props["aria-disabled"]}
+      // Only when pending: an explicit `undefined` here overrides the `aria-disabled` Base UI
+      // sets itself for `focusableWhenDisabled`.
+      {...(pending && { "aria-disabled": true })}
       // Nothing in the platform refuses a click on an `aria-disabled` element, so the refusal
       // lives here. Without it the prop would trade a lost focus for a double submit.
       onClick={pending ? undefined : onClick}

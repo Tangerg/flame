@@ -40,3 +40,19 @@ describe("Button pending", () => {
     expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
+
+describe("Button focusable when disabled", () => {
+  it("announces itself disabled and keeps its place in the tab order", () => {
+    render(
+      <Button disabled focusableWhenDisabled>
+        Next
+      </Button>,
+    );
+    const next = screen.getByRole("button", { name: "Next" });
+
+    expect(next.getAttribute("aria-disabled")).toBe("true");
+    expect((next as HTMLButtonElement).disabled).toBe(false);
+    next.focus();
+    expect(document.activeElement).toBe(next);
+  });
+});

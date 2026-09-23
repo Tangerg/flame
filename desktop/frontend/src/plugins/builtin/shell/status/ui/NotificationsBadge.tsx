@@ -74,6 +74,7 @@ export function NotificationsBadge() {
               size="sm"
               title={t("notifications.clearAll")}
               disabled={log.length === 0}
+              focusableWhenDisabled
               onClick={clearAll}
             />
           }

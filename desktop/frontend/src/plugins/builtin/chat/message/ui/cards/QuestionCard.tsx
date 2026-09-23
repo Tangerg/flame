@@ -344,6 +344,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
               size="xs"
               quiet
               disabled={activeIndex === 0}
+              focusableWhenDisabled
               title={t("question.action.previous")}
               onClick={() => navigateQuestion(activeIndex - 1)}
             />
@@ -355,6 +356,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
               size="xs"
               quiet
               disabled={isLastQuestion}
+              focusableWhenDisabled
               title={t("question.action.next")}
               onClick={() => navigateQuestion(activeIndex + 1)}
             />

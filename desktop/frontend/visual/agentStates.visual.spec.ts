@@ -1056,6 +1056,10 @@ for (const theme of ["light", "dark"] as const) {
     await expect(dialog.locator('[data-image-zoom="125"]')).toBeVisible();
     await page.getByRole("button", { name: "Next image" }).click();
     await expect(page.getByRole("dialog", { name: "Inline detail" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Next image" }),
+      "the last step disables Next without dropping the keyboard out of the dialog",
+    ).toBeFocused();
     await expect(page.locator('[data-image-zoom="100"]')).toBeVisible();
     await page.keyboard.press("ArrowLeft");
     await expect(page.getByRole("dialog", { name: "Inline architecture" })).toBeVisible();

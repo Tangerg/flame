@@ -262,6 +262,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
               icon="chevron-left"
               title={t("message.image.previous")}
               disabled={gallery!.index === 0}
+              focusableWhenDisabled
               onClick={(event) => {
                 event.stopPropagation();
                 setGalleryIndex(gallery!.index - 1);
@@ -274,6 +275,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
               icon="chevron-right"
               title={t("message.image.next")}
               disabled={gallery!.index === gallery!.items.length - 1}
+              focusableWhenDisabled
               onClick={(event) => {
                 event.stopPropagation();
                 setGalleryIndex(gallery!.index + 1);
@@ -307,6 +309,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
             icon="zoom-out"
             title={t("message.image.zoomOut")}
             disabled={zoomIndex === 0}
+            focusableWhenDisabled
             onClick={() => setZoomIndex((current) => Math.max(0, current - 1))}
             variant="mediaTray"
             size="xl"
@@ -316,6 +319,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
             icon="zoom-in"
             title={t("message.image.zoomIn")}
             disabled={zoomIndex === ZOOM_STEPS.length - 1}
+            focusableWhenDisabled
             onClick={() => setZoomIndex((current) => Math.min(ZOOM_STEPS.length - 1, current + 1))}
             variant="mediaTray"
             size="xl"

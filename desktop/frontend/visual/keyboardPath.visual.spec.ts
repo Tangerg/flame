@@ -171,6 +171,12 @@ test("a context menu opens from the keyboard and hands focus back", async ({ pag
   await row.focus();
   await page.keyboard.press("Shift+F10");
   await expect(page.getByRole("menuitem", { name: "Rename" })).toBeVisible();
+  await expect
+    .poll(
+      () => page.evaluate(() => Boolean(document.activeElement?.closest('[role="menu"]'))),
+      "the keyboard is inside the menu it opened",
+    )
+    .toBe(true);
 
   await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
