@@ -4,44 +4,25 @@ import { Kbd, SearchField, vocab } from "@/ui";
 import { useKeymap } from "@/plugins/host/keymap";
 import { useT } from "@/lib/i18n";
 import { splitCombo } from "@/lib/combo";
-import {
-  color,
-  motion,
-  radius,
-  space,
-  surface,
-  type as typeStep,
-  weight,
-} from "@/styles/tokens.stylex";
+import { color, motion, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { SettingsGroup } from "@/plugins/builtin/settings/kit";
 
 const sc = stylex.create({
   pane: { display: "flex", flexDirection: "column", gap: space.s3 },
-  // A real table, because this IS tabular: an action and the keys that reach it.
-  frame: {
-    minHeight: 0,
-    flex: 1,
-    overflow: "auto",
-    borderRadius: radius.lg,
-    borderWidth: "var(--hairline-width)",
-    borderStyle: "solid",
-    borderColor: surface.field,
-    backgroundColor: "transparent",
-  },
   empty: {
-    paddingInline: space.s3,
+    paddingInline: space.s4,
     paddingBlock: space.s6,
     textAlign: "center",
     color: color.fgFaint,
   },
+  // A real table, because this IS tabular: an action and the keys that reach it.
   table: { width: "100%", borderCollapse: "collapse", textAlign: "left" },
   head: {
-    position: "sticky",
-    top: 0,
     backgroundColor: surface.sunken,
     color: color.fgFaint,
     fontWeight: weight.semibold,
   },
-  cell: { paddingInline: space.s3, paddingBlock: space.s1_5 },
+  cell: { paddingInline: space.s4, paddingBlock: space.s1_5 },
   // A fixed measure: the key column must not widen because one shortcut has three chords.
   keyColumn: { width: "160px", textAlign: "right" },
   right: { textAlign: "right" },
@@ -78,7 +59,7 @@ export function ShortcutsPane() {
         aria-label={t("shortcuts.filterAria")}
       />
 
-      <div {...stylex.props(sc.frame)}>
+      <SettingsGroup>
         {filtered.length === 0 ? (
           <div {...stylex.props(sc.empty, typeStep.uiMd)}>{t("shortcuts.empty")}</div>
         ) : (
@@ -105,7 +86,7 @@ export function ShortcutsPane() {
             </tbody>
           </table>
         )}
-      </div>
+      </SettingsGroup>
     </div>
   );
 }

@@ -7,7 +7,6 @@ import { useT } from "@/lib/i18n";
 import { useScheduleConfigs } from "../application/scheduleCommands";
 import { ScheduleForm } from "./ScheduleForm";
 import { ScheduleRow } from "./ScheduleRow";
-import { type as typeStep } from "@/styles/tokens.stylex";
 import { SettingsGroup } from "../../kit";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
@@ -35,8 +34,6 @@ function EnabledSchedulesPane() {
 
   return (
     <div {...stylex.props(ss.stack)}>
-      <p {...stylex.props(ss.intro, typeStep.uiMd)}>{t("schedules.intro")}</p>
-
       {adding ? (
         <ScheduleForm
           defaultCwd={cwd}

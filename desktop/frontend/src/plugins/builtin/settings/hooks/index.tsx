@@ -20,6 +20,7 @@ export default definePlugin({
     registerSettingsPane(ctx, {
       id: HOOKS_PANE,
       label: "settings.pane.hooks",
+      description: "hooks.intro",
       group: "agent",
       icon: "lightning",
       order: 57,

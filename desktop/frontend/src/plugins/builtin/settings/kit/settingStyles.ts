@@ -24,7 +24,6 @@ export const settingStyles = stylex.create({
   hint: { color: color.fgMuted, lineHeight: leading.snug },
   /** The same hint where it needs to clear the control above it. */
   hintSpaced: { marginTop: space.s1, color: color.fgMuted, lineHeight: leading.body },
-  intro: { color: color.fgMuted, lineHeight: leading.body },
 
   hoverRow: {
     borderRadius: radius.card,

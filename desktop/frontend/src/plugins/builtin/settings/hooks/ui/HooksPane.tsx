@@ -106,8 +106,6 @@ export function HooksPane() {
 
   return (
     <div {...stylex.props(vocab.column, gap.s4)}>
-      <p {...stylex.props(ss.intro, typeStep.uiMd)}>{t("hooks.intro")}</p>
-
       {projectRoot && data?.hasProjectHooks && (
         <Surface className={stylex.props(ss.split).className}>
           <div {...stylex.props(vocab.min)}>

@@ -32,6 +32,7 @@ export default definePlugin({
     registerSettingsPane(ctx, {
       id: SCHEDULES_PANE,
       label: "settings.pane.schedules",
+      description: "schedules.intro",
       group: "agent",
       icon: "clock",
       order: 58,
