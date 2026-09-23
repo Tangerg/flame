@@ -60,7 +60,11 @@ func buildOnline(online OnlineConfig) ([]toolcontract.Tool, error) {
 		if clientErr != nil {
 			return nil, clientErr
 		}
-		return web.NewFetchTool(client)
+		// A fetch reads: an upstream outage or a page the reader rejects is
+		// this call's outcome, not evidence that the Run tree's durable effects
+		// are unknown. Scope leaves that classification to the runtime driving
+		// the Tool, which is here.
+		return definiteReadTool(web.NewFetchTool(client))
 	})
 	if err != nil {
 		return nil, err
@@ -74,7 +78,7 @@ func buildOnline(online OnlineConfig) ([]toolcontract.Tool, error) {
 		if clientErr != nil {
 			return nil, clientErr
 		}
-		return web.NewSearchTool(client)
+		return definiteReadTool(web.NewSearchTool(client))
 	})
 	if err != nil {
 		return nil, err
@@ -92,6 +96,16 @@ func buildOnline(online OnlineConfig) ([]toolcontract.Tool, error) {
 	}
 
 	return out, nil
+}
+
+// definiteReadTool classifies a provider-backed read's failures. The
+// http_request Tool is deliberately excluded: the model chooses its method, so
+// a failed POST or DELETE can have left an effect this process cannot prove.
+func definiteReadTool[T toolcontract.Tool](inner T, err error) (toolcontract.Tool, error) {
+	if err != nil {
+		return nil, err
+	}
+	return withDefiniteOutcome(inner), nil
 }
 
 func newOnlineHTTPClient() *http.Client {

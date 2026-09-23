@@ -90,3 +90,31 @@ func TestBuildOnlineRejectsMalformedAPIKeysDuringAssembly(t *testing.T) {
 		})
 	}
 }
+
+// TestOnlineReadToolsSettleTheirOwnFailures records which network tools may end
+// a Run tree. A fetch and a search read, so an upstream outage is that call's
+// outcome and the model can react to it; http_request carries the model's own
+// method, so a failed POST or DELETE may have left an effect this process
+// cannot prove and stays unclassified.
+func TestOnlineReadToolsSettleTheirOwnFailures(t *testing.T) {
+	built, err := buildOnline(OnlineConfig{
+		JinaAPIKey: "jina-key", TavilyAPIKey: "tavily-key", HTTPAllowedHosts: []string{"api.example.com"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Scope's own tools wrap inner tools too, so the question is specifically
+	// whether this package's definite-outcome decorator is the outermost layer.
+	classified := map[string]bool{}
+	for _, executable := range built {
+		_, definite := executable.(*callDecorator)
+		classified[executable.Definition().Name] = definite
+	}
+	for name, want := range map[string]bool{
+		"web_fetch": true, "web_search": true, "http_request": false,
+	} {
+		if got, present := classified[name]; !present || got != want {
+			t.Errorf("%s definite-outcome classification = %t (present=%t), want %t", name, got, present, want)
+		}
+	}
+}
