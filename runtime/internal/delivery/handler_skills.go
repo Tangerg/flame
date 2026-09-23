@@ -19,7 +19,7 @@ func (s *Handler) ListDiscoveredSkills(ctx context.Context, in protocol.Workspac
 	}
 	out := make([]protocol.Skill, 0, len(found.Skills))
 	for _, skill := range found.Skills {
-		scope, ok := presentWorkspaceSkillScope(skill.Scope)
+		scope, ok := presentSkillScope(skill.Scope)
 		if !ok {
 			return nil, fmt.Errorf("skills.discovered.list: unsupported skill scope %q", skill.Scope)
 		}
@@ -37,22 +37,11 @@ func (s *Handler) GetDiscoveredSkill(ctx context.Context, in protocol.SkillDetai
 	if err != nil {
 		return nil, mapSkillError(err)
 	}
-	scope, ok := presentWorkspaceSkillScope(detail.Scope)
+	scope, ok := presentSkillScope(detail.Scope)
 	if !ok {
 		return nil, fmt.Errorf("skills.discovered.get: unsupported skill scope %q", detail.Scope)
 	}
 	return &protocol.SkillDetail{Skill: protocol.Skill{Name: detail.Name, Description: detail.Description, Scope: scope}, Path: detail.Path, Revision: detail.Revision, Instructions: detail.Instructions}, nil
-}
-
-func presentWorkspaceSkillScope(scope workspace.SkillScope) (protocol.SkillScope, bool) {
-	switch scope {
-	case workspace.SkillScopeProject:
-		return protocol.SkillScopeProject, true
-	case workspace.SkillScopeUser:
-		return protocol.SkillScopeUser, true
-	default:
-		return "", false
-	}
 }
 
 // ListManagedSkills returns the user self-authored Skill library — active then
@@ -129,7 +118,7 @@ func (s *Handler) ListSkillProposals(ctx context.Context, in protocol.WorkspaceQ
 	}
 	out := make([]protocol.SkillProposal, 0, len(proposals))
 	for _, proposal := range proposals {
-		scope, ok := presentSkillProposalScope(proposal.Ref.Scope)
+		scope, ok := presentSkillScope(proposal.Ref.Scope)
 		if !ok {
 			return nil, fmt.Errorf("skills.proposals.list: unsupported scope %q", proposal.Ref.Scope)
 		}
@@ -181,7 +170,7 @@ func skillProposalRef(in protocol.SkillProposalRef) (skills.ProposalRef, error) 
 	return ref, nil
 }
 
-func presentSkillProposalScope(scope skills.Scope) (protocol.SkillScope, bool) {
+func presentSkillScope(scope skills.Scope) (protocol.SkillScope, bool) {
 	switch scope {
 	case skills.ScopeProject:
 		return protocol.SkillScopeProject, true

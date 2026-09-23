@@ -1172,7 +1172,7 @@ func TestResumeCommitsOpeningBeforeActivation(t *testing.T) {
 			InterruptKinds: []interrupt.Kind{interrupt.Approval},
 		},
 		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: ApprovalResponseKind,
+			ItemID: "item_1", Kind: interrupt.Approval,
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 	})
@@ -1225,7 +1225,7 @@ func TestResumeSettlesAfterOpeningWithoutWaitingForExecutorActivation(t *testing
 				InterruptKinds: []interrupt.Kind{interrupt.Approval},
 			},
 			Responses: []ResumeResponse{{
-				ItemID: "item_1", Kind: ApprovalResponseKind,
+				ItemID: "item_1", Kind: interrupt.Approval,
 				Approval: &ApprovalResponse{Approved: true},
 			}},
 		})
@@ -1306,7 +1306,7 @@ func TestResumeRejectsContinuationFactDriftBeforeExecutorPreparation(t *testing.
 		RunID:              pending.RootRunID,
 		CallerCapabilities: pending.Capabilities,
 		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: ApprovalResponseKind,
+			ItemID: "item_1", Kind: interrupt.Approval,
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 	})
@@ -1358,7 +1358,7 @@ func TestResumeAndRootCancelShareOneApplicationAdmissionBoundary(t *testing.T) {
 			},
 			Responses: []ResumeResponse{{
 				ItemID: "item_1",
-				Kind:   ApprovalResponseKind,
+				Kind:   interrupt.Approval,
 				Approval: &ApprovalResponse{
 					Approved: true,
 				},
@@ -1415,7 +1415,7 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 		return effects, control, newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
 	}
 	approve := []ResumeResponse{{
-		ItemID: "item_1", Kind: ApprovalResponseKind,
+		ItemID: "item_1", Kind: interrupt.Approval,
 		Approval: &ApprovalResponse{Approved: true},
 	}}
 
@@ -1495,7 +1495,7 @@ func TestResumeRecoversLostExecutorStateBeforeReturning(t *testing.T) {
 			InterruptKinds: []interrupt.Kind{interrupt.Approval},
 		},
 		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: ApprovalResponseKind,
+			ItemID: "item_1", Kind: interrupt.Approval,
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 	})
@@ -1551,7 +1551,7 @@ func TestResumeOpeningFailureMarksClaimedRunLostBeforeReleasingTree(t *testing.T
 			InterruptKinds: []interrupt.Kind{interrupt.Approval},
 		},
 		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: ApprovalResponseKind,
+			ItemID: "item_1", Kind: interrupt.Approval,
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 	})
@@ -1602,7 +1602,7 @@ func TestResumeOpeningFailureCompensatesTheResumingClaimBeforeReleasingTree(t *t
 			InterruptKinds: []interrupt.Kind{interrupt.Approval},
 		},
 		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: ApprovalResponseKind,
+			ItemID: "item_1", Kind: interrupt.Approval,
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 	})
@@ -1664,7 +1664,7 @@ func TestResumeRejectsClaimResultDriftBeforeStagingAndMarksRunLost(t *testing.T)
 					InterruptKinds: []interrupt.Kind{interrupt.Approval},
 				},
 				Responses: []ResumeResponse{{
-					ItemID: "item_1", Kind: ApprovalResponseKind,
+					ItemID: "item_1", Kind: interrupt.Approval,
 					Approval: &ApprovalResponse{Approved: true},
 				}},
 			})
@@ -1710,7 +1710,7 @@ func TestResumeOpeningFailureKeepsTreeWhenRunLostCommitFails(t *testing.T) {
 			InterruptKinds: []interrupt.Kind{interrupt.Approval},
 		},
 		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: ApprovalResponseKind,
+			ItemID: "item_1", Kind: interrupt.Approval,
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 	})
@@ -1757,7 +1757,7 @@ func TestResumeOpeningFailureReportsReleaseAfterDurableRunLost(t *testing.T) {
 			InterruptKinds: []interrupt.Kind{interrupt.Approval},
 		},
 		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: ApprovalResponseKind,
+			ItemID: "item_1", Kind: interrupt.Approval,
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 	})
@@ -1803,12 +1803,12 @@ func TestResumeRehydrateRestoresChildSourceProjection(t *testing.T) {
 		Responses: []ResumeResponse{
 			{
 				ItemID:   "item_grandchild",
-				Kind:     QuestionResponseKind,
+				Kind:     interrupt.Question,
 				Question: &QuestionResponse{Answers: [][]string{{"continue grandchild"}}},
 			},
 			{
 				ItemID:   "item_b",
-				Kind:     QuestionResponseKind,
+				Kind:     interrupt.Question,
 				Question: &QuestionResponse{Answers: [][]string{{"continue sibling"}}},
 			},
 		},
@@ -1867,7 +1867,7 @@ func TestResumeRehydrateRestoresChildAdmissionBeforeAnyChildExists(t *testing.T)
 		CallerCapabilities: pending.Capabilities,
 		Responses: []ResumeResponse{{
 			ItemID: "item_1",
-			Kind:   ApprovalResponseKind,
+			Kind:   interrupt.Approval,
 			Approval: &ApprovalResponse{
 				Approved: true,
 			},
@@ -1905,7 +1905,7 @@ func TestResumeRefusesIsolatedRunAfterRuntimeRestart(t *testing.T) {
 			InterruptKinds: []interrupt.Kind{interrupt.Approval},
 		},
 		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: ApprovalResponseKind,
+			ItemID: "item_1", Kind: interrupt.Approval,
 			Approval: &ApprovalResponse{Approved: true},
 		}},
 	})

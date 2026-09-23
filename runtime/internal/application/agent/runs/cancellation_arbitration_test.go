@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -467,10 +468,10 @@ func stopChildWaitingCancellationEffects(plan cancellationPlan) *fakeEffects {
 
 func waitingQuestionResponses(pending Pending) []ResumeResponse {
 	responses := make([]ResumeResponse, len(pending.Interrupts))
-	for index, interrupt := range pending.Interrupts {
+	for index, pendingInterrupt := range pending.Interrupts {
 		responses[index] = ResumeResponse{
-			ItemID:   interrupt.ItemID,
-			Kind:     QuestionResponseKind,
+			ItemID:   pendingInterrupt.ItemID,
+			Kind:     interrupt.Question,
 			Question: &QuestionResponse{Answers: [][]string{{"continue"}}},
 		}
 	}

@@ -1,6 +1,7 @@
 package workspace_test
 
 import (
+	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"os"
 	"path/filepath"
 	"testing"
@@ -54,7 +55,7 @@ func TestProjectSkillsWithEmptyUserLibrary(t *testing.T) {
 		t.Fatal(err)
 	}
 	visible, err := useCases.List(t.Context(), projectRoot)
-	if err != nil || len(visible.Skills) != 1 || visible.Skills[0].Name != ref.Name || visible.Skills[0].Scope != workspaceapp.SkillScopeProject {
+	if err != nil || len(visible.Skills) != 1 || visible.Skills[0].Name != ref.Name || visible.Skills[0].Scope != domainskills.ScopeProject {
 		t.Fatalf("List = (%+v, %v), want approved project skill", visible, err)
 	}
 }

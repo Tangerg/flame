@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/media"
@@ -277,18 +278,11 @@ type CommittedUserInput struct {
 	Content []transcript.ContentBlock
 }
 
-type ResumeResponseKind string
-
-const (
-	ApprovalResponseKind ResumeResponseKind = "approval"
-	QuestionResponseKind ResumeResponseKind = "question"
-)
-
 // ResumeResponse is the answer to one durable interrupt item.
 // Exactly one payload must match Kind.
 type ResumeResponse struct {
 	ItemID   string
-	Kind     ResumeResponseKind
+	Kind     interrupt.Kind
 	Approval *ApprovalResponse
 	Question *QuestionResponse
 }

@@ -51,8 +51,8 @@ func TestStartCommandCloneOwnsMutableInput(t *testing.T) {
 func TestResumeCommandCloneOwnsMutableInput(t *testing.T) {
 	command := ResumeCommand{
 		Responses: []ResumeResponse{
-			{Kind: ApprovalResponseKind, Approval: &ApprovalResponse{Arguments: "{}"}},
-			{Kind: QuestionResponseKind, Question: &QuestionResponse{Answers: [][]string{{"yes"}}}},
+			{Kind: interrupt.Approval, Approval: &ApprovalResponse{Arguments: "{}"}},
+			{Kind: interrupt.Question, Question: &QuestionResponse{Answers: [][]string{{"yes"}}}},
 		},
 		Input: []transcript.ContentBlock{{
 			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("image"),

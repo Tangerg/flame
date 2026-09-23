@@ -103,7 +103,7 @@ func (s *runtimeSkillOverlay) List(ctx context.Context) ([]sdk.Summary, error) {
 
 type inspectedSkillSource struct {
 	*runtimeSkillSource
-	scope  workspaceapp.SkillScope
+	scope  domainskills.Scope
 	detail *workspaceapp.SkillDetail
 }
 
@@ -127,9 +127,9 @@ func (l runtimeSkillLayers) get(ctx context.Context, name string) (workspaceapp.
 	var inspected []*inspectedSkillSource
 	for _, layer := range []struct {
 		source *runtimeSkillSource
-		scope  workspaceapp.SkillScope
+		scope  domainskills.Scope
 	}{
-		{l.project, workspaceapp.SkillScopeProject}, {l.user, workspaceapp.SkillScopeUser},
+		{l.project, domainskills.ScopeProject}, {l.user, domainskills.ScopeUser},
 	} {
 		if layer.source == nil {
 			continue
@@ -164,7 +164,7 @@ func (l runtimeSkillLayers) list(ctx context.Context) (workspaceapp.SkillDiscove
 		}
 	}
 	out := workspaceapp.SkillDiscovery{Skills: []workspaceapp.SkillSummary{}, Diagnostics: []workspaceapp.SkillDiagnostic{}}
-	counts := make(map[workspaceapp.SkillScope]int)
+	counts := make(map[domainskills.Scope]int)
 	for _, name := range slices.Sorted(maps.Keys(names)) {
 		detail, err := l.get(ctx, name)
 		if context.Cause(ctx) != nil {

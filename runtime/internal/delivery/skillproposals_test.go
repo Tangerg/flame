@@ -125,7 +125,7 @@ func TestSkillProposalStaleReviewMapsRevisionConflict(t *testing.T) {
 }
 
 func wireProposalRef(root string, ref skills.ProposalRef) protocol.SkillProposalRef {
-	scope, _ := presentSkillProposalScope(ref.Scope)
+	scope, _ := presentSkillScope(ref.Scope)
 	return protocol.SkillProposalRef{
 		Workspace: protocol.WorkspaceRef{Path: root},
 		Name:      ref.Name,

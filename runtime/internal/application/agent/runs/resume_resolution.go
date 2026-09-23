@@ -92,7 +92,7 @@ func resolveResumeResponses(pending Pending, responses []ResumeResponse) ([]Inte
 }
 
 func resolveApprovalResponse(request transcript.Interrupt, response ResumeResponse) (interrupt.Resolution, error) {
-	if response.Kind != ApprovalResponseKind || response.Approval == nil || response.Question != nil {
+	if response.Kind != interrupt.Approval || response.Approval == nil || response.Question != nil {
 		return interrupt.Resolution{}, errors.New("approval response is required")
 	}
 	approval := response.Approval
@@ -110,7 +110,7 @@ func resolveApprovalResponse(request transcript.Interrupt, response ResumeRespon
 }
 
 func resolveQuestionResponse(request transcript.Interrupt, response ResumeResponse) (interrupt.Resolution, error) {
-	if response.Kind != QuestionResponseKind || response.Question == nil || response.Approval != nil {
+	if response.Kind != interrupt.Question || response.Question == nil || response.Approval != nil {
 		return interrupt.Resolution{}, errors.New("question response is required")
 	}
 	if request.Question == nil || len(request.Question.Fields) == 0 {

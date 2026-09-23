@@ -257,10 +257,8 @@ func (s *Skills) Proposals(ctx context.Context, cwd string) ([]skills.ProposalRe
 }
 
 func validateSkillSummary(summary SkillSummary) error {
-	switch summary.Scope {
-	case SkillScopeProject, SkillScopeUser:
-	default:
-		return fmt.Errorf("unknown scope %q", summary.Scope)
+	if err := summary.Scope.Validate(); err != nil {
+		return err
 	}
 	return (skills.Entry{
 		Name: summary.Name, Description: summary.Description, Lifecycle: skills.Active,

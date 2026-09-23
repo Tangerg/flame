@@ -31,7 +31,7 @@ func TestResumeActivationFailureSettlesAcceptedToolApproval(t *testing.T) {
 				RunID:              "run_1",
 				CallerCapabilities: run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
 				Responses: []ResumeResponse{{
-					ItemID: "item_1", Kind: ApprovalResponseKind,
+					ItemID: "item_1", Kind: interrupt.Approval,
 					Approval: &ApprovalResponse{Approved: decision == approval.Allow},
 				}},
 			})

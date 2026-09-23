@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
 const (
@@ -234,20 +236,12 @@ func validateAuthoredPromptString(document string) error {
 	return nil
 }
 
-// SkillScope identifies the source layer selected by prompt-source precedence.
-type SkillScope string
-
-const (
-	SkillScopeProject SkillScope = "project"
-	SkillScopeUser    SkillScope = "user"
-)
-
 // SkillSummary is one skill visible to a workspace, including the source layer
 // selected by prompt-source precedence.
 type SkillSummary struct {
 	Name        string
 	Description string
-	Scope       SkillScope
+	Scope       skills.Scope
 }
 
 // SkillDiscovery keeps malformed local bundles distinct from an empty catalog.

@@ -34,7 +34,7 @@ func TestDiscoveryAndDetailShareExecutionSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if detail.Scope != workspaceapp.SkillScopeProject || detail.Path != physicalPath || detail.Revision != fmt.Sprintf("%x", sha256.Sum256(content)) {
+	if detail.Scope != domainskills.ScopeProject || detail.Path != physicalPath || detail.Revision != fmt.Sprintf("%x", sha256.Sum256(content)) {
 		t.Fatalf("detail source = %+v", detail)
 	}
 	source, err := OverlaySkillSource(workspace, user, nil)
@@ -250,7 +250,7 @@ func TestRuntimeSkillSourcesAllowInWorkspaceAlias(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Skills) != 1 || listed.Skills[0].Name != "inside" || listed.Skills[0].Scope != workspaceapp.SkillScopeProject {
+	if len(listed.Skills) != 1 || listed.Skills[0].Name != "inside" || listed.Skills[0].Scope != domainskills.ScopeProject {
 		t.Fatalf("ListSkills = %+v, want the confined project Skill", listed)
 	}
 }

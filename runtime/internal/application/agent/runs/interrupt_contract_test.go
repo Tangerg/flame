@@ -23,7 +23,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 	}}}
 	answers, err := resolveResumeResponses(approvalPending, []ResumeResponse{{
 		ItemID: "item_approval",
-		Kind:   ApprovalResponseKind,
+		Kind:   interrupt.Approval,
 		Approval: &ApprovalResponse{
 			Approved: true, Arguments: `{"command":"echo edited","description":"Print edited"}`, RememberScope: approval.ScopeSession,
 		},
@@ -40,7 +40,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 	}
 	deniedAnswers, err := resolveResumeResponses(approvalPending, []ResumeResponse{{
 		ItemID: "item_approval",
-		Kind:   ApprovalResponseKind,
+		Kind:   interrupt.Approval,
 		Approval: &ApprovalResponse{
 			Approved: false, Reason: "unsafe command",
 		},
@@ -65,7 +65,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 	}}}
 	answers, err = resolveResumeResponses(questionPending, []ResumeResponse{{
 		ItemID: "item_question",
-		Kind:   QuestionResponseKind,
+		Kind:   interrupt.Question,
 		Question: &QuestionResponse{
 			Answers: [][]string{{"Go"}},
 		},
@@ -86,17 +86,17 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 	}{
 		{name: "missing", pending: approvalPending, want: ErrInvalidInterruptResponse},
 		{name: "unknown item", pending: approvalPending, responses: []ResumeResponse{{
-			ItemID: "ghost", Kind: ApprovalResponseKind, Approval: &ApprovalResponse{Approved: true},
+			ItemID: "ghost", Kind: interrupt.Approval, Approval: &ApprovalResponse{Approved: true},
 		}}, want: ErrInterruptNotOpen},
 		{name: "wrong kind", pending: approvalPending, responses: []ResumeResponse{{
-			ItemID: "item_approval", Kind: QuestionResponseKind, Question: &QuestionResponse{},
+			ItemID: "item_approval", Kind: interrupt.Question, Question: &QuestionResponse{},
 		}}, want: ErrInvalidInterruptResponse},
 		{name: "duplicate", pending: approvalPending, responses: []ResumeResponse{
-			{ItemID: "item_approval", Kind: ApprovalResponseKind, Approval: &ApprovalResponse{Approved: true}},
-			{ItemID: "item_approval", Kind: ApprovalResponseKind, Approval: &ApprovalResponse{Approved: true}},
+			{ItemID: "item_approval", Kind: interrupt.Approval, Approval: &ApprovalResponse{Approved: true}},
+			{ItemID: "item_approval", Kind: interrupt.Approval, Approval: &ApprovalResponse{Approved: true}},
 		}, want: ErrInvalidInterruptResponse},
 		{name: "invalid choice", pending: questionPending, responses: []ResumeResponse{{
-			ItemID: "item_question", Kind: QuestionResponseKind,
+			ItemID: "item_question", Kind: interrupt.Question,
 			Question: &QuestionResponse{Answers: [][]string{{"Rust"}}},
 		}}, want: ErrInvalidInterruptResponse},
 		{name: "one-off approval cannot be remembered", pending: Pending{
@@ -108,7 +108,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 				InterruptItemID: "item_one_off", MemberID: "member_one_off", RequestID: "request_one_off", ToolCallID: "call_one_off",
 			}},
 		}, responses: []ResumeResponse{{
-			ItemID: "item_one_off", Kind: ApprovalResponseKind,
+			ItemID: "item_one_off", Kind: interrupt.Approval,
 			Approval: &ApprovalResponse{Approved: true, RememberScope: approval.ScopeSession},
 		}}, want: ErrInvalidInterruptResponse},
 	}
@@ -148,12 +148,12 @@ func TestResolveResumeResponsesPreservesCompleteBarrierInCanonicalOrder(t *testi
 	answers, err := resolveResumeResponses(pending, []ResumeResponse{
 		{
 			ItemID:   "item_b",
-			Kind:     ApprovalResponseKind,
+			Kind:     interrupt.Approval,
 			Approval: &ApprovalResponse{Approved: false, Reason: "skip b"},
 		},
 		{
 			ItemID:   "item_a",
-			Kind:     ApprovalResponseKind,
+			Kind:     interrupt.Approval,
 			Approval: &ApprovalResponse{Approved: true},
 		},
 	})
@@ -186,15 +186,15 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 			Options: []transcript.QuestionOption{{Label: "A"}, {Label: "B"}},
 		},
 	}}
-	interrupt := transcript.Interrupt{ItemID: "item_question", Kind: interrupt.Question, Question: question}
+	pending := transcript.Interrupt{ItemID: "item_question", Kind: interrupt.Question, Question: question}
 	response := func(answers [][]string) ResumeResponse {
 		return ResumeResponse{
-			ItemID: "item_question", Kind: QuestionResponseKind,
+			ItemID: "item_question", Kind: interrupt.Question,
 			Question: &QuestionResponse{Answers: answers},
 		}
 	}
 
-	resolution, err := resolveQuestionResponse(interrupt, response([][]string{{"name"}, {"A", "custom"}}))
+	resolution, err := resolveQuestionResponse(pending, response([][]string{{"name"}, {"A", "custom"}}))
 	if err != nil {
 		t.Fatalf("valid ordered answer: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 		t.Fatalf("resolution = %#v", resolution)
 	}
 
-	skipped, err := resolveQuestionResponse(interrupt, response([][]string{{}, {}}))
+	skipped, err := resolveQuestionResponse(pending, response([][]string{{}, {}}))
 	if err != nil {
 		t.Fatalf("explicit skipped answers: %v", err)
 	}
@@ -225,7 +225,7 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := resolveQuestionResponse(interrupt, response(test.answers))
+			_, err := resolveQuestionResponse(pending, response(test.answers))
 			var answerError *QuestionAnswerError
 			if !errors.As(err, &answerError) || answerError.Index != test.wantIndex ||
 				!errors.Is(err, ErrInvalidInterruptResponse) {
@@ -235,7 +235,7 @@ func TestResolveQuestionResponseUsesOrderedExactAnswers(t *testing.T) {
 	}
 
 	question.Fields[1].AllowCustom = false
-	if _, err := resolveQuestionResponse(interrupt, response([][]string{{"name"}, {"custom"}})); err == nil {
+	if _, err := resolveQuestionResponse(pending, response([][]string{{"name"}, {"custom"}})); err == nil {
 		t.Fatal("closed choice accepted custom value")
 	}
 }

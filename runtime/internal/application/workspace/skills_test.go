@@ -52,7 +52,7 @@ func newSkills(t *testing.T, scope *Scope, catalog SkillCatalog, curator SkillCu
 
 func TestListUsesCatalogPort(t *testing.T) {
 	catalog := &fakeSkillCatalog{
-		skills: []SkillSummary{{Name: "lint", Description: "check code", Scope: SkillScopeProject}},
+		skills: []SkillSummary{{Name: "lint", Description: "check code", Scope: skills.ScopeProject}},
 	}
 	c := newSkills(t, newScope(t, "", "", testPaths{}), catalog, nil, &fakeSkillProposals{}, nil, nil)
 
@@ -70,8 +70,8 @@ func TestListUsesCatalogPort(t *testing.T) {
 
 func TestListOwnsVisibleSkillOrder(t *testing.T) {
 	catalog := &fakeSkillCatalog{skills: []SkillSummary{
-		{Name: "zeta", Description: "Check the final result.", Scope: SkillScopeUser},
-		{Name: "alpha", Description: "Inspect the project first.", Scope: SkillScopeProject},
+		{Name: "zeta", Description: "Check the final result.", Scope: skills.ScopeUser},
+		{Name: "alpha", Description: "Inspect the project first.", Scope: skills.ScopeProject},
 	}}
 	c := newSkills(t, newScope(t, "", "", testPaths{}), catalog, nil, &fakeSkillProposals{}, nil, nil)
 
@@ -94,8 +94,8 @@ func TestListOwnsVisibleSkillOrder(t *testing.T) {
 
 func TestListRejectsShadowedSkillLeak(t *testing.T) {
 	catalog := &fakeSkillCatalog{skills: []SkillSummary{
-		{Name: "review", Description: "Review the project changes.", Scope: SkillScopeProject},
-		{Name: "review", Description: "Review the user changes.", Scope: SkillScopeUser},
+		{Name: "review", Description: "Review the project changes.", Scope: skills.ScopeProject},
+		{Name: "review", Description: "Review the user changes.", Scope: skills.ScopeUser},
 	}}
 	c := newSkills(t, newScope(t, "", "", testPaths{}), catalog, nil, &fakeSkillProposals{}, nil, nil)
 
@@ -106,7 +106,7 @@ func TestListRejectsShadowedSkillLeak(t *testing.T) {
 
 func TestListRejectsInvalidOrUnboundedCatalog(t *testing.T) {
 	for name, found := range map[string][]SkillSummary{
-		"invalid row": {{Name: "review", Description: "Review the project changes.", Scope: SkillScope("unknown")}},
+		"invalid row": {{Name: "review", Description: "Review the project changes.", Scope: skills.Scope("unknown")}},
 		"capacity":    make([]SkillSummary, 2*skills.MaxSkillsPerSource+1),
 	} {
 		t.Run(name, func(t *testing.T) {
