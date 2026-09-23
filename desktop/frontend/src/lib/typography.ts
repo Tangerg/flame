@@ -20,7 +20,6 @@ export const UI_TYPE_STEPS = [
   "code",
   "display-sm",
   "display-md",
-  "display-lg",
 ] as const;
 
 export type UiTypeStep = (typeof UI_TYPE_STEPS)[number];

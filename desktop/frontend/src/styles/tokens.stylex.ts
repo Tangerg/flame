@@ -202,11 +202,6 @@ export const type = stylex.create({
     letterSpacing: "var(--tracking-display)",
     lineHeight: "var(--text-display-md--line-height)",
   },
-  displayLg: {
-    fontSize: "var(--fs-display-lg)",
-    letterSpacing: "var(--tracking-display)",
-    lineHeight: "var(--text-display-lg--line-height)",
-  },
   code: { fontSize: "var(--fs-code)", letterSpacing: "var(--text-code--letter-spacing)" },
   prose: { fontSize: "var(--fs-prose)", letterSpacing: "var(--tracking-ui)" },
 });

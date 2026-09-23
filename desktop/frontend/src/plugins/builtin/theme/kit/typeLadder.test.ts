@@ -17,7 +17,6 @@ describe("uiTypeLadder", () => {
       code: 13,
       "display-sm": 18,
       "display-md": 20,
-      "display-lg": 24,
     });
   });
 
@@ -40,7 +39,7 @@ describe("uiTypeLadder", () => {
   it("keeps every heading above the reading text it heads", () => {
     for (let base = UI_FONT_SIZE_MIN_PX; base <= UI_FONT_SIZE_MAX_PX; base += 1) {
       const ladder = uiTypeLadder(base);
-      for (const step of ["display-sm", "display-md", "display-lg"] as const) {
+      for (const step of ["display-sm", "display-md"] as const) {
         expect(ladder[step]).toBeGreaterThan(ladder.prose);
       }
     }
@@ -67,7 +66,6 @@ describe("uiTypeLadderCssVariables", () => {
       "--fs-code": "13px",
       "--fs-display-sm": "18px",
       "--fs-display-md": "20px",
-      "--fs-display-lg": "24px",
     });
   });
 });

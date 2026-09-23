@@ -110,7 +110,7 @@ function SettingsPaneFrame({
   return (
     <section>
       <header>
-        <h1 {...stylex.props(sp.title, typeStep.displayMd)}>{title}</h1>
+        <h1 {...stylex.props(sp.title, typeStep.displaySm)}>{title}</h1>
         {description && <p {...stylex.props(sp.blurb, typeStep.uiMd)}>{description}</p>}
       </header>
       <div {...stylex.props(sp.body)}>{children}</div>

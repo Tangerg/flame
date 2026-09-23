@@ -102,7 +102,7 @@ function FoundationSurface({ sidebarOpen }: { sidebarOpen: boolean }) {
           <div {...stylex.props(typeStep.uiXs, fx.specimenLabelFlush)}>
             Deterministic visual fixture
           </div>
-          <h1 {...stylex.props(fx.heading, typeStep.displayLg)}>
+          <h1 {...stylex.props(fx.heading, typeStep.displayMd)}>
             One visual language, one source of truth.
           </h1>
           <p {...stylex.props(fx.lede, typeStep.uiMd)}>

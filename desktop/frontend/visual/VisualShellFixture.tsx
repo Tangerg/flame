@@ -63,7 +63,7 @@ export function VisualShellFixture({ state }: { state: VisualWorkIndexState }) {
               <span {...stylex.props(fx.emptyGlyph, corner.pill)}>
                 <Icon name="spark" size="md" />
               </span>
-              <h1 {...stylex.props(fx.headingLoose, typeStep.displayLg)}>{copy.title}</h1>
+              <h1 {...stylex.props(fx.headingLoose, typeStep.displayMd)}>{copy.title}</h1>
               <p {...stylex.props(fx.afterHeading, typeStep.uiMd)}>{copy.body}</p>
             </div>
           </div>

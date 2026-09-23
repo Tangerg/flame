@@ -24,7 +24,6 @@ const STEPS: Readonly<
   code: { ratio: 0.95, floorPx: 10 },
   "display-sm": { aboveProse: true, ratio: 1.286, floorPx: 0 },
   "display-md": { aboveProse: true, ratio: 1.429, floorPx: 0 },
-  "display-lg": { aboveProse: true, ratio: 1.714, floorPx: 0 },
 };
 
 export function uiTypeLadder(basePx: number | null | undefined): UiTypeLadder {
@@ -60,6 +59,5 @@ export function uiTypeLadderCssVariables(
     "--fs-code": `${ladder.code}px`,
     "--fs-display-sm": `${ladder["display-sm"]}px`,
     "--fs-display-md": `${ladder["display-md"]}px`,
-    "--fs-display-lg": `${ladder["display-lg"]}px`,
   };
 }
