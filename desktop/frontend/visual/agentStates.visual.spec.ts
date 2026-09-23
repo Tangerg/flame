@@ -875,7 +875,7 @@ test("code blocks use the Codex caption and source geometry", async ({ page }) =
 
   expect(geometry).not.toBeNull();
   expect.soft(geometry?.headerBackground).toBe("rgba(0, 0, 0, 0)");
-  expect.soft(geometry?.blockMargin).toBe("10px");
+  expect.soft(geometry?.blockMargin).toBe("17.5px");
   expect.soft(geometry?.headerPadding).toBe("4px 8px");
   expect.soft(geometry?.languageFamily).toBe(geometry?.bodyFamily);
   expect.soft(geometry?.languageSize).toBe("14px");
@@ -1239,26 +1239,26 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
 
   expect(styles).not.toBeNull();
   expect.soft(styles?.level2Tag).toBe("H3");
-  expect.soft(styles?.level2Size).toBe("20px");
-  expect.soft(styles?.level2Margin).toBe("20px 10px");
+  expect.soft(styles?.level2Size).toBe("18px");
+  expect.soft(styles?.level2Margin).toBe("14px 3.5px");
   expect.soft(styles?.level3Tag).toBe("H4");
-  expect.soft(styles?.level3Size).toBe("17px");
-  expect.soft(styles?.level3Margin).toBe("20px 10px");
-  expect.soft(styles?.leadParagraphMargin).toBe("0px 10px");
-  expect.soft(styles?.leadListMargin).toBe("0px 10px");
-  expect.soft(styles?.tableMargin).toBe("0px 10px");
+  expect.soft(styles?.level3Size).toBe("16px");
+  expect.soft(styles?.level3Margin).toBe("14px 3.5px");
+  expect.soft(styles?.leadParagraphMargin).toBe("7px 3.5px");
+  expect.soft(styles?.leadListMargin).toBe("0px 7px");
+  expect.soft(styles?.tableMargin).toBe("7px 7px");
   expect.soft(styles?.tableFontSize).toBe("14px");
-  expect.soft(styles?.tableLineHeight).toBe("21px");
+  expect.soft(styles?.tableLineHeight).toBe("22.75px");
   expect.soft(styles?.tableHeaderFontSize).toBe("14px");
-  expect.soft(styles?.tableHeaderLineHeight).toBe("16px");
-  expect.soft(styles?.proseParagraphMargin).toBe("0px 10px");
+  expect.soft(styles?.tableHeaderLineHeight).toBe("22.75px");
+  expect.soft(styles?.proseParagraphMargin).toBe("7px 3.5px");
   expect.soft(styles?.inlineCodeDecoration).toBe("clone");
   expect.soft(styles?.inlineCodeFontSize).toBe("13px");
   expect.soft(styles?.inlineCodeRadius).toBe("6px");
   expect.soft(styles?.inlineCodeWordBreak).toBe("break-word");
   expect.soft(styles?.inlineCodeWrap).toBe("anywhere");
   expect.soft(styles?.rtlDirection).toBe("rtl");
-  expect.soft(styles?.rtlStartPadding).toBe("21px");
+  expect.soft(styles?.rtlStartPadding).toBe("22.75px");
   expect.soft(styles?.rtlEndPadding).toBe("0px");
   expect.soft(styles?.nestedMarker).toBe("circle");
   expect.soft(styles?.deepMarker).toBe("square");
@@ -1267,9 +1267,9 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
   expect.soft(styles?.looseTaskColumns).not.toBe("none");
   expect.soft(styles?.looseTaskCheckboxInset).toBe("4px");
   expect.soft(styles?.looseTaskFollowUpColumn).toBe("2");
-  expect.soft(styles?.quoteInset).toBe("24px");
-  expect.soft(styles?.quoteRule).toBe("4px");
-  expect.soft(styles?.ruleMargin).toBe("28px");
+  expect.soft(styles?.quoteInset).toBe("14px");
+  expect.soft(styles?.quoteRule).toBe("3px");
+  expect.soft(styles?.ruleMargin).toBe("24.5px");
 });
 
 for (const theme of ["light", "dark"] as const) {

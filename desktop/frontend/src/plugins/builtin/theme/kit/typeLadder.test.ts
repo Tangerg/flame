@@ -13,10 +13,8 @@ describe("uiTypeLadder", () => {
       "ui-xs": 12,
       "ui-sm": 13,
       "ui-md": 14,
-      prose: 16,
+      prose: 14,
       code: 13,
-      "markdown-h5": 15,
-      "markdown-h3": 17,
       "display-sm": 18,
       "display-md": 20,
       "display-lg": 24,
@@ -32,20 +30,19 @@ describe("uiTypeLadder", () => {
     }
   });
 
-  it("keeps reading text above the chrome across the whole base range", () => {
+  it("reads at the interface size across the whole base range", () => {
     for (let base = UI_FONT_SIZE_MIN_PX; base <= UI_FONT_SIZE_MAX_PX; base += 1) {
       const ladder = uiTypeLadder(base);
-      expect(ladder.prose).toBeGreaterThan(ladder["ui-md"]);
+      expect(ladder.prose).toBe(ladder["ui-md"]);
     }
   });
 
   it("keeps every heading above the reading text it heads", () => {
     for (let base = UI_FONT_SIZE_MIN_PX; base <= UI_FONT_SIZE_MAX_PX; base += 1) {
       const ladder = uiTypeLadder(base);
-      for (const step of ["markdown-h3", "display-sm", "display-md", "display-lg"] as const) {
+      for (const step of ["display-sm", "display-md", "display-lg"] as const) {
         expect(ladder[step]).toBeGreaterThan(ladder.prose);
       }
-      expect(ladder["markdown-h5"]).toBeLessThan(ladder["markdown-h3"]);
     }
   });
 
@@ -66,10 +63,8 @@ describe("uiTypeLadderCssVariables", () => {
       "--fs-ui-xs": "12px",
       "--fs-ui-sm": "13px",
       "--fs-ui-md": "14px",
-      "--fs-prose": "16px",
+      "--fs-prose": "14px",
       "--fs-code": "13px",
-      "--fs-markdown-h5": "15px",
-      "--fs-markdown-h3": "17px",
       "--fs-display-sm": "18px",
       "--fs-display-md": "20px",
       "--fs-display-lg": "24px",

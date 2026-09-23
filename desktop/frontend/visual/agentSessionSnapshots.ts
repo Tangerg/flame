@@ -187,6 +187,8 @@ const RUNNING_REASONING: Item = {
     "Everything else in this boundary follows from that ordering, including why an interrupt has to be durable before it is acknowledged.",
     "Which also settles the compaction question: a summary is application material, so the framework may ask for one but must never assume it happened.",
     "The same reasoning applies to a Goal, whose lifecycle is a durable fact and whose progress is a claim.",
+    "A Plan is the same shape one level down: its steps are claims the model makes, and only the Runtime can mark one done because only the Runtime watched it happen.",
+    "That is also why a steer arrives as an item rather than as an edit — an edit would rewrite a fact, and an item adds one.",
   ].join(" "),
 };
 

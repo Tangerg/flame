@@ -18,10 +18,6 @@ export const UI_TYPE_STEPS = [
   "ui-md",
   "prose",
   "code",
-  // The editorial steps scale with the rest: a fixed heading would sit below the prose it heads
-  // at the larger base sizes.
-  "markdown-h5",
-  "markdown-h3",
   "display-sm",
   "display-md",
   "display-lg",

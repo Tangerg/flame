@@ -443,20 +443,12 @@
   --fs-ui-xs: 12px;
   --fs-ui-sm: 13px;
   --fs-ui-md: 14px;
-  --fs-prose: 16px;
+  --fs-prose: 14px;
   --fs-code: 13px;
 
-  /* The editorial half of the same ladder: markdown's larger headings take the display steps. */
-  --fs-markdown-h5: 15px;
-  --fs-markdown-h3: 17px;
   --fs-display-sm: 18px;
   --fs-display-md: 20px;
   --fs-display-lg: 24px;
-  --leading-markdown-heading: 1.25;
-  --leading-markdown-subheading: 22px;
-  --leading-markdown-minor: 20px;
-  --leading-markdown-table: 21px;
-  --leading-markdown-table-header: 16px;
 
   --icon-xs: 12px;
   --icon-sm: 14px;
@@ -481,7 +473,7 @@
   --leading-snug: 1.35;
   --leading-body: 1.55;
   --leading-relaxed: 1.65;
-  --leading-prose: calc(1em + 8px);
+  --leading-prose: 1.625;
 
   /* The absence of tracking, which is a decision where `--tracking-ui` is the default: mono
      glyphs and a placeholder are already spaced by something other than this ladder. */
@@ -704,9 +696,9 @@
   --seam-wash: color-mix(in oklab, var(--shadow-cast) 20%, transparent);
   --boundary-emphasis: color-mix(in oklab, var(--color-text) 28%, var(--color-border-soft));
 
-  /* The reading measure, in characters rather than pixels: at the prose step this is 82 per
-     line, inside the 45–85 a line can be swept without losing its place. 768px measured 94. */
-  --content-max: 672px;
+  /* Codex's thread measure. A transcript is prose interleaved with listings, tables and tool
+     rows, which want the width more than a line of prose wants to be short. */
+  --content-max: 768px;
   --content-max-wide: 1024px;
   --reading-column-max: calc(var(--content-max) + 2 * var(--reading-gutter-wide));
   --reading-rail-width: 176px;
