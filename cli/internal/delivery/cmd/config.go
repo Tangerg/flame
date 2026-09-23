@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
+	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
 )
 
 const maximumCLIConfigBytes int64 = 256 << 10
@@ -202,9 +202,7 @@ func newConfigCommand(v *viper.Viper) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			encoder := json.NewEncoder(cmd.OutOrStdout())
-			encoder.SetIndent("", "  ")
-			return encoder.Encode(config)
+			return render.WriteIndentedJSON(cmd.OutOrStdout(), config)
 		},
 	})
 	config.AddCommand(&cobra.Command{

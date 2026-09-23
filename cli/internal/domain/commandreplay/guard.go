@@ -1,14 +1,11 @@
 package commandreplay
 
 import (
-	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/Tangerg/flame/cli/internal/strictjson"
 )
 
 type GuardKind string
@@ -67,8 +64,8 @@ func (g Guard) Until() time.Time { return g.until }
 
 type guardJSON struct {
 	Type      GuardKind  `json:"type"`
-	Namespace string     `json:"namespace,omitempty"`
-	Until     *time.Time `json:"until,omitempty"`
+	Namespace string     `json:"namespace,omitzero"`
+	Until     *time.Time `json:"until,omitzero"`
 }
 
 func (g Guard) MarshalJSON() ([]byte, error) {
@@ -85,13 +82,8 @@ func (g Guard) MarshalJSON() ([]byte, error) {
 }
 
 func (g *Guard) UnmarshalJSON(data []byte) error {
-	if err := strictjson.ValidateUniqueMembers(data); err != nil {
-		return fmt.Errorf("decode command replay guard: %w", err)
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
 	var wire guardJSON
-	if err := decoder.Decode(&wire); err != nil {
+	if err := json.Unmarshal(data, &wire, json.RejectUnknownMembers(true)); err != nil {
 		return fmt.Errorf("decode command replay guard: %w", err)
 	}
 	switch wire.Type {

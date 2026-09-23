@@ -1,20 +1,20 @@
 package workspace
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"testing"
 )
 
 func TestDescriptorRejectsMalformedTools(t *testing.T) {
-	valid := DiagnosticToolDescriptor{Name: "inspect", Schema: json.RawMessage(`{"type":"object"}`)}
+	valid := DiagnosticToolDescriptor{Name: "inspect", Schema: jsontext.Value(`{"type":"object"}`)}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid descriptor: %v", err)
 	}
 	for name, descriptor := range map[string]DiagnosticToolDescriptor{
-		"empty name":  {Schema: json.RawMessage(`{}`)},
-		"padded name": {Name: " inspect ", Schema: json.RawMessage(`{}`)},
-		"array":       {Name: "inspect", Schema: json.RawMessage(`[]`)},
-		"malformed":   {Name: "inspect", Schema: json.RawMessage(`{`)},
+		"empty name":  {Schema: jsontext.Value(`{}`)},
+		"padded name": {Name: " inspect ", Schema: jsontext.Value(`{}`)},
+		"array":       {Name: "inspect", Schema: jsontext.Value(`[]`)},
+		"malformed":   {Name: "inspect", Schema: jsontext.Value(`{`)},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := descriptor.Validate(); err == nil {
@@ -25,11 +25,11 @@ func TestDescriptorRejectsMalformedTools(t *testing.T) {
 }
 
 func TestInvocationRequiresConfinedJSONObject(t *testing.T) {
-	valid := DiagnosticToolInvocation{Tool: DiagnosticToolDescriptor{Name: "inspect", Schema: json.RawMessage(`{}`)}, Workspace: "/repo", Arguments: json.RawMessage(`{}`)}
+	valid := DiagnosticToolInvocation{Tool: DiagnosticToolDescriptor{Name: "inspect", Schema: jsontext.Value(`{}`)}, Workspace: "/repo", Arguments: jsontext.Value(`{}`)}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid invocation: %v", err)
 	}
-	valid.Arguments = json.RawMessage(`null`)
+	valid.Arguments = jsontext.Value(`null`)
 	if err := valid.Validate(); err == nil {
 		t.Fatal("Validate accepted non-object arguments")
 	}

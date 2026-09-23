@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"text/tabwriter"
 
+	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/spf13/cobra"
 )
@@ -92,7 +92,7 @@ func listApprovalRules(cmd *cobra.Command, provider runtimeProvider, sessionID s
 		return err
 	}
 	if asJSON {
-		return json.NewEncoder(cmd.OutOrStdout()).Encode(struct {
+		return render.WriteJSONLine(cmd.OutOrStdout(), struct {
 			Rules []approvalRuleJSON `json:"rules"`
 		}{Rules: encodeApprovalRules(rules)})
 	}
@@ -109,8 +109,8 @@ type approvalRuleJSON struct {
 	ID       string `json:"id"`
 	Scope    string `json:"scope"`
 	Tool     string `json:"tool"`
-	Subject  string `json:"subject,omitempty"`
-	Dir      string `json:"dir,omitempty"`
+	Subject  string `json:"subject,omitzero"`
+	Dir      string `json:"dir,omitzero"`
 	Decision string `json:"decision"`
 }
 

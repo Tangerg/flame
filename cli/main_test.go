@@ -4,7 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"flag"
 	"fmt"
@@ -880,7 +881,7 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 	// owner teardown and released the Runtime's store resources.
 	sessionsOutput := runTestBinary(t, binary, environment, "sessions", "ls", "--json")
 	var sessions struct {
-		Items []json.RawMessage `json:"items"`
+		Items []jsontext.Value `json:"items"`
 	}
 	if err := json.Unmarshal(sessionsOutput, &sessions); err != nil {
 		t.Fatalf("decode in-process session page: %v\n%s", err, sessionsOutput)

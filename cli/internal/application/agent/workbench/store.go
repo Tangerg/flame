@@ -112,7 +112,7 @@ func (w Workspace) Validate() error {
 // filesystem failure between the two durable files.
 type historyEntry struct {
 	agent.Message
-	CommandID agent.CommandID `json:"commandId,omitempty"`
+	CommandID agent.CommandID `json:"commandId,omitzero"`
 }
 
 // Store is the aggregate root for CLI authoring state. Every mutating method

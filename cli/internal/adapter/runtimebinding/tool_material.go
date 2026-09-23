@@ -3,6 +3,7 @@ package runtimebinding
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"path/filepath"
 	"strings"
 
@@ -53,6 +54,9 @@ func projectToolResult(tool *agent.ToolCall, value any) {
 	}
 }
 
+// toolExitCode reads the number Runtime decoded. Runtime preserves tool-call
+// numbers exactly through encoding/json, so a json.Number reaches this binding
+// in process and naming it here is what keeps the exit code an integer.
 func toolExitCode(value any) (int, bool) {
 	switch number := value.(type) {
 	case int:
@@ -70,10 +74,13 @@ func toolExitCode(value any) (int, bool) {
 	}
 }
 
+// formattedJSON renders a result nobody projected into text. Indent reformats
+// in place and will spend the caller's spare capacity, so the tool call's own
+// result bytes are cloned rather than rewritten.
 func formattedJSON(encoded []byte) string {
-	var formatted bytes.Buffer
-	if err := json.Indent(&formatted, encoded, "", "  "); err != nil {
+	formatted := jsontext.Value(bytes.Clone(encoded))
+	if err := formatted.Indent(jsontext.WithIndent("  ")); err != nil {
 		return ""
 	}
-	return strings.TrimSpace(formatted.String())
+	return strings.TrimSpace(string(formatted))
 }

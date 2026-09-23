@@ -1,10 +1,10 @@
 package runtimebinding
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 
@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
-	"github.com/Tangerg/flame/cli/internal/strictjson"
 )
 
 type sessionBinding interface {
@@ -125,7 +124,7 @@ func (r *Connection) ExportSession(ctx context.Context, request session.ExportRe
 				response.Artifact.Session.ID, request.SessionID,
 			)
 		}
-		body, err = json.MarshalIndent(response.Artifact, "", "  ")
+		body, err = json.Marshal(response.Artifact, jsontext.WithIndent("  "), json.Deterministic(true))
 		if err != nil {
 			return session.Document{}, runtimeContractViolation("export session artifact cannot be encoded: %v", err)
 		}
@@ -144,13 +143,12 @@ func (r *Connection) ImportSession(ctx context.Context, request session.ImportRe
 	if err := r.requireFeature(protocol.FeatureSessionExport); err != nil {
 		return agent.Session{}, err
 	}
+	// An artifact is user-supplied text: duplicate members, unknown members and
+	// a trailing second document all have to fail before it becomes a Session.
 	var artifact protocol.SessionArtifact
-	if err := strictjson.ValidateUniqueMembers(request.Artifact.Bytes()); err != nil {
-		return agent.Session{}, fmt.Errorf("import session: artifact: %w", err)
-	}
-	decoder := json.NewDecoder(bytes.NewReader(request.Artifact.Bytes()))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&artifact); err != nil {
+	if err := json.Unmarshal(
+		request.Artifact.Bytes(), &artifact, json.RejectUnknownMembers(true),
+	); err != nil {
 		return agent.Session{}, fmt.Errorf("import session: decode artifact: %w", err)
 	}
 	if err := protocol.ValidateWireTree(artifact); err != nil {

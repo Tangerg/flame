@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
+	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -64,9 +64,7 @@ func newRuntimeInfoCommand(provider runtimeProvider) *cobra.Command {
 				return errors.New("runtime discovery profile is unavailable")
 			}
 			if asJSON {
-				encoder := json.NewEncoder(cmd.OutOrStdout())
-				encoder.SetEscapeHTML(false)
-				return encoder.Encode(*profile)
+				return render.WriteJSONLine(cmd.OutOrStdout(), *profile)
 			}
 			return writeRuntimeProfile(cmd.OutOrStdout(), *profile)
 		},

@@ -2,10 +2,11 @@ package agent
 
 import (
 	"bytes"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/cli/internal/strictjson"
 )
 
 // ToolArgumentOverride is a validated, immutable replacement for one pending
@@ -31,7 +32,7 @@ func ParseToolArgumentOverride(encoded []byte) (*ToolArgumentOverride, error) {
 	if len(object) == 0 {
 		return nil, errors.New("tool argument override must contain at least one argument")
 	}
-	normalized, err := json.Marshal(object)
+	normalized, err := json.Marshal(object, json.Deterministic(true))
 	if err != nil {
 		return nil, fmt.Errorf("encode tool argument override: %w", err)
 	}
@@ -102,11 +103,17 @@ func (t *ToolArgumentOverride) UnmarshalJSON(encoded []byte) error {
 	return nil
 }
 
+// decodeToolArgumentJSON splits one decode across both JSON vocabularies. v2
+// admits exactly one RFC 7493 value, rejecting the duplicate names that would
+// make the reviewed text and the executed argument object disagree; only v1
+// then decodes a JSON number into an any without rounding an identifier that
+// does not fit float64 exactly.
 func decodeToolArgumentJSON(encoded []byte) (any, error) {
-	if err := strictjson.ValidateUniqueMembers(encoded); err != nil {
+	var raw jsontext.Value
+	if err := json.Unmarshal(encoded, &raw); err != nil {
 		return nil, fmt.Errorf("tool argument override: %w", err)
 	}
-	decoder := json.NewDecoder(bytes.NewReader(encoded))
+	decoder := jsonv1.NewDecoder(bytes.NewReader(encoded))
 	decoder.UseNumber()
 	var value any
 	if err := decoder.Decode(&value); err != nil {

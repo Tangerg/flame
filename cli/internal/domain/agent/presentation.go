@@ -9,7 +9,8 @@ package agent
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"slices"
@@ -328,11 +329,11 @@ func (t ToolCall) Validate() error {
 	}
 	if len(t.ArgumentsJSON) > 0 {
 		var arguments map[string]any
-		if !json.Valid(t.ArgumentsJSON) || json.Unmarshal(t.ArgumentsJSON, &arguments) != nil || arguments == nil {
+		if !jsontext.Value(t.ArgumentsJSON).IsValid() || json.Unmarshal(t.ArgumentsJSON, &arguments) != nil || arguments == nil {
 			problems = append(problems, errors.New("arguments JSON is not an object"))
 		}
 	}
-	if len(t.ResultJSON) > 0 && !json.Valid(t.ResultJSON) {
+	if len(t.ResultJSON) > 0 && !jsontext.Value(t.ResultJSON).IsValid() {
 		problems = append(problems, errors.New("result JSON is invalid"))
 	}
 	if t.Problem != nil {

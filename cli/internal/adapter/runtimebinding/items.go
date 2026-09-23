@@ -1,7 +1,6 @@
 package runtimebinding
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -182,7 +181,7 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 	if value == nil {
 		return agent.ToolCall{}, errors.New("tool payload is absent")
 	}
-	argumentsJSON, err := json.Marshal(value.Arguments)
+	argumentsJSON, err := encodeProjection(value.Arguments)
 	if err != nil {
 		return agent.ToolCall{}, fmt.Errorf("encode tool arguments: %w", err)
 	}
@@ -198,7 +197,7 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 	tool.ArgumentsJSON = argumentsJSON
 	tool.ArgumentsText = value.ArgumentsText
 	if value.Result != nil {
-		resultJSON, err := json.Marshal(value.Result)
+		resultJSON, err := encodeProjection(value.Result)
 		if err != nil {
 			return agent.ToolCall{}, fmt.Errorf("encode tool result: %w", err)
 		}

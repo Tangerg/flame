@@ -1,7 +1,7 @@
 package workbench
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 
@@ -25,7 +25,7 @@ type PendingRun struct {
 	State           PendingRunState     `json:"state"`
 	Command         agent.StartRun      `json:"command"`
 	Replay          commandreplay.Guard `json:"replay"`
-	CancelCommandID agent.CommandID     `json:"cancelCommandId,omitempty"`
+	CancelCommandID agent.CommandID     `json:"cancelCommandId,omitzero"`
 	CancelReplay    commandreplay.Guard `json:"cancelReplay"`
 }
 
@@ -74,7 +74,7 @@ func (p PendingResume) validate() error {
 type pendingResumeJSON struct {
 	CommandID    agent.CommandID          `json:"commandId"`
 	RunID        string                   `json:"runId"`
-	Message      *agent.Message           `json:"message,omitempty"`
+	Message      *agent.Message           `json:"message,omitzero"`
 	Interactions []pendingInteractionJSON `json:"interactions"`
 	Replay       commandreplay.Guard      `json:"replay"`
 }
@@ -88,10 +88,10 @@ const (
 
 type pendingInteractionJSON struct {
 	Kind           pendingInteractionKind `json:"kind"`
-	Approval       *agent.Approval        `json:"approval,omitempty"`
-	Question       *agent.Question        `json:"question,omitempty"`
-	ApprovalAnswer *agent.ApprovalAnswer  `json:"approvalAnswer,omitempty"`
-	QuestionAnswer *agent.QuestionAnswer  `json:"questionAnswer,omitempty"`
+	Approval       *agent.Approval        `json:"approval,omitzero"`
+	Question       *agent.Question        `json:"question,omitzero"`
+	ApprovalAnswer *agent.ApprovalAnswer  `json:"approvalAnswer,omitzero"`
+	QuestionAnswer *agent.QuestionAnswer  `json:"questionAnswer,omitzero"`
 }
 
 func newPendingInteractionJSON(
@@ -173,7 +173,9 @@ func (p PendingResume) MarshalJSON() ([]byte, error) {
 		}
 		wire.Interactions[index] = encoded
 	}
-	return json.Marshal(wire)
+	// The record travels inside a state file, so it is encoded under the same
+	// options: the store owns the durable representations, not this type.
+	return json.Marshal(wire, stateJSONOptions)
 }
 
 func (p *PendingResume) UnmarshalJSON(encoded []byte) error {

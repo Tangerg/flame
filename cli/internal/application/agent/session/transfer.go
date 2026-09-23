@@ -3,7 +3,7 @@ package session
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"slices"
@@ -73,7 +73,7 @@ func validateDocumentBody(format runtimeprotocol.ExportFormat, body []byte) ([]b
 	if !utf8.Valid(body) {
 		return nil, errors.New("session document is not valid UTF-8")
 	}
-	if format == runtimeprotocol.ExportFormatJSON && !json.Valid(body) {
+	if format == runtimeprotocol.ExportFormatJSON && !jsontext.Value(body).IsValid() {
 		return nil, errors.New("session artifact is not valid JSON")
 	}
 	return body, nil

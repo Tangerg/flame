@@ -95,6 +95,46 @@ func TestApplicationDoesNotOwnOperatingSystemIO(t *testing.T) {
 	})
 }
 
+// TestCLIUsesOneJSONVocabulary keeps encoding/json out of production code.
+// encoding/json/v2 refuses duplicate members, trailing values and unknown
+// members without a hand-written pass, and its options state the rules the CLI
+// depends on: deterministic member order in machine-readable output and durable
+// state, and omitzero where a present-but-empty value is a fact.
+//
+// The exceptions decode a JSON number into an any. Only encoding/json exposes
+// that choice, and rounding a tool argument through float64 would change what
+// the operator reviewed into something else before it executes.
+func TestCLIUsesOneJSONVocabulary(t *testing.T) {
+	root := moduleRoot(t)
+	exact := map[string]string{
+		"internal/adapter/runtimebinding/tool_material.go": "reads the exact numbers Runtime decoded",
+		"internal/domain/agent/tool_argument_override.go":  "decodes an approval's edited arguments exactly",
+	}
+	found := make(map[string]bool, len(exact))
+	walkProduction(t, root, func(_, path string) {
+		for _, imported := range imports(t, path) {
+			if imported != "encoding/json" {
+				continue
+			}
+			file, err := filepath.Rel(root, path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			file = filepath.ToSlash(file)
+			if _, allowed := exact[file]; !allowed {
+				t.Errorf("%s imports encoding/json; the CLI decodes with encoding/json/v2", file)
+				continue
+			}
+			found[file] = true
+		}
+	})
+	for relative, reason := range exact {
+		if !found[relative] {
+			t.Errorf("%s no longer needs encoding/json (%s); drop it from the exception list", relative, reason)
+		}
+	}
+}
+
 func TestPackagePathsDoNotRepeatOwners(t *testing.T) {
 	root := filepath.Join(moduleRoot(t), "internal")
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -168,7 +208,7 @@ func ringOf(relative string) ring {
 		return ringComposition
 	case packageWithin(relative, "internal/arch"):
 		return ringComposition
-	case packageWithin(relative, "internal/exactint"), packageWithin(relative, "internal/strictjson"):
+	case packageWithin(relative, "internal/exactint"):
 		return ringMechanism
 	case packageWithin(relative, "internal/domain"):
 		return ringDomain

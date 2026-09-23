@@ -1,7 +1,7 @@
 package render
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"io"
 	"slices"
@@ -20,14 +20,14 @@ import (
 // segment identity, replay windows and dedup keys that exist to make a
 // reconnecting consumer correct and would be noise in a pipe.
 type NDJSON struct {
-	enc   *json.Encoder
+	out   io.Writer
 	err   error
 	scope runScope
 }
 
 // NewNDJSON builds an event-stream renderer over w.
 func NewNDJSON(w io.Writer) *NDJSON {
-	return &NDJSON{enc: json.NewEncoder(w)}
+	return &NDJSON{out: w}
 }
 
 // Begin binds the stream to the accepted run without emitting a synthetic
@@ -70,11 +70,11 @@ type eventRecord struct {
 	Options          *runOptionsJSON   `json:"options,omitzero"`
 	BlockID          string            `json:"blockId,omitzero"`
 	Text             string            `json:"text,omitzero"`
-	Step             *int              `json:"step,omitempty"`
-	ContextTokens    *int64            `json:"contextTokens,omitempty"`
+	Step             *int              `json:"step,omitzero"`
+	ContextTokens    *int64            `json:"contextTokens,omitzero"`
 	Activity         string            `json:"activity,omitzero"`
 	Name             string            `json:"name,omitzero"`
-	Payload          json.RawMessage   `json:"payload,omitempty"`
+	Payload          jsontext.Value    `json:"payload,omitzero"`
 	Block            *blockFrame       `json:"block,omitzero"`
 	Transcript       []blockFrame      `json:"transcript,omitzero"`
 	Runs             []runFrame        `json:"runs,omitzero"`
@@ -88,13 +88,13 @@ type runOptionsJSON struct {
 	Provider        string                `json:"provider,omitzero"`
 	Model           string                `json:"model,omitzero"`
 	ReasoningEffort string                `json:"reasoningEffort,omitzero"`
-	Params          *generationParamsJSON `json:"params,omitempty"`
+	Params          *generationParamsJSON `json:"params,omitzero"`
 }
 
 type generationParamsJSON struct {
-	Temperature *float64 `json:"temperature,omitempty"`
-	MaxTokens   *int64   `json:"maxTokens,omitempty"`
-	TopP        *float64 `json:"topP,omitempty"`
+	Temperature *float64 `json:"temperature,omitzero"`
+	MaxTokens   *int64   `json:"maxTokens,omitzero"`
+	TopP        *float64 `json:"topP,omitzero"`
 	Stop        []string `json:"stop,omitempty"`
 }
 
@@ -143,10 +143,10 @@ type toolFrame struct {
 	Query         string                `json:"query,omitzero"`
 	URL           string                `json:"url,omitzero"`
 	Output        string                `json:"output,omitzero"`
-	ArgumentsText string                `json:"argumentsText,omitempty"`
-	Arguments     json.RawMessage       `json:"arguments,omitempty"`
-	Result        json.RawMessage       `json:"result,omitempty"`
-	Problem       *protocol.ProblemData `json:"problem,omitempty"`
+	ArgumentsText string                `json:"argumentsText,omitzero"`
+	Arguments     jsontext.Value        `json:"arguments,omitzero"`
+	Result        jsontext.Value        `json:"result,omitzero"`
+	Problem       *protocol.ProblemData `json:"problem,omitzero"`
 	Diff          string                `json:"diff,omitzero"`
 	ExitCode      *int                  `json:"exitCode,omitzero"`
 	DurationMS    float64               `json:"durationMs,omitzero"`
@@ -189,7 +189,7 @@ type questionOptionJSON struct {
 type outcomeJSON struct {
 	Status  string                `json:"status"`
 	Error   string                `json:"error,omitzero"`
-	Problem *protocol.ProblemData `json:"problem,omitempty"`
+	Problem *protocol.ProblemData `json:"problem,omitzero"`
 	Detail  string                `json:"detail,omitzero"`
 }
 
@@ -199,7 +199,7 @@ type usageJSON struct {
 	CacheReadTokens  int64                     `json:"cacheReadTokens,omitzero"`
 	CacheWriteTokens int64                     `json:"cacheWriteTokens,omitzero"`
 	ReasoningTokens  int64                     `json:"reasoningTokens,omitzero"`
-	CostUSD          *float64                  `json:"costUsd,omitempty"`
+	CostUSD          *float64                  `json:"costUsd,omitzero"`
 	ByModel          map[string]modelUsageJSON `json:"byModel,omitempty"`
 	Steps            int                       `json:"steps,omitzero"`
 	DurationMS       float64                   `json:"durationMs,omitzero"`
@@ -211,7 +211,7 @@ type modelUsageJSON struct {
 	CacheReadTokens  int64    `json:"cacheReadTokens,omitzero"`
 	CacheWriteTokens int64    `json:"cacheWriteTokens,omitzero"`
 	ReasoningTokens  int64    `json:"reasoningTokens,omitzero"`
-	CostUSD          *float64 `json:"costUsd,omitempty"`
+	CostUSD          *float64 `json:"costUsd,omitzero"`
 }
 
 // Render writes one line. As with [Text], the first error sticks.
@@ -236,7 +236,7 @@ func (n *NDJSON) Render(envelope agent.RunEvent) error {
 	if f.RunID == "" {
 		f.RunID = envelope.RunID
 	}
-	n.err = n.enc.Encode(f)
+	n.err = WriteJSONLine(n.out, f)
 	return n.err
 }
 
@@ -287,7 +287,7 @@ func (n *NDJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 		finished := encodeFinishedFrame(agent.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
 		frame.Outcome, frame.Usage = finished.Outcome, finished.Usage
 	}
-	n.err = n.enc.Encode(frame)
+	n.err = WriteJSONLine(n.out, frame)
 	return n.err
 }
 
@@ -316,7 +316,7 @@ func encodeEventFrame(envelope agent.RunEvent) (eventRecord, error) {
 		}
 		return frame, nil
 	case agent.CustomEvent:
-		return eventRecord{Type: "custom", Name: event.Name, Payload: json.RawMessage(event.PayloadJSON)}, nil
+		return eventRecord{Type: "custom", Name: event.Name, Payload: jsontext.Value(event.PayloadJSON)}, nil
 	case agent.BlockCompleted:
 		return eventRecord{Type: "block.completed", Block: encodeBlock(event.Block)}, nil
 	case agent.PlanChanged:
@@ -499,9 +499,9 @@ func encodeTool(tool *agent.ToolCall) *toolFrame {
 		Query:         tool.Query,
 		URL:           tool.URL,
 		Output:        tool.Output,
-		Arguments:     json.RawMessage(tool.ArgumentsJSON),
+		Arguments:     jsontext.Value(tool.ArgumentsJSON),
 		ArgumentsText: tool.ArgumentsText,
-		Result:        json.RawMessage(tool.ResultJSON),
+		Result:        jsontext.Value(tool.ResultJSON),
 		Problem:       failure.Clone(tool.Problem),
 		Diff:          tool.Diff,
 		ExitCode:      tool.ExitCode,

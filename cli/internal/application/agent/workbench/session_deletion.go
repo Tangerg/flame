@@ -27,7 +27,7 @@ const (
 // records remain only while obsolete CLI-local state still needs cleanup.
 type PendingSessionDeletion struct {
 	Phase     SessionDeletionPhase `json:"phase"`
-	CommandID agent.CommandID      `json:"commandId,omitempty"`
+	CommandID agent.CommandID      `json:"commandId,omitzero"`
 	SessionID string               `json:"sessionId"`
 	Replay    commandreplay.Guard  `json:"replay"`
 }

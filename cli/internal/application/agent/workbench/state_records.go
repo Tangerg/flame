@@ -1,18 +1,18 @@
 package workbench
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
 	"path/filepath"
 	"slices"
+	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/strictjson"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -31,9 +31,9 @@ type sessionState struct {
 	SessionID       string                  `json:"sessionId"`
 	Draft           agent.Message           `json:"draft"`
 	PendingRuns     []PendingRun            `json:"pendingRuns"`
-	PendingResume   *PendingResume          `json:"pendingResume,omitempty"`
-	PendingRollback *PendingSessionRollback `json:"pendingRollback,omitempty"`
-	PendingSteer    *pendingSteerRecord     `json:"pendingSteer,omitempty"`
+	PendingResume   *PendingResume          `json:"pendingResume,omitzero"`
+	PendingRollback *PendingSessionRollback `json:"pendingRollback,omitzero"`
+	PendingSteer    *pendingSteerRecord     `json:"pendingSteer,omitzero"`
 }
 
 func validateSessionDraft(draft agent.Message) error {
@@ -108,7 +108,7 @@ func (s *Store) load(name string, value any) error {
 	if err != nil {
 		return err
 	}
-	var raw envelope[json.RawMessage]
+	var raw envelope[jsontext.Value]
 	if err := decodeStateJSON(body, &raw); err != nil {
 		return fmt.Errorf("decode workbench state %q: %w", name, err)
 	}
@@ -122,13 +122,37 @@ func (s *Store) load(name string, value any) error {
 }
 
 func decodeStateJSON(encoded []byte, value any) error {
-	if err := strictjson.ValidateUniqueMembers(encoded); err != nil {
-		return err
-	}
-	decoder := json.NewDecoder(bytes.NewReader(encoded))
-	decoder.DisallowUnknownFields()
-	return decoder.Decode(value)
+	return json.Unmarshal(encoded, value, stateJSONOptions)
 }
+
+// A durable state record names its own representations. encoding/json/v2 has no
+// decided JSON form for time.Duration and refuses to guess, so the store states
+// the one its files already contain: whole nanoseconds. Deterministic member
+// order keeps a rewritten file diffable, and an unknown member is a record this
+// build cannot honor rather than one to ignore.
+var stateJSONOptions = json.JoinOptions(
+	json.Deterministic(true),
+	json.RejectUnknownMembers(true),
+	// An absent collection stays null so a reloaded record still distinguishes
+	// "not answered yet" from "answered with nothing".
+	json.FormatNilSliceAsNull(true),
+	json.FormatNilMapAsNull(true),
+	json.WithMarshalers(json.MarshalToFunc(func(encoder *jsontext.Encoder, value time.Duration) error {
+		return encoder.WriteToken(jsontext.Int(int64(value)))
+	})),
+	json.WithUnmarshalers(json.UnmarshalFromFunc(func(decoder *jsontext.Decoder, value *time.Duration) error {
+		token, err := decoder.ReadToken()
+		if err != nil {
+			return err
+		}
+		nanoseconds, err := token.Int()
+		if err != nil {
+			return err
+		}
+		*value = time.Duration(nanoseconds)
+		return nil
+	})),
+)
 
 func (s *Store) loadOptional(name string, value any) error {
 	err := s.load(name, value)
@@ -312,7 +336,13 @@ func (s *Store) save(name string, value any) error {
 	if ok, err := s.writable(); err != nil || !ok {
 		return err
 	}
-	encoded, err := json.MarshalIndent(envelope[any]{Version: formatVersion, Value: value}, "", "  ")
+	// A state file is read by a person and compared between runs, so the same
+	// value must produce the same bytes.
+	encoded, err := json.Marshal(
+		envelope[any]{Version: formatVersion, Value: value},
+		jsontext.WithIndent("  "),
+		stateJSONOptions,
+	)
 	if err != nil {
 		return fmt.Errorf("encode state snapshot: %w", err)
 	}

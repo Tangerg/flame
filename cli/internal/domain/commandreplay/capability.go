@@ -3,14 +3,11 @@
 package commandreplay
 
 import (
-	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/Tangerg/flame/cli/internal/strictjson"
 )
 
 // Capability is the immutable replay promise published by one Runtime. Its
@@ -73,13 +70,8 @@ func (c Capability) MarshalJSON() ([]byte, error) {
 }
 
 func (c *Capability) UnmarshalJSON(data []byte) error {
-	if err := strictjson.ValidateUniqueMembers(data); err != nil {
-		return fmt.Errorf("decode command replay capability: %w", err)
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
 	var wire capabilityJSON
-	if err := decoder.Decode(&wire); err != nil {
+	if err := json.Unmarshal(data, &wire, json.RejectUnknownMembers(true)); err != nil {
 		return fmt.Errorf("decode command replay capability: %w", err)
 	}
 	if wire.RetentionSeconds <= 0 || wire.RetentionSeconds > int64((time.Duration(1<<63-1))/time.Second) {

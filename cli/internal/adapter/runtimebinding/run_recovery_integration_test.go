@@ -2,7 +2,8 @@ package runtimebinding
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -132,13 +133,13 @@ func delegatedApprovalResponse(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Stream   bool `json:"stream"`
 		Messages []struct {
-			Role       string          `json:"role"`
-			Content    json.RawMessage `json:"content"`
-			ToolCallID string          `json:"tool_call_id"`
+			Role       string         `json:"role"`
+			Content    jsontext.Value `json:"content"`
+			ToolCallID string         `json:"tool_call_id"`
 		} `json:"messages"`
-		Tools []json.RawMessage `json:"tools"`
+		Tools []jsontext.Value `json:"tools"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	if err := json.UnmarshalRead(r.Body, &request); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -200,5 +201,5 @@ func delegatedApprovalResponse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(body)
+	_ = json.MarshalWrite(w, body)
 }

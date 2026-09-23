@@ -1,7 +1,6 @@
 package runtimebinding
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -78,9 +77,9 @@ func (p Profile) MarshalJSON() ([]byte, error) {
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
-	return json.Marshal(struct {
+	return encodeProjection(struct {
 		Discovery          protocol.DiscoverResponse    `json:"discovery"`
-		ClientCapabilities *protocol.ClientCapabilities `json:"clientCapabilities,omitempty"`
+		ClientCapabilities *protocol.ClientCapabilities `json:"clientCapabilities,omitzero"`
 	}{p.discovery, p.client})
 }
 

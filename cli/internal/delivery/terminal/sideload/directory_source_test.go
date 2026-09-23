@@ -2,7 +2,7 @@ package sideload
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -354,7 +354,7 @@ func TestCommandResponseRejectsMalformedProtocolWithoutProcessTiming(t *testing.
 
 func TestCommandResponseNamesGenericTrailingJSON(t *testing.T) {
 	_, err := decodeCommandResponse("test.bad", "bad", []byte(`{"protocol":1,"message":"ok"} {}`))
-	if err == nil || !strings.Contains(err.Error(), "JSON contains more than one value") || strings.Contains(err.Error(), "manifest") {
+	if err == nil || !strings.Contains(err.Error(), "after top-level value") || strings.Contains(err.Error(), "manifest") {
 		t.Fatalf("trailing response error = %v", err)
 	}
 }

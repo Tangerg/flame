@@ -156,7 +156,7 @@ func (a *app) openApproval(approval agent.Approval) {
 		a.dialogs.approvalDraft.reason = answer.Reason
 		if answer.ArgumentOverride != nil {
 			a.dialogs.approvalOverride = answer.ArgumentOverride.Clone()
-			a.dialogs.approvalArguments = formatToolArguments(a.dialogs.approvalOverride.JSON())
+			a.dialogs.approvalArguments = prettyJSON(a.dialogs.approvalOverride.JSON())
 		}
 	}
 	a.setApprovalForm(initial)

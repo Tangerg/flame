@@ -1,9 +1,9 @@
 package terminal
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"slices"
@@ -159,7 +159,7 @@ func mcpToolsDocument(server string, tools []protocol.MCPTool) (readerDocument, 
 		title := tool.Server + "/" + tool.Name
 		sections = append(sections, ToolSection{Title: title, Style: toolSectionParagraph, Text: tool.Description})
 		if tool.InputSchema != nil {
-			schema, err := json.MarshalIndent(tool.InputSchema, "", "  ")
+			schema, err := json.Marshal(tool.InputSchema, jsontext.WithIndent("  "), json.Deterministic(true))
 			if err != nil {
 				return readerDocument{}, fmt.Errorf("format MCP tool %s input schema: %w", title, err)
 			}
@@ -167,14 +167,6 @@ func mcpToolsDocument(server string, tools []protocol.MCPTool) (readerDocument, 
 		}
 	}
 	return readerDocument{Title: "MCP tools", Detail: detail, Sections: sections}, nil
-}
-
-func prettyJSON(value json.RawMessage) string {
-	var output bytes.Buffer
-	if err := json.Indent(&output, value, "", "  "); err != nil {
-		return string(value)
-	}
-	return output.String()
 }
 
 func (a *app) OpenMCPCreateForm() error {

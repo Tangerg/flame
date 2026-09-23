@@ -2,7 +2,8 @@ package agent
 
 import (
 	"bytes"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	json "encoding/json/v2"
 	"testing"
 )
 
@@ -28,7 +29,7 @@ func TestToolArgumentOverrideOwnsANormalizedJSONObject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if number, ok := object["count"].(json.Number); !ok || number.String() != "9007199254740993" {
+	if number, ok := object["count"].(jsonv1.Number); !ok || number.String() != "9007199254740993" {
 		t.Fatalf("large JSON number = %#v", object["count"])
 	}
 	object["count"] = "mutated"

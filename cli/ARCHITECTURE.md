@@ -95,6 +95,10 @@ Workbench persistence contains only CLI-authored facts. The workbench aggregate 
 
 Attachments are local path references. Dispatch reopens the current file through the filesystem adapter and converts it to Runtime content under explicit size and encoding limits.
 
+## JSON
+
+The CLI speaks one JSON vocabulary, `encoding/json/v2`. Duplicate members, trailing documents, and unknown members are refused by the decoder itself rather than by a hand-written validating pass, and `omitzero` marks the fields whose absence is a fact, so a present-but-empty value survives the round trip. Bytes that are hashed, compared against a second projection, persisted, or piped to another program are encoded deterministically; only the durable workbench records also keep a nil collection as `null`, because a reloaded record has to distinguish an unanswered interaction from an empty answer. The two exceptions that still decode with `encoding/json` decode a JSON number into an `any`: only that package can preserve an identifier outside float64's exact range, which is what keeps a reviewed tool argument the same value when it executes.
+
 ## Package shape
 
 A package must own a coherent CLI vocabulary, local aggregate, workflow lifecycle, external translation, or terminal mechanism. Related behavior stays in responsibility-named files inside one package. Context namespace directories exist only for several peer packages and contain no facade Go files. A package does not earn a boundary merely because its type has an interface or its workflow has one action.

@@ -3,7 +3,8 @@ package runtimebinding
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
+	jsonv1 "encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"reflect"
 	"strings"
@@ -22,7 +23,7 @@ func TestProjectToolPreservesStructuredDetails(t *testing.T) {
 	tool, err := projectTool(toolProjection{
 		invocation: &protocol.ToolInvocation{
 			Name: "shell", Arguments: map[string]any{"command": "go test ./..."},
-			Result: map[string]any{"output": "ok", "exitCode": json.Number("0")},
+			Result: map[string]any{"output": "ok", "exitCode": jsonv1.Number("0")},
 		}, status: protocol.ItemStatusCompleted, safety: protocol.SafetyClassExec,
 		startedAt: started, finishedAt: finished, durationMillis: &duration,
 	})
@@ -32,8 +33,8 @@ func TestProjectToolPreservesStructuredDetails(t *testing.T) {
 	if tool.Kind != agent.ToolShell || tool.Command != "go test ./..." || tool.Output != "ok" ||
 		tool.Safety != protocol.SafetyClassExec || !tool.StartedAt.Equal(started) || !tool.FinishedAt.Equal(finished) ||
 		tool.ExitCode == nil || *tool.ExitCode != 0 || tool.Duration != 1250*time.Millisecond ||
-		!json.Valid(tool.ArgumentsJSON) || !bytes.Contains(tool.ArgumentsJSON, []byte(`"command":"go test ./..."`)) ||
-		!json.Valid(tool.ResultJSON) || !bytes.Contains(tool.ResultJSON, []byte(`"output":"ok"`)) {
+		!jsontext.Value(tool.ArgumentsJSON).IsValid() || !bytes.Contains(tool.ArgumentsJSON, []byte(`"command":"go test ./..."`)) ||
+		!jsontext.Value(tool.ResultJSON).IsValid() || !bytes.Contains(tool.ResultJSON, []byte(`"output":"ok"`)) {
 		t.Fatalf("tool = %+v", tool)
 	}
 }
@@ -85,8 +86,8 @@ func TestProjectToolRetainsDisplayAfterSourceReuse(t *testing.T) {
 	arguments := map[string]any{"command": "printf approved"}
 	change := map[string]any{"path": "result.txt"}
 	result := map[string]any{
-		"output": "approved", "exitCode": json.Number("0"),
-		"changes": []any{change}, "recordId": json.Number("9007199254740993"),
+		"output": "approved", "exitCode": jsonv1.Number("0"),
+		"changes": []any{change}, "recordId": jsonv1.Number("9007199254740993"),
 	}
 	tool, err := projectTool(toolProjection{invocation: &protocol.ToolInvocation{
 		Name: "shell", Arguments: arguments, Result: result,

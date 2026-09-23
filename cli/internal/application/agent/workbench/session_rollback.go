@@ -31,13 +31,13 @@ type PendingSessionRollback struct {
 	Phase          SessionRollbackPhase        `json:"phase"`
 	CommandID      agent.CommandID             `json:"commandId"`
 	SessionID      string                      `json:"sessionId"`
-	ToRunID        string                      `json:"toRunId,omitempty"`
+	ToRunID        string                      `json:"toRunId,omitzero"`
 	Scope          runtimeprotocol.RestoreType `json:"scope"`
 	BeforeRevision uint64                      `json:"beforeRevision"`
 	BeforeRunIDs   []string                    `json:"beforeRunIds"`
 	AfterRunIDs    []string                    `json:"afterRunIds"`
-	OpeningText    string                      `json:"openingText,omitempty"`
-	OpeningImages  int                         `json:"openingImages,omitempty"`
+	OpeningText    string                      `json:"openingText,omitzero"`
+	OpeningImages  int                         `json:"openingImages,omitzero"`
 	StagedAt       time.Time                   `json:"stagedAt"`
 	Replay         commandreplay.Guard         `json:"replay"`
 }

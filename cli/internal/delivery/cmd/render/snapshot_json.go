@@ -1,7 +1,6 @@
 package render
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"time"
@@ -14,13 +13,13 @@ type sessionSnapshotRecord struct {
 	Session      sessionFrame       `json:"session"`
 	Transcript   []blockFrame       `json:"transcript"`
 	Runs         []runFrame         `json:"runs"`
-	Plan         *planSnapshotFrame `json:"plan,omitempty"`
+	Plan         *planSnapshotFrame `json:"plan,omitzero"`
 	Interactions []interactionJSON  `json:"interactions,omitempty"`
 }
 
 type sessionPageRecord struct {
 	Items      []sessionFrame `json:"items"`
-	NextCursor string         `json:"nextCursor,omitempty"`
+	NextCursor string         `json:"nextCursor,omitzero"`
 }
 
 type sessionFrame struct {
@@ -28,12 +27,12 @@ type sessionFrame struct {
 	Title           string         `json:"title"`
 	Status          string         `json:"status"`
 	Provider        string         `json:"provider"`
-	Model           string         `json:"model,omitempty"`
-	ReasoningEffort string         `json:"reasoningEffort,omitempty"`
+	Model           string         `json:"model,omitzero"`
+	ReasoningEffort string         `json:"reasoningEffort,omitzero"`
 	Workspace       workspaceFrame `json:"workspace"`
 	CreatedAt       time.Time      `json:"createdAt,omitzero"`
 	UpdatedAt       time.Time      `json:"updatedAt,omitzero"`
-	Favorite        bool           `json:"favorite,omitempty"`
+	Favorite        bool           `json:"favorite,omitzero"`
 	Revision        uint64         `json:"revision"`
 }
 
@@ -46,21 +45,21 @@ type workspaceFrame struct {
 type runFrame struct {
 	ID               string    `json:"id"`
 	SessionID        string    `json:"sessionId"`
-	SpawnedByBlockID string    `json:"spawnedByBlockId,omitempty"`
-	ParentRunID      string    `json:"parentRunId,omitempty"`
-	RootRunID        string    `json:"rootRunId,omitempty"`
-	Provider         string    `json:"provider,omitempty"`
-	Model            string    `json:"model,omitempty"`
-	ReasoningEffort  string    `json:"reasoningEffort,omitempty"`
+	SpawnedByBlockID string    `json:"spawnedByBlockId,omitzero"`
+	ParentRunID      string    `json:"parentRunId,omitzero"`
+	RootRunID        string    `json:"rootRunId,omitzero"`
+	Provider         string    `json:"provider,omitzero"`
+	Model            string    `json:"model,omitzero"`
+	ReasoningEffort  string    `json:"reasoningEffort,omitzero"`
 	Status           string    `json:"status"`
-	ActiveSegmentID  string    `json:"activeSegmentId,omitempty"`
+	ActiveSegmentID  string    `json:"activeSegmentId,omitzero"`
 	CreatedAt        time.Time `json:"createdAt,omitzero"`
 	FinishedAt       time.Time `json:"finishedAt,omitzero"`
 
-	ContextTokens   int64            `json:"contextTokens,omitempty"`
-	Outcome         *outcomeJSON     `json:"outcome,omitempty"`
+	ContextTokens   int64            `json:"contextTokens,omitzero"`
+	Outcome         *outcomeJSON     `json:"outcome,omitzero"`
 	Usage           usageJSON        `json:"usage"`
-	ProtocolProfile *runContractJSON `json:"protocolProfile,omitempty"`
+	ProtocolProfile *runContractJSON `json:"protocolProfile,omitzero"`
 }
 
 type runContractJSON struct {
@@ -82,7 +81,7 @@ func encodePlanSnapshot(plan *protocol.Plan) *planSnapshotFrame {
 
 type runPageRecord struct {
 	Items      []runFrame `json:"items"`
-	NextCursor string     `json:"nextCursor,omitempty"`
+	NextCursor string     `json:"nextCursor,omitzero"`
 }
 
 type runCancellationRecord struct {
@@ -93,7 +92,7 @@ type runCancellationRecord struct {
 // WriteSessionJSON writes one session using the same field contract as session
 // pages and cold snapshots.
 func WriteSessionJSON(w io.Writer, session agent.Session) error {
-	return json.NewEncoder(w).Encode(encodeSession(session))
+	return WriteJSONLine(w, encodeSession(session))
 }
 
 // WriteSessionPageJSON writes a validated runtime page without losing its
@@ -103,7 +102,7 @@ func WriteSessionPageJSON(w io.Writer, page agent.SessionPage) error {
 	for _, session := range page.Items {
 		record.Items = append(record.Items, encodeSession(session))
 	}
-	return json.NewEncoder(w).Encode(record)
+	return WriteJSONLine(w, record)
 }
 
 // WriteSessionSnapshotJSON writes the CLI's stable cold-read JSON projection.
@@ -126,7 +125,7 @@ func WriteSessionSnapshotJSON(w io.Writer, snapshot agent.SessionSnapshot) error
 	for _, run := range snapshot.Runs {
 		record.Runs = append(record.Runs, encodeRun(run))
 	}
-	return json.NewEncoder(w).Encode(record)
+	return WriteJSONLine(w, record)
 }
 
 func encodeSession(session agent.Session) sessionFrame {
@@ -148,7 +147,7 @@ func WriteRunJSON(w io.Writer, run agent.Run) error {
 	if err := run.Validate(); err != nil {
 		return fmt.Errorf("render run: %w", err)
 	}
-	return json.NewEncoder(w).Encode(encodeRun(run))
+	return WriteJSONLine(w, encodeRun(run))
 }
 
 func WriteRunPageJSON(w io.Writer, page agent.RunPage) error {
@@ -159,14 +158,14 @@ func WriteRunPageJSON(w io.Writer, page agent.RunPage) error {
 	for _, run := range page.Items {
 		record.Items = append(record.Items, encodeRun(run))
 	}
-	return json.NewEncoder(w).Encode(record)
+	return WriteJSONLine(w, record)
 }
 
 func WriteRunCancellationJSON(w io.Writer, result agent.RunCancellation) error {
 	if err := result.Validate(); err != nil {
 		return fmt.Errorf("render run cancellation: %w", err)
 	}
-	return json.NewEncoder(w).Encode(runCancellationRecord{
+	return WriteJSONLine(w, runCancellationRecord{
 		Canceled: encodeRun(result.Canceled),
 		Root:     encodeRun(result.Root),
 	})

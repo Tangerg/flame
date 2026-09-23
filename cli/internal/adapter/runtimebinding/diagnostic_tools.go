@@ -2,7 +2,7 @@ package runtimebinding
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 
@@ -38,7 +38,7 @@ func (d *DiagnosticTools) Tools(ctx context.Context) ([]workspace.DiagnosticTool
 				value.SafetyClass,
 			)
 		}
-		schema, marshalErr := json.Marshal(value.Parameters)
+		schema, marshalErr := encodeProjection(value.Parameters)
 		if marshalErr != nil {
 			return nil, runtimeContractViolation("list diagnostic tools item %d has an invalid schema: %v", index+1, marshalErr)
 		}
@@ -83,7 +83,7 @@ func (d *DiagnosticTools) Invoke(ctx context.Context, invocation workspace.Diagn
 	if err != nil {
 		return workspace.DiagnosticToolResult{}, classifyError(err)
 	}
-	encoded, err := json.Marshal(value)
+	encoded, err := encodeProjection(value)
 	if err != nil {
 		return workspace.DiagnosticToolResult{}, runtimeContractViolation("diagnostic tool result cannot be encoded: %v", err)
 	}

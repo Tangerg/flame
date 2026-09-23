@@ -3,7 +3,8 @@ package runtimebinding
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
@@ -195,7 +196,7 @@ func TestSessionImportDecodesOpaqueDocumentOnlyAtTheAdapterBoundary(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: unknown}); err == nil || !strings.Contains(err.Error(), "unknown field") {
+	if _, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: unknown}); err == nil || !strings.Contains(err.Error(), "unknown object member name") {
 		t.Fatalf("unknown artifact field error = %v", err)
 	}
 }
@@ -208,7 +209,7 @@ func validSessionImportArtifact() protocol.SessionArtifact {
 			Provider: testSessionProvider, Model: testSessionModel,
 			CreatedAt: testSessionTime, UpdatedAt: testSessionTime,
 		},
-		Messages: []json.RawMessage{}, Runs: []protocol.ArtifactRun{}, Items: []protocol.ArtifactItem{},
+		Messages: []jsontext.Value{}, Runs: []protocol.ArtifactRun{}, Items: []protocol.ArtifactItem{},
 		ToolResults: []protocol.ArtifactToolResult{},
 	}
 }

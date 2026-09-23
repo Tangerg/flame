@@ -2,7 +2,7 @@ package terminal
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"strings"
@@ -93,7 +93,7 @@ type diagnosticInvocationResult struct {
 	result workspace.DiagnosticToolResult
 }
 
-func parseDiagnosticToolInvocation(argument string) (string, json.RawMessage, error) {
+func parseDiagnosticToolInvocation(argument string) (string, jsontext.Value, error) {
 	identity, raw, ok := splitCommandArgument(argument)
 	if !ok {
 		return "", nil, errors.New("usage: /tool-invoke <name> [json-object]")

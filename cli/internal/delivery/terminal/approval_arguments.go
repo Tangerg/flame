@@ -1,8 +1,6 @@
 package terminal
 
 import (
-	"bytes"
-	"encoding/json"
 	"slices"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
@@ -26,7 +24,7 @@ func (a *app) openApprovalArgumentEditor() {
 			if complete(nil) {
 				a.dialogs.approvalEditor = nil
 				a.dialogs.approvalOverride = override
-				a.dialogs.approvalArguments = formatToolArguments(override.JSON())
+				a.dialogs.approvalArguments = prettyJSON(override.JSON())
 				a.setApprovalPreview(a.approvalPreviewSections())
 				a.setApprovalForm(approvalAllowOnce)
 				a.dialogs.approvalPane.Focus(true)
@@ -61,13 +59,5 @@ func editableApprovalArguments(call *agent.ToolCall) string {
 	if call == nil || len(call.ArgumentsJSON) == 0 {
 		return "{}"
 	}
-	return formatToolArguments(call.ArgumentsJSON)
-}
-
-func formatToolArguments(encoded []byte) string {
-	var formatted bytes.Buffer
-	if json.Indent(&formatted, encoded, "", "  ") == nil {
-		return formatted.String()
-	}
-	return string(encoded)
+	return prettyJSON(call.ArgumentsJSON)
 }

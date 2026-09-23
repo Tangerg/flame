@@ -3,7 +3,7 @@ package sideload
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -16,7 +16,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
-	"github.com/Tangerg/flame/cli/internal/strictjson"
 )
 
 const (
@@ -45,7 +44,7 @@ type commandRequest struct {
 	Protocol  int    `json:"protocol"`
 	PluginID  string `json:"pluginId"`
 	Command   string `json:"command"`
-	Argument  string `json:"argument,omitempty"`
+	Argument  string `json:"argument,omitzero"`
 	Workspace string `json:"workspace"`
 	SessionID string `json:"sessionId"`
 }
@@ -156,13 +155,8 @@ func commandEnvironment(pluginID, command string) []string {
 }
 
 func decodeCommandResponse(pluginID, command string, output []byte) (terminal.CommandResult, error) {
-	if err := strictjson.ValidateUniqueMembers(output); err != nil {
-		return terminal.CommandResult{}, fmt.Errorf("decode plugin %s command /%s response: %w", pluginID, command, err)
-	}
-	decoder := json.NewDecoder(bytes.NewReader(output))
-	decoder.DisallowUnknownFields()
 	var response commandResponse
-	if err := decoder.Decode(&response); err != nil {
+	if err := json.Unmarshal(output, &response, json.RejectUnknownMembers(true)); err != nil {
 		return terminal.CommandResult{}, fmt.Errorf("decode plugin %s command /%s response: %w", pluginID, command, err)
 	}
 	if response.Protocol != commandProtocolVersion {

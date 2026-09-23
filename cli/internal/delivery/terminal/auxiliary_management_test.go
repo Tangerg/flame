@@ -2,7 +2,7 @@ package terminal
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"slices"
 	"sync"
 	"testing"
@@ -23,13 +23,13 @@ type diagnosticToolServiceStub struct {
 func (d *diagnosticToolServiceStub) Tools(context.Context) ([]workspace.DiagnosticToolDescriptor, error) {
 	return []workspace.DiagnosticToolDescriptor{{
 		Name: "inspect.cache", Description: "inspect cache ownership",
-		Schema: json.RawMessage(`{"type":"object","properties":{"depth":{"type":"number"}}}`),
+		Schema: jsontext.Value(`{"type":"object","properties":{"depth":{"type":"number"}}}`),
 	}}, nil
 }
 
 func (d *diagnosticToolServiceStub) Invoke(_ context.Context, invocation workspace.DiagnosticToolInvocation) (workspace.DiagnosticToolResult, error) {
 	d.invoked <- invocation
-	return workspace.DiagnosticToolResult{JSON: json.RawMessage(`{"entries":2,"healthy":true}`)}, nil
+	return workspace.DiagnosticToolResult{JSON: jsontext.Value(`{"entries":2,"healthy":true}`)}, nil
 }
 
 func TestDiagnosticToolsRenderSchemaAndConfinedResultAcrossResize(t *testing.T) {

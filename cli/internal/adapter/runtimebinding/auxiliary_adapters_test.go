@@ -2,7 +2,7 @@ package runtimebinding
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -43,7 +43,7 @@ func TestDiagnosticToolAdapterConfinesSafeCatalogAndJSON(t *testing.T) {
 		t.Fatalf("Tools = (%+v, %v)", tools, err)
 	}
 	result, err := adapter.Invoke(t.Context(), workspace.DiagnosticToolInvocation{
-		Tool: tools[0], Arguments: json.RawMessage(`{"depth":2}`), Workspace: "/workspace",
+		Tool: tools[0], Arguments: jsontext.Value(`{"depth":2}`), Workspace: "/workspace",
 	})
 	if err != nil || string(result.JSON) != `{"ok":true}` {
 		t.Fatalf("Invoke = (%s, %v)", result.JSON, err)

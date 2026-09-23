@@ -3,9 +3,8 @@
 package sideload
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -22,7 +21,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
-	"github.com/Tangerg/flame/cli/internal/strictjson"
 )
 
 const (
@@ -282,12 +280,7 @@ func readPlugin(directory string) (extensions.Plugin, bool, error) {
 		return extensions.Plugin{}, false, fmt.Errorf("verify plugin manifest %q after reading: %w", path, err)
 	}
 	var declared pluginManifest
-	if validateErr := strictjson.ValidateUniqueMembers(encoded); validateErr != nil {
-		return extensions.Plugin{}, false, fmt.Errorf("decode plugin manifest %q: %w", path, validateErr)
-	}
-	decoder := json.NewDecoder(bytes.NewReader(encoded))
-	decoder.DisallowUnknownFields()
-	if decodeErr := decoder.Decode(&declared); decodeErr != nil {
+	if decodeErr := json.Unmarshal(encoded, &declared, json.RejectUnknownMembers(true)); decodeErr != nil {
 		return extensions.Plugin{}, false, fmt.Errorf("decode plugin manifest %q: %w", path, decodeErr)
 	}
 	plugin, err := compilePlugin(directory, declared)

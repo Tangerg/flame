@@ -1,7 +1,6 @@
 package render
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,7 +13,7 @@ import (
 // ResultJSON folds a streamed run into one final JSON object. It retains only
 // assistant prose and terminal metadata; callers that need every event use [NDJSON].
 type ResultJSON struct {
-	enc     *json.Encoder
+	out     io.Writer
 	err     error
 	closed  bool
 	started bool
@@ -98,7 +97,7 @@ type resultFrame struct {
 
 // NewResultJSON builds a renderer that emits at most one JSON result from Close.
 func NewResultJSON(w io.Writer) *ResultJSON {
-	return &ResultJSON{enc: json.NewEncoder(w)}
+	return &ResultJSON{out: w}
 }
 
 // Begin records the accepted run before its first subscription opens, so a
@@ -296,6 +295,6 @@ func (r *ResultJSON) Close() error {
 		return r.err
 	}
 	r.frame.Text = r.prose.text()
-	r.err = r.enc.Encode(r.frame)
+	r.err = WriteJSONLine(r.out, r.frame)
 	return r.err
 }

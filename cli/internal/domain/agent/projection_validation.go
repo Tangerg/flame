@@ -1,7 +1,7 @@
 package agent
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"slices"
@@ -95,7 +95,7 @@ func ValidateEvent(event Event) error {
 		if strings.TrimSpace(item.Name) == "" {
 			return errors.New("custom event without a name")
 		}
-		if !json.Valid(item.PayloadJSON) {
+		if !jsontext.Value(item.PayloadJSON).IsValid() {
 			return errors.New("custom event payload is not valid JSON")
 		}
 		return nil

@@ -3,7 +3,8 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -803,7 +804,7 @@ func TestSessionShowJSONUsesTheCLISnapshotContract(t *testing.T) {
 				Availability string `json:"availability"`
 			} `json:"workspace"`
 		} `json:"session"`
-		Transcript []json.RawMessage `json:"transcript"`
+		Transcript []jsontext.Value `json:"transcript"`
 		Runs       []struct {
 			ID     string `json:"id"`
 			Status string `json:"status"`

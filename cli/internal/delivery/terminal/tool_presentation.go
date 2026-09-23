@@ -1,7 +1,9 @@
 package terminal
 
 import (
-	"encoding/json"
+	"bytes"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"slices"
@@ -11,6 +13,18 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
+
+// prettyJSON indents a value the reader inspects as JSON. Unreadable bytes are
+// shown verbatim: a panel that hides a malformed payload hides the problem.
+// Indent reformats in place and will spend the caller's spare capacity, so the
+// projection it is handed is cloned rather than rewritten.
+func prettyJSON(encoded []byte) string {
+	formatted := jsontext.Value(bytes.Clone(encoded))
+	if err := formatted.Indent(jsontext.WithIndent("  ")); err != nil {
+		return string(encoded)
+	}
+	return string(formatted)
+}
 
 type toolSectionStyle uint8
 
@@ -168,7 +182,7 @@ func toolSections(call agent.ToolCall, output ToolSection) []ToolSection {
 		})
 	}
 	if call.Problem != nil {
-		encoded, err := json.Marshal(call.Problem)
+		encoded, err := json.Marshal(call.Problem, json.Deterministic(true))
 		if err != nil {
 			encoded = []byte(failure.String(call.Problem))
 		}
