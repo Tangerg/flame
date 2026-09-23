@@ -19,14 +19,14 @@ type transcriptItemPayload struct {
 	Phase                  transcript.MessagePhase `json:"phase,omitempty"`
 	Content                []contentPayload        `json:"content,omitempty"`
 	Text                   string                  `json:"text,omitempty"`
-	Redacted               bool                    `json:"redacted,omitempty"`
+	Redacted               bool                    `json:"redacted,omitzero"`
 	Question               *questionPayload        `json:"question,omitzero"`
 	Tool                   *toolInvocationPayload  `json:"tool,omitzero"`
 	SafetyClass            tool.SafetyClass        `json:"safetyClass,omitempty"`
 	ApprovalDecision       approval.Decision       `json:"approvalDecision,omitempty"`
 	Failure                *toolFailurePayload     `json:"failure,omitzero"`
 	Summary                string                  `json:"summary,omitempty"`
-	DroppedMessages        int                     `json:"droppedMessages,omitempty"`
+	DroppedMessages        int                     `json:"droppedMessages,omitzero"`
 }
 
 type contentPayload struct {
@@ -46,8 +46,8 @@ type questionFieldPayload struct {
 	Header      string                       `json:"header,omitempty"`
 	Kind        transcript.QuestionFieldKind `json:"kind"`
 	Options     []questionOptionPayload      `json:"options,omitempty"`
-	Multiple    bool                         `json:"multiple,omitempty"`
-	AllowCustom bool                         `json:"allowCustom,omitempty"`
+	Multiple    bool                         `json:"multiple,omitzero"`
+	AllowCustom bool                         `json:"allowCustom,omitzero"`
 }
 
 type questionOptionPayload struct {

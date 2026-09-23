@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/scope/agent"
 )
 
 func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
@@ -130,6 +131,39 @@ func TestContinuationCodecRejectsAliasesAndDuplicates(t *testing.T) {
 	} {
 		if _, err := decode[continuationWire](raw); err == nil {
 			t.Errorf("decode(%s) succeeded, want error", raw)
+		}
+	}
+}
+
+// TestResolutionSchemaGatesWhatTheCodecReads holds the wait boundary and the
+// codec to one contract: the Agent Framework validates a host's response with
+// this schema before the codec ever sees it, so a shape the codec requires and
+// a shape the schema admits cannot be two different answers.
+func TestResolutionSchemaGatesWhatTheCodecReads(t *testing.T) {
+	raw, err := resolutionSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema, err := agent.ParseSchema(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepted, err := EncodeResolution(interrupt.Resolution{
+		Approved: true, Answers: [][]string{{"yes"}}, RememberScope: approval.ScopeSession,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := schema.Validate(accepted); err != nil {
+		t.Fatalf("schema rejected an encoded resolution: %v", err)
+	}
+	for name, candidate := range map[string][]byte{
+		"missing decision": []byte(`{"reason":"not now"}`),
+		"unknown member":   []byte(`{"approved":true,"approve":true}`),
+		"wrong type":       []byte(`{"approved":"yes"}`),
+	} {
+		if err := schema.Validate(candidate); err == nil {
+			t.Errorf("schema accepted %s: %s", name, candidate)
 		}
 	}
 }

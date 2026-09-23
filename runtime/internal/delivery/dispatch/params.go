@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
-	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"maps"
@@ -21,7 +20,7 @@ func decodeParams(raw jsontext.Value, dst any) error {
 	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
 		return errors.New("params must be an object, got null")
 	}
-	if err := jsonv2.Unmarshal(raw, dst, jsonv2.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(raw, dst, json.RejectUnknownMembers(true)); err != nil {
 		return fmt.Errorf("decode params: %w", err)
 	}
 	if err := rejectExplicitNulls(raw, reflect.TypeOf(dst).Elem(), "params"); err != nil {

@@ -3,7 +3,6 @@ package dispatch
 import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
-	jsonv2 "encoding/json/v2"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -18,7 +17,7 @@ func extractRequestMeta(request *transport.Request) (protocol.RequestMeta, *tran
 		return protocol.RequestMeta{}, nil
 	}
 	var parameters map[string]jsontext.Value
-	if err := jsonv2.Unmarshal(request.Params, &parameters); err != nil {
+	if err := json.Unmarshal(request.Params, &parameters); err != nil {
 		return protocol.RequestMeta{}, nil
 	}
 	encoded, ok := parameters[requestMetaField]

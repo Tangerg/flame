@@ -71,7 +71,7 @@ func (r runAccountingRow) values() (rundomain.Metrics, error) {
 // stored under their canonical names rather than ordinals, so inserting a kind
 // into the enum cannot silently re-label stored rows.
 type runCapabilitiesRow struct {
-	ChildRuns      bool             `json:"childRuns,omitempty"`
+	ChildRuns      bool             `json:"childRuns,omitzero"`
 	InterruptKinds []interrupt.Kind `json:"interruptKinds,omitempty"`
 }
 

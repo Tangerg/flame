@@ -34,7 +34,7 @@ const (
 // lifecycle surface that would.)
 type usageRecord struct {
 	FirstSeen int64 `json:"firstSeen"`
-	LastUsed  int64 `json:"lastUsed,omitempty"`
+	LastUsed  int64 `json:"lastUsed,omitzero"`
 }
 
 // lastActivity is the most recent signal of relevance — a load if the skill has

@@ -99,7 +99,7 @@ type hookInputWire struct {
 	CWD             string             `json:"cwd,omitempty"`
 	Tool            *hookToolInputWire `json:"tool,omitzero"`
 	Prompt          string             `json:"prompt,omitempty"`
-	PromptTruncated bool               `json:"promptTruncated,omitempty"`
+	PromptTruncated bool               `json:"promptTruncated,omitzero"`
 	Reason          string             `json:"reason,omitempty"`
 }
 
@@ -107,7 +107,7 @@ type hookToolInputWire struct {
 	Name            string `json:"name"`
 	Arguments       string `json:"arguments,omitempty"`
 	Result          string `json:"result,omitempty"`
-	ResultTruncated bool   `json:"resultTruncated,omitempty"`
+	ResultTruncated bool   `json:"resultTruncated,omitzero"`
 }
 
 func hookInputWireFrom(input domainhooks.Input) hookInputWire {

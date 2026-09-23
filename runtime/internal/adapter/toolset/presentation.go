@@ -273,7 +273,7 @@ type SearchResult struct {
 type SearchHit struct {
 	Path       string `json:"path"`
 	Snippet    string `json:"snippet,omitempty"`
-	LineNumber int    `json:"lineNumber,omitempty"`
+	LineNumber int    `json:"lineNumber,omitzero"`
 }
 
 func presentSearchResult(result tool.Result) tool.Result {

@@ -103,7 +103,7 @@ type hookWire struct {
 	Matcher       string            `json:"matcher,omitempty"`
 	Command       string            `json:"command,omitempty"`
 	Inject        string            `json:"inject,omitempty"`
-	TimeoutMillis int               `json:"timeoutMillis,omitempty"`
+	TimeoutMillis int               `json:"timeoutMillis,omitzero"`
 }
 
 func (h hookWire) domain() domainhooks.Hook {

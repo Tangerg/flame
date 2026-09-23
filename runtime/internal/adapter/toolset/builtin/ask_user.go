@@ -28,7 +28,7 @@ type questionArg struct {
 	Question    string      `json:"question" jsonschema:"minLength=1" jsonschema_description:"The full question text."`
 	Header      string      `json:"header,omitempty" jsonschema:"maxLength=12" jsonschema_description:"Short label of at most 12 characters that identifies the question."`
 	Options     []optionArg `json:"options,omitempty" jsonschema:"minItems=2,maxItems=4" jsonschema_description:"Two to four choices for a multiple-choice question. Omit for a free-text answer."`
-	MultiSelect bool        `json:"multi_select,omitempty" jsonschema_description:"Allow the user to pick more than one option (only meaningful with options)."`
+	MultiSelect bool        `json:"multi_select,omitzero" jsonschema_description:"Allow the user to pick more than one option (only meaningful with options)."`
 }
 
 type optionArg struct {

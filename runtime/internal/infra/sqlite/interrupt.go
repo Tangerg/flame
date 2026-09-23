@@ -144,7 +144,7 @@ type approvalPayload struct {
 	Tool         toolInvocationPayload `json:"tool"`
 	Risk         string                `json:"risk,omitempty"`
 	Reason       string                `json:"reason,omitempty"`
-	Rememberable bool                  `json:"rememberable,omitempty"`
+	Rememberable bool                  `json:"rememberable,omitzero"`
 }
 
 type continuationRow struct {
@@ -158,7 +158,7 @@ type continuationRow struct {
 	ReasoningEffort string           `json:"reasoningEffort,omitempty"`
 	DrainedTools    []drainedToolRow `json:"drainedTools,omitempty"`
 	RunCreatedAt    int64            `json:"runCreatedAt"`
-	ContextTokens   int64            `json:"contextTokens,omitempty"`
+	ContextTokens   int64            `json:"contextTokens,omitzero"`
 	Accounting      runAccountingRow `json:"accounting"`
 }
 

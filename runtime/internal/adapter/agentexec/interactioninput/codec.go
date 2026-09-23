@@ -93,7 +93,7 @@ type approvalPromptWire struct {
 	SafetyClass  tool.SafetyClass `json:"safetyClass"`
 	Risk         tool.RiskLevel   `json:"risk,omitempty"`
 	Reason       string           `json:"reason,omitempty"`
-	Rememberable bool             `json:"rememberable,omitempty"`
+	Rememberable bool             `json:"rememberable,omitzero"`
 }
 
 type questionPromptWire struct {
@@ -106,8 +106,8 @@ type questionFieldSpecWire struct {
 	Prompt      string               `json:"prompt"`
 	Header      string               `json:"header,omitempty"`
 	Options     []questionOptionWire `json:"options,omitempty"`
-	Multiple    bool                 `json:"multiple,omitempty"`
-	AllowCustom bool                 `json:"allowCustom,omitempty"`
+	Multiple    bool                 `json:"multiple,omitzero"`
+	AllowCustom bool                 `json:"allowCustom,omitzero"`
 }
 
 type questionOptionWire struct {

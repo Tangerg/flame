@@ -2,7 +2,6 @@ package toolset
 
 import (
 	json "encoding/json/v2"
-	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -87,7 +86,7 @@ func normalizeDirectArguments(root, name string, invocation toolcontract.Invocat
 
 func decodeToolArguments[T any](invocation toolcontract.Invocation) (T, error) {
 	var request T
-	err := jsonv2.Unmarshal(invocation.Arguments(), &request, jsonv2.RejectUnknownMembers(true))
+	err := json.Unmarshal(invocation.Arguments(), &request, json.RejectUnknownMembers(true))
 	return request, err
 }
 

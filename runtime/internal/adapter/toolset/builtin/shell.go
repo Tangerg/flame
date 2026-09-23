@@ -40,7 +40,7 @@ type shellArgs struct {
 	Command                    string `json:"command" jsonschema:"minLength=1" jsonschema_description:"Shell command line, run by /bin/sh -c. Each call starts a fresh shell; directory changes, variables, and shell options do not persist."`
 	Description                string `json:"description" jsonschema:"minLength=1,maxLength=120" jsonschema_description:"Concise action phrase shown while the command runs, such as Run backend tests. Describe the command's purpose; do not copy the command or predict its result."`
 	TimeoutMillis              *int   `json:"timeout_millis,omitzero" jsonschema:"minimum=1" jsonschema_description:"Hard execution timeout in milliseconds. Omit for no hard timeout."`
-	RunInBackground            bool   `json:"run_in_background,omitempty" jsonschema_description:"Return immediately with a shell_id while the command keeps running. Use for servers and watchers."`
+	RunInBackground            bool   `json:"run_in_background,omitzero" jsonschema_description:"Return immediately with a shell_id while the command keeps running. Use for servers and watchers."`
 	AutoBackgroundAfterSeconds *int   `json:"auto_background_after_seconds,omitzero" jsonschema:"minimum=1" jsonschema_description:"Move a foreground command to the background after this many seconds. Defaults to 60."`
 }
 
@@ -74,7 +74,7 @@ func (s shellArgs) autoBackgroundAfter() (time.Duration, error) {
 
 type shellOutputArgs struct {
 	ShellID       string `json:"shell_id" jsonschema:"required" jsonschema_description:"Background shell id returned by shell when a long-running command was moved to the background."`
-	Wait          bool   `json:"wait,omitempty" jsonschema_description:"Wait for the shell to exit before returning new output. Use this instead of sleep polling; avoid waiting indefinitely on a server or watcher."`
+	Wait          bool   `json:"wait,omitzero" jsonschema_description:"Wait for the shell to exit before returning new output. Use this instead of sleep polling; avoid waiting indefinitely on a server or watcher."`
 	TimeoutMillis *int   `json:"timeout_millis,omitzero" jsonschema:"minimum=1" jsonschema_description:"When wait=true, maximum milliseconds to wait before returning current output. Omit to wait until exit. Do not pass when wait=false."`
 }
 
@@ -298,7 +298,7 @@ func completedJSON(
 	b, err := json.Marshal(struct {
 		Stdout   string `json:"stdout"`
 		ExitCode int    `json:"exit_code"`
-		Killed   bool   `json:"killed,omitempty"`
+		Killed   bool   `json:"killed,omitzero"`
 		Duration string `json:"duration"`
 	}{Stdout: out, ExitCode: code, Killed: killed, Duration: dur.String()})
 	if err != nil {

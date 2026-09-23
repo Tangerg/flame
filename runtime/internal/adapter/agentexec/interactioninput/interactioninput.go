@@ -11,28 +11,26 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
+	"github.com/Tangerg/scope/core/jsonschema"
 )
 
-var resolutionSchema = jsontext.Value(`{
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "approved": {"type": "boolean"},
-    "arguments": {"type": "string"},
-    "answers": {
-      "type": "array",
-      "items": {"type": "array", "items": {"type": "string"}}
-    },
-    "reason": {"type": "string"},
-    "remember_scope": {"type": "string", "enum": ["", "session", "project", "global"]}
-  },
-  "required": ["approved"]
-}`)
+// resolutionSchema derives the response contract from the payload type this
+// package decodes, so the shape the Agent Framework enforces at the wait
+// boundary cannot drift from the shape that is read back. Which remember scopes
+// exist stays with approval.Scope, which rejects an unknown one at decode.
+var resolutionSchema = sync.OnceValues(func() (jsontext.Value, error) {
+	schema, err := jsonschema.For[ResolutionPayload]()
+	if err != nil {
+		return nil, fmt.Errorf("agentexec interaction input: derive resolution schema: %w", err)
+	}
+	return jsontext.Value(schema.JSON()), nil
+})
 
 type capabilityContextKey struct{}
 
@@ -112,7 +110,11 @@ func Require(ctx context.Context, key string, prompt runs.Interrupt) (interrupt.
 	if err != nil {
 		return interrupt.Resolution{}, err
 	}
-	return interrupt.Resolution{}, interaction.RequireToolInput(promptJSON, resolutionSchema, stateJSON)
+	schema, err := resolutionSchema()
+	if err != nil {
+		return interrupt.Resolution{}, err
+	}
+	return interrupt.Resolution{}, interaction.RequireToolInput(promptJSON, schema, stateJSON)
 }
 
 func admitRequirement(ctx context.Context, key string, prompt runs.Interrupt) (jsontext.Value, error) {

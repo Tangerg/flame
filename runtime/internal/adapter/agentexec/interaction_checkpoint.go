@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
-	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"slices"
@@ -377,7 +376,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 
 func decodeInteractionCheckpointWire(payload []byte) (interactionCheckpointPayloadWire, error) {
 	var wire interactionCheckpointPayloadWire
-	if err := jsonv2.Unmarshal(payload, &wire, jsonv2.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(payload, &wire, json.RejectUnknownMembers(true)); err != nil {
 		return interactionCheckpointPayloadWire{}, fmt.Errorf("agentexec: decode Interaction checkpoint: %w", err)
 	}
 	return wire, nil
