@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -177,20 +176,6 @@ func TestRunFormatterBoundsDiagnosticOutput(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "truncated") {
 		t.Fatalf("formatter error = %q, want honest truncation marker", err)
-	}
-}
-
-func TestFormatOutputBufferCannotBypassLimitThroughIOCopy(t *testing.T) {
-	buffer := &formatOutputBuffer{limit: 4}
-	written, err := io.Copy(buffer, strings.NewReader("oversized"))
-	if err != nil {
-		t.Fatalf("io.Copy: %v", err)
-	}
-	if written != int64(len("oversized")) {
-		t.Fatalf("io.Copy wrote %d bytes, want a full drain", written)
-	}
-	if got := string(buffer.Bytes()); got != "over" || !buffer.overflow {
-		t.Fatalf("buffer = %q, overflow = %t; want bounded drain", got, buffer.overflow)
 	}
 }
 

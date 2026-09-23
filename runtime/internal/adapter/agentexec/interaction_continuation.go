@@ -66,12 +66,6 @@ type preparedInteractionAnswer struct {
 	signal  agent.SignalRequest
 }
 
-type preparedCommittedInteractionInput struct {
-	processID agent.ProcessID
-	itemID    string
-	content   []transcript.ContentBlock
-}
-
 // prepareContinuationAnswers matches answers to the staged pending inputs
 // entirely in memory, so it takes no context to abandon.
 func (i *interactionSession) prepareContinuationAnswers(
@@ -145,7 +139,7 @@ func (i *interactionSession) prepareContinuationAnswers(
 func (i *interactionSession) deliverContinuationAnswers(
 	ctx context.Context,
 	answers []preparedInteractionAnswer,
-	input *preparedCommittedInteractionInput,
+	input *pendingInteractionContinuation,
 ) error {
 	deliveryContext := runExecutionContext(ctx, i.scope, i.start)
 	inputRetained := false
@@ -155,11 +149,10 @@ func (i *interactionSession) deliverContinuationAnswers(
 			i.state.mu.Unlock()
 			return errors.New("agentexec: committed continuation input is already pending")
 		}
-		i.state.pendingContinuation = &pendingInteractionContinuation{
-			processID: input.processID,
-			itemID:    input.itemID,
-			content:   transcript.CloneContent(input.content),
-		}
+		// The prepared value already detached its content from the caller, and
+		// nothing outside this call retains it, so the pending slot takes it
+		// rather than copying the copy.
+		i.state.pendingContinuation = input
 		i.state.mu.Unlock()
 		defer func() {
 			if !inputRetained {
@@ -187,7 +180,7 @@ func (i *interactionSession) deliverContinuationAnswers(
 
 func (i *interactionSession) prepareCommittedContinuationInput(
 	input *runs.CommittedUserInput,
-) (*preparedCommittedInteractionInput, error) {
+) (*pendingInteractionContinuation, error) {
 	if input == nil {
 		return nil, nil
 	}
@@ -201,7 +194,7 @@ func (i *interactionSession) prepareCommittedContinuationInput(
 	if process == nil {
 		return nil, runs.ErrExecutorNotLive
 	}
-	return &preparedCommittedInteractionInput{
+	return &pendingInteractionContinuation{
 		processID: process.ID(), itemID: input.ItemID,
 		content: transcript.CloneContent(input.Content),
 	}, nil

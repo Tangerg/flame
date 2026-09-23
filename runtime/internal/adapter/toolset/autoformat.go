@@ -6,6 +6,7 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/capture"
 	"go/format"
 	"os"
 	"os/exec"
@@ -124,8 +125,8 @@ func runFormatter(ctx context.Context, input []byte, name string, args ...string
 		return nil, err
 	}
 	cmd := exec.CommandContext(ctx, name, args...)
-	stdout := &formatOutputBuffer{limit: int(maxAutoFormatFileBytes)}
-	stderr := &formatOutputBuffer{limit: maxAutoFormatDiagnosticBytes}
+	stdout := capture.NewWriter(int(maxAutoFormatFileBytes))
+	stderr := capture.NewWriter(maxAutoFormatDiagnosticBytes)
 	cmd.Stdin = bytes.NewReader(input)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
@@ -138,13 +139,16 @@ func runFormatter(ctx context.Context, input []byte, name string, args ...string
 	if len(args) > 0 {
 		target = args[len(args)-1]
 	}
-	if stdout.overflow {
+	if stdout.Truncated() {
 		return nil, fmt.Errorf("%s: %s output exceeds %d MiB", target, name, maxAutoFormatFileBytes>>20)
 	}
-	if runErr == nil && !stderr.overflow {
+	if runErr == nil && !stderr.Truncated() {
 		return bytes.Clone(stdout.Bytes()), nil
 	}
 	msg := strings.TrimSpace(stderr.String())
+	if msg != "" && stderr.Truncated() {
+		msg += "\n... [formatter diagnostic truncated] ..."
+	}
 	if msg == "" {
 		if runErr == nil {
 			return nil, fmt.Errorf("%s: %s diagnostic output was truncated", target, name)
@@ -199,33 +203,6 @@ func validateAutoFormatSource(info os.FileInfo) error {
 	}
 	return nil
 }
-
-type formatOutputBuffer struct {
-	buffer   bytes.Buffer
-	limit    int
-	overflow bool
-}
-
-func (f *formatOutputBuffer) Write(value []byte) (int, error) {
-	written := len(value)
-	remaining := f.limit - f.buffer.Len()
-	if remaining > 0 {
-		_, _ = f.buffer.Write(value[:min(len(value), remaining)])
-	}
-	if len(value) > remaining {
-		f.overflow = true
-	}
-	return written, nil
-}
-
-func (f *formatOutputBuffer) String() string {
-	if f.overflow {
-		return f.buffer.String() + "\n... [formatter diagnostic truncated] ..."
-	}
-	return f.buffer.String()
-}
-
-func (f *formatOutputBuffer) Bytes() []byte { return f.buffer.Bytes() }
 
 // Scope owns atomic replacement, parent-directory handles, and preservation of
 // BOM, line endings, and mode. Formatting supplies only an exact-text edit of

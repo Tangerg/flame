@@ -344,7 +344,8 @@ func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 func TestSharedCapabilitiesStayPure(t *testing.T) {
 	root := moduleRoot(t)
 	for _, name := range []string{
-		"completion", "exactint", "httporigin", "idempotency", "identity", "optional",
+		"capture", "completion", "exactint", "httporigin", "idempotency", "identity",
+		"optional",
 	} {
 		forbidExternalImports(t, filepath.Join(root, "internal", name), []string{
 			domainPkg,

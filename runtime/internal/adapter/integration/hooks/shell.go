@@ -6,6 +6,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/capture"
 	"os"
 	"os/exec"
 	"time"
@@ -62,8 +63,8 @@ func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) ap
 	if req.CWD != "" {
 		cmd.Dir = req.CWD
 	}
-	stdout := newHookOutputBuffer(maxHookCommandOutputBytes)
-	stderr := newHookOutputBuffer(maxHookCommandOutputBytes)
+	stdout := capture.NewWriter(maxHookCommandOutputBytes)
+	stderr := capture.NewWriter(maxHookCommandOutputBytes)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	cmd.WaitDelay = hookProcessWaitDelay
@@ -81,7 +82,7 @@ func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) ap
 		Err:      errors.Join(runErr, cleanupErr),
 		TimedOut: cctx.Err() == context.DeadlineExceeded,
 	}
-	if stdout.overflow {
+	if stdout.Truncated() {
 		result.Err = errors.Join(
 			result.Err,
 			fmt.Errorf("hooks: command stdout exceeds %d bytes", maxHookCommandOutputBytes),
@@ -196,31 +197,6 @@ func hookVerdictFromWire(verdict apphooks.CommandVerdict) (apphooks.CommandVerdi
 	}
 	return verdict, nil
 }
-
-type hookOutputBuffer struct {
-	buffer   bytes.Buffer
-	limit    int
-	overflow bool
-}
-
-func newHookOutputBuffer(limit int) *hookOutputBuffer {
-	return &hookOutputBuffer{limit: limit}
-}
-
-func (h *hookOutputBuffer) Write(value []byte) (int, error) {
-	written := len(value)
-	remaining := h.limit - h.buffer.Len()
-	if remaining > 0 {
-		_, _ = h.buffer.Write(value[:min(len(value), remaining)])
-	}
-	if len(value) > remaining {
-		h.overflow = true
-	}
-	return written, nil
-}
-
-func (h *hookOutputBuffer) Bytes() []byte  { return h.buffer.Bytes() }
-func (h *hookOutputBuffer) String() string { return h.buffer.String() }
 
 func exitCodeOf(err error) int {
 	if err == nil {

@@ -199,16 +199,6 @@ func TestShellMalformedDecisionIsObservableAndNonBlocking(t *testing.T) {
 	}
 }
 
-func TestHookOutputBufferDrainsAfterItsBoundedPrefix(t *testing.T) {
-	buffer := newHookOutputBuffer(4)
-	if written, err := buffer.Write([]byte("abcdef")); err != nil || written != 6 {
-		t.Fatalf("Write = (%d, %v), want (6, nil)", written, err)
-	}
-	if got := buffer.String(); got != "abcd" || !buffer.overflow {
-		t.Fatalf("buffer = %q overflow=%v, want bounded overflowing prefix", got, buffer.overflow)
-	}
-}
-
 func TestShellTimeoutKillsDescendantProcessGroup(t *testing.T) {
 	started := time.Now()
 	got := Shell{}.RunHookCommand(t.Context(), apphooks.CommandRequest{

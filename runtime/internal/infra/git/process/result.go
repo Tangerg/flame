@@ -1,10 +1,10 @@
 package process
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/capture"
 	"io"
 	"os/exec"
 	"time"
@@ -43,8 +43,8 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 	if err != nil {
 		return Result{}, fmt.Errorf("process: stdout pipe: %w", err)
 	}
-	stderr := boundedText{limit: maxErrorBytes}
-	command.Stderr = &stderr
+	stderr := capture.NewWriter(maxErrorBytes)
+	command.Stderr = stderr
 	if err := command.Start(); err != nil {
 		return Result{}, fmt.Errorf("process: start: %w", err)
 	}
@@ -69,7 +69,11 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
 	}
-	result := Result{Stdout: output, Stderr: stderr.String()}
+	stderrText := stderr.String()
+	if stderr.Truncated() {
+		stderrText += "\n... [git stderr truncated] ..."
+	}
+	result := Result{Stdout: output, Stderr: stderrText}
 	if waitErr == nil {
 		return result, nil
 	}
@@ -78,28 +82,4 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 		return result, nil
 	}
 	return Result{}, fmt.Errorf("process: wait: %w", waitErr)
-}
-
-type boundedText struct {
-	buffer    bytes.Buffer
-	limit     int
-	truncated bool
-}
-
-func (b *boundedText) Write(value []byte) (int, error) {
-	length := len(value)
-	remaining := max(b.limit-b.buffer.Len(), 0)
-	if len(value) > remaining {
-		value = value[:remaining]
-		b.truncated = true
-	}
-	_, _ = b.buffer.Write(value)
-	return length, nil
-}
-
-func (b *boundedText) String() string {
-	if b.truncated {
-		return b.buffer.String() + "\n... [git stderr truncated] ..."
-	}
-	return b.buffer.String()
 }
