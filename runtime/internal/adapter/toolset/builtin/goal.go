@@ -15,6 +15,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -196,7 +197,7 @@ func (g *getter) get(ctx context.Context, _ getArgs) (goalResult, error) {
 	}
 	current, ok, err := g.goals.Current(ctx, sessionID)
 	if err != nil {
-		return goalResult{}, err
+		return goalResult{}, toolfailure.Definite(fmt.Errorf("get_goal: %w", err))
 	}
 	if !ok {
 		return goalResult{Message: "No Goal exists for this session."}, nil

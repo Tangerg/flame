@@ -56,7 +56,7 @@ func (e *exiter) exit(ctx context.Context, _ exitArgs) (string, error) {
 	}
 	mode, err := e.modes.Mode(ctx, sessionID)
 	if err != nil {
-		return "", err
+		return "", toolfailure.Definite(fmt.Errorf("exit_plan_mode: %w", err))
 	}
 	// Calling this outside Plan mode, or with nothing planned, is the model
 	// mis-sequencing its own tools. Both messages are written for it, so they have
@@ -66,7 +66,7 @@ func (e *exiter) exit(ctx context.Context, _ exitArgs) (string, error) {
 	}
 	state, err := e.plan.State(ctx, sessionID)
 	if err != nil {
-		return "", err
+		return "", toolfailure.Definite(fmt.Errorf("exit_plan_mode: %w", err))
 	}
 	steps := state.Steps()
 	if len(steps) == 0 {

@@ -77,7 +77,7 @@ func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequ
 	}
 	items, err := a.search.Search(ctx, filepath.Clean(cwd), query, limit)
 	if err != nil {
-		return "", err
+		return "", toolfailure.Definite(fmt.Errorf("search_memory: %w", err))
 	}
 	return agentMemorySearchResults(items).String(), nil
 }

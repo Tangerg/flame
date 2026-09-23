@@ -18,6 +18,7 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/optional"
@@ -82,7 +83,7 @@ func (t *toolResultReader) read(ctx context.Context, a toolResultReadArgs) (stri
 	}
 	body, found, err := t.store.Fetch(ctx, sessionID, id)
 	if err != nil {
-		return "", err
+		return "", toolfailure.Definite(fmt.Errorf("read_tool_result: %w", err))
 	}
 	if !found {
 		// Recoverable: an unknown id (typo, or the blob dropped with its session)

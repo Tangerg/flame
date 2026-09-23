@@ -69,7 +69,7 @@ func (c *conversationSearcher) run(ctx context.Context, req conversationSearchRe
 	}
 	hits, err := c.search.SearchTranscript(ctx, query, limit)
 	if err != nil {
-		return "", err
+		return "", toolfailure.Definite(fmt.Errorf("search_conversations: %w", err))
 	}
 	return conversationSearchResults(hits).String(), nil
 }
