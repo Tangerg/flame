@@ -28,7 +28,7 @@ const styles = stylex.create({
     borderStyle: "solid",
     backgroundColor: surface.canvas,
     paddingInline: space.s2_5,
-    borderColor: { default: surface.field, ":focus-within": surface.fieldStrong },
+    borderColor: { default: surface.field, ":focus-within": surface.fieldFocus },
     color: { default: color.fgMuted, ":focus-within": color.fg },
   },
   searchRule: {

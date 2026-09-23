@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-  WCAG_AA_NON_TEXT,
-  WCAG_AA_TEXT,
   contrastRatio,
+  focusOnCanvas,
   inkOnFill,
   legibleMix,
   mixOklab,
+  WCAG_AA_NON_TEXT,
+  WCAG_AA_TEXT,
 } from "./legibility";
 
 describe("contrastRatio", () => {
@@ -95,5 +96,31 @@ describe("legibleMix", () => {
     const fill = "#202020";
     expect(contrastRatio(ink, fill)).toBeLessThan(WCAG_AA_TEXT);
     expect(legibleMix(ink, fill, fill, 28, WCAG_AA_TEXT)).toBe(100);
+  });
+});
+
+describe("focusOnCanvas", () => {
+  it("reads as a boundary against the canvas in both schemes", () => {
+    for (const [accent, ink, canvas] of [
+      ["#2b5fd0", "#1e1f22", "#ffffff"],
+      ["#3574f0", "#e3e5e9", "#1f1f1f"],
+    ]) {
+      expect(contrastRatio(focusOnCanvas(accent!, ink!, canvas!), canvas!)).toBeGreaterThanOrEqual(
+        WCAG_AA_NON_TEXT,
+      );
+    }
+  });
+
+  // The accent is the user's to pick, and the 50% mix this replaced read 2.2 on the default.
+  it("corrects an accent too pale to see instead of trusting it", () => {
+    const pale = "#ffe066";
+    expect(contrastRatio(pale, "#ffffff")).toBeLessThan(WCAG_AA_NON_TEXT);
+    expect(
+      contrastRatio(focusOnCanvas(pale, "#1e1f22", "#ffffff"), "#ffffff"),
+    ).toBeGreaterThanOrEqual(WCAG_AA_NON_TEXT);
+  });
+
+  it("leaves an accent that already reads exactly as it is", () => {
+    expect(focusOnCanvas("#2b5fd0", "#1e1f22", "#ffffff").toLowerCase()).toBe("#2b5fd0");
   });
 });

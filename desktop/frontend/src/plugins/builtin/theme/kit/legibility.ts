@@ -51,6 +51,16 @@ export function inkOnFill(declared: string, fill: string, required: number): str
   return contrastRatio(fill, "#ffffff") >= contrastRatio(fill, "#000000") ? "#ffffff" : "#000000";
 }
 
+/**
+ * The focus indicator: the accent's hue, pushed toward the ink until it reads as a boundary
+ * against the canvas. Toward the ink is the right way in both schemes — darker on a light
+ * canvas, lighter on a dark one — so one rule serves both, and a user's pale accent is
+ * corrected rather than trusted.
+ */
+export function focusOnCanvas(accent: string, ink: string, canvas: string): string {
+  return mixOklab(ink, accent, legibleMix(ink, accent, canvas, 0, WCAG_AA_NON_TEXT));
+}
+
 /** sRGB → Oklab, the space every derived ladder in this theme mixes in. */
 function toOklab(color: string): [number, number, number] {
   const { r, g, b } = colord(color).toRgb();
