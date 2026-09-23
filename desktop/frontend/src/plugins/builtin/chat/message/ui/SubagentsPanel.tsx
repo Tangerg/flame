@@ -11,7 +11,16 @@ import {
   useExpandedWorkspaceToolIds,
   useToggleWorkspaceTool,
 } from "@/plugins/builtin/workspace/public/navigation";
-import { EmptyState, Icon, IconButton, SectionLabel, StatusDot, toneInk, vocab } from "@/ui";
+import {
+  EmptyState,
+  Icon,
+  IconButton,
+  ScrollArea,
+  SectionLabel,
+  StatusDot,
+  toneInk,
+  vocab,
+} from "@/ui";
 import { AgentSurfaceHeader, AgentWorkspaceView } from "@/ui/agent";
 import { cancelSessionRun } from "@/plugins/builtin/agent/public/run";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
@@ -27,10 +36,6 @@ const styles = stylex.create({
   /** The dock's summary line, in the vocabulary the other views open with. */
   headLine: { minWidth: 0, flex: 1 },
   scroller: {
-    flex: 1,
-    minHeight: 0,
-    overflowY: "auto",
-    overscrollBehavior: "contain",
     paddingInline: "var(--reading-gutter-wide)",
     paddingBlock: space.s3,
   },
@@ -71,7 +76,7 @@ export function SubagentsPanel() {
       {selected ? (
         <SubagentTranscript key={selectedId} entry={selected} />
       ) : (
-        <div {...stylex.props(styles.scroller)}>
+        <ScrollArea className={stylex.props(styles.scroller).className}>
           {selectedId ? (
             <EmptyState icon="bot" title={t("subagents.unavailable")} />
           ) : entries.length === 0 ? (
@@ -88,7 +93,7 @@ export function SubagentsPanel() {
               />
             </>
           )}
-        </div>
+        </ScrollArea>
       )}
     </AgentWorkspaceView>
   );
@@ -124,7 +129,7 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
   const { narrative, facts, ordinal, siblingCount, taskLabel } = entry;
   const model = delegatedRunSummary(t, narrative.run, ordinal, siblingCount, taskLabel);
   return (
-    <div ref={scrollRef} {...stylex.props(styles.scroller)}>
+    <ScrollArea ref={scrollRef} className={stylex.props(styles.scroller).className}>
       <div
         ref={contentRef}
         role="region"
@@ -185,6 +190,6 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
           );
         })}
       </div>
-    </div>
+    </ScrollArea>
   );
 }

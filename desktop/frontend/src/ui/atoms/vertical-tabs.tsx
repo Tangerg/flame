@@ -137,7 +137,11 @@ export function VerticalTabs({
     >
       <div data-split-side="end" {...rail} className={cn(rail.className, "pane-split")}>
         {railHeader}
-        <TabsPrimitive.List {...stylex.props(styles.list)} aria-label={ariaLabel} activateOnFocus>
+        <TabsPrimitive.List
+          className={cn(stylex.props(styles.list).className, "panel-scroll")}
+          aria-label={ariaLabel}
+          activateOnFocus
+        >
           <HoverTrack>
             {groups.map((group) => (
               <div key={group.id} {...stylex.props(styles.group)}>
@@ -150,7 +154,7 @@ export function VerticalTabs({
           </HoverTrack>
         </TabsPrimitive.List>
       </div>
-      <div {...stylex.props(styles.page)}>
+      <div className={cn(stylex.props(styles.page).className, "panel-scroll")}>
         <div {...stylex.props(styles.measure)}>
           {items.map((item) => (
             <TabsPrimitive.Panel key={item.id} value={item.id}>

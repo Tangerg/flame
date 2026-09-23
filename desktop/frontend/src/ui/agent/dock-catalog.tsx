@@ -2,15 +2,13 @@ import * as stylex from "@stylexjs/stylex";
 import { color, space, type, weight } from "@/styles/tokens.stylex";
 import type { CatalogPickerGroup } from "@/ui/atoms";
 import { HoverTrack } from "@/ui/atoms/hover-track";
+import { ScrollArea } from "@/ui/atoms/scroll-area";
 import { AgentRow } from "./navigation-row";
 
 const styles = stylex.create({
   port: {
     display: "flex",
-    minHeight: 0,
-    flex: 1,
     flexDirection: "column",
-    overflowY: "auto",
     paddingInline: space.s2,
     paddingTop: space.s2,
     paddingBottom: space.s4,
@@ -41,7 +39,7 @@ export function AgentDockCatalog({
   onSelect: (id: string) => void;
 }) {
   return (
-    <div {...stylex.props(styles.port)}>
+    <ScrollArea className={stylex.props(styles.port).className}>
       <div {...stylex.props(styles.title, type.uiXs)}>{title}</div>
       <HoverTrack>
         {groups.map((group) => (
@@ -61,6 +59,6 @@ export function AgentDockCatalog({
           </section>
         ))}
       </HoverTrack>
-    </div>
+    </ScrollArea>
   );
 }

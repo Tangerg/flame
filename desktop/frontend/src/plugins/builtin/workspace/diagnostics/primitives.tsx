@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useT } from "@/lib/i18n";
-import { EmptyState } from "@/ui";
+import { EmptyState, ScrollArea } from "@/ui";
 import { color, motion, space, surface, type } from "@/styles/tokens.stylex";
 
 const styles = stylex.create({
@@ -24,7 +24,6 @@ const styles = stylex.create({
   },
   cell: { minWidth: 0 },
   frame: { display: "flex", flex: 1, minHeight: 0, flexDirection: "column" },
-  scroller: { flex: 1, minHeight: 0, overflowY: "auto" },
   canvas: { position: "relative", width: "100%" },
   // The virtualiser positions rows by transform, so each one is taken out of the flow and
   // pinned to the same origin; only `translateY` distinguishes them.
@@ -91,7 +90,7 @@ export function VirtualList({
   return (
     <div {...stylex.props(styles.frame)}>
       {header}
-      <div ref={parentRef} {...stylex.props(styles.scroller)}>
+      <ScrollArea ref={parentRef}>
         <div {...stylex.props(styles.canvas)} style={{ height: virt.getTotalSize() }}>
           {virt.getVirtualItems().map((vi) => (
             <div
@@ -105,7 +104,7 @@ export function VirtualList({
             </div>
           ))}
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
 }

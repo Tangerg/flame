@@ -3,7 +3,7 @@ import type { Tone } from "@/lib/tone";
 import type { MetricRow } from "@/lib/observability/stores";
 import { useTelemetryStore } from "@/lib/observability/stores";
 import { useMemo, useState } from "react";
-import { Button, Segmented, toneInk, vocab } from "@/ui";
+import { Button, ScrollArea, Segmented, toneInk, vocab } from "@/ui";
 import { AgentWorkspaceView } from "@/ui/agent";
 import { ViewHeader } from "@/plugins/builtin/workspace/workspace-views/views/ViewHeader";
 import { viewStyles as vs } from "@/plugins/builtin/workspace/workspace-views/views/viewStyles";
@@ -41,14 +41,7 @@ const d = stylex.create({
   subtitle: { marginTop: space.s0_5, color: color.fgMuted },
   logRow: { minHeight: "calc(var(--spacing) * 7)" },
   mono: { fontFamily: "var(--font-mono)" },
-  metricsScroller: {
-    display: "grid",
-    flex: 1,
-    minHeight: 0,
-    alignContent: "start",
-    gap: space.s4,
-    overflowY: "auto",
-  },
+  metrics: { display: "grid", alignContent: "start", gap: space.s4 },
   section: { display: "grid", gap: space.s1_5 },
   instrument: { fontFamily: "var(--font-mono)", fontWeight: weight.semibold, color: color.fg },
   kind: { marginInlineStart: space.s2, color: color.fgFaint },
@@ -160,11 +153,13 @@ function MetricsPanel() {
   if (grouped.length === 0) return <Empty hint={t("diagnostics.empty.metrics")} />;
 
   return (
-    <div {...stylex.props(d.metricsScroller)}>
-      {grouped.map((g) => (
-        <InstrumentSection key={g.name} group={g} />
-      ))}
-    </div>
+    <ScrollArea>
+      <div {...stylex.props(d.metrics)}>
+        {grouped.map((g) => (
+          <InstrumentSection key={g.name} group={g} />
+        ))}
+      </div>
+    </ScrollArea>
   );
 }
 
