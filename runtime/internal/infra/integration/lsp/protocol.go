@@ -192,7 +192,7 @@ type callHierarchyItem struct {
 	Range          Range          `json:"range"`
 	SelectionRange Range          `json:"selectionRange"`
 	Detail         string         `json:"detail,omitempty"`
-	Data           jsontext.Value `json:"data,omitempty"` // server-private; preserved across the round trip
+	Data           jsontext.Value `json:"data,omitzero"` // server-private; preserved across the round trip
 }
 
 // symbol maps a call-hierarchy node onto the normalized [Symbol] the tool layer

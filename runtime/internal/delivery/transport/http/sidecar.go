@@ -1,7 +1,7 @@
 package http
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -54,7 +54,7 @@ func (s *Server) handleInfo(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusOK)
 
-	if err := json.NewEncoder(w).Encode(s.info); err != nil {
+	if err := json.MarshalWrite(w, s.info); err != nil {
 		return
 	}
 }
@@ -72,7 +72,7 @@ func (s *Server) handleLiveness(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(LivenessStatus{
+	if err := json.MarshalWrite(w, LivenessStatus{
 		InstanceID: s.info.Server.InstanceID,
 		Status:     LivenessOK,
 	}); err != nil {
@@ -98,7 +98,7 @@ func (s *Server) handleReadiness(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
 
-	if err := json.NewEncoder(w).Encode(ReadinessStatus{
+	if err := json.MarshalWrite(w, ReadinessStatus{
 		InstanceID: s.info.Server.InstanceID,
 		Status:     overall,
 		Checks:     checks,

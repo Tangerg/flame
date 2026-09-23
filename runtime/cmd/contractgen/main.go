@@ -13,7 +13,8 @@
 package main
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"flag"
 	"fmt"
 	"os"
@@ -109,7 +110,7 @@ func run(dir, validatorDir, tsDir string) error {
 // reads a diff rather than one long line — the drift gate's output is meant to be
 // read by a person, not just compared.
 func writeJSON(path string, content any) error {
-	encoded, err := json.MarshalIndent(content, "", "  ")
+	encoded, err := json.Marshal(content, jsontext.WithIndent("  "), json.Deterministic(true))
 	if err != nil {
 		return fmt.Errorf("encode %s: %w", filepath.Base(path), err)
 	}

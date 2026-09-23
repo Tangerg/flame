@@ -2,8 +2,8 @@ package delivery
 
 import (
 	"bytes"
-	"encoding/json"
 	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"time"
 
@@ -101,7 +101,7 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 // without treating object order, whitespace, or equivalent number spellings as
 // contract differences. Open metadata and tool-result details survive the
 // round trip and therefore remain valid.
-func portableMessageFromArtifact(path string, encoded json.RawMessage) (chat.Message, error) {
+func portableMessageFromArtifact(path string, encoded jsontext.Value) (chat.Message, error) {
 	var message chat.Message
 	if err := json.Unmarshal(encoded, &message); err != nil {
 		return chat.Message{}, invalidArtifact(path, "%v", err)

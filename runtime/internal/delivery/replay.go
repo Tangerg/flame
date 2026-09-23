@@ -5,10 +5,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"iter"
 	"log/slog"
 	"reflect"
@@ -18,6 +17,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
+	"encoding/json/jsontext"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -40,7 +40,7 @@ type replayStore struct {
 
 type storedOutcome struct {
 	Version int                   `json:"version"`
-	Value   json.RawMessage       `json:"value,omitempty"`
+	Value   jsontext.Value        `json:"value,omitzero"`
 	Problem *protocol.ProblemData `json:"problem,omitempty"`
 }
 
@@ -187,7 +187,7 @@ func encodeStoredOutcome(result Result) ([]byte, error) {
 	return json.Marshal(stored)
 }
 
-func decodeStoredValue(resultType reflect.Type, encoded json.RawMessage) (any, error) {
+func decodeStoredValue(resultType reflect.Type, encoded jsontext.Value) (any, error) {
 	if resultType == nil {
 		return struct{}{}, nil
 	}
@@ -205,19 +205,10 @@ func decodeStoredValue(resultType reflect.Type, encoded json.RawMessage) (any, e
 	return value, nil
 }
 
+// A replayed receipt must name the exact stored shape: the decoder refuses an
+// unknown member, a repeated one, and anything after the value.
 func decodeStoredJSON(encoded []byte, target any) error {
-	decoder := json.NewDecoder(bytes.NewReader(encoded))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(target); err != nil {
-		return err
-	}
-	if err := decoder.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("unexpected trailing JSON value")
-		}
-		return err
-	}
-	return nil
+	return json.Unmarshal(encoded, target, json.RejectUnknownMembers(true))
 }
 
 func runOpeningIdentity(value any) (runID, segmentID string, ok bool) {
@@ -235,7 +226,9 @@ func runOpeningIdentity(value any) (runID, segmentID string, ok bool) {
 }
 
 func operationFingerprint(name Name, parameters any) (string, error) {
-	encoded, err := json.Marshal(parameters)
+	// Two requests carrying the same parameters must hash alike, and
+	// encoding/json/v2 leaves map members in iteration order.
+	encoded, err := json.Marshal(parameters, json.Deterministic(true))
 	if err != nil {
 		return "", err
 	}

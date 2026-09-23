@@ -73,7 +73,7 @@ type openrpcMethod struct {
 
 type openrpcParam struct {
 	Name     string  `json:"name"`
-	Required bool    `json:"required,omitempty"`
+	Required bool    `json:"required,omitzero"`
 	Schema   *schema `json:"schema"`
 }
 

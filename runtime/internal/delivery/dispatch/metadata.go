@@ -1,7 +1,8 @@
 package dispatch
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	jsonv2 "encoding/json/v2"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
@@ -16,7 +17,7 @@ func extractRequestMeta(request *transport.Request) (protocol.RequestMeta, *tran
 	if request == nil || len(request.Params) == 0 {
 		return protocol.RequestMeta{}, nil
 	}
-	var parameters map[string]json.RawMessage
+	var parameters map[string]jsontext.Value
 	if err := jsonv2.Unmarshal(request.Params, &parameters); err != nil {
 		return protocol.RequestMeta{}, nil
 	}

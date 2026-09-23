@@ -3,7 +3,8 @@ package skillauthoring
 import (
 	"context"
 	"crypto/rand"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -255,7 +256,7 @@ func writeUsage(ctx context.Context, root *os.Root, usage map[string]usageRecord
 			skills.MaxSkillsPerSource,
 		)
 	}
-	data, err := json.MarshalIndent(usage, "", "  ")
+	data, err := json.Marshal(usage, jsontext.WithIndent("  "), json.Deterministic(true))
 	if err != nil {
 		return fmt.Errorf("skillauthoring: marshal usage: %w", err)
 	}

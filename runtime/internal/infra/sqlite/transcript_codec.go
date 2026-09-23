@@ -60,7 +60,7 @@ type toolInvocationPayload struct {
 	ArgumentsText string         `json:"argumentsText,omitempty"`
 	Name          string         `json:"name"`
 	Arguments     jsontext.Value `json:"arguments"`
-	Result        jsontext.Value `json:"result,omitempty"`
+	Result        jsontext.Value `json:"result,omitzero"`
 }
 
 type toolFailurePayload struct {

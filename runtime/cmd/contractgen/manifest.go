@@ -77,7 +77,7 @@ type errorEntry struct {
 	Type              string   `json:"type"`
 	Code              int      `json:"code"`
 	Recovery          string   `json:"recoveryAction"`
-	RetryAfterSeconds int      `json:"retryAfterSeconds,omitempty"`
+	RetryAfterSeconds int      `json:"retryAfterSeconds,omitzero"`
 	Methods           []string `json:"methods,omitempty"`
 }
 

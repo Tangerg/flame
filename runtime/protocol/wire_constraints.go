@@ -1,7 +1,7 @@
 package protocol
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"maps"
@@ -494,12 +494,13 @@ func nonEmptyProperties[Value any](field string, values map[string]Value) FieldE
 }
 
 // uniqueItems rejects a repeated JSON value, so objects compare by content rather
-// than Go comparability or pointer identity. encoding/json sorts map keys, giving
-// every representable value a deterministic key without a second equality model.
+// than Go comparability or pointer identity. Deterministic encoding orders map
+// members, giving every representable value one key without a second equality
+// model.
 func uniqueItems[T any](field string, values []T) FieldError {
 	seen := make(map[string]bool, len(values))
 	for _, value := range values {
-		encoded, err := json.Marshal(value)
+		encoded, err := json.Marshal(value, json.Deterministic(true))
 		if err != nil {
 			return FieldError{Field: field, Detail: "must contain only JSON values"}
 		}

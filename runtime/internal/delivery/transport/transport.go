@@ -70,6 +70,10 @@ func DecodeMessage(encoded []byte) (Message, error) {
 	return message, nil
 }
 
+// Exact numeric literals require encoding/json's UseNumber: decoding a JSON
+// number into an any through encoding/json/v2 yields float64, which silently
+// rounds identifiers beyond IEEE-754's exact integer range. The rest of
+// Runtime uses encoding/json/v2.
 func validateJSONRPCEnvelope(encoded []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(encoded))
 	decoder.UseNumber()

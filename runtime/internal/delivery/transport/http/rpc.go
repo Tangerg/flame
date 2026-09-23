@@ -1,7 +1,7 @@
 package http
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"io"
 	"mime"
 	"net/http"
@@ -144,7 +144,7 @@ func writeProblem(w http.ResponseWriter, status int, typ, detail string, noCache
 	w.WriteHeader(status)
 	// The status line is already on the wire, so a failed body write has no
 	// remaining way to change what this response says.
-	_ = json.NewEncoder(w).Encode(transportProblem{
+	_ = json.MarshalWrite(w, transportProblem{
 		Type:      transportProblemNamespace + typ,
 		Title:     http.StatusText(status),
 		Status:    status,

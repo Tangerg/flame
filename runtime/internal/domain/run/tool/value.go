@@ -182,7 +182,9 @@ func (r *Result) UnmarshalJSON(data []byte) error {
 // decodeValue preserves JSON numbers exactly and rejects trailing documents.
 // Tool arguments can contain identifiers larger than IEEE-754's exact integer
 // range; coercing them through float64 would silently change cache identity and
-// exported transcripts.
+// exported transcripts. Only encoding/json exposes that choice — decoding into
+// an any through encoding/json/v2 always yields float64 — so these three
+// boundaries keep the v1 decoder while the rest of Runtime uses v2.
 func decodeValue(data []byte, destination any) error {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()

@@ -1,7 +1,8 @@
 package delivery
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -15,7 +16,7 @@ import (
 // protocol document. Tool results remain the canonical values stored in the
 // transcript; archive encoding does not reinterpret them.
 func artifactFromPortable(portable sessions.PortableSnapshot) (protocol.SessionArtifact, error) {
-	messages := make([]json.RawMessage, 0, len(portable.Messages))
+	messages := make([]jsontext.Value, 0, len(portable.Messages))
 	for _, message := range portable.Messages {
 		encoded, err := json.Marshal(message)
 		if err != nil {

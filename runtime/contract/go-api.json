@@ -552,7 +552,7 @@
     {
       "path": "github.com/Tangerg/flame/runtime/protocol",
       "imports": [
-        "encoding/json",
+        "encoding/json/jsontext",
         "time"
       ],
       "constants": [
@@ -7334,7 +7334,7 @@
             },
             {
               "name": "Messages",
-              "type": "[]json.RawMessage",
+              "type": "[]jsontext.Value",
               "tag": "json:\"messages\""
             },
             {
@@ -8041,7 +8041,7 @@
             {
               "name": "Result",
               "type": "any",
-              "tag": "json:\"result,omitempty\""
+              "tag": "json:\"result,omitzero\""
             }
           ],
           "methods": [

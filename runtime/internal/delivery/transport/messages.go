@@ -1,7 +1,8 @@
 package transport
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 )
 
 // Message constructors use the SDK's public transport aliases so production
@@ -36,17 +37,17 @@ func NewResponseError(id ID, rpcError *Error) *Response {
 
 // NewError builds an RPC error with a caller-selected message and structured
 // data — useful when a downstream error's detail is safe to surface.
-func NewError(code int, message string, data json.RawMessage) *Error {
+func NewError(code int, message string, data jsontext.Value) *Error {
 	return &Error{Code: int64(code), Message: message, Data: data}
 }
 
 // marshalPayload JSON-encodes a params/result value. Nil returns nil so
 // the field omits on the wire.
-func marshalPayload(value any) (json.RawMessage, error) {
+func marshalPayload(value any) (jsontext.Value, error) {
 	if value == nil {
 		return nil, nil
 	}
-	if encoded, ok := value.(json.RawMessage); ok {
+	if encoded, ok := value.(jsontext.Value); ok {
 		return encoded, nil
 	}
 	return json.Marshal(value)

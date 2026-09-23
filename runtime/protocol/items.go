@@ -269,9 +269,12 @@ type QuestionOption struct {
 type ToolInvocation struct {
 	// ArgumentsText is the verbatim rejected input. When present, Arguments is an empty object.
 	ArgumentsText string         `json:"argumentsText,omitempty"`
-	Name          string         `json:"name"`             // stable tool identity; MCP names are authored by mcpserver.ToolName
-	Arguments     map[string]any `json:"arguments"`        // parsed JSON object (always present; never a JSON string)
-	Result        any            `json:"result,omitempty"` // best-effort JSON; absent on item.started, authoritative on item.completed
+	Name          string         `json:"name"`      // stable tool identity; MCP names are authored by mcpserver.ToolName
+	Arguments     map[string]any `json:"arguments"` // parsed JSON object (always present; never a JSON string)
+	// Result is absent until the call settles. A settled call that produced an
+	// explicit empty object or array still carries it: omitzero drops only the
+	// absent value, so "no result yet" stays distinct from "an empty result".
+	Result any `json:"result,omitzero"`
 }
 
 // DiffRow is one structured row of a unified diff. Code

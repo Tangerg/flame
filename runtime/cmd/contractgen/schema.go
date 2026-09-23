@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -75,23 +75,23 @@ type schema struct {
 	MinItems         *int           `json:"minItems,omitempty"`
 	MaxItems         *int           `json:"maxItems,omitempty"`
 	MinProperties    *int           `json:"minProperties,omitempty"`
-	UniqueItems      bool           `json:"uniqueItems,omitempty"`
-	Items            *schema        `json:"items,omitempty"`
+	UniqueItems      bool           `json:"uniqueItems,omitzero"`
+	Items            *schema        `json:"items,omitzero"`
 	Properties       map[string]any `json:"properties,omitempty"`
-	AdditionalProps  any            `json:"additionalProperties,omitempty"`
-	PropertyNames    *schema        `json:"propertyNames,omitempty"`
+	AdditionalProps  any            `json:"additionalProperties,omitzero"`
+	PropertyNames    *schema        `json:"propertyNames,omitzero"`
 	UnevaluatedProps *bool          `json:"unevaluatedProperties,omitempty"`
 	Required         []string       `json:"required,omitempty"`
 	OneOf            []*schema      `json:"oneOf,omitempty"`
 	AnyOf            []*schema      `json:"anyOf,omitempty"`
 	AllOf            []*schema      `json:"allOf,omitempty"`
-	If               *schema        `json:"if,omitempty"`
-	Then             *schema        `json:"then,omitempty"`
+	If               *schema        `json:"if,omitzero"`
+	Then             *schema        `json:"then,omitzero"`
 }
 
 var (
 	timeType       = reflect.TypeFor[time.Time]()
-	rawMessageType = reflect.TypeFor[json.RawMessage]()
+	rawMessageType = reflect.TypeFor[jsontext.Value]()
 )
 
 // schemaSet is the walked type graph: one definition per named wire type, plus

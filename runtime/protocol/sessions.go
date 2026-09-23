@@ -1,7 +1,7 @@
 package protocol
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"time"
 )
 
@@ -199,7 +199,7 @@ const SessionArtifactVersion = 27
 type SessionArtifact struct {
 	Version     int                  `json:"version"`
 	Session     ArtifactSession      `json:"session"`
-	Messages    []json.RawMessage    `json:"messages"`
+	Messages    []jsontext.Value     `json:"messages"`
 	Runs        []ArtifactRun        `json:"runs"`
 	Items       []ArtifactItem       `json:"items"`
 	ToolResults []ArtifactToolResult `json:"toolResults"`

@@ -2,7 +2,8 @@ package dispatch
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -13,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/contractshape"
 )
 
-func decodeParams(raw json.RawMessage, dst any) error {
+func decodeParams(raw jsontext.Value, dst any) error {
 	if len(raw) == 0 {
 		return nil
 	}
@@ -33,11 +34,11 @@ func decodeParams(raw json.RawMessage, dst any) error {
 // Pointers in protocol DTOs represent omission, not nullable JSON fields; the
 // standard decoder otherwise collapses both spellings to nil. Opaque JSON
 // values remain open and may contain null by contract.
-func rejectExplicitNulls(raw json.RawMessage, target reflect.Type, path string) error {
+func rejectExplicitNulls(raw jsontext.Value, target reflect.Type, path string) error {
 	for target.Kind() == reflect.Pointer {
 		target = target.Elem()
 	}
-	if target == reflect.TypeFor[json.RawMessage]() || target.Kind() == reflect.Interface {
+	if target == reflect.TypeFor[jsontext.Value]() || target.Kind() == reflect.Interface {
 		return nil
 	}
 	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
@@ -61,8 +62,8 @@ func rejectExplicitNulls(raw json.RawMessage, target reflect.Type, path string) 
 	return nil
 }
 
-func rejectStructNulls(raw json.RawMessage, target reflect.Type, path string) error {
-	var object map[string]json.RawMessage
+func rejectStructNulls(raw jsontext.Value, target reflect.Type, path string) error {
+	var object map[string]jsontext.Value
 	if err := json.Unmarshal(raw, &object); err != nil {
 		return fmt.Errorf("decode %s: %w", path, err)
 	}
@@ -78,8 +79,8 @@ func rejectStructNulls(raw json.RawMessage, target reflect.Type, path string) er
 	return nil
 }
 
-func rejectSequenceNulls(raw json.RawMessage, element reflect.Type, path string) error {
-	var values []json.RawMessage
+func rejectSequenceNulls(raw jsontext.Value, element reflect.Type, path string) error {
+	var values []jsontext.Value
 	if err := json.Unmarshal(raw, &values); err != nil {
 		return fmt.Errorf("decode %s: %w", path, err)
 	}
@@ -91,8 +92,8 @@ func rejectSequenceNulls(raw json.RawMessage, element reflect.Type, path string)
 	return nil
 }
 
-func rejectMapNulls(raw json.RawMessage, element reflect.Type, path string) error {
-	var values map[string]json.RawMessage
+func rejectMapNulls(raw jsontext.Value, element reflect.Type, path string) error {
+	var values map[string]jsontext.Value
 	if err := json.Unmarshal(raw, &values); err != nil {
 		return fmt.Errorf("decode %s: %w", path, err)
 	}

@@ -3,7 +3,7 @@ package toolset
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"go/format"
@@ -93,15 +93,11 @@ func formatPath(ctx context.Context, root *filesystemRoot, executor *fs.LocalExe
 			return fmt.Errorf("%s: gofmt: %w", path, err)
 		}
 	case ".json":
-		if !json.Valid(input) {
+		indented := jsontext.Value(bytes.TrimSpace(input))
+		if indentErr := indented.Indent(jsontext.WithIndent("  ")); indentErr != nil {
 			return nil
 		}
-		var buffer bytes.Buffer
-		if indentErr := json.Indent(&buffer, bytes.TrimSpace(input), "", "  "); indentErr != nil {
-			return nil
-		}
-		buffer.WriteByte('\n')
-		formatted = buffer.Bytes()
+		formatted = append(indented, '\n')
 	default:
 		if err := verifyWorkspacePath(root); err != nil {
 			return err

@@ -3,10 +3,9 @@ package hooks
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"time"
@@ -175,12 +174,7 @@ func hookDecisionFromWire(stdout []byte) (apphooks.CommandDecision, error) {
 		return apphooks.CommandDecision{}, errors.New("hooks: command decision must be a JSON object")
 	}
 	var wire hookDecisionWire
-	decoder := json.NewDecoder(bytes.NewReader(stdout))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&wire); err != nil {
-		return apphooks.CommandDecision{}, fmt.Errorf("hooks: decode command decision: %w", err)
-	}
-	if err := requireHookDecisionEOF(decoder); err != nil {
+	if err := json.Unmarshal(stdout, &wire, json.RejectUnknownMembers(true)); err != nil {
 		return apphooks.CommandDecision{}, fmt.Errorf("hooks: decode command decision: %w", err)
 	}
 	verdict, err := hookVerdictFromWire(wire.Decision)
@@ -191,17 +185,6 @@ func hookDecisionFromWire(stdout []byte) (apphooks.CommandDecision, error) {
 		Verdict: verdict, Reason: wire.Reason,
 		InjectContext: wire.InjectContext, RewriteArguments: wire.RewriteArguments,
 	}, nil
-}
-
-func requireHookDecisionEOF(decoder *json.Decoder) error {
-	var trailing any
-	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("multiple JSON values")
-		}
-		return err
-	}
-	return nil
 }
 
 func hookVerdictFromWire(verdict apphooks.CommandVerdict) (apphooks.CommandVerdict, error) {
