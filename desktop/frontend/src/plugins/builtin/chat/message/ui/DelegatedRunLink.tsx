@@ -9,7 +9,15 @@ import { motion, radius, space, surface, type as typeStep } from "@/styles/token
 import { delegatedRunSummary } from "../application/delegatedRunSummary";
 
 const styles = stylex.create({
-  row: { display: "flex", alignItems: "center", gap: space.s1, minWidth: 0 },
+  // Outdented by the link's own inset, so the glyph sits on the column the activity rows and
+  // section headings hold and the hover fill spends the gutter instead.
+  row: {
+    display: "flex",
+    alignItems: "center",
+    gap: space.s1,
+    minWidth: 0,
+    marginInlineStart: "calc(var(--spacing) * -2)",
+  },
   // Four identical open-in-panel glyphs stacked into a column of their own beside four rows
   // that differ only in their status. The row already answers the pointer; the glyph says
   // where the click lands, which is worth saying at the moment the pointer is there.
