@@ -28,6 +28,7 @@ import (
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	otelagent "github.com/Tangerg/scope/otel/agent"
 )
 
 const (
@@ -253,7 +254,11 @@ func (i *InteractionExecutor) assembleInteraction(
 	model := resolved.Model()
 	streamer, _ := resolved.Streamer()
 	counter, _ := resolved.InputTokenCounter()
-	session := newInteractionSession(i.lifetime, ref, start, i.config, i.buildID, i.policy)
+	telemetry, err := otelagent.NewObserver(otelagent.ObserverConfig{})
+	if err != nil {
+		return nil, fmt.Errorf("agentexec: observe Interaction execution: %w", err)
+	}
+	session := newInteractionSession(i.lifetime, ref, start, i.config, i.buildID, i.policy, telemetry)
 	i.sessions.own(session)
 	defer func() {
 		if err != nil {
@@ -273,16 +278,22 @@ func (i *InteractionExecutor) assembleInteraction(
 	if installDeploymentsErr := session.installDeployments(deployments); installDeploymentsErr != nil {
 		return nil, errors.Join(installDeploymentsErr, deployments.close())
 	}
+	committer, err := telemetry.WrapTreeCommitter(session)
+	if err != nil {
+		return nil, fmt.Errorf("agentexec: observe Interaction tree commits: %w", err)
+	}
 	engine, err := agent.NewEngine(agent.EngineConfig{
-		TreeCommitter:                            session,
+		TreeCommitter:                            committer,
 		DeploymentResolver:                       deployments,
 		ProcessAdmitter:                          agent.ProcessAdmitterFunc(session.admitProcess),
 		ProcessInitializationOutcomeAcknowledger: agent.ProcessInitializationOutcomeAcknowledgerFunc(session.acknowledgeProcessInitializationOutcome),
-		EventListeners:                           []agent.EventListener{agent.EventListenerFunc(session.observeFrameworkEvent)},
-		DeltaListeners:                           []agent.DeltaListener{agent.DeltaListenerFunc(session.projectDelta)},
-		DeltaBufferCapacity:                      i.policy.deltaBufferCapacity,
-		Limits:                                   agent.DefaultLimits(),
-		TreeLimits:                               deployments.treeLimits,
+		EventListeners: []agent.EventListener{
+			agent.EventListenerFunc(session.observeFrameworkEvent), telemetry,
+		},
+		DeltaListeners:      []agent.DeltaListener{agent.DeltaListenerFunc(session.projectDelta)},
+		DeltaBufferCapacity: i.policy.deltaBufferCapacity,
+		Limits:              agent.DefaultLimits(),
+		TreeLimits:          deployments.treeLimits,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: build Interaction engine: %w", err)

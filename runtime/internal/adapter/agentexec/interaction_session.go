@@ -22,6 +22,7 @@ import (
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
+	otelagent "github.com/Tangerg/scope/otel/agent"
 )
 
 type interactionSession struct {
@@ -46,6 +47,10 @@ type interactionSession struct {
 	modelFailures       interactionModelFailures
 	effectFailures      interactionEffectFailures
 	segmentClock        interactionSegmentClock
+	// telemetry observes Framework facts only. It owns Process, Step, and
+	// Effect spans plus the commit instruments, and must outlive the Engine it
+	// observes, so it closes after the Engine has drained.
+	telemetry *otelagent.Observer
 }
 
 // interactionState owns the one lock domain whose facts must move atomically:
@@ -110,8 +115,10 @@ func newInteractionSession(
 	config InteractionExecutorConfig,
 	buildID runtimeidentity.BuildID,
 	policy interactionExecutionPolicy,
+	telemetry *otelagent.Observer,
 ) *interactionSession {
 	return &interactionSession{
+		telemetry:      telemetry,
 		executionTrees: config.ExecutionTrees,
 		ref:            ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
 		state: interactionState{
@@ -702,10 +709,19 @@ func (i *interactionSession) closeExecution(ctx context.Context) error {
 	if err := i.engine.Close(ctx); err != nil {
 		return err
 	}
+	i.closeTelemetry()
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
 	return deployments.close()
+}
+
+// closeTelemetry ends any span the Engine left open. It is idempotent so the
+// discard path can release an assembly that never reached closeExecution.
+func (i *interactionSession) closeTelemetry() {
+	if i.telemetry != nil {
+		i.telemetry.Close()
+	}
 }
 
 func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded, error) {

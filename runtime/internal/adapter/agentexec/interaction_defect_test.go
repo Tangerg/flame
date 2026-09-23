@@ -20,6 +20,7 @@ func TestExecutionDefectFailsTheRunAndFinishesTheSession(t *testing.T) {
 		InteractionExecutorConfig{},
 		runtimeidentity.BuildID{},
 		interactionExecutionPolicy{},
+		nil,
 	)
 
 	func() {
