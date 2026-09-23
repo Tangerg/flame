@@ -24,7 +24,7 @@ const styles = stylex.create({
     backgroundColor: {
       default: surface.surface2,
       ":hover": surface.surface3,
-      ":is([data-popup-open])": surface.surface3,
+      ':is([data-popup-open][aria-expanded="true"])': surface.surface3,
       ":disabled": surface.surface2,
     },
     paddingInline: space.s2_5,

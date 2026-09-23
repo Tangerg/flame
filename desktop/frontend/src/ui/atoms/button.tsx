@@ -134,11 +134,16 @@ const styles = stylex.create({
       // focus ring here". A control that opts out of the ring has to show something else, so
       // the button honours the marker rather than leaving each call site to remember.
       ":is([data-chrome-focus]):focus-visible": surface.hover,
-      // Base UI's own attribute on a trigger, so a button that has opened a popup says so here.
-      ":is([data-popup-open])": surface.selected,
-      ":is([data-popup-open]):hover": surface.selectedHover,
+      // Both halves: a tooltip marks its trigger `data-popup-open` too, and a disclosure marks
+      // `aria-expanded`; only a menu or popover this button opened carries the pair.
+      ':is([data-popup-open][aria-expanded="true"])': surface.selected,
+      ':is([data-popup-open][aria-expanded="true"]):hover': surface.selectedHover,
     },
-    color: { default: color.fgMuted, ":hover": color.fg, ":is([data-popup-open])": color.fg },
+    color: {
+      default: color.fgMuted,
+      ":hover": color.fg,
+      ':is([data-popup-open][aria-expanded="true"])': color.fg,
+    },
   },
   soft: {
     backgroundColor: { default: surface.surface2, ":hover": surface.surface3 },

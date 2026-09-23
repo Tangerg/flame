@@ -215,3 +215,16 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
     `one gesture, a closed set of answers:\n${distinct.join("\n")}`,
   ).toBeLessThanOrEqual(MAX_DISTINCT_ANSWERS);
 });
+
+test("a tooltip opening does not press the button under the pointer", async ({ page }) => {
+  await page.goto("/visual/?fixture=workspace&state=dock-review&theme=light");
+  await page.waitForSelector("html[data-visual-ready]");
+
+  const copy = page.getByRole("button", { name: "Copy message" }).last();
+  await copy.hover();
+  await page.waitForTimeout(80);
+  const hovered = await copy.evaluate((el) => getComputedStyle(el).backgroundColor);
+  await expect(copy).toHaveAttribute("data-popup-open", "");
+  await page.waitForTimeout(250);
+  expect(await copy.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(hovered);
+});
