@@ -106,6 +106,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
 
       <div {...stylex.props(ss.afterRow, pr.fields)}>
         <TextField
+          font="mono"
           type="password"
           aria-label={t("providers.apiKey.aria", { provider: p.id })}
           value={draft.apiKey}
@@ -119,6 +120,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
           }
         />
         <TextField
+          font="mono"
           type="text"
           aria-label={t("providers.baseUrl.aria", { provider: p.id })}
           value={draft.baseUrl}

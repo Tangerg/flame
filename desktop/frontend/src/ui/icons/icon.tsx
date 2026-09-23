@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  ArrowUpRight,
   Bell,
   Blocks,
   Book,
@@ -28,28 +29,29 @@ import {
   Code,
   Command,
   Copy,
+  CopyX,
   Crosshair,
+  Diff,
   Download,
   Ellipsis,
   Eye,
   File,
-  Diff,
   FileText,
   Flag,
+  FoldVertical,
   Folder,
   FolderOpen,
   FolderSearch,
   GitBranch,
   Globe,
-  RotateCcwClock,
   Image,
   Library,
   List,
   ListChecks,
+  ListX,
   Map,
   Maximize,
   MessageSquare,
-  Minimize,
   Moon,
   PackageSearch,
   PanelLeft,
@@ -61,6 +63,7 @@ import {
   Plus,
   RefreshCw,
   Replace,
+  RotateCcwClock,
   ScrollText,
   Search,
   Send,
@@ -71,11 +74,13 @@ import {
   Sparkle,
   Sparkles,
   Square,
+  SquarePen,
   Star,
   Sun,
   Target,
   Terminal,
   TextSearch,
+  TextWrap,
   ThumbsDown,
   ThumbsUp,
   Trash,
@@ -84,7 +89,6 @@ import {
   User,
   Users,
   Webhook,
-  TextWrap,
   Wrench,
   X,
   Zap,
@@ -131,7 +135,11 @@ export type IconName =
   | "user"
   | "spark"
   | "skip-back"
-  | "minimize"
+  | "fold"
+  | "open"
+  | "compose"
+  | "close-others"
+  | "close-all"
   | "maximize"
   | "diff"
   | "list"
@@ -222,7 +230,11 @@ const ICON_MAP = {
   user: User,
   spark: Sparkles,
   "skip-back": SkipBack,
-  minimize: Minimize,
+  fold: FoldVertical,
+  open: ArrowUpRight,
+  compose: SquarePen,
+  "close-others": CopyX,
+  "close-all": ListX,
   maximize: Maximize,
   diff: Diff,
   list: List,

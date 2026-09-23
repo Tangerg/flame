@@ -13,7 +13,13 @@ import { uiTypeLadderCssVariables } from "../kit/typeLadder";
 import { ACCENT, COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
 import { subscribeContributions } from "@/plugins/sdk";
 import { lookupExtensionByKey, lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
-import { WCAG_AA_NON_TEXT, WCAG_AA_TEXT, focusOnCanvas, inkOnFill } from "../kit/legibility";
+import {
+  WCAG_AA_NON_TEXT,
+  WCAG_AA_TEXT,
+  edgeOnCanvas,
+  focusOnCanvas,
+  inkOnFill,
+} from "../kit/legibility";
 import { depthStep } from "../kit/tokens";
 import { visualStyleMotionTokens } from "../visualStyles/tokens";
 import { resolveThemeScheme } from "../application/themeScheme";
@@ -73,6 +79,10 @@ function applyColorTheme(theme: ColorThemeId, accent: string, contrast: number):
     "--color-focus-ring",
     focusOnCanvas(resolved("--color-accent"), resolved("--color-text"), resolved("--color-bg")),
   );
+  root.style.setProperty(
+    "--color-control-edge",
+    edgeOnCanvas(resolved("--color-text"), resolved("--color-bg")),
+  );
   appliedColorTokens.push(
     "--color-accent",
     "--color-accent-border",
@@ -80,6 +90,7 @@ function applyColorTheme(theme: ColorThemeId, accent: string, contrast: number):
     "--color-text-on-accent",
     "--color-cta-text",
     "--color-focus-ring",
+    "--color-control-edge",
     "--depth-step",
   );
 

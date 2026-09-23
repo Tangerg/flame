@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   contrastRatio,
+  edgeOnCanvas,
   focusOnCanvas,
   inkOnFill,
   legibleMix,
@@ -96,6 +97,19 @@ describe("legibleMix", () => {
     const fill = "#202020";
     expect(contrastRatio(ink, fill)).toBeLessThan(WCAG_AA_TEXT);
     expect(legibleMix(ink, fill, fill, 28, WCAG_AA_TEXT)).toBe(100);
+  });
+});
+
+describe("edgeOnCanvas", () => {
+  it("draws an unchecked control boundary no fainter than non-text contrast", () => {
+    for (const [ink, canvas] of [
+      ["#1e1f22", "#ffffff"],
+      ["#e3e5e9", "#1f1f1f"],
+    ]) {
+      const edge = edgeOnCanvas(ink!, canvas!);
+      expect(contrastRatio(edge, canvas!)).toBeGreaterThanOrEqual(WCAG_AA_NON_TEXT);
+      expect(contrastRatio(edge, canvas!)).toBeLessThan(contrastRatio(ink!, canvas!));
+    }
   });
 });
 

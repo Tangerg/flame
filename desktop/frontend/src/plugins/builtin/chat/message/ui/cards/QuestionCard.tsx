@@ -418,7 +418,6 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
         {activeQuestion.type === "text" && (
           <div {...stylex.props(qc.field)}>
             <TextArea
-              font="sans"
               size="sm"
               rows={4}
               value={activeDraft.text}
@@ -452,7 +451,6 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
             </span>
             <TextField
               variant="bare"
-              font="sans"
               value={activeDraft.text}
               aria-label={activeQuestion.prompt}
               placeholder={t("question.freetext.placeholder")}

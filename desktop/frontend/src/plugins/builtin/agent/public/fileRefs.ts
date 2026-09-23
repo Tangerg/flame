@@ -79,12 +79,20 @@ const TOKEN = /(?<![\w/.@-])([A-Za-z0-9._\-/]+)(?::(\d+))?(?::(\d+))?/g;
 
 const HAS_LETTER = /[A-Za-z]/;
 
+const ROOTED = /^\.{0,2}\//;
+
+function hasFileExtension(name: string): boolean {
+  const dot = name.lastIndexOf(".");
+  if (dot <= 0 || dot === name.length - 1) return false;
+  return FILE_EXT.has(name.slice(dot + 1).toLowerCase());
+}
+
 function isFileRef(path: string): boolean {
   if (path.startsWith("//")) return false;
-  if (path.includes("/")) return HAS_LETTER.test(path);
-  const dot = path.lastIndexOf(".");
-  if (dot <= 0 || dot === path.length - 1) return false;
-  return FILE_EXT.has(path.slice(dot + 1).toLowerCase());
+  if (!path.includes("/")) return hasFileExtension(path);
+  if (!HAS_LETTER.test(path)) return false;
+  const segments = path.split("/").filter(Boolean);
+  return ROOTED.test(path) || segments.length >= 3 || hasFileExtension(segments.at(-1) ?? "");
 }
 
 export function parseFileRefs(text: string): RefSegment[] {

@@ -45,6 +45,7 @@ export function ApprovalArgsEditor({
       {editing ? (
         <>
           <TextArea
+            font="mono"
             invalid={invalid}
             value={argsText}
             aria-label={t("approval.args.label")}

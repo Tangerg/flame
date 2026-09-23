@@ -51,7 +51,7 @@ const styles = stylex.create({
     placeItems: "center",
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
-    borderColor: surface.field,
+    borderColor: surface.controlEdge,
     backgroundColor: surface.canvas,
     lineHeight: 1,
     fontWeight: weight.medium,

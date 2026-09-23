@@ -117,6 +117,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
       {draft.transport === "stdio" ? (
         <>
           <TextField
+            font="mono"
             type="text"
             aria-label={t("mcp.form.command.aria")}
             value={draft.command}
@@ -155,6 +156,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             </span>
           )}
           <TextField
+            font="mono"
             type="text"
             aria-label={t("mcp.form.dir.aria")}
             value={draft.dir}
@@ -165,6 +167,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
       ) : (
         <>
           <TextField
+            font="mono"
             type="text"
             aria-label={t("mcp.form.url.aria")}
             value={draft.url}
@@ -172,6 +175,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             placeholder={t("mcp.form.url.placeholder")}
           />
           <TextField
+            font="mono"
             type="password"
             aria-label={t("mcp.form.auth.aria")}
             value={draft.authorization.text}

@@ -22,7 +22,7 @@ export function CompactionBlock({ summary }: { summary: string }) {
 
   return (
     <AgentActivityDisclosure
-      icon="minimize"
+      icon="fold"
       shell="line"
       label={label}
       open={open}

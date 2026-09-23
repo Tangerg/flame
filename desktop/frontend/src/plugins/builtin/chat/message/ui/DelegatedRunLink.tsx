@@ -91,7 +91,7 @@ export function DelegatedRunLink({
           data-reveal="hover"
           {...stylex.props(vocab.firstLine, typeStep.uiMd, reveal.shown, styles.openHint)}
         >
-          <Icon name="panel-r" size="sm" />
+          <Icon name="open" size="sm" />
         </span>
       </Pressable>
       <span {...stylex.props(styles.cancelSlot)}>

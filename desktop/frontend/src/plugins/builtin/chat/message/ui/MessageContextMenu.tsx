@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import type { ReactElement, ReactNode } from "react";
-import { ContextMenu, Icon, chevron, vocab } from "@/ui";
+import { ContextMenu, Icon, vocab } from "@/ui";
 import {
   editAndRerunMessage,
   editMessageInComposer,
@@ -78,9 +78,9 @@ export function MessageContextMenu({ msg, children }: Props) {
                   <Icon name="history" size="xs" />
                   <span {...stylex.props(vocab.truncate)}>{t("msgActions.restore")}</span>
                   <Icon
-                    name="chevron-down"
+                    name="chevron-right"
                     size="xs"
-                    className={stylex.props(chevron.base, chevron.shut, vocab.faint).className}
+                    className={stylex.props(vocab.faint).className}
                   />
                 </ContextMenu.SubmenuTrigger>
                 <ContextMenu.Content side="right" align="start" sideOffset={2} alignOffset={-4}>

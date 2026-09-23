@@ -23,6 +23,10 @@ export function inkOnFill(declared: string, fill: string, required: number): str
   return contrastRatio(fill, "#ffffff") >= contrastRatio(fill, "#000000") ? "#ffffff" : "#000000";
 }
 
+export function edgeOnCanvas(ink: string, canvas: string): string {
+  return mixOklab(ink, canvas, legibleMix(ink, canvas, canvas, 0, WCAG_AA_NON_TEXT));
+}
+
 export function focusOnCanvas(accent: string, ink: string, canvas: string): string {
   return mixOklab(ink, accent, legibleMix(ink, accent, canvas, 0, WCAG_AA_NON_TEXT));
 }

@@ -13,7 +13,7 @@ interface ProgressBarProps {
 }
 
 const styles = stylex.create({
-  track: { overflow: "hidden", backgroundColor: surface.sunken },
+  track: { overflow: "hidden", backgroundColor: surface.surface3 },
   fill: {
     height: "100%",
     backgroundColor: color.accent,

@@ -38,7 +38,11 @@ export function SidebarActions() {
         {t("sessionSearch.placeholder")}
       </AgentRow>
       <div {...stylex.props(vocab.column)}>
-        <AgentRow icon="edit" disabled={!actions.canCreateSession} onClick={actions.createSession}>
+        <AgentRow
+          icon="compose"
+          disabled={!actions.canCreateSession}
+          onClick={actions.createSession}
+        >
           {t("sidebar.action.newSession")}
         </AgentRow>
         <AgentRow icon="clock" onClick={() => openWorkspaceSettingsPane(SCHEDULES_PANE)}>

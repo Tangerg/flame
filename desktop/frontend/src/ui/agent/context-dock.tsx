@@ -265,7 +265,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                 </ContextMenu.IconItem>
                 {tab.onCloseOthers && (
                   <ContextMenu.IconItem
-                    icon="minimize"
+                    icon="close-others"
                     disabled={tabs.length < 2}
                     onSelect={tab.onCloseOthers}
                   >
@@ -273,7 +273,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                   </ContextMenu.IconItem>
                 )}
                 {tab.onCloseAll && (
-                  <ContextMenu.IconItem icon="trash" onSelect={tab.onCloseAll}>
+                  <ContextMenu.IconItem icon="close-all" onSelect={tab.onCloseAll}>
                     {tab.closeAllLabel}
                   </ContextMenu.IconItem>
                 )}

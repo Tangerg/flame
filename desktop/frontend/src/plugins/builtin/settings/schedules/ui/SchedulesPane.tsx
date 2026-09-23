@@ -16,7 +16,7 @@ export function SchedulesPane() {
   if (!enabled) {
     return (
       <EmptyState
-        icon="command"
+        icon="clock"
         title={t("schedules.unavailable")}
         sub={t("schedules.unavailable.sub")}
       />
@@ -60,7 +60,7 @@ function EnabledSchedulesPane() {
         failure={error}
         onRetry={refetch}
         skeletonCount={3}
-        empty={{ icon: "command", title: t("schedules.empty"), sub: t("schedules.empty.sub") }}
+        empty={{ icon: "clock", title: t("schedules.empty"), sub: t("schedules.empty.sub") }}
       >
         {(rows) => (
           <SettingsGroup>

@@ -4,7 +4,6 @@ import { cn } from "@/lib/classNames";
 import { color, motion, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { Icon } from "@/ui/icons";
 import { Pressable, type PressableProps } from "./pressable";
-import { chevron } from "./chevron";
 
 const styles = stylex.create({
   trigger: {
@@ -41,7 +40,7 @@ const styles = stylex.create({
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
-  chevronInk: { color: color.fgFaint },
+  chevronInk: { flexShrink: 0, color: color.fgFaint },
 });
 
 export interface SelectTriggerProps extends Omit<PressableProps, "children"> {
@@ -62,11 +61,7 @@ export function SelectTrigger({ label, leading: lead, className, ...props }: Sel
       <span title={typeof label === "string" ? label : undefined} {...stylex.props(styles.label)}>
         {label}
       </span>
-      <Icon
-        name="more"
-        size="xs"
-        {...stylex.props([chevron.base, chevron.shut, styles.chevronInk])}
-      />
+      <Icon name="chevron-down" size="xs" {...stylex.props(styles.chevronInk)} />
     </Pressable>
   );
 }

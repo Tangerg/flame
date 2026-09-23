@@ -96,7 +96,7 @@ function FullViewBar({ icon, title, sub, actions, titleFace = "prose" }: ViewHea
         {actions}
         {placement?.splittable && (
           <IconButton
-            icon="panel-r"
+            icon="open"
             size="sm"
             title={t("workspace.view.openBeside")}
             onClick={placement.onOpenInDock}

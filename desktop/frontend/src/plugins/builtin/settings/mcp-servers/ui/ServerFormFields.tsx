@@ -15,6 +15,7 @@ export function LinesField({ label, value, onChange, placeholder }: LinesFieldPr
     <label {...stylex.props(vocab.column, gap.s1_5)}>
       <span {...stylex.props(ss.label, typeStep.uiMd)}>{label}</span>
       <TextArea
+        font="mono"
         size="sm"
         value={value}
         onChange={(event) => onChange(event.target.value)}

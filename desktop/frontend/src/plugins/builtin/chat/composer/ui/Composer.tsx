@@ -98,7 +98,6 @@ export function Composer({
         <TextArea
           variant="bare"
           size="prose"
-          font="sans"
           ref={inputRef}
           aria-label={t("composer.input.label")}
           aria-controls={mentions.active ? MENTION_LISTBOX_ID : undefined}

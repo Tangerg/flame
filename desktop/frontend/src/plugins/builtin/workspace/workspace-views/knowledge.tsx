@@ -124,6 +124,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
       <Collapsible open={open}>
         <div id={panelId} {...stylex.props(vocab.column, gap.s2, vs.gutter, vs.editorInset)}>
           <TextArea
+            font="mono"
             aria-label={t("knowledge.aria", { path: row.path })}
             value={editor.draft}
             onChange={(e) =>

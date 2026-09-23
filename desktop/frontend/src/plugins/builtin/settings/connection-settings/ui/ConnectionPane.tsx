@@ -129,6 +129,7 @@ export function ConnectionPane() {
           </label>
           <div {...stylex.props(vocab.line)}>
             <TextField
+              font="mono"
               id="runtime-base-url"
               type="text"
               invalid={error !== null}

@@ -58,6 +58,7 @@ export function JsonImport() {
     <Surface className={stylex.props(ji.form).className}>
       <span {...stylex.props(vocab.muted, typeStep.uiMd)}>{t("mcp.import.hint")}</span>
       <TextArea
+        font="mono"
         size="sm"
         invalid={error !== undefined}
         value={text}

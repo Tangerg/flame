@@ -116,7 +116,6 @@ export function TextEditorDialog({
               <TextArea
                 ref={editorRef}
                 rows={12}
-                font="sans"
                 aria-label={label}
                 value={value}
                 pending={busy}

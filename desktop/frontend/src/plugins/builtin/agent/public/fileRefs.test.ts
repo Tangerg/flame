@@ -53,6 +53,21 @@ describe("parseFileRefs", () => {
     expect(paths("see README.md and package.json")).toEqual(["README.md", "package.json"]);
   });
 
+  it("does not read slashed prose as a path", () => {
+    const prose = [
+      "normalise CR/LF endings",
+      "over TCP/IP",
+      "read and/or write",
+      "blocking I/O",
+      "a yes/no prompt",
+    ];
+    expect(prose.filter((line) => paths(line).length > 0)).toEqual([]);
+  });
+
+  it("links a two-segment path only when it names a file or a root", () => {
+    expect(paths("edit src/main.go and ./scripts")).toEqual(["src/main.go", "./scripts"]);
+  });
+
   it("ignores an email address", () => {
     expect(parseFileRefs("mail a@b.com please")).toEqual(["mail a@b.com please"]);
   });

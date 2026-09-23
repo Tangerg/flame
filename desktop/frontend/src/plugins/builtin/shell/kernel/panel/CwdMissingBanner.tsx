@@ -54,6 +54,7 @@ export function CwdMissingBanner() {
             {editing ? (
               <div {...stylex.props(vocab.lineTight)}>
                 <TextField
+                  font="mono"
                   type="text"
                   size="sm"
                   value={path}

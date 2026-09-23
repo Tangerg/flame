@@ -58,7 +58,6 @@ function SessionTitleField({
   return (
     <TextField
       variant="inline"
-      font="sans"
       defaultValue={title}
       aria-label={t("session.row.titleLabel")}
       // oxlint-disable-next-line jsx-a11y/no-autofocus

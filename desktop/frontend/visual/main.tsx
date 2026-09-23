@@ -58,7 +58,10 @@ const shellOverlay: VisualShellOverlay | null = isVisualShellOverlay(requestedOv
   : null;
 const requestedFixture = query.get("fixture");
 const fixture =
-  requestedFixture === "agent" || requestedFixture === "workspace" || requestedFixture === "shell"
+  requestedFixture === "agent" ||
+  requestedFixture === "workspace" ||
+  requestedFixture === "shell" ||
+  requestedFixture === "atoms"
     ? requestedFixture
     : "foundation";
 const requestedState = query.get("state");
@@ -124,7 +127,7 @@ const container = document.getElementById("root");
 if (!container) throw new Error("Visual fixture root element is missing");
 
 async function fixtureNode(): Promise<ReactNode> {
-  if (fixture === "foundation") {
+  if (fixture === "foundation" || fixture === "atoms") {
     const [
       { default: flameLight },
       { default: flameDark },
@@ -138,6 +141,10 @@ async function fixtureNode(): Promise<ReactNode> {
     ]);
     for (const plugin of [flameLight, flameDark, defaultAccents, ...builtinVisualStyles]) {
       await loadPluginsForTest(plugin);
+    }
+    if (fixture === "atoms") {
+      const { VisualAtomsFixture } = await import("./VisualAtomsFixture");
+      return <VisualAtomsFixture />;
     }
     return <VisualFoundationFixture sidebarOpen={sidebarOpen} />;
   }

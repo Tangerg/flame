@@ -119,7 +119,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
               key="open-view"
               data-reveal="hover"
               data-slot="tool-open-view"
-              icon="panel-r"
+              icon="open"
               size="xs"
               quiet
               title={t("workspace.view.openBeside")}

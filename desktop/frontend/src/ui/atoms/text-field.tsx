@@ -109,7 +109,7 @@ export type TextFieldProps = Omit<InputPrimitiveProps, "size" | "className"> &
 export function TextField({
   variant = "boxed",
   size = "md",
-  font = "mono",
+  font = "sans",
   ink = "default",
   invalid = false,
   className,
@@ -150,7 +150,7 @@ export type TextAreaProps = Omit<TextAreaPrimitiveProps, "className"> &
 export function TextArea({
   variant = "boxed",
   size = "md",
-  font = "mono",
+  font = "sans",
   ink = "default",
   invalid = false,
   autosize = false,

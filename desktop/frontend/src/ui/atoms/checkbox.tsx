@@ -24,7 +24,7 @@ const styles = stylex.create({
     borderRadius: radius.step2xs,
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
-    borderColor: { default: surface.field, ":is([data-checked])": color.accent },
+    borderColor: { default: surface.controlEdge, ":is([data-checked])": color.accent },
     backgroundColor: { default: surface.canvas, ":is([data-checked])": color.accent },
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.color,

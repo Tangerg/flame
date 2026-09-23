@@ -107,7 +107,6 @@ function SessionChatSearchOverlay() {
       <TextField
         ref={inputRef}
         variant="bare"
-        font="sans"
         size="lg"
         aria-label={t("chatSearch.label")}
         value={query}

@@ -127,7 +127,6 @@ function SearchOverlayContent({
         <Icon name="search" size="md" />
         <TextField
           variant="bare"
-          font="sans"
           // oxlint-disable-next-line jsx-a11y/no-autofocus
           autoFocus={open}
           role="combobox"

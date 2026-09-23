@@ -90,14 +90,12 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
   return (
     <Surface className={stylex.props(ss.stack).className}>
       <TextField
-        font="sans"
         value={draft.title}
         onChange={(event) => updateDraft("title", event.target.value)}
         placeholder={t("schedules.form.title")}
         aria-label={t("schedules.form.title")}
       />
       <TextArea
-        font="sans"
         size="sm"
         value={draft.instructions}
         onChange={(event) => updateDraft("instructions", event.target.value)}
@@ -126,6 +124,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
         ))}
       </div>
       <TextField
+        font="mono"
         value={draft.cron}
         onChange={(event) => updateDraft("cron", event.target.value)}
         spellCheck={false}
@@ -133,6 +132,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
         aria-label={t("schedules.form.cron")}
       />
       <TextField
+        font="mono"
         value={draft.cwd}
         onChange={(event) => updateDraft("cwd", event.target.value)}
         spellCheck={false}
