@@ -136,7 +136,7 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
         aria-label={model.label}
         {...stylex.props(styles.transcript)}
       >
-        <div {...stylex.props(styles.status, typeStep.uiSm)}>
+        <div {...stylex.props(styles.status, typeStep.uiMd)}>
           <Icon name="bot" size="sm" />
           <span title={model.label} {...stylex.props(styles.summary, vocab.truncate)}>
             {model.label}

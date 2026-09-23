@@ -55,7 +55,7 @@ const VARIANT = {
   danger: styles.danger,
 } as const;
 
-const SIZE = { sm: [styles.sm, type.uiSm], md: [styles.md, type.uiMd] } as const;
+const SIZE = { sm: [styles.sm, type.uiMd], md: [styles.md, type.uiMd] } as const;
 
 type Props = Omit<ButtonPrimitiveProps, "children"> & {
   variant?: PillVariant;

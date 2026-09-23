@@ -194,7 +194,7 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
         style={edgeStyle}
         {...stylex.props(rb.scroller, scrollEdges.fade, isOpen && rb.windowed)}
       >
-        <div ref={content} className={stylex.props(ms.quote, typeStep.uiSm).className}>
+        <div ref={content} className={stylex.props(ms.quote, typeStep.uiMd).className}>
           <MarkdownMessage text={text} streaming={streaming} reveal="smooth" />
           {status === "incomplete" && (
             <div {...stylex.props(rb.note, vocab.faint, typeStep.uiSm, face.mono)}>

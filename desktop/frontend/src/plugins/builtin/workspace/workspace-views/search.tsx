@@ -64,7 +64,7 @@ export function SearchTab() {
             <div {...stylex.props(vocab.column, vs.padBottom)}>
               {groups.map((group) => (
                 <div key={group.path} {...stylex.props(vs.gutter, vs.groupPad)}>
-                  <div {...stylex.props(vs.title, vocab.truncate, typeStep.uiSm, face.mono)}>
+                  <div {...stylex.props(vs.title, vocab.truncate, typeStep.uiMd, face.mono)}>
                     {group.path}
                     <span {...stylex.props(vs.matchCount)}>{group.matchCount}</span>
                   </div>

@@ -105,7 +105,7 @@ export function Segmented<T extends string | number>({
           <TabsPrimitive.Tab
             key={String(opt.value)}
             value={String(opt.value)}
-            {...stylex.props(styles.tab, typeStep.uiSm)}
+            {...stylex.props(styles.tab, typeStep.uiMd)}
           >
             {String(opt.value) === String(value) && (
               <anim.span

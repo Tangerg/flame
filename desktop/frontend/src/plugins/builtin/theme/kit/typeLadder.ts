@@ -16,9 +16,9 @@ const STEPS: Readonly<
     { readonly ratio: number; readonly floorPx: number; readonly aboveProse?: true }
   >
 > = {
-  "ui-2xs": { ratio: 0.76, floorPx: 9 },
-  "ui-xs": { ratio: 0.84, floorPx: 10 },
-  "ui-sm": { ratio: 0.92, floorPx: 10 },
+  "ui-2xs": { ratio: 0.714, floorPx: 9 },
+  "ui-xs": { ratio: 0.786, floorPx: 9 },
+  "ui-sm": { ratio: 0.857, floorPx: 10 },
   "ui-md": { ratio: 1, floorPx: UI_FONT_SIZE_MIN_PX },
   prose: { ratio: 1, floorPx: 0 },
   code: { ratio: 0.95, floorPx: 10 },

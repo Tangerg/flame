@@ -85,7 +85,7 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
       <Icon name={icon} size="xs" className={stylex.props(ts.glyph).className} />
       <div {...stylex.props(vocab.fill)}>
         <div {...stylex.props(vs.lineBaseline)}>
-          <span {...stylex.props(vocab.hold, ts.kind, typeStep.uiSm)}>
+          <span {...stylex.props(vocab.hold, ts.kind, typeStep.uiMd)}>
             {t(
               entry.kind === "tool" && entry.status !== undefined
                 ? "timeline.kind.toolEnd"
@@ -96,7 +96,7 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
             // Named because it is the one place a tool reaches the timeline by name, and a
             // closure test checks that the name is the transcript's rather than the wire's.
             <span data-timeline-subject="" {...stylex.props(vs.subject)}>
-              <ToolText value={subject} styles={[vocab.muted, typeStep.uiSm]} />
+              <ToolText value={subject} styles={[vocab.muted, typeStep.uiMd]} />
             </span>
           )}
         </div>
@@ -172,7 +172,7 @@ function TimelineRunHeader({
   return (
     <>
       <div {...stylex.props(ts.runHeader)}>
-        <span {...stylex.props(vocab.firstLine, typeStep.uiSm)}>
+        <span {...stylex.props(vocab.firstLine, typeStep.uiMd)}>
           <Icon
             name={child ? "bot" : "branch"}
             size="sm"
@@ -181,7 +181,7 @@ function TimelineRunHeader({
         </span>
         <div {...stylex.props(vocab.fill)}>
           <div {...stylex.props(vs.titleLine)}>
-            <span {...stylex.props(vocab.hold, vs.title, typeStep.uiSm)}>
+            <span {...stylex.props(vocab.hold, vs.title, typeStep.uiMd)}>
               {t(child ? "timeline.delegatedRun" : "timeline.rootRun")}
             </span>
             <span
@@ -210,7 +210,7 @@ function TimelineRunHeader({
             </div>
           )}
         </div>
-        <span {...stylex.props(vocab.firstLine, typeStep.uiSm)}>
+        <span {...stylex.props(vocab.firstLine, typeStep.uiMd)}>
           <IconButton
             icon="bot"
             size="sm"

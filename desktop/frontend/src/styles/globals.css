@@ -439,9 +439,9 @@
   --color-cta-hover: var(--color-accent-border);
   --color-cta-text: var(--color-text-on-accent);
 
-  --fs-ui-2xs: 11px;
-  --fs-ui-xs: 12px;
-  --fs-ui-sm: 13px;
+  --fs-ui-2xs: 10px;
+  --fs-ui-xs: 11px;
+  --fs-ui-sm: 12px;
   --fs-ui-md: 14px;
   --fs-prose: 14px;
   --fs-code: 13px;

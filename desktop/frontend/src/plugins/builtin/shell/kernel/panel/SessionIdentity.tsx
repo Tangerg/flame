@@ -74,7 +74,7 @@ export function SessionIdentity({ sessionId, title, workspacePath }: Props): Rea
             {/* The name of what the reader is looking at, and the only heading above the
                 turns — which are h2. It was a span, so a populated transcript published an
                 outline that started at its second rung. */}
-            <h1 title={title} className={stylex.props(si.title, typeStep.uiSm).className}>
+            <h1 title={title} className={stylex.props(si.title, typeStep.uiMd).className}>
               {title}
             </h1>
           </div>

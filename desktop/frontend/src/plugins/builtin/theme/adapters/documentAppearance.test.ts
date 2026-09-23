@@ -299,7 +299,7 @@ describe("UI preference DOM synchronization", () => {
     expect(style.fontSize).toBe("");
     expect(style.getPropertyValue("--fs-ui-md")).toBe("17px");
     expect(style.getPropertyValue("--fs-prose")).toBe("17px");
-    expect(style.getPropertyValue("--fs-ui-sm")).toBe("16px");
+    expect(style.getPropertyValue("--fs-ui-sm")).toBe("15px");
 
     useAppearanceStore.getState().setUiFont("");
     useAppearanceStore.getState().setCodeFont("");

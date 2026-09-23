@@ -260,7 +260,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                   event.preventDefault();
                   close();
                 }}
-                {...stylex.props(styles.label, type.uiSm, styles.labelClosable)}
+                {...stylex.props(styles.label, type.uiMd, styles.labelClosable)}
               >
                 {tab.icon && <Icon name={tab.icon} size="sm" {...stylex.props(styles.glyph)} />}
                 <span {...stylex.props(styles.title)}>{tab.title}</span>

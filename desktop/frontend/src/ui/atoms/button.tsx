@@ -364,7 +364,7 @@ export function dress({
     variant === "tonal" && tone && tone in TONAL && TONAL[tone as keyof typeof TONAL],
     variant === "wash" && tone && tone in WASH && WASH[tone as keyof typeof WASH],
     chip && styles.chip,
-    chipStep && [CHIP_INSET[chipStep], type.uiSm],
+    chipStep && [CHIP_INSET[chipStep], chipStep === "md" ? type.uiMd : type.uiSm],
     quiet && styles.quiet,
     quiet && tone && QUIET_TONE[tone],
     active && styles.active,

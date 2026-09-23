@@ -52,9 +52,9 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
           size="xs"
           className={stylex.props(vocab.hold, vocab.muted).className}
         />
-        <ToolText value={model.intent.label} styles={[vocab.hold, gm.inherit, typeStep.uiSm]} />
+        <ToolText value={model.intent.label} styles={[vocab.hold, gm.inherit, typeStep.uiMd]} />
         {model.detail && (
-          <ToolText value={model.detail} styles={[vocab.fill, vocab.faint, typeStep.uiSm]} />
+          <ToolText value={model.detail} styles={[vocab.fill, vocab.faint, typeStep.uiMd]} />
         )}
         {model.diffStat && (
           <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />

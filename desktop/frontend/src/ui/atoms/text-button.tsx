@@ -61,7 +61,7 @@ const TONE = {
   negative: styles.negative,
 } as const;
 
-const SIZE = { xs: type.uiXs, sm: type.uiSm, md: type.uiMd } as const;
+const SIZE = { xs: type.uiSm, sm: type.uiMd, md: type.uiMd } as const;
 
 export type TextButtonProps = Omit<ButtonPrimitiveProps, "children"> & {
   tone?: keyof typeof TONE;

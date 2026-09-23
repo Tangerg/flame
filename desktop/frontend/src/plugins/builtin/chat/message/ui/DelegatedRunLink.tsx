@@ -77,11 +77,11 @@ export function DelegatedRunLink({
         onClick={() => openWorkspaceSubagentRun(run.id)}
         className={stylex.props(styles.link).className}
       >
-        <span {...stylex.props(vocab.firstLine, typeStep.uiSm)}>
+        <span {...stylex.props(vocab.firstLine, typeStep.uiMd)}>
           <Icon name="bot" size="sm" />
         </span>
         <span {...stylex.props(styles.detail)}>
-          <span {...stylex.props(vocab.line, typeStep.uiSm)}>
+          <span {...stylex.props(vocab.line, typeStep.uiMd)}>
             <span title={model.label} {...stylex.props(styles.name, vocab.truncate)}>
               {model.label}
             </span>
@@ -96,7 +96,7 @@ export function DelegatedRunLink({
         </span>
         <span
           data-reveal="hover"
-          {...stylex.props(vocab.firstLine, typeStep.uiSm, reveal.shown, styles.openHint)}
+          {...stylex.props(vocab.firstLine, typeStep.uiMd, reveal.shown, styles.openHint)}
         >
           <Icon name="panel-r" size="sm" />
         </span>

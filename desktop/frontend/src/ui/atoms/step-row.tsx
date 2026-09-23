@@ -57,7 +57,7 @@ export function StepRow({
   className?: string;
   children: ReactNode;
 }) {
-  const styled = stylex.props(styles.row, type.uiSm, INK[state]);
+  const styled = stylex.props(styles.row, type.uiMd, INK[state]);
   return (
     <div {...styled} className={cn(styled.className, className)}>
       <StepMark state={state} />
