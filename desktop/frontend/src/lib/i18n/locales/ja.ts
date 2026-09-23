@@ -672,8 +672,8 @@ export const ja: Record<string, string> = {
 
   "diagnostics.clear": "クリア",
   "diagnostics.title": "診断",
-  "diagnostics.description":
-    "リアルタイム OpenTelemetry — トレース / メトリクス / ログ。メモリ内のみ（上限あり）で、永続的な記録は OTLP 経由で送られます。「クリア」でバッファをリセットします。",
+  "diagnostics.clear.hint":
+    "メモリ内のみ（上限あり）で、永続的な記録は OTLP 経由で送られます。「クリア」でバッファをリセットします。",
   "diagnostics.signalAria": "テレメトリー信号",
   "diagnostics.signal.traces": "トレース",
   "diagnostics.signal.metrics": "メトリクス",
@@ -1126,7 +1126,7 @@ export const ja: Record<string, string> = {
   "tool.group.run": "実行 {{count}}",
   "tool.group.fetch": "通信 {{count}}",
 
-  "diagnostics.empty": "まだデータがありません — {{hint}}",
+  "diagnostics.empty.title": "まだデータがありません",
   "diagnostics.empty.logs": "host.log.* の出力がここに流れ、span と対応づけられます。",
   "diagnostics.empty.metrics":
     "チャットを操作すると — reducer / レンダリングの計測がここに出ます。",

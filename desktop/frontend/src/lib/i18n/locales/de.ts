@@ -699,8 +699,8 @@ export const de: Record<string, string> = {
 
   "diagnostics.clear": "Löschen",
   "diagnostics.title": "Diagnose",
-  "diagnostics.description":
-    "Live-OpenTelemetry — Traces / Metriken / Logs. Nur im Speicher (begrenzt); die dauerhafte Aufzeichnung geht über OTLP hinaus. „Leeren“ setzt die Puffer zurück.",
+  "diagnostics.clear.hint":
+    "Nur im Speicher (begrenzt); die dauerhafte Aufzeichnung geht über OTLP hinaus. „Leeren“ setzt die Puffer zurück.",
   "diagnostics.signalAria": "Telemetriesignal",
   "diagnostics.signal.traces": "Traces",
   "diagnostics.signal.metrics": "Metriken",
@@ -1175,7 +1175,7 @@ export const de: Record<string, string> = {
   "tool.group.run": "{{count}} ausgeführt",
   "tool.group.fetch": "{{count}} abgerufen",
 
-  "diagnostics.empty": "Noch keine Daten — {{hint}}",
+  "diagnostics.empty.title": "Noch keine Daten",
   "diagnostics.empty.logs": "Die Ausgabe von host.log.* landet hier, span-korreliert.",
   "diagnostics.empty.metrics": "Nutze den Chat — Reducer- / Render-Zeiten erscheinen hier.",
   "diagnostics.empty.traces": "Sende eine Nachricht — Run- und RPC-Spans erscheinen hier.",

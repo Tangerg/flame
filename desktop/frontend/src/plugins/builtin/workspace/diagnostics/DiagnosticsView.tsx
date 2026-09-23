@@ -5,6 +5,8 @@ import { useTelemetryStore } from "@/lib/observability/stores";
 import { useMemo, useState } from "react";
 import { Button, Segmented, toneInk, vocab } from "@/ui";
 import { AgentWorkspaceView } from "@/ui/agent";
+import { ViewHeader } from "@/plugins/builtin/workspace/workspace-views/views/ViewHeader";
+import { viewStyles as vs } from "@/plugins/builtin/workspace/workspace-views/views/viewStyles";
 import { Cell, Empty, Row, VirtualList } from "./primitives";
 import { TracesPanel } from "./TracesPanel";
 import { fmtMetric } from "@/lib/format";
@@ -28,31 +30,15 @@ const logColumns = stylex.create({
 });
 
 const d = stylex.create({
-  page: {
-    gap: space.s3,
-    paddingInline: "var(--reading-gutter-wide)",
-    paddingBlock: space.s3,
-  },
-  // Prose and a control cluster cannot share one row in a dock: the controls refuse to shrink
-  // and the description has no floor, so it collapsed to two characters a line. Below the width
-  // the navigator already calls narrow, they stack instead.
-  masthead: {
+  body: {
     display: "flex",
-    flexDirection: { default: "row", "@container workspace-view (width < 720px)": "column" },
-    alignItems: { default: "center", "@container workspace-view (width < 720px)": "stretch" },
-    justifyContent: "space-between",
-    gap: space.s3,
+    flex: 1,
+    minHeight: 0,
+    flexDirection: "column",
+    paddingBlock: space.s2,
   },
-  copy: { minWidth: 0 },
-  title: { color: color.fg, fontWeight: weight.semibold },
+  controls: { display: "flex", alignItems: "center", gap: space.s2 },
   subtitle: { marginTop: space.s0_5, color: color.fgMuted },
-  controls: {
-    display: "flex",
-    flexShrink: 0,
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: space.s2,
-  },
   logRow: { minHeight: "calc(var(--spacing) * 7)" },
   mono: { fontFamily: "var(--font-mono)" },
   metricsScroller: {
@@ -89,28 +75,29 @@ export function DiagnosticsView() {
   const clear = useTelemetryStore((s) => s.clear);
 
   return (
-    <AgentWorkspaceView className={stylex.props(d.page).className}>
-      <div {...stylex.props(d.masthead)}>
-        <div {...stylex.props(d.copy)}>
-          <div {...stylex.props(d.title, typeStep.displaySm)}>{t("diagnostics.title")}</div>
-          <div {...stylex.props(d.subtitle, typeStep.uiMd)}>{t("diagnostics.description")}</div>
-        </div>
-        <div {...stylex.props(d.controls)}>
-          <Segmented
-            value={signal}
-            options={SIGNALS.map((o) => ({ ...o, label: t(o.label) }))}
-            onChange={setSignal}
-            ariaLabel={t("diagnostics.signalAria")}
-          />
-          <Button variant="outline" size="sm" onClick={clear}>
-            {t("diagnostics.clear")}
-          </Button>
-        </div>
+    <AgentWorkspaceView>
+      <ViewHeader
+        icon="activity"
+        title="diagnostics.title"
+        actions={
+          <div {...stylex.props(d.controls)}>
+            <Segmented
+              value={signal}
+              options={SIGNALS.map((o) => ({ ...o, label: t(o.label) }))}
+              onChange={setSignal}
+              ariaLabel={t("diagnostics.signalAria")}
+            />
+            <Button variant="ghost" size="sm" title={t("diagnostics.clear.hint")} onClick={clear}>
+              {t("diagnostics.clear")}
+            </Button>
+          </div>
+        }
+      />
+      <div {...stylex.props(d.body, vs.gutter)}>
+        {signal === "traces" && <TracesPanel />}
+        {signal === "metrics" && <MetricsPanel />}
+        {signal === "logs" && <LogsPanel />}
       </div>
-
-      {signal === "traces" && <TracesPanel />}
-      {signal === "metrics" && <MetricsPanel />}
-      {signal === "logs" && <LogsPanel />}
     </AgentWorkspaceView>
   );
 }

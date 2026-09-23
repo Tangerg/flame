@@ -724,8 +724,8 @@ export const fr: Record<string, string> = {
 
   "diagnostics.clear": "Effacer",
   "diagnostics.title": "Diagnostics",
-  "diagnostics.description":
-    "OpenTelemetry en direct — traces / métriques / journaux. En mémoire uniquement (borné) ; l'enregistrement durable part via OTLP. « Effacer » réinitialise les tampons.",
+  "diagnostics.clear.hint":
+    "En mémoire uniquement (borné) ; l'enregistrement durable part via OTLP. « Effacer » réinitialise les tampons.",
   "diagnostics.signalAria": "Signal de télémétrie",
   "diagnostics.signal.traces": "Traces",
   "diagnostics.signal.metrics": "Métriques",
@@ -1209,7 +1209,7 @@ export const fr: Record<string, string> = {
   "tool.group.run": "{{count}} exécution",
   "tool.group.fetch": "{{count}} requête web",
 
-  "diagnostics.empty": "Pas encore de données — {{hint}}",
+  "diagnostics.empty.title": "Pas encore de données",
   "diagnostics.empty.logs": "La sortie de host.log.* arrive ici, corrélée aux spans.",
   "diagnostics.empty.metrics": "Utilise le chat — les temps de reducer / rendu apparaissent ici.",
   "diagnostics.empty.traces": "Envoie un message — les spans run et RPC apparaissent ici.",

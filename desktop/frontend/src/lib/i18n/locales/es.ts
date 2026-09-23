@@ -719,8 +719,8 @@ export const es: Record<string, string> = {
 
   "diagnostics.clear": "Limpiar",
   "diagnostics.title": "Diagnóstico",
-  "diagnostics.description":
-    "OpenTelemetry en vivo: trazas / métricas / registros. Solo en memoria (con límite); el registro duradero sale por OTLP. «Borrar» reinicia los búferes.",
+  "diagnostics.clear.hint":
+    "Solo en memoria (con límite); el registro duradero sale por OTLP. «Borrar» reinicia los búferes.",
   "diagnostics.signalAria": "Señal de telemetría",
   "diagnostics.signal.traces": "Trazas",
   "diagnostics.signal.metrics": "Métricas",
@@ -1198,7 +1198,7 @@ export const es: Record<string, string> = {
   "tool.group.run": "{{count}} ejecución",
   "tool.group.fetch": "{{count}} consulta web",
 
-  "diagnostics.empty": "Aún no hay datos — {{hint}}",
+  "diagnostics.empty.title": "Aún no hay datos",
   "diagnostics.empty.logs": "La salida de host.log.* llega aquí, correlacionada por span.",
   "diagnostics.empty.metrics": "Usa el chat — los tiempos de reducer / render aparecen aquí.",
   "diagnostics.empty.traces": "Envía un mensaje — los spans de run y RPC aparecen aquí.",

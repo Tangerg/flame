@@ -667,8 +667,8 @@ export const ko: Record<string, string> = {
 
   "diagnostics.clear": "지우기",
   "diagnostics.title": "진단",
-  "diagnostics.description":
-    '실시간 OpenTelemetry — 트레이스 / 메트릭 / 로그. 메모리에만 보관되며(상한 있음) 영구 기록은 OTLP로 나갑니다. "지우기"는 버퍼를 초기화합니다.',
+  "diagnostics.clear.hint":
+    '메모리에만 보관되며(상한 있음) 영구 기록은 OTLP로 나갑니다. "지우기"는 버퍼를 초기화합니다.',
   "diagnostics.signalAria": "텔레메트리 신호",
   "diagnostics.signal.traces": "트레이스",
   "diagnostics.signal.metrics": "메트릭",
@@ -1111,7 +1111,7 @@ export const ko: Record<string, string> = {
   "tool.group.run": "실행 {{count}}",
   "tool.group.fetch": "통신 {{count}}",
 
-  "diagnostics.empty": "아직 데이터가 없습니다 — {{hint}}",
+  "diagnostics.empty.title": "아직 데이터가 없습니다",
   "diagnostics.empty.logs": "host.log.* 출력이 여기로 흐르며 span과 연결됩니다.",
   "diagnostics.empty.metrics": "채팅을 사용하면 — reducer / 렌더링 시간이 여기에 표시됩니다.",
   "diagnostics.empty.traces": "메시지를 보내면 — run과 RPC span이 여기에 표시됩니다.",

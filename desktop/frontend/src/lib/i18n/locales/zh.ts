@@ -846,8 +846,7 @@ export const zh: Record<string, string> = {
 
   "diagnostics.clear": "清除",
   "diagnostics.title": "诊断",
-  "diagnostics.description":
-    "实时 OpenTelemetry —— 链路 / 指标 / 日志。仅保留在内存中（有上限）；持久记录经 OTLP 导出。“清空”会重置缓冲区。",
+  "diagnostics.clear.hint": "仅保留在内存中（有上限）；持久记录经 OTLP 导出。“清空”会重置缓冲区。",
   "diagnostics.signalAria": "遥测信号",
   "diagnostics.signal.traces": "链路",
   "diagnostics.signal.metrics": "指标",
@@ -1083,7 +1082,7 @@ export const zh: Record<string, string> = {
   "tool.group.run": "执行 {{count}}",
   "tool.group.fetch": "联网 {{count}}",
 
-  "diagnostics.empty": "还没有数据 —— {{hint}}",
+  "diagnostics.empty.title": "还没有数据",
   "diagnostics.empty.logs": "host.log.* 的输出会流到这里，并与 span 关联。",
   "diagnostics.empty.metrics": "在对话里操作一下 —— reducer / 渲染耗时会出现在这里。",
   "diagnostics.empty.traces": "发一条消息 —— run 与 RPC 的 span 会出现在这里。",

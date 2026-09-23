@@ -678,8 +678,8 @@ export const zhTW: Record<string, string> = {
 
   "diagnostics.clear": "清除",
   "diagnostics.title": "診斷",
-  "diagnostics.description":
-    "即時 OpenTelemetry —— 追蹤 / 指標 / 記錄。僅保留在記憶體中（有上限）；持久紀錄經 OTLP 匯出。「清空」會重設緩衝區。",
+  "diagnostics.clear.hint":
+    "僅保留在記憶體中（有上限）；持久紀錄經 OTLP 匯出。「清空」會重設緩衝區。",
   "diagnostics.signalAria": "遙測訊號",
   "diagnostics.signal.traces": "追蹤",
   "diagnostics.signal.metrics": "指標",
@@ -1085,7 +1085,7 @@ export const zhTW: Record<string, string> = {
   "tool.group.run": "執行 {{count}}",
   "tool.group.fetch": "連網 {{count}}",
 
-  "diagnostics.empty": "還沒有資料 —— {{hint}}",
+  "diagnostics.empty.title": "還沒有資料",
   "diagnostics.empty.logs": "host.log.* 的輸出會流到這裡，並與 span 關聯。",
   "diagnostics.empty.metrics": "在對話裡操作一下 —— reducer / 渲染耗時會出現在這裡。",
   "diagnostics.empty.traces": "發一條訊息 —— run 與 RPC 的 span 會出現在這裡。",

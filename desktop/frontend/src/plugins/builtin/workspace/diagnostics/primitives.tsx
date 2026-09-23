@@ -4,10 +4,10 @@ import type { ReactNode } from "react";
 import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useT } from "@/lib/i18n";
+import { EmptyState } from "@/ui";
 import { color, motion, space, surface, type } from "@/styles/tokens.stylex";
 
 const styles = stylex.create({
-  empty: { color: color.fgFaint },
   row: {
     display: "flex",
     alignItems: "center",
@@ -33,7 +33,7 @@ const styles = stylex.create({
 
 export function Empty({ hint }: { hint: string }) {
   const t = useT();
-  return <div {...stylex.props(styles.empty, type.uiMd)}>{t("diagnostics.empty", { hint })}</div>;
+  return <EmptyState icon="activity" title={t("diagnostics.empty.title")} sub={hint} />;
 }
 
 export function Row({
