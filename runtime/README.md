@@ -218,6 +218,8 @@ Stored JSON uses the standard library's single-pass strict decoder. Columns requ
 
 Runtime consumes released Scope v0.33.0 modules and tools v0.35.0. Provider `Call` and `Stream` use Scope's canonical streaming transport; complete calls aggregate that same validated stream. Runtime does not retain a unary provider fallback. MCP sessions use `github.com/Tangerg/go-sdk`, the same SDK as Scope MCP, so structured results preserve large integers, decimal values, and explicit empty objects through transport and Tool publication.
 
+Provider-reported token usage, durable conversation history, and model/Tool/execution telemetry are Scope contracts rather than Runtime restatements: `chat.Usage` survives whole to the protocol, the message store implements `history.Store`, and Scope's OpenTelemetry middleware instruments the provider, Tool, and execution-tree boundaries.
+
 MCP identity follows Scope's capability chain through Tool decorators for discovery, disabled-tool policy, and automatic approval. Invalid MCP identity declarations now reject the catalog instead of silently hiding entries or grouping them as built-ins. Persisted settings and public protocol shapes require no migration.
 
 `mcp.tools.list` returns the admitted connection catalog used for execution and connected Tool counts. Remote changes become visible after reconnect admits the replacement; listing no longer queries a separate live catalog. Invalid JSON Schemas, including unresolved references and oversized documents, now fail connection or probe admission through Scope rather than failing the next Run. Diagnostic and MCP schema projections preserve exact numeric literals and retain their existing protocol shape.
