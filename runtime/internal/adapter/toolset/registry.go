@@ -6,20 +6,12 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	oteltool "github.com/Tangerg/scope/otel/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
-
-var toolTracer = otel.Tracer("scope/flame/tool")
-
-const attrGenAIToolName = "gen_ai.tool.name"
 
 // NewDiagnosticRegistry returns the explicitly direct-invocable diagnostic
 // catalog. It deliberately does not reuse the agent resolver: agent tools may
@@ -29,12 +21,21 @@ func NewDiagnosticRegistry(directory string) (DiagnosticRegistry, error) {
 	if !filepath.IsAbs(directory) {
 		return DiagnosticRegistry{}, errors.New("toolset: diagnostic catalog directory must be absolute")
 	}
-	return DiagnosticRegistry{directory: filepath.Clean(directory)}, nil
+	telemetry, err := oteltool.NewMiddleware(oteltool.MiddlewareConfig{})
+	if err != nil {
+		return DiagnosticRegistry{}, fmt.Errorf("toolset: instrument diagnostic tool calls: %w", err)
+	}
+	return DiagnosticRegistry{directory: filepath.Clean(directory), telemetry: telemetry}, nil
 }
 
 // DiagnosticRegistry is the direct-invocation adapter for the small diagnostic
-// tool catalog exposed outside an Agent Run.
-type DiagnosticRegistry struct{ directory string }
+// tool catalog exposed outside an Agent Run. A client-driven call is still a
+// Tool call, so it is instrumented by the same Scope middleware the Agent
+// resolver uses rather than by a second span of this adapter's own.
+type DiagnosticRegistry struct {
+	directory string
+	telemetry oteltool.Middleware
+}
 
 // List projects Scope's admitted, frozen definitions into the product catalog.
 func (r DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
@@ -58,30 +59,26 @@ func (r DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
 	return out, nil
 }
 
-func (DiagnosticRegistry) Invoke(ctx context.Context, root, name string, arguments tool.Arguments) (_ tool.Result, err error) {
+func (r DiagnosticRegistry) Invoke(ctx context.Context, root, name string, arguments tool.Arguments) (_ tool.Result, err error) {
 	if name == "" {
 		return tool.Result{}, errors.New("toolset: direct tool name must not be empty")
 	}
-	ctx, span := toolTracer.Start(ctx, "execute_direct_tool "+name,
-		trace.WithSpanKind(trace.SpanKindInternal),
-		trace.WithAttributes(attribute.String(attrGenAIToolName, name)))
-	defer span.End()
-
 	direct, err := openDirectTools(root)
 	if err != nil {
 		return tool.Result{}, err
 	}
 	defer func() { err = errors.Join(err, direct.Close()) }()
-	registry, err := toolcontract.NewRegistry(direct.Visible...)
+	instrumented, err := instrumentTools(r.telemetry, direct.Visible)
+	if err != nil {
+		return tool.Result{}, err
+	}
+	registry, err := toolcontract.NewRegistry(instrumented...)
 	if err != nil {
 		return tool.Result{}, fmt.Errorf("toolset: bind diagnostic catalog: %w", err)
 	}
 	binding, found := registry.Resolve(name)
 	if !found {
-		err = fmt.Errorf("toolset: direct tool %q is not registered", name)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return tool.Result{}, err
+		return tool.Result{}, fmt.Errorf("toolset: direct tool %q is not registered", name)
 	}
 	proposed, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: arguments.Canonical()})
 	if prepareErr != nil {
@@ -89,8 +86,6 @@ func (DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argumen
 	}
 	normalized, err := normalizeDirectArguments(root, name, proposed)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
 		return tool.Result{}, err
 	}
 	invocation, prepareErr := binding.Contract().Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: normalized})
@@ -99,8 +94,6 @@ func (DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argumen
 	}
 	output, callErr := binding.Call(ctx, invocation)
 	if callErr != nil {
-		span.RecordError(callErr)
-		span.SetStatus(codes.Error, callErr.Error())
 		return tool.Result{}, callErr
 	}
 	return directResult(output)

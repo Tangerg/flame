@@ -34,9 +34,6 @@ func (r *Connection) Discover(ctx context.Context, workspacePath string) (protoc
 	if page == nil {
 		return protocol.SkillDiscovery{}, runtimeContractViolation("list discovered skills returned no catalog")
 	}
-	if err := protocol.ValidateWireTree(*page); err != nil {
-		return protocol.SkillDiscovery{}, runtimeContractViolation("list discovered skills returned invalid catalog: %v", err)
-	}
 	found := page.Skills
 	if err := requireUniqueIdentities("list discovered skills", found, func(skill protocol.Skill) string {
 		return skill.Name
@@ -66,9 +63,6 @@ func (r *Connection) InspectSkill(ctx context.Context, workspacePath, name strin
 	}
 	if detail == nil {
 		return protocol.SkillDetail{}, runtimeContractViolation("get discovered skill returned no detail")
-	}
-	if err := protocol.ValidateWireTree(*detail); err != nil {
-		return protocol.SkillDetail{}, runtimeContractViolation("get discovered skill returned invalid detail: %v", err)
 	}
 	if err := requireIdentity("get discovered skill", detail.Name, name); err != nil {
 		return protocol.SkillDetail{}, err

@@ -16,6 +16,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
+// TestAuxiliaryCallObservation pins what this span owns: the product operation
+// that asked for a utility completion, its input budget, and where it stopped.
 func TestAuxiliaryCallObservation(t *testing.T) {
 	message := chat.NewAssistantMessage(chat.NewTextPart("private response"))
 	for _, tc := range []struct {
@@ -110,16 +112,14 @@ func TestAuxiliaryCallObservation(t *testing.T) {
 			if tc.stage != "" && (span.Status.Code != codes.Error || attrs["auxiliary.failure_stage"].AsString() != tc.stage) {
 				t.Fatalf("failure observation = %+v", span)
 			}
-			usage, present := attrs["gen_ai.usage.input_tokens"]
-			if present != (tc.usage != nil) {
-				t.Fatalf("usage presence = %t", present)
-			}
-			if present && usage.AsInt64() != 12 {
-				t.Fatal("reported input usage lost")
-			}
-			_, cachePresent := attrs["gen_ai.usage.cache_read.input_tokens"]
-			if cachePresent != (tc.usage != nil && tc.usage.CacheReadInputTokens != nil) {
-				t.Fatal("optional zero cache usage presence lost")
+			// Request, usage, and finish-reason facts have one producer: the
+			// Scope middleware wrapping the provider. A copy here would be a
+			// second series for the same call.
+			for key := range attrs {
+				if strings.HasPrefix(key, "gen_ai.usage.") || key == "gen_ai.response.finish_reason" ||
+					key == "gen_ai.request.max_tokens" {
+					t.Fatalf("auxiliary span restates model telemetry: %s", key)
+				}
 			}
 		})
 	}

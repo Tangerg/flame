@@ -256,9 +256,6 @@ func (r *Connection) SteerRun(ctx context.Context, input agent.SteerRun) error {
 	if receipt == nil {
 		return runtimeContractViolation("steer run returned nil")
 	}
-	if err := protocol.ValidateWireTree(*receipt); err != nil {
-		return runtimeContractViolation("steer run returned an invalid receipt: %v", err)
-	}
 	return nil
 }
 

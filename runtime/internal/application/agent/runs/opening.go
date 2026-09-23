@@ -184,7 +184,7 @@ func (c *Coordinator) prepareRootStart(
 	if err != nil {
 		return rootStartPreparation{}, err
 	}
-	promptText := userMessageText(currentMessage)
+	promptText := currentMessage.Text()
 	sess, initialSession, effectiveSelection, err := c.resolveSessionSelection(ctx, cmd)
 	if err != nil {
 		return rootStartPreparation{}, err
@@ -212,16 +212,6 @@ func (c *Coordinator) prepareRootStart(
 		initialSession: initialSession, draft: draft, currentMessage: currentMessage,
 		promptText: promptText, openingUserText: strings.TrimSpace(promptText),
 	}, nil
-}
-
-func userMessageText(message corechat.Message) string {
-	texts := make([]string, 0, len(message.Parts))
-	for _, part := range message.Parts {
-		if part.Kind == corechat.PartText {
-			texts = append(texts, part.Text)
-		}
-	}
-	return strings.Join(texts, "\n")
 }
 
 func prepareStartSessionReplacement(
