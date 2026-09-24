@@ -578,7 +578,6 @@ export const ko: Record<string, string> = {
   "shortcuts.shortcut": "단축키",
   "shortcuts.empty": "일치하는 단축키가 없습니다",
 
-  "iconGallery.clear": "지우기",
   "workspace.view.title.iconGallery": "아이콘 갤러리",
   "settings.pane.brandIcons": "브랜드 아이콘",
   "agentSource.rpc": "런타임 프로토콜 (JSON-RPC)",
@@ -929,7 +928,7 @@ export const ko: Record<string, string> = {
   "file.empty.title": "파일 없음",
   "file.empty.sub": "이 디렉터리에는 표시할 파일이 없습니다.",
   "file.error.title": "파일을 열 수 없습니다",
-  "file.error.sub": "이동되었거나, 바이너리이거나, 워크스페이스 밖에 있을 수 있습니다.",
+  "file.error.sub": "이동되었거나 워크스페이스 밖에 있을 수 있습니다.",
   "composer.key.historyPrevDesc": "이전 메시지 불러오기",
   "composer.key.historyNextDesc": "다음 메시지 불러오기",
   "mcp.import.hint":
@@ -1121,7 +1120,6 @@ export const ko: Record<string, string> = {
   "composer.paste.title": "붙여넣은 텍스트",
   "composer.paste.save": "저장",
   "composer.paste.restore": "메시지에 다시 넣기",
-  "composer.mention.truncated": "이 프로젝트의 처음 {{count}}개 파일에서 검색 중",
   "composer.mention.status.loading": "프로젝트 파일 불러오는 중…",
   "composer.mention.status.empty": "일치하는 파일 없음",
   "composer.mention.status.error": "프로젝트 파일을 나열할 수 없음",
@@ -1148,12 +1146,13 @@ export const ko: Record<string, string> = {
   "startup.failed.copied": "복사됨",
   "plugins.renderFailed.details": "세부 정보",
   "settings.notifications": "시스템 알림",
-  "settings.notifications.permission.granted":
+  "settings.notifications.authorization.granted":
     "Flame이 백그라운드에 있을 때 실행이 끝나거나 실패하거나 입력이 필요하면 알립니다.",
-  "settings.notifications.permission.default": "처음 알릴 일이 생길 때 권한을 요청합니다.",
-  "settings.notifications.permission.denied":
+  "settings.notifications.authorization.default": "처음 알릴 일이 생길 때 권한을 요청합니다.",
+  "settings.notifications.authorization.denied":
     "시스템에서 차단되었습니다. 시스템 설정 › 알림에서 Flame을 허용하세요.",
-  "settings.notifications.permission.unsupported": "이 플랫폼은 시스템 알림을 지원하지 않습니다.",
+  "settings.notifications.authorization.unsupported":
+    "이 플랫폼은 시스템 알림을 지원하지 않습니다.",
   "notify.finished.title": "{{product}} 완료",
   "notify.finished.body": "에이전트가 차례를 마쳤습니다.",
   "notify.needsInput.title": "{{product}}에 입력이 필요합니다",
@@ -1224,4 +1223,30 @@ export const ko: Record<string, string> = {
   "diff.layout.split": "나란히 보기",
   "composer.reasoningEffort": "추론 강도",
   "message.mermaid.actualSize": "실제 크기로 보기",
+  "model.effort.none": "끔",
+  "model.effort.minimal": "최소",
+  "model.effort.low": "낮음",
+  "model.effort.medium": "보통",
+  "model.effort.high": "높음",
+  "model.effort.xhigh": "매우 높음",
+  "model.effort.max": "최대",
+  "tools.output.find": "출력에서 찾기",
+  "tools.output.find.none": "일치 항목 없음",
+  "tools.output.find.count": "{{index}} / {{total}}",
+  "tools.output.find.previous": "이전 일치",
+  "tools.output.find.next": "다음 일치",
+  "tools.output.find.close": "찾기 닫기",
+  "common.clear": "지우기",
+  "file.unsupported.image": "아직 여기서 이미지를 미리 볼 수 없습니다",
+  "file.unsupported.binary": "텍스트 파일이 아닙니다",
+  "file.unsupported.sub":
+    "Flame은 워크스페이스 파일을 텍스트로 표시합니다. 기본 앱으로 열거나 Finder에서 확인하세요.",
+  "file.open": "열기",
+  "file.change.add": "작업 트리에서 추가됨",
+  "file.change.mod": "작업 트리에서 수정됨",
+  "file.change.del": "작업 트리에서 삭제됨",
+  "file.change.below": "작업 트리 변경 사항 포함",
+  "composer.effort.title": "사고 강도",
+  "composer.effort.faster": "더 빠르게",
+  "composer.effort.smarter": "더 똑똑하게",
 };

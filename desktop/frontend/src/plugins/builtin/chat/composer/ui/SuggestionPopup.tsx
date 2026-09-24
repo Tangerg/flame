@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type ReactNode, type RefObject, useEffect } from "react";
 import { Popover, SectionLabel } from "@/ui";
 import { SUGGESTION_LISTBOX_ID, suggestionOptionId } from "../application/suggestions";
+import { type as typeStep } from "@/styles/tokens.stylex";
 import { suggestionStyles } from "./suggestionStyles";
 
 interface Props {
@@ -11,7 +12,7 @@ interface Props {
   onDismiss: () => void;
   anchor: RefObject<HTMLElement | null>;
   children: ReactNode;
-  footer?: ReactNode;
+  status?: ReactNode;
 }
 
 export function SuggestionPopup({
@@ -21,7 +22,7 @@ export function SuggestionPopup({
   onDismiss,
   anchor,
   children,
-  footer,
+  status,
 }: Props) {
   useEffect(() => {
     if (!open) return;
@@ -38,15 +39,20 @@ export function SuggestionPopup({
       {...stylex.props(suggestionStyles.panel)}
     >
       <SectionLabel {...stylex.props(suggestionStyles.heading)}>{heading}</SectionLabel>
-      <div
-        id={SUGGESTION_LISTBOX_ID}
-        role="listbox"
-        aria-label={heading}
-        {...stylex.props(suggestionStyles.list)}
-      >
-        {children}
-      </div>
-      {footer}
+      {status === undefined ? (
+        <div
+          id={SUGGESTION_LISTBOX_ID}
+          role="listbox"
+          aria-label={heading}
+          {...stylex.props(suggestionStyles.list)}
+        >
+          {children}
+        </div>
+      ) : (
+        <div role="status" {...stylex.props(suggestionStyles.state, typeStep.uiSm)}>
+          {status}
+        </div>
+      )}
     </Popover.Anchored>
   );
 }

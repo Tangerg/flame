@@ -6,6 +6,9 @@ const classifier: WorkspaceErrorClassifier = {
   isVcsUnavailable(error) {
     return isErrorType(error, "vcs_unavailable");
   },
+  isUnsupportedFile(error) {
+    return isErrorType(error, "unsupported_mime");
+  },
 };
 
 export function installWorkspaceErrorClassifier(): () => void {

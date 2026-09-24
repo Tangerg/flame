@@ -18,13 +18,7 @@ export const suggestionStyles = stylex.create({
     paddingBlock: space.s2,
     color: color.fgMuted,
   },
-  note: {
-    margin: 0,
-    paddingInline: space.s2_5,
-    paddingTop: space.s1_5,
-    paddingBottom: space.s1,
-    color: color.fgFaint,
-  },
+  stateText: { display: "flex", minWidth: 0, flexDirection: "column", gap: space.s0_5 },
   heading: { paddingInline: space.s2_5, paddingTop: space.s1_5, paddingBottom: space.s1 },
   command: {
     borderWidth: 0,

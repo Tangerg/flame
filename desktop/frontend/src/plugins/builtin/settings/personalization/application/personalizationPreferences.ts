@@ -12,8 +12,9 @@ export function useSystemNotificationsPreference() {
   return {
     systemNotifications: port.useSystemNotifications(),
     setSystemNotifications: port.useSetSystemNotifications(),
-    permission: port.useNotificationPermission(),
-    requestPermission: port.requestNotificationPermission,
+    authorization: port.useNotificationAuthorization(),
+    refreshAuthorization: port.refreshNotificationAuthorization,
+    requestAuthorization: port.requestNotificationAuthorization,
   };
 }
 

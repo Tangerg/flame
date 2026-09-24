@@ -79,7 +79,7 @@ export function Composer({
     acceptsImages,
   });
   const dropping = useComposerImageDrop(handleDrop);
-  const suggesting = mentions.open || slash.open;
+  const listing = slash.open || (mentions.open && mentions.status === "ready");
   const highlighted =
     mentions.open && mentions.status === "ready" ? mentions.index : slash.open ? slash.index : null;
   return (
@@ -108,7 +108,7 @@ export function Composer({
           size="prose"
           ref={inputRef}
           aria-label={t("composer.input.label")}
-          aria-controls={suggesting ? SUGGESTION_LISTBOX_ID : undefined}
+          aria-controls={listing ? SUGGESTION_LISTBOX_ID : undefined}
           aria-activedescendant={highlighted === null ? undefined : suggestionOptionId(highlighted)}
           placeholder={placeholder}
           value={value}

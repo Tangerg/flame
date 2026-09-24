@@ -15,9 +15,24 @@ interface WindowChrome {
   controlsInlineEnd: number;
 }
 
+type NotificationAuthorization = "unsupported" | "default" | "granted" | "denied";
+
+interface DesktopNotification {
+  id: string;
+  title: string;
+  body?: string;
+  target?: string;
+}
+
+const NOTIFICATION_OPENED_EVENT = "desktop:notification-opened";
+
 const HOST_METHOD = {
   bootstrap: "main.DesktopHost.Bootstrap",
+  notificationAuthorization: "main.DesktopHost.NotificationAuthorization",
+  requestNotificationAuthorization: "main.DesktopHost.RequestNotificationAuthorization",
+  sendNotification: "main.DesktopHost.SendNotification",
   chooseWorkingDirectory: "main.DesktopHost.ChooseWorkingDirectory",
+  openPath: "main.DesktopHost.OpenPath",
   revealPath: "main.DesktopHost.RevealPath",
   revealWindow: "main.DesktopHost.RevealWindow",
   saveImage: "main.DesktopHost.SaveImage",
@@ -26,6 +41,7 @@ const HOST_METHOD = {
 
 export interface DesktopHostBinding {
   call(method: string, ...args: unknown[]): Promise<unknown>;
+  on(event: string, listener: (data: unknown) => void): () => void;
 }
 
 export interface DesktopHostClient {
@@ -35,6 +51,11 @@ export interface DesktopHostClient {
   windowChrome(): Promise<WindowChrome | null>;
   revealWindow(): Promise<void>;
   revealPath(path: string): Promise<boolean>;
+  openPath(path: string): Promise<boolean>;
+  notificationAuthorization(): Promise<NotificationAuthorization | null>;
+  requestNotificationAuthorization(): Promise<NotificationAuthorization | null>;
+  sendNotification(notification: DesktopNotification): Promise<boolean | null>;
+  onNotificationOpened(listener: (target: string) => void): Promise<() => void>;
 }
 
 const WindowChromeSchema = z.object({
@@ -44,6 +65,8 @@ const WindowChromeSchema = z.object({
 });
 
 const WorkingDirectorySchema = z.string();
+const NotificationAuthorizationSchema = z.enum(["unsupported", "default", "granted", "denied"]);
+const NotificationTargetSchema = z.string().min(1);
 const SaveImageSchema = z.boolean();
 
 const DesktopBootstrapSchema = z.object({
@@ -55,8 +78,30 @@ const DesktopBootstrapSchema = z.object({
 
 async function wailsDesktopHostBinding(): Promise<DesktopHostBinding | undefined> {
   if (!("_wails" in globalThis)) return undefined;
-  const { Call } = await import("@wailsio/runtime");
-  return { call: (method, ...args) => Call.ByName(method, ...args) };
+  const { Call, Events } = await import("@wailsio/runtime");
+  return {
+    call: (method, ...args) => Call.ByName(method, ...args),
+    on: (event, listener) => Events.On(event, (ev) => listener(ev.data)),
+  };
+}
+
+async function readAuthorization(
+  host: DesktopHostBinding,
+  method: string,
+): Promise<NotificationAuthorization> {
+  let value: unknown;
+  try {
+    value = await host.call(method);
+  } catch (error) {
+    throw new RpcTransportError(`desktop host notification check failed: ${errorMessage(error)}`);
+  }
+  const parsed = NotificationAuthorizationSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new RpcTransportError(
+      `desktop host notification check returned an invalid shape: ${parsed.error.message}`,
+    );
+  }
+  return parsed.data;
 }
 
 export function createDesktopHostClient(binding?: DesktopHostBinding): DesktopHostClient {
@@ -127,6 +172,45 @@ export function createDesktopHostClient(binding?: DesktopHostBinding): DesktopHo
       } catch (error) {
         throw new RpcTransportError(`desktop host path reveal failed: ${errorMessage(error)}`);
       }
+    },
+    async openPath(path) {
+      const host = binding ?? (await wailsDesktopHostBinding());
+      if (!host) return false;
+      try {
+        await host.call(HOST_METHOD.openPath, path);
+        return true;
+      } catch (error) {
+        throw new RpcTransportError(`desktop host path open failed: ${errorMessage(error)}`);
+      }
+    },
+    async notificationAuthorization() {
+      const host = binding ?? (await wailsDesktopHostBinding());
+      if (!host) return null;
+      return readAuthorization(host, HOST_METHOD.notificationAuthorization);
+    },
+    async requestNotificationAuthorization() {
+      const host = binding ?? (await wailsDesktopHostBinding());
+      if (!host) return null;
+      return readAuthorization(host, HOST_METHOD.requestNotificationAuthorization);
+    },
+    async sendNotification(notification) {
+      const host = binding ?? (await wailsDesktopHostBinding());
+      if (!host) return null;
+      try {
+        await host.call(HOST_METHOD.sendNotification, notification);
+        return true;
+      } catch (error) {
+        throw new RpcTransportError(`desktop host notification failed: ${errorMessage(error)}`);
+      }
+    },
+    async onNotificationOpened(listener) {
+      const host = binding ?? (await wailsDesktopHostBinding());
+      if (!host) return () => {};
+      return host.on(NOTIFICATION_OPENED_EVENT, (data) => {
+        const target = NotificationTargetSchema.safeParse(data);
+        if (target.success) listener(target.data);
+        else console.error("[desktop] notification opened without a target:", data);
+      });
     },
     async revealWindow() {
       const host = binding ?? (await wailsDesktopHostBinding());

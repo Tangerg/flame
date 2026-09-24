@@ -582,7 +582,6 @@ export const ja: Record<string, string> = {
   "shortcuts.shortcut": "ショートカット",
   "shortcuts.empty": "一致するショートカットはありません",
 
-  "iconGallery.clear": "クリア",
   "workspace.view.title.iconGallery": "アイコンギャラリー",
   "settings.pane.brandIcons": "ブランドアイコン",
   "agentSource.rpc": "ランタイムプロトコル (JSON-RPC)",
@@ -935,7 +934,7 @@ export const ja: Record<string, string> = {
   "file.empty.title": "ファイルはありません",
   "file.empty.sub": "このフォルダーには表示できるファイルがありません。",
   "file.error.title": "ファイルを開けませんでした",
-  "file.error.sub": "移動された、バイナリである、またはワークスペース外にある可能性があります。",
+  "file.error.sub": "移動されたか、ワークスペース外にある可能性があります。",
   "composer.key.historyPrevDesc": "前のメッセージを呼び出す",
   "composer.key.historyNextDesc": "次のメッセージを呼び出す",
   "mcp.import.hint":
@@ -1137,7 +1136,6 @@ export const ja: Record<string, string> = {
   "composer.paste.title": "貼り付けたテキスト",
   "composer.paste.save": "保存",
   "composer.paste.restore": "メッセージに戻す",
-  "composer.mention.truncated": "このプロジェクトの最初の {{count}} 件のファイルを検索しています",
   "composer.mention.status.loading": "プロジェクトのファイルを読み込み中…",
   "composer.mention.status.empty": "一致するファイルはありません",
   "composer.mention.status.error": "プロジェクトのファイルを一覧できません",
@@ -1164,12 +1162,12 @@ export const ja: Record<string, string> = {
   "startup.failed.copied": "コピーしました",
   "plugins.renderFailed.details": "詳細",
   "settings.notifications": "システム通知",
-  "settings.notifications.permission.granted":
+  "settings.notifications.authorization.granted":
     "Flame がバックグラウンドのとき、実行の完了・失敗・入力待ちを通知します。",
-  "settings.notifications.permission.default": "最初に通知が必要になったときに許可を求めます。",
-  "settings.notifications.permission.denied":
+  "settings.notifications.authorization.default": "最初に通知が必要になったときに許可を求めます。",
+  "settings.notifications.authorization.denied":
     "システムでブロックされています。「システム設定 › 通知」で Flame を許可してください。",
-  "settings.notifications.permission.unsupported":
+  "settings.notifications.authorization.unsupported":
     "このプラットフォームはシステム通知に対応していません。",
   "notify.finished.title": "{{product}} が完了しました",
   "notify.finished.body": "エージェントがターンを終えました。",
@@ -1241,4 +1239,30 @@ export const ja: Record<string, string> = {
   "diff.layout.split": "左右に並べて表示",
   "composer.reasoningEffort": "推論の強さ",
   "message.mermaid.actualSize": "実寸で表示",
+  "model.effort.none": "オフ",
+  "model.effort.minimal": "最小",
+  "model.effort.low": "低",
+  "model.effort.medium": "中",
+  "model.effort.high": "高",
+  "model.effort.xhigh": "非常に高い",
+  "model.effort.max": "最大",
+  "tools.output.find": "出力内を検索",
+  "tools.output.find.none": "一致なし",
+  "tools.output.find.count": "{{index}} / {{total}}",
+  "tools.output.find.previous": "前の一致",
+  "tools.output.find.next": "次の一致",
+  "tools.output.find.close": "検索を閉じる",
+  "common.clear": "クリア",
+  "file.unsupported.image": "ここではまだ画像をプレビューできません",
+  "file.unsupported.binary": "このファイルはテキストではありません",
+  "file.unsupported.sub":
+    "Flame はワークスペースのファイルをテキストとして表示します。既定のアプリで開くか、Finder で表示してください。",
+  "file.open": "開く",
+  "file.change.add": "作業ツリーで追加",
+  "file.change.mod": "作業ツリーで変更",
+  "file.change.del": "作業ツリーで削除",
+  "file.change.below": "作業ツリーの変更を含む",
+  "composer.effort.title": "思考の強さ",
+  "composer.effort.faster": "速い",
+  "composer.effort.smarter": "賢い",
 };

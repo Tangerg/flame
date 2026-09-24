@@ -47,7 +47,11 @@ export function StepRow({
 }) {
   const styled = stylex.props(styles.row, type.uiMd, INK[state]);
   return (
-    <div {...styled} className={cn(styled.className, className)}>
+    <div
+      {...styled}
+      aria-current={state === "active" ? "step" : undefined}
+      className={cn(styled.className, className)}
+    >
       <StepMark state={state} />
       <span {...stylex.props(styles.label, state === "done" && styles.struck)}>{children}</span>
     </div>

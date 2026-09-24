@@ -850,8 +850,6 @@ export const en: Record<string, string> = {
   "shortcuts.shortcut": "Shortcut",
   "shortcuts.empty": "No shortcuts match",
 
-  "iconGallery.clear": "Clear",
-
   "workspace.view.title.iconGallery": "Icon gallery",
 
   "settings.pane.brandIcons": "Brand icons",
@@ -884,7 +882,7 @@ export const en: Record<string, string> = {
   "file.empty.title": "No files",
   "file.empty.sub": "This directory has no visible files.",
   "file.error.title": "Couldn't open file",
-  "file.error.sub": "It may have moved, be binary, or live outside the workspace.",
+  "file.error.sub": "It may have moved or live outside the workspace.",
   "diff.empty.title": "Nothing to compare",
   "diff.empty.sub": "The working tree has no uncommitted changes.",
   "diff.baseline.head": "HEAD {{commit}} → working tree, including untracked files",
@@ -1167,7 +1165,6 @@ export const en: Record<string, string> = {
   "composer.paste.title": "Pasted text",
   "composer.paste.save": "Save",
   "composer.paste.restore": "Put back in message",
-  "composer.mention.truncated": "Searching the first {{count}} files of this project",
   "composer.mention.status.loading": "Loading project files…",
   "composer.mention.status.empty": "No matching files",
   "composer.mention.status.error": "Couldn’t list project files",
@@ -1194,13 +1191,13 @@ export const en: Record<string, string> = {
   "startup.failed.copied": "Copied",
   "plugins.renderFailed.details": "Details",
   "settings.notifications": "System notifications",
-  "settings.notifications.permission.granted":
+  "settings.notifications.authorization.granted":
     "Shown when a run finishes, fails or needs you while Flame is in the background.",
-  "settings.notifications.permission.default":
+  "settings.notifications.authorization.default":
     "Flame will ask for permission the first time it has something to tell you.",
-  "settings.notifications.permission.denied":
+  "settings.notifications.authorization.denied":
     "Blocked by the system. Allow Flame in System Settings › Notifications to turn this on.",
-  "settings.notifications.permission.unsupported":
+  "settings.notifications.authorization.unsupported":
     "This platform does not offer system notifications.",
   "notify.finished.title": "{{product}} finished",
   "notify.finished.body": "The agent finished its turn.",
@@ -1279,4 +1276,30 @@ export const en: Record<string, string> = {
   "diff.layout.split": "Side by side",
   "composer.reasoningEffort": "Reasoning effort",
   "message.mermaid.actualSize": "Show at actual size",
+  "model.effort.none": "Off",
+  "model.effort.minimal": "Minimal",
+  "model.effort.low": "Low",
+  "model.effort.medium": "Medium",
+  "model.effort.high": "High",
+  "model.effort.xhigh": "Extra high",
+  "model.effort.max": "Max",
+  "tools.output.find": "Find in output",
+  "tools.output.find.none": "No matches",
+  "tools.output.find.count": "{{index}} of {{total}}",
+  "tools.output.find.previous": "Previous match",
+  "tools.output.find.next": "Next match",
+  "tools.output.find.close": "Close find",
+  "common.clear": "Clear",
+  "file.unsupported.image": "No image preview here yet",
+  "file.unsupported.binary": "This file isn't text",
+  "file.unsupported.sub":
+    "Flame shows workspace files as text. Open it in its own app, or find it in Finder.",
+  "file.open": "Open",
+  "file.change.add": "Added in the working tree",
+  "file.change.mod": "Modified in the working tree",
+  "file.change.del": "Deleted in the working tree",
+  "file.change.below": "Contains working-tree changes",
+  "composer.effort.title": "Effort",
+  "composer.effort.faster": "Faster",
+  "composer.effort.smarter": "Smarter",
 };

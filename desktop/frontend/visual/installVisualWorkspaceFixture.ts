@@ -28,6 +28,7 @@ import {
 } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
 import { localePlugins } from "@/plugins/builtin/i18n";
 import { installWorkspaceErrorClassifier } from "@/plugins/builtin/workspace/adapters/runtimeWorkspaceErrorClassifier";
+import { installNotificationCentre } from "@/plugins/builtin/shell/status/adapters/systemNotifier";
 import {
   WORKSPACE_DIFF_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
@@ -558,6 +559,7 @@ export async function installVisualWorkspaceFixture(
   );
 
   installWorkspaceErrorClassifier();
+  installNotificationCentre();
   useRuntimeConnectionStore.setState({
     capabilities:
       state === "dock-feature-off"

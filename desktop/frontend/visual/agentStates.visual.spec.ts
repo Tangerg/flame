@@ -638,11 +638,16 @@ test("model capabilities drive the picker and image admission together", async (
   await expect(sol).toHaveAttribute("title", GPT_5_6_SOL_CAPABILITIES);
   const effort = surface.getByRole("button", { name: "Switch reasoning effort" });
   await expect(effort).toHaveText("Medium");
+  const [chip, row] = await Promise.all([effort.boundingBox(), sol.boundingBox()]);
+  expect(Math.abs(chip!.y + chip!.height / 2 - (row!.y + row!.height / 2))).toBeLessThanOrEqual(1);
   await effort.click();
-  await page.getByRole("menuitem", { name: "High", exact: true }).click();
+  const slider = page.getByRole("slider", { name: "Reasoning effort" });
+  await expect(slider).toHaveAttribute("aria-valuetext", "Medium");
+  await slider.press("ArrowRight");
   await expect(effort).toHaveText("High");
-  await expect(surface).toBeVisible();
   await expect(triggerLabel).toHaveText("GPT-5.6 Sol · High");
+  await page.keyboard.press("Escape");
+  await expect(surface).toBeVisible();
 
   await page.getByPlaceholder("Search models…").fill("Qwen MT Plus");
   const qwen = surface.getByRole("option", { name: /^Qwen MT Plus/ });
@@ -1867,6 +1872,17 @@ test("large command output stays fully readable inside the tool card", async ({ 
   });
   await expect(output).toContainText("build output line 0");
   expect(await output.locator("[data-output-line]").count()).toBeLessThan(100);
+
+  await output.press("ControlOrMeta+f");
+  const find = command.getByRole("searchbox", { name: "Find in output" });
+  await expect(find).toBeFocused();
+  await find.fill("line 31415");
+  await expect(command.getByText("1 of 1")).toBeVisible();
+  const match = output.locator("[data-current-match]");
+  await expect(match).toHaveText("build output line 31415");
+  await expect(match).toBeInViewport();
+  await find.press("Escape");
+  await expect(find).toHaveCount(0);
 
   await command.getByRole("button", { name: "Collapse" }).click();
   await expect(output).toHaveCount(0);

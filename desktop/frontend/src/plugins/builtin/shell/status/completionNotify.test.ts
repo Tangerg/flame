@@ -13,7 +13,8 @@ vi.mock("@/plugins/builtin/workspace/public/navigation", () => ({
 vi.mock("./adapters/desktopWindow", () => ({ revealDesktopWindow: calls.reveal }));
 vi.mock("./chime", () => ({ playCompletionChime: vi.fn() }));
 
-import { announceSettlement } from "./completionNotify";
+import { announceSettlement, startCompletionNotifications } from "./completionNotify";
+import { installNotificationCentre } from "./adapters/systemNotifier";
 import { useSystemNotificationsStore } from "./systemNotifications";
 
 class FakeNotification {
@@ -31,7 +32,11 @@ class FakeNotification {
 }
 
 describe("announceSettlement", () => {
+  let stop: () => void;
+  let uninstall: () => void;
   beforeEach(() => {
+    uninstall = installNotificationCentre();
+    stop = startCompletionNotifications();
     vi.stubGlobal("Notification", FakeNotification);
     vi.spyOn(document, "hasFocus").mockReturnValue(false);
     FakeNotification.permission = "granted";
@@ -39,7 +44,11 @@ describe("announceSettlement", () => {
     useSystemNotificationsStore.setState({ systemNotifications: true });
     for (const call of Object.values(calls)) call.mockClear();
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    stop();
+    uninstall();
+    vi.unstubAllGlobals();
+  });
 
   it("opens the session the notification is about when it is clicked", async () => {
     await announceSettlement({ sessionId: "s-b", status: "needsInput", errorMessage: null });

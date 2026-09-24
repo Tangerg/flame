@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"unsafe"
 
 	"github.com/Tangerg/flame/runtime/localruntime"
@@ -63,6 +64,12 @@ type pathRevealer interface {
 	OpenFileManager(path string, selectFile bool) error
 }
 
+// pathOpener hands a path to the platform's default application for it. Like
+// revealing, it reads nothing and grants the frontend no file access.
+type pathOpener interface {
+	OpenFile(path string) error
+}
+
 // DesktopHost is the Wails-owned boundary for capabilities that belong to the
 // packaged application rather than the Runtime Protocol.
 //
@@ -83,6 +90,11 @@ type DesktopHost struct {
 	// a webview's window.focus() cannot un-minimise its own native window.
 	reveal       func()
 	pathRevealer pathRevealer
+	pathOpener   pathOpener
+	// Started in ServiceStartup; notificationsReady flips once, before the frontend
+	// can call, and is read from IPC goroutines afterwards.
+	notifications      systemNotifications
+	notificationsReady atomic.Bool
 }
 
 func newDesktopHost(home string) (*DesktopHost, error) {
@@ -111,6 +123,12 @@ func (d *DesktopHost) useRevealer(reveal func()) {
 // the note on DesktopHost.
 func (d *DesktopHost) usePathRevealer(revealer pathRevealer) {
 	d.pathRevealer = revealer
+}
+
+// usePathOpener attaches the platform's default-application launcher. Unexported
+// on purpose: see the note on DesktopHost.
+func (d *DesktopHost) usePathOpener(opener pathOpener) {
+	d.pathOpener = opener
 }
 
 // useWorkingDirectoryPicker attaches the packaged application's native directory
@@ -170,17 +188,41 @@ func (d *DesktopHost) RevealPath(path string) error {
 	if d.pathRevealer == nil {
 		return errors.New("desktop host: file manager is not attached")
 	}
-	if !filepath.IsAbs(path) {
-		return fmt.Errorf("desktop host: reveal path %q is not absolute", path)
-	}
-	clean := filepath.Clean(path)
-	if _, err := os.Stat(clean); err != nil {
+	clean, err := existingAbsolutePath(path)
+	if err != nil {
 		return fmt.Errorf("desktop host: reveal path: %w", err)
 	}
 	if err := d.pathRevealer.OpenFileManager(clean, true); err != nil {
 		return fmt.Errorf("desktop host: reveal path: %w", err)
 	}
 	return nil
+}
+
+// OpenPath opens an existing absolute path with the platform's default
+// application for it.
+func (d *DesktopHost) OpenPath(path string) error {
+	if d.pathOpener == nil {
+		return errors.New("desktop host: default application launcher is not attached")
+	}
+	clean, err := existingAbsolutePath(path)
+	if err != nil {
+		return fmt.Errorf("desktop host: open path: %w", err)
+	}
+	if err := d.pathOpener.OpenFile(clean); err != nil {
+		return fmt.Errorf("desktop host: open path: %w", err)
+	}
+	return nil
+}
+
+func existingAbsolutePath(path string) (string, error) {
+	if !filepath.IsAbs(path) {
+		return "", fmt.Errorf("%q is not absolute", path)
+	}
+	clean := filepath.Clean(path)
+	if _, err := os.Stat(clean); err != nil {
+		return "", err
+	}
+	return clean, nil
 }
 
 // ChooseWorkingDirectory opens the platform directory picker and returns one

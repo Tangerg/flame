@@ -24,3 +24,5 @@ export { TabsPrimitive } from "./tabs";
 export { TextAreaPrimitive } from "./textarea";
 export type { TextAreaPrimitiveProps } from "./textarea";
 export { TooltipPrimitive } from "./tooltip";
+export { TreePrimitive } from "./tree";
+export type { TreeItemPrimitiveProps } from "./tree";

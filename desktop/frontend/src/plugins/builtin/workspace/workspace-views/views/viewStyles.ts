@@ -12,33 +12,6 @@ export const viewStyles = stylex.create({
   planPad: { paddingBlock: space.s3_5 },
   planHeading: { paddingInline: 0, paddingTop: 0, paddingBottom: space.s2 },
 
-  treeRow: {
-    display: "flex",
-    width: "100%",
-    minWidth: 0,
-    alignItems: "center",
-    gap: space.s1_5,
-    borderRadius: radius.card,
-    borderWidth: 0,
-    backgroundColor: {
-      default: "transparent",
-      ":hover": surface.hover,
-      ":focus-visible": surface.hover,
-      ":is([data-active])": surface.selected,
-      ":is([data-active]):hover": surface.selectedHover,
-    },
-    textAlign: "left",
-    color: color.fg,
-    transitionProperty: "background-color",
-    transitionDuration: motion.color,
-    transitionTimingFunction: motion.easeState,
-  },
-  treeRowSelected: {
-    backgroundColor: { default: surface.selected, ":hover": surface.selectedHover },
-  },
-  treeRowTall: { height: "calc(var(--spacing) * 7)", paddingRight: space.s2 },
-  treeRowInset: { paddingInline: space.s1_5, paddingBlock: space.s1 },
-
   diffFileHeader: {
     display: "flex",
     height: space.s8,

@@ -1,6 +1,7 @@
 export { useSystemNotificationsStore } from "../systemNotifications";
 export {
-  type NotificationPermissionState,
-  requestNotificationPermission,
-  useNotificationPermission,
-} from "../osNotify";
+  refreshNotificationAuthorization,
+  requestNotificationAuthorization,
+  useNotificationAuthorization,
+} from "../systemNotifier";
+export type { NotificationAuthorization } from "../application/ports/notificationCentre";

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Checkbox, Segmented, Switch } from "@/ui";
 import { useT } from "@/lib/i18n";
 import {
@@ -24,13 +25,23 @@ export function CompletionSoundSection() {
 
 export function SystemNotificationsSection() {
   const t = useT();
-  const { systemNotifications, setSystemNotifications, permission, requestPermission } =
-    useSystemNotificationsPreference();
-  const blocked = permission === "denied" || permission === "unsupported";
+  const {
+    systemNotifications,
+    setSystemNotifications,
+    authorization,
+    refreshAuthorization,
+    requestAuthorization,
+  } = useSystemNotificationsPreference();
+  useEffect(() => {
+    void refreshAuthorization().catch((error: unknown) =>
+      console.error("[settings] notification authorization check failed:", error),
+    );
+  }, [refreshAuthorization]);
+  const blocked = authorization === "denied" || authorization === "unsupported";
   return (
     <SettingRow
       label={t("settings.notifications")}
-      sub={t(`settings.notifications.permission.${permission}`)}
+      sub={t(`settings.notifications.authorization.${authorization}`)}
     >
       <Switch
         checked={systemNotifications && !blocked}
@@ -38,7 +49,7 @@ export function SystemNotificationsSection() {
         ariaLabel={t("settings.notifications")}
         onCheckedChange={(on) => {
           setSystemNotifications(on);
-          if (on) void requestPermission();
+          if (on) void requestAuthorization();
         }}
       />
     </SettingRow>

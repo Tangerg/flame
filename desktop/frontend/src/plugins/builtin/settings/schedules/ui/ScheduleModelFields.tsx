@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { useModels } from "@/plugins/builtin/settings/providers/public/queries";
+import { reasoningEffortLabel } from "@/plugins/builtin/settings/providers/public/reasoningEffort";
 import { Button, DropdownMenu, Icon, SelectTrigger, providerDisplayName, vocab } from "@/ui";
 import type { ScheduleModelSelection } from "../application/scheduleConfig";
 import { settingStyles as ss } from "../../kit/settingStyles";
@@ -67,7 +68,11 @@ export function ScheduleModelFields({
             <DropdownMenu.Trigger
               render={
                 <SelectTrigger
-                  label={selection.reasoningEffort ?? t("schedules.reasoning.default")}
+                  label={
+                    selection.reasoningEffort
+                      ? reasoningEffortLabel(selection.reasoningEffort, t)
+                      : t("schedules.reasoning.default")
+                  }
                   aria-label={t("composer.switchReasoningEffort")}
                   className={stylex.props(styles.trigger).className}
                 />
@@ -87,7 +92,7 @@ export function ScheduleModelFields({
                   onClick={() => onChange({ ...selection, reasoningEffort: effort })}
                   layout="pickPlain"
                 >
-                  <span>{effort}</span>
+                  <span>{reasoningEffortLabel(effort, t)}</span>
                   {selection.reasoningEffort === effort && <Icon name="check" size="xs" />}
                 </DropdownMenu.Item>
               ))}

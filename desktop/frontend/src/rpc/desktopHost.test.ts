@@ -6,10 +6,15 @@ const BOOTSTRAP = "main.DesktopHost.Bootstrap";
 const CHOOSE_WORKING_DIRECTORY = "main.DesktopHost.ChooseWorkingDirectory";
 const SAVE_IMAGE = "main.DesktopHost.SaveImage";
 const WINDOW_CHROME = "main.DesktopHost.WindowChrome";
+const NOTIFICATION_AUTHORIZATION = "main.DesktopHost.NotificationAuthorization";
+const SEND_NOTIFICATION = "main.DesktopHost.SendNotification";
 
 function hostBinding(
   answers: Partial<Record<string, () => Promise<unknown>>> = {},
-): DesktopHostBinding & { call: ReturnType<typeof vi.fn> } {
+): DesktopHostBinding & {
+  call: ReturnType<typeof vi.fn>;
+  emit: (event: string, data: unknown) => void;
+} {
   const defaults: Record<string, () => Promise<unknown>> = {
     [BOOTSTRAP]: async () => ({
       localRuntime: { endpoint: "http://127.0.0.1:17171" },
@@ -23,12 +28,20 @@ function hostBinding(
     }),
   };
   const routes = { ...defaults, ...answers };
+  const listeners = new Map<string, Set<(data: unknown) => void>>();
   return {
     call: vi.fn(async (method: string) => {
       const answer = routes[method];
       if (!answer) throw new Error(`unbound method ${method}`);
       return answer();
     }),
+    on: (event, listener) => {
+      const set = listeners.get(event) ?? new Set();
+      set.add(listener);
+      listeners.set(event, set);
+      return () => set.delete(listener);
+    },
+    emit: (event, data) => listeners.get(event)?.forEach((listener) => listener(data)),
   };
 }
 
@@ -148,5 +161,32 @@ describe("DesktopHostClient", () => {
       "data:image/png;base64,aW1hZ2U=",
       WINDOW_CHROME,
     ]);
+  });
+
+  it("reads notification authorization and rejects a state the host never names", async () => {
+    const client = createDesktopHostClient(
+      hostBinding({ [NOTIFICATION_AUTHORIZATION]: async () => "granted" }),
+    );
+    await expect(client.notificationAuthorization()).resolves.toBe("granted");
+    const broken = createDesktopHostClient(
+      hostBinding({ [NOTIFICATION_AUTHORIZATION]: async () => "maybe" }),
+    );
+    await expect(broken.notificationAuthorization()).rejects.toBeInstanceOf(RpcTransportError);
+  });
+
+  it("sends notifications and hands back the target a click opened", async () => {
+    const binding = hostBinding({ [SEND_NOTIFICATION]: async () => null });
+    const client = createDesktopHostClient(binding);
+    const message = { id: "run:1", title: "Done", target: "session-1" };
+    await expect(client.sendNotification(message)).resolves.toBe(true);
+    expect(binding.call).toHaveBeenCalledWith(SEND_NOTIFICATION, message);
+
+    const opened = vi.fn();
+    const stop = await client.onNotificationOpened(opened);
+    binding.emit("desktop:notification-opened", "session-1");
+    binding.emit("desktop:notification-opened", "");
+    stop();
+    binding.emit("desktop:notification-opened", "session-2");
+    expect(opened.mock.calls).toEqual([["session-1"]]);
   });
 });

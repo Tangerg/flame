@@ -625,7 +625,6 @@ export const es: Record<string, string> = {
   "shortcuts.shortcut": "Atajo",
   "shortcuts.empty": "Sin atajos coincidentes",
 
-  "iconGallery.clear": "Borrar",
   "workspace.view.title.iconGallery": "Galería de iconos",
   "settings.pane.brandIcons": "Iconos de marca",
   "agentSource.rpc": "Protocolo de ejecución (JSON-RPC)",
@@ -1000,7 +999,7 @@ export const es: Record<string, string> = {
   "file.empty.title": "No hay archivos",
   "file.empty.sub": "Este directorio no contiene archivos visibles.",
   "file.error.title": "No se pudo abrir el archivo",
-  "file.error.sub": "Puede haberse movido, ser binario o estar fuera del espacio de trabajo.",
+  "file.error.sub": "Puede haberse movido o estar fuera del espacio de trabajo.",
   "composer.key.historyPrevDesc": "Recuperar el mensaje anterior",
   "composer.key.historyNextDesc": "Recuperar el mensaje siguiente",
   "mcp.import.hint":
@@ -1208,7 +1207,6 @@ export const es: Record<string, string> = {
   "composer.paste.title": "Texto pegado",
   "composer.paste.save": "Guardar",
   "composer.paste.restore": "Devolver al mensaje",
-  "composer.mention.truncated": "Se buscan los primeros {{count}} archivos de este proyecto",
   "composer.mention.status.loading": "Cargando archivos del proyecto…",
   "composer.mention.status.empty": "No hay archivos coincidentes",
   "composer.mention.status.error": "No se pudieron listar los archivos",
@@ -1235,13 +1233,13 @@ export const es: Record<string, string> = {
   "startup.failed.copied": "Copiado",
   "plugins.renderFailed.details": "Detalles",
   "settings.notifications": "Notificaciones del sistema",
-  "settings.notifications.permission.granted":
+  "settings.notifications.authorization.granted":
     "Se muestran cuando una ejecución termina, falla o te necesita con Flame en segundo plano.",
-  "settings.notifications.permission.default":
+  "settings.notifications.authorization.default":
     "Flame pedirá permiso la primera vez que tenga algo que avisarte.",
-  "settings.notifications.permission.denied":
+  "settings.notifications.authorization.denied":
     "Bloqueadas por el sistema. Permite Flame en Ajustes del Sistema › Notificaciones.",
-  "settings.notifications.permission.unsupported":
+  "settings.notifications.authorization.unsupported":
     "Esta plataforma no ofrece notificaciones del sistema.",
   "notify.finished.title": "{{product}} terminó",
   "notify.finished.body": "El agente terminó su turno.",
@@ -1326,4 +1324,30 @@ export const es: Record<string, string> = {
   "diff.layout.split": "Lado a lado",
   "composer.reasoningEffort": "Esfuerzo de razonamiento",
   "message.mermaid.actualSize": "Ver a tamaño real",
+  "model.effort.none": "Desactivado",
+  "model.effort.minimal": "Mínimo",
+  "model.effort.low": "Bajo",
+  "model.effort.medium": "Medio",
+  "model.effort.high": "Alto",
+  "model.effort.xhigh": "Muy alto",
+  "model.effort.max": "Máximo",
+  "tools.output.find": "Buscar en la salida",
+  "tools.output.find.none": "Sin coincidencias",
+  "tools.output.find.count": "{{index}} de {{total}}",
+  "tools.output.find.previous": "Coincidencia anterior",
+  "tools.output.find.next": "Coincidencia siguiente",
+  "tools.output.find.close": "Cerrar búsqueda",
+  "common.clear": "Borrar",
+  "file.unsupported.image": "Aún no hay vista previa de imágenes aquí",
+  "file.unsupported.binary": "Este archivo no es texto",
+  "file.unsupported.sub":
+    "Flame muestra los archivos del espacio de trabajo como texto. Ábrelo en su propia app o búscalo en Finder.",
+  "file.open": "Abrir",
+  "file.change.add": "Añadido en el árbol de trabajo",
+  "file.change.mod": "Modificado en el árbol de trabajo",
+  "file.change.del": "Eliminado en el árbol de trabajo",
+  "file.change.below": "Contiene cambios del árbol de trabajo",
+  "composer.effort.title": "Esfuerzo",
+  "composer.effort.faster": "Más rápido",
+  "composer.effort.smarter": "Más inteligente",
 };

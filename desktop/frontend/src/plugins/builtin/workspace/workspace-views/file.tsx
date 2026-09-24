@@ -4,9 +4,20 @@ import { copyText } from "@/lib/clipboard";
 import { isImeKey } from "@/lib/ime";
 import { lookupExtensionByKey } from "@/plugins/sdk";
 import { WORKSPACE_FILE_RENDERER } from "@/plugins/sdk/kernelPoints";
-import { DataView, FilePath, IconButton, Popover, Segmented, TextButton, TextField } from "@/ui";
+import {
+  Button,
+  DataView,
+  EmptyState,
+  FilePath,
+  IconButton,
+  Popover,
+  Segmented,
+  TextButton,
+  TextField,
+} from "@/ui";
 import { space, type as typeStep } from "@/styles/tokens.stylex";
-import { revealWorkspacePath } from "../adapters/desktopReveal";
+import { openWorkspacePath, revealWorkspacePath } from "../adapters/desktopReveal";
+import { fileKind, isUnsupportedFileRead } from "../application/fileKind";
 import { useT } from "@/lib/i18n";
 import { FileView } from "./views/FileView";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
@@ -134,6 +145,9 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
   };
   const loadLater = () => setLineWindow({ start: firstShown, end: lastShown + WINDOW_RADIUS });
 
+  const unsupported = isUnsupportedFileRead(error);
+  const kind = fileKind(viewer.path);
+
   const sub = data ? (
     <span>
       {moreBefore || moreAfter
@@ -164,7 +178,7 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
               ]}
             />
           )}
-          <GoToLine onGo={(line) => openWorkspaceFile(viewer.path, line)} />
+          {!unsupported && <GoToLine onGo={(line) => openWorkspaceFile(viewer.path, line)} />}
           <IconButton
             icon="copy"
             size="sm"
@@ -189,47 +203,62 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
       }
       sub={sub}
     >
-      <DataView
-        items={data ? [data] : []}
-        isLoading={isLoading || workspace.status === "resolving"}
-        failure={error}
-        onRetry={refetch}
-        skeletonCount={12}
-        error={{ title: t("file.error.title"), sub: t("file.error.sub") }}
-      >
-        {(items) => (
-          <div>
-            {moreBefore && !showRendered && (
-              <div {...stylex.props(fp.edge)}>
-                <TextButton tone="accent" size="sm" onClick={loadEarlier}>
-                  {t("file.loadEarlier", { count: Math.min(WINDOW_RADIUS, firstShown - 1) })}
-                </TextButton>
-              </div>
-            )}
-            {showRendered && renderer ? (
-              (() => {
-                const Renderer = renderer;
-                return <Renderer path={viewer.path} content={items[0]!.content} />;
-              })()
-            ) : (
-              <FileView
-                path={viewer.path}
-                content={items[0]!.content}
-                startLine={items[0]!.startLine}
-                targetLine={targetLine}
-                intent={viewer}
-              />
-            )}
-            {moreAfter && !showRendered && (
-              <div {...stylex.props(fp.edge)}>
-                <TextButton tone="accent" size="sm" onClick={loadLater}>
-                  {t("file.loadLater", { count: WINDOW_RADIUS })}
-                </TextButton>
-              </div>
-            )}
-          </div>
-        )}
-      </DataView>
+      {unsupported ? (
+        <EmptyState
+          icon={kind === "image" ? "image" : "file"}
+          title={t(kind === "image" ? "file.unsupported.image" : "file.unsupported.binary")}
+          sub={t("file.unsupported.sub")}
+          action={
+            cwd && (
+              <Button size="sm" onClick={() => void openWorkspacePath(cwd, viewer.path)}>
+                {t("file.open")}
+              </Button>
+            )
+          }
+        />
+      ) : (
+        <DataView
+          items={data ? [data] : []}
+          isLoading={isLoading || workspace.status === "resolving"}
+          failure={error}
+          onRetry={refetch}
+          skeletonCount={12}
+          error={{ title: t("file.error.title"), sub: t("file.error.sub") }}
+        >
+          {(items) => (
+            <div>
+              {moreBefore && !showRendered && (
+                <div {...stylex.props(fp.edge)}>
+                  <TextButton tone="accent" size="sm" onClick={loadEarlier}>
+                    {t("file.loadEarlier", { count: Math.min(WINDOW_RADIUS, firstShown - 1) })}
+                  </TextButton>
+                </div>
+              )}
+              {showRendered && renderer ? (
+                (() => {
+                  const Renderer = renderer;
+                  return <Renderer path={viewer.path} content={items[0]!.content} />;
+                })()
+              ) : (
+                <FileView
+                  path={viewer.path}
+                  content={items[0]!.content}
+                  startLine={items[0]!.startLine}
+                  targetLine={targetLine}
+                  intent={viewer}
+                />
+              )}
+              {moreAfter && !showRendered && (
+                <div {...stylex.props(fp.edge)}>
+                  <TextButton tone="accent" size="sm" onClick={loadLater}>
+                    {t("file.loadLater", { count: WINDOW_RADIUS })}
+                  </TextButton>
+                </div>
+              )}
+            </div>
+          )}
+        </DataView>
+      )}
     </WorkspaceViewLayout>
   );
 }

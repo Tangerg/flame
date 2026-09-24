@@ -303,3 +303,37 @@ func TestRevealPathOnlyHandsAnExistingAbsolutePathToTheFileManager(t *testing.T)
 		t.Fatalf("revealed %q, want the cleaned %q", revealer.revealed, dir)
 	}
 }
+
+type recordingOpener struct{ opened string }
+
+func (o *recordingOpener) OpenFile(path string) error {
+	o.opened = path
+	return nil
+}
+
+func TestOpenPathOnlyHandsAnExistingAbsolutePathToTheDefaultApplication(t *testing.T) {
+	dir := t.TempDir()
+	host := mustDesktopHost(t, dir)
+	opener := &recordingOpener{}
+	host.usePathOpener(opener)
+	file := filepath.Join(dir, "diagram.png")
+	if err := os.WriteFile(file, []byte("png"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := host.OpenPath("relative/diagram.png"); err == nil {
+		t.Fatal("OpenPath accepted a relative path")
+	}
+	if err := host.OpenPath(filepath.Join(dir, "missing.png")); err == nil {
+		t.Fatal("OpenPath accepted a path that does not exist")
+	}
+	if opener.opened != "" {
+		t.Fatalf("a rejected path reached the default application: %q", opener.opened)
+	}
+	if err := host.OpenPath(file); err != nil {
+		t.Fatalf("OpenPath(existing file) = %v", err)
+	}
+	if opener.opened != file {
+		t.Fatalf("opened %q, want %q", opener.opened, file)
+	}
+}

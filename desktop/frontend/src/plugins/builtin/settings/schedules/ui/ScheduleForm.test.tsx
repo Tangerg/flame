@@ -48,7 +48,7 @@ describe("ScheduleForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "OpenAI / Shared model" }));
     fireEvent.click(screen.getByRole("button", { name: "Switch reasoning effort" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "high" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "High" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(createSchedule).toHaveBeenCalledWith(
@@ -76,7 +76,7 @@ describe("ScheduleForm", () => {
       "saved-model",
     );
     expect(screen.getByRole("button", { name: "Switch reasoning effort" }).textContent).toContain(
-      "high",
+      "High",
     );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(updateSchedule).toHaveBeenCalledOnce());

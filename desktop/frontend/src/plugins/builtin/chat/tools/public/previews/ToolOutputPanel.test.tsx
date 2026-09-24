@@ -52,3 +52,35 @@ describe("ToolOutputPanel height rule", () => {
     cleanup();
   });
 });
+
+describe("ToolOutputPanel find", () => {
+  const output = Array.from({ length: 40 }, (_, index) => `line ${index}`).join("\n");
+
+  it("counts matching lines and steps through them in both directions", () => {
+    render(<ToolOutputPanel output={output} status="ok" />);
+    fireEvent.click(screen.getByRole("button", { name: "Find in output" }));
+    const field = screen.getByRole("searchbox", { name: "Find in output" });
+    expect(document.activeElement).toBe(field);
+
+    fireEvent.change(field, { target: { value: "LINE 1" } });
+    expect(screen.getByText("1 of 11")).toBeTruthy();
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(screen.getByText("2 of 11")).toBeTruthy();
+    fireEvent.keyDown(field, { key: "Enter", shiftKey: true });
+    fireEvent.keyDown(field, { key: "Enter", shiftKey: true });
+    expect(screen.getByText("11 of 11")).toBeTruthy();
+
+    fireEvent.change(field, { target: { value: "absent" } });
+    expect(screen.getByText("No matches")).toBeTruthy();
+  });
+
+  it("closes on Escape and leaves the output readable", () => {
+    render(<ToolOutputPanel output={output} status="ok" />);
+    fireEvent.click(screen.getByRole("button", { name: "Find in output" }));
+    fireEvent.keyDown(screen.getByRole("searchbox", { name: "Find in output" }), {
+      key: "Escape",
+    });
+    expect(screen.queryByRole("searchbox", { name: "Find in output" })).toBeNull();
+    expect(screen.getByRole("region", { name: "Tool output" })).toBeTruthy();
+  });
+});

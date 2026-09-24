@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/services/notifications"
 )
 
 //go:embed all:frontend/dist
@@ -107,6 +108,13 @@ func main() {
 	window := app.Window.NewWithOptions(desktopWindowOptions())
 	host.useWindow(window)
 	host.usePathRevealer(app.Env)
+	host.usePathOpener(app.Browser)
+	host.useNotifications(wailsNotifications{
+		service: notifications.New(),
+		opened: func(target string) {
+			app.Event.Emit(notificationOpenedEvent, target)
+		},
+	})
 	host.useRevealer(func() {
 		window.UnMinimise()
 		window.Show()

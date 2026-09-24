@@ -5,7 +5,11 @@ import { formatFileReference } from "./draftContext";
 import { type SuggestionList, useSuggestionIndex } from "./suggestions";
 
 const MENTION_ROWS = 8;
-export const MENTION_FETCH_LIMIT = 2000;
+const LISTING_PAGE_SIZE = 2000;
+
+function workspaceListing(cwd: string) {
+  return { cwd, recursive: true, limit: LISTING_PAGE_SIZE };
+}
 
 interface Mention {
   query: string;
@@ -37,7 +41,7 @@ type FileMentionStatus = "no-workspace" | "loading" | "error" | "empty" | "ready
 
 export interface FileMentions extends SuggestionList<string> {
   status: FileMentionStatus;
-  truncated: boolean;
+  failure: string | undefined;
   retry: () => void;
 }
 
@@ -48,7 +52,7 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
   const open = mention !== null && mention.start !== dismissedStart;
 
   const listing = useWorkspaceListFiles(
-    open && cwd !== undefined ? { cwd, recursive: true, limit: MENTION_FETCH_LIMIT } : undefined,
+    open && cwd !== undefined ? workspaceListing(cwd) : undefined,
   );
   const files = listing.data;
 
@@ -103,7 +107,7 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
     accept,
     dismiss,
     status,
-    truncated: files !== undefined && files.length >= MENTION_FETCH_LIMIT,
+    failure: listing.isError ? listing.error?.message : undefined,
     retry,
   };
 }
@@ -115,7 +119,7 @@ export function useKnownWorkspacePaths(
   enabled: boolean,
 ): ReadonlySet<string> {
   const { data } = useWorkspaceListFiles(
-    enabled && cwd !== undefined ? { cwd, recursive: true, limit: MENTION_FETCH_LIMIT } : undefined,
+    enabled && cwd !== undefined ? workspaceListing(cwd) : undefined,
   );
   return useMemo(() => (data ? new Set(data.map((file) => file.path)) : NO_PATHS), [data]);
 }

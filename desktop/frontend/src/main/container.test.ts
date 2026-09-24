@@ -89,6 +89,11 @@ describe("main/container", () => {
       windowChrome: async () => null,
       revealWindow: async () => {},
       revealPath: async () => false,
+      openPath: async () => false,
+      notificationAuthorization: async () => null,
+      requestNotificationAuthorization: async () => null,
+      sendNotification: async () => null,
+      onNotificationOpened: async () => () => {},
     });
     setContainer({ desktop: desktop("token-a") });
     await initializeDesktopHost();
@@ -118,6 +123,11 @@ describe("main/container", () => {
       windowChrome: async () => null,
       revealWindow: async () => {},
       revealPath: async () => false,
+      openPath: async () => false,
+      notificationAuthorization: async () => null,
+      requestNotificationAuthorization: async () => null,
+      sendNotification: async () => null,
+      onNotificationOpened: async () => () => {},
     });
 
     setContainer({ desktop: desktop(() => retiredBootstrap) });
@@ -160,6 +170,11 @@ describe("main/container", () => {
       windowChrome: async () => null,
       revealWindow: async () => {},
       revealPath: async () => false,
+      openPath: async () => false,
+      notificationAuthorization: async () => null,
+      requestNotificationAuthorization: async () => null,
+      sendNotification: async () => null,
+      onNotificationOpened: async () => () => {},
     });
 
     setContainer({ desktop: desktop(() => retired.promise) });

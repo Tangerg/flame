@@ -186,28 +186,39 @@ describe("ModelPicker", () => {
     });
   });
 
-  it("sets the effort on the selected row without re-choosing the model", async () => {
+  it("names the effort in force beside the model", () => {
     state.selection = { model: state.models[2]!, reasoningEffort: "high" };
     render(<ModelPicker />);
     expect(screen.getByRole("button", { name: "Switch model" }).textContent).toContain(
       "DeepSeek Reasoner · High",
     );
+  });
+
+  it("sets effort from the selected row without re-choosing the model", async () => {
+    state.selection = { model: state.models[2]!, reasoningEffort: "high" };
+    render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     await screen.findByPlaceholderText("Search models…");
 
-    fireEvent.click(screen.getByRole("button", { name: "Switch reasoning effort" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Low" }));
-    expect(state.setModel).toHaveBeenCalledTimes(1);
-    expect(state.setModel).toHaveBeenCalledWith({
-      kind: "explicit",
-      provider: "deepseek",
-      model: "DeepSeek Reasoner",
-      reasoningEffort: "low",
-    });
+    const chip = await screen.findByRole("button", { name: "Switch reasoning effort" });
+    expect(chip.closest('[role="listbox"]')).toBeNull();
+    fireEvent.click(chip);
+    const slider = await screen.findByLabelText("Reasoning effort");
+    expect(slider.getAttribute("aria-valuetext")).toBe("High");
+
+    fireEvent.keyDown(slider, { key: "ArrowLeft" });
+    await waitFor(() =>
+      expect(state.setModel).toHaveBeenCalledWith({
+        kind: "explicit",
+        provider: "deepseek",
+        model: "DeepSeek Reasoner",
+        reasoningEffort: "low",
+      }),
+    );
     expect(screen.getByPlaceholderText("Search models…")).toBeTruthy();
   });
 
-  it("offers an effort only on the selected model", async () => {
+  it("offers effort only for a model that publishes levels", async () => {
     state.selection = { model: state.models[1]!, reasoningEffort: undefined };
     render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));

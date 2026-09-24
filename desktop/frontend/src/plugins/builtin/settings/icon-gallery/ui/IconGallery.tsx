@@ -92,7 +92,7 @@ export function IconGallery() {
           aria-label={t("iconGallery.filterLabel")}
           placeholder={t("iconGallery.filterPlaceholder")}
           onClear={() => setQuery("")}
-          clearLabel={t("iconGallery.clear")}
+          clearLabel={t("common.clear")}
           className={stylex.props(ig.search).className}
         />
       </div>

@@ -1,7 +1,12 @@
 import { playCompletionChime } from "./chime";
 import { disposeOnHmr } from "@/lib/hmr";
 import { t } from "@/lib/i18n";
-import { osNotify, requestNotificationPermission } from "./osNotify";
+import {
+  onSystemNotificationOpened,
+  refreshNotificationAuthorization,
+  requestNotificationAuthorization,
+  sendSystemNotification,
+} from "./systemNotifier";
 import {
   type RootRunSettlement,
   subscribeRootRunSettlements,
@@ -9,6 +14,7 @@ import {
 import { selectAgentSession } from "@/plugins/builtin/agent/public/session";
 import { selectWorkspaceChat } from "@/plugins/builtin/workspace/public/navigation";
 import { revealDesktopWindow } from "./adapters/desktopWindow";
+import { installNotificationCentre } from "./adapters/systemNotifier";
 import { definePlugin, READY_HANDLER } from "@/plugins/sdk";
 import { useCompletionSoundStore } from "./completionSound";
 import { useSystemNotificationsStore } from "./systemNotifications";
@@ -37,25 +43,43 @@ export async function announceSettlement({
   if (document.hasFocus()) return;
   if (useCompletionSoundStore.getState().completionSound) playCompletionChime();
   if (!useSystemNotificationsStore.getState().systemNotifications) return;
-  if ((await requestNotificationPermission()) !== "granted") return;
+  if ((await requestNotificationAuthorization()) !== "granted") return;
   const [titleKey, bodyKey] = SETTLEMENT_COPY[status];
-  osNotify(t(titleKey, { product: PRODUCT_NAME }), {
+  await sendSystemNotification({
+    id: `run:${sessionId}`,
+    title: t(titleKey, { product: PRODUCT_NAME }),
     body: status === "error" && errorMessage ? errorMessage : t(bodyKey),
-    tag: `run:${sessionId}`,
-    onClick: () => openSettledSession(sessionId),
+    target: sessionId,
   });
+}
+
+export function startCompletionNotifications(): () => void {
+  const unsubscribe = subscribeRootRunSettlements(
+    (settlement) =>
+      void announceSettlement(settlement).catch((error: unknown) =>
+        console.error("[notify] system notification failed:", error),
+      ),
+  );
+  const stopOpening = onSystemNotificationOpened(openSettledSession);
+  void refreshNotificationAuthorization().catch((error: unknown) =>
+    console.error("[notify] notification authorization check failed:", error),
+  );
+  return () => {
+    unsubscribe();
+    stopOpening();
+  };
 }
 
 export const completionNotify = definePlugin({
   name: "flame.builtin.completion-notify",
   setup(ctx) {
-    let unsubscribe: (() => void) | undefined;
+    const uninstall = installNotificationCentre();
+    ctx.cleanup(uninstall);
+    let stop: (() => void) | undefined;
     ctx.contribute(READY_HANDLER, () => {
-      unsubscribe = subscribeRootRunSettlements(
-        (settlement) => void announceSettlement(settlement),
-      );
-      disposeOnHmr(unsubscribe);
+      stop = startCompletionNotifications();
+      disposeOnHmr(stop);
     });
-    ctx.cleanup(() => unsubscribe?.());
+    ctx.cleanup(() => stop?.());
   },
 });

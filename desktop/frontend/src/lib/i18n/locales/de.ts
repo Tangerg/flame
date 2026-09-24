@@ -605,7 +605,6 @@ export const de: Record<string, string> = {
   "shortcuts.shortcut": "Kürzel",
   "shortcuts.empty": "Keine Kürzel gefunden",
 
-  "iconGallery.clear": "Löschen",
   "workspace.view.title.iconGallery": "Icon-Galerie",
   "settings.pane.brandIcons": "Marken-Icons",
   "agentSource.rpc": "Runtime-Protokoll (JSON-RPC)",
@@ -974,8 +973,7 @@ export const de: Record<string, string> = {
   "file.empty.title": "Keine Dateien",
   "file.empty.sub": "Dieses Verzeichnis enthält keine sichtbaren Dateien.",
   "file.error.title": "Datei konnte nicht geöffnet werden",
-  "file.error.sub":
-    "Sie wurde vielleicht verschoben, ist binär oder liegt außerhalb des Workspace.",
+  "file.error.sub": "Sie wurde möglicherweise verschoben oder liegt außerhalb des Arbeitsbereichs.",
   "composer.key.historyPrevDesc": "Vorherige Nachricht abrufen",
   "composer.key.historyNextDesc": "Nächste Nachricht abrufen",
   "mcp.import.hint":
@@ -1185,7 +1183,6 @@ export const de: Record<string, string> = {
   "composer.paste.title": "Eingefügter Text",
   "composer.paste.save": "Speichern",
   "composer.paste.restore": "In die Nachricht zurücklegen",
-  "composer.mention.truncated": "Durchsucht werden die ersten {{count}} Dateien dieses Projekts",
   "composer.mention.status.loading": "Projektdateien werden geladen…",
   "composer.mention.status.empty": "Keine passenden Dateien",
   "composer.mention.status.error": "Projektdateien konnten nicht aufgelistet werden",
@@ -1215,12 +1212,13 @@ export const de: Record<string, string> = {
   "startup.failed.copied": "Kopiert",
   "plugins.renderFailed.details": "Details",
   "settings.notifications": "Systembenachrichtigungen",
-  "settings.notifications.permission.granted":
+  "settings.notifications.authorization.granted":
     "Erscheinen, wenn ein Lauf endet, fehlschlägt oder dich braucht, während Flame im Hintergrund ist.",
-  "settings.notifications.permission.default": "Flame fragt beim ersten Mal nach der Berechtigung.",
-  "settings.notifications.permission.denied":
+  "settings.notifications.authorization.default":
+    "Flame fragt beim ersten Mal nach der Berechtigung.",
+  "settings.notifications.authorization.denied":
     "Vom System blockiert. Erlaube Flame unter Systemeinstellungen › Mitteilungen.",
-  "settings.notifications.permission.unsupported":
+  "settings.notifications.authorization.unsupported":
     "Diese Plattform bietet keine Systembenachrichtigungen.",
   "notify.finished.title": "{{product}} ist fertig",
   "notify.finished.body": "Der Agent hat seinen Zug beendet.",
@@ -1299,4 +1297,30 @@ export const de: Record<string, string> = {
   "diff.layout.split": "Nebeneinander",
   "composer.reasoningEffort": "Denkaufwand",
   "message.mermaid.actualSize": "In Originalgröße anzeigen",
+  "model.effort.none": "Aus",
+  "model.effort.minimal": "Minimal",
+  "model.effort.low": "Niedrig",
+  "model.effort.medium": "Mittel",
+  "model.effort.high": "Hoch",
+  "model.effort.xhigh": "Sehr hoch",
+  "model.effort.max": "Maximal",
+  "tools.output.find": "In Ausgabe suchen",
+  "tools.output.find.none": "Keine Treffer",
+  "tools.output.find.count": "{{index}} von {{total}}",
+  "tools.output.find.previous": "Vorheriger Treffer",
+  "tools.output.find.next": "Nächster Treffer",
+  "tools.output.find.close": "Suche schließen",
+  "common.clear": "Löschen",
+  "file.unsupported.image": "Hier noch keine Bildvorschau",
+  "file.unsupported.binary": "Diese Datei ist kein Text",
+  "file.unsupported.sub":
+    "Flame zeigt Arbeitsbereichsdateien als Text. Öffne sie in ihrer eigenen App oder zeige sie im Finder.",
+  "file.open": "Öffnen",
+  "file.change.add": "Im Arbeitsbaum hinzugefügt",
+  "file.change.mod": "Im Arbeitsbaum geändert",
+  "file.change.del": "Im Arbeitsbaum gelöscht",
+  "file.change.below": "Enthält Änderungen im Arbeitsbaum",
+  "composer.effort.title": "Aufwand",
+  "composer.effort.faster": "Schneller",
+  "composer.effort.smarter": "Klüger",
 };

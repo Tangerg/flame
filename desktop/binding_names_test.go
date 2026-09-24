@@ -10,7 +10,9 @@ import (
 )
 
 var boundMethods = []string{
-	"Bootstrap", "ChooseWorkingDirectory", "RevealPath", "RevealWindow", "SaveImage", "WindowChrome",
+	"Bootstrap", "ChooseWorkingDirectory", "NotificationAuthorization", "OpenPath",
+	"RequestNotificationAuthorization", "RevealPath", "RevealWindow", "SaveImage",
+	"SendNotification", "WindowChrome",
 }
 
 func TestDesktopHostBindsExactlyTheDeclaredMethods(t *testing.T) {
@@ -18,7 +20,12 @@ func TestDesktopHostBindsExactlyTheDeclaredMethods(t *testing.T) {
 
 	exported := make([]string, 0, hostType.NumMethod())
 	for i := range hostType.NumMethod() {
-		exported = append(exported, hostType.Method(i).Name)
+		name := hostType.Method(i).Name
+		// Wails skips its lifecycle hooks by name when it binds a service.
+		if name == "ServiceStartup" {
+			continue
+		}
+		exported = append(exported, name)
 	}
 	slices.Sort(exported)
 

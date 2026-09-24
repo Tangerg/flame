@@ -303,16 +303,16 @@ test("add-panel menu restores a closed singleton and focuses it", async ({ page 
 test("files browse and preview share one dock tab", async ({ page }) => {
   await openWorkspace(page, { state: "dock-files" });
   const dock = page.locator(".agent-context-dock");
-  await dock.getByRole("button", { name: "app", exact: true }).click();
-  await dock.getByRole("button", { name: "resizer.ts", exact: true }).click();
+  await dock.getByRole("treeitem", { name: "app", exact: true }).click();
+  await dock.getByRole("treeitem", { name: "resizer.ts", exact: true }).click();
   await expect(dock).toContainText("clampDockWidth(currentWidth + delta, row.clientWidth)");
   await expect(dock.getByRole("tab", { name: "Files", exact: true })).toHaveCount(1);
   await dock.getByRole("button", { name: "Back to files" }).click();
-  await expect(dock.getByRole("button", { name: "app", exact: true })).toHaveAttribute(
+  await expect(dock.getByRole("treeitem", { name: "app", exact: true })).toHaveAttribute(
     "aria-expanded",
     "true",
   );
-  await expect(dock.getByRole("button", { name: "resizer.ts", exact: true })).toBeVisible();
+  await expect(dock.getByRole("treeitem", { name: "resizer.ts", exact: true })).toBeVisible();
   await expect(page.getByTestId("active-dock-view")).toHaveText("file");
 });
 
