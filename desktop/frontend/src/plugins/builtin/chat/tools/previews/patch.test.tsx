@@ -1,5 +1,10 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+const opened = vi.hoisted(() => vi.fn());
+vi.mock("@/plugins/builtin/workspace/public/deeplinks", () => ({
+  openFileInWorkingTreeDiff: opened,
+}));
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { ApplyPatchPreview } from "./patch";
 
@@ -73,5 +78,22 @@ describe("ApplyPatchPreview", () => {
 
     rerender(<ApplyPatchPreview tool={patchTool('{"changes":[]}', "ok")} />);
     expect(screen.getByText("No changes to show")).toBeTruthy();
+  });
+
+  it("reaches the fifteenth file of a large patch and opens the one it names", () => {
+    const changes = Array.from({ length: 15 }, (_, index) => ({
+      path: `src/file-${index + 1}.ts`,
+      status: "modified",
+    }));
+    const { container } = render(
+      <ApplyPatchPreview tool={patchTool(JSON.stringify({ changes }))} />,
+    );
+    expect(container.querySelectorAll("[data-patch-change]")).toHaveLength(9);
+
+    fireEvent.click(screen.getByRole("button", { name: /6 more/ }));
+    expect(container.querySelectorAll("[data-patch-change]")).toHaveLength(15);
+
+    fireEvent.click(screen.getByTitle("src/file-15.ts"));
+    expect(opened).toHaveBeenCalledWith("src/file-15.ts");
   });
 });

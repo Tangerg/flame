@@ -1,8 +1,19 @@
+import type { DiffLayout, WorkspaceDiffMode } from "../diffViewModel";
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 
 export interface WorkspaceFileViewer {
   path: string;
   line: number;
+}
+
+export interface WorkspaceViewMemory {
+  expandedDirs: readonly string[];
+  lastFilePath: string | null;
+  searchQuery: string;
+  searchPath: string;
+  diffMode: WorkspaceDiffMode;
+  diffLayout: DiffLayout;
+  collapsedDiffFiles: readonly string[];
 }
 
 export interface WorkspaceFileFocusSnapshot {
@@ -38,6 +49,8 @@ interface WorkspaceNavigationPort {
   useSubagentRunId(): string | null;
   openSubagentRun(runId: string | null): void;
   useFileViewer(): WorkspaceFileViewer | null;
+  useViewMemory(): WorkspaceViewMemory;
+  remember(change: Partial<WorkspaceViewMemory>): void;
   useSettingsPaneTarget(): string | null;
   useExpandedToolIds(): Set<string>;
   useToggleTool(): (id: string) => void;

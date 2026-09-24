@@ -8,8 +8,10 @@ import { projectPatchChanges, type PatchChange } from "@/plugins/builtin/agent/p
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { toolShapeKey } from "@/plugins/builtin/agent/public/toolIcon";
 import type { ToolFileChange } from "@/plugins/sdk/types/agentSessionView";
-import { DiffStat, FilePath, TextPreview, vocab } from "@/ui";
-import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
+import { useState } from "react";
+import { DiffStat, FilePath, Pressable, TextButton, TextPreview, vocab } from "@/ui";
+import { openFileInWorkingTreeDiff } from "@/plugins/builtin/workspace/public/deeplinks";
+import { INLINE_PREVIEW_ROW_LIMIT } from "./previewChrome";
 import { color, leading, space, type as typeStep } from "@/styles/tokens.stylex";
 
 const pt = stylex.create({
@@ -19,8 +21,13 @@ const pt = stylex.create({
     display: "grid",
     gridTemplateColumns: "subgrid",
     alignItems: "center",
+    borderWidth: 0,
+    backgroundColor: "transparent",
     paddingBlock: space.s0_5,
+    paddingInline: 0,
+    textAlign: "left",
     lineHeight: leading.body,
+    color: { default: "inherit", ":hover": color.fg },
   },
   verb: { fontFamily: "var(--font-sans)", color: color.fgFaint },
   movedLine: {
@@ -51,7 +58,13 @@ const STATUS_KEY: Record<PatchChange["status"], string> = {
 function PatchChangeRow({ change }: { change: PatchChange }) {
   const t = useT();
   return (
-    <div data-patch-change={change.status} {...stylex.props(pt.changeRow, typeStep.uiMd)}>
+    <Pressable
+      type="button"
+      data-patch-change={change.status}
+      title={t("tool.open.worktreeDiff")}
+      onClick={() => openFileInWorkingTreeDiff(change.path)}
+      className={stylex.props(pt.changeRow, typeStep.uiMd).className}
+    >
       <span {...stylex.props(pt.verb)}>{t(STATUS_KEY[change.status])}</span>
       {change.status === "moved" && change.from ? (
         <span {...stylex.props(pt.movedLine)}>
@@ -64,7 +77,7 @@ function PatchChangeRow({ change }: { change: PatchChange }) {
       ) : (
         <FilePath path={change.path} className={stylex.props(vocab.min, vocab.muted).className} />
       )}
-    </div>
+    </Pressable>
   );
 }
 
@@ -78,9 +91,13 @@ function ProposedChangeRow({ change }: { change: ToolFileChange }) {
 }
 
 export function ApplyPatchPreview({ tool }: ToolPreviewProps) {
+  const t = useT();
+  const [all, setAll] = useState(false);
   const changes = projectPatchChanges(tool.result);
   const proposed = tool.status === "running" ? (tool.changes ?? []) : [];
   const rows = changes.length > 0 ? changes.length : proposed.length;
+  const limit = all ? rows : INLINE_PREVIEW_ROW_LIMIT;
+  const hidden = rows - limit;
   return (
     <TextPreview>
       {rows === 0 && (
@@ -91,17 +108,21 @@ export function ApplyPatchPreview({ tool }: ToolPreviewProps) {
         />
       )}
       <div {...stylex.props(pt.track)}>
-        {changes.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((change) => (
+        {changes.slice(0, limit).map((change) => (
           <PatchChangeRow
             key={`${change.status}:${change.from ?? ""}:${change.path}`}
             change={change}
           />
         ))}
       </div>
-      {proposed.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((change) => (
+      {proposed.slice(0, limit).map((change) => (
         <ProposedChangeRow key={change.path} change={change} />
       ))}
-      <PreviewOverflow count={rows - INLINE_PREVIEW_ROW_LIMIT} />
+      {hidden > 0 && (
+        <TextButton tone="muted" size="sm" onClick={() => setAll(true)}>
+          {t("tools.overflow.more", { count: hidden })}
+        </TextButton>
+      )}
     </TextPreview>
   );
 }

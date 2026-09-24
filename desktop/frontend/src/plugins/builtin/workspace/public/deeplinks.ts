@@ -1,4 +1,8 @@
-import { openWorkspaceView, openWorkspaceViewInDock } from "../application/navigation";
+import {
+  openWorkspaceDiffForFile,
+  openWorkspaceView,
+  openWorkspaceViewInDock,
+} from "../application/navigation";
 
 export function openTimelineView(): void {
   openWorkspaceViewInDock("timeline");
@@ -14,4 +18,8 @@ export function openSettingsView(): void {
 
 export function openDiffViewInDock(): void {
   openWorkspaceViewInDock("diff");
+}
+
+export function openFileInWorkingTreeDiff(path: string): void {
+  openWorkspaceDiffForFile(path);
 }

@@ -3,6 +3,8 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
 import { WORKSPACE_DOCK_CATALOG } from "../application/navigation";
+import type { WorkspaceViewMemory } from "../application/ports/navigationState";
+import { DIFF_LAYOUTS, DIFF_MODES } from "../application/diffViewModel";
 
 const CONTEXT_DOCK_STORAGE_KEY = "flame.context-dock";
 const NON_NEGATIVE_DECIMAL = /^(0|[1-9]\d*)$/;
@@ -12,6 +14,17 @@ const persistedDockScopeSchema = z.object({
   lastViewId: z.string().nullable(),
   fileFocus: z.object({ path: z.string(), revision: z.string().regex(NON_NEGATIVE_DECIMAL) }),
   fileViewer: z.object({ path: z.string(), line: z.number().int().nonnegative() }).nullable(),
+  memory: z
+    .object({
+      expandedDirs: z.array(z.string()),
+      lastFilePath: z.string().nullable(),
+      searchQuery: z.string(),
+      searchPath: z.string(),
+      diffMode: z.enum(DIFF_MODES),
+      diffLayout: z.enum(DIFF_LAYOUTS),
+      collapsedDiffFiles: z.array(z.string()),
+    })
+    .optional(),
 });
 
 const contextDockPersistSchema = z.object({
@@ -23,6 +36,21 @@ type PersistedDockScope = z.infer<typeof persistedDockScopeSchema>;
 interface WorkspaceFileViewer {
   path: string;
   line: number;
+}
+
+const EMPTY_MEMORY: WorkspaceViewMemory = {
+  expandedDirs: [],
+  lastFilePath: null,
+  searchQuery: "",
+  searchPath: "",
+  diffMode: "worktree",
+  diffLayout: "unified",
+  collapsedDiffFiles: [],
+};
+
+function ancestorsOf(path: string): string[] {
+  const parts = path.split("/").slice(0, -1);
+  return parts.map((_, index) => parts.slice(0, index + 1).join("/"));
 }
 
 export class WorkspaceFileFocus {
@@ -51,6 +79,7 @@ interface ContextDockSessionScope {
   fileFocus: WorkspaceFileFocus;
   fileViewer: WorkspaceFileViewer | null;
   expandedToolIds: Set<string>;
+  memory: WorkspaceViewMemory;
 }
 
 interface ContextDockState extends ContextDockSessionScope {
@@ -67,6 +96,7 @@ interface ContextDockActions {
   dockTabToShow: (defaultViewId: string) => string;
   focusFile: (path: string) => void;
   setFileViewer: (viewer: WorkspaceFileViewer | null) => void;
+  remember: (change: Partial<WorkspaceViewMemory>) => void;
   revealTool: (id: string) => void;
   toggleExpandedTool: (id: string) => void;
   activateSessionScope: (sessionId: string) => string | null;
@@ -80,6 +110,7 @@ function emptySessionScope(): ContextDockSessionScope {
     expandedToolIds: new Set<string>(),
     dockViewIds: [],
     lastViewId: null,
+    memory: EMPTY_MEMORY,
   };
 }
 
@@ -90,6 +121,7 @@ function cloneSessionScope(scope: ContextDockSessionScope): ContextDockSessionSc
     expandedToolIds: new Set(scope.expandedToolIds),
     dockViewIds: [...scope.dockViewIds],
     lastViewId: scope.lastViewId,
+    memory: scope.memory,
   };
 }
 
@@ -107,6 +139,11 @@ function persistedSessionScopes(state: ContextDockState): [string, PersistedDock
       lastViewId: scope.lastViewId,
       fileFocus: { path: scope.fileFocus.path, revision: scope.fileFocus.revision.toString() },
       fileViewer: scope.fileViewer,
+      memory: {
+        ...scope.memory,
+        expandedDirs: [...scope.memory.expandedDirs],
+        collapsedDiffFiles: [...scope.memory.collapsedDiffFiles],
+      },
     },
   ]);
 }
@@ -118,6 +155,7 @@ function restorePersistedScope(scope: PersistedDockScope): ContextDockSessionSco
     lastViewId: scope.lastViewId,
     fileFocus: WorkspaceFileFocus.restore(scope.fileFocus.path, BigInt(scope.fileFocus.revision)),
     fileViewer: scope.fileViewer,
+    memory: scope.memory ?? EMPTY_MEMORY,
   };
 }
 
@@ -131,6 +169,7 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
       fileFocus: WorkspaceFileFocus.empty(),
       fileViewer: null,
       expandedToolIds: new Set<string>(),
+      memory: EMPTY_MEMORY,
 
       adoptDockLocation: (id) =>
         set((state) => ({
@@ -173,7 +212,22 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
           : (dockViewIds[0] ?? defaultViewId);
       },
       focusFile: (path) => set((state) => ({ fileFocus: state.fileFocus.moveTo(path) })),
-      setFileViewer: (fileViewer) => set({ fileViewer }),
+      setFileViewer: (fileViewer) =>
+        set((state) =>
+          fileViewer
+            ? {
+                fileViewer,
+                memory: {
+                  ...state.memory,
+                  lastFilePath: fileViewer.path,
+                  expandedDirs: [
+                    ...new Set([...state.memory.expandedDirs, ...ancestorsOf(fileViewer.path)]),
+                  ],
+                },
+              }
+            : { fileViewer },
+        ),
+      remember: (change) => set((state) => ({ memory: { ...state.memory, ...change } })),
       revealTool: (id) => {
         const expandedToolIds = new Set(get().expandedToolIds);
         expandedToolIds.add(id);

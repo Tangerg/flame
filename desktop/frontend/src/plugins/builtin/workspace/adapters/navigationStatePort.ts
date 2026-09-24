@@ -38,6 +38,8 @@ export function installWorkspaceNavigationPort(): () => void {
     },
     useFileFocus: () => useContextDockStore((state) => state.fileFocus),
     useFileViewer: () => useContextDockStore((state) => state.fileViewer),
+    useViewMemory: () => useContextDockStore((state) => state.memory),
+    remember: (change) => useContextDockStore.getState().remember(change),
     useSettingsPaneTarget: () => navigator().use((location) => location.settings),
     useExpandedToolIds: () => useContextDockStore((state) => state.expandedToolIds),
     useToggleTool: () => useContextDockStore((state) => state.toggleExpandedTool),

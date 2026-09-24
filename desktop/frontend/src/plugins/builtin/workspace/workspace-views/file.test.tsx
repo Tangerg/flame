@@ -35,6 +35,18 @@ const file: WorkspaceFileEntry = { name: "main.go", path: "src/main.go", type: "
 
 beforeEach(async () => {
   selection.current = { status: "ready" };
+  useContextDockStore.setState({
+    fileViewer: null,
+    memory: {
+      expandedDirs: [],
+      lastFilePath: null,
+      searchQuery: "",
+      searchPath: "",
+      diffMode: "worktree",
+      diffLayout: "unified",
+      collapsedDiffFiles: [],
+    },
+  });
   client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
   listFiles.mockReset().mockImplementation(async (query) => (query.path ? [file] : [directory]));
   readFile.mockReset().mockResolvedValue({ content: "package main", startLine: 1, totalLines: 1 });
@@ -118,5 +130,16 @@ describe("workspace files panel", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Retry" }));
     expect(await screen.findByRole("button", { name: "main.go" })).toBeTruthy();
     expect(listFiles).toHaveBeenCalledTimes(2);
+  });
+
+  it("finds the file it last opened in the tree, with its folders open", async () => {
+    openWorkspaceFile("src/main.go");
+    mount(<FileViewTab />);
+    await screen.findByText("package main");
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to files" }));
+    const row = await screen.findByRole("button", { name: "main.go" });
+    expect(row.getAttribute("aria-current")).toBe("true");
+    expect(row.getAttribute("title")).toBe("src/main.go");
   });
 });

@@ -8,7 +8,9 @@ import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
 import { color, type as typeStep } from "@/styles/tokens.stylex";
 import { codeStyles as cs } from "./viewStyles";
 
-export type DiffLayout = "unified" | "split";
+import type { DiffLayout } from "../../application/diffViewModel";
+
+export type { DiffLayout };
 
 function keyFor(row: WorkspaceDiffRow, i: number): string {
   if (row.type === "hunk") return `h:${i}:${row.text}`;

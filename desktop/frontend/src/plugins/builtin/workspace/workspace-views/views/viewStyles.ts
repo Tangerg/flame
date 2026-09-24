@@ -24,6 +24,8 @@ export const viewStyles = stylex.create({
       default: "transparent",
       ":hover": surface.hover,
       ":focus-visible": surface.hover,
+      ":is([data-active])": surface.selected,
+      ":is([data-active]):hover": surface.selectedHover,
     },
     textAlign: "left",
     color: color.fg,
@@ -256,7 +258,7 @@ export const codeStyles = stylex.create({
   fileCard: {
     marginBottom: space.s2,
     marginTop: { default: null, ":first-child": space.s2 },
-    overflow: "hidden",
+    overflow: "clip",
     borderRadius: radius.card,
     borderWidth: "var(--hairline-width)",
     borderStyle: "solid",

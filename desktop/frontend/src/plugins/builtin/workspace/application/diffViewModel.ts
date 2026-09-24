@@ -6,6 +6,9 @@ import { useWorkspaceDiff } from "./workspaceQueries";
 import { useWorkspaceCapability } from "./workspaceCapabilities";
 
 export type WorkspaceDiffMode = NonNullable<WorkspaceDiffQuery["mode"]>;
+export type DiffLayout = "unified" | "split";
+export const DIFF_MODES = ["worktree", "base"] as const satisfies readonly WorkspaceDiffMode[];
+export const DIFF_LAYOUTS = ["unified", "split"] as const satisfies readonly DiffLayout[];
 export type { WorkspaceFileDiff } from "./workspaceQueries";
 
 interface WorkspaceDiffSubtext {
@@ -26,6 +29,7 @@ export interface WorkspaceDiffFileHeader {
   previousPath?: string;
   added?: number;
   removed?: number;
+  status: WorkspaceFileDiff["status"];
 }
 
 export function useWorkspaceDiffView(mode: WorkspaceDiffMode) {
@@ -79,5 +83,6 @@ export function workspaceDiffFileHeader(file: WorkspaceFileDiff): WorkspaceDiffF
     ...(file.previousPath ? { previousPath: file.previousPath } : {}),
     added: file.added,
     removed: file.removed,
+    status: file.status,
   };
 }

@@ -1,10 +1,6 @@
 import { usePendingWork } from "@/plugins/builtin/agent/public/hitl";
-import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { usePlanView } from "@/plugins/builtin/workspace/application/planViewModel";
-import {
-  useWorkspaceCapability,
-  useWorkspaceFileChanges,
-} from "@/plugins/builtin/workspace/public/queries";
+import { useWorkingTreeChanges } from "@/plugins/builtin/workspace/application/workingTreeChanges";
 
 export function PlanTabBadge() {
   const view = usePlanView();
@@ -20,11 +16,6 @@ export function InboxBadge() {
 }
 
 export function DiffTabBadge() {
-  const gitEnabled = useWorkspaceCapability("git");
-  const workspace = useActiveSessionWorkspace();
-  const { data: files } = useWorkspaceFileChanges(
-    gitEnabled && workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
-  );
-  if (!files || files.length === 0) return null;
-  return String(files.length);
+  const changes = useWorkingTreeChanges();
+  return changes ? String(changes.files) : null;
 }

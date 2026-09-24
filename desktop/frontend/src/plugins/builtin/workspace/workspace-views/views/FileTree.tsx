@@ -1,7 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
-import { useState } from "react";
+import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
-import { DataView, Icon, Pressable, chevron, vocab } from "@/ui";
+import { DataView, Icon, IconButton, Pressable, chevron, reveal, vocab } from "@/ui";
+import {
+  rememberWorkspaceView,
+  useWorkspaceViewMemory,
+} from "@/plugins/builtin/workspace/application/navigation";
 import {
   type WorkspaceFileEntry,
   useWorkspaceListFiles,
@@ -19,11 +23,21 @@ interface NodeProps {
 const ft = stylex.create({
   indent: { width: space.s3, flexShrink: 0 },
   pad: { paddingInline: space.s2, paddingBlock: space.s1_5 },
+  row: { position: "relative", display: "flex", alignItems: "center" },
+  copy: { position: "absolute", right: space.s1 },
 });
 
 function TreeNode({ entry, cwd, depth, onSelectFile }: NodeProps) {
   const t = useT();
-  const [expanded, setExpanded] = useState(false);
+  const memory = useWorkspaceViewMemory();
+  const expanded = memory.expandedDirs.includes(entry.path);
+  const selected = entry.type !== "dir" && memory.lastFilePath === entry.path;
+  const toggle = () =>
+    rememberWorkspaceView({
+      expandedDirs: expanded
+        ? memory.expandedDirs.filter((path) => path !== entry.path)
+        : [...memory.expandedDirs, entry.path],
+    });
   const isDir = entry.type === "dir";
   const {
     data: children,
@@ -35,29 +49,43 @@ function TreeNode({ entry, cwd, depth, onSelectFile }: NodeProps) {
 
   return (
     <div>
-      <Pressable
-        type="button"
-        aria-expanded={isDir ? expanded : undefined}
-        className={stylex.props(vs.treeRow, vs.treeRowInset, typeStep.uiMd).className}
-        style={indent}
-        onClick={() => (isDir ? setExpanded((v) => !v) : onSelectFile(entry.path))}
-      >
-        {isDir ? (
+      <div {...stylex.props(ft.row, reveal.host)}>
+        <Pressable
+          type="button"
+          aria-expanded={isDir ? expanded : undefined}
+          aria-current={selected ? "true" : undefined}
+          data-active={selected ? "" : undefined}
+          title={entry.path}
+          className={stylex.props(vs.treeRow, vs.treeRowInset, typeStep.uiMd).className}
+          style={indent}
+          onClick={() => (isDir ? toggle() : onSelectFile(entry.path))}
+        >
+          {isDir ? (
+            <Icon
+              name="chevron-down"
+              size="xs"
+              className={stylex.props(chevron.base, !expanded && chevron.shut).className}
+            />
+          ) : (
+            <span {...stylex.props(ft.indent)} />
+          )}
           <Icon
-            name="chevron-down"
-            size="xs"
-            className={stylex.props(chevron.base, !expanded && chevron.shut).className}
+            name={isDir ? "folder" : "file"}
+            size="sm"
+            className={stylex.props(vocab.hold).className}
           />
-        ) : (
-          <span {...stylex.props(ft.indent)} />
-        )}
-        <Icon
-          name={isDir ? "folder" : "file"}
-          size="sm"
-          className={stylex.props(vocab.hold).className}
+          <span {...stylex.props(vocab.truncate)}>{entry.name}</span>
+        </Pressable>
+        <IconButton
+          data-reveal="hover"
+          icon="copy"
+          size="xs"
+          quiet
+          title={t("file.copyPath")}
+          onClick={() => void copyText(entry.path)}
+          className={stylex.props(reveal.shown, ft.copy).className}
         />
-        <span {...stylex.props(vocab.truncate)}>{entry.name}</span>
-      </Pressable>
+      </div>
       {isDir && expanded && (
         <div>
           <DataView

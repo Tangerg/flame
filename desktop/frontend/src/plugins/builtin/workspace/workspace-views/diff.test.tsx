@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkspaceFileDiff } from "../application/diffViewModel";
 
@@ -125,5 +125,19 @@ describe("DiffWorkspaceSurface", () => {
     });
 
     expect(scrolledPaths).toEqual(["src/a.ts", "src/a.ts"]);
+  });
+
+  it("opens a collapsed file when it is asked for, not only scrolls to its title", () => {
+    projection.fileFocus = { path: "", revision: 1n };
+    const view = render(<DiffWorkspaceSurface />);
+    const header = () =>
+      view.container.querySelector<HTMLButtonElement>('[data-diff-file="src/a.ts"] button')!;
+    fireEvent.click(header());
+    expect(header().getAttribute("aria-expanded")).toBe("false");
+
+    projection.fileFocus = { path: "src/a.ts", revision: 2n };
+    view.rerender(<DiffWorkspaceSurface />);
+    expect(header().getAttribute("aria-expanded")).toBe("true");
+    expect(scrolledPaths).toContain("src/a.ts");
   });
 });

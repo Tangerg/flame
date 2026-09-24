@@ -63,6 +63,7 @@ describe("workspaceDiffFileHeader", () => {
       path: "src/app.ts",
       added: 2,
       removed: 1,
+      status: "modified",
     });
 
     expect(
@@ -74,6 +75,7 @@ describe("workspaceDiffFileHeader", () => {
       previousPath: "src/old.ts",
       added: undefined,
       removed: 3,
+      status: "modified",
     });
   });
 

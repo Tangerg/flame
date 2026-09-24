@@ -6,6 +6,7 @@ import {
   type WorkspaceDockSnapshot,
   type WorkspaceFileFocusSnapshot,
   type WorkspaceFileViewer,
+  type WorkspaceViewMemory,
 } from "./ports/navigationState";
 
 export const WORKSPACE_DOCK_CATALOG = "catalog";
@@ -22,6 +23,14 @@ export function useWorkspaceDock(): WorkspaceDockSnapshot {
 
 export function useWorkspaceFileFocus(): WorkspaceFileFocusSnapshot {
   return workspaceNavigation().useFileFocus();
+}
+
+export function useWorkspaceViewMemory(): WorkspaceViewMemory {
+  return workspaceNavigation().useViewMemory();
+}
+
+export function rememberWorkspaceView(change: Partial<WorkspaceViewMemory>): void {
+  workspaceNavigation().remember(change);
 }
 
 export function useWorkspaceFileViewer(): WorkspaceFileViewer | null {

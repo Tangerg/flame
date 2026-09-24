@@ -34,4 +34,4 @@ export {
   type WorkspaceRecipesQuery,
 } from "../application/workspaceQueries";
 
-export { useWorkspaceCapability } from "../application/workspaceCapabilities";
+export { useWorkingTreeChanges } from "../application/workingTreeChanges";
