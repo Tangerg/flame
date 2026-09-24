@@ -5,6 +5,7 @@ import { cn } from "@/lib/classNames";
 
 const styles = stylex.create({
   surface: {
+    position: "relative",
     containerType: "inline-size",
     containerName: "composer",
     overflow: "hidden",

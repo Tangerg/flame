@@ -8,7 +8,8 @@ import { TextArea } from "./text-field";
 import { DialogPrimitive } from "@/ui/primitives";
 
 const styles = stylex.create({
-  panel: { width: "min(420px, calc(100vw - 32px))", overflow: "hidden" },
+  panel: { width: "min(560px, calc(100vw - 32px))", overflow: "hidden" },
+  leading: { marginRight: "auto" },
   form: { position: "relative", display: "flex", flexDirection: "column" },
   head: {
     display: "flex",
@@ -48,6 +49,8 @@ interface TextEditorDialogProps {
   busy?: boolean;
   saveDisabled?: boolean;
   onSave: () => void;
+  font?: "sans" | "mono";
+  secondaryAction?: { label: string; onClick: () => void };
 }
 
 export function TextEditorDialog({
@@ -65,6 +68,8 @@ export function TextEditorDialog({
   busy = false,
   saveDisabled = false,
   onSave,
+  font = "sans",
+  secondaryAction,
 }: TextEditorDialogProps) {
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const submit = (event: FormEvent) => {
@@ -116,6 +121,7 @@ export function TextEditorDialog({
               <TextArea
                 ref={editorRef}
                 rows={12}
+                font={font}
                 aria-label={label}
                 value={value}
                 pending={busy}
@@ -124,6 +130,17 @@ export function TextEditorDialog({
               />
             </div>
             <div {...stylex.props(formDialog.actions)}>
+              {secondaryAction && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  pending={busy}
+                  onClick={secondaryAction.onClick}
+                  styles={styles.leading}
+                >
+                  {secondaryAction.label}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"

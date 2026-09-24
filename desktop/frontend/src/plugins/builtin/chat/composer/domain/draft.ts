@@ -18,3 +18,7 @@ export interface PastedText {
   text: string;
   lines: number;
 }
+
+export function joinDraftParts(parts: readonly string[]): string {
+  return parts.filter(Boolean).join("\n\n");
+}

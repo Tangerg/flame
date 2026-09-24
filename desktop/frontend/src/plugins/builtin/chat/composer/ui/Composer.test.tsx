@@ -1,9 +1,9 @@
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
-import { COMPOSER_KEY_BINDING } from "@/plugins/sdk/kernelPoints";
+import { COMPOSER_KEY_BINDING, SLASH_COMMAND } from "@/plugins/sdk/kernelPoints";
 import { addLocaleBundle, setLocale } from "@/lib/i18n";
 import { WORKSPACE_LIST_FILES_KEY } from "@/plugins/builtin/workspace/public/queries";
 import { Composer } from "./Composer";
@@ -48,6 +48,8 @@ const baseProps = {
   onAddImages: () => {},
   pastes: [],
   onRemovePaste: () => {},
+  onEditPaste: () => {},
+  onRestorePaste: () => {},
   onAddPaste: () => {},
   acceptsImages: true,
   mode: "agent" as const,
@@ -189,6 +191,85 @@ describe("composer", () => {
     await waitFor(() => {
       const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
       expect(textarea.placeholder).toBe("Localized placeholder");
+    });
+  });
+
+  describe("slash suggestions own the keys while open", () => {
+    const stop = vi.fn(() => true);
+
+    async function withSlashCommands() {
+      await loadPluginsForTest(
+        definePlugin({
+          name: "test.slash-keys",
+          setup: (ctx) => {
+            ctx.contribute(COMPOSER_KEY_BINDING, {
+              key: "Enter",
+              description: "submit",
+              handler: ({ submit }) => {
+                submit();
+                return true;
+              },
+            });
+            ctx.contribute(COMPOSER_KEY_BINDING, {
+              key: "Escape",
+              description: "stop",
+              handler: stop,
+            });
+            ctx.contribute(SLASH_COMMAND, { description: "goal", run: () => {} }, { key: "/goal" });
+            ctx.contribute(SLASH_COMMAND, { description: "grep", run: () => {} }, { key: "/grep" });
+          },
+        }),
+      );
+    }
+
+    function Harness({ initial, onSend }: { initial: string; onSend: () => boolean }) {
+      const [value, setValue] = useState(initial);
+      return <Composer {...baseProps} value={value} onChange={setValue} onSend={onSend} />;
+    }
+
+    function typeInto(value: string) {
+      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
+      fireEvent.change(textarea, { target: { value, selectionStart: value.length } });
+      return textarea;
+    }
+
+    it("completes a partial command on Enter instead of sending the prefix", async () => {
+      await withSlashCommands();
+      const onSend = vi.fn(() => true);
+      wrap(<Harness initial="" onSend={onSend} />);
+      const textarea = typeInto("/go");
+      await screen.findByRole("option", { name: /\/goal/ });
+
+      fireEvent.keyDown(textarea, { key: "Enter" });
+      expect(onSend).not.toHaveBeenCalled();
+      await waitFor(() => expect(textarea.value).toBe("/goal "));
+    });
+
+    it("closes the list on Escape without stopping the run", async () => {
+      await withSlashCommands();
+      stop.mockClear();
+      wrap(<Harness initial="" onSend={() => true} />);
+      const textarea = typeInto("/g");
+      await screen.findByRole("listbox", { name: "Commands" });
+
+      fireEvent.keyDown(textarea, { key: "Escape" });
+      expect(stop).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.queryByRole("listbox", { name: "Commands" })).toBeNull());
+
+      fireEvent.keyDown(textarea, { key: "Escape" });
+      expect(stop).toHaveBeenCalledOnce();
+    });
+
+    it("moves the highlight with the arrows and accepts it with Tab", async () => {
+      await withSlashCommands();
+      wrap(<Harness initial="" onSend={() => true} />);
+      const textarea = typeInto("/g");
+      await screen.findByRole("listbox", { name: "Commands" });
+
+      fireEvent.keyDown(textarea, { key: "ArrowDown" });
+      expect(textarea.getAttribute("aria-activedescendant")).toBe("composer-suggestion-option-1");
+      fireEvent.keyDown(textarea, { key: "Tab" });
+      await waitFor(() => expect(textarea.value).toBe("/grep "));
     });
   });
 });

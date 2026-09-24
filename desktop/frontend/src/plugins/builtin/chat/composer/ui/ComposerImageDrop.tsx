@@ -1,25 +1,14 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
 import * as stylex from "@stylexjs/stylex";
-import { Icon, vocab } from "@/ui";
+import { Icon } from "@/ui";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { composerStyles } from "./composerStyles";
 import { useT } from "@/lib/i18n";
 import { hasComposerImageTransferItems } from "../application/composerInputEvents";
 
-interface Props {
-  enabled: boolean;
-  onDropImages: (files: File[]) => void;
-}
-
-export function ComposerImageDrop({ enabled, onDropImages }: Props) {
-  return enabled ? <EnabledComposerImageDrop onDropImages={onDropImages} /> : null;
-}
-
-function EnabledComposerImageDrop({ onDropImages }: Pick<Props, "onDropImages">) {
-  const dragging = useWindowImageDrag(onDropImages);
-  return dragging ? <ImageDropOverlay /> : null;
+export function useComposerImageDrop(onDropImages: (files: File[]) => void): boolean {
+  return useWindowImageDrag(onDropImages);
 }
 
 function useWindowImageDrag(onDropImages: (files: File[]) => void): boolean {
@@ -48,6 +37,7 @@ function useWindowImageDrag(onDropImages: (files: File[]) => void): boolean {
     const onDrop = (event: DragEvent): void => {
       depth.current = 0;
       setDragging(false);
+      if (event.defaultPrevented) return;
       const files = imageFiles(event.dataTransfer?.files);
       if (files.length === 0) return;
       event.preventDefault();
@@ -70,17 +60,18 @@ function useWindowImageDrag(onDropImages: (files: File[]) => void): boolean {
   return dragging;
 }
 
-function ImageDropOverlay() {
+export function ComposerDropCue({ acceptsImages }: { acceptsImages: boolean }) {
   const t = useT();
-  return createPortal(
-    <div {...stylex.props(composerStyles.dropScrim)}>
-      <div {...stylex.props(composerStyles.dropTarget)}>
-        <Icon name="image" size="xl" className={stylex.props(vocab.muted).className} />
-        <span {...stylex.props(composerStyles.dropLabel, typeStep.uiMd)}>
-          {t("composer.drop.images")}
-        </span>
-      </div>
-    </div>,
-    document.body,
+  return (
+    <div
+      data-slot="composer-drop-cue"
+      aria-live="polite"
+      {...stylex.props(composerStyles.dropCue, !acceptsImages && composerStyles.dropCueRefused)}
+    >
+      <Icon name={acceptsImages ? "image" : "alert"} size="md" />
+      <span {...stylex.props(composerStyles.dropLabel, typeStep.uiMd)}>
+        {acceptsImages ? t("composer.drop.images") : t("composer.attachImage.unsupported")}
+      </span>
+    </div>
   );
 }

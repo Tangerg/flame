@@ -7,8 +7,10 @@ import {
   useAddComposerPaste,
   useComposerImages,
   useComposerPastes,
+  useEditComposerPaste,
   useRemoveComposerImage,
   useRemoveComposerPaste,
+  useRestoreComposerPaste,
 } from "@/plugins/builtin/chat/composer/public/attachments";
 import {
   useClearComposerDraft,
@@ -29,6 +31,8 @@ export const ComposerSurface = memo(function ComposerSurface({
   const addImageFiles = useAddComposerImageFiles();
   const pastes = useComposerPastes();
   const removePaste = useRemoveComposerPaste();
+  const editPaste = useEditComposerPaste();
+  const restorePaste = useRestoreComposerPaste();
   const addPaste = useAddComposerPaste();
   const acceptsImages = useSelectedModel()?.acceptsInput("image") ?? false;
 
@@ -43,6 +47,8 @@ export const ComposerSurface = memo(function ComposerSurface({
       onAddImages={addImageFiles}
       pastes={pastes}
       onRemovePaste={removePaste}
+      onEditPaste={editPaste}
+      onRestorePaste={restorePaste}
       onAddPaste={addPaste}
       acceptsImages={acceptsImages}
     />

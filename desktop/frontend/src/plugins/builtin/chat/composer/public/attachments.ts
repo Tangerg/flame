@@ -26,3 +26,11 @@ export function useAddComposerPaste(): (text: string) => void {
 export function useRemoveComposerPaste(): (id: string) => void {
   return composerState().useRemovePaste();
 }
+
+export function useEditComposerPaste(): (id: string, text: string) => void {
+  return composerState().useEditPaste();
+}
+
+export function useRestoreComposerPaste(): (id: string) => void {
+  return composerState().useRestorePaste();
+}

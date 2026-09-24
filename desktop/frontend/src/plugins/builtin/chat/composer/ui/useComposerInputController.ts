@@ -10,7 +10,9 @@ import type { ComposerImage, PastedText } from "@/plugins/builtin/chat/composer/
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
-import { useFileMentions } from "@/plugins/builtin/chat/composer/public/fileMentions";
+import { useFileMentions, useKnownWorkspacePaths } from "../application/fileMentions";
+import { handleSuggestionKey } from "../application/suggestions";
+import { useSlashSuggestions } from "../application/slashSuggestions";
 import { useIsCurrentRootRunning } from "@/plugins/builtin/agent/public/run";
 import { COMPOSER_KEY_BINDING, lookupExtensionByKey, notifyError } from "@/plugins/sdk";
 import { submitComposer } from "@/plugins/builtin/chat/composer/public/submit";
@@ -80,6 +82,8 @@ export function useComposerInputController({
     [onChange],
   );
   const mentions = useFileMentions({ value, caret, cwd, apply: applyMention });
+  const slash = useSlashSuggestions({ value, caret, apply: applyMention });
+  const knownPaths = useKnownWorkspacePaths(cwd, value.includes("@"));
   const running = useIsCurrentRootRunning();
   const placeholder = running ? t("composer.placeholder.steer") : t("composer.placeholder");
   const submit = useCallback(
@@ -172,7 +176,7 @@ export function useComposerInputController({
       if (compositionIntent === "committed-enter") event.preventDefault();
       return;
     }
-    if (mentions.handleKeyDown(event)) {
+    if (handleSuggestionKey(mentions, event) || handleSuggestionKey(slash, event)) {
       event.preventDefault();
       return;
     }
@@ -193,6 +197,8 @@ export function useComposerInputController({
   return {
     inputRef,
     mentions,
+    slash,
+    knownPaths,
     placeholder,
     handleChange,
     clearCompositionCommit,

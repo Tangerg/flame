@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { Arbitrary, forEachSeed } from "@/test/arbitrary";
 import { parseFileRefs } from "@/plugins/builtin/agent/public/fileRefs";
 import { isLargePaste } from "./domain/largePaste";
-import { draftMentions, removeMention } from "./application/draftContext";
+import { draftMentions, formatFileReference, removeMention } from "./application/draftContext";
 import { activeMention } from "./application/fileMentions";
 import { fuzzyFile } from "./application/fuzzyFile";
+
+const EVERY_PATH: ReadonlySet<string> = { has: () => true } as unknown as ReadonlySet<string>;
 
 function corpus(a: Arbitrary): string {
   return a.bool(0.25) ? `${a.text()} @${a.text()} ${a.text()}` : a.text();
@@ -45,8 +47,10 @@ describe("composer input, over arbitrary text", () => {
   it("points every chip at text the draft really contains", () => {
     forEachSeed(600, (a) => {
       const text = corpus(a);
-      for (const mention of draftMentions(text)) {
-        expect(text.slice(mention.start, mention.end)).toBe(`@${mention.path}`);
+      for (const mention of draftMentions(text, EVERY_PATH)) {
+        expect(text.slice(mention.start, mention.end).startsWith("@")).toBe(true);
+        const [again] = draftMentions(formatFileReference(mention.path), EVERY_PATH);
+        expect(again?.path).toBe(mention.path);
       }
     });
   });
@@ -54,11 +58,11 @@ describe("composer input, over arbitrary text", () => {
   it("removes a chip without leaving its path behind or growing the draft", () => {
     forEachSeed(600, (a) => {
       const text = corpus(a);
-      const mentions = draftMentions(text);
+      const mentions = draftMentions(text, EVERY_PATH);
       if (mentions.length === 0) return;
       const removed = removeMention(text, mentions[0]!);
       expect(removed.length).toBeLessThanOrEqual(text.length);
-      expect(draftMentions(removed).length).toBeLessThan(mentions.length);
+      expect(draftMentions(removed, EVERY_PATH).length).toBeLessThan(mentions.length);
     });
   });
 

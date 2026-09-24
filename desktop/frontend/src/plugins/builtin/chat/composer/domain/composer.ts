@@ -1,4 +1,5 @@
-import type { ComposerImage, PastedText } from "./draft";
+import { type ComposerImage, type PastedText, joinDraftParts } from "./draft";
+import { countLines } from "./largePaste";
 
 export const SCRATCH_SESSION_ID = "";
 
@@ -31,6 +32,23 @@ export class ComposerDraft {
 
   withPastes(pastes: readonly PastedText[]): ComposerDraft {
     return new ComposerDraft(this.value, this.images, pastes);
+  }
+
+  editPaste(id: string, text: string): ComposerDraft {
+    if (!text.trim()) return this.withPastes(this.pastes.filter((paste) => paste.id !== id));
+    return this.withPastes(
+      this.pastes.map((paste) => (paste.id === id ? { id, text, lines: countLines(text) } : paste)),
+    );
+  }
+
+  restorePaste(id: string): ComposerDraft {
+    const paste = this.pastes.find((candidate) => candidate.id === id);
+    if (!paste) return this;
+    return new ComposerDraft(
+      joinDraftParts([this.value.trimEnd(), paste.text]),
+      this.images,
+      this.pastes.filter((candidate) => candidate.id !== id),
+    );
   }
 }
 

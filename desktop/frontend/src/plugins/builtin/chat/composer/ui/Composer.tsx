@@ -2,10 +2,7 @@ import type { ComposerImage, PastedText } from "@/plugins/builtin/chat/composer/
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import { useRecordComposerHistory } from "@/plugins/builtin/chat/composer/public/history";
 import { TextArea } from "@/ui";
-import {
-  MENTION_LISTBOX_ID,
-  mentionOptionId,
-} from "@/plugins/builtin/chat/composer/application/fileMentions";
+import { SUGGESTION_LISTBOX_ID, suggestionOptionId } from "../application/suggestions";
 import { AgentComposerFooter, AgentComposerSurface } from "@/ui/agent";
 import { FileMentionPopup } from "./FileMentionPopup";
 import { SlashSuggestions } from "./SlashSuggestions";
@@ -13,7 +10,7 @@ import { composerStyles } from "./composerStyles";
 import { useT } from "@/lib/i18n";
 import { Slot } from "@/plugins/host/Slot";
 import { ComposerAttachments } from "./ComposerAttachments";
-import { ComposerImageDrop } from "./ComposerImageDrop";
+import { ComposerDropCue, useComposerImageDrop } from "./ComposerImageDrop";
 import { useComposerInputController } from "./useComposerInputController";
 import { useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
@@ -28,6 +25,8 @@ interface Props {
   onAddImages: (files: File[]) => void;
   pastes: readonly PastedText[];
   onRemovePaste: (id: string) => void;
+  onEditPaste: (id: string, text: string) => void;
+  onRestorePaste: (id: string) => void;
   onAddPaste: (text: string) => void;
   acceptsImages: boolean;
 }
@@ -42,6 +41,8 @@ export function Composer({
   onAddImages,
   pastes,
   onRemovePaste,
+  onEditPaste,
+  onRestorePaste,
   onAddPaste,
   acceptsImages,
 }: Props) {
@@ -51,6 +52,8 @@ export function Composer({
   const {
     inputRef,
     mentions,
+    slash,
+    knownPaths,
     placeholder,
     handleChange,
     clearCompositionCommit,
@@ -73,35 +76,38 @@ export function Composer({
     onAddPaste,
     acceptsImages,
   });
+  const dropping = useComposerImageDrop(handleDrop);
+  const suggesting = mentions.open || slash.open;
+  const highlighted =
+    mentions.open && mentions.status === "ready" ? mentions.index : slash.open ? slash.index : null;
   return (
-    <AgentComposerSurface ref={surfaceRef} data-slot="composer-root">
-      <ComposerImageDrop enabled={acceptsImages} onDropImages={handleDrop} />
-      <FileMentionPopup
-        open={mentions.active}
-        items={mentions.items}
-        index={mentions.index}
-        onPick={mentions.accept}
-        onHover={mentions.setIndex}
-        onDismiss={mentions.dismiss}
-        anchor={surfaceRef}
-      />
-      <SlashSuggestions value={value} onPick={onChange} anchor={surfaceRef} />
+    <AgentComposerSurface
+      ref={surfaceRef}
+      data-slot="composer-root"
+      data-dropping={dropping ? "" : undefined}
+    >
+      {dropping && <ComposerDropCue acceptsImages={acceptsImages} />}
+      <FileMentionPopup mentions={mentions} anchor={surfaceRef} />
+      <SlashSuggestions slash={slash} anchor={surfaceRef} />
       <div {...stylex.props(composerStyles.editorInset)}>
         <ComposerAttachments
           images={images}
           pastes={pastes}
           value={value}
+          knownPaths={knownPaths}
           onChange={onChange}
           onRemoveImage={onRemoveImage}
           onRemovePaste={onRemovePaste}
+          onEditPaste={onEditPaste}
+          onRestorePaste={onRestorePaste}
         />
         <TextArea
           variant="bare"
           size="prose"
           ref={inputRef}
           aria-label={t("composer.input.label")}
-          aria-controls={mentions.active ? MENTION_LISTBOX_ID : undefined}
-          aria-activedescendant={mentions.active ? mentionOptionId(mentions.index) : undefined}
+          aria-controls={suggesting ? SUGGESTION_LISTBOX_ID : undefined}
+          aria-activedescendant={highlighted === null ? undefined : suggestionOptionId(highlighted)}
           placeholder={placeholder}
           value={value}
           onChange={handleChange}

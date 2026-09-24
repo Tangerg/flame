@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Composer, SCRATCH_SESSION_ID } from "./composer";
+import { Composer, SCRATCH_SESSION_ID, ComposerDraft } from "./composer";
 
 const typed = (composer: Composer, text: string) => composer.edit((draft) => draft.withValue(text));
 
@@ -79,5 +79,31 @@ describe("Composer", () => {
     const restored = Composer.restoreDrafts(new Map([["s1", "kept"]])).activate("s1");
     expect(restored.draft.value).toBe("kept");
     expect(restored.draft.images).toEqual([]);
+  });
+});
+
+describe("ComposerDraft pastes", () => {
+  const withPaste = ComposerDraft.empty()
+    .withValue("explain this")
+    .withPastes([{ id: "p1", text: "line 1\nline 2", lines: 2 }]);
+
+  it("edits a paste in place and recounts its lines", () => {
+    const edited = withPaste.editPaste("p1", "a\nb\nc");
+    expect(edited.pastes).toEqual([{ id: "p1", text: "a\nb\nc", lines: 3 }]);
+    expect(edited.value).toBe("explain this");
+  });
+
+  it("drops a paste edited down to nothing", () => {
+    expect(withPaste.editPaste("p1", "  \n ").pastes).toEqual([]);
+  });
+
+  it("puts a paste back into the message the way it would have been sent", () => {
+    const restored = withPaste.restorePaste("p1");
+    expect(restored.pastes).toEqual([]);
+    expect(restored.value).toBe("explain this\n\nline 1\nline 2");
+  });
+
+  it("ignores a paste it does not hold", () => {
+    expect(withPaste.restorePaste("missing")).toBe(withPaste);
   });
 });

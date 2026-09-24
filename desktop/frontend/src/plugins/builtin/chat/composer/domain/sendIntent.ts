@@ -1,3 +1,5 @@
+import { joinDraftParts } from "./draft";
+
 export interface SlashIntent {
   cmd: string;
   args: string;
@@ -21,7 +23,7 @@ export function createComposerSendIntent({
   pastes: ReadonlyArray<{ text: string }>;
 }): ComposerSendIntent {
   const text = value.trim();
-  const body = [text, ...pastes.map((paste) => paste.text)].filter(Boolean).join("\n\n");
+  const body = joinDraftParts([text, ...pastes.map((paste) => paste.text)]);
   const shouldSend = Boolean(text || images.length > 0 || pastes.length > 0);
   return {
     text,

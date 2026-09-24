@@ -1,4 +1,7 @@
-const MENTION = /(^|\s)@(\S+)/g;
+const REFERENCE = /(^|\s)@(?:"((?:[^"\\]|\\.)+)"|(\S+))/g;
+
+const QUOTE = '"';
+const BACKSLASH = String.fromCharCode(92);
 
 export interface DraftMention {
   path: string;
@@ -6,15 +9,21 @@ export interface DraftMention {
   end: number;
 }
 
-export function draftMentions(value: string): DraftMention[] {
+export function formatFileReference(path: string): string {
+  if (!/\s/.test(path) && !path.startsWith('"')) return `@${path}`;
+  const escaped = path.replace(/[\u0022\\]/g, (char) => BACKSLASH + char);
+  return ["@", QUOTE, escaped, QUOTE].join("");
+}
+
+export function draftMentions(value: string, knownPaths: ReadonlySet<string>): DraftMention[] {
   const out: DraftMention[] = [];
-  MENTION.lastIndex = 0;
-  for (let match = MENTION.exec(value); match !== null; match = MENTION.exec(value)) {
+  REFERENCE.lastIndex = 0;
+  for (let match = REFERENCE.exec(value); match !== null; match = REFERENCE.exec(value)) {
     const lead = match[1]?.length ?? 0;
-    const path = match[2] ?? "";
-    if (path === "") continue;
+    const path = match[2] !== undefined ? match[2].replace(/\\(.)/g, "$1") : (match[3] ?? "");
+    if (!knownPaths.has(path)) continue;
     const start = match.index + lead;
-    out.push({ path, start, end: start + 1 + path.length });
+    out.push({ path, start, end: match.index + match[0].length });
   }
   return out;
 }

@@ -38,6 +38,17 @@ const chipStyles = stylex.create({
     backgroundColor: { default: "transparent", ":hover": surface.hover },
     color: { default: color.fgFaint, ":hover": color.fg },
   },
+  open: {
+    display: "inline-flex",
+    minWidth: 0,
+    alignItems: "center",
+    gap: space.s1_5,
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    padding: 0,
+    color: { default: "inherit", ":hover": color.fg },
+    cursor: "default",
+  },
   close: {
     scale: "calc(0.96 + 0.04 * var(--reveal, 1))",
     transitionProperty: "opacity, scale, background-color, color",
@@ -51,12 +62,27 @@ interface Props {
   children: ReactNode;
   title?: string;
   onClose?: () => void;
+  onOpen?: () => void;
   kind?: "reference" | "attached";
   closeLabel?: string;
 }
 
-export function Chip({ icon, children, title, onClose, kind = "reference", closeLabel }: Props) {
+export function Chip({
+  icon,
+  children,
+  title,
+  onClose,
+  onOpen,
+  kind = "reference",
+  closeLabel,
+}: Props) {
   const t = useT();
+  const face = (
+    <>
+      {icon && <Icon name={icon} size="xs" />}
+      <span {...stylex.props(chipStyles.value)}>{children}</span>
+    </>
+  );
   return (
     <Tooltip label={title}>
       <span
@@ -64,8 +90,18 @@ export function Chip({ icon, children, title, onClose, kind = "reference", close
         data-kind={kind}
         {...stylex.props(reveal.host, chipStyles.chip, chipStyles[kind], corner.pill, type.uiSm)}
       >
-        {icon && <Icon name={icon} size="xs" />}
-        <span {...stylex.props(chipStyles.value)}>{children}</span>
+        {onOpen ? (
+          <ButtonPrimitive
+            type="button"
+            aria-label={title}
+            onClick={onOpen}
+            {...stylex.props(chipStyles.open)}
+          >
+            {face}
+          </ButtonPrimitive>
+        ) : (
+          face
+        )}
         {onClose && (
           <ButtonPrimitive
             data-reveal="hover"

@@ -1,47 +1,45 @@
 import * as stylex from "@stylexjs/stylex";
-import { useMemo } from "react";
 import type { RefObject } from "react";
 import { useT } from "@/lib/i18n";
-import { useSlashCommands } from "@/plugins/sdk";
-import { OptionRow, Popover, SectionLabel, vocab } from "@/ui";
+import { OptionRow, vocab } from "@/ui";
 import { type as typeStep } from "@/styles/tokens.stylex";
+import type { useSlashSuggestions } from "../application/slashSuggestions";
+import { suggestionOptionId } from "../application/suggestions";
+import { SuggestionPopup } from "./SuggestionPopup";
 import { suggestionStyles } from "./suggestionStyles";
 
 interface Props {
-  value: string;
-  onPick: (cmd: string) => void;
+  slash: ReturnType<typeof useSlashSuggestions>;
   anchor: RefObject<HTMLElement | null>;
 }
 
-export function SlashSuggestions({ value, onPick, anchor }: Props) {
+export function SlashSuggestions({ slash, anchor }: Props) {
   const t = useT();
-  const commands = useSlashCommands();
-
-  const filtered = useMemo(() => {
-    if (!value || !value.startsWith("/")) return [];
-    const q = value.slice(1).toLowerCase();
-    return commands
-      .filter(({ cmd }) => cmd.slice(1).toLowerCase().startsWith(q))
-      .sort((a, b) => a.cmd.localeCompare(b.cmd))
-      .slice(0, 5);
-  }, [value, commands]);
-
   return (
-    <Popover.Anchored
-      open={filtered.length > 0}
+    <SuggestionPopup
+      open={slash.open}
+      heading={t("composer.slash.heading")}
+      index={slash.index}
+      onDismiss={slash.dismiss}
       anchor={anchor}
-      aria-label={t("composer.slash.heading")}
-      {...stylex.props(suggestionStyles.panel)}
     >
-      <SectionLabel {...stylex.props(suggestionStyles.heading)}>
-        {t("composer.slash.heading")}
-      </SectionLabel>
-      {filtered.map(({ cmd, spec }) => (
-        <OptionRow key={cmd} layout="glyph" onClick={() => onPick(`${cmd} `)}>
-          <code {...stylex.props(suggestionStyles.command, typeStep.uiSm)}>{cmd}</code>
-          <span {...stylex.props(vocab.truncate, vocab.muted)}>{t(spec.description)}</span>
+      {slash.items.map((command, i) => (
+        <OptionRow
+          key={command.cmd}
+          layout="glyph"
+          id={suggestionOptionId(i)}
+          tabIndex={-1}
+          selected={i === slash.index}
+          onMouseEnter={() => slash.setIndex(i)}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            slash.accept(command);
+          }}
+        >
+          <code {...stylex.props(suggestionStyles.command, typeStep.uiSm)}>{command.cmd}</code>
+          <span {...stylex.props(vocab.truncate, vocab.muted)}>{t(command.spec.description)}</span>
         </OptionRow>
       ))}
-    </Popover.Anchored>
+    </SuggestionPopup>
   );
 }

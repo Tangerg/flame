@@ -8,7 +8,11 @@ const workspaceFiles = vi.hoisted(() => ({
 }));
 
 vi.mock("@/plugins/builtin/workspace/public/queries", () => ({
-  useWorkspaceListFiles: () => ({ data: workspaceFiles.current }),
+  useWorkspaceListFiles: () => ({
+    data: workspaceFiles.current,
+    isError: false,
+    refetch: () => Promise.resolve(),
+  }),
 }));
 
 beforeEach(() => {
@@ -76,7 +80,7 @@ describe("useFileMentions", () => {
 
     act(() => result.current.accept("src/alpha.ts"));
     expect(apply).toHaveBeenCalledWith("see @src/alpha.ts ", 18);
-    expect(draftMentions("see @src/alpha.ts ")).toEqual([
+    expect(draftMentions("see @src/alpha.ts ", new Set(["src/alpha.ts"]))).toEqual([
       { path: "src/alpha.ts", start: 4, end: 17 },
     ]);
   });
@@ -91,5 +95,34 @@ describe("useFileMentions", () => {
     act(() => result.current.accept("src/alpha.ts"));
     const [text, caret] = apply.mock.calls[0]!;
     expect(activeMention(text as string, caret as number)).toBeNull();
+  });
+});
+
+describe("useFileMentions status", () => {
+  const apply = () => {};
+
+  it("says why there is nothing to pick without a project", () => {
+    const { result } = renderHook(() =>
+      useFileMentions({ value: "@a", caret: 2, cwd: undefined, apply }),
+    );
+    expect(result.current.open).toBe(true);
+    expect(result.current.status).toBe("no-workspace");
+  });
+
+  it("keeps the panel open with an empty result instead of vanishing", () => {
+    workspaceFiles.current = [{ path: "src/apple.ts" }];
+    const { result } = renderHook(() =>
+      useFileMentions({ value: "@zzz", caret: 4, cwd: "/repo", apply }),
+    );
+    expect(result.current.open).toBe(true);
+    expect(result.current.status).toBe("empty");
+  });
+
+  it("reports a listing that has not arrived as loading", () => {
+    workspaceFiles.current = undefined as unknown as Array<{ path: string }>;
+    const { result } = renderHook(() =>
+      useFileMentions({ value: "@a", caret: 2, cwd: "/repo", apply }),
+    );
+    expect(result.current.status).toBe("loading");
   });
 });

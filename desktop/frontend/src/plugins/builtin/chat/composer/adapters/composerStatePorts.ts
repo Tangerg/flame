@@ -25,6 +25,8 @@ export function installComposerStatePorts(sessions: AgentSessions): () => void {
     useRemoveImage: () => useComposerStore((state) => state.removeImage),
     useAddPaste: () => useComposerStore((state) => state.addPaste),
     useRemovePaste: () => useComposerStore((state) => state.removePaste),
+    useEditPaste: () => useComposerStore((state) => state.editPaste),
+    useRestorePaste: () => useComposerStore((state) => state.restorePaste),
     useRecordHistory: () => useComposerStore((state) => state.pushHistory),
     recallPreviousHistory: () => useComposerStore.getState().historyPrev(),
     recallNextHistory: () => useComposerStore.getState().historyNext(),

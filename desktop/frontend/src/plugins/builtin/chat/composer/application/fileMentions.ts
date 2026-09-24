@@ -1,15 +1,11 @@
-export const MENTION_LISTBOX_ID = "composer-mention-listbox";
-
-export function mentionOptionId(index: number): string {
-  return `composer-mention-option-${index}`;
-}
-
 import { useCallback, useMemo, useState } from "react";
 import { useWorkspaceListFiles } from "@/plugins/builtin/workspace/public/queries";
 import { fuzzyFile } from "./fuzzyFile";
+import { formatFileReference } from "./draftContext";
+import { type SuggestionList, useSuggestionIndex } from "./suggestions";
 
 const MENTION_ROWS = 8;
-const FETCH_LIMIT = 2000;
+export const MENTION_FETCH_LIMIT = 2000;
 
 interface Mention {
   query: string;
@@ -37,29 +33,24 @@ interface Args {
   apply: (text: string, caret: number) => void;
 }
 
-export interface FileMentions {
-  active: boolean;
-  items: string[];
-  index: number;
-  setIndex: (i: number) => void;
-  accept: (path: string) => void;
-  dismiss: () => void;
-  handleKeyDown: (e: { key: string; shiftKey: boolean }) => boolean;
+type FileMentionStatus = "no-workspace" | "loading" | "error" | "empty" | "ready";
+
+export interface FileMentions extends SuggestionList<string> {
+  status: FileMentionStatus;
+  truncated: boolean;
+  retry: () => void;
 }
 
 export function useFileMentions({ value, caret, cwd, apply }: Args): FileMentions {
-  const [selection, setSelection] = useState<{
-    candidateKey: string;
-    index: number;
-  } | null>(null);
   const [dismissedStart, setDismissedStart] = useState<number | null>(null);
 
   const mention = useMemo(() => activeMention(value, caret), [value, caret]);
   const open = mention !== null && mention.start !== dismissedStart;
 
-  const { data: files } = useWorkspaceListFiles(
-    open && cwd !== undefined ? { cwd, recursive: true, limit: FETCH_LIMIT } : undefined,
+  const listing = useWorkspaceListFiles(
+    open && cwd !== undefined ? { cwd, recursive: true, limit: MENTION_FETCH_LIMIT } : undefined,
   );
+  const files = listing.data;
 
   const items = useMemo(() => {
     if (!open || !mention || !files) return [];
@@ -70,25 +61,24 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
     );
   }, [open, mention, files]);
 
-  const candidateKey = [cwd, mention?.start, mention?.query, ...items].join("\0");
-  const index =
-    selection?.candidateKey === candidateKey && selection.index < items.length
-      ? selection.index
-      : 0;
-  const setIndex = useCallback(
-    (nextIndex: number) => {
-      if (nextIndex < 0 || nextIndex >= items.length) return;
-      setSelection({ candidateKey, index: nextIndex });
-    },
-    [candidateKey, items.length],
-  );
+  const status: FileMentionStatus =
+    cwd === undefined
+      ? "no-workspace"
+      : listing.isError
+        ? "error"
+        : files === undefined
+          ? "loading"
+          : items.length === 0
+            ? "empty"
+            : "ready";
 
-  const active = open && items.length > 0;
+  const candidateKey = [cwd, mention?.start, mention?.query, ...items].join("\0");
+  const { index, setIndex } = useSuggestionIndex(candidateKey, items.length);
 
   const accept = useCallback(
     (path: string) => {
       if (!mention) return;
-      const insert = `@${path} `;
+      const insert = `${formatFileReference(path)} `;
       apply(
         value.slice(0, mention.start) + insert + value.slice(mention.end),
         mention.start + insert.length,
@@ -102,32 +92,30 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
     if (mention) setDismissedStart(mention.start);
   }, [mention]);
 
-  const handleKeyDown = useCallback(
-    (e: { key: string; shiftKey: boolean }): boolean => {
-      if (!active) return false;
-      switch (e.key) {
-        case "ArrowDown":
-          setIndex((index + 1) % items.length);
-          return true;
-        case "ArrowUp":
-          setIndex((index - 1 + items.length) % items.length);
-          return true;
-        case "Tab":
-          accept(items[index] ?? items[0]!);
-          return true;
-        case "Enter":
-          if (e.shiftKey) return false;
-          accept(items[index] ?? items[0]!);
-          return true;
-        case "Escape":
-          dismiss();
-          return true;
-        default:
-          return false;
-      }
-    },
-    [active, items, index, setIndex, accept, dismiss],
-  );
+  const { refetch } = listing;
+  const retry = useCallback(() => void refetch(), [refetch]);
 
-  return { active, items, index, setIndex, accept, dismiss, handleKeyDown };
+  return {
+    open,
+    items,
+    index,
+    setIndex,
+    accept,
+    dismiss,
+    status,
+    truncated: files !== undefined && files.length >= MENTION_FETCH_LIMIT,
+    retry,
+  };
+}
+
+const NO_PATHS: ReadonlySet<string> = new Set();
+
+export function useKnownWorkspacePaths(
+  cwd: string | undefined,
+  enabled: boolean,
+): ReadonlySet<string> {
+  const { data } = useWorkspaceListFiles(
+    enabled && cwd !== undefined ? { cwd, recursive: true, limit: MENTION_FETCH_LIMIT } : undefined,
+  );
+  return useMemo(() => (data ? new Set(data.map((file) => file.path)) : NO_PATHS), [data]);
 }

@@ -1237,7 +1237,8 @@ html.theme-dark {
     var(--shadow-composer-depth);
 }
 
-.agent-composer-glass:focus-within {
+.agent-composer-glass:focus-within,
+.agent-composer-glass[data-dropping] {
   --composer-ring: var(--color-accent);
 }
 [data-slot="button"] svg:not([data-glyph="full"]) {

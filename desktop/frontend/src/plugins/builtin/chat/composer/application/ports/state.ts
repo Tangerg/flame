@@ -17,6 +17,8 @@ interface ComposerStatePort {
   useRemoveImage(): (id: string) => void;
   useAddPaste(): (text: string) => void;
   useRemovePaste(): (id: string) => void;
+  useEditPaste(): (id: string, text: string) => void;
+  useRestorePaste(): (id: string) => void;
   useRecordHistory(): (text: string) => void;
   recallPreviousHistory(): boolean;
   recallNextHistory(): boolean;

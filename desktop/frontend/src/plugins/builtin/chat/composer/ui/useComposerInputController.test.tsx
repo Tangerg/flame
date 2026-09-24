@@ -8,8 +8,12 @@ vi.mock("@/plugins/builtin/agent/public/session", () => ({
   useActiveSessionWorkspace: () => ({ status: "ready", cwd: "/w" }),
 }));
 vi.mock("@/plugins/builtin/agent/public/run", () => ({ useIsCurrentRootRunning: () => false }));
-vi.mock("@/plugins/builtin/chat/composer/public/fileMentions", () => ({
-  useFileMentions: () => ({ handleKeyDown: () => false, open: false }),
+vi.mock("../application/fileMentions", () => ({
+  useFileMentions: () => ({ open: false, items: [] }),
+  useKnownWorkspacePaths: () => new Set(),
+}));
+vi.mock("../application/slashSuggestions", () => ({
+  useSlashSuggestions: () => ({ open: false, items: [] }),
 }));
 vi.mock("@/plugins/builtin/chat/composer/public/submit", () => ({
   submitComposer: () => submitted(),
