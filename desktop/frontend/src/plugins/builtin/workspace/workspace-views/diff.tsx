@@ -18,12 +18,14 @@ import {
 } from "@/ui";
 import { AgentWorkspaceView } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
-import type { DiffLayout } from "./views/DiffView";
+import type {
+  DiffLayout,
+  WorkspaceDiffMode,
+} from "@/plugins/builtin/workspace/application/diffVocabulary";
 import { DiffView } from "./views/DiffView";
 import { ViewHeader } from "./views/ViewHeader";
 import { gitOffEmpty, notARepoEmpty } from "./views/vcsGate";
 import {
-  type WorkspaceDiffMode,
   type WorkspaceFileDiff,
   workspaceDiffFileHeader,
   useWorkspaceDiffView,

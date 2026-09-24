@@ -1,4 +1,4 @@
-import type { DiffLayout, WorkspaceDiffMode } from "../diffViewModel";
+import type { DiffLayout, WorkspaceDiffMode } from "../diffVocabulary";
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 
 export interface WorkspaceFileViewer {

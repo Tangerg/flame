@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
 import { WORKSPACE_DOCK_CATALOG } from "../application/navigation";
 import type { WorkspaceViewMemory } from "../application/ports/navigationState";
-import { DIFF_LAYOUTS, DIFF_MODES } from "../application/diffViewModel";
+import { DIFF_LAYOUTS, DIFF_MODES } from "../application/diffVocabulary";
 
 const CONTEXT_DOCK_STORAGE_KEY = "flame.context-dock";
 const NON_NEGATIVE_DECIMAL = /^(0|[1-9]\d*)$/;

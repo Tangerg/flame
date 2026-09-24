@@ -1,3 +1,4 @@
+import type { WorkspaceDiffMode } from "./diffVocabulary";
 import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
 
 export interface WorkspaceProjectSummary {
@@ -88,7 +89,7 @@ export interface WorkspaceAgentDoc {
 export interface WorkspaceDiffQuery {
   cwd?: string;
   path?: string;
-  mode?: "worktree" | "base";
+  mode?: WorkspaceDiffMode;
   limit?: number;
 }
 

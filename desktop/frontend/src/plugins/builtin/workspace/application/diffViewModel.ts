@@ -1,14 +1,11 @@
+import type { WorkspaceDiffMode } from "./diffVocabulary";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useWorkspaceFileFocus } from "@/plugins/builtin/workspace/public/navigation";
 import { isVcsUnavailable } from "./vcsAvailability";
-import type { WorkspaceDiff, WorkspaceDiffQuery, WorkspaceFileDiff } from "./workspaceQueries";
+import type { WorkspaceDiff, WorkspaceFileDiff } from "./workspaceQueries";
 import { useWorkspaceDiff } from "./workspaceQueries";
 import { useWorkspaceCapability } from "./workspaceCapabilities";
 
-export type WorkspaceDiffMode = NonNullable<WorkspaceDiffQuery["mode"]>;
-export type DiffLayout = "unified" | "split";
-export const DIFF_MODES = ["worktree", "base"] as const satisfies readonly WorkspaceDiffMode[];
-export const DIFF_LAYOUTS = ["unified", "split"] as const satisfies readonly DiffLayout[];
 export type { WorkspaceFileDiff } from "./workspaceQueries";
 
 interface WorkspaceDiffSubtext {
