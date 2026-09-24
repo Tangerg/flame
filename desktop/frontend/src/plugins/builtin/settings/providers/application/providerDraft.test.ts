@@ -39,4 +39,15 @@ describe("ProviderCredentialsDraft", () => {
       baseUrl: { type: "clear" },
     });
   });
+
+  it("settles only the fields that still hold what was submitted", () => {
+    const submitted = ProviderCredentialsDraft.initial({ baseUrl: "https://old" })
+      .withAPIKey("k1")
+      .withBaseURL("https://a");
+    const typedOn = submitted.withBaseURL("https://b");
+    const settled = typedOn.settle(submitted, { baseUrl: "https://a" });
+    expect(settled.apiKey).toBe("");
+    expect(settled.baseUrl).toBe("https://b");
+    expect(submitted.settle(submitted, { baseUrl: "https://a" }).baseUrl).toBe("https://a");
+  });
 });

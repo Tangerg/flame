@@ -1,3 +1,4 @@
+import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useRef, useState } from "react";
 import { AgentRow, AgentRowEditor } from "@/ui/agent";
@@ -64,7 +65,7 @@ function SessionTitleField({
       autoFocus
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
-        if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
+        if (isImeKey(e.nativeEvent)) return;
         e.stopPropagation();
         if (e.key === "Escape" || e.key === "Enter") {
           e.preventDefault();

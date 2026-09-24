@@ -11,6 +11,10 @@
   font-size: var(--fs-ui-md);
   line-height: var(--leading-body);
 }
+.plugin-boundary-actions {
+  display: flex;
+  gap: 8px;
+}
 .plugin-boundary-error code {
   font-family: var(--font-mono);
   font-size: var(--fs-code);

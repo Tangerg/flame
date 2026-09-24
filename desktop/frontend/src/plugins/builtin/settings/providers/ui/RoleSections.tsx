@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Button, DropdownMenu, Icon, ProviderIcon, vocab } from "@/ui";
 import {
   type ProviderConfiguration,
+  type RoleConfigState,
   setEmbeddingRole,
   setUtilityRole,
   useEmbeddingModelConfig,
@@ -33,16 +34,19 @@ const rs = stylex.create({
 function RoleSectionShell({
   title,
   description,
+  state,
   error,
   note,
   children,
 }: {
   title: string;
   description: string;
+  state: RoleConfigState;
   error?: string | null;
   note?: ReactNode;
   children: ReactNode;
 }) {
+  const t = useT();
   return (
     <div {...stylex.props(rs.row)}>
       <div {...stylex.props(ss.split)}>
@@ -50,17 +54,47 @@ function RoleSectionShell({
           <span {...stylex.props(ss.label, typeStep.uiMd)}>{title}</span>
           <span {...stylex.props(ss.hint, typeStep.uiMd)}>{description}</span>
         </div>
-        {children}
+        {state.kind === "loading" ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="md"
+            press="none"
+            disabled
+            aria-label={title}
+          >
+            <span {...stylex.props(vocab.muted)}>{t("common.loading")}</span>
+          </Button>
+        ) : state.kind === "error" ? (
+          <Button type="button" variant="outline" size="md" onClick={state.retry}>
+            {t("common.retry")}
+          </Button>
+        ) : (
+          children
+        )}
       </div>
-      {note}
-      {error && <p {...stylex.props(ss.hint, vocab.negative, typeStep.uiMd)}>{error}</p>}
+      {state.kind === "ready" && note}
+      {state.kind === "error" && (
+        <p role="alert" {...stylex.props(ss.hint, vocab.negative, typeStep.uiMd)}>
+          {t("providers.role.loadError")}
+        </p>
+      )}
+      {state.kind === "ready" && state.stale && (
+        <p {...stylex.props(ss.hint, typeStep.uiMd)}>{t("providers.role.stale")}</p>
+      )}
+      {error && (
+        <p role="alert" {...stylex.props(ss.hint, vocab.negative, typeStep.uiMd)}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
 
 export function UtilityModelSection() {
   const t = useT();
-  const { role, modelOptions, selected, isSet, isAvailable, isError } = useUtilityModelConfig();
+  const { role, modelOptions, selected, isSet, isAvailable, isError, state } =
+    useUtilityModelConfig();
   const materialGeneration = useProviderMutationMaterialGeneration();
   const { feedback, run } = useAsyncFeedback(materialGeneration);
   const busy = feedback.state === "busy";
@@ -72,6 +106,7 @@ export function UtilityModelSection() {
     <RoleSectionShell
       title={t("providers.utility.title")}
       description={t("providers.utility.desc")}
+      state={state}
       error={
         feedback.state === "error" ? feedback.reason : isError ? t("providers.models.error") : null
       }
@@ -150,7 +185,7 @@ export function UtilityModelSection() {
 
 export function EmbeddingModelSection() {
   const t = useT();
-  const { role, capableProviders, isSet, isAvailable } = useEmbeddingModelConfig();
+  const { role, capableProviders, isSet, isAvailable, state } = useEmbeddingModelConfig();
   const materialGeneration = useProviderMutationMaterialGeneration();
   const { feedback, run } = useAsyncFeedback(materialGeneration);
   const busy = feedback.state === "busy";
@@ -165,6 +200,7 @@ export function EmbeddingModelSection() {
     <RoleSectionShell
       title={t("providers.embedding.title")}
       description={t("providers.embedding.desc")}
+      state={state}
       error={feedback.state === "error" ? feedback.reason : null}
       note={
         isSet && !isAvailable ? (

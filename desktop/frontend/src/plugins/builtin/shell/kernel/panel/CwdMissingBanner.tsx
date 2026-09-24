@@ -1,3 +1,4 @@
+import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useRef, useState } from "react";
 import { SystemMessage, TextField, vocab } from "@/ui";
@@ -60,7 +61,7 @@ export function CwdMissingBanner() {
                   value={path}
                   onChange={(e) => setPath(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.nativeEvent.isComposing) return;
+                    if (isImeKey(e.nativeEvent)) return;
                     if (e.key === "Enter") void submit();
                     if (e.key === "Escape") setEditing(false);
                   }}

@@ -18,6 +18,16 @@ export class ProviderCredentialsDraft {
     return new ProviderCredentialsDraft(this.apiKey, baseUrl);
   }
 
+  settle(
+    submitted: ProviderCredentialsDraft,
+    saved: { baseUrl?: string },
+  ): ProviderCredentialsDraft {
+    return new ProviderCredentialsDraft(
+      this.apiKey === submitted.apiKey ? "" : this.apiKey,
+      this.baseUrl === submitted.baseUrl ? (saved.baseUrl ?? "") : this.baseUrl,
+    );
+  }
+
   dirty(provider: { baseUrl?: string }): boolean {
     return this.apiKey.trim() !== "" || this.baseUrl !== (provider.baseUrl ?? "");
   }

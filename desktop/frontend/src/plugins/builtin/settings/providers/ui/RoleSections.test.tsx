@@ -4,6 +4,8 @@ import { EmbeddingModelSection, UtilityModelSection } from "./RoleSections";
 
 const provider = vi.hoisted(() => ({
   generation: 1,
+  roleState: { kind: "ready", stale: false } as
+    { kind: "loading" } | { kind: "error"; retry: () => void } | { kind: "ready"; stale: boolean },
   setEmbeddingRole: vi.fn(),
   setUtilityRole: vi.fn(),
 }));
@@ -16,6 +18,7 @@ vi.mock("../application/providerConfig", () => ({
     capableProviders: [],
     isSet: false,
     isAvailable: true,
+    state: provider.roleState,
   }),
   useProviderMutationMaterialGeneration: () => provider.generation,
   useUtilityModelConfig: () => ({
@@ -25,12 +28,14 @@ vi.mock("../application/providerConfig", () => ({
     isSet: false,
     isAvailable: true,
     isError: false,
+    state: provider.roleState,
   }),
 }));
 
 describe("Provider role mutation material", () => {
   beforeEach(() => {
     provider.generation = 1;
+    provider.roleState = { kind: "ready", stale: false };
     provider.setEmbeddingRole.mockReset();
     provider.setUtilityRole.mockReset();
   });
@@ -89,5 +94,25 @@ describe("Provider role mutation material", () => {
     expect(focusableWhilePending).toBe(true);
     expect(showedPendingFeedback).toBe(true);
     expect(provider.setUtilityRole).toHaveBeenCalledOnce();
+  });
+
+  it("does not claim a role is off while its value is still unknown", () => {
+    provider.roleState = { kind: "loading" };
+    render(<EmbeddingModelSection />);
+    expect(screen.queryByText("Off")).toBeNull();
+    expect(screen.queryByText(/No provider/i)).toBeNull();
+    expect(screen.getByRole("button", { name: /embedding model/i }).hasAttribute("disabled")).toBe(
+      true,
+    );
+  });
+
+  it("offers a retry instead of the main-model default when loading failed", () => {
+    const retry = vi.fn();
+    provider.roleState = { kind: "error", retry };
+    render(<UtilityModelSection />);
+    expect(screen.queryByText(/use main model/i)).toBeNull();
+    expect(screen.getByRole("alert").textContent).toMatch(/unknown/i);
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    expect(retry).toHaveBeenCalledOnce();
   });
 });

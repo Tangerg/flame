@@ -9,7 +9,9 @@ import (
 	"testing"
 )
 
-var boundMethods = []string{"Bootstrap", "ChooseWorkingDirectory", "SaveImage", "WindowChrome"}
+var boundMethods = []string{
+	"Bootstrap", "ChooseWorkingDirectory", "RevealWindow", "SaveImage", "WindowChrome",
+}
 
 func TestDesktopHostBindsExactlyTheDeclaredMethods(t *testing.T) {
 	hostType := reflect.TypeFor[*DesktopHost]()

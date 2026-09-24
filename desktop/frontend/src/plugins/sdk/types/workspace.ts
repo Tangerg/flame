@@ -7,6 +7,7 @@ export interface SettingsPaneSpec {
   icon?: string;
   order?: number;
   group?: string;
+  keywords?: readonly string[];
   component: ComponentType;
 }
 

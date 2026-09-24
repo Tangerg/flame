@@ -18,6 +18,7 @@ interface WindowChrome {
 const HOST_METHOD = {
   bootstrap: "main.DesktopHost.Bootstrap",
   chooseWorkingDirectory: "main.DesktopHost.ChooseWorkingDirectory",
+  revealWindow: "main.DesktopHost.RevealWindow",
   saveImage: "main.DesktopHost.SaveImage",
   windowChrome: "main.DesktopHost.WindowChrome",
 } as const;
@@ -31,6 +32,7 @@ export interface DesktopHostClient {
   chooseWorkingDirectory(): Promise<string | null>;
   saveImage(source: string): Promise<boolean>;
   windowChrome(): Promise<WindowChrome | null>;
+  revealWindow(): Promise<void>;
 }
 
 const WindowChromeSchema = z.object({
@@ -113,6 +115,18 @@ export function createDesktopHostClient(binding?: DesktopHostBinding): DesktopHo
         );
       }
       return parsed.data;
+    },
+    async revealWindow() {
+      const host = binding ?? (await wailsDesktopHostBinding());
+      if (!host) {
+        window.focus();
+        return;
+      }
+      try {
+        await host.call(HOST_METHOD.revealWindow);
+      } catch (error) {
+        throw new RpcTransportError(`desktop host window reveal failed: ${errorMessage(error)}`);
+      }
     },
     async windowChrome() {
       const host = binding ?? (await wailsDesktopHostBinding());

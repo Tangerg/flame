@@ -1,8 +1,9 @@
-import { Checkbox, Segmented } from "@/ui";
+import { Checkbox, Segmented, Switch } from "@/ui";
 import { useT } from "@/lib/i18n";
 import {
   useCompletionSoundPreference,
   useStreamRevealPreference,
+  useSystemNotificationsPreference,
 } from "../application/personalizationPreferences";
 import { SettingRow } from "../../kit";
 
@@ -16,6 +17,29 @@ export function CompletionSoundSection() {
         checked={completionSound}
         onCheckedChange={setCompletionSound}
         label={t("settings.completionSound.toggle")}
+      />
+    </SettingRow>
+  );
+}
+
+export function SystemNotificationsSection() {
+  const t = useT();
+  const { systemNotifications, setSystemNotifications, permission, requestPermission } =
+    useSystemNotificationsPreference();
+  const blocked = permission === "denied" || permission === "unsupported";
+  return (
+    <SettingRow
+      label={t("settings.notifications")}
+      sub={t(`settings.notifications.permission.${permission}`)}
+    >
+      <Switch
+        checked={systemNotifications && !blocked}
+        disabled={blocked}
+        ariaLabel={t("settings.notifications")}
+        onCheckedChange={(on) => {
+          setSystemNotifications(on);
+          if (on) void requestPermission();
+        }}
       />
     </SettingRow>
   );

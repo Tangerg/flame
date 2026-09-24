@@ -13,6 +13,7 @@ export default definePlugin({
     registerSettingsPane(ctx, {
       id: APPROVALS_PANE,
       label: "settings.pane.approvals",
+      keywords: ["approvals.mode", "approvals.rules"],
       group: "agent",
       icon: "shield",
       order: 55,

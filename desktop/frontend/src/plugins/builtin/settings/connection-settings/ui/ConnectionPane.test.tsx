@@ -125,4 +125,21 @@ describe("ConnectionPane runtime status", () => {
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     expect(runtime.refresh).toHaveBeenCalledOnce();
   });
+
+  it("leaves an IME confirmation alone and keeps focus on a rejected URL", () => {
+    runtime.snapshot = { phase: "checking", failure: null, observation: null };
+    runtime.applyEndpoint.mockReturnValue({ kind: "rejected", reason: "invalid_url" });
+    render(<ConnectionPane />);
+    const field = document.getElementById("runtime-base-url") as HTMLInputElement;
+    field.focus();
+    fireEvent.change(field, { target: { value: "本地" } });
+
+    fireEvent.keyDown(field, { key: "Enter", keyCode: 229 });
+    expect(runtime.applyEndpoint).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(field, { key: "Enter", keyCode: 13 });
+    expect(runtime.applyEndpoint).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(field);
+    expect(screen.getByRole("alert")).toBeTruthy();
+  });
 });

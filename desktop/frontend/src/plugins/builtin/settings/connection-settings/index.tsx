@@ -13,6 +13,7 @@ export default definePlugin({
     registerSettingsPane(ctx, {
       id: CONNECTION_PANE,
       label: "settings.pane.connection",
+      keywords: ["settings.connection.title", "settings.connection.url"],
       group: "general",
       icon: "globe",
       order: 5,

@@ -1,3 +1,4 @@
+import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
 import { IconButton, TextField, vocab } from "@/ui";
@@ -114,7 +115,7 @@ function SessionChatSearchOverlay() {
         placeholder={t("chatSearch.placeholder")}
         className={stylex.props(cs.field).className}
         onKeyDown={(event) => {
-          if (event.nativeEvent.isComposing) return;
+          if (isImeKey(event.nativeEvent)) return;
           if (event.key === "Escape") {
             event.preventDefault();
             close();

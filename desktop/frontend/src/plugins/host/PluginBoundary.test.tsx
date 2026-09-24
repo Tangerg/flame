@@ -1,5 +1,5 @@
 import type React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PluginBoundary } from "./PluginBoundary";
 import { usePluginErrorStore } from "../sdk";
@@ -43,6 +43,31 @@ describe("pluginBoundary", () => {
     expect(log[0]!.plugin).toBe("bad.plugin");
     expect(log[0]!.source).toBe("render");
     expect(log[0]!.message).toBe("kaboom");
+    spy.mockRestore();
+  });
+
+  it("contains a failing pane and lets it try again without touching its neighbours", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    let fail = true;
+    function Flaky(): React.ReactNode {
+      if (fail) throw new Error("pane exploded");
+      return <p>pane body</p>;
+    }
+    render(
+      <>
+        <PluginBoundary plugin="settings:flaky">
+          <Flaky />
+        </PluginBoundary>
+        <p>neighbour</p>
+      </>,
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain("settings:flaky");
+    expect(screen.getByText("neighbour")).toBeTruthy();
+
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    expect(screen.getByText("pane body")).toBeTruthy();
     spy.mockRestore();
   });
 });

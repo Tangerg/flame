@@ -28,6 +28,25 @@ export function useProviderMutationMaterialGeneration(): bigint {
   );
 }
 
+export type RoleConfigState =
+  { kind: "loading" } | { kind: "error"; retry: () => void } | { kind: "ready"; stale: boolean };
+
+interface FactQuery {
+  data?: unknown;
+  isError: boolean;
+  refetch: () => unknown;
+}
+
+function roleConfigState(queries: readonly FactQuery[]): RoleConfigState {
+  const retry = () => {
+    for (const query of queries) if (query.isError) void query.refetch();
+  };
+  if (queries.some((query) => query.data === undefined)) {
+    return queries.some((query) => query.isError) ? { kind: "error", retry } : { kind: "loading" };
+  }
+  return { kind: "ready", stale: queries.some((query) => query.isError) };
+}
+
 function useProviderRoleConfig() {
   const utilityRole = useUtilityRole();
   const embeddingRole = useEmbeddingRole();
@@ -54,6 +73,7 @@ export function useUtilityModelConfig() {
     isSet: Boolean(role?.model),
     isAvailable: providerRoleIsAvailable(role, providerConfigs),
     isError: models.isError,
+    state: roleConfigState([utilityRole, providers]),
   };
 }
 
@@ -69,6 +89,7 @@ export function useEmbeddingModelConfig() {
     ),
     isSet: Boolean(role?.model),
     isAvailable: providerRoleIsAvailable(role, providerConfigs),
+    state: roleConfigState([embeddingRole, providers]),
   };
 }
 

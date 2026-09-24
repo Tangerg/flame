@@ -106,6 +106,11 @@ func main() {
 	// platform for "the app's window" is a guess that a sheet or a second window wins.
 	window := app.Window.NewWithOptions(desktopWindowOptions())
 	host.useWindow(window)
+	host.useRevealer(func() {
+		window.UnMinimise()
+		window.Show()
+		window.Focus()
+	})
 	host.useWorkingDirectoryPicker(wailsWorkingDirectoryPicker{
 		dialogs: app.Dialog,
 		window:  window,

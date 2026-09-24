@@ -73,6 +73,9 @@ type DesktopHost struct {
 	// before it has any window, and `WindowChrome` is only reachable from a frontend
 	// that a window had to load — but nil is answered honestly rather than assumed away.
 	window nativeWindow
+	// Brings the window back from minimised or behind other apps. Owned here because
+	// a webview's window.focus() cannot un-minimise its own native window.
+	reveal func()
 }
 
 func newDesktopHost(home string) (*DesktopHost, error) {
@@ -89,6 +92,12 @@ func newDesktopHost(home string) (*DesktopHost, error) {
 // purpose: see the note on DesktopHost.
 func (d *DesktopHost) useWindow(window nativeWindow) {
 	d.window = window
+}
+
+// useRevealer attaches how the packaged window is brought to the front.
+// Unexported on purpose: see the note on DesktopHost.
+func (d *DesktopHost) useRevealer(reveal func()) {
+	d.reveal = reveal
 }
 
 // useWorkingDirectoryPicker attaches the packaged application's native directory
@@ -131,6 +140,16 @@ func (d *DesktopHost) WindowChrome() WindowChrome {
 		ControlsInlineEnd: controlsInlineEnd,
 		Measured:          true,
 	}
+}
+
+// RevealWindow un-minimises, shows and focuses the window, so a notification the
+// user clicked lands them in the app rather than on a dock bounce.
+func (d *DesktopHost) RevealWindow() error {
+	if d.reveal == nil {
+		return errors.New("desktop host: window is not attached")
+	}
+	d.reveal()
+	return nil
 }
 
 // ChooseWorkingDirectory opens the platform directory picker and returns one

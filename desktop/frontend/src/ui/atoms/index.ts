@@ -12,6 +12,7 @@ export { ColorPickerInput } from "./color-picker-input";
 export { ConfirmDialog } from "./confirm-dialog";
 export { DataView } from "./data-view";
 export { DiffStat } from "./diff-stat";
+export { FailureDetails } from "./failure-details";
 export { FilePath } from "./file-path";
 export { Divider } from "./divider";
 export { EmptyState } from "./empty-state";

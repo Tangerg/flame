@@ -21,6 +21,7 @@ async function loadPanes() {
         ctx.contribute(SETTINGS_PANE, {
           id: "plugins",
           label: "Plugins",
+          keywords: ["Hot reload"],
           order: 10,
           component: () => <div data-testid="plugins-body">plugins body</div>,
         });
@@ -57,5 +58,24 @@ describe("settingsPage", () => {
     await loadPanes();
     render(<SettingsPage />);
     expect(screen.getByTestId("appearance-body")).toBeTruthy();
+  });
+
+  it("keeps the open pane and offers a way out when nothing matches", async () => {
+    await loadPanes();
+    render(<SettingsPage />);
+    const search = screen.getByRole("searchbox");
+    fireEvent.change(search, { target: { value: "zzzz" } });
+
+    expect(screen.getByTestId("appearance-body")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("zzzz");
+    fireEvent.click(screen.getByRole("button", { name: /clear search/i }));
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
+  });
+
+  it("finds a pane by a field it contains, not only by its title", async () => {
+    await loadPanes();
+    render(<SettingsPage />);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "hot reload" } });
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Plugins"]);
   });
 });

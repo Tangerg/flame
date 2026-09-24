@@ -1,3 +1,4 @@
+import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { type FormEvent, type KeyboardEvent, type ReactNode, useRef } from "react";
 import { Button } from "./button";
@@ -77,11 +78,7 @@ export function TextEditorDialog({
     if (!busy && !saveDisabled) onSave();
   };
   const submitShortcut = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (
-      event.key === "Enter" &&
-      (event.metaKey || event.ctrlKey) &&
-      !event.nativeEvent.isComposing
-    ) {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !isImeKey(event.nativeEvent)) {
       event.preventDefault();
       event.currentTarget.form?.requestSubmit();
     }

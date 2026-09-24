@@ -1,3 +1,4 @@
+import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
@@ -135,7 +136,7 @@ function SearchOverlayContent({
           aria-activedescendant={activeId}
           value={query}
           onKeyDown={(event) => {
-            if (event.nativeEvent.isComposing) return;
+            if (isImeKey(event.nativeEvent)) return;
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
               event.preventDefault();
               setHighlight(wrap(active, rows.length, event.key === "ArrowDown" ? 1 : -1));

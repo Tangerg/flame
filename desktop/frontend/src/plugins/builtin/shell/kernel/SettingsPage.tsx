@@ -1,7 +1,17 @@
+import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { Suspense, useState } from "react";
-import { Button, Icon, knownIconName, SearchField, SkeletonList, VerticalTabs, vocab } from "@/ui";
+import {
+  Button,
+  Icon,
+  knownIconName,
+  SearchField,
+  SkeletonList,
+  TextButton,
+  VerticalTabs,
+  vocab,
+} from "@/ui";
 import { AgentSurfaceHeader } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
@@ -24,6 +34,15 @@ const sp = stylex.create({
   body: { marginTop: space.s6, paddingBottom: space.s12 },
   backRow: { paddingInline: space.s4, paddingBottom: space.s4 },
   back: { marginBottom: space.s3, alignSelf: "flex-start" },
+  empty: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: space.s1_5,
+    paddingInline: space.s2,
+    paddingBlock: space.s3,
+    color: color.fgMuted,
+  },
 });
 
 const GROUPS: { id: string; labelKey: string }[] = [
@@ -52,6 +71,9 @@ export function SettingsPage() {
         id: p.id,
         label: t(p.label),
         icon: knownIconName(p.icon),
+        terms: [p.label, p.description, ...(p.keywords ?? [])]
+          .filter((key): key is string => key !== undefined)
+          .map((key) => t(key).toLocaleLowerCase()),
         content: (
           <SettingsPaneFrame
             title={t(p.label)}
@@ -64,14 +86,19 @@ export function SettingsPage() {
             </PluginBoundary>
           </SettingsPaneFrame>
         ),
-      }))
-      .filter((item) =>
-        normalizedQuery ? String(item.label).toLocaleLowerCase().includes(normalizedQuery) : true,
-      ),
+      })),
   })).filter((g) => g.items.length > 0);
-  const visibleItems = grouped.flatMap((group) => group.items);
+  const allItems = grouped.flatMap((group) => group.items);
+  const matches = (item: { id: string }) =>
+    !normalizedQuery ||
+    (allItems.find((candidate) => candidate.id === item.id)?.terms ?? []).some((term) =>
+      term.includes(normalizedQuery),
+    );
+  const firstMatch = allItems.find(matches)?.id;
   const activeId =
-    targetPane && visibleItems.some((p) => p.id === targetPane) ? targetPane : visibleItems[0]?.id;
+    targetPane && allItems.some((p) => p.id === targetPane)
+      ? targetPane
+      : (firstMatch ?? allItems[0]?.id);
 
   return (
     <VerticalTabs
@@ -81,10 +108,22 @@ export function SettingsPage() {
       onValueChange={(pane) => {
         if (pane) openWorkspaceSettingsPane(pane);
       }}
+      railFilter={matches}
+      railEmpty={
+        <div role="status" {...stylex.props(sp.empty, typeStep.uiSm)}>
+          <span>{t("settings.search.empty", { query: query.trim() })}</span>
+          <TextButton tone="accent" onClick={() => setQuery("")}>
+            {t("settings.search.clear")}
+          </TextButton>
+        </div>
+      }
       railHeader={
         <SettingsRailHeader
           query={query}
           onQueryChange={setQuery}
+          onSubmit={() => {
+            if (firstMatch) openWorkspaceSettingsPane(firstMatch);
+          }}
           searchPlaceholder={t("settings.searchPlaceholder")}
         />
       }
@@ -115,10 +154,12 @@ function SettingsPaneFrame({
 function SettingsRailHeader({
   query,
   onQueryChange,
+  onSubmit,
   searchPlaceholder,
 }: {
   query: string;
   onQueryChange: (value: string) => void;
+  onSubmit: () => void;
   searchPlaceholder: string;
 }) {
   const t = useT();
@@ -142,6 +183,14 @@ function SettingsRailHeader({
           size="lg"
           value={query}
           onValueChange={onQueryChange}
+          onClear={() => onQueryChange("")}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && query) {
+              event.preventDefault();
+              onQueryChange("");
+            }
+            if (event.key === "Enter" && !isImeKey(event.nativeEvent)) onSubmit();
+          }}
           placeholder={searchPlaceholder}
           aria-label={searchPlaceholder}
         />

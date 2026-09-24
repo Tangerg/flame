@@ -1,6 +1,8 @@
-import { Trans } from "@/lib/i18n";
+import { Trans, useT } from "@/lib/i18n";
 import type { ErrorInfo, ReactNode } from "react";
 import { Component } from "react";
+import { FailureDetails, TextButton } from "@/ui";
+import { failureDiagnostics } from "@/lib/diagnostics";
 import { reportPluginError } from "../sdk";
 
 interface Props {
@@ -27,16 +29,43 @@ export class PluginBoundary extends Component<Props, State> {
 
   override render(): ReactNode {
     if (!this.state.error) return this.props.children;
-
     return (
-      <div className="plugin-boundary-error">
-        <Trans
-          i18nKey="plugins.renderFailed"
-          values={{ plugin: this.props.label ?? this.props.plugin }}
-          components={{ strong: <strong /> }}
-        />
-        <code>{this.state.error.message}</code>
-      </div>
+      <PluginFailure
+        plugin={this.props.plugin}
+        label={this.props.label ?? this.props.plugin}
+        error={this.state.error}
+        onRetry={() => this.setState({ error: null })}
+      />
     );
   }
+}
+
+function PluginFailure({
+  plugin,
+  label,
+  error,
+  onRetry,
+}: {
+  plugin: string;
+  label: string;
+  error: Error;
+  onRetry: () => void;
+}) {
+  const t = useT();
+  return (
+    <div role="alert" className="plugin-boundary-error">
+      <Trans
+        i18nKey="plugins.renderFailed"
+        values={{ plugin: label }}
+        components={{ strong: <strong /> }}
+      />
+      <code>{error.message}</code>
+      <div className="plugin-boundary-actions">
+        <TextButton tone="accent" onClick={onRetry}>
+          {t("common.retry")}
+        </TextButton>
+      </div>
+      <FailureDetails diagnostics={failureDiagnostics(`plugin ${plugin}`, error)} />
+    </div>
+  );
 }

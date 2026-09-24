@@ -20,6 +20,12 @@ export default definePlugin({
     registerSettingsPane(ctx, {
       id: PROVIDERS_PANE,
       label: "settings.pane.providers",
+      keywords: [
+        "providers.apiKey.label",
+        "providers.baseUrl.label",
+        "providers.utility.title",
+        "providers.embedding.title",
+      ],
       group: "models",
       icon: "spark",
       order: 50,

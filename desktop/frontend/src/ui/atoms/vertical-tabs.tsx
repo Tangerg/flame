@@ -114,14 +114,23 @@ export function VerticalTabs({
   value,
   onValueChange,
   railHeader,
+  railFilter,
+  railEmpty,
 }: {
   ariaLabel: string;
   groups: VerticalTabGroup[];
   value?: string;
   onValueChange: (value: string | undefined) => void;
   railHeader?: ReactNode;
+  railFilter?: (item: VerticalTabItem) => boolean;
+  railEmpty?: ReactNode;
 }) {
   const items = groups.flatMap((group) => group.items);
+  const railGroups = railFilter
+    ? groups
+        .map((group) => ({ ...group, items: group.items.filter(railFilter) }))
+        .filter((group) => group.items.length > 0)
+    : groups;
   const rail = stylex.props(styles.rail);
   return (
     <TabsPrimitive.Root
@@ -134,7 +143,8 @@ export function VerticalTabs({
         {railHeader}
         <TabsPrimitive.List {...stylex.props(styles.list)} aria-label={ariaLabel} activateOnFocus>
           <HoverTrack>
-            {groups.map((group) => (
+            {railGroups.length === 0 && railEmpty}
+            {railGroups.map((group) => (
               <div key={group.id} {...stylex.props(styles.group)}>
                 <SectionLabel {...stylex.props(styles.heading)}>{group.label}</SectionLabel>
                 {group.items.map((item) => (

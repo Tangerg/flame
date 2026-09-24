@@ -1,3 +1,4 @@
+import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { Button, StatusDot, TextField, vocab } from "@/ui";
@@ -83,14 +84,15 @@ export function ConnectionPane() {
   const dirty = trimmed !== initial.trim();
   const isDefault = trimmed === DEFAULT_RUNTIME_ENDPOINT;
 
-  const apply = () => {
+  const apply = (): boolean => {
     const result = applyRuntimeEndpoint(url);
     if (result.kind === "rejected") {
       setError(rejectionMessage(result.reason, t));
-      return;
+      return false;
     }
     setUrl(result.endpoint);
     setError(null);
+    return true;
   };
 
   const reset = () => {
@@ -136,12 +138,11 @@ export function ConnectionPane() {
               aria-label={t("settings.connection.url")}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
+              aria-describedby={error ? "runtime-base-url-error" : undefined}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  apply();
-                  (e.target as HTMLInputElement).blur();
-                }
+                if (e.key !== "Enter" || isImeKey(e.nativeEvent)) return;
+                e.preventDefault();
+                if (apply()) e.currentTarget.blur();
               }}
               placeholder={DEFAULT_RUNTIME_ENDPOINT}
               {...stylex.props(vocab.grow)}
@@ -162,14 +163,18 @@ export function ConnectionPane() {
               variant="primary"
               size="md"
               disabled={!dirty}
-              onClick={apply}
+              onClick={() => void apply()}
               className={stylex.props(vocab.hold).className}
             >
               {t("settings.connection.apply")}
             </Button>
           </div>
           {error ? (
-            <div {...stylex.props(vocab.lineTight, vocab.negative, typeStep.uiSm)}>
+            <div
+              id="runtime-base-url-error"
+              role="alert"
+              {...stylex.props(vocab.lineTight, vocab.negative, typeStep.uiSm)}
+            >
               <StatusDot tone="err" />
               <span>{error}</span>
             </div>
