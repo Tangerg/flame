@@ -696,14 +696,14 @@ interface BlockCtx {
 | 字段 | UI | 位置 |
 | --- | --- | --- |
 | `text` / `delta{reasoning}.text` | 思考正文 | 展开体 |
-| `status === "running"` | 进行中脉冲 + 自动展开 | 折叠头 |
+| `status === "running"` | 进行中脉冲 + 一行当前片段（默认收起） | 折叠头 |
 | `redacted === true` | **只画"已思考"的壳，不画正文** | 折叠头 |
-| 派生 `superseded` | 后面已有带内容的答案 → 自动折叠 | — |
+| 展开状态 | 只由读者决定：默认收起，任何状态变化都不自动打开或关闭 | — |
 
 **陷阱**
 
 - `redacted=true` 时即使 `text` 非空也**不得渲染** —— 那是 provider 的加密载荷。
-- `superseded` 的判据必须是「后面存在 `text.trim() !== ""` 的文本块」。用"块存在"当判据会在模型刚开口、一个 token 都还没到时就把思考折掉。
+- 不要因为新 token、终态或后续答案去改写展开状态：读者正在读的思考被强制关闭，是这一块唯一不可接受的行为。
 
 ---
 
@@ -1116,7 +1116,7 @@ Goal 与 Composer 同宽，以重叠 1px 接缝组成一个 stack；空态不留
 #### `read` — 读文件
 
 `safe` · **一行** · 图标 `eye` · 进行中「Reading file」
-**标题** = `path`（路径，从左截断）｜**chips** = `range` `lines`｜**展开体** 带行号的文件头
+**标题** = `path`（路径，从左截断）｜**chips** = `range` `lines`｜**展开体** 当时读到的内容（`result`），行号从 `range.start` 起；未记录结果时明说，不读当前文件。"打开当前文件"是独立动作
 
 ```ts
 interface ReadArguments {
@@ -1157,7 +1157,7 @@ interface GlobResult {   // ← runtime 归一化后
 #### `grep` — 按内容找
 
 `safe` · **一行** · 图标 `text-search` · 「Searching」
-**标题** = `pattern`｜**chips** = `hits`｜**展开体** 命中行（重查工作区检索接口）
+**标题** = `pattern`｜**chips** = `hits`｜**展开体** 记录下来的命中行；无法解析时显示原始结果，不重查当前工作区
 
 ```ts
 interface GrepArguments {

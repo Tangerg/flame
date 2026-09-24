@@ -21,8 +21,8 @@ is a decision to make, not a rule to apply.
 The whole system reduces to five decisions. Everything below elaborates them.
 
 1. **Tool windows around one reading plane.** Permanent regions separate by
-   material value and a short directional cast at the drawer and dock seams.
-   Chrome headers do not draw a bottom line. Cards group independently readable
+   material value and a half-pixel edge whose shape the visual style owns (see
+   Hairlines). Cards group independently readable
    content through fill; ordinary tool activity stays linear. Only floating
    menus and popovers receive an optical ring and elevation. The composer is
    an input surface with one real border, accented on focus. Boundary mechanisms
@@ -59,14 +59,14 @@ Light and dark are **equal first-class themes**; the default follows the OS (`pr
 **Reference** — the direction is the JetBrains tool-window language: an editor you
 are _inside_, framed by opaque panels, with the technical layer set in mono.
 
-- **Region model**: three materials separated by value and directional casts. The reading plane is the one surface that is not chrome.
-- **Density**: short chrome bars, two-line index rows, borderless cards.
+- **Region model**: three materials separated by value and a half-pixel edge. The reading plane is the one surface that is not chrome.
+- **Density**: short chrome bars, single-line index rows, borderless cards.
 - **Voice**: sans for language, mono for data — and the mono is load-bearing, not
   decorative, because most of what an agent transcript reports IS data.
 
 **Explicitly rejected** (both prior passes):
 
-- Region hairlines and seam rings (regions separate by value + cast now)
+- Seam rings and directional casts at region seams (a cast lands on the reading plane)
 - Cards-on-canvas gutters, panel drop shadows, and glass blur outside floating panels
 - An inverting ink CTA that kept the accent unused (the accent IS the CTA)
 - Pill-radius CTAs, ALL-CAPS letter-spaced labels, 700+ display weight
@@ -152,7 +152,7 @@ semi-transparent border shifts across surface lifts and reads as approximate.
 The single accent (`--color-accent`, a calm blue by default, user-selectable with
 green / pink / orange as alternates) is reserved for **exactly four surfaces**:
 
-1. Active tab indicator (2px underline on `chat-tab.active`)
+1. Selected navigation and dock tab state
 2. Primary CTA fill (`button-primary`, Send button)
 3. Focus ring (`:focus-visible` — a single thin stroke, **no halo / glow**; one global rule, never drawn at a callsite)
 4. Live indicator (streaming dot, running pill, `tab-dot.running`)
@@ -197,12 +197,11 @@ untouched.
 
 ### Font families
 
-Two bundled variable faces, each in front of a native fallback chain so the app
-has one shape on every machine and still renders mixed CJK with the OS:
+The interface uses the operating system's own face; code uses one bundled mono:
 
-- **Sans** (`--font-sans`) — **Geist**, then `-apple-system` / `BlinkMacSystemFont` / `system-ui`, with **PingFang SC** (+ Hiragino / Microsoft YaHei) for CJK. The primary UI face; display + body share it, weight does the hierarchy.
+- **Sans** (`--font-sans`) — the native stack: `-apple-system` / `BlinkMacSystemFont`, **PingFang SC** / Hiragino for CJK, then `system-ui` / Segoe UI / Microsoft YaHei. No face is bundled for language. Display and body share it; weight does the hierarchy.
 - **Mono** (`--font-mono`) — **JetBrains Mono**, then `ui-monospace` / SF Mono / Menlo. Genuine data only: code, IDs, timestamps, file paths, tool signatures.
-- A single `--font-sans` / `--font-mono` token (no `--font-ui` split); the user can override either in Settings → Appearance.
+- A single `--font-sans` / `--font-mono` token (no `--font-ui` split); the user can override either in Settings → Appearance, and code has its own size preference that moves only `--fs-code`.
 
 Same shape as the reference, which bundles `OpenAI Sans` in front of
 `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`. It bundles **no**
@@ -256,8 +255,8 @@ Three opaque tool windows and no line between any of them. No bottom status bar:
 │             ││    ┌──────────────────────────────────────┐  │         │
 │ ⚙ settings  ││    │ Composer                             │  │         │
 └─────────────┘└────┴──────────────────────────────────────┴──┴─────────┘
-       ↑          ↑ turn rail (44)          outline rail (186) ↑ dock casts
-   --sidebar-width  --app-card-edge: the drawer's cast,          leftward
+       ↑          ↑ turn rail (44)          outline rail (186) ↑ dock seam
+   --sidebar-width  --app-card-edge: the drawer seam,          0.5px edge
    (275, 240–520) drawn inside the plane                  (--app-pane-split)
 ```
 
@@ -268,14 +267,15 @@ all. Banners and composer take the same gutters, so the three stay on one axis.
 ### Sidebar
 
 - **Default state: expanded** (`--sidebar-width`, 275px, user-resizable by dragging
-  the seam rail; floor 240px, ceiling 520px, and the live clamp always leaves at
-  least 240px for the reading plane). The Context Dock keeps its separate 640px
-  conversation floor; the two flanks do not share one clamp.
+  the seam rail; floor 240px, ceiling 520px). Both flanks clamp against one reading
+  floor, `CONVERSATION_READING_MIN_PX` (440px): the sidebar never widens past it,
+  and a dock that cannot fit beside it opens its material full width instead.
 - **Pinned identity** above the scrolling index: the active session's workspace,
   because the one fact you must be able to read without scrolling is where the next
   command will run.
-- **Two-line session rows**: title, then state and time — the index is something you
-  triage from, not just a list of names.
+- **Single-line session rows**: title, then one trailing mark (pin, running or
+  waiting state, or time). A "…" button on hover or focus opens the same actions as
+  the context menu; a collapsed project reports how many of its sessions wait.
 - **Collapsed** (`⌘B`) slides the drawer fully off-canvas under the card — there is
   no icon rail. The card then reaches the window edge, squares its seam corner, and
   its header widens its leading inset to clear the macOS traffic lights.
@@ -288,8 +288,8 @@ all. Banners and composer take the same gutters, so the three stay on one axis.
   same bounded resize path for keyboard users.
 - The drawer is opaque region chrome (`--app-drawer-surface`), never a translucent
   sheet. It carries no border and casts no shadow of its own: the plane draws the
-  seam as an inset cast, because the plane outranks the drawer on z-index so the
-  drawer can slide underneath it.
+  seam as an inset 0.5px edge, because the plane outranks the drawer on z-index so
+  the drawer can slide underneath it.
 
 ### Chat measure
 
@@ -329,22 +329,24 @@ Flame is a **product UI**, not a marketing site. Spacing comes from the `space` 
   queries determine reading insets, including when the dock narrows a wide window.
 - New turns, final answers and same-run continuations have distinct spacing.
 - The automatic dock starts at an auxiliary width and never persists a preference.
-  Only user resizing stores a ratio. Narrow windows temporarily hide the dock;
-  navigation retains its target and restores it when space returns.
-- The composer prioritizes input, model and send. Reasoning belongs in the model
-  panel. Normal approval labels yield on narrow containers; high-risk approval
+  Only user resizing stores a ratio. When the window cannot hold the dock beside
+  the reading floor, the dock toggle opens the current material full width;
+  navigation retains its target and the dock returns when space does.
+- The composer prioritizes input, model and send. Reasoning effort lives on the
+  selected model's row inside the model picker. Normal approval labels yield on narrow containers; high-risk approval
   remains explicit. Label length never controls a JavaScript layout mode.
 
 ## 5. Elevation & Depth
 
-**Depth is value plus a directional cast. Flush chrome casts nothing.**
-Every seam between regions is carried by a short, tight cast from the panel that
-overlaps — `--app-card-edge` at the drawer seam (drawn INSIDE the plane, because
+**Depth is value plus a half-pixel edge. Flush chrome casts nothing.**
+Every seam between regions is carried by an inset 0.5px edge whose shape the visual
+style owns — `--app-card-edge` at the drawer seam (drawn INSIDE the plane, because
 the plane outranks the drawer on z-index so the drawer can slide under it),
-`--app-pane-split` where the dock meets the conversation. No region anywhere
-carries a border. The only elements with a real drop shadow are **truly-floating
-overlays** (menus, popovers, tooltips, command palette, lightbox), which have no
-value delta to lean on because they can land over anything.
+`--app-pane-split` where the dock meets the conversation, `--app-header-edge` under
+a bar. A call site never draws a region boundary. The only elements with a real
+drop shadow are **truly-floating overlays** (menus, popovers, tooltips, command
+palette, lightbox), which have no value delta to lean on because they can land over
+anything.
 
 | Level | Treatment                                              | Use                                                                            |
 | ----- | ------------------------------------------------------ | ------------------------------------------------------------------------------ |
@@ -365,8 +367,8 @@ while the pointer sits on its neighbour. A surface step as a hover paints a slab
 where there was none; `check-interactive-chrome` fails the build on both that and
 a hand-picked `hover:bg-fg/[…]` alpha.
 
-This holds identically in **both schemes**; only the cast's strength differs, and
-that is one palette value (`--shadow-cast`) rather than a per-component decision.
+This holds identically in **both schemes**; the edge takes the scheme's
+`border-soft`, and only floating overlays use `--shadow-cast`.
 (Both earlier models are gone: cards-on-canvas with gutters and multi-layer drops,
 and the 2026-07 seam-ring pass that gave every boundary a hairline.)
 
@@ -522,7 +524,7 @@ When in doubt: **does this surface convey "the agent is alive and live"?** If ye
 - **Don't use ALL-CAPS labels with letter-spacing.** Section labels / eyebrows / table heads are **sentence-case** (mono for dense technical labels like `args` / `attrs`); the ALL-CAPS + wide-tracking eyebrow is the rejected Sonance vocabulary.
 - **Don't use pill-radius CTAs** (`9999px`, `500px`, `100px` on a button). Buttons are `sm`, through `--button-radius`.
 - **Don't use weight 700+ for display.** 600 is the ceiling, Linear and Vercel both forbid this.
-- **Don't add panel / card drop shadows.** The layout is flush — depth is the surface step plus a directional seam cast. Stacked-subtle shadow is for truly-floating overlays (Level 4) only, in BOTH schemes. No cards-on-canvas, no gutters.
+- **Don't add panel / card drop shadows.** The layout is flush — depth is the surface step plus a half-pixel seam edge. Stacked-subtle shadow is for truly-floating overlays (Level 4) only, in BOTH schemes. No cards-on-canvas, no gutters.
 - **Don't use pure `#000000` or a harsh near-black canvas.** Dark canvas is `--color-bg`, a soft grey, not a black.
 - **Don't flash a bright accent ring/halo on focus or click.** Keyboard focus is one thin stroke; inputs/composer just strengthen their border. The loud glow read as cheap.
 - **Don't introduce a second chromatic accent.** Flame has one accent + four semantic colors. No more.

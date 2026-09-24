@@ -29,9 +29,9 @@ reads as a double edge, so each role owns exactly one mechanism — and, crucial
 **which mechanism a role uses is the active visual style's decision, not a call
 site's**. The tool-window style now shipping answers:
 
-- **region boundary** → NO line. Regions separate by value, and the seam is a short
-  directional cast (`--app-card-edge` at the drawer, `--app-pane-split` at the
-  dock). A hairline here draws the columns as pasted rectangles.
+- **region boundary** → a 0.5px inset edge in `border-soft` (`--app-card-edge` at the
+  drawer, `--app-pane-split` at the dock, `--app-header-edge` under a bar), on top of
+  the value step. Half a pixel is one device pixel on a 2x panel: crisp without weight.
 - **card** → fill only (`bg-card`). No border, no shadow: it is already a different
   material from the plane it sits on.
 - **well** → fill only (`bg-sunken`).
@@ -46,7 +46,7 @@ site's**. The tool-window style now shipping answers:
 Do not paste shadow values into components. Translate them through the rings:
 
 - geometry, elevation and region roles → the **visual style** (`visualStyles/tokens.ts`);
-- how dark a cast is for this palette → the **theme** (`--shadow-cast`);
+- how dark a floating overlay's shadow is for this palette → the **theme** (`--shadow-cast`);
 - consume `var(--shadow-*)` / `var(--app-*)` from components.
 
 ## 2. Border Discipline
@@ -59,14 +59,16 @@ first separated regions by background delta alone, at a delta too small to read 
 `#f2f2f2` chrome against `#ffffff` — so the eye had no cue at all. The second gave
 every boundary a hairline, which turned three columns into a wireframe. What works
 is the third thing: a delta big enough to read as a different material, **plus** a
-short directional cast at the seam, **and no line**.
+half-pixel edge at the seam whose shape the visual style owns. An earlier revision
+used a directional cast there instead; a cast lands on the reading plane, so the
+seams read as pressing down on the document.
 
 Preferred:
 
-- drawer ↔ plane: the plane's own inset cast (`--app-card-edge`), because the plane
-  outranks the drawer on z-index and a panel underneath cannot cast onto it;
-- dock ↔ conversation: the dock casts leftward (`--app-pane-split`);
-- chrome-bar bottoms: nothing — a bar is the top of its column, not a third material;
+- drawer ↔ plane: the plane's own inset edge (`--app-card-edge`), because the plane
+  outranks the drawer on z-index and a panel underneath cannot draw onto it;
+- dock ↔ conversation: `--app-pane-split`;
+- chrome-bar bottoms: `--app-header-edge`;
 - composer: a real field border, accent on focus;
 - floating overlay edge: the shadow's own first layer at `--seam-line`, never a
   border as well;

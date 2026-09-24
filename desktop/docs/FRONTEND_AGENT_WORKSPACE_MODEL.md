@@ -432,10 +432,10 @@ P129 进一步固定 Conversation 与 Transcript 的可见性边界：Applicatio
 
 已落地：
 
-- **Review Workspace 成形**：diff view 不再按 active file 过滤查询 —— 它展示整个改动，逐文件可折叠卡片在同一个滚动区里，右侧一条可筛选的变更文件导航（点行**滚动**到那个文件，不替换内容）。active file 从"过滤器"变成"焦点"：导航高亮它、打开时滚到它。
-- **两种密度**：`WorkspaceViewSpec.density` + 每密度一份 dock 宽度（见 §4）；一个没有任何 view 声明的密度会让 gate 变红。
+- **Review Workspace 成形**：diff view 不按 active file 过滤查询 —— 它展示整个改动，逐文件可折叠卡片在同一个滚动区里；工具栏的文件选择器可按名筛选并定位，上/下一文件、全部折叠/展开，文件头 sticky 并标注改动类型。active file 是"焦点"而非"过滤器"：一次打开意图会展开、滚动并短暂标出该文件。
+- **dock 宽度**：只存一个比例（用户拖拽时才写入），不按密度分份。
 - **深度与边缘全部进 token**：逃出守卫的 6 处硬编码 shadow、3 处手挑 border alpha 全部收敛；内部竖分割线有唯一作者（`.agent-pane-split`，`data-split-side` 选边）；`check-design-tokens` 增两条规则挡住回归。
-- 几何数字对齐 `~/Desktop/synara`（chrome bar 46px、列宽下限 208/640、seam ring clip 到自身半径），实现走 Flame 自己的 token 而非它的组件库。
+- chrome bar 46px；对话阅读下限是 `CONVERSATION_READING_MIN_PX`（440px），侧栏与 dock 都以它为界。
 
 验收：
 
