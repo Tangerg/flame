@@ -3,7 +3,7 @@ import { comboGlyph } from "@/lib/combo";
 import { Trans, useT } from "@/lib/i18n";
 import { IconMap, TocById } from "./iconMap";
 import { gap, SectionLabel, Tag, vocab } from "@/ui";
-import { COMMAND, useExtensionByKey } from "@/plugins/sdk";
+import { useCommandCombo } from "@/plugins/sdk";
 import { COMMAND_MENU_COMMAND } from "@/plugins/builtin/command/command-menu/public/commandMenu";
 import { color, leading, space, type as typeStep } from "@/styles/tokens.stylex";
 import { gallerySpread, galleryStyles as g } from "./galleryStyles";
@@ -112,7 +112,7 @@ const sh = stylex.create({
 
 export function IconShowcase() {
   const t = useT();
-  const combo = useExtensionByKey(COMMAND, COMMAND_MENU_COMMAND)?.combo;
+  const combo = useCommandCombo(COMMAND_MENU_COMMAND);
   const total = SECTIONS.reduce((n, s) => n + s.ids.length, 0);
 
   return (

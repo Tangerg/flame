@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { CommandSpec, ShortcutSpec } from "@/plugins/sdk";
-import { COMMAND, SHORTCUT, useExtensionPoint } from "@/plugins/sdk";
+import { SHORTCUT, useEffectiveCommands, useExtensionPoint } from "@/plugins/sdk";
 import { dispatchBinding } from "@/lib/combo";
 
 export function commandShortcuts(commands: readonly CommandSpec[]): ShortcutSpec[] {
@@ -33,7 +33,7 @@ function keymapOf(
 }
 
 export function useKeymap(): ShortcutSpec[] {
-  const commands = useExtensionPoint(COMMAND);
+  const commands = useEffectiveCommands();
   const shortcuts = useExtensionPoint(SHORTCUT);
   return useMemo(() => keymapOf(commands, shortcuts), [commands, shortcuts]);
 }

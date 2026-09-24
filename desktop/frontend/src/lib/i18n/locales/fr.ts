@@ -1327,4 +1327,12 @@ export const fr: Record<string, string> = {
   "composer.add.file": "Citer un fichier du projet",
   "composer.add.command": "Lancer une commande",
   "composer.add.command.startsMessage": "Une commande commence un message vide.",
+  "shortcuts.edit": "Modifier",
+  "shortcuts.editAria": "Modifier le raccourci de {{action}}",
+  "shortcuts.reset": "Réinitialiser",
+  "shortcuts.resetAll": "Tout réinitialiser",
+  "shortcuts.recording": "Appuyez sur les nouvelles touches · Échap pour annuler",
+  "shortcuts.conflict": "Déjà utilisé par {{action}}",
+  "shortcuts.replace": "L’utiliser ici",
+  "shortcuts.unbound": "Aucun raccourci",
 };

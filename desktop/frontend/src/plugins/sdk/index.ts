@@ -129,3 +129,5 @@ export type {
 export type { NotificationEntry, NotificationLevel } from "./types";
 
 export { useCurrentMessage, useCurrentMessageSessionId } from "./messageContext";
+
+export { useCommandCombo, useEffectiveCommands, useShortcutOverrides } from "./shortcutOverrides";

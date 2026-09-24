@@ -129,3 +129,29 @@ export function dispatchBinding(combo: string): string {
     })
     .join(" ");
 }
+
+const KEY_FROM_CODE = new Map([...DISPATCH_CODES].map(([key, code]) => [code, key]));
+const MODIFIER_KEYS = new Set(["Meta", "Control", "Alt", "Shift", "CapsLock", "Fn"]);
+
+export function comboFromEvent(event: {
+  code: string;
+  key: string;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+}): string | null {
+  if (MODIFIER_KEYS.has(event.key)) return null;
+  const key = /^Key[A-Z]$/.test(event.code)
+    ? event.code.slice(3).toLowerCase()
+    : /^Digit\d$/.test(event.code)
+      ? event.code.slice(5)
+      : (KEY_FROM_CODE.get(event.code) ?? event.key.toLowerCase());
+  const modifiers = [
+    (IS_MAC ? event.metaKey : event.ctrlKey) && "mod",
+    IS_MAC && event.ctrlKey && "ctrl",
+    event.altKey && "alt",
+    event.shiftKey && "shift",
+  ].filter((part): part is string => Boolean(part));
+  return normalizeCombo([...modifiers, key].join("+"));
+}

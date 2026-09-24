@@ -1289,4 +1289,12 @@ export const de: Record<string, string> = {
   "composer.add.file": "Projektdatei referenzieren",
   "composer.add.command": "Befehl ausführen",
   "composer.add.command.startsMessage": "Ein Befehl beginnt eine leere Nachricht.",
+  "shortcuts.edit": "Ändern",
+  "shortcuts.editAria": "Tastenkürzel für {{action}} ändern",
+  "shortcuts.reset": "Zurücksetzen",
+  "shortcuts.resetAll": "Alle zurücksetzen",
+  "shortcuts.recording": "Neue Tasten drücken · Esc zum Abbrechen",
+  "shortcuts.conflict": "Bereits von {{action}} belegt",
+  "shortcuts.replace": "Stattdessen hier nutzen",
+  "shortcuts.unbound": "Kein Kürzel",
 };

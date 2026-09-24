@@ -1183,4 +1183,12 @@ export const zh: Record<string, string> = {
   "composer.add.file": "引用项目文件",
   "composer.add.command": "运行命令",
   "composer.add.command.startsMessage": "命令需要从空消息开始。",
+  "shortcuts.edit": "更改",
+  "shortcuts.editAria": "更改“{{action}}”的快捷键",
+  "shortcuts.reset": "重置",
+  "shortcuts.resetAll": "全部重置",
+  "shortcuts.recording": "按下新的组合键 · Esc 取消",
+  "shortcuts.conflict": "已被“{{action}}”使用",
+  "shortcuts.replace": "改为在此使用",
+  "shortcuts.unbound": "无快捷键",
 };

@@ -1215,4 +1215,12 @@ export const ko: Record<string, string> = {
   "composer.add.file": "프로젝트 파일 참조",
   "composer.add.command": "명령 실행",
   "composer.add.command.startsMessage": "명령은 빈 메시지에서 시작합니다.",
+  "shortcuts.edit": "변경",
+  "shortcuts.editAria": "{{action}} 단축키 변경",
+  "shortcuts.reset": "초기화",
+  "shortcuts.resetAll": "모두 초기화",
+  "shortcuts.recording": "새 키를 누르세요 · Esc로 취소",
+  "shortcuts.conflict": "{{action}}에서 이미 사용 중",
+  "shortcuts.replace": "여기에 대신 사용",
+  "shortcuts.unbound": "단축키 없음",
 };

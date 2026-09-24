@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { definePlugin } from "../sdk";
+import { definePlugin, useShortcutOverrides } from "../sdk";
 import { COMMAND, SHORTCUT } from "@/plugins/sdk/kernelPoints";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { ShortcutsProvider } from "./ShortcutsProvider";
@@ -56,5 +56,31 @@ describe("shortcuts provider", () => {
 
     expect(shortcut).toHaveBeenCalledOnce();
     expect(command).not.toHaveBeenCalled();
+  });
+
+  it("follows a user's rebinding and does not run anything while one is being recorded", async () => {
+    const run = vi.fn();
+    useShortcutOverrides.setState({ overrides: { "test.rebound": "alt+j" }, recording: false });
+    await loadPluginsForTest(
+      definePlugin({
+        name: "test.command.rebound",
+        setup: (ctx) => {
+          ctx.contribute(COMMAND, { id: "test.rebound", label: "Act", combo: "Alt+K", run });
+        },
+      }),
+    );
+    const view = render(<ShortcutsProvider />);
+
+    press();
+    expect(run).not.toHaveBeenCalled();
+    press({ key: "j", code: "KeyJ" });
+    expect(run).toHaveBeenCalledOnce();
+
+    useShortcutOverrides.setState({ recording: true });
+    press({ key: "j", code: "KeyJ" });
+    expect(run).toHaveBeenCalledOnce();
+
+    useShortcutOverrides.setState({ overrides: {}, recording: false });
+    view.unmount();
   });
 });

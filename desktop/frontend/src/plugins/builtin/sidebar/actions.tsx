@@ -13,7 +13,7 @@ import {
   useWorkIndexActions,
 } from "@/plugins/builtin/navigation/public/workIndex";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
-import { COMMAND, definePlugin, useExtensionByKey } from "@/plugins/sdk";
+import { definePlugin, useCommandCombo } from "@/plugins/sdk";
 import { space } from "@/styles/tokens.stylex";
 
 const sb = stylex.create({
@@ -23,7 +23,7 @@ const sb = stylex.create({
 export function SidebarActions() {
   const t = useT();
   const actions = useWorkIndexActions();
-  const combo = useExtensionByKey(COMMAND, SESSION_SEARCH_COMMAND)?.combo;
+  const combo = useCommandCombo(SESSION_SEARCH_COMMAND);
 
   return (
     <div {...stylex.props(sb.stack)}>

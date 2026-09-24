@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { tinykeys } from "tinykeys";
 import { dispatchBinding } from "@/lib/combo";
+import { useShortcutOverrides } from "@/plugins/sdk";
 import { useKeymap } from "./keymap";
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -17,6 +18,7 @@ export function ShortcutsProvider() {
     const bindings: Record<string, (event: KeyboardEvent) => void> = {};
     for (const spec of shortcuts) {
       bindings[dispatchBinding(spec.key)] = (event) => {
+        if (useShortcutOverrides.getState().recording) return;
         if (!spec.allowInInputs && isEditableTarget(event.target)) return;
         spec.handler(event);
       };

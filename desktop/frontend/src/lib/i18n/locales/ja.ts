@@ -1232,4 +1232,12 @@ export const ja: Record<string, string> = {
   "composer.add.file": "プロジェクトのファイルを参照",
   "composer.add.command": "コマンドを実行",
   "composer.add.command.startsMessage": "コマンドは空のメッセージから始めます。",
+  "shortcuts.edit": "変更",
+  "shortcuts.editAria": "「{{action}}」のショートカットを変更",
+  "shortcuts.reset": "リセット",
+  "shortcuts.resetAll": "すべてリセット",
+  "shortcuts.recording": "新しいキーを押す · Esc でキャンセル",
+  "shortcuts.conflict": "「{{action}}」で使用中",
+  "shortcuts.replace": "こちらで使う",
+  "shortcuts.unbound": "ショートカットなし",
 };

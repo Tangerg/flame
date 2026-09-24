@@ -3,7 +3,7 @@ import { useT } from "@/lib/i18n";
 import { splitCombo } from "@/lib/combo";
 import { EmptyState, Icon, Kbd, SearchOverlay } from "@/ui";
 import { knownIconName } from "@/ui/icons";
-import { COMMAND, useExtensionPoint, useWorkspaceViews } from "@/plugins/sdk";
+import { useEffectiveCommands, useWorkspaceViews } from "@/plugins/sdk";
 import { useContextDockCatalog } from "@/plugins/builtin/workspace/public/contextDockCatalog";
 import {
   WORKSPACE_SETTINGS_VIEW,
@@ -32,7 +32,7 @@ export function CommandMenu() {
   const t = useT();
   const open = useCommandMenuStore((state) => state.open);
   const setOpen = useCommandMenuStore((state) => state.setOpen);
-  const commands = useExtensionPoint(COMMAND);
+  const commands = useEffectiveCommands();
   const catalog = useContextDockCatalog();
   const views = useWorkspaceViews();
 

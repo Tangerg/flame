@@ -1316,4 +1316,12 @@ export const es: Record<string, string> = {
   "composer.add.file": "Citar un archivo del proyecto",
   "composer.add.command": "Ejecutar un comando",
   "composer.add.command.startsMessage": "Un comando empieza un mensaje vacío.",
+  "shortcuts.edit": "Cambiar",
+  "shortcuts.editAria": "Cambiar el atajo de {{action}}",
+  "shortcuts.reset": "Restablecer",
+  "shortcuts.resetAll": "Restablecer todo",
+  "shortcuts.recording": "Pulsa las nuevas teclas · Esc para cancelar",
+  "shortcuts.conflict": "Ya lo usa {{action}}",
+  "shortcuts.replace": "Usarlo aquí",
+  "shortcuts.unbound": "Sin atajo",
 };

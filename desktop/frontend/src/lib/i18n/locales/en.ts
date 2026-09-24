@@ -1269,4 +1269,12 @@ export const en: Record<string, string> = {
   "composer.add.file": "Reference a project file",
   "composer.add.command": "Run a command",
   "composer.add.command.startsMessage": "A command starts an empty message.",
+  "shortcuts.edit": "Change",
+  "shortcuts.editAria": "Change the shortcut for {{action}}",
+  "shortcuts.reset": "Reset",
+  "shortcuts.resetAll": "Reset all",
+  "shortcuts.recording": "Press the new keys · Esc to cancel",
+  "shortcuts.conflict": "Already used by {{action}}",
+  "shortcuts.replace": "Use it here instead",
+  "shortcuts.unbound": "No shortcut",
 };

@@ -1186,4 +1186,12 @@ export const zhTW: Record<string, string> = {
   "composer.add.file": "引用專案檔案",
   "composer.add.command": "執行指令",
   "composer.add.command.startsMessage": "指令需要從空白訊息開始。",
+  "shortcuts.edit": "變更",
+  "shortcuts.editAria": "變更「{{action}}」的快速鍵",
+  "shortcuts.reset": "重設",
+  "shortcuts.resetAll": "全部重設",
+  "shortcuts.recording": "按下新的組合鍵 · Esc 取消",
+  "shortcuts.conflict": "已被「{{action}}」使用",
+  "shortcuts.replace": "改為在此使用",
+  "shortcuts.unbound": "無快速鍵",
 };
