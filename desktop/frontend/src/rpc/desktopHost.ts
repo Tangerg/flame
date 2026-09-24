@@ -76,8 +76,23 @@ const DesktopBootstrapSchema = z.object({
   }),
 });
 
+// Wails injects `window._wails` only once navigation has finished, which can be
+// after this module runs, so its absence says nothing. The native message
+// channel Wails calls through exists from the first script on every platform:
+// WKWebView and WebKitGTK expose `webkit.messageHandlers.external`, WebView2
+// exposes `chrome.webview`. A browser has neither.
+function insideWailsWebview(): boolean {
+  const scope = globalThis as {
+    webkit?: { messageHandlers?: { external?: unknown } };
+    chrome?: { webview?: unknown };
+  };
+  return (
+    scope.webkit?.messageHandlers?.external !== undefined || scope.chrome?.webview !== undefined
+  );
+}
+
 async function wailsDesktopHostBinding(): Promise<DesktopHostBinding | undefined> {
-  if (!("_wails" in globalThis)) return undefined;
+  if (!insideWailsWebview()) return undefined;
   const { Call, Events } = await import("@wailsio/runtime");
   return {
     call: (method, ...args) => Call.ByName(method, ...args),

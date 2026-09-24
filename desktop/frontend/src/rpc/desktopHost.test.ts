@@ -1,4 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const wailsCall = vi.hoisted(() => vi.fn());
+vi.mock("@wailsio/runtime", () => ({
+  Call: { ByName: wailsCall },
+  Events: { On: () => () => {} },
+}));
 import { RpcTransportError } from "./errors";
 import { createDesktopHostClient, type DesktopHostBinding } from "./desktopHost";
 
@@ -188,5 +194,20 @@ describe("DesktopHostClient", () => {
     stop();
     binding.emit("desktop:notification-opened", "session-2");
     expect(opened.mock.calls).toEqual([["session-1"]]);
+  });
+
+  describe("inside the packaged webview", () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("reaches the host before Wails has injected its runtime object", async () => {
+      vi.stubGlobal("webkit", { messageHandlers: { external: { postMessage: () => {} } } });
+      expect("_wails" in globalThis).toBe(false);
+      wailsCall.mockResolvedValueOnce({
+        localRuntime: { endpoint: "http://127.0.0.1:17171", localToken: "token" },
+      });
+      const bootstrap = await createDesktopHostClient().bootstrap();
+      expect(bootstrap?.localRuntime.localToken).toBe("token");
+      expect(wailsCall).toHaveBeenCalledWith(BOOTSTRAP);
+    });
   });
 });
