@@ -20,8 +20,9 @@ test("the composer preserves the model and lets secondary labels yield without m
     node.textContent = "A much longer model label changed without resizing the window";
   });
   expect(await composer.evaluate((node) => node.scrollWidth - node.clientWidth)).toBeLessThan(2);
-  await model.click();
-  await expect(page.getByRole("button", { name: "Switch reasoning effort" })).toBeVisible();
+  const effort = page.getByRole("button", { name: "Switch reasoning effort" });
+  await expect(effort).toBeVisible();
+  await expect(effort.locator('[data-slot="composer-chip-label"]')).toBeHidden();
 });
 
 test("high-risk approval remains explicit in a narrow composer", async ({ page }) => {

@@ -40,7 +40,6 @@ export { SearchOverlay } from "./search-overlay";
 export { SectionLabel } from "./section-label";
 export { SelectTrigger } from "./select-trigger";
 export { Segmented } from "./segmented";
-export { StepSlider } from "./step-slider";
 export type { SegmentedOption } from "./segmented";
 export { ShikiCodeBlock } from "./shiki-code-block";
 export { SkeletonControl, SkeletonList } from "./skeleton";

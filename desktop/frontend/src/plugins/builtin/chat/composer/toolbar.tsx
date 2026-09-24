@@ -23,6 +23,7 @@ import { useAddComposerImageFiles } from "./public/attachments";
 import { useComposerText, useSetComposerText } from "./public/draft";
 import { focusComposer } from "./public/focus";
 import { ModelPicker } from "./ui/ModelPicker";
+import { ReasoningEffortPill } from "./ui/ReasoningEffortPill";
 
 function ContextMenuButton() {
   const t = useT();
@@ -189,6 +190,11 @@ export const composerToolbar = definePlugin({
       id: "model",
       order: 1,
       component: ModelPicker,
+    });
+    contributeLayout(ctx, "composer.toolbar.start", {
+      id: "reasoning-effort",
+      order: 2,
+      component: ReasoningEffortPill,
     });
   },
 });

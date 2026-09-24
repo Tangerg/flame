@@ -1211,9 +1211,4 @@ export const zh: Record<string, string> = {
   "file.change.del": "工作树中已删除",
   "file.change.below": "包含工作树改动",
   "file.unsupported.sub": "Flame 以文本方式显示工作区文件，请用对应的应用打开它。",
-  "composer.effort.title": "思考强度",
-  "composer.effort.faster": "更快",
-  "composer.effort.smarter": "更聪明",
-  "composer.effort.automatic": "思考 · 自动",
-  "composer.effort.automatic.title": "该模型会自行决定思考深度，不提供可选的思考强度。",
 };

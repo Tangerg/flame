@@ -1215,9 +1215,4 @@ export const zhTW: Record<string, string> = {
   "file.change.mod": "工作樹中已修改",
   "file.change.del": "工作樹中已刪除",
   "file.change.below": "包含工作樹變更",
-  "composer.effort.title": "思考強度",
-  "composer.effort.faster": "更快",
-  "composer.effort.smarter": "更聰明",
-  "composer.effort.automatic": "思考 · 自動",
-  "composer.effort.automatic.title": "此模型會自行決定思考深度，不提供可選的思考強度。",
 };

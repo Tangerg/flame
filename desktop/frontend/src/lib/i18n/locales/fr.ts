@@ -1357,10 +1357,4 @@ export const fr: Record<string, string> = {
   "file.change.mod": "Modifié dans l'arbre de travail",
   "file.change.del": "Supprimé dans l'arbre de travail",
   "file.change.below": "Contient des modifications de l'arbre de travail",
-  "composer.effort.title": "Effort",
-  "composer.effort.faster": "Plus rapide",
-  "composer.effort.smarter": "Plus intelligent",
-  "composer.effort.automatic": "Réflexion · Auto",
-  "composer.effort.automatic.title":
-    "Ce modèle décide seul de sa réflexion et ne propose aucun niveau à choisir.",
 };

@@ -186,59 +186,22 @@ describe("ModelPicker", () => {
     });
   });
 
-  it("names the effort in force beside the model", () => {
+  it("names only the model; effort has its own control", () => {
     state.selection = { model: state.models[2]!, reasoningEffort: "high" };
     render(<ModelPicker />);
-    expect(screen.getByRole("button", { name: "Switch model" }).textContent).toContain(
-      "DeepSeek Reasoner · High",
-    );
+    const label = screen
+      .getByRole("button", { name: "Switch model" })
+      .querySelector('[data-slot="composer-chip-label"]');
+    expect(label?.textContent).toBe("DeepSeek Reasoner");
   });
 
-  it("sets effort from the selected row without re-choosing the model", async () => {
+  it("marks the model in use by its row, without a radio column", async () => {
     state.selection = { model: state.models[2]!, reasoningEffort: "high" };
     render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     await screen.findByPlaceholderText("Search models…");
-
-    const chip = await screen.findByRole("button", { name: "Switch reasoning effort" });
-    expect(chip.closest('[role="listbox"]')).toBeNull();
-    fireEvent.click(chip);
-    const slider = await screen.findByLabelText("Reasoning effort");
-    expect(slider.getAttribute("aria-valuetext")).toBe("High");
-
-    fireEvent.keyDown(slider, { key: "ArrowLeft" });
-    await waitFor(() =>
-      expect(state.setModel).toHaveBeenCalledWith({
-        kind: "explicit",
-        provider: "deepseek",
-        model: "DeepSeek Reasoner",
-        reasoningEffort: "low",
-      }),
-    );
-    expect(screen.getByPlaceholderText("Search models…")).toBeTruthy();
-  });
-
-  it("offers effort only for a model that publishes levels", async () => {
-    state.selection = { model: state.models[1]!, reasoningEffort: undefined };
-    render(<ModelPicker />);
-    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
-    await screen.findByPlaceholderText("Search models…");
-    expect(screen.queryByRole("button", { name: "Switch reasoning effort" })).toBeNull();
-  });
-
-  it("says a thinking model without levels decides effort itself", async () => {
-    const automatic = {
-      ...state.models[2]!,
-      id: "Vision Exp",
-      label: "Vision Exp",
-      reasoningLevels: [],
-    };
-    state.models = [...state.models, automatic];
-    state.selection = { model: automatic, reasoningEffort: undefined };
-    render(<ModelPicker />);
-    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
-    await screen.findByPlaceholderText("Search models…");
-    expect(await screen.findByText("Thinking · Auto")).toBeTruthy();
+    const current = options().getByRole("option", { name: /DeepSeek Reasoner/ });
+    expect(current.hasAttribute("data-current")).toBe(true);
     expect(screen.queryByRole("button", { name: "Switch reasoning effort" })).toBeNull();
   });
 });

@@ -61,9 +61,6 @@ const op = stylex.create({
 
 const COLLAPSED_LINES = 9;
 const FOLLOW_SLACK_PX = 4;
-// Rows are measured as they render, so the estimated offset of a far match can be
-// off by a few rows; the jump re-aims until the row is visible, then lets go.
-const JUMP_SETTLE_FRAMES = 60;
 
 function OutputLine({ text }: { text: string }) {
   if (!hasAnsi(text)) return <LinkedText text={text || " "} />;
@@ -198,6 +195,8 @@ function ScrollableOutput({
   });
 
   const current = find?.current ?? null;
+  // Rows are measured as they render, so a far match drifts while the rows around
+  // it settle. The match stays aimed at until the user scrolls, clicks or types.
   const pendingJump = useRef<number | null>(null);
 
   const stickToEnd = useEffectEvent(() => {
@@ -206,40 +205,40 @@ function ScrollableOutput({
     port.scrollTop = port.scrollHeight;
   });
   useLayoutEffect(() => stickToEnd(), [lines.length]);
+
+  const aimAtMatch = useEffectEvent(() => {
+    const port = edges.port.current;
+    const target = pendingJump.current;
+    if (!port || target === null) return;
+    const row = port.querySelector<HTMLElement>(`[data-index="${target}"]`);
+    if (!row) return;
+    const box = row.getBoundingClientRect();
+    const view = port.getBoundingClientRect();
+    if (box.top < view.top || box.bottom > view.bottom) {
+      row.scrollIntoView({ block: "center", inline: "nearest" });
+    }
+  });
+  useLayoutEffect(() => aimAtMatch());
+
   useEffect(() => {
     const content = edges.content.current;
     if (!content) return;
-    const observer = new ResizeObserver(() => stickToEnd());
+    const observer = new ResizeObserver(() => {
+      stickToEnd();
+      aimAtMatch();
+    });
     observer.observe(content);
     return () => observer.disconnect();
   }, [edges.content]);
 
   useEffect(() => {
     const port = edges.port.current;
+    pendingJump.current = current;
     if (current === null || !port) return;
     followingRef.current = false;
     setFollowing(false);
-    pendingJump.current = current;
     const [offset] = rows.getOffsetForIndex(current, "center") ?? [port.scrollTop];
     port.scrollTop = offset;
-    let frame = 0;
-    let attempts = 0;
-    const settle = () => {
-      if (pendingJump.current !== current) return;
-      const row = port.querySelector<HTMLElement>(`[data-index="${current}"]`);
-      if (row) {
-        const box = row.getBoundingClientRect();
-        const view = port.getBoundingClientRect();
-        if (box.top >= view.top && box.bottom <= view.bottom) {
-          pendingJump.current = null;
-          return;
-        }
-        row.scrollIntoView({ block: "center", inline: "nearest" });
-      }
-      if (attempts++ < JUMP_SETTLE_FRAMES) frame = requestAnimationFrame(settle);
-    };
-    frame = requestAnimationFrame(settle);
-    return () => cancelAnimationFrame(frame);
   }, [current, rows, edges.port]);
 
   const releaseJump = () => {
@@ -306,6 +305,7 @@ function ScrollableOutput({
           tone="accent"
           size="sm"
           onClick={() => {
+            releaseJump();
             followingRef.current = true;
             setFollowing(true);
             const port = edges.port.current;

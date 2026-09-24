@@ -1,16 +1,10 @@
-import { useMemo, useState } from "react";
-import * as stylex from "@stylexjs/stylex";
+import { useMemo } from "react";
 
 import { fmtTokens } from "@/lib/format";
 import { type Translate, useT } from "@/lib/i18n";
-import { reasoningEffortLabel } from "@/plugins/builtin/settings/providers/public/reasoningEffort";
-import { radius, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
 import {
   Button,
   Icon,
-  Popover,
-  StepSlider,
-  vocab,
   ProviderIcon,
   RailCatalogPicker,
   SkeletonControl,
@@ -27,95 +21,6 @@ import { useSetComposerModelPreference } from "../public/modelPreference";
 import { useSelectedModelSelection } from "../public/selectedModel";
 
 type Selection = NonNullable<ReturnType<typeof useSelectedModelSelection>>;
-
-const effortStyles = stylex.create({
-  panel: {
-    display: "flex",
-    width: "260px",
-    flexDirection: "column",
-    gap: space.s2,
-    padding: space.s3,
-  },
-  heading: { display: "flex", gap: space.s1 },
-  value: { fontWeight: weight.medium },
-  ends: { display: "flex", justifyContent: "space-between" },
-  fixed: {
-    display: "inline-flex",
-    height: "var(--control-height-xs)",
-    alignItems: "center",
-    borderRadius: radius.button,
-    paddingInline: space.s2,
-    backgroundColor: surface.hover,
-    whiteSpace: "nowrap",
-  },
-});
-
-function EffortChip({ selection }: { selection: Selection }) {
-  const t = useT();
-  const setModel = useSetComposerModelPreference();
-  const { model } = selection;
-  const levels = model.reasoningLevels;
-  const committed = model.reasoningLevelOrDefault(selection.reasoningEffort)!;
-  const [preview, setPreview] = useState<string | null>(null);
-  const shown = preview ?? committed;
-  const commit = (index: number) => {
-    setPreview(null);
-    const effort = levels[index];
-    if (effort === undefined || effort === committed) return;
-    setModel({
-      kind: "explicit",
-      provider: model.provider,
-      model: model.id,
-      reasoningEffort: effort,
-    });
-  };
-  return (
-    <Popover.Root onOpenChange={(open) => !open && setPreview(null)}>
-      <Popover.Trigger
-        render={
-          <Button
-            variant="soft"
-            size="xs"
-            aria-label={t("composer.switchReasoningEffort")}
-            title={t("composer.reasoningEffort")}
-          >
-            {reasoningEffortLabel(committed, t)}
-            <Icon name="chevron-down" size="xs" className={stylex.props(vocab.faint).className} />
-          </Button>
-        }
-      />
-      <Popover.Content side="right" align="start" sideOffset={12}>
-        <div {...stylex.props(effortStyles.panel)}>
-          <div {...stylex.props(effortStyles.heading, typeStep.uiMd)}>
-            <span {...stylex.props(vocab.muted)}>{t("composer.effort.title")}</span>
-            <span {...stylex.props(effortStyles.value)}>{reasoningEffortLabel(shown, t)}</span>
-          </div>
-          <div {...stylex.props(effortStyles.ends, vocab.muted, typeStep.uiSm)}>
-            <span>{t("composer.effort.faster")}</span>
-            <span>{t("composer.effort.smarter")}</span>
-          </div>
-          <StepSlider
-            stops={levels.map((level) => reasoningEffortLabel(level, t))}
-            value={levels.indexOf(shown)}
-            onValueChange={(index) => setPreview(levels[index] ?? null)}
-            onValueCommitted={commit}
-            ariaLabel={t("composer.reasoningEffort")}
-          />
-        </div>
-      </Popover.Content>
-    </Popover.Root>
-  );
-}
-
-function effortSuffixed(
-  label: string,
-  selection: Selection | null | undefined,
-  t: Translate,
-): string {
-  if (!selection || selection.model.reasoningLevels.length === 0) return label;
-  const effort = selection.model.reasoningLevelOrDefault(selection.reasoningEffort);
-  return effort ? `${label} · ${reasoningEffortLabel(effort, t)}` : label;
-}
 
 function modelItemId(model: SelectableModel): string {
   return JSON.stringify([model.provider, model.id]);
@@ -261,19 +166,6 @@ export function ModelPicker() {
       }
       label={t("composer.switchModel")}
       heading={t("composer.model.title")}
-      activeAccessory={
-        !selection || !selection.model.reasoning ? undefined : selection.model.reasoningLevels
-            .length > 0 ? (
-          <EffortChip selection={selection} />
-        ) : (
-          <span
-            title={t("composer.effort.automatic.title")}
-            {...stylex.props(effortStyles.fixed, vocab.muted, typeStep.uiSm)}
-          >
-            {t("composer.effort.automatic")}
-          </span>
-        )
-      }
       placeholder={t("composer.model.search.placeholder")}
       emptyLabel={t("composer.model.search.empty")}
       onSelect={(item) => {
@@ -294,7 +186,7 @@ export function ModelPicker() {
           title={`${selected.label} · ${providerDisplayName(selected.provider)}`}
           shrink="gives"
           leading={<ProviderIcon provider={selected.provider} size="sm" />}
-          label={effortSuffixed(selected.label, selection, t)}
+          label={selected.label}
         />
       }
       side="top"

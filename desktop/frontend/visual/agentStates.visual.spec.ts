@@ -630,24 +630,27 @@ test("model capabilities drive the picker and image admission together", async (
   await add.click();
   await expect(attach).toBeEnabled();
   await page.keyboard.press("Escape");
-  await expect(triggerLabel).toHaveText("GPT-5.6 Sol · Medium");
+  await expect(triggerLabel).toHaveText("GPT-5.6 Sol");
+  const effort = page.getByRole("button", { name: "Switch reasoning effort" });
+  const effortLabel = effort.locator('[data-slot="composer-chip-label"]');
+  await expect(effortLabel).toHaveText("Medium");
+  await effort.click();
+  await expect(page.getByRole("menuitem")).toHaveText([
+    "Off",
+    "Low",
+    "Medium",
+    "High",
+    "Extra high",
+    "Max",
+  ]);
+  await page.getByRole("menuitem", { name: "High", exact: true }).click();
+  await expect(effortLabel).toHaveText("High");
   await trigger.click();
 
   const surface = page.getByRole("dialog", { name: "Switch model" });
   const sol = surface.getByRole("option", { name: /^GPT-5\.6 Sol/ });
   await expect(sol).toHaveAttribute("title", GPT_5_6_SOL_CAPABILITIES);
-  const effort = surface.getByRole("button", { name: "Switch reasoning effort" });
-  await expect(effort).toHaveText("Medium");
-  const [chip, row] = await Promise.all([effort.boundingBox(), sol.boundingBox()]);
-  expect(Math.abs(chip!.y + chip!.height / 2 - (row!.y + row!.height / 2))).toBeLessThanOrEqual(1);
-  await effort.click();
-  const slider = page.getByRole("slider", { name: "Reasoning effort" });
-  await expect(slider).toHaveAttribute("aria-valuetext", "Medium");
-  await slider.press("ArrowRight");
-  await expect(effort).toHaveText("High");
-  await expect(triggerLabel).toHaveText("GPT-5.6 Sol · High");
-  await page.keyboard.press("Escape");
-  await expect(surface).toBeVisible();
+  await expect(sol).toHaveAttribute("data-current", "");
 
   await page.getByPlaceholder("Search models…").fill("Qwen MT Plus");
   const qwen = surface.getByRole("option", { name: /^Qwen MT Plus/ });
@@ -655,6 +658,7 @@ test("model capabilities drive the picker and image admission together", async (
   await qwen.click();
 
   await expect(triggerLabel).toHaveText("Qwen MT Plus");
+  await expect(effort).toHaveCount(0);
   await add.click();
   await expect(attach).toHaveAttribute("aria-disabled", "true");
 });

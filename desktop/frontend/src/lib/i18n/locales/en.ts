@@ -1299,10 +1299,4 @@ export const en: Record<string, string> = {
   "file.change.mod": "Modified in the working tree",
   "file.change.del": "Deleted in the working tree",
   "file.change.below": "Contains working-tree changes",
-  "composer.effort.title": "Effort",
-  "composer.effort.faster": "Faster",
-  "composer.effort.smarter": "Smarter",
-  "composer.effort.automatic": "Thinking · Auto",
-  "composer.effort.automatic.title":
-    "This model thinks on its own and offers no effort levels to choose from.",
 };

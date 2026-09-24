@@ -1320,10 +1320,4 @@ export const de: Record<string, string> = {
   "file.change.mod": "Im Arbeitsbaum geändert",
   "file.change.del": "Im Arbeitsbaum gelöscht",
   "file.change.below": "Enthält Änderungen im Arbeitsbaum",
-  "composer.effort.title": "Aufwand",
-  "composer.effort.faster": "Schneller",
-  "composer.effort.smarter": "Klüger",
-  "composer.effort.automatic": "Denken · Auto",
-  "composer.effort.automatic.title":
-    "Dieses Modell entscheidet selbst, wie viel es nachdenkt, und bietet keine Stufen zur Auswahl.",
 };

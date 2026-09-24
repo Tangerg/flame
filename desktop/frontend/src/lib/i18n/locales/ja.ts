@@ -1262,9 +1262,4 @@ export const ja: Record<string, string> = {
   "file.change.mod": "作業ツリーで変更",
   "file.change.del": "作業ツリーで削除",
   "file.change.below": "作業ツリーの変更を含む",
-  "composer.effort.title": "思考の強さ",
-  "composer.effort.faster": "速い",
-  "composer.effort.smarter": "賢い",
-  "composer.effort.automatic": "思考 · 自動",
-  "composer.effort.automatic.title": "このモデルは思考の深さを自動で決め、選べる強さはありません。",
 };

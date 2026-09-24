@@ -406,8 +406,6 @@ const INTERACTION_SURFACES: readonly {
     name: `the composer's ${control} popup`,
     route: { fixture: "workspace" as const, state: "dock-light" },
     open: async (page: Page) => {
-      if (control === "Switch reasoning effort")
-        await page.getByRole("button", { name: "Switch model" }).click();
       await page.getByRole("button", { name: control }).first().click();
       await expect(
         page.locator('[role="menu"], [role="listbox"], [role="dialog"]').first(),
@@ -1320,8 +1318,6 @@ for (const overlay of OVERLAYS) {
   for (const theme of ["light", "dark"] as const) {
     test(`WCAG audit ${overlay.label} ${theme}`, async ({ page }) => {
       await openFixture(page, { ...overlay.route, theme });
-      if (overlay.open === "Switch reasoning effort")
-        await page.getByRole("button", { name: "Switch model" }).click();
       const trigger = page.getByRole("button", { name: overlay.open }).first();
       if (overlay.by === "hover") await trigger.hover();
       else await trigger.click();
@@ -1747,18 +1743,17 @@ test("no floating surface carries two StyleX rules for one property", async ({ p
   await page.keyboard.press("Escape");
 
   await openFixture(page, { fixture: "agent", state: "narrative" });
-  for (const name of ["Approval mode", "Switch model", "Add to message"]) {
+  for (const name of [
+    "Approval mode",
+    "Switch model",
+    "Switch reasoning effort",
+    "Add to message",
+  ]) {
     await page.getByRole("button", { name }).click();
     await page.waitForTimeout(250);
     await collect(name);
     await page.keyboard.press("Escape");
   }
-  await page.getByRole("button", { name: "Switch model" }).click();
-  await page.getByRole("button", { name: "Switch reasoning effort" }).click();
-  await page.waitForTimeout(250);
-  await collect("Switch reasoning effort");
-  await page.keyboard.press("Escape");
-  await page.keyboard.press("Escape");
   const tick = page.locator('[data-slot="chat-rail"] nav button').first();
   await tick.hover();
   await expect(page.getByRole("tooltip")).toBeVisible();

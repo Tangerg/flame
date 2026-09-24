@@ -1,24 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
-import {
-  type ReactElement,
-  type ReactNode,
-  type Ref,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ReactElement, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/classNames";
-import {
-  color,
-  corner,
-  motion,
-  radius,
-  space,
-  surface,
-  type,
-  weight,
-} from "@/styles/tokens.stylex";
+import { color, motion, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { ComboboxPrimitive } from "@/ui/primitives";
 import { Icon, type IconName } from "@/ui/icons";
 import { dress } from "./button";
@@ -102,19 +85,7 @@ const styles = stylex.create({
     scrollPaddingBlock: space.s1,
   },
   listInset: { minWidth: 0, padding: space.s1 },
-  scroller: {
-    position: "relative",
-    display: { default: null, ":has(> [data-empty])": "none" },
-  },
-  rowTrailingRoom: {
-    gridTemplateColumns:
-      "var(--menu-glyph, calc(var(--spacing) * 4)) minmax(0, 1fr) var(--catalog-accessory-width, 0px) auto",
-  },
-  accessory: {
-    position: "absolute",
-    display: "flex",
-    alignItems: "center",
-  },
+  hideWhenListEmpty: { display: { default: null, ":is([data-empty])": "none" } },
   group: {
     display: "grid",
     rowGap: "2px",
@@ -169,8 +140,14 @@ const styles = stylex.create({
     color: { default: color.fgFaint, ":focus-within": color.fg },
   },
   railSearchInput: { flex: "0 1 auto", maxWidth: "100%", fieldSizing: "content" },
-  rowTrailing: {
-    gridTemplateColumns: "var(--menu-glyph, calc(var(--spacing) * 4)) minmax(0, 1fr) auto",
+  rowUnmarked: {
+    gridTemplateColumns: "var(--menu-glyph, calc(var(--spacing) * 4)) minmax(0, 1fr)",
+  },
+  rowCurrent: {
+    backgroundColor: {
+      default: surface.selected,
+      ":is([data-highlighted])": surface.selectedHover,
+    },
   },
   railRow: {
     display: "grid",
@@ -189,22 +166,6 @@ const styles = stylex.create({
   railRowOff: {
     color: { default: color.fgMuted, ":hover": color.fg },
     backgroundColor: { default: null, ":hover": surface.hover },
-  },
-  radio: {
-    display: "grid",
-    height: "var(--control-mark-size)",
-    width: "var(--control-mark-size)",
-    flexShrink: 0,
-    placeItems: "center",
-    borderWidth: "var(--control-edge-width)",
-    borderStyle: "solid",
-    borderColor: surface.controlEdge,
-  },
-  radioOn: { borderColor: color.accent, backgroundColor: color.accent },
-  radioDot: {
-    height: space.s1_5,
-    width: space.s1_5,
-    backgroundColor: color.onAccent,
   },
 });
 
@@ -279,27 +240,9 @@ function CatalogSearch({ placeholder, ref }: { placeholder: string; ref?: Ref<HT
   );
 }
 
-type CatalogMark = "check" | "radio";
+type CatalogMark = "check" | "tint";
 
-function RowMark({ mark, active }: { mark: CatalogMark; active?: boolean }) {
-  if (mark === "radio") {
-    return (
-      <span aria-hidden {...stylex.props(styles.radio, corner.pill, active && styles.radioOn)}>
-        {active && <span {...stylex.props(styles.radioDot, corner.pill)} />}
-      </span>
-    );
-  }
-  return active ? <Icon name="check" size="xs" {...stylex.props(styles.mark)} /> : <span />;
-}
-
-const ACCESSORY_ROOM = "data-catalog-accessory-room";
-
-function CatalogRow(
-  item: CatalogPickerItem,
-  mark: CatalogMark,
-  groupLabel?: string,
-  accessoryRoom = false,
-) {
+function CatalogRow(item: CatalogPickerItem, mark: CatalogMark, groupLabel?: string) {
   const showCaption = item.caption !== undefined && item.caption !== groupLabel;
   return (
     <ComboboxPrimitive.Item
@@ -310,8 +253,8 @@ function CatalogRow(
       {...stylex.props(
         floatingRow("pick", item.description ? "lg" : "sm"),
         styles.row,
-        mark === "radio" && styles.rowTrailing,
-        accessoryRoom && styles.rowTrailingRoom,
+        mark === "tint" && styles.rowUnmarked,
+        mark === "tint" && item.active && styles.rowCurrent,
       )}
     >
       {item.leading ?? (
@@ -326,8 +269,8 @@ function CatalogRow(
         </span>
         {item.description}
       </span>
-      {accessoryRoom && <span aria-hidden {...{ [ACCESSORY_ROOM]: "" }} />}
-      <RowMark mark={mark} active={item.active} />
+      {mark === "check" &&
+        (item.active ? <Icon name="check" size="xs" {...stylex.props(styles.mark)} /> : <span />)}
     </ComboboxPrimitive.Item>
   );
 }
@@ -422,7 +365,6 @@ export function RailCatalogPicker({
   groups,
   openAtGroupId,
   heading,
-  activeAccessory,
   label,
   placeholder,
   emptyLabel,
@@ -436,20 +378,12 @@ export function RailCatalogPicker({
   groups: CatalogPickerGroup[];
   openAtGroupId?: string;
   heading: string;
-  activeAccessory?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [groupId, setGroupId] = useState<string | undefined>(openAtGroupId);
   const listRef = useRef<HTMLDivElement>(null);
-  const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
-  const accessoryRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const [accessorySpot, setAccessorySpot] = useState<{
-    top: number;
-    left: number;
-    height: number;
-  } | null>(null);
 
   const searching = query.trim().length > 0;
   const active = groups.find((group) => group.id === groupId) ?? groups[0];
@@ -470,37 +404,6 @@ export function RailCatalogPicker({
     );
     return () => cancelAnimationFrame(frame);
   }, [open, groupId]);
-
-  const hasAccessory = activeAccessory !== undefined;
-  const itemKey = items.map((item) => `${item.id}:${item.active ? 1 : 0}`).join("\0");
-  useLayoutEffect(() => {
-    const list = listRef.current;
-    if (!hasAccessory || !scroller || !list) return;
-    const place = () => {
-      const accessory = accessoryRef.current;
-      if (accessory) {
-        scroller.style.setProperty("--catalog-accessory-width", `${accessory.offsetWidth}px`);
-      }
-      const room = list.querySelector<HTMLElement>(`[${ACCESSORY_ROOM}]`);
-      if (!room) {
-        setAccessorySpot(null);
-        return;
-      }
-      const frame = scroller.getBoundingClientRect();
-      const row = room.parentElement!.getBoundingClientRect();
-      const spot = room.getBoundingClientRect();
-      setAccessorySpot({
-        top: row.top - frame.top + scroller.scrollTop,
-        left: spot.left - frame.left + scroller.scrollLeft,
-        height: row.height,
-      });
-    };
-    place();
-    const observer = new ResizeObserver(place);
-    observer.observe(list);
-    if (accessoryRef.current) observer.observe(accessoryRef.current);
-    return () => observer.disconnect();
-  }, [scroller, hasAccessory, itemKey, groupId]);
 
   return (
     <Popover.Root
@@ -593,38 +496,16 @@ export function RailCatalogPicker({
               >
                 {emptyLabel}
               </ComboboxPrimitive.Empty>
-              <div ref={setScroller} {...stylex.props(styles.list, styles.scroller)}>
-                <ComboboxPrimitive.List
-                  ref={listRef}
-                  className={stylex.props(styles.listInset).className}
-                >
-                  {(item: CatalogPickerItem) =>
-                    CatalogRow(
-                      item,
-                      "radio",
-                      searching ? undefined : active?.label,
-                      hasAccessory && item.active === true,
-                    )
-                  }
-                </ComboboxPrimitive.List>
-                {hasAccessory && (
-                  <div
-                    ref={accessoryRef}
-                    {...stylex.props(styles.accessory)}
-                    style={
-                      accessorySpot
-                        ? {
-                            top: accessorySpot.top,
-                            left: accessorySpot.left,
-                            height: accessorySpot.height,
-                          }
-                        : { visibility: "hidden" }
-                    }
-                  >
-                    {activeAccessory}
-                  </div>
-                )}
-              </div>
+              <ComboboxPrimitive.List
+                ref={listRef}
+                className={
+                  stylex.props(styles.hideWhenListEmpty, styles.list, styles.listInset).className
+                }
+              >
+                {(item: CatalogPickerItem) =>
+                  CatalogRow(item, "tint", searching ? undefined : active?.label)
+                }
+              </ComboboxPrimitive.List>
             </div>
           </div>
         </ComboboxPrimitive.Root>
