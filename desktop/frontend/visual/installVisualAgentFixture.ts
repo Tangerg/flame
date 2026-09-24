@@ -67,10 +67,8 @@ import {
   type WorkspaceProjectSummary,
 } from "@/plugins/builtin/workspace/public/queries";
 import {
-  WORKSPACE_FILE_HEAD_KEY,
   WORKSPACE_LIST_FILES_KEY,
   type WorkspaceFileEntry,
-  type WorkspaceFileLine,
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { useComposerStore } from "@/plugins/builtin/chat/composer/adapters/composerStore";
 import {
@@ -193,27 +191,6 @@ const fileListProvider = definePlugin({
   },
 });
 
-const fileHeadProvider = definePlugin({
-  name: "flame.visual.file-head",
-  setup(ctx) {
-    ctx.contribute(DATA_PROVIDER, {
-      key: WORKSPACE_FILE_HEAD_KEY,
-      fetcher: async () =>
-        [
-          { lineNumber: 1, text: "package session" },
-          { lineNumber: 2, text: "" },
-          {
-            lineNumber: 3,
-            text: "func (s *Store) Commit(ctx context.Context, session *Session, records []Record, opts CommitOptions) (Receipt, error) {",
-          },
-          { lineNumber: 4, text: "\tif err := s.flushLocked(); err != nil {" },
-          { lineNumber: 5, text: '\t\treturn Receipt{}, fmt.Errorf("commit: %w", err)' },
-          { lineNumber: 6, text: "\t}" },
-        ] satisfies WorkspaceFileLine[],
-    });
-  },
-});
-
 const visualAgentSessions = definePlugin({
   name: "flame.visual.agent-session-ports",
   provides: { sessions: AGENT_SESSIONS },
@@ -324,7 +301,6 @@ export async function installVisualAgentFixture(
     subagentsView,
     schedulesPane,
     ...toolRenderingPlugins,
-    fileHeadProvider,
     fileListProvider,
   );
 

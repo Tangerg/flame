@@ -1,8 +1,6 @@
-type ComposerAction = "send" | "steer" | "stop";
-
 export interface ComposerActionLayout {
-  primary: ComposerAction;
-  secondary: "stop" | null;
+  submit: "send" | "steer" | null;
+  stop: "emphasized" | "quiet" | null;
 }
 
 export function composerActionLayout({
@@ -12,7 +10,7 @@ export function composerActionLayout({
   running: boolean;
   hasInput: boolean;
 }): ComposerActionLayout {
-  if (!running) return { primary: "send", secondary: null };
-  if (hasInput) return { primary: "steer", secondary: "stop" };
-  return { primary: "stop", secondary: null };
+  if (!running) return { submit: "send", stop: null };
+  if (hasInput) return { submit: "steer", stop: "quiet" };
+  return { submit: null, stop: "emphasized" };
 }

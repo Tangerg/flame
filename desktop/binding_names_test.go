@@ -10,7 +10,7 @@ import (
 )
 
 var boundMethods = []string{
-	"Bootstrap", "ChooseWorkingDirectory", "RevealWindow", "SaveImage", "WindowChrome",
+	"Bootstrap", "ChooseWorkingDirectory", "RevealPath", "RevealWindow", "SaveImage", "WindowChrome",
 }
 
 func TestDesktopHostBindsExactlyTheDeclaredMethods(t *testing.T) {

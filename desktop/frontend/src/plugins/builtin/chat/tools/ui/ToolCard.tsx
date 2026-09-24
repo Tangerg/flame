@@ -1,23 +1,16 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { DiffStat, IconButton, knownIconName, reveal, StatusDot, vocab } from "@/ui";
+import { DiffStat } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { type ToolMetaItem } from "@/plugins/builtin/agent/public/messagePresentation";
 import { useT } from "@/lib/i18n";
-import {
-  lookupToolActionOwner,
-  lookupToolViewOpenerOwner,
-  reportPluginError,
-  TOOL_ACTION,
-  TOOL_VIEW_OPENER,
-  useExtensionPoint,
-} from "@/plugins/sdk";
-import { toolCardActions, toolCardModel, toolCardViewOpener } from "../application/toolCardModel";
+import { toolCardModel } from "../application/toolCardModel";
 import { toolCallIconFor } from "@/plugins/builtin/agent/public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "@/ui/agent";
-import { color, face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 import { toolMetaInk } from "./toolMetaInk";
+import { ToolFailureLine, ToolStatusMarks, useToolRowActions } from "./ToolRowParts";
 
 interface Props {
   tool: ToolCall;
@@ -27,7 +20,6 @@ interface Props {
 
 const tc = stylex.create({
   full: { width: "100%" },
-  sans: { fontFamily: "var(--font-sans)" },
   meta: { fontWeight: weight.medium },
   status: {
     display: { default: "none", "@container (min-width: 24rem)": "flex" },
@@ -35,32 +27,12 @@ const tc = stylex.create({
     alignItems: "center",
     gap: space.s1_5,
   },
-  failure: { flexShrink: 0, color: color.negative },
-  openSlot: { flexShrink: 0, width: "var(--control-height-xs)" },
-  failureLine: {
-    marginTop: space.s0_5,
-    marginLeft: "calc(var(--spacing) * 5.5)",
-    overflowWrap: "anywhere",
-    color: color.fg,
-  },
 });
 
 export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
   const t = useT();
   const model = toolCardModel(t, tool);
-  const allActions = useExtensionPoint(TOOL_ACTION);
-  const allViewOpeners = useExtensionPoint(TOOL_VIEW_OPENER);
-  const actions = toolCardActions(tool, allActions);
-  const viewOpener = toolCardViewOpener(tool, allViewOpeners);
-  const onOpenView = viewOpener
-    ? () => {
-        void Promise.resolve(viewOpener.open(tool)).catch((err) => {
-          const owner = lookupToolViewOpenerOwner(viewOpener.id) ?? "unknown";
-          console.error(`[plugin] tool view opener ${viewOpener.id} threw:`, err);
-          reportPluginError(owner, "command", err, `tool view opener: ${viewOpener.id}`);
-        });
-      }
-    : undefined;
+  const actions = useToolRowActions(tool);
 
   return (
     <>
@@ -77,72 +49,16 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
               <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />
             )}
             <ToolMeta items={model.metaItems} />
-            {model.running && <StatusDot tone="running" />}
-            {model.error !== undefined && (
-              <span
-                data-slot="tool-status"
-                data-tone="negative"
-                {...stylex.props(tc.sans, tc.failure, typeStep.uiXs)}
-              >
-                {t("tool.state.failed")}
-              </span>
-            )}
-            {model.denied && (
-              <span data-slot="tool-status" {...stylex.props(tc.sans, vocab.muted, typeStep.uiXs)}>
-                {t("tool.state.denied")}
-              </span>
-            )}
+            <ToolStatusMarks model={model} />
           </>
         }
-        actions={[
-          ...actions.map((action) => (
-            <IconButton
-              key={action.id}
-              data-reveal="hover"
-              icon={knownIconName(action.icon) ?? "tool"}
-              size="xs"
-              quiet
-              title={t(action.title)}
-              onClick={(event) => {
-                event.stopPropagation();
-                void Promise.resolve(action.run(tool)).catch((err) => {
-                  const owner = lookupToolActionOwner(action.id) ?? "unknown";
-                  console.error(`[plugin] tool action ${action.id} threw:`, err);
-                  reportPluginError(owner, "command", err, `tool action: ${action.id}`);
-                });
-              }}
-              className={stylex.props(reveal.shown).className}
-            />
-          )),
-          onOpenView ? (
-            <IconButton
-              key="open-view"
-              data-reveal="hover"
-              data-slot="tool-open-view"
-              icon="open"
-              size="xs"
-              quiet
-              title={t("workspace.view.openBeside")}
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpenView();
-              }}
-              className={stylex.props(reveal.shown).className}
-            />
-          ) : (
-            <span key="open-view" aria-hidden {...stylex.props(tc.openSlot)} />
-          ),
-        ]}
+        actions={actions}
         open={expanded}
         onToggle={onToggleExpand}
       >
         {model.denied ? undefined : <ToolPreview tool={tool} />}
       </AgentActivityDisclosure>
-      {model.error !== undefined && (
-        <p data-slot="tool-error" {...stylex.props(tc.failureLine, typeStep.uiSm)}>
-          {model.error}
-        </p>
-      )}
+      <ToolFailureLine model={model} />
     </>
   );
 }

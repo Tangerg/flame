@@ -11,6 +11,7 @@ interface ComposerStatePort {
   useClearDraft(): () => void;
   getText(): string;
   replaceDraft(input: ComposerDraftInput): void;
+  appendText(text: string): void;
   useImages(): readonly ComposerImage[];
   usePastes(): readonly PastedText[];
   useAddImageFiles(): (files: File[]) => void;

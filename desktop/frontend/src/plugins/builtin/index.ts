@@ -3,6 +3,7 @@ import appearance from "./settings/appearance";
 import approvalsPane from "./settings/approvals";
 import personalization from "./settings/personalization";
 import chatSearch from "./chat/chat-search";
+import quoteSelection from "./chat/quote-selection";
 import {
   composerBootstrap,
   composerKeymap,
@@ -64,6 +65,7 @@ import { appearancePlugins } from "./theme";
 import toaster from "./shell/toaster";
 import { toolActions, toolIcons } from "./chat/tools/toolMeta";
 import { subagentsView } from "./chat/message/subagents";
+import { markdownFile } from "./chat/message/markdownFile";
 import { taskPreview } from "./chat/message/taskPreview";
 import toolViewOpener from "./workspace/tool-view-opener";
 import {
@@ -169,6 +171,7 @@ const panes: AnyPlugin[] = [
   fileView,
   planView,
   subagentsView,
+  markdownFile,
   timelineView,
   skillsView,
   searchView,
@@ -186,6 +189,7 @@ const sidebar: AnyPlugin[] = [sidebarActions, sidebarProjects, sidebarRecents, s
 const overlays: AnyPlugin[] = [
   toaster,
   chatSearch,
+  quoteSelection,
   defaultCommands,
   tasksPill,
   statusNotifications,

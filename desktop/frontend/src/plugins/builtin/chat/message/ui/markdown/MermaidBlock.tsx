@@ -8,6 +8,7 @@ import { useTokenRevision } from "@/lib/appearance";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { cn } from "@/lib/classNames";
 import { motion, radius, space, surface } from "@/styles/tokens.stylex";
+import { MermaidViewer } from "./MermaidViewer";
 
 const mb = stylex.create({
   frame: {
@@ -143,13 +144,20 @@ export function MermaidBlock({ code }: Props) {
       cancelled = true;
     };
   }, [debouncedCode, isSettling, tokenRevision, renderer]);
-  const rendered =
+  const current =
     settledRender?.code === debouncedCode &&
     settledRender.tokenRevision === tokenRevision &&
     settledRender.renderer === renderer &&
     !isSettling
       ? settledRender.result
       : { status: "loading" as const };
+  const [lastSvg, setLastSvg] = useState<string | null>(null);
+  const currentSvg = current.status === "rendered" ? current.svg! : null;
+  if (currentSvg !== null && currentSvg !== lastSvg) setLastSvg(currentSvg);
+  const rendered: MermaidRenderResult =
+    current.status !== "rendered" && lastSvg !== null
+      ? { status: "rendered", svg: lastSvg }
+      : current;
 
   const [zoomed, setZoomed] = useState(false);
 
@@ -189,7 +197,7 @@ export function MermaidBlock({ code }: Props) {
               />
             }
           >
-            <div data-slot="mermaid-full" dangerouslySetInnerHTML={{ __html: svg }} />
+            <MermaidViewer svg={svg} />
           </LightboxDialog>
           <IconButton
             icon={copied ? "check" : "copy"}

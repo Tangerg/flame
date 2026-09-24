@@ -169,7 +169,6 @@ describe("methods factory", () => {
     const workspace = createMethods({ call } as unknown as RpcClient).workspace({ path: "/repo" });
     const signal = new AbortController().signal;
     await workspace.diff.get(undefined, signal);
-    await workspace.files.head({ path: "a.ts" }, signal);
     await workspace.files.search({ query: "name" }, signal);
     await workspace.files.read({ path: "a.ts" }, signal);
     await workspace.recipes.list(signal);
@@ -180,7 +179,7 @@ describe("methods factory", () => {
     await workspace.knowledge.list(signal);
     await workspace.knowledge.get("home", signal);
     await workspace.agentMemory.list(signal);
-    expect(call).toHaveBeenCalledTimes(12);
+    expect(call).toHaveBeenCalledTimes(11);
     for (const invocation of call.mock.calls) expect(invocation[2]).toEqual({ signal });
   });
 

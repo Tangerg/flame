@@ -6,7 +6,6 @@ export type WorkspaceInvalidationTarget =
   | "approvalRules"
   | "agentDocs"
   | "diff"
-  | "fileHead"
   | "fileList"
   | "fileRead"
   | "filesChanged"
@@ -64,7 +63,6 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
         "diff",
         "fileList",
         "fileRead",
-        "fileHead",
         "grep",
         "recipes",
         "hooks",

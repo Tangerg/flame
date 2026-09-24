@@ -26,6 +26,7 @@ import {
 import { Badge, reveal } from "@/ui";
 import { corner, type as typeStep } from "@/styles/tokens.stylex";
 import { messageStyles } from "./messageStyles";
+import { UserMessageFold } from "./UserMessageFold";
 
 function MessageBlockInner({
   row,
@@ -102,6 +103,7 @@ function MessageBlockInner({
   const messageContent = (
     <div
       data-user-message-bubble={isUser ? "" : undefined}
+      data-quote-source="message"
       className={cn(
         MESSAGE_CONTENT_CLASS,
         stylex.props(
@@ -112,7 +114,13 @@ function MessageBlockInner({
         ).className,
       )}
     >
-      <AnimatePresence initial={false}>{content}</AnimatePresence>
+      {isUser ? (
+        <UserMessageFold>
+          <AnimatePresence initial={false}>{content}</AnimatePresence>
+        </UserMessageFold>
+      ) : (
+        <AnimatePresence initial={false}>{content}</AnimatePresence>
+      )}
     </div>
   );
 

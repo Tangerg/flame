@@ -10,6 +10,7 @@ export const composerStyles = stylex.create({
   },
   editor: { minHeight: "1.5lh", maxHeight: "6lh" },
   toolbarSpacer: { minWidth: space.s2, flex: 1 },
+  steerHint: { margin: 0, paddingTop: space.s1, color: color.fgFaint },
 
   tray: {
     display: "flex",

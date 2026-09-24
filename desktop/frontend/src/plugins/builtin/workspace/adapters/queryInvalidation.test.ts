@@ -144,7 +144,6 @@ describe("workspace session projection invalidation", () => {
       "diff",
       "list-files",
       "read-file",
-      "file-head",
       "grep",
       "recipes",
       "hooks",

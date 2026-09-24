@@ -1,6 +1,5 @@
 export { AgentAppShell } from "./app-shell";
 export { AgentActivityDisclosure } from "./activity-disclosure";
-export { useActivityOpenState } from "./activity-open-state";
 export { AgentComposerChip } from "./composer-chip";
 export { AgentComposerFooter, AgentComposerSurface } from "./composer-surface";
 export { AgentComposerTopTraySurface } from "./composer-top-tray-surface";

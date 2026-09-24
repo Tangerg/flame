@@ -13,13 +13,23 @@ export function hasWorkspaceViewForTool(tool: ToolCall): boolean {
   return toolDestination(tool) !== null;
 }
 
+const DESTINATION_LABEL = {
+  diff: "tool.open.worktreeDiff",
+  file: "tool.open.currentFile",
+} as const;
+
+export function workspaceViewLabelForTool(tool: ToolCall): string {
+  const destination = toolDestination(tool);
+  return destination ? DESTINATION_LABEL[destination] : "workspace.view.openBeside";
+}
+
 export function openWorkspaceViewForTool(tool: ToolCall): void {
   switch (toolDestination(tool)) {
     case "diff":
       openWorkspaceDiffForFile(tool.fnKind === "path" ? tool.fn : "");
       break;
     case "file":
-      openWorkspaceFile(tool.fn);
+      openWorkspaceFile(tool.fn, tool.range?.start);
       break;
   }
 }

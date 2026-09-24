@@ -1,5 +1,9 @@
 import { definePlugin, TOOL_VIEW_OPENER } from "@/plugins/sdk";
-import { hasWorkspaceViewForTool, openWorkspaceViewForTool } from "../application/toolRouting";
+import {
+  hasWorkspaceViewForTool,
+  openWorkspaceViewForTool,
+  workspaceViewLabelForTool,
+} from "../application/toolRouting";
 
 export default definePlugin({
   name: "flame.builtin.workspace.tool-view-opener",
@@ -8,6 +12,7 @@ export default definePlugin({
       id: "workspace-tool-view",
       order: 0,
       predicate: hasWorkspaceViewForTool,
+      label: workspaceViewLabelForTool,
       open: openWorkspaceViewForTool,
     });
   },

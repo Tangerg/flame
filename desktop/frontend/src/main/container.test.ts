@@ -88,6 +88,7 @@ describe("main/container", () => {
       saveImage: async () => false,
       windowChrome: async () => null,
       revealWindow: async () => {},
+      revealPath: async () => false,
     });
     setContainer({ desktop: desktop("token-a") });
     await initializeDesktopHost();
@@ -116,6 +117,7 @@ describe("main/container", () => {
       saveImage: async () => false,
       windowChrome: async () => null,
       revealWindow: async () => {},
+      revealPath: async () => false,
     });
 
     setContainer({ desktop: desktop(() => retiredBootstrap) });
@@ -157,6 +159,7 @@ describe("main/container", () => {
       saveImage: async () => false,
       windowChrome: async () => null,
       revealWindow: async () => {},
+      revealPath: async () => false,
     });
 
     setContainer({ desktop: desktop(() => retired.promise) });

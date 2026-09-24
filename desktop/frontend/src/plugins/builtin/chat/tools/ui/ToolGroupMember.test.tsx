@@ -44,4 +44,23 @@ describe("ToolGroupMember", () => {
     expect(screen.getByText("+12")).toBeTruthy();
     expect(screen.getByText("−3")).toBeTruthy();
   });
+
+  it("keeps a failure and its reason when grouped, as a lone card would", () => {
+    member({
+      name: "read",
+      fn: "missing.ts",
+      fnKind: "path",
+      status: "err",
+      error: "no such file",
+    });
+
+    expect(screen.getByText(/failed/i)).toBeTruthy();
+    expect(screen.getByText("no such file")).toBeTruthy();
+  });
+
+  it("marks a denied call instead of looking like a quiet success", () => {
+    member({ name: "read", fn: "secret.env", fnKind: "path", status: "denied" });
+
+    expect(screen.getByText(/denied/i)).toBeTruthy();
+  });
 });

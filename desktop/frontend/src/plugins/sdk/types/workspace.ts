@@ -11,6 +11,13 @@ export interface SettingsPaneSpec {
   component: ComponentType;
 }
 
+export interface WorkspaceFileRendererProps {
+  path: string;
+  content: string;
+}
+
+export type WorkspaceFileRenderer = ComponentType<WorkspaceFileRendererProps>;
+
 export type ContextDockDestinationScope = "workspace" | "session" | "run";
 
 export interface WorkspaceViewSpec {

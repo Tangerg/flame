@@ -57,6 +57,12 @@ type imageSaver interface {
 	SaveImage(suggestedFilename string, contents []byte) (bool, error)
 }
 
+// pathRevealer shows a path in the platform file manager. Revealing reads
+// nothing and grants the frontend no file access; it only hands the path to the OS.
+type pathRevealer interface {
+	OpenFileManager(path string, selectFile bool) error
+}
+
 // DesktopHost is the Wails-owned boundary for capabilities that belong to the
 // packaged application rather than the Runtime Protocol.
 //
@@ -75,7 +81,8 @@ type DesktopHost struct {
 	window nativeWindow
 	// Brings the window back from minimised or behind other apps. Owned here because
 	// a webview's window.focus() cannot un-minimise its own native window.
-	reveal func()
+	reveal       func()
+	pathRevealer pathRevealer
 }
 
 func newDesktopHost(home string) (*DesktopHost, error) {
@@ -98,6 +105,12 @@ func (d *DesktopHost) useWindow(window nativeWindow) {
 // Unexported on purpose: see the note on DesktopHost.
 func (d *DesktopHost) useRevealer(reveal func()) {
 	d.reveal = reveal
+}
+
+// usePathRevealer attaches the platform file manager. Unexported on purpose: see
+// the note on DesktopHost.
+func (d *DesktopHost) usePathRevealer(revealer pathRevealer) {
+	d.pathRevealer = revealer
 }
 
 // useWorkingDirectoryPicker attaches the packaged application's native directory
@@ -149,6 +162,24 @@ func (d *DesktopHost) RevealWindow() error {
 		return errors.New("desktop host: window is not attached")
 	}
 	d.reveal()
+	return nil
+}
+
+// RevealPath selects an existing absolute path in the platform file manager.
+func (d *DesktopHost) RevealPath(path string) error {
+	if d.pathRevealer == nil {
+		return errors.New("desktop host: file manager is not attached")
+	}
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("desktop host: reveal path %q is not absolute", path)
+	}
+	clean := filepath.Clean(path)
+	if _, err := os.Stat(clean); err != nil {
+		return fmt.Errorf("desktop host: reveal path: %w", err)
+	}
+	if err := d.pathRevealer.OpenFileManager(clean, true); err != nil {
+		return fmt.Errorf("desktop host: reveal path: %w", err)
+	}
 	return nil
 }
 

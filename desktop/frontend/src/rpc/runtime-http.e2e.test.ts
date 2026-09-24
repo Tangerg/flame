@@ -4183,12 +4183,9 @@ for await (const line of lines) {
     if (!resolved.projectRoot) throw new Error("nested Git workspace omitted its project root");
 
     const workspace = client.workspace({ path: workspaceRoot });
-    await expect(workspace.files.head({ path: "alpha.txt", lines: 2 })).resolves.toEqual({
-      lines: [
-        { lineNumber: 1, text: "first" },
-        { lineNumber: 2, text: "workspace-side-api-marker" },
-      ],
-    });
+    await expect(
+      workspace.files.read({ path: "alpha.txt", startLine: 1, endLine: 2 }),
+    ).resolves.toMatchObject({ content: "first\nworkspace-side-api-marker", startLine: 1 });
     await expect(workspace.files.search({ query: "workspace-side-api-marker" })).resolves.toEqual({
       matches: [
         { path: "alpha.txt", lineNumber: 2, text: "workspace-side-api-marker" },
@@ -4234,7 +4231,7 @@ for await (const line of lines) {
       (error: unknown) =>
         error instanceof RpcError && errorType(error.data) === "path_outside_root",
     );
-    await expect(workspace.files.head({ path: "../AGENTS.md" })).rejects.toSatisfy(
+    await expect(workspace.files.read({ path: "../AGENTS.md" })).rejects.toSatisfy(
       (error: unknown) =>
         error instanceof RpcError && errorType(error.data) === "path_outside_root",
     );

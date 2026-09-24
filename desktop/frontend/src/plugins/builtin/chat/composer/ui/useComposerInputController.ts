@@ -86,6 +86,7 @@ export function useComposerInputController({
   const knownPaths = useKnownWorkspacePaths(cwd, value.includes("@"));
   const running = useIsCurrentRootRunning();
   const placeholder = running ? t("composer.placeholder.steer") : t("composer.placeholder");
+  const steering = running && (value.trim() !== "" || images.length > 0 || pastes.length > 0);
   const submit = useCallback(
     () =>
       submitComposer({
@@ -200,6 +201,7 @@ export function useComposerInputController({
     slash,
     knownPaths,
     placeholder,
+    steering,
     handleChange,
     clearCompositionCommit,
     handleCompositionStart,

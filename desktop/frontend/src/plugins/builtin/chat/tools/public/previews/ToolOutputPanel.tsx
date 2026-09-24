@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { hasAnsi } from "@/lib/ansi";
 import { cn } from "@/lib/classNames";
@@ -25,62 +25,110 @@ const op = stylex.create({
   lines: { fontVariantLigatures: "none" },
   line: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
   anchor: { position: "relative" },
-  fade: {
+  fadeTop: {
     pointerEvents: "none",
     position: "absolute",
-    top: "calc(var(--spacing) * -6)",
+    bottom: "calc(var(--spacing) * -6)",
     insetInline: 0,
     height: space.s6,
-    backgroundImage: "linear-gradient(to top, var(--color-sunken), transparent)",
+    backgroundImage: "linear-gradient(to bottom, var(--color-sunken), transparent)",
   },
   more: { justifyContent: "center", paddingBlock: space.s1_5 },
-  viewport: { height: "min(50vh, 20lh)", overflowX: "auto", overflowY: "auto" },
+  viewport: { maxHeight: "min(50vh, 20lh)", overflowX: "auto", overflowY: "auto" },
+  latest: { position: "absolute", right: space.s2, bottom: space.s2 },
   canvas: { position: "relative", width: "100%" },
   virtualLine: { position: "absolute", top: 0, left: 0, width: "100%" },
 });
 
 const COLLAPSED_LINES = 9;
-const VIRTUALIZE_AFTER_LINES = 1_000;
+const FOLLOW_SLACK_PX = 4;
 
 function OutputLine({ text }: { text: string }) {
   if (!hasAnsi(text)) return <LinkedText text={text || " "} />;
   return <AnsiText text={text} />;
 }
 
+function selectionInside(element: HTMLElement | null): boolean {
+  const selection = window.getSelection();
+  return (
+    element !== null &&
+    selection !== null &&
+    !selection.isCollapsed &&
+    selection.anchorNode !== null &&
+    element.contains(selection.anchorNode)
+  );
+}
+
 function ScrollableOutput({ lines }: { lines: string[] }) {
   const t = useT();
   const edges = useScrollEdges();
+  const [following, setFollowing] = useState(true);
+  const followingRef = useRef(true);
   const rows = useVirtualizer({
     count: lines.length,
     getScrollElement: () => edges.port.current,
     estimateSize: () => 24,
     overscan: 8,
   });
+
+  useEffect(() => {
+    if (!followingRef.current || selectionInside(edges.port.current)) return;
+    rows.scrollToIndex(lines.length - 1, { align: "end" });
+  }, [lines.length, rows, edges.port]);
+
+  const onScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    edges.onScroll();
+    const port = event.currentTarget;
+    const atEnd = port.scrollTop + port.clientHeight >= port.scrollHeight - FOLLOW_SLACK_PX;
+    followingRef.current = atEnd;
+    setFollowing(atEnd);
+  };
+
   return (
-    <div
-      ref={edges.port}
-      role="region"
-      aria-label={t("tools.output.label")}
-      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The scroll region needs keyboard scrolling independently of the transcript.
-      tabIndex={0}
-      onScroll={edges.onScroll}
-      style={edges.style}
-      {...stylex.props(op.lines, op.viewport, scrollEdges.fade)}
-    >
-      <div ref={edges.content} {...stylex.props(op.canvas)} style={{ height: rows.getTotalSize() }}>
-        {rows.getVirtualItems().map((row) => (
-          <div
-            key={row.key}
-            data-index={row.index}
-            data-output-line=""
-            ref={rows.measureElement}
-            {...stylex.props(op.line, op.virtualLine)}
-            style={{ transform: `translateY(${row.start}px)` }}
-          >
-            <OutputLine text={lines[row.index]!} />
-          </div>
-        ))}
+    <div {...stylex.props(op.anchor)}>
+      <div
+        ref={edges.port}
+        role="region"
+        aria-label={t("tools.output.label")}
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The scroll region needs keyboard scrolling independently of the transcript.
+        tabIndex={0}
+        onScroll={onScroll}
+        style={edges.style}
+        {...stylex.props(op.lines, op.viewport, scrollEdges.fade)}
+      >
+        <div
+          ref={edges.content}
+          {...stylex.props(op.canvas)}
+          style={{ height: rows.getTotalSize() }}
+        >
+          {rows.getVirtualItems().map((row) => (
+            <div
+              key={row.key}
+              data-index={row.index}
+              data-output-line=""
+              ref={rows.measureElement}
+              {...stylex.props(op.line, op.virtualLine)}
+              style={{ transform: `translateY(${row.start}px)` }}
+            >
+              <OutputLine text={lines[row.index]!} />
+            </div>
+          ))}
+        </div>
       </div>
+      {!following && (
+        <TextButton
+          tone="accent"
+          size="sm"
+          onClick={() => {
+            followingRef.current = true;
+            setFollowing(true);
+            rows.scrollToIndex(lines.length - 1, { align: "end" });
+          }}
+          className={stylex.props(op.latest).className}
+        >
+          {t("tools.output.latest")}
+        </TextButton>
+      )}
     </div>
   );
 }
@@ -107,7 +155,7 @@ export function ToolOutputPanel({
   const { copied, copy } = useCopyFeedback(copyMaterial);
 
   const hidden = lines.length - COLLAPSED_LINES;
-  const shown = expanded ? lines : lines.slice(0, COLLAPSED_LINES);
+  const tail = lines.slice(-COLLAPSED_LINES);
 
   if (lines.length === 0) {
     return (
@@ -122,14 +170,31 @@ export function ToolOutputPanel({
   }
 
   return (
-    <Well as="div" className={stylex.props(op.frame).className}>
+    <Well as="div" data-quote-source="tool-output" className={stylex.props(op.frame).className}>
+      {hidden > 0 && (
+        <div {...stylex.props(op.anchor)}>
+          <TextButton
+            onClick={() => setExpanded((value) => !value)}
+            shape="row"
+            size="sm"
+            aria-expanded={expanded}
+            className={stylex.props(op.more).className}
+          >
+            <Icon name={expanded ? "chevron-down" : "chevron-up"} size="xs" />
+            {expanded
+              ? t("tools.output.collapse")
+              : t("tools.output.earlier", { count: hidden, total: lines.length })}
+          </TextButton>
+          {!expanded && <div {...stylex.props(op.fadeTop)} />}
+        </div>
+      )}
       <div className={cn(stylex.props(reveal.host).className, "relative")}>
-        {expanded && lines.length > VIRTUALIZE_AFTER_LINES ? (
+        {expanded ? (
           <ScrollableOutput lines={lines} />
         ) : (
           <div {...stylex.props(op.lines)}>
-            {shown.map((line, index) => (
-              <div key={index} data-output-line="" {...stylex.props(op.line)}>
+            {tail.map((line, index) => (
+              <div key={Math.max(0, hidden) + index} data-output-line="" {...stylex.props(op.line)}>
                 <OutputLine text={line} />
               </div>
             ))}
@@ -144,22 +209,6 @@ export function ToolOutputPanel({
           className={stylex.props(reveal.shown).className}
         />
       </div>
-      {hidden > 0 && (
-        <div {...stylex.props(op.anchor)}>
-          {!expanded && <div {...stylex.props(op.fade)} />}
-          <TextButton
-            onClick={() => setExpanded((value) => !value)}
-            shape="row"
-            size="sm"
-            className={stylex.props(op.more).className}
-          >
-            <Icon name={expanded ? "chevron-up" : "chevron-down"} size="xs" />
-            {expanded
-              ? t("tools.output.collapse")
-              : t("tools.output.showAll", { count: lines.length })}
-          </TextButton>
-        </div>
-      )}
     </Well>
   );
 }

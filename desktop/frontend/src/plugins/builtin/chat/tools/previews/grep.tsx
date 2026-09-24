@@ -4,7 +4,7 @@ import type { ToolPreviewProps } from "@/plugins/sdk";
 import { LinkedText } from "@/plugins/builtin/chat/file-references/public/LinkedText";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
-import { useGrepToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewQueries";
+import { recordedGrepRows } from "@/plugins/builtin/chat/tools/application/toolPreviewRecords";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { toolShapeKey } from "@/plugins/builtin/agent/public/toolIcon";
 
@@ -14,6 +14,7 @@ import { gap, TextPreview, vocab } from "@/ui";
 
 const gp = stylex.create({
   head: { display: "flex", alignItems: "baseline", gap: space.s2 },
+  raw: { margin: 0 },
 });
 
 const MAX_GREP_MATCHES = 4;
@@ -33,7 +34,17 @@ function groupByFile(rows: readonly { loc: string; text: string }[]) {
 
 function GrepPreview({ tool }: ToolPreviewProps) {
   const t = useT();
-  const { shown, overflow } = useGrepToolPreview(tool, MAX_GREP_MATCHES);
+  const recorded = recordedGrepRows(tool, MAX_GREP_MATCHES);
+  if (!recorded) {
+    return tool.result ? (
+      <TextPreview>
+        <pre {...stylex.props(pv.wrap, vocab.muted, typeStep.uiSm, face.mono, gp.raw)}>
+          {tool.result}
+        </pre>
+      </TextPreview>
+    ) : null;
+  }
+  const { shown, overflow } = recorded;
   return (
     <TextPreview>
       <div {...stylex.props(vocab.column, gap.s1_5)}>

@@ -26,7 +26,6 @@ import {
 import type {
   WorkspaceDiffQuery,
   WorkspaceFileChangesQuery,
-  WorkspaceFileHeadQuery,
   WorkspaceGrepQuery,
   WorkspaceListFilesQuery,
   WorkspaceKnowledgeQuery,
@@ -39,7 +38,6 @@ import {
   WORKSPACE_AGENT_DOCS_KEY,
   WORKSPACE_DIFF_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
-  WORKSPACE_FILE_HEAD_KEY,
   WORKSPACE_GREP_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_KNOWLEDGE_KEY,
@@ -155,17 +153,6 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     fetcher: async (read, params) => {
       const { cwd, ...query } = requiredParams<WorkspaceGrepQuery>(WORKSPACE_GREP_KEY, params);
       return (await read.workspace(cwd)).files.search(query, read.signal);
-    },
-  });
-  contribute({
-    key: WORKSPACE_FILE_HEAD_KEY,
-    fetcher: async (read, params) => {
-      const { cwd, ...query } = requiredParams<WorkspaceFileHeadQuery>(
-        WORKSPACE_FILE_HEAD_KEY,
-        params,
-      );
-      const resources = await read.workspace(cwd);
-      return (await resources.files.head(query, read.signal)).lines;
     },
   });
   contribute({

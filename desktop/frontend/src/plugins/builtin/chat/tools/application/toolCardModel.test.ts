@@ -101,8 +101,18 @@ describe("toolCardActions", () => {
 describe("toolCardViewOpener", () => {
   it("selects the first opener whose predicate matches the tool", () => {
     const openers: ToolViewOpenerSpec[] = [
-      { id: "read", predicate: (candidate) => candidate.name === "read", open: () => undefined },
-      { id: "shell", predicate: (candidate) => candidate.name === "shell", open: () => undefined },
+      {
+        id: "read",
+        predicate: (candidate) => candidate.name === "read",
+        label: () => "open",
+        open: () => undefined,
+      },
+      {
+        id: "shell",
+        predicate: (candidate) => candidate.name === "shell",
+        label: () => "open",
+        open: () => undefined,
+      },
     ];
 
     expect(toolCardViewOpener(tool({ name: "shell" }), openers)?.id).toBe("shell");

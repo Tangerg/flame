@@ -19,5 +19,6 @@ export interface ToolViewOpenerSpec {
   id: string;
   order?: number;
   predicate: (tool: ToolCall) => boolean;
+  label: (tool: ToolCall) => string;
   open: (tool: ToolCall) => void | Promise<void>;
 }

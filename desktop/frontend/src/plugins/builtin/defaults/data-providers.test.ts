@@ -1,7 +1,6 @@
 import type { AgentSessionSummary } from "@/plugins/builtin/agent/public/session";
 import type {
   WorkspaceFileChange as WorkspaceFileChangeSummary,
-  WorkspaceFileLine,
   WorkspaceGrepResult,
   WorkspaceProjectSummary,
   WorkspaceDiff,
@@ -55,7 +54,6 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
       for (const key of [
         "diff",
         "grep",
-        "file-head",
         "skills",
         "skill-proposals",
         "agent-docs",
@@ -248,25 +246,6 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
       workspace: { path: "/work/auth" },
     });
     expect(value).toEqual(result);
-  });
-
-  it("file-head: forwards params and unwraps FileHead to its lines", async () => {
-    const { value, requests } = await runProvider<WorkspaceFileLine[]>(
-      "file-head",
-      [
-        [
-          "workspace.files.head",
-          { path: "src/a.ts", lines: [{ lineNumber: 1, text: "import x" }] },
-        ],
-      ],
-      { cwd: "/work/auth", path: "src/a.ts", lines: 40 },
-    );
-    expect(requests[0]?.params).toEqual({
-      path: "src/a.ts",
-      lines: 40,
-      workspace: { path: "/work/auth" },
-    });
-    expect(value).toEqual([{ lineNumber: 1, text: "import x" }]);
   });
 
   it("read-file: preserves the requested and served source-line window", async () => {

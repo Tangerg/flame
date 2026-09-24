@@ -26,6 +26,11 @@ const operations = new Set(manifest.methods.map((method) => method.name));
 // Desktop presents agent tool calls in the conversation and manages MCP in settings.
 // Keep these methods out of its SDK rather than adding a UI solely for coverage.
 const terminalDiagnostics = new Set(["tools.list", "tools.invoke"]);
+// Desktop stopped reading `workspace.files.head`: a tool preview shows the recorded
+// result, and the file view reads ranges through `workspace.files.read`. The method is
+// Runtime's to retire; drop this entry in the same change that removes it there.
+const awaitingRuntimeRemoval = new Set(["workspace.files.head"]);
+const notDesktopOperations = new Set([...terminalDiagnostics, ...awaitingRuntimeRemoval]);
 const sidecarEndpoints = new Set(
   manifest.httpEndpoints
     .filter((endpoint) => endpoint.kind === "sidecar")
@@ -153,7 +158,7 @@ const materializedOperations = creditMaterializedOperationConsumers(
   errors,
 );
 
-checkOperationConsumers(operationConsumers, implementationMap, terminalDiagnostics, errors);
+checkOperationConsumers(operationConsumers, implementationMap, notDesktopOperations, errors);
 
 checkSidecarConsumers(sidecarEndpoints, sidecarMethodMap, sidecarConsumerCalls, errors);
 
@@ -167,7 +172,7 @@ const callCount =
   [...sidecarConsumerCalls.values()].reduce((total, locations) => total + locations.size, 0);
 closeCompiler();
 console.log(
-  `check-backend-api-consumers: ${operations.size - terminalDiagnostics.size}/${operations.size - terminalDiagnostics.size} Desktop Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct operations, ${materializedOperations.size} materialized through server composites), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
+  `check-backend-api-consumers: ${operations.size - notDesktopOperations.size}/${operations.size - notDesktopOperations.size} Desktop Runtime operation fact families have product coverage (${directlyConsumedOperations.size} direct operations, ${materializedOperations.size} materialized through server composites), ${sidecarEndpoints.size}/${sidecarEndpoints.size} HTTP sidecars, and ${runtimeTopics.size}/${runtimeTopics.size} event types have product consumers (${callCount} typed call sites); ${declaredResultTypes.size}/${declaredResultTypes.size} declared tool-result shapes have a typed reader; all ${mappedErrorTypeCount} error symbols the product writes copy for are ones a problem can arrive under (of ${problemTypes.size} declared)`,
 );
 
 function checkOperationConsumers(

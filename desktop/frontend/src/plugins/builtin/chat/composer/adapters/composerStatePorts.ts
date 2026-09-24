@@ -3,6 +3,7 @@ import type { AgentSessions } from "@/plugins/builtin/agent/public/services";
 import { focusComposer } from "../application/focus";
 import { configureComposerStatePort } from "../application/ports/state";
 import { useComposerStore } from "./composerStore";
+import { joinDraftParts } from "../domain/draft";
 
 let stopSessionSync: (() => void) | null = null;
 
@@ -18,6 +19,12 @@ export function installComposerStatePorts(sessions: AgentSessions): () => void {
       store.setValue(input.text);
       if (input.images?.length) store.addImages(input.images);
       focusComposer(input.text.length);
+    },
+    appendText: (text) => {
+      const store = useComposerStore.getState();
+      const value = joinDraftParts([store.composer.draft.value.trimEnd(), text]);
+      store.setValue(value);
+      focusComposer(value.length);
     },
     useImages: () => useComposerStore((state) => state.composer.draft.images),
     usePastes: () => useComposerStore((state) => state.composer.draft.pastes),

@@ -12,10 +12,7 @@ function slashToken(value: string, caret: number): string | null {
   return value.slice(0, tokenEnd);
 }
 
-function matchSlashCommands(
-  commands: readonly SlashCommand[],
-  token: string,
-): SlashCommand[] {
+function matchSlashCommands(commands: readonly SlashCommand[], token: string): SlashCommand[] {
   const query = token.slice(1).toLowerCase();
   return commands
     .filter(({ cmd }) => cmd.slice(1).toLowerCase().startsWith(query))

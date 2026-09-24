@@ -14,6 +14,7 @@ import { ComposerDropCue, useComposerImageDrop } from "./ComposerImageDrop";
 import { useComposerInputController } from "./useComposerInputController";
 import { useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
+import { type as typeStep } from "@/styles/tokens.stylex";
 
 interface Props {
   onSend: (input: AgentInput) => boolean;
@@ -55,6 +56,7 @@ export function Composer({
     slash,
     knownPaths,
     placeholder,
+    steering,
     handleChange,
     clearCompositionCommit,
     handleCompositionStart,
@@ -124,6 +126,15 @@ export function Composer({
           autosize
           className={stylex.props(composerStyles.editor).className}
         />
+        {steering && (
+          <p
+            data-slot="composer-steer-hint"
+            aria-live="polite"
+            {...stylex.props(composerStyles.steerHint, typeStep.uiXs)}
+          >
+            {t("composer.steer.hint")}
+          </p>
+        )}
       </div>
       <AgentComposerFooter>
         <Slot name="composer.toolbar.start" />

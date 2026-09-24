@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { Highlighter } from "shiki";
-import { useEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { stripCodeWrapper, useCodeHighlighter } from "@/lib/highlight/useCodeHighlight";
 import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
 import { type as typeStep } from "@/styles/tokens.stylex";
@@ -17,11 +17,13 @@ export function FileView({
   content,
   startLine,
   targetLine,
+  intent,
 }: {
   path: string;
   content: string;
   startLine: number;
   targetLine: number;
+  intent: object;
 }) {
   const { highlighter, theme: shikiTheme } = useCodeHighlighter();
 
@@ -32,12 +34,15 @@ export function FileView({
   );
 
   const targetRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (targetLine > 0) targetRef.current?.scrollIntoView({ block: "center" });
-  }, [content, path, targetLine]);
+  const placedIntent = useRef<object | null>(null);
+  useLayoutEffect(() => {
+    if (placedIntent.current === intent || targetLine <= 0 || !targetRef.current) return;
+    placedIntent.current = intent;
+    targetRef.current.scrollIntoView({ block: "center" });
+  }, [intent, content, targetLine]);
 
   return (
-    <div {...stylex.props(cs.sheet, typeStep.code)}>
+    <div data-quote-source="file" data-quote-path={path} {...stylex.props(cs.sheet, typeStep.code)}>
       {plain.map((line, i) => {
         const n = startLine + i;
         const isTarget = n === targetLine;
@@ -46,6 +51,7 @@ export function FileView({
           <div
             key={i}
             ref={isTarget ? targetRef : undefined}
+            data-quote-line={n}
             {...stylex.props(cs.lineRow, cs.gutterOne, isTarget && cs.targetLine)}
           >
             <span {...stylex.props(cs.gutter, typeStep.uiSm)}>{n}</span>

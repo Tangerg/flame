@@ -3,7 +3,7 @@ import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { MarkdownMessage } from "../markdown/MarkdownMessage";
 import { Icon, Loader, scrollEdges, useScrollEdges, vocab } from "@/ui";
-import { AgentActivityDisclosure, useActivityOpenState } from "@/ui/agent";
+import { AgentActivityDisclosure } from "@/ui/agent";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { face, space, surface, type as typeStep } from "@/styles/tokens.stylex";
@@ -54,13 +54,13 @@ const rb = stylex.create({
 interface Props {
   text: string;
   status: BlockStatus;
-  superseded?: boolean;
 }
 
-export function ReasoningBlock({ text, status, superseded = false }: Props) {
+export function ReasoningBlock({ text, status }: Props) {
   const t = useT();
   const streaming = status === "running";
-  const { open: isOpen, toggle } = useActivityOpenState(streaming && !superseded);
+  const [isOpen, setOpen] = useState(false);
+  const toggle = useCallback(() => setOpen((value) => !value), []);
 
   const startedAt = useRef<number | null>(null);
   const [thoughtMillis, setThoughtMillis] = useState<number | null>(null);

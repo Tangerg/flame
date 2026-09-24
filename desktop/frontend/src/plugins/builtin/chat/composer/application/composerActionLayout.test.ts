@@ -4,29 +4,28 @@ import { composerActionLayout } from "./composerActionLayout";
 describe("composerActionLayout", () => {
   it("offers send when nothing is running", () => {
     expect(composerActionLayout({ running: false, hasInput: true })).toEqual({
-      primary: "send",
-      secondary: null,
+      submit: "send",
+      stop: null,
     });
   });
 
-  it("makes steer primary during a run, keeping stop beside it", () => {
+  it("offers steer during a run while stop stays in its own place", () => {
     expect(composerActionLayout({ running: true, hasInput: true })).toEqual({
-      primary: "steer",
-      secondary: "stop",
+      submit: "steer",
+      stop: "quiet",
     });
   });
 
-  it("makes stop the primary target when there is nothing to steer with", () => {
+  it("emphasizes stop when there is nothing to steer with", () => {
     expect(composerActionLayout({ running: true, hasInput: false })).toEqual({
-      primary: "stop",
-      secondary: null,
+      submit: null,
+      stop: "emphasized",
     });
   });
 
   it("always offers stop while a run is in flight", () => {
     for (const hasInput of [true, false]) {
-      const layout = composerActionLayout({ running: true, hasInput });
-      expect(layout.primary === "stop" || layout.secondary === "stop").toBe(true);
+      expect(composerActionLayout({ running: true, hasInput }).stop).not.toBeNull();
     }
   });
 });

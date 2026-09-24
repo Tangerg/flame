@@ -273,3 +273,33 @@ func TestDesktopHostSaveImageRequiresAndPropagatesNativeOwner(t *testing.T) {
 		t.Fatalf("SaveImage() = %v, nil; want native save error", saved)
 	}
 }
+
+type recordingRevealer struct{ revealed string }
+
+func (r *recordingRevealer) OpenFileManager(path string, selectFile bool) error {
+	r.revealed = path
+	return nil
+}
+
+func TestRevealPathOnlyHandsAnExistingAbsolutePathToTheFileManager(t *testing.T) {
+	dir := t.TempDir()
+	host := mustDesktopHost(t, dir)
+	revealer := &recordingRevealer{}
+	host.usePathRevealer(revealer)
+
+	if err := host.RevealPath("relative/file.txt"); err == nil {
+		t.Fatal("RevealPath accepted a relative path")
+	}
+	if err := host.RevealPath(filepath.Join(dir, "missing.txt")); err == nil {
+		t.Fatal("RevealPath accepted a path that does not exist")
+	}
+	if revealer.revealed != "" {
+		t.Fatalf("a rejected path reached the file manager: %q", revealer.revealed)
+	}
+	if err := host.RevealPath(dir + string(filepath.Separator) + "."); err != nil {
+		t.Fatalf("RevealPath(existing dir) = %v", err)
+	}
+	if revealer.revealed != dir {
+		t.Fatalf("revealed %q, want the cleaned %q", revealer.revealed, dir)
+	}
+}

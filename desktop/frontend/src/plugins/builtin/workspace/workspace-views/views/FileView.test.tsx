@@ -16,6 +16,8 @@ vi.mock("@/lib/highlight/useCodeHighlight", async (importOriginal) => ({
 
 import { FileView } from "./FileView";
 
+const INTENT = {};
+
 let nativeScrollIntoView: typeof HTMLElement.prototype.scrollIntoView | undefined;
 
 beforeEach(() => {
@@ -34,7 +36,15 @@ describe("FileView syntax ownership", () => {
   it("highlights a file in the language determined by its path", () => {
     const content = "package main\nfunc main() {}";
 
-    render(<FileView path="cmd/main.go" content={content} startLine={1} targetLine={0} />);
+    render(
+      <FileView
+        path="cmd/main.go"
+        content={content}
+        startLine={1}
+        targetLine={0}
+        intent={INTENT}
+      />,
+    );
 
     expect(projection.highlighter.codeToHtml).toHaveBeenCalledWith(content, {
       lang: "go",
@@ -48,12 +58,26 @@ describe("FileView syntax ownership", () => {
     projection.currentHighlighter = null;
     const content = "package main\nfunc main() {}";
     const view = render(
-      <FileView path="cmd/main.go" content={content} startLine={1} targetLine={2} />,
+      <FileView
+        path="cmd/main.go"
+        content={content}
+        startLine={1}
+        targetLine={2}
+        intent={INTENT}
+      />,
     );
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
 
     projection.currentHighlighter = projection.highlighter;
-    view.rerender(<FileView path="cmd/main.go" content={content} startLine={1} targetLine={2} />);
+    view.rerender(
+      <FileView
+        path="cmd/main.go"
+        content={content}
+        startLine={1}
+        targetLine={2}
+        intent={INTENT}
+      />,
+    );
 
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
   });
@@ -63,11 +87,48 @@ describe("FileView syntax ownership", () => {
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
 
     const view = render(
-      <FileView path="cmd/main.go" content={"first\nsecond"} startLine={40} targetLine={41} />,
+      <FileView
+        path="cmd/main.go"
+        content={"first\nsecond"}
+        startLine={40}
+        targetLine={41}
+        intent={INTENT}
+      />,
     );
 
     expect(view.getByText("40")).toBeTruthy();
     expect(view.getByText("41")).toBeTruthy();
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the reader's place when the same file refreshes", () => {
+    const scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    const intent = {};
+    const view = render(
+      <FileView path="a.go" content={"one\ntwo"} startLine={1} targetLine={2} intent={intent} />,
+    );
+    view.rerender(
+      <FileView
+        path="a.go"
+        content={"one\ntwo\nthree"}
+        startLine={1}
+        targetLine={2}
+        intent={intent}
+      />,
+    );
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("places the line again when the same line is asked for again", () => {
+    const scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    const view = render(
+      <FileView path="a.go" content={"one\ntwo"} startLine={1} targetLine={2} intent={{}} />,
+    );
+    view.rerender(
+      <FileView path="a.go" content={"one\ntwo"} startLine={1} targetLine={2} intent={{}} />,
+    );
+    expect(scrollIntoView).toHaveBeenCalledTimes(2);
   });
 });

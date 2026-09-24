@@ -22,3 +22,7 @@ export function getComposerText(): string {
 export function replaceComposerDraft(input: ComposerDraftInput): void {
   composerState().replaceDraft(input);
 }
+
+export function appendToComposerDraft(text: string): void {
+  composerState().appendText(text);
+}

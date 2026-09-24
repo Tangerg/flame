@@ -18,13 +18,7 @@ import { seamStep } from "./messageStyles";
 import { DelegatedRunLink } from "./DelegatedRunLink";
 import { NarrativeWave } from "./NarrativeWave";
 
-export function renderBlock(
-  block: ContentBlock,
-  key: number,
-  facts: TurnFacts,
-  ctx: BlockCtx,
-  superseded = false,
-) {
+export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, ctx: BlockCtx) {
   switch (block.kind) {
     case "text":
       return (
@@ -73,9 +67,7 @@ export function renderBlock(
     }
 
     case "reasoning":
-      return (
-        <ReasoningBlock key={key} text={block.text} status={block.status} superseded={superseded} />
-      );
+      return <ReasoningBlock key={key} text={block.text} status={block.status} />;
 
     case "approval":
       return (
@@ -124,7 +116,7 @@ function renderUnit(unit: MessageRenderUnit, facts: TurnFacts, ctx: BlockCtx) {
       />
     );
   }
-  return renderBlock(unit.block, unit.index, facts, ctx, unit.superseded);
+  return renderBlock(unit.block, unit.index, facts, ctx);
 }
 
 const standingTool = (name: string) =>

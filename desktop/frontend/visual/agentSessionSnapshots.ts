@@ -209,6 +209,20 @@ const RUNNING_SET_PLAN: Item = {
   },
 };
 
+const READ_STORE_RESULT = {
+  content: [
+    "package session",
+    "",
+    "func (s *Store) Commit(ctx context.Context, session *Session, records []Record, opts CommitOptions) (Receipt, error) {",
+    "\tif err := s.flushLocked(); err != nil {",
+    '\t\treturn Receipt{}, fmt.Errorf("commit: %w", err)',
+    "\t}",
+  ].join("\n"),
+  start_line: 1,
+  end_line: 6,
+  total_lines: 6,
+};
+
 const RUNNING_READ: Item = {
   type: "toolCall",
   safetyClass: "safe",
@@ -223,6 +237,7 @@ const RUNNING_READ: Item = {
     arguments: {
       path: "/Users/visual/scope/runtime/internal/session/atomicity_and_idempotency.go",
     },
+    result: READ_STORE_RESULT,
   },
 };
 
@@ -507,7 +522,11 @@ const SHELL_READ: Item = {
   startedAt: CREATED_AT,
   durationMillis: 42,
   finishedAt: "2026-07-31T08:00:00.042Z",
-  tool: { name: "read", arguments: { path: "runtime/internal/session/store.go" } },
+  tool: {
+    name: "read",
+    arguments: { path: "runtime/internal/session/store.go" },
+    result: READ_STORE_RESULT,
+  },
 };
 
 const SHELL_COMMAND: Item = {
@@ -632,7 +651,11 @@ const WAVE_READ: Item = {
   startedAt: CREATED_AT,
   durationMillis: 31,
   finishedAt: "2026-07-31T08:00:00.031Z",
-  tool: { name: "read", arguments: { path: "runtime/internal/session/store.go" } },
+  tool: {
+    name: "read",
+    arguments: { path: "runtime/internal/session/store.go" },
+    result: READ_STORE_RESULT,
+  },
 };
 
 const WAVE_GREP: Item = {

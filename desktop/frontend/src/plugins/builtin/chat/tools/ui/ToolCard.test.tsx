@@ -11,7 +11,14 @@ vi.mock("@/plugins/sdk", async (importOriginal) => {
     ...actual,
     useExtensionPoint: (point: { id: string }) =>
       point.id === "flame.tool.viewOpener"
-        ? [{ id: "test-opener", predicate: () => true, open: opened }]
+        ? [
+            {
+              id: "test-opener",
+              predicate: () => true,
+              label: () => "workspace.view.openBeside",
+              open: opened,
+            },
+          ]
         : [],
   };
 });

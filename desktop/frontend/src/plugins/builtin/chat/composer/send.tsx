@@ -65,14 +65,13 @@ function SendButton() {
 
   return (
     <>
-      {layout.secondary === "stop" && stopButton(false)}
-      {layout.primary === "stop" && stopButton(true)}
-      {layout.primary === "steer" && submitButton(t("composer.action.steer"), canSend)}
-      {layout.primary === "send" &&
+      {layout.submit === "steer" && submitButton(t("composer.action.steer"), canSend)}
+      {layout.submit === "send" &&
         submitButton(
           activeSessionId ? t("composer.action.send") : t("composer.project.required"),
           canSend && hasInput,
         )}
+      {layout.stop && stopButton(layout.stop === "emphasized")}
     </>
   );
 }

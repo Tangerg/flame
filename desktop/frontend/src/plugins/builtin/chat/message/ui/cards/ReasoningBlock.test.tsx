@@ -47,26 +47,24 @@ describe("ReasoningBlock disclosure policy", () => {
     now.mockRestore();
   });
 
-  it("remembers being collapsed while it thought apart from being opened once it had", () => {
+  it("starts shut while it thinks and keeps whatever the reader chose after it settles", () => {
     const view = render(<ReasoningBlock text="Hidden rationale" status="running" />);
     const live = () => screen.getByRole("button", { name: /Thinking|Thought/ });
 
-    expect(live().getAttribute("aria-expanded")).toBe("true");
+    expect(live().getAttribute("aria-expanded")).toBe("false");
 
     fireEvent.click(live());
-    expect(live().getAttribute("aria-expanded")).toBe("false");
+    expect(live().getAttribute("aria-expanded")).toBe("true");
 
     view.rerender(<ReasoningBlock text="Hidden rationale" status="complete" />);
-    expect(live().getAttribute("aria-expanded")).toBe("false");
-
-    fireEvent.click(live());
-    expect(live().getAttribute("aria-expanded")).toBe("true");
-
-    view.rerender(<ReasoningBlock text="Hidden rationale" status="running" />);
     expect(
       live().getAttribute("aria-expanded"),
-      "the collapse it was given while running is the one it kept",
-    ).toBe("false");
+      "settling does not close a thought the reader opened",
+    ).toBe("true");
+
+    fireEvent.click(live());
+    view.rerender(<ReasoningBlock text="Hidden rationale" status="running" />);
+    expect(live().getAttribute("aria-expanded")).toBe("false");
   });
 
   it("shows the newest line of a thought it is hiding, and only while it is still thinking", () => {
@@ -76,12 +74,6 @@ describe("ReasoningBlock disclosure policy", () => {
     const glimpse = () =>
       view.container.querySelector('[data-slot="reasoning-glimpse"]')?.textContent ?? null;
 
-    expect(live().getAttribute("aria-expanded")).toBe("true");
-    expect(glimpse(), "open, the material itself is on screen and the row would repeat it").toBe(
-      null,
-    );
-
-    fireEvent.click(live());
     expect(glimpse(), "the line it is on, not the one it has left").toBe(
       "What it is weighing right now.",
     );
@@ -90,6 +82,12 @@ describe("ReasoningBlock disclosure policy", () => {
       "the glimpse changes on every token, so it stays out of the name",
     ).toBe("Thinking");
 
+    fireEvent.click(live());
+    expect(glimpse(), "open, the material itself is on screen and the row would repeat it").toBe(
+      null,
+    );
+
+    fireEvent.click(live());
     view.rerender(<ReasoningBlock text={text} status="complete" />);
     expect(glimpse(), "a settled thought reports its duration, not a line it is no longer on").toBe(
       null,
@@ -144,6 +142,7 @@ describe("ReasoningBlock disclosure policy", () => {
     const overflow = stubScrollGeometry(400, 192);
     try {
       const { container } = renderReasoning("running", "Inspect the protocol boundary");
+      fireEvent.click(screen.getByRole("button", { name: /Thinking/ }));
       expect(scrollportOf(container).tabIndex).toBe(0);
     } finally {
       overflow();
@@ -152,6 +151,7 @@ describe("ReasoningBlock disclosure policy", () => {
 
   it("leaves a rationale that fits out of the tab order", () => {
     const { container } = renderReasoning("running", "Inspect the protocol boundary");
+    fireEvent.click(screen.getByRole("button", { name: /Thinking/ }));
 
     expect(scrollportOf(container).tabIndex).toBe(-1);
   });

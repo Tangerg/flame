@@ -150,17 +150,6 @@ export interface WorkspaceKnowledgeEntry {
   updatedAt?: string;
 }
 
-export interface WorkspaceFileHeadQuery {
-  path: string;
-  cwd?: string;
-  lines?: number;
-}
-
-export interface WorkspaceFileLine {
-  lineNumber: number;
-  text: string;
-}
-
 export interface WorkspaceListFilesQuery {
   cwd?: string;
   path?: string;
@@ -203,7 +192,6 @@ export const WORKSPACE_SKILL_PROPOSALS_KEY = "skill-proposals";
 export const WORKSPACE_AGENT_MEMORY_KEY = "agent-memory";
 export const WORKSPACE_KNOWLEDGE_KEY = "knowledge";
 export const WORKSPACE_GREP_KEY = "grep";
-export const WORKSPACE_FILE_HEAD_KEY = "file-head";
 export const WORKSPACE_AGENT_DOCS_KEY = "agent-docs";
 export const WORKSPACE_LIST_FILES_KEY = "list-files";
 export const WORKSPACE_READ_FILE_KEY = "read-file";
@@ -222,10 +210,6 @@ export const useWorkspaceGrep = createParameterizedDataQuery<
   WorkspaceGrepQuery,
   WorkspaceGrepResult
 >(WORKSPACE_GREP_KEY);
-export const useWorkspaceFileHead = createParameterizedDataQuery<
-  WorkspaceFileHeadQuery,
-  WorkspaceFileLine[]
->(WORKSPACE_FILE_HEAD_KEY);
 export const useWorkspaceSkills = createParameterizedDataQuery<
   WorkspaceCatalogQuery,
   WorkspaceSkillDiscovery

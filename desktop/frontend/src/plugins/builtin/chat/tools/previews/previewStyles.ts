@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { color, leading, motion, radius, space, surface } from "@/styles/tokens.stylex";
 
 export const previewStyles = stylex.create({
+  note: { margin: 0 },
   row: {
     borderRadius: radius.step2xs,
     backgroundColor: { default: null, ":hover": surface.hover },

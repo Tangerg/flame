@@ -33,3 +33,22 @@ describe("ToolOutputPanel copy material ownership", () => {
     expect(copyText).toHaveBeenCalledWith(output);
   });
 });
+
+describe("ToolOutputPanel height rule", () => {
+  const output = (count: number) =>
+    Array.from({ length: count }, (_, index) => `line ${index}`).join("\n");
+
+  it("shows the newest lines while collapsed, so progress stays visible", () => {
+    render(<ToolOutputPanel output={output(40)} status="running" />);
+    expect(screen.getByText("line 39")).toBeTruthy();
+    expect(screen.queryByText("line 0")).toBeNull();
+    expect(screen.getByRole("button", { name: /31 earlier lines/ })).toBeTruthy();
+  });
+
+  it.each([10, 100, 999, 1_001])("expands %i lines into the same bounded region", (count) => {
+    render(<ToolOutputPanel output={output(count)} status="ok" />);
+    fireEvent.click(screen.getByRole("button", { name: /earlier line/ }));
+    expect(screen.getByRole("region", { name: "Tool output" })).toBeTruthy();
+    cleanup();
+  });
+});

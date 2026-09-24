@@ -19,10 +19,8 @@ import type {
   FeedbackRequest,
   FileContent,
   FileEntry,
-  FileHead,
   ForkSessionRequest,
   GetDiffRequest,
-  GetFileHeadRequest,
   GrepRequest,
   GrepResult,
   HooksListResult,
@@ -124,10 +122,6 @@ export interface WorkspaceMethods {
     get: (params?: Omit<GetDiffRequest, "workspace">, signal?: AbortSignal) => Promise<Diff>;
   };
   files: {
-    head: (
-      params: Omit<GetFileHeadRequest, "workspace">,
-      signal?: AbortSignal,
-    ) => Promise<FileHead>;
     search: (params: Omit<GrepRequest, "workspace">, signal?: AbortSignal) => Promise<GrepResult>;
     list: (
       params?: Omit<ListFilesRequest, "workspace">,
@@ -360,7 +354,6 @@ function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
       get: (params, signal) => call("workspace.diff.get", { ...params, workspace }, { signal }),
     },
     files: {
-      head: (params, signal) => call("workspace.files.head", { ...params, workspace }, { signal }),
       search: (params, signal) =>
         call("workspace.files.search", { ...params, workspace }, { signal }),
       list: (params, signal) =>
