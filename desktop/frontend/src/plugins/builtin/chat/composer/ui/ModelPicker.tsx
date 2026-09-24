@@ -4,7 +4,7 @@ import * as stylex from "@stylexjs/stylex";
 import { fmtTokens } from "@/lib/format";
 import { type Translate, useT } from "@/lib/i18n";
 import { reasoningEffortLabel } from "@/plugins/builtin/settings/providers/public/reasoningEffort";
-import { space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { radius, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
 import {
   Button,
   Icon,
@@ -39,6 +39,15 @@ const effortStyles = stylex.create({
   heading: { display: "flex", gap: space.s1 },
   value: { fontWeight: weight.medium },
   ends: { display: "flex", justifyContent: "space-between" },
+  fixed: {
+    display: "inline-flex",
+    height: "var(--control-height-xs)",
+    alignItems: "center",
+    borderRadius: radius.button,
+    paddingInline: space.s2,
+    backgroundColor: surface.hover,
+    whiteSpace: "nowrap",
+  },
 });
 
 function EffortChip({ selection }: { selection: Selection }) {
@@ -253,9 +262,17 @@ export function ModelPicker() {
       label={t("composer.switchModel")}
       heading={t("composer.model.title")}
       activeAccessory={
-        selection && selection.model.reasoningLevels.length > 0 ? (
+        !selection || !selection.model.reasoning ? undefined : selection.model.reasoningLevels
+            .length > 0 ? (
           <EffortChip selection={selection} />
-        ) : undefined
+        ) : (
+          <span
+            title={t("composer.effort.automatic.title")}
+            {...stylex.props(effortStyles.fixed, vocab.muted, typeStep.uiSm)}
+          >
+            {t("composer.effort.automatic")}
+          </span>
+        )
       }
       placeholder={t("composer.model.search.placeholder")}
       emptyLabel={t("composer.model.search.empty")}

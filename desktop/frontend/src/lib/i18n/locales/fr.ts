@@ -1360,4 +1360,7 @@ export const fr: Record<string, string> = {
   "composer.effort.title": "Effort",
   "composer.effort.faster": "Plus rapide",
   "composer.effort.smarter": "Plus intelligent",
+  "composer.effort.automatic": "Réflexion · Auto",
+  "composer.effort.automatic.title":
+    "Ce modèle décide seul de sa réflexion et ne propose aucun niveau à choisir.",
 };

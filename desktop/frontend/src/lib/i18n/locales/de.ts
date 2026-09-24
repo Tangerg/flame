@@ -1323,4 +1323,7 @@ export const de: Record<string, string> = {
   "composer.effort.title": "Aufwand",
   "composer.effort.faster": "Schneller",
   "composer.effort.smarter": "Klüger",
+  "composer.effort.automatic": "Denken · Auto",
+  "composer.effort.automatic.title":
+    "Dieses Modell entscheidet selbst, wie viel es nachdenkt, und bietet keine Stufen zur Auswahl.",
 };

@@ -1265,4 +1265,6 @@ export const ja: Record<string, string> = {
   "composer.effort.title": "思考の強さ",
   "composer.effort.faster": "速い",
   "composer.effort.smarter": "賢い",
+  "composer.effort.automatic": "思考 · 自動",
+  "composer.effort.automatic.title": "このモデルは思考の深さを自動で決め、選べる強さはありません。",
 };

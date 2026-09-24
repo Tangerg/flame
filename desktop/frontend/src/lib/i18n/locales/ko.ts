@@ -1249,4 +1249,7 @@ export const ko: Record<string, string> = {
   "composer.effort.title": "사고 강도",
   "composer.effort.faster": "더 빠르게",
   "composer.effort.smarter": "더 똑똑하게",
+  "composer.effort.automatic": "사고 · 자동",
+  "composer.effort.automatic.title":
+    "이 모델은 사고 깊이를 스스로 정하며 선택할 수 있는 강도가 없습니다.",
 };

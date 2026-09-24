@@ -1214,4 +1214,6 @@ export const zh: Record<string, string> = {
   "composer.effort.title": "思考强度",
   "composer.effort.faster": "更快",
   "composer.effort.smarter": "更聪明",
+  "composer.effort.automatic": "思考 · 自动",
+  "composer.effort.automatic.title": "该模型会自行决定思考深度，不提供可选的思考强度。",
 };

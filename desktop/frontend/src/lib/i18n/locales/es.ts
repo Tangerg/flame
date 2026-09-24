@@ -1350,4 +1350,7 @@ export const es: Record<string, string> = {
   "composer.effort.title": "Esfuerzo",
   "composer.effort.faster": "Más rápido",
   "composer.effort.smarter": "Más inteligente",
+  "composer.effort.automatic": "Razonamiento · Auto",
+  "composer.effort.automatic.title":
+    "Este modelo decide por sí mismo cuánto razonar y no ofrece niveles para elegir.",
 };

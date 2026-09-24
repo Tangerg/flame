@@ -225,4 +225,20 @@ describe("ModelPicker", () => {
     await screen.findByPlaceholderText("Search models…");
     expect(screen.queryByRole("button", { name: "Switch reasoning effort" })).toBeNull();
   });
+
+  it("says a thinking model without levels decides effort itself", async () => {
+    const automatic = {
+      ...state.models[2]!,
+      id: "Vision Exp",
+      label: "Vision Exp",
+      reasoningLevels: [],
+    };
+    state.models = [...state.models, automatic];
+    state.selection = { model: automatic, reasoningEffort: undefined };
+    render(<ModelPicker />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    await screen.findByPlaceholderText("Search models…");
+    expect(await screen.findByText("Thinking · Auto")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Switch reasoning effort" })).toBeNull();
+  });
 });
