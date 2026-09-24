@@ -20,13 +20,21 @@ import { contributeLayout, notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { definePlugin } from "@/plugins/sdk";
 import { useAddComposerImageFiles } from "./public/attachments";
+import { useComposerText, useSetComposerText } from "./public/draft";
+import { focusComposer } from "./public/focus";
 import { ModelPicker } from "./ui/ModelPicker";
 
-function AttachButton() {
+function ContextMenuButton() {
   const t = useT();
   const addImageFiles = useAddComposerImageFiles();
   const inputRef = useRef<HTMLInputElement>(null);
   const canAttach = useSelectedModel()?.acceptsInput("image") ?? false;
+  const value = useComposerText();
+  const setValue = useSetComposerText();
+  const insert = (next: string) => {
+    setValue(next);
+    requestAnimationFrame(() => focusComposer(next.length));
+  };
 
   return (
     <>
@@ -41,13 +49,52 @@ function AttachButton() {
           if (files.length > 0) addImageFiles(files);
         }}
       />
-      <IconButton
-        icon="plus"
-        aria-label={t("composer.attachImage")}
-        title={canAttach ? t("composer.attachImage") : t("composer.attachImage.unsupported")}
-        disabled={!canAttach}
-        onClick={() => inputRef.current?.click()}
-      />
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          render={
+            <IconButton icon="plus" aria-label={t("composer.add")} title={t("composer.add")} />
+          }
+        />
+        <DropdownMenu.Content align="start" sideOffset={6}>
+          <DropdownMenu.Item
+            layout="glyph"
+            disabled={!canAttach}
+            onClick={() => inputRef.current?.click()}
+          >
+            <Icon name="image" size="md" />
+            <span {...stylex.props(vocab.min)}>
+              <span {...stylex.props(vocab.truncate)}>{t("composer.attachImage")}</span>
+              {!canAttach && (
+                <span {...stylex.props(toolbarStyles.optionDetail, typeStep.uiSm)}>
+                  {t("composer.attachImage.unsupported")}
+                </span>
+              )}
+            </span>
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            layout="glyph"
+            onClick={() => insert(value ? `${value.replace(/\s+$/, "")} @` : "@")}
+          >
+            <Icon name="filetext" size="md" />
+            <span {...stylex.props(vocab.truncate)}>{t("composer.add.file")}</span>
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            layout="glyph"
+            disabled={value.trim() !== ""}
+            onClick={() => insert("/")}
+          >
+            <Icon name="command" size="md" />
+            <span {...stylex.props(vocab.min)}>
+              <span {...stylex.props(vocab.truncate)}>{t("composer.add.command")}</span>
+              {value.trim() !== "" && (
+                <span {...stylex.props(toolbarStyles.optionDetail, typeStep.uiSm)}>
+                  {t("composer.add.command.startsMessage")}
+                </span>
+              )}
+            </span>
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
     </>
   );
 }
@@ -129,9 +176,9 @@ export const composerToolbar = definePlugin({
   name: "flame.builtin.composer-toolbar",
   setup(ctx) {
     contributeLayout(ctx, "composer.toolbar.start", {
-      id: "attach",
+      id: "add",
       order: 0,
-      component: AttachButton,
+      component: ContextMenuButton,
     });
     contributeLayout(ctx, "composer.toolbar.start", {
       id: "approval",

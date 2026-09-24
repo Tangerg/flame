@@ -36,6 +36,14 @@ function ProjectGroupNode({
   onNewSession: (project: WorkProject) => void;
 }) {
   const [open, setOpen] = useState(true);
+  const holdsActive = group.sessions.some((session) => session.id === activeSessionId);
+  const [revealedFor, setRevealedFor] = useState(activeSessionId);
+  if (revealedFor !== activeSessionId) {
+    setRevealedFor(activeSessionId);
+    if (holdsActive && !open) setOpen(true);
+  }
+  const waiting = group.sessions.filter((session) => session.attention === "waiting").length;
+  const running = group.sessions.some((session) => session.attention === "running");
 
   return (
     <div {...stylex.props(vocab.column)}>
@@ -44,6 +52,8 @@ function ProjectGroupNode({
         active={group.project.id === activeCwd && !open}
         open={open}
         count={group.sessions.length}
+        waiting={waiting}
+        running={running}
         onToggle={() => setOpen((v) => !v)}
         onNewSession={onNewSession}
         canCreateSession={actions.canCreateSessionInFolder}

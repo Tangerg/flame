@@ -156,9 +156,9 @@ describe("ChatPanel Session-owned workspace view state", () => {
 
     expect(
       screen.getByRole<HTMLButtonElement>("button", {
-        name: "Widen the window to open the right workspace",
+        name: /Open material full width/,
       }).disabled,
-    ).toBe(true);
+    ).toBe(false);
   });
 });
 
@@ -180,9 +180,9 @@ it("measures dock availability when returning from a promoted main view", () => 
     view.rerender(<ChatPanel onSend={() => true} />);
     expect(
       screen.getByRole<HTMLButtonElement>("button", {
-        name: "Widen the window to open the right workspace",
+        name: /Open material full width/,
       }).disabled,
-    ).toBe(true);
+    ).toBe(false);
     expect(model.setWidth).not.toHaveBeenCalled();
     model.activeMainView = "stateful";
     view.rerender(<ChatPanel onSend={() => true} />);

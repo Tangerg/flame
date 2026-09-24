@@ -34,6 +34,7 @@ beforeEach(() => {
     uiFont: "",
     codeFont: "",
     fontSize: null,
+    codeFontSize: null,
     fontSmoothing: true,
     radiusScale: 1,
     motionScale: 1,
@@ -334,5 +335,21 @@ describe("UI preference DOM synchronization", () => {
     expect(document.documentElement.style.getPropertyValue("--depth-step")).toBe("4%");
     useAppearanceStore.getState().setTheme("dark");
     expect(document.documentElement.style.getPropertyValue("--depth-step")).toBe("8%");
+  });
+});
+
+describe("code size", () => {
+  it("moves code alone, leaving the interface ladder where the UI size put it", () => {
+    const read = (name: string) => document.documentElement.style.getPropertyValue(name);
+    useAppearanceStore.setState({ fontSize: 14, codeFontSize: null });
+    const interfaceSize = read("--fs-ui-md");
+    const followed = read("--fs-code");
+
+    useAppearanceStore.setState({ codeFontSize: 16 });
+    expect(read("--fs-code")).toBe("16px");
+    expect(read("--fs-ui-md")).toBe(interfaceSize);
+
+    useAppearanceStore.setState({ codeFontSize: null });
+    expect(read("--fs-code")).toBe(followed);
   });
 });

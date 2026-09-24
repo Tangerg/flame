@@ -111,6 +111,7 @@ function applyFonts(
   uiFont: string,
   codeFont: string,
   fontSize: number | null,
+  codeFontSize: number | null,
   fontSmoothing: boolean,
 ): void {
   const root = document.documentElement;
@@ -137,6 +138,7 @@ function applyFonts(
   for (const [property, value] of Object.entries({
     ...uiTypeLadderCssVariables(fontSize),
     ...iconScaleCssVariables(fontSize),
+    ...(codeFontSize === null ? {} : { "--fs-code": `${codeFontSize}px` }),
   })) {
     root.style.setProperty(property, value);
   }
@@ -161,7 +163,13 @@ export function installDocumentAppearance<T extends AppearancePreference>(
   applyColorTheme(initial.theme, initial.accent, initial.contrast);
   applyVisualStyle(initial.visualStyle);
   publishTokens();
-  applyFonts(initial.uiFont, initial.codeFont, initial.fontSize, initial.fontSmoothing);
+  applyFonts(
+    initial.uiFont,
+    initial.codeFont,
+    initial.fontSize,
+    initial.codeFontSize,
+    initial.fontSmoothing,
+  );
   applyShape(initial.density, initial.radiusScale, initial.motionScale);
 
   const unsubscribeUi = store.subscribe((state, previous) => {
@@ -181,9 +189,16 @@ export function installDocumentAppearance<T extends AppearancePreference>(
       state.uiFont !== previous.uiFont ||
       state.codeFont !== previous.codeFont ||
       state.fontSize !== previous.fontSize ||
+      state.codeFontSize !== previous.codeFontSize ||
       state.fontSmoothing !== previous.fontSmoothing
     ) {
-      applyFonts(state.uiFont, state.codeFont, state.fontSize, state.fontSmoothing);
+      applyFonts(
+        state.uiFont,
+        state.codeFont,
+        state.fontSize,
+        state.codeFontSize,
+        state.fontSmoothing,
+      );
     }
     if (
       state.density !== previous.density ||

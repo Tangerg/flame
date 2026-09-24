@@ -5,7 +5,7 @@ import {
   clampSidebarWidth,
   defaultDockWidth,
   DOCK_MIN_WIDTH_PX,
-  DOCK_SAFE_AREA_PX,
+  CONVERSATION_READING_MIN_PX,
   dockRatioFromWidth,
   dockWidthFromRatio,
   maxDockWidth,
@@ -23,16 +23,21 @@ describe("sidebar geometry", () => {
   });
 
   it("keeps both the drawer and reading plane operable in a narrow window", () => {
-    expect(maxSidebarWidth(720)).toBe(480);
-    expect(clampSidebarWidth(900, 720)).toBe(480);
+    expect(maxSidebarWidth(720)).toBe(720 - CONVERSATION_READING_MIN_PX);
+    expect(clampSidebarWidth(900, 720)).toBe(720 - CONVERSATION_READING_MIN_PX);
     expect(clampSidebarWidth(100, 720)).toBe(SIDEBAR_MIN_WIDTH_PX);
   });
 });
 
 describe("dock geometry", () => {
+  it("keeps a real reading column beside a default dock in the smallest window", () => {
+    const rowWidth = 1120 - SIDEBAR_DEFAULT_WIDTH_PX;
+    expect(rowWidth - defaultDockWidth(rowWidth)).toBeGreaterThanOrEqual(420);
+  });
+
   it("reserves the conversation's safe area before the flank may claim anything", () => {
-    expect(maxDockWidth(1120)).toBe(1120 - DOCK_SAFE_AREA_PX);
-    expect(clampDockWidth(2000, 1120)).toBe(768);
+    expect(maxDockWidth(1120)).toBe(1120 - CONVERSATION_READING_MIN_PX);
+    expect(clampDockWidth(2000, 1120)).toBe(680);
     expect(clampDockWidth(420, 1120)).toBe(420);
     expect(clampDockWidth(100, 1120)).toBe(DOCK_MIN_WIDTH_PX);
   });
@@ -46,13 +51,13 @@ describe("dock geometry", () => {
   });
 
   it("folds the dock when the row cannot hold the floor beside the safe area", () => {
-    expect(canPresentDock(DOCK_MIN_WIDTH_PX + DOCK_SAFE_AREA_PX - 1)).toBe(false);
-    expect(canPresentDock(DOCK_MIN_WIDTH_PX + DOCK_SAFE_AREA_PX)).toBe(true);
+    expect(canPresentDock(DOCK_MIN_WIDTH_PX + CONVERSATION_READING_MIN_PX - 1)).toBe(false);
+    expect(canPresentDock(DOCK_MIN_WIDTH_PX + CONVERSATION_READING_MIN_PX)).toBe(true);
   });
 
   it("round-trips a position in the range through a ratio", () => {
     const rowWidth = 1440;
-    for (const width of [320, 500, 768, 1088]) {
+    for (const width of [320, 500, 768, 1000]) {
       expect(dockWidthFromRatio(dockRatioFromWidth(width, rowWidth), rowWidth)).toBe(width);
     }
     expect(dockWidthFromRatio(0, rowWidth)).toBe(DOCK_MIN_WIDTH_PX);
@@ -74,7 +79,7 @@ describe("dock geometry", () => {
   it("keeps the automatic dock subordinate as the reading area grows", () => {
     expect(defaultDockWidth(1440)).toBe(480);
     expect(defaultDockWidth(2000)).toBe(480);
-    expect(defaultDockWidth(800)).toBe(448);
+    expect(defaultDockWidth(800)).toBe(360);
     expect(defaultDockWidth(500)).toBe(DOCK_MIN_WIDTH_PX);
   });
 });

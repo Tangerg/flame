@@ -37,15 +37,11 @@ export function AgentDockToggle({
   onToggle,
   showLabel,
   hideLabel,
-  disabled,
-  unavailableLabel,
 }: {
   open: boolean;
   onToggle: () => void;
   showLabel: string;
   hideLabel: string;
-  disabled?: boolean;
-  unavailableLabel?: string;
 }) {
   return (
     <div className="agent-dock-control">
@@ -54,8 +50,7 @@ export function AgentDockToggle({
         hoverIcon={open ? "x" : undefined}
         size="sm"
         aria-expanded={open}
-        title={disabled ? unavailableLabel : open ? hideLabel : showLabel}
-        disabled={disabled}
+        title={open ? hideLabel : showLabel}
         onClick={onToggle}
       />
     </div>

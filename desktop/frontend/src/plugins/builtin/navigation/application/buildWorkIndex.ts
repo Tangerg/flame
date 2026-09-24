@@ -12,7 +12,7 @@ function compareTimeDesc(a: { time: string }, b: { time: string }): number {
   return a.time < b.time ? 1 : -1;
 }
 
-function compareProjectSession(a: AgentSessionSummary, b: AgentSessionSummary): number {
+function comparePinnedFirst(a: AgentSessionSummary, b: AgentSessionSummary): number {
   if (Boolean(a.favorite) !== Boolean(b.favorite)) return a.favorite ? -1 : 1;
   return compareTimeDesc(a, b);
 }
@@ -61,11 +61,11 @@ export function buildWorkIndex({
     byDirectory.delete(project.id);
     return {
       project: toWorkProject(project),
-      sessions: owned.sort(compareProjectSession).map(toWorkSession),
+      sessions: owned.sort(comparePinnedFirst).map(toWorkSession),
     };
   });
 
-  const recents = [...byDirectory.values()].flat().sort(compareTimeDesc).map(toWorkSession);
+  const recents = [...byDirectory.values()].flat().sort(comparePinnedFirst).map(toWorkSession);
 
   return { groups, recents };
 }

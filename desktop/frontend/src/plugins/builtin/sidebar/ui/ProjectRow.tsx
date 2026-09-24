@@ -3,12 +3,23 @@ import { AgentRow } from "@/ui/agent";
 import { Icon, IconButton, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import type { WorkProject } from "@/plugins/builtin/navigation/public/workIndex";
-import { color, space, type as typeStep } from "@/styles/tokens.stylex";
+import { color, corner, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 
 const pr = stylex.create({
   count: { fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },
   line: { display: "inline-flex", minWidth: 0, alignItems: "center", gap: space.s1_5 },
   warn: { flexShrink: 0, color: color.warning },
+  waiting: { flexShrink: 0, fontWeight: weight.medium, color: color.warning },
+  running: {
+    height: space.s1_5,
+    width: space.s1_5,
+    flexShrink: 0,
+    borderWidth: "var(--control-edge-width)",
+    borderStyle: "solid",
+    borderColor: color.accent,
+    animation: "var(--animate-pulse-dot)",
+  },
+  trailing: { display: "inline-flex", alignItems: "center", gap: space.s1_5 },
 });
 
 export function ProjectRow({
@@ -16,6 +27,8 @@ export function ProjectRow({
   active,
   open,
   count,
+  waiting,
+  running,
   onToggle,
   onNewSession,
   canCreateSession,
@@ -24,6 +37,8 @@ export function ProjectRow({
   active: boolean;
   open: boolean;
   count: number;
+  waiting: number;
+  running: boolean;
   onToggle: () => void;
   onNewSession: (project: WorkProject) => void;
   canCreateSession: boolean;
@@ -36,7 +51,23 @@ export function ProjectRow({
       onClick={() => onToggle()}
       title={project.id}
       aria-expanded={open}
-      trailing={<span {...stylex.props(pr.count, typeStep.uiSm)}>{count}</span>}
+      trailing={
+        <span {...stylex.props(pr.trailing)}>
+          {!open && waiting > 0 && (
+            <span {...stylex.props(pr.waiting, typeStep.uiXs)}>
+              {t("project.row.waiting", { count: waiting })}
+            </span>
+          )}
+          {!open && waiting === 0 && running && (
+            <span
+              role="img"
+              aria-label={t("session.status.running")}
+              {...stylex.props(pr.running, corner.pill)}
+            />
+          )}
+          <span {...stylex.props(pr.count, typeStep.uiSm)}>{count}</span>
+        </span>
+      }
       action={
         <IconButton
           icon="plus"

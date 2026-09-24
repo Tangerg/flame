@@ -63,6 +63,8 @@ function FontPicker({
   );
 }
 
+const CODE_SIZE_VALUES = [11, 12, 13, 14, 15, 16];
+
 const SIZE_VALUES = [
   UI_FONT_SIZE_MIN_PX,
   12,
@@ -80,13 +82,19 @@ export function FontSection() {
     uiFont,
     codeFont,
     fontSize,
+    codeFontSize,
     fontSmoothing,
     setUiFont,
     setCodeFont,
     setFontSize,
+    setCodeFontSize,
     setFontSmoothing,
   } = useFontPreferences();
 
+  const codeSizeOptions: SegmentedOption<string>[] = [
+    { value: SIZE_RESET, label: t("settings.font.followUi") },
+    ...CODE_SIZE_VALUES.map((px) => ({ value: String(px), label: String(px) })),
+  ];
   const sizeOptions: SegmentedOption<string>[] = [
     { value: SIZE_RESET, label: t("settings.font.default") },
     ...SIZE_VALUES.map((px) => ({ value: String(px), label: String(px) })),
@@ -118,6 +126,14 @@ export function FontSection() {
           options={sizeOptions}
           onChange={(v) => setFontSize(v === SIZE_RESET ? null : Number(v))}
           ariaLabel={t("settings.font.size")}
+        />
+      </SettingRow>
+      <SettingRow label={t("settings.font.codeSize")} sub={t("settings.font.codeSize.sub")}>
+        <Segmented
+          value={codeFontSize === null ? SIZE_RESET : String(codeFontSize)}
+          options={codeSizeOptions}
+          onChange={(v) => setCodeFontSize(v === SIZE_RESET ? null : Number(v))}
+          ariaLabel={t("settings.font.codeSize")}
         />
       </SettingRow>
       <SettingRow label={t("settings.font.smoothing")} sub={t("settings.font.smoothing.sub")}>

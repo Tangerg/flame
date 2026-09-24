@@ -28,7 +28,9 @@ export function SessionList({
 }) {
   const t = useT();
   const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? sessions : sessions.slice(0, VISIBLE_CAP);
+  const visible = showAll
+    ? sessions
+    : sessions.filter((session, index) => index < VISIBLE_CAP || session.id === activeSessionId);
   const hidden = sessions.length - visible.length;
 
   return (

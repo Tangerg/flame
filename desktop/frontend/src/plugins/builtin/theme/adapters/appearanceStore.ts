@@ -24,6 +24,7 @@ const appearancePersistSchema = z.object({
   uiFont: z.string(),
   codeFont: z.string(),
   fontSize: z.number().nullable(),
+  codeFontSize: z.number().nullable().default(null),
   fontSmoothing: z.boolean(),
   density: z.enum(UI_DENSITY_MODES),
   radiusScale: z.number(),
@@ -36,7 +37,7 @@ void _paired;
 export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>()(
   persist(
     (set) => ({
-      theme: "light",
+      theme: "system",
       visualStyle: "flame",
       accent: "#3574f0",
       customTheme: { bg: "#0f1117", fg: "#e6e8ee" },
@@ -44,6 +45,7 @@ export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>(
       uiFont: "",
       codeFont: "",
       fontSize: null,
+      codeFontSize: null,
       fontSmoothing: true,
       density: DEFAULT_UI_DENSITY,
       radiusScale: 1,
@@ -57,6 +59,7 @@ export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>(
       setUiFont: (uiFont) => set({ uiFont }),
       setCodeFont: (codeFont) => set({ codeFont }),
       setFontSize: (fontSize) => set({ fontSize }),
+      setCodeFontSize: (codeFontSize) => set({ codeFontSize }),
       setFontSmoothing: (fontSmoothing) => set({ fontSmoothing }),
       setDensity: (density) => set({ density }),
       setRadiusScale: (radiusScale) => set({ radiusScale }),

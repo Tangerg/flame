@@ -21,6 +21,7 @@ export interface AppearancePreference {
   uiFont: string;
   codeFont: string;
   fontSize: number | null;
+  codeFontSize: number | null;
   fontSmoothing: boolean;
   density: UiDensity;
   radiusScale: number;
@@ -36,6 +37,7 @@ export interface AppearanceEdit {
   setUiFont: (font: string) => void;
   setCodeFont: (font: string) => void;
   setFontSize: (size: number | null) => void;
+  setCodeFontSize: (size: number | null) => void;
   setFontSmoothing: (on: boolean) => void;
   setDensity: (density: UiDensity) => void;
   setRadiusScale: (scale: number) => void;

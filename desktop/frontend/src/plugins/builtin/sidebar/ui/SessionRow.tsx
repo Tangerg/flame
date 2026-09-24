@@ -2,7 +2,8 @@ import { isImeKey } from "@/lib/ime";
 import * as stylex from "@stylexjs/stylex";
 import { useRef, useState } from "react";
 import { AgentRow, AgentRowEditor } from "@/ui/agent";
-import { ConfirmDialog, ContextMenu, Icon, TextField, vocab } from "@/ui";
+import { ConfirmDialog, ContextMenu, DropdownMenu, Icon, IconButton, TextField, vocab } from "@/ui";
+import type { IconName } from "@/ui/icons";
 import { useT } from "@/lib/i18n";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import type { WorkSession } from "@/plugins/builtin/navigation/public/workIndex";
@@ -103,6 +104,85 @@ export function SessionRow({
   const accessibleStatus = attentionLabel ? `${attentionLabel} · ${when}` : when;
   const title = session.title.trim() || t("session.untitled");
 
+  const menu: {
+    id: string;
+    icon: IconName;
+    label: string;
+    destructive?: boolean;
+    run: () => void;
+  }[] = [
+    ...(onToggleFavorite
+      ? [
+          {
+            id: "pin",
+            icon: "star" as const,
+            label: session.favorite ? t("session.action.unpin") : t("session.action.pin"),
+            run: () => onToggleFavorite(session.id, session.revision, !session.favorite),
+          },
+        ]
+      : []),
+    ...(onRename
+      ? [
+          {
+            id: "rename",
+            icon: "edit" as const,
+            label: t("session.action.rename"),
+            run: () => setRenaming(true),
+          },
+        ]
+      : []),
+    ...(onFork
+      ? [
+          {
+            id: "fork",
+            icon: "branch" as const,
+            label: t("session.action.fork"),
+            run: () => onFork(session.id),
+          },
+        ]
+      : []),
+    ...(onDelete
+      ? [
+          {
+            id: "delete",
+            icon: "trash" as const,
+            label: t("session.action.delete"),
+            destructive: true,
+            run: () => setConfirmingDelete(true),
+          },
+        ]
+      : []),
+  ];
+
+  const more =
+    menu.length > 0 ? (
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          render={
+            <IconButton
+              icon="more"
+              size="sm"
+              data-chrome-focus=""
+              aria-label={t("session.row.more", { title })}
+            />
+          }
+        />
+        <DropdownMenu.Content align="start" sideOffset={4}>
+          {menu.map((item) => (
+            <DropdownMenu.Item
+              key={item.id}
+              layout="glyph"
+              onClick={item.run}
+              destructive={item.destructive}
+            >
+              <Icon name={item.icon} size="md" />
+              <span {...stylex.props(vocab.truncate)}>{item.label}</span>
+            </DropdownMenu.Item>
+          ))}
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
+    ) : undefined;
+
   const row = (
     <div {...stylex.props(sr.host)}>
       {renaming ? (
@@ -127,6 +207,7 @@ export function SessionRow({
           indent={indented ? "nested" : "none"}
           revealOverflow
           look="quiet"
+          action={more}
           trailing={
             <span {...stylex.props(sr.trailing)}>
               {session.favorite && (
@@ -153,39 +234,22 @@ export function SessionRow({
     </div>
   );
 
-  if (!onDelete && !onFork && !onRename && !onToggleFavorite) return row;
+  if (menu.length === 0) return row;
   return (
     <>
       <ContextMenu.Root>
         <ContextMenu.Trigger render={row} />
         <ContextMenu.Content>
-          {onToggleFavorite && (
+          {menu.map((item) => (
             <ContextMenu.IconItem
-              icon="star"
-              onSelect={() => onToggleFavorite(session.id, session.revision, !session.favorite)}
+              key={item.id}
+              icon={item.icon}
+              destructive={item.destructive}
+              onSelect={item.run}
             >
-              {session.favorite ? t("session.action.unpin") : t("session.action.pin")}
+              {item.label}
             </ContextMenu.IconItem>
-          )}
-          {onRename && (
-            <ContextMenu.IconItem icon="edit" onSelect={() => setRenaming(true)}>
-              {t("session.action.rename")}
-            </ContextMenu.IconItem>
-          )}
-          {onFork && (
-            <ContextMenu.IconItem icon="branch" onSelect={() => onFork(session.id)}>
-              {t("session.action.fork")}
-            </ContextMenu.IconItem>
-          )}
-          {onDelete && (
-            <ContextMenu.IconItem
-              icon="trash"
-              destructive
-              onSelect={() => setConfirmingDelete(true)}
-            >
-              {t("session.action.delete")}
-            </ContextMenu.IconItem>
-          )}
+          ))}
         </ContextMenu.Content>
       </ContextMenu.Root>
       {onDelete && (

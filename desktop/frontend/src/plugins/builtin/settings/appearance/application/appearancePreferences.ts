@@ -34,10 +34,12 @@ export function useFontPreferences() {
     uiFont: useAppearance((s) => s.uiFont),
     codeFont: useAppearance((s) => s.codeFont),
     fontSize: useAppearance((s) => s.fontSize),
+    codeFontSize: useAppearance((s) => s.codeFontSize),
     fontSmoothing: useAppearance((s) => s.fontSmoothing),
     setUiFont: edit.setUiFont,
     setCodeFont: edit.setCodeFont,
     setFontSize: edit.setFontSize,
+    setCodeFontSize: edit.setCodeFontSize,
     setFontSmoothing: edit.setFontSmoothing,
   };
 }

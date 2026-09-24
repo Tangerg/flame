@@ -160,8 +160,14 @@ function ContextSeparator({
 
 type RowRefinement = { layout?: RowLayout; styles?: StyleXStyles };
 
-function DropdownItem({ layout, styles, className, ...props }: DropdownItemProps & RowRefinement) {
-  const item = stylex.props(menuItem(layout), styles);
+function DropdownItem({
+  layout,
+  styles,
+  destructive,
+  className,
+  ...props
+}: DropdownItemProps & RowRefinement & { destructive?: boolean }) {
+  const item = stylex.props(menuItem(layout), destructive && floatingRowStyles.destructive, styles);
   return <MenuPrimitive.Item {...props} {...item} className={cn(item.className, className)} />;
 }
 

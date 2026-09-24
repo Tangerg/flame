@@ -93,7 +93,7 @@ describe("buildWorkIndex", () => {
     ]);
   });
 
-  it("orders recents by time even when one is pinned", () => {
+  it("pins a recent to the top exactly as it does inside a project", () => {
     const content = buildWorkIndex({
       projects: [],
       sessions: [
@@ -102,7 +102,7 @@ describe("buildWorkIndex", () => {
       ],
     });
 
-    expect(content?.recents.map((item) => item.id)).toEqual(["newer", "pinned"]);
+    expect(content?.recents.map((item) => item.id)).toEqual(["pinned", "newer"]);
   });
 
   it("projects source status into work attention", () => {

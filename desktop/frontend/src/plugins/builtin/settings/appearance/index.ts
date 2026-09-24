@@ -24,6 +24,7 @@ export default definePlugin({
         "settings.font.ui",
         "settings.font.code",
         "settings.font.size",
+        "settings.font.codeSize",
         "settings.font.smoothing",
         "settings.language.label",
         "settings.motion",

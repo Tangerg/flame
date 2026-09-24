@@ -2,7 +2,7 @@ import { expect, test, type Page } from "./test";
 import { freezeVisualClock } from "./frozenClock";
 import { en } from "@/lib/i18n/locales/en";
 import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
-import { DOCK_MIN_WIDTH_PX, DOCK_SAFE_AREA_PX } from "@/lib/shellGeometry";
+import { DOCK_MIN_WIDTH_PX, CONVERSATION_READING_MIN_PX } from "@/lib/shellGeometry";
 import {
   VISUAL_DOCK_WIDTH_RATIO,
   DOCK_VIEW_BY_STATE,
@@ -234,7 +234,7 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
       dockVisible: dock ? getComputedStyle(dock).visibility !== "hidden" : false,
     };
   });
-  expect(geometry.rowWidth).toBeLessThan(DOCK_SAFE_AREA_PX + DOCK_MIN_WIDTH_PX);
+  expect(geometry.rowWidth).toBeLessThan(CONVERSATION_READING_MIN_PX + DOCK_MIN_WIDTH_PX);
   expect(geometry.dockVisible).toBe(false);
   expect(geometry.conversationWidth).toBe(geometry.rowWidth);
   await expect(

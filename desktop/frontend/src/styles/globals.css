@@ -1126,12 +1126,25 @@ html.theme-dark {
   }
 }
 
+@keyframes agent-overflow-lead {
+  to {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 16px);
+    mask-image: linear-gradient(to right, transparent, #000 16px);
+  }
+}
+
 .agent-overflow-track {
   transform: translateX(0);
 }
+.agent-overflow-label:not([data-overflowing]) {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
 .agent-row:is(:hover, :focus-visible) .agent-overflow-label[data-overflowing] {
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 16px);
-  mask-image: linear-gradient(to right, transparent, #000 16px);
+  animation-name: agent-overflow-lead;
+  animation-duration: 0s;
+  animation-delay: var(--dur-slow);
+  animation-fill-mode: forwards;
 }
 
 .agent-row:is(:hover, :focus-visible) .agent-overflow-track[data-overflowing] {

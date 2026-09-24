@@ -25,6 +25,7 @@ import {
   closeWorkspaceDockView,
   closeWorkspaceView,
   collapseWorkspaceDock,
+  openWorkspaceView,
   openWorkspaceViewInDock,
   reorderWorkspaceDockView,
   selectWorkspaceDockView,
@@ -221,6 +222,10 @@ export function ChatPanel({ onSend }: Props) {
     };
   });
   const openViewIds = new Set(ownedDockViewIds);
+  const fullWidthViewId =
+    dock.activeViewId && dock.activeViewId !== WORKSPACE_DOCK_CATALOG
+      ? dock.activeViewId
+      : (ownedDockViewIds[0] ?? "file");
 
   return (
     <AgentContentCard label={t("shell.region.workspace")}>
@@ -279,11 +284,15 @@ export function ChatPanel({ onSend }: Props) {
           {hasDockOwner && (
             <AgentDockToggle
               open={dockOpen && dockAvailable}
-              onToggle={dockOpen ? collapseWorkspaceDock : showWorkspaceDock}
-              showLabel={t("dock.action.show")}
+              onToggle={
+                !dockAvailable
+                  ? () => openWorkspaceView(fullWidthViewId)
+                  : dockOpen
+                    ? collapseWorkspaceDock
+                    : showWorkspaceDock
+              }
+              showLabel={dockAvailable ? t("dock.action.show") : t("dock.action.openFull")}
               hideLabel={t("dock.action.hide")}
-              disabled={!dockAvailable}
-              unavailableLabel={t("dock.action.unavailable")}
             />
           )}
         </AgentDockRow>

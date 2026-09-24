@@ -1,14 +1,13 @@
 export const SIDEBAR_MIN_WIDTH_PX = 240;
 export const SIDEBAR_DEFAULT_WIDTH_PX = 275;
 const SIDEBAR_MAX_WIDTH_PX = 520;
-const SIDEBAR_READING_MIN_WIDTH_PX = 240;
 
 export const DOCK_MIN_WIDTH_PX = 320;
-export const DOCK_SAFE_AREA_PX = 352;
+export const CONVERSATION_READING_MIN_PX = 440;
 export const DOCK_PREFERRED_WIDTH_PX = 480;
 
 export function canPresentDock(rowWidth: number): boolean {
-  return rowWidth >= DOCK_MIN_WIDTH_PX + DOCK_SAFE_AREA_PX;
+  return rowWidth >= DOCK_MIN_WIDTH_PX + CONVERSATION_READING_MIN_PX;
 }
 
 export function clampSidebarWidth(width: number, shellWidth: number): number {
@@ -18,12 +17,12 @@ export function clampSidebarWidth(width: number, shellWidth: number): number {
 export function maxSidebarWidth(shellWidth: number): number {
   return Math.max(
     SIDEBAR_MIN_WIDTH_PX,
-    Math.min(SIDEBAR_MAX_WIDTH_PX, shellWidth - SIDEBAR_READING_MIN_WIDTH_PX),
+    Math.min(SIDEBAR_MAX_WIDTH_PX, shellWidth - CONVERSATION_READING_MIN_PX),
   );
 }
 
 export function maxDockWidth(rowWidth: number): number {
-  return Math.max(DOCK_MIN_WIDTH_PX, rowWidth - DOCK_SAFE_AREA_PX);
+  return Math.max(DOCK_MIN_WIDTH_PX, rowWidth - CONVERSATION_READING_MIN_PX);
 }
 
 export function clampDockWidth(width: number, rowWidth: number): number {

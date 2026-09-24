@@ -569,7 +569,7 @@ test("composer keeps one production edge and 6/8 footer inset", async ({ page })
   const footer = page.locator('[data-slot="composer-footer"]');
   await expect(footer).toHaveCSS("padding-bottom", "6px");
   await expect(footer).toHaveCSS("padding-right", "8px");
-  await expect(page.getByRole("button", { name: "Attach image" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add to message" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Switch model" })).toBeVisible();
 
   const box = await composer.boundingBox();
@@ -620,10 +620,13 @@ test("model capabilities drive the picker and image admission together", async (
   await page.goto("/visual/?fixture=agent&theme=light&state=empty");
   await page.locator("html[data-visual-ready]").waitFor();
 
-  const attach = page.getByRole("button", { name: "Attach image" });
+  const add = page.getByRole("button", { name: "Add to message" });
+  const attach = page.getByRole("menuitem", { name: /Attach image/ });
   const trigger = page.getByRole("button", { name: "Switch model" });
   const triggerLabel = trigger.locator('[data-slot="composer-chip-label"]');
+  await add.click();
   await expect(attach).toBeEnabled();
+  await page.keyboard.press("Escape");
   await expect(triggerLabel).toHaveText("GPT-5.6 Sol · Medium");
   await trigger.click();
 
@@ -643,8 +646,9 @@ test("model capabilities drive the picker and image admission together", async (
   await expect(qwen).toHaveAttribute("title", QWEN_MT_PLUS_CAPABILITIES);
   await qwen.click();
 
-  await expect(attach).toBeDisabled();
   await expect(triggerLabel).toHaveText("Qwen MT Plus");
+  await add.click();
+  await expect(attach).toHaveAttribute("aria-disabled", "true");
 });
 
 for (const theme of ["light", "dark"] as const) {

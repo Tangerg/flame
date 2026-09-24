@@ -677,7 +677,7 @@ test("coarse pointers receive real 44px controls without overlapping hit targets
     for (const control of [
       page.getByRole("tab", { name: "Plan" }),
       page.getByRole("button", { name: "Collapse right workspace" }),
-      page.getByRole("button", { name: "Attach image" }),
+      page.getByRole("button", { name: "Add to message" }),
     ]) {
       const box = await control.boundingBox();
       if (!box) throw new Error("Coarse-pointer control has no layout box");
