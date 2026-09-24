@@ -23,4 +23,14 @@ export default defineConfig({
     port: 4174,
     strictPort: true,
   },
+  build: {
+    outDir: "../.cache/visual-dist",
+    emptyOutDir: true,
+    rollupOptions: { input: path.resolve(import.meta.dirname, "visual/index.html") },
+  },
+  preview: {
+    host: "127.0.0.1",
+    port: 4175,
+    strictPort: true,
+  },
 });

@@ -248,7 +248,34 @@ function pending<T>(): Promise<T> {
   return new Promise<T>(() => {});
 }
 
-function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
+function scaledReview(fileCount: number): WorkspaceDiff {
+  const files = Array.from({ length: fileCount }, (_, index) => {
+    const long = index % 10 === 0;
+    const rows: WorkspaceDiff["files"][number]["rows"] = [
+      { type: "hunk", text: `@@ -1,24 +1,30 @@ export function module${index}` },
+    ];
+    for (let line = 1; line <= 24; line++) {
+      const code = long
+        ? `export const value${line} = ${JSON.stringify("x".repeat(320))};`
+        : `export const value${line} = compute(${index}, ${line});`;
+      rows.push({ type: "context", leftLine: line, rightLine: line, code });
+      if (line % 4 === 0) {
+        rows.push({ type: "deleted", leftLine: line, code: `${code} // before` });
+        rows.push({ type: "added", rightLine: line, code: `${code} // after` });
+      }
+    }
+    return {
+      path: `src/generated/module-${String(index).padStart(3, "0")}.ts`,
+      status: "modified" as const,
+      added: 6,
+      removed: 6,
+      rows,
+    };
+  });
+  return { baseline: REVIEW_DIFF.baseline, files };
+}
+
+function workspaceDataPlugin(state: VisualWorkspaceState, review: WorkspaceDiff): AnyPlugin {
   return definePlugin({
     name: "flame.visual.workspace-data",
     setup(ctx) {
@@ -264,7 +291,7 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
             throw new Error("Visual fixture could not load the workspace diff");
           }
           if (state === "dock-empty") return { files: [] };
-          return REVIEW_DIFF;
+          return review;
         },
       });
       ctx.contribute(DATA_PROVIDER, {
@@ -509,11 +536,16 @@ const OPENED_BY_ITS_OWN_STATE = new Set([
 
 const FULL_VIEW_ID = "search";
 
+export interface VisualWorkspaceConfig {
+  pane?: VisualSettingsPane;
+  fullViewId?: string;
+  reviewFiles?: number;
+}
+
 export async function installVisualWorkspaceFixture(
   state: VisualWorkspaceState,
   theme: VisualWorkspaceTheme,
-  pane: VisualSettingsPane = "appearance",
-  fullViewId: string = FULL_VIEW_ID,
+  { pane = "appearance", fullViewId = FULL_VIEW_ID, reviewFiles }: VisualWorkspaceConfig = {},
 ): Promise<void> {
   await installVisualAgentFixture(
     state === "dock-light"
@@ -581,7 +613,7 @@ export async function installVisualWorkspaceFixture(
   });
 
   await loadVisualPlugins([
-    workspaceDataPlugin(state),
+    workspaceDataPlugin(state, reviewFiles === undefined ? REVIEW_DIFF : scaledReview(reviewFiles)),
     diffView,
     fileView,
     inboxView,

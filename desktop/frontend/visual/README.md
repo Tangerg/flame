@@ -58,3 +58,40 @@ Useful routes:
 - `/visual/?fixture=workspace&theme=dark&state=settings`
 - `/visual/?fixture=agent&theme=light&state=long-content&font-size=18`
 - `/visual/?fixture=shell&theme=light&state=populated&motion=full`
+
+## Interaction baseline
+
+`npm run perf:baseline` builds this entry for production, serves it with
+`vite preview`, and runs `*.perf.spec.ts` in one Chromium worker with motion on.
+Each scenario is repeated `FLAME_PERF_SAMPLES` times (default 5) on a fresh
+navigation and reported as p50/p90/max, both on the console and as JSON under
+`desktop/.cache/perf/`. Compare runs only from the same machine and build.
+
+Measured per scenario: wall time, Chromium task/script/layout/style time from
+`Performance.getMetrics`, long tasks, the slowest input-to-next-paint from Event
+Timing, and JS heap. Loads report time from navigation start instead, because
+engine counters do not survive a navigation.
+
+Scenarios use the existing fixtures: a 200-file review
+(`review-files=200` on the `dock-review` state) opened, folded, unfolded,
+scrolled and resized; and the `long-content` transcript loaded and typed into.
+Switching between long sessions is not covered — the fixtures render one
+session.
+
+Recorded 2026-09-24 on an Apple M4 (24 GB), Chromium from Playwright 1.63, five
+samples. "Before" is the review without `content-visibility` on its file bodies;
+"after" is the shipped code. p50 (p90):
+
+| Scenario | Metric | Before | After |
+| --- | --- | --- | --- |
+| Review open | ready | 9014 ms (9704) | 1616 ms (1700) |
+| Review collapse all | input to paint | 3320 ms (3848) | 232 ms (248) |
+| Review expand all | input to paint | 1608 ms (1736) | 736 ms (848) |
+| Review resize ×10 | wall | 76252 ms (112226) | 1664 ms (1914) |
+| Review scroll ×40 | input to paint | 40 ms (72) | 32 ms (192) |
+| Long transcript open | ready | 874 ms (1232) | 874 ms (976) |
+| Long transcript typing | input to paint | 24 ms (80) | 32 ms (56) |
+
+Scrolling the review now lays out file bodies as they enter the viewport, which
+is the p90 cost above; everything that previously restyled all 200 bodies no
+longer does. Expand all is still dominated by highlighting every row.

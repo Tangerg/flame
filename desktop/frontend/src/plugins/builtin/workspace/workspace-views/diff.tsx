@@ -53,6 +53,7 @@ const df = stylex.create({
   baseline: { overflowWrap: "anywhere" },
   sticky: { position: "sticky", top: 0, zIndex: 1 },
   card: { position: "relative" },
+  offscreen: { contentVisibility: "auto" },
   flash: {
     position: "absolute",
     inset: 0,
@@ -132,7 +133,11 @@ function FileCard({
         />
       </Pressable>
       {!collapsed && (
-        <div id={panelId}>
+        <div
+          id={panelId}
+          {...stylex.props(df.offscreen)}
+          style={{ containIntrinsicBlockSize: `auto calc(${file.rows.length} * 1lh)` }}
+        >
           {file.binary ? (
             <p {...stylex.props(cs.note, typeStep.uiSm)}>{t("diff.binary")}</p>
           ) : (

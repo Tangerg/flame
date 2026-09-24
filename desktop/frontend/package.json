@@ -11,6 +11,7 @@
     "visual:dev": "vite --config vite.visual.config.ts",
     "visual:test": "playwright test --config playwright.visual.config.ts",
     "visual:test:update": "playwright test --config playwright.visual.config.ts --update-snapshots",
+    "perf:baseline": "playwright test --config playwright.perf.config.ts",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",

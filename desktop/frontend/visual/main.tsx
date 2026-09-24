@@ -90,6 +90,7 @@ const contrast =
     ? Math.min(100, Math.max(0, requestedContrast))
     : undefined;
 const requestedFullView = query.get("full-view") ?? undefined;
+const requestedReviewFiles = Number(query.get("review-files")) || undefined;
 const requestedLocale = query.get("locale") ?? "en";
 const hex = (name: string) => {
   const value = query.get(name);
@@ -153,7 +154,11 @@ async function fixtureNode(): Promise<ReactNode> {
       import("./VisualWorkspaceFixture"),
       import("./installVisualWorkspaceFixture"),
     ]);
-    await installVisualWorkspaceFixture(workspaceState, theme, settingsPane, requestedFullView);
+    await installVisualWorkspaceFixture(workspaceState, theme, {
+      pane: settingsPane,
+      fullViewId: requestedFullView,
+      reviewFiles: requestedReviewFiles,
+    });
     return <VisualWorkspaceFixture state={workspaceState} />;
   }
   if (fixture === "shell") {
