@@ -742,6 +742,7 @@ test("keyboard-only traversal reaches recovery, HITL, and settings actions", asy
   await tabTo(page, search);
   await assertVisibleKeyboardFocus(search);
   await page.keyboard.type("Providers");
+  await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Providers" })).toBeVisible();
 });
 
@@ -1423,7 +1424,7 @@ test("the catalogue holds its measure whatever its group contains", async ({ pag
 
   const rows = await body.locator('[role="option"]').count();
   expect(rows).toBeLessThan(4);
-  expect(await body.evaluate((node) => getComputedStyle(node).height)).toBe("240px");
+  expect(await body.evaluate((node) => getComputedStyle(node).height)).toBe("280px");
 });
 
 test("the project tray stays inside the composer's edges", async ({ page }) => {
@@ -1569,17 +1570,17 @@ test("the file mention picker paints over the transcript, not under the composer
   await input.click();
   await input.pressSequentially("@store", { delay: 30 });
 
-  const listbox = page.locator("#composer-mention-listbox");
+  const listbox = page.locator("#composer-suggestion-listbox");
   await expect(listbox).toBeVisible();
 
   const geometry = await page.evaluate(() => {
-    const el = document.getElementById("composer-mention-listbox")!;
+    const el = document.getElementById("composer-suggestion-listbox")!;
     const box = el.getBoundingClientRect();
     const composer = document.querySelector("[data-slot=composer-root]")!;
     const cb = composer.getBoundingClientRect();
     const hit = document.elementFromPoint(box.left + box.width / 2, box.top + 8);
     return {
-      rows: el.querySelectorAll('[id^="composer-mention-option-"]').length,
+      rows: el.querySelectorAll('[id^="composer-suggestion-option-"]').length,
       paintsItself: el.contains(hit) || el === hit,
       aboveComposer: Math.round(box.bottom) <= Math.round(cb.top),
       escapedTheClippingSurface: !composer.contains(el),
@@ -1602,7 +1603,7 @@ test("the composer's attachment chips are one component, not two", async ({ page
 
   await input.click();
   await input.pressSequentially("@store", { delay: 30 });
-  await expect(page.locator("#composer-mention-listbox")).toBeVisible();
+  await expect(page.locator("#composer-suggestion-listbox")).toBeVisible();
   await page.keyboard.press("Tab");
 
   await page.evaluate(() => {
@@ -1668,6 +1669,13 @@ test("the composer's top tray takes the composer's corner and tucks behind it", 
 
 test("the reasoning window fades the edge it actually clips", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "answer-opening" });
+  await page
+    .locator('[data-slot="agent-activity-disclosure"]')
+    .filter({ hasText: /Thinking|Thought/ })
+    .first()
+    .getByRole("button", { expanded: false })
+    .first()
+    .click();
 
   const scroller = page.locator('[data-slot="reasoning-scroller"]');
   await expect(scroller).toBeVisible();
@@ -1729,7 +1737,7 @@ test("no floating surface carries two StyleX rules for one property", async ({ p
 
   await openFixture(page, { fixture: "shell", state: "populated" });
   await page
-    .getByRole("button", { name: /Refine Runtime protocol/ })
+    .getByRole("button", { name: /^Refine Runtime protocol/ })
     .first()
     .click({
       button: "right",
@@ -1739,12 +1747,18 @@ test("no floating surface carries two StyleX rules for one property", async ({ p
   await page.keyboard.press("Escape");
 
   await openFixture(page, { fixture: "agent", state: "narrative" });
-  for (const name of ["Approval mode", "Switch reasoning effort", "Switch model"]) {
+  for (const name of ["Approval mode", "Switch model", "Add to message"]) {
     await page.getByRole("button", { name }).click();
     await page.waitForTimeout(250);
     await collect(name);
     await page.keyboard.press("Escape");
   }
+  await page.getByRole("button", { name: "Switch model" }).click();
+  await page.getByRole("button", { name: "Switch reasoning effort" }).click();
+  await page.waitForTimeout(250);
+  await collect("Switch reasoning effort");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
   const tick = page.locator('[data-slot="chat-rail"] nav button').first();
   await tick.hover();
   await expect(page.getByRole("tooltip")).toBeVisible();

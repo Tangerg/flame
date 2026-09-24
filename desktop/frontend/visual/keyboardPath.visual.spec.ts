@@ -167,7 +167,7 @@ test("a context menu opens from the keyboard and hands focus back", async ({ pag
   await page.goto("/visual/?fixture=shell&state=populated&theme=light");
   await page.waitForSelector("html[data-visual-ready]");
 
-  const row = page.getByRole("button", { name: /Refine Runtime protocol/ }).first();
+  const row = page.getByRole("button", { name: /^Refine Runtime protocol/ }).first();
   await row.focus();
   await page.keyboard.press("Shift+F10");
   await expect(page.getByRole("menuitem", { name: "Rename" })).toBeVisible();

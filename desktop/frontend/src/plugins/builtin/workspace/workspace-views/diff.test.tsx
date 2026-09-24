@@ -51,6 +51,7 @@ vi.mock("./views/ReviewFileTree", () => ({
 }));
 
 import { DiffWorkspaceSurface } from "./diff";
+import { useContextDockStore } from "../adapters/contextDockStore";
 
 let nativeScrollIntoView: typeof HTMLElement.prototype.scrollIntoView | undefined;
 const scrolledPaths: string[] = [];
@@ -135,6 +136,7 @@ describe("DiffWorkspaceSurface", () => {
     fireEvent.click(header());
     expect(header().getAttribute("aria-expanded")).toBe("false");
 
+    act(() => useContextDockStore.getState().focusFile("src/a.ts"));
     projection.fileFocus = { path: "src/a.ts", revision: 2n };
     view.rerender(<DiffWorkspaceSurface />);
     expect(header().getAttribute("aria-expanded")).toBe("true");

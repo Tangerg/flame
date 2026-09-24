@@ -79,7 +79,7 @@ export function DelegatedRunLink({
               {model.label}
             </span>
             <StatusDot tone={model.dotTone} />
-            <span {...stylex.props(toneInk[model.ink])}>{model.statusLabel}</span>
+            <span {...stylex.props(vocab.hold, toneInk[model.ink])}>{model.statusLabel}</span>
           </span>
           {model.detail && (
             <span {...stylex.props(vocab.muted, vocab.truncate, typeStep.uiXs)}>

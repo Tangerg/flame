@@ -27,6 +27,7 @@ import {
   ClipboardCheck,
   Clock,
   Code,
+  Columns2,
   Command,
   Copy,
   CopyX,
@@ -137,6 +138,7 @@ export type IconName =
   | "spark"
   | "skip-back"
   | "fold"
+  | "columns"
   | "gauge"
   | "open"
   | "compose"
@@ -233,6 +235,7 @@ const ICON_MAP = {
   spark: Sparkles,
   "skip-back": SkipBack,
   fold: FoldVertical,
+  columns: Columns2,
   gauge: Gauge,
   open: ArrowUpRight,
   compose: SquarePen,

@@ -45,7 +45,12 @@ const rowStyles = stylex.create({
     paddingBlock: space.s2,
   },
   nested: { paddingLeft: "calc(0.5rem + var(--icon-md) + var(--density-row-gap))" },
-  actioned: { paddingRight: space.s8 },
+  actioned: {
+    paddingRight: {
+      default: "calc(var(--spacing) * (2 + 6 * var(--reveal, 1)))",
+      "@media (hover: none)": space.s8,
+    },
+  },
   fade: { transitionProperty: "opacity", transitionDuration: motion.fast },
   glyph: { flexShrink: 0, color: color.fg },
   glyphStacked: { marginTop: "1px" },

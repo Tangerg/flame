@@ -2,7 +2,11 @@ import { expect, test, type Page } from "./test";
 import { freezeVisualClock } from "./frozenClock";
 import { en } from "@/lib/i18n/locales/en";
 import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
-import { DOCK_MIN_WIDTH_PX, CONVERSATION_READING_MIN_PX } from "@/lib/shellGeometry";
+import {
+  DOCK_MIN_WIDTH_PX,
+  CONVERSATION_READING_MIN_PX,
+  defaultDockWidth,
+} from "@/lib/shellGeometry";
 import {
   VISUAL_DOCK_WIDTH_RATIO,
   DOCK_VIEW_BY_STATE,
@@ -237,9 +241,7 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
   expect(geometry.rowWidth).toBeLessThan(CONVERSATION_READING_MIN_PX + DOCK_MIN_WIDTH_PX);
   expect(geometry.dockVisible).toBe(false);
   expect(geometry.conversationWidth).toBe(geometry.rowWidth);
-  await expect(
-    page.getByRole("button", { name: "Widen the window to open the right workspace" }),
-  ).toBeDisabled();
+  await expect(page.getByRole("button", { name: /^Open material full width/ })).toBeEnabled();
   await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,search,plan,timeline");
   expect(page.url()).toBe(location);
   expect(await page.evaluate(() => history.length)).toBe(historyLength);
@@ -410,7 +412,15 @@ test("automatic dock sizing never records a user preference", async ({ page }) =
   for (const width of [1120, 1800, 1280]) {
     await page.setViewportSize({ width, height: 800 });
     await expect(preference).toHaveText("");
-    await expect.poll(async () => Math.round((await dock.boundingBox())!.width)).toBe(480);
+    await expect
+      .poll(async () => {
+        const { row, width } = await dock.evaluate((element) => ({
+          row: element.closest(".agent-dock-row")!.getBoundingClientRect().width,
+          width: element.getBoundingClientRect().width,
+        }));
+        return Math.round(width) - defaultDockWidth(row);
+      })
+      .toBe(0);
   }
   await page.getByRole("separator", { name: "Resize right workspace" }).focus();
   await page.keyboard.press("ArrowLeft");
@@ -496,8 +506,9 @@ test("settings filtering and menu dismissal stay inside production semantics", a
 
   const search = page.getByRole("searchbox", SETTINGS_SEARCH);
   await search.fill("missing pane");
-  await expect(page.getByRole("heading", { name: "Appearance" })).toHaveCount(0);
+  await expect(page.getByText("No settings match “missing pane”.")).toBeVisible();
   await search.fill("Appearance");
+  await search.press("Enter");
   await expect(page.getByRole("heading", { name: "Appearance" })).toBeVisible();
 
   const theme = page.getByRole("button", { name: "Theme" });
@@ -567,6 +578,7 @@ test("settings hosts shortcut contributions without a second page frame", async 
   await openWorkspace(page, { state: "settings" });
 
   await page.getByRole("searchbox", SETTINGS_SEARCH).fill("Keyboard shortcuts");
+  await page.getByRole("searchbox", SETTINGS_SEARCH).press("Enter");
   await expect(page.getByRole("heading", { name: "Keyboard shortcuts" })).toHaveCount(1);
   await expect(page.getByText("New session", { exact: true })).toBeVisible();
 
@@ -580,6 +592,7 @@ test("provider and model settings keep validation local to their form", async ({
   await openWorkspace(page, { state: "settings" });
 
   await page.getByRole("searchbox", SETTINGS_SEARCH).fill("Providers");
+  await page.getByRole("searchbox", SETTINGS_SEARCH).press("Enter");
   await expect(page.getByRole("heading", { name: "Providers" })).toBeVisible();
   await expect(page.getByText("Utility model", { exact: true })).toBeVisible();
   await expect(page.getByText("Embedding model", { exact: true })).toBeVisible();

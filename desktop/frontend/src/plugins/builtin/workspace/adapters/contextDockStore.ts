@@ -211,7 +211,14 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
           ? lastViewId
           : (dockViewIds[0] ?? defaultViewId);
       },
-      focusFile: (path) => set((state) => ({ fileFocus: state.fileFocus.moveTo(path) })),
+      focusFile: (path) =>
+        set((state) => ({
+          fileFocus: state.fileFocus.moveTo(path),
+          memory: {
+            ...state.memory,
+            collapsedDiffFiles: state.memory.collapsedDiffFiles.filter((file) => file !== path),
+          },
+        })),
       setFileViewer: (fileViewer) =>
         set((state) =>
           fileViewer

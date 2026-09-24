@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 
 import { fmtTokens } from "@/lib/format";
+import { type as typeStep } from "@/styles/tokens.stylex";
 import { type Translate, useT } from "@/lib/i18n";
 import {
   Button,
@@ -83,7 +84,6 @@ const RECENT_GROUP_ID = "__recent";
 
 function modelItem(model: SelectableModel, selection: Selection, t: Translate) {
   const active = model.provider === selection.model.provider && model.id === selection.model.id;
-  const effort = active ? selectedEffort(selection) : undefined;
   return {
     id: modelItemId(model),
     label: model.label,
@@ -92,7 +92,6 @@ function modelItem(model: SelectableModel, selection: Selection, t: Translate) {
     leading: <ProviderIcon provider={model.provider} size="md" />,
     keywords: [model.provider, model.id],
     active,
-    accessory: effort ? <ReasoningEffortMenu model={model} selectedEffort={effort} /> : undefined,
   };
 }
 
@@ -224,7 +223,8 @@ export function ModelPicker() {
     return <ModelPickerPlaceholder />;
   }
 
-  if (!selected) return <ModelPickerPlaceholder />;
+  if (!selection || !selected) return <ModelPickerPlaceholder />;
+  const effort = selectedEffort(selection);
 
   return (
     <RailCatalogPicker
@@ -234,6 +234,16 @@ export function ModelPicker() {
       }
       label={t("composer.switchModel")}
       heading={t("composer.model.title")}
+      footer={
+        effort === undefined ? undefined : (
+          <>
+            <span {...stylex.props(vocab.muted, typeStep.uiSm)}>
+              {t("composer.reasoningEffort")}
+            </span>
+            <ReasoningEffortMenu model={selected} selectedEffort={effort} />
+          </>
+        )
+      }
       placeholder={t("composer.model.search.placeholder")}
       emptyLabel={t("composer.model.search.empty")}
       onSelect={(item) => {
@@ -254,7 +264,7 @@ export function ModelPicker() {
           title={`${selected.label} · ${providerDisplayName(selected.provider)}`}
           shrink="gives"
           leading={<ProviderIcon provider={selected.provider} size="sm" />}
-          label={effortSuffixed(selected.label, selectedEffort(selection))}
+          label={effortSuffixed(selected.label, effort)}
         />
       }
       side="top"

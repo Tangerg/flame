@@ -11,6 +11,8 @@ const styles = stylex.create({
   folded: {
     maxHeight: `${FOLDED_LINES}lh`,
     overflow: "hidden",
+  },
+  fade: {
     maskImage: "linear-gradient(to bottom, #000 calc(100% - 2lh), transparent)",
     WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 2lh), transparent)",
   },
@@ -41,7 +43,7 @@ export function UserMessageFold({ children }: { children: ReactNode }) {
         ref={frame}
         data-slot="user-message-fold"
         data-folded={folded && overflows ? "" : undefined}
-        {...stylex.props(styles.frame, folded && styles.folded)}
+        {...stylex.props(styles.frame, folded && styles.folded, folded && overflows && styles.fade)}
       >
         {children}
       </div>

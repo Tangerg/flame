@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   DataView,
   DiffStat,
@@ -36,6 +36,12 @@ import {
   useWorkspaceViewMemory,
 } from "@/plugins/builtin/workspace/application/navigation";
 import { codeStyles as cs, viewStyles as vs } from "./views/viewStyles";
+
+const fade = stylex.keyframes({
+  from: { outlineColor: surface.fieldFocus },
+  to: { outlineColor: "transparent" },
+});
+
 const df = stylex.create({
   pathLine: { display: "flex", minWidth: 0, flex: 1, alignItems: "baseline", gap: space.s1_5 },
   oldPath: { flexShrink: 100, color: color.fgFaint },
@@ -46,11 +52,20 @@ const df = stylex.create({
   scroller: { minWidth: 0, paddingInline: space.s2, paddingBottom: space.s2 },
   baseline: { overflowWrap: "anywhere" },
   sticky: { position: "sticky", top: 0, zIndex: 1 },
+  card: { position: "relative" },
   flash: {
+    position: "absolute",
+    inset: 0,
+    zIndex: 2,
+    pointerEvents: "none",
+    borderRadius: "inherit",
     outlineWidth: "1.5px",
     outlineStyle: "solid",
-    outlineColor: surface.fieldFocus,
+    outlineColor: "transparent",
     outlineOffset: "-1.5px",
+    animationName: fade,
+    animationDuration: "900ms",
+    animationTimingFunction: "ease-in",
   },
   picker: {
     display: "flex",
@@ -64,28 +79,29 @@ const df = stylex.create({
   pickerEmpty: { paddingInline: space.s2, paddingBlock: space.s3, color: color.fgFaint },
 });
 
-const FLASH_MS = 900;
-
 const FILE_ANCHOR = "data-diff-file";
 
 function FileCard({
   file,
   layout,
   collapsed,
-  flashing,
+  flashToken,
   onToggle,
 }: {
   file: WorkspaceFileDiff;
   layout: DiffLayout;
   collapsed: boolean;
-  flashing: boolean;
+  flashToken: number | undefined;
   onToggle: () => void;
 }) {
   const t = useT();
   const panelId = useId();
   const header = workspaceDiffFileHeader(file);
   return (
-    <section {...{ [FILE_ANCHOR]: file.path }} {...stylex.props(cs.fileCard, flashing && df.flash)}>
+    <section {...{ [FILE_ANCHOR]: file.path }} {...stylex.props(cs.fileCard, df.card)}>
+      {flashToken !== undefined && (
+        <span key={flashToken} aria-hidden {...stylex.props(df.flash)} />
+      )}
       <Pressable
         type="button"
         data-chrome-focus=""
@@ -159,8 +175,11 @@ export function DiffWorkspaceSurface() {
     });
   };
 
-  const [flashing, setFlashing] = useState<string | null>(null);
-  const [pendingReveal, setPendingReveal] = useState<{ path: string } | null>(null);
+  const [revealed, setRevealed] = useState<{ path: string; token: number } | null>(null);
+  const target = (path: string) => (previous: typeof revealed) => ({
+    path,
+    token: (previous?.token ?? 0) + 1,
+  });
   const reveal = (path: string) => {
     setCollapsedFiles((previous) => {
       if (!previous.has(path)) return previous;
@@ -168,33 +187,22 @@ export function DiffWorkspaceSurface() {
       next.delete(path);
       return next;
     });
-    setPendingReveal({ path });
+    setRevealed(target(path));
   };
 
-  useEffect(() => {
-    if (!pendingReveal || !scrollToFile(pendingReveal.path)) return;
-    setFlashing(pendingReveal.path);
-    setPendingReveal(null);
-  }, [pendingReveal, collapsedFiles]);
+  const [consumedFocus, setConsumedFocus] = useState<bigint | null>(null);
+  if (files && consumedFocus !== fileFocus.revision) {
+    const focused = fileFocus.path;
+    const present = focused !== "" && files.some((file) => file.path === focused);
+    if (focused === "" || present) setConsumedFocus(fileFocus.revision);
+    if (present) setRevealed(target(focused));
+  }
 
+  const scrolledToken = useRef(0);
   useEffect(() => {
-    if (flashing === null) return;
-    const timer = window.setTimeout(() => setFlashing(null), FLASH_MS);
-    return () => window.clearTimeout(timer);
-  }, [flashing]);
-
-  const revealFocused = useEffectEvent(reveal);
-  const consumedFocusRevision = useRef<bigint | null>(null);
-  useEffect(() => {
-    if (!files || consumedFocusRevision.current === fileFocus.revision) return;
-    if (!fileFocus.path) {
-      consumedFocusRevision.current = fileFocus.revision;
-      return;
-    }
-    if (!files.some((file) => file.path === fileFocus.path)) return;
-    consumedFocusRevision.current = fileFocus.revision;
-    revealFocused(fileFocus.path);
-  }, [fileFocus.path, fileFocus.revision, files]);
+    if (!revealed || scrolledToken.current === revealed.token) return;
+    if (scrollToFile(revealed.path)) scrolledToken.current = revealed.token;
+  }, [revealed, collapsedFiles]);
 
   const step = (direction: 1 | -1) => {
     const port = scrollRef.current;
@@ -255,14 +263,13 @@ export function DiffWorkspaceSurface() {
                 />
               </>
             )}
-            <Segmented
-              ariaLabel={t("diff.layoutAria")}
-              value={layout}
-              onChange={setLayout}
-              options={[
-                { value: "unified", label: t("diff.layout.unified") },
-                { value: "split", label: t("diff.layout.split") },
-              ]}
+            <IconButton
+              icon="columns"
+              size="sm"
+              active={layout === "split"}
+              aria-pressed={layout === "split"}
+              title={t("diff.layout.split")}
+              onClick={() => setLayout(layout === "split" ? "unified" : "split")}
             />
             <Segmented
               ariaLabel={t("diff.baselineAria")}
@@ -317,7 +324,7 @@ export function DiffWorkspaceSurface() {
                   file={file}
                   layout={layout}
                   collapsed={collapsedFiles.has(file.path)}
-                  flashing={flashing === file.path}
+                  flashToken={revealed?.path === file.path ? revealed.token : undefined}
                   onToggle={() => toggleFile(file.path)}
                 />
               ))}

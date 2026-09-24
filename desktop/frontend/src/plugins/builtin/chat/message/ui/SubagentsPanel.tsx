@@ -141,7 +141,7 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
             {model.label}
           </span>
           <StatusDot tone={model.dotTone} />
-          <span {...stylex.props(toneInk[model.ink])}>{model.statusLabel}</span>
+          <span {...stylex.props(vocab.hold, toneInk[model.ink])}>{model.statusLabel}</span>
           {model.cancelable && (
             <IconButton
               icon="stop"

@@ -1000,9 +1000,6 @@ export const fr: Record<string, string> = {
   "schedules.preset.daily": "Chaque jour à 9 h",
   "schedules.preset.weekdays": "En semaine à 9 h",
   "schedules.preset.weekly": "Chaque lundi",
-  "diff.layoutAria": "Disposition du diff",
-  "diff.layout.unified": "Unifiée",
-  "diff.layout.split": "Côte à côte",
   "file.lines_one": "{{count}} ligne",
   "file.lines_many": "{{count}} de lignes",
   "file.lines_other": "{{count}} lignes",
@@ -1320,9 +1317,11 @@ export const fr: Record<string, string> = {
   "project.row.waiting_many": "{{count}} en attente",
   "project.row.waiting_other": "{{count}} en attente",
   "settings.font.codeSize": "Taille du code",
-  "settings.font.codeSize.sub": "Blocs de code, diffs et sorties d’outils. La navigation et les contrôles gardent la taille de l’interface.",
+  "settings.font.codeSize.sub":
+    "Blocs de code, diffs et sorties d’outils. La navigation et les contrôles gardent la taille de l’interface.",
   "settings.font.followUi": "Comme l’interface",
-  "dock.action.openFull": "Ouvrir le document en pleine largeur — la fenêtre est trop étroite pour l’afficher à côté",
+  "dock.action.openFull":
+    "Ouvrir le document en pleine largeur — la fenêtre est trop étroite pour l’afficher à côté",
   "composer.add": "Ajouter au message",
   "composer.add.file": "Citer un fichier du projet",
   "composer.add.command": "Lancer une commande",
@@ -1335,4 +1334,7 @@ export const fr: Record<string, string> = {
   "shortcuts.conflict": "Déjà utilisé par {{action}}",
   "shortcuts.replace": "L’utiliser ici",
   "shortcuts.unbound": "Aucun raccourci",
+  "diff.layout.split": "Côte à côte",
+  "composer.reasoningEffort": "Effort de raisonnement",
+  "message.mermaid.actualSize": "Afficher en taille réelle",
 };

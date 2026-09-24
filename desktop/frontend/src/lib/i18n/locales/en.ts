@@ -868,9 +868,6 @@ export const en: Record<string, string> = {
   "diff.workingTree": "Working tree",
   "diff.branchCompare": "Branch comparison",
   "diff.baselineAria": "Diff baseline",
-  "diff.layoutAria": "Diff layout",
-  "diff.layout.unified": "Unified",
-  "diff.layout.split": "Split",
   "diff.mode.worktree": "Worktree",
   "diff.mode.branch": "Branch",
   "diff.fileCount_one": "{{count}} file",
@@ -1262,9 +1259,11 @@ export const en: Record<string, string> = {
   "project.row.waiting_one": "{{count}} waiting",
   "project.row.waiting_other": "{{count}} waiting",
   "settings.font.codeSize": "Code size",
-  "settings.font.codeSize.sub": "Code blocks, diffs and tool output. Navigation and controls keep the interface size.",
+  "settings.font.codeSize.sub":
+    "Code blocks, diffs and tool output. Navigation and controls keep the interface size.",
   "settings.font.followUi": "Follow UI",
-  "dock.action.openFull": "Open material full width — the window is too narrow to show it beside the conversation",
+  "dock.action.openFull":
+    "Open material full width — the window is too narrow to show it beside the conversation",
   "composer.add": "Add to message",
   "composer.add.file": "Reference a project file",
   "composer.add.command": "Run a command",
@@ -1277,4 +1276,7 @@ export const en: Record<string, string> = {
   "shortcuts.conflict": "Already used by {{action}}",
   "shortcuts.replace": "Use it here instead",
   "shortcuts.unbound": "No shortcut",
+  "diff.layout.split": "Side by side",
+  "composer.reasoningEffort": "Reasoning effort",
+  "message.mermaid.actualSize": "Show at actual size",
 };

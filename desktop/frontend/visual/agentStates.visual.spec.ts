@@ -531,6 +531,9 @@ for (const theme of ["light", "dark"] as const) {
     const bubble = page.locator("[data-user-message-bubble]");
     await expect(bubble).toHaveCount(1);
     await expect(bubble).toContainText("Review the Runtime boundary");
+    const fold = bubble.locator('[data-slot="user-message-fold"]');
+    await expect(fold).not.toHaveAttribute("data-folded");
+    expect(await fold.evaluate((element) => getComputedStyle(element).maskImage)).toBe("none");
 
     const material = await bubble.evaluate((element) => {
       const probe = document.createElement("div");
@@ -553,7 +556,7 @@ for (const theme of ["light", "dark"] as const) {
     expect(material).toEqual({
       background: material.expectedBackground,
       expectedBackground: material.expectedBackground,
-      maxWidth: "70%",
+      maxWidth: "min(100%, max(70%, 512px))",
       padding: ["10px", "16px", "10px", "16px"],
       radius: material.superellipse ? "20px" : "16px",
       superellipse: material.superellipse,
@@ -1500,10 +1503,10 @@ test("an opened but empty answer folds nothing behind it", async ({ page }) => {
   const thinking = page
     .locator("[data-slot='agent-activity-disclosure']")
     .filter({ hasText: "Thinking" });
-  await expect(thinking.locator("button[aria-expanded]").first()).toHaveAttribute(
-    "aria-expanded",
-    "true",
-  );
+  const toggle = thinking.locator("button[aria-expanded]").first();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
   await expect(thinking).toContainText("The framework must expose execution capability");
 
   await expect(page.getByRole("button", { name: /steps/ })).toHaveCount(0);
@@ -1843,21 +1846,26 @@ test("large command output stays fully readable inside the tool card", async ({ 
   await page.getByRole("button", { name: /steps/ }).first().click();
   const command = page.locator('[data-tool="shell"]').first();
   await command.getByRole("button").first().click();
-  await command.getByRole("button", { name: /Show all 50000 lines/ }).click();
+  await command.getByRole("button", { name: /earlier lines · 50000 total/ }).click();
 
   const output = command.getByRole("region", { name: "Tool output" });
-  await expect(output).toContainText("build output line 0");
+  await expect(output).toContainText("build output line 49999");
   expect(await output.locator("[data-output-line]").count()).toBeLessThan(100);
 
   await output.focus();
   await expect(output).toBeFocused();
-  await output.press("PageDown");
-  await expect.poll(() => output.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await output.press("PageUp");
+  await expect
+    .poll(() =>
+      output.evaluate((element) => element.scrollHeight - element.clientHeight - element.scrollTop),
+    )
+    .toBeGreaterThan(0);
+  await expect(command.getByRole("button", { name: "Jump to latest" })).toBeVisible();
 
   await output.evaluate((element) => {
-    element.scrollTop = element.scrollHeight;
+    element.scrollTop = 0;
   });
-  await expect(output).toContainText("build output line 49999");
+  await expect(output).toContainText("build output line 0");
   expect(await output.locator("[data-output-line]").count()).toBeLessThan(100);
 
   await command.getByRole("button", { name: "Collapse" }).click();
@@ -1875,7 +1883,7 @@ test("a collapsed live reasoning row glimpses its newest line, softened only whe
     .locator('[data-slot="agent-activity-disclosure"]')
     .filter({ hasText: "Thinking" })
     .first();
-  await row.getByRole("button", { expanded: true }).click();
+  await expect(row.getByRole("button", { expanded: false }).first()).toBeVisible();
 
   const glimpse = page.locator('[data-slot="reasoning-glimpse"]');
   await expect(glimpse).toBeVisible();

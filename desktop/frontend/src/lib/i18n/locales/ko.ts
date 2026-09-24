@@ -923,9 +923,6 @@ export const ko: Record<string, string> = {
   "schedules.preset.daily": "매일 오전 9시",
   "schedules.preset.weekdays": "평일 오전 9시",
   "schedules.preset.weekly": "매주 월요일",
-  "diff.layoutAria": "diff 레이아웃",
-  "diff.layout.unified": "통합",
-  "diff.layout.split": "분할",
   "file.lines_other": "{{count}}줄",
   "file.truncated": "잘림",
   "file.backToFiles": "파일 목록으로 돌아가기",
@@ -1208,7 +1205,8 @@ export const ko: Record<string, string> = {
   "session.row.more": "{{title}} 추가 작업",
   "project.row.waiting_other": "{{count}}개 대기 중",
   "settings.font.codeSize": "코드 크기",
-  "settings.font.codeSize.sub": "코드 블록, 변경 사항, 도구 출력. 탐색과 컨트롤은 인터페이스 크기를 유지합니다.",
+  "settings.font.codeSize.sub":
+    "코드 블록, 변경 사항, 도구 출력. 탐색과 컨트롤은 인터페이스 크기를 유지합니다.",
   "settings.font.followUi": "UI 따르기",
   "dock.action.openFull": "자료를 전체 폭으로 열기 — 창이 좁아 대화 옆에 표시할 수 없습니다",
   "composer.add": "메시지에 추가",
@@ -1223,4 +1221,7 @@ export const ko: Record<string, string> = {
   "shortcuts.conflict": "{{action}}에서 이미 사용 중",
   "shortcuts.replace": "여기에 대신 사용",
   "shortcuts.unbound": "단축키 없음",
+  "diff.layout.split": "나란히 보기",
+  "composer.reasoningEffort": "추론 강도",
+  "message.mermaid.actualSize": "실제 크기로 보기",
 };

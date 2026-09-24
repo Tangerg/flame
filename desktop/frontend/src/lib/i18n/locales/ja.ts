@@ -929,9 +929,6 @@ export const ja: Record<string, string> = {
   "schedules.preset.daily": "毎日 午前9時",
   "schedules.preset.weekdays": "平日 午前9時",
   "schedules.preset.weekly": "毎週月曜",
-  "diff.layoutAria": "差分レイアウト",
-  "diff.layout.unified": "統合",
-  "diff.layout.split": "分割",
   "file.lines_other": "{{count}} 行",
   "file.truncated": "切り詰め",
   "file.backToFiles": "ファイル一覧に戻る",
@@ -1225,7 +1222,8 @@ export const ja: Record<string, string> = {
   "session.row.more": "「{{title}}」のその他の操作",
   "project.row.waiting_other": "{{count}} 件待機中",
   "settings.font.codeSize": "コードのサイズ",
-  "settings.font.codeSize.sub": "コードブロック・差分・ツール出力。ナビゲーションとコントロールはインターフェースのサイズのままです。",
+  "settings.font.codeSize.sub":
+    "コードブロック・差分・ツール出力。ナビゲーションとコントロールはインターフェースのサイズのままです。",
   "settings.font.followUi": "UI に合わせる",
   "dock.action.openFull": "資料を全幅で開く — ウィンドウが狭く会話の横に表示できません",
   "composer.add": "メッセージに追加",
@@ -1240,4 +1238,7 @@ export const ja: Record<string, string> = {
   "shortcuts.conflict": "「{{action}}」で使用中",
   "shortcuts.replace": "こちらで使う",
   "shortcuts.unbound": "ショートカットなし",
+  "diff.layout.split": "左右に並べて表示",
+  "composer.reasoningEffort": "推論の強さ",
+  "message.mermaid.actualSize": "実寸で表示",
 };

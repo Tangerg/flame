@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type PointerEvent, useRef, useState } from "react";
 import { useT } from "@/lib/i18n";
 import { Button, IconButton } from "@/ui";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { space } from "@/styles/tokens.stylex";
 
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.5, 2, 3] as const;
 
@@ -81,9 +81,6 @@ export function MermaidViewer({ svg }: { svg: string }) {
         >
           {t("message.mermaid.fit")}
         </Button>
-        <Button variant={scale === 1 ? "soft" : "ghost"} size="sm" onClick={() => setScale(1)}>
-          100%
-        </Button>
         <IconButton
           icon="zoom-out"
           size="sm"
@@ -92,9 +89,15 @@ export function MermaidViewer({ svg }: { svg: string }) {
           focusableWhenDisabled
           onClick={() => zoom(-1)}
         />
-        <span {...stylex.props(styles.percent, typeStep.uiSm)}>
-          {scale === "fit" ? "—" : `${Math.round(scale * 100)}%`}
-        </span>
+        <Button
+          variant={scale === 1 ? "soft" : "ghost"}
+          size="sm"
+          title={t("message.mermaid.actualSize")}
+          onClick={() => setScale(1)}
+          className={stylex.props(styles.percent).className}
+        >
+          {`${Math.round((scale === "fit" ? 1 : scale) * 100)}%`}
+        </Button>
         <IconButton
           icon="zoom-in"
           size="sm"

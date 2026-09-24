@@ -760,9 +760,6 @@ export const zh: Record<string, string> = {
   "diff.workingTree": "工作树",
   "diff.branchCompare": "分支对比",
   "diff.baselineAria": "Diff 基准",
-  "diff.layoutAria": "Diff 布局",
-  "diff.layout.unified": "统一",
-  "diff.layout.split": "分栏",
   "diff.mode.worktree": "工作树",
   "diff.mode.branch": "分支",
   "diff.fileCount_other": "{{count}} 个文件",
@@ -1191,4 +1188,7 @@ export const zh: Record<string, string> = {
   "shortcuts.conflict": "已被“{{action}}”使用",
   "shortcuts.replace": "改为在此使用",
   "shortcuts.unbound": "无快捷键",
+  "diff.layout.split": "并排对比",
+  "composer.reasoningEffort": "推理强度",
+  "message.mermaid.actualSize": "按实际大小显示",
 };

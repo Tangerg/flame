@@ -17,7 +17,7 @@ import { dress } from "./button";
 import { Popover } from "./popover";
 import { floatingRow } from "./option-row";
 import { Pressable } from "./pressable";
-import { gap, vocab } from "./vocabulary";
+import { vocab } from "./vocabulary";
 
 const styles = stylex.create({
   emptyFlush: { padding: { default: null, ":is([data-empty])": 0 } },
@@ -170,7 +170,18 @@ const styles = stylex.create({
     color: { default: color.fgMuted, ":hover": color.fg },
     backgroundColor: { default: null, ":hover": surface.hover },
   },
-  accessory: { display: "flex", flexShrink: 0, alignItems: "center" },
+  railFoot: {
+    display: "flex",
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: space.s2,
+    paddingInline: space.s3,
+    paddingBlock: space.s1_5,
+    borderTopWidth: "var(--hairline-width)",
+    borderTopStyle: "solid",
+    borderTopColor: surface.field,
+  },
   radio: {
     display: "grid",
     height: "var(--control-mark-size)",
@@ -199,7 +210,6 @@ interface CatalogPickerItem {
   active?: boolean;
   caption?: string;
   title?: string;
-  accessory?: ReactNode;
 }
 
 export interface CatalogPickerGroup {
@@ -300,19 +310,7 @@ function CatalogRow(item: CatalogPickerItem, mark: CatalogMark, groupLabel?: str
         </span>
         {item.description}
       </span>
-      <span {...stylex.props(styles.accessory, gap.s2)}>
-        {item.accessory && (
-          <span
-            role="presentation"
-            {...stylex.props(styles.accessory)}
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}
-          >
-            {item.accessory}
-          </span>
-        )}
-        <RowMark mark={mark} active={item.active} />
-      </span>
+      <RowMark mark={mark} active={item.active} />
     </ComboboxPrimitive.Item>
   );
 }
@@ -407,6 +405,7 @@ export function RailCatalogPicker({
   groups,
   openAtGroupId,
   heading,
+  footer,
   label,
   placeholder,
   emptyLabel,
@@ -420,6 +419,7 @@ export function RailCatalogPicker({
   groups: CatalogPickerGroup[];
   openAtGroupId?: string;
   heading: string;
+  footer?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -548,6 +548,7 @@ export function RailCatalogPicker({
                   CatalogRow(item, "radio", searching ? undefined : active?.label)
                 }
               </ComboboxPrimitive.List>
+              {footer !== undefined && <div {...stylex.props(styles.railFoot)}>{footer}</div>}
             </div>
           </div>
         </ComboboxPrimitive.Root>

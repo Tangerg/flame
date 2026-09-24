@@ -170,6 +170,14 @@ describe("per-session scopes", () => {
     expect(dock().fileFocus).not.toBe(first);
   });
 
+  it("opens the focused file's card when the review had folded it", () => {
+    dock().remember({ collapsedDiffFiles: ["a.ts", "b.ts"] });
+
+    dock().focusFile("a.ts");
+
+    expect(dock().memory.collapsedDiffFiles).toEqual(["b.ts"]);
+  });
+
   it("keeps each session's tabs and returns the destination it remembers", () => {
     dock().activateSessionScope("s1");
     dock().adoptDockLocation("diff");

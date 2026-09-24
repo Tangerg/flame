@@ -592,9 +592,6 @@ export const zhTW: Record<string, string> = {
   "diff.workingTree": "工作樹",
   "diff.branchCompare": "分支比對",
   "diff.baselineAria": "Diff 基準",
-  "diff.layoutAria": "Diff 版面",
-  "diff.layout.unified": "統一",
-  "diff.layout.split": "分欄",
   "diff.mode.worktree": "工作樹",
   "diff.mode.branch": "分支",
   "diff.fileCount_other": "{{count}} 個檔案",
@@ -1194,4 +1191,7 @@ export const zhTW: Record<string, string> = {
   "shortcuts.conflict": "已被「{{action}}」使用",
   "shortcuts.replace": "改為在此使用",
   "shortcuts.unbound": "無快速鍵",
+  "diff.layout.split": "並排對照",
+  "composer.reasoningEffort": "推理強度",
+  "message.mermaid.actualSize": "以實際大小顯示",
 };

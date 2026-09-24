@@ -967,9 +967,6 @@ export const de: Record<string, string> = {
   "schedules.preset.daily": "Täglich 9 Uhr",
   "schedules.preset.weekdays": "Wochentags 9 Uhr",
   "schedules.preset.weekly": "Wöchentlich Mo",
-  "diff.layoutAria": "Diff-Layout",
-  "diff.layout.unified": "Vereinheitlicht",
-  "diff.layout.split": "Geteilt",
   "file.lines_one": "{{count}} Zeile",
   "file.lines_other": "{{count}} Zeilen",
   "file.truncated": "gekürzt",
@@ -1282,9 +1279,11 @@ export const de: Record<string, string> = {
   "project.row.waiting_one": "{{count}} wartet",
   "project.row.waiting_other": "{{count}} warten",
   "settings.font.codeSize": "Codegröße",
-  "settings.font.codeSize.sub": "Codeblöcke, Diffs und Werkzeugausgaben. Navigation und Bedienelemente behalten die Oberflächengröße.",
+  "settings.font.codeSize.sub":
+    "Codeblöcke, Diffs und Werkzeugausgaben. Navigation und Bedienelemente behalten die Oberflächengröße.",
   "settings.font.followUi": "Wie Oberfläche",
-  "dock.action.openFull": "Material in voller Breite öffnen – das Fenster ist zu schmal für die Seitenansicht",
+  "dock.action.openFull":
+    "Material in voller Breite öffnen – das Fenster ist zu schmal für die Seitenansicht",
   "composer.add": "Zur Nachricht hinzufügen",
   "composer.add.file": "Projektdatei referenzieren",
   "composer.add.command": "Befehl ausführen",
@@ -1297,4 +1296,7 @@ export const de: Record<string, string> = {
   "shortcuts.conflict": "Bereits von {{action}} belegt",
   "shortcuts.replace": "Stattdessen hier nutzen",
   "shortcuts.unbound": "Kein Kürzel",
+  "diff.layout.split": "Nebeneinander",
+  "composer.reasoningEffort": "Denkaufwand",
+  "message.mermaid.actualSize": "In Originalgröße anzeigen",
 };

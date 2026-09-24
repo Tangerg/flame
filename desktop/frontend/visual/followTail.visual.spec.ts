@@ -138,6 +138,13 @@ test("a thought that is still being written follows its own tail", async ({ page
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/visual/?fixture=agent&state=answer-opening&theme=light");
   await page.locator("html[data-visual-ready]").waitFor();
+  await page
+    .locator('[data-slot="agent-activity-disclosure"]')
+    .filter({ hasText: "Thinking" })
+    .first()
+    .getByRole("button", { expanded: false })
+    .first()
+    .click();
   const scroller = page.locator('[data-slot="reasoning-scroller"]');
   await scroller.waitFor();
   await page.waitForTimeout(500);

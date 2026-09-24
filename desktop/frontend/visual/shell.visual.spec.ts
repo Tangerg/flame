@@ -95,7 +95,7 @@ test("an overflowing Session title reveals its remaining text and full identity"
 
   const title =
     "Validate a deliberately long mixed CJK / English session title without breaking the row";
-  const row = page.getByRole("button", { name: new RegExp(title) });
+  const row = page.getByRole("button", { name: new RegExp(`^${title}`) });
   const viewport = row.locator(".truncate-fade");
   await expect
     .poll(() => viewport.evaluate((element) => element.scrollWidth - element.clientWidth))
@@ -119,7 +119,7 @@ test("session renaming owns focus without nesting an input in a navigation butto
 }) => {
   await openShell(page, { theme: "light", state: "populated" });
   await waitForWorkIndexState(page, "populated");
-  const row = page.getByRole("button", { name: /Refine Runtime protocol/ });
+  const row = page.getByRole("button", { name: /^Refine Runtime protocol/ });
   await row.click({ button: "right" });
   await page.getByRole("menuitem", { name: "Rename", exact: true }).click();
   const editor = page.getByRole("textbox", { name: "Session title" });
@@ -135,7 +135,7 @@ test("destructive session dialog traps, dismisses, and returns focus", async ({ 
   await openShell(page, { theme: "light", state: "populated" });
   await waitForWorkIndexState(page, "populated");
 
-  const session = page.getByRole("button", { name: /Refine Runtime protocol/ });
+  const session = page.getByRole("button", { name: /^Refine Runtime protocol/ });
   await session.click({ button: "right" });
   await page.getByRole("menuitem", { name: "Delete" }).click();
 
