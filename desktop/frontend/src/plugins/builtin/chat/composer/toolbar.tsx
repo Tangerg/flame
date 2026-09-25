@@ -146,11 +146,13 @@ function ApprovalModePill() {
             layout="pick"
             styles={toolbarStyles.describedRow}
           >
-            <Icon
-              name={MODE_ICON[m.value]}
-              size="md"
-              className={stylex.props(toolbarStyles.optionGlyph).className}
-            />
+            <span {...stylex.props(toolbarStyles.optionGlyphBox)}>
+              <Icon
+                name={MODE_ICON[m.value]}
+                size="md"
+                className={stylex.props(toolbarStyles.optionGlyph).className}
+              />
+            </span>
             <span {...stylex.props(vocab.min)}>
               <span {...stylex.props(toolbarStyles.optionTitle, typeStep.uiMd)}>
                 {t(m.labelKey)}
@@ -160,11 +162,9 @@ function ApprovalModePill() {
               </span>
             </span>
             {m.value === mode && (
-              <Icon
-                name="check"
-                size="xs"
-                className={stylex.props(toolbarStyles.checkTop, vocab.accent).className}
-              />
+              <span {...stylex.props(toolbarStyles.optionGlyphBox)}>
+                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
+              </span>
             )}
           </DropdownMenu.Item>
         ))}
