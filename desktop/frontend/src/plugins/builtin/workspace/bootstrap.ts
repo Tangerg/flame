@@ -10,9 +10,17 @@ import {
 } from "@/plugins/builtin/workspace/public/navigation";
 import { WORKSPACE_SCOPE } from "@/plugins/builtin/workspace/public/services";
 import { WORKSPACE_MUTATION_LIFECYCLE } from "@/plugins/builtin/workspace/public/services";
+import { RUNTIME_STREAM } from "@/plugins/builtin/runtime/public/services";
 
 export default definePlugin({
   name: "flame.builtin.workspace-bootstrap",
+  // The owners installed here bind one Runtime connection generation — that is
+  // what the mutation lifecycle replaces — and each is composed from the client
+  // the container assembles out of the Runtime plugin's endpoint and mutation
+  // journal. Declaring the stream is what orders this setup after that plugin;
+  // without it the gateways compose against a client the container has yet to
+  // finish, and then retires.
+  requires: { runtime: RUNTIME_STREAM },
   provides: {
     scopes: WORKSPACE_SCOPE,
     mutationLifecycle: WORKSPACE_MUTATION_LIFECYCLE,

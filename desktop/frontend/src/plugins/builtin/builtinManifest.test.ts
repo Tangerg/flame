@@ -3,6 +3,9 @@ import { builtinPlugins } from "./index";
 import * as kernelPoints from "@/plugins/sdk/kernelPoints";
 import { publishedKernel } from "@/plugins/sdk/kernel";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
+import { installedRuntimeMutationJournalStorage } from "@/plugins/builtin/runtime/public/mutationJournal";
+import { resetContainer, setContainer } from "@/main/container";
+import type { FlameClient } from "@/rpc";
 
 beforeEach(() => {
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
@@ -34,6 +37,7 @@ describe("built-in plugin manifest", () => {
 describe("built-in contributions", () => {
   afterEach(async () => {
     await resetKernelForTest();
+    await resetContainer();
   });
 
   it("never have two built-ins under one key on a single-keyed point", async () => {
@@ -65,5 +69,31 @@ describe("built-in contributions", () => {
 
     expect(contributions).toBeGreaterThan(100);
     expect(shadowed).toEqual([]);
+  });
+
+  // The container assembles its client out of what the Runtime plugin installs —
+  // the endpoint and the mutation journal. Dougong orders setup by `requires`, so
+  // a plugin that composes against the container without declaring that
+  // dependency runs first, binds a half-built client, and keeps it after the
+  // container retires the incomplete one. That is invisible until a mutation
+  // leaves through the dead client: every skill approval answered `client closed`
+  // this way. Assert the ordering rather than each plugin's declaration, so the
+  // next plugin that forgets fails here instead of in a user's hands.
+  it("hands every startup plugin the client the Runtime plugin finished configuring", async () => {
+    const journalInstalled: boolean[] = [];
+    setContainer({
+      client: () => {
+        journalInstalled.push(installedRuntimeMutationJournalStorage() !== null);
+        return {} as unknown as FlameClient;
+      },
+    });
+
+    await loadPluginsForTest(...builtinPlugins);
+
+    expect(journalInstalled.length).toBeGreaterThan(0);
+    expect(
+      journalInstalled.filter((installed) => !installed).length,
+      "a plugin composed against the container before the Runtime plugin configured it",
+    ).toBe(0);
   });
 });
