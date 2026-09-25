@@ -105,16 +105,20 @@ export function installWorkspaceNavigationPort(): () => void {
         requestAnimationFrame(() => focusConversationTool(id));
       }
     },
+    adoptSessionScope: (sessionId) => {
+      const state = useContextDockStore.getState();
+      state.activateSessionScope(sessionId);
+      const located = navigator().get().dock;
+      if (located !== null) state.adoptDockLocation(located);
+    },
     activateSessionScope: (sessionId) => {
       const state = useContextDockStore.getState();
-      const adoptsCurrentLocation =
-        state.activeSessionScopeId === null || state.activeSessionScopeId === sessionId;
-      const remembered = state.activateSessionScope(sessionId);
-      if (adoptsCurrentLocation) {
+      if (state.activeSessionScopeId === sessionId) {
         const located = navigator().get().dock;
         if (located !== null) state.adoptDockLocation(located);
         return;
       }
+      const remembered = state.activateSessionScope(sessionId);
       if (navigator().get().dock !== remembered) {
         navigator().go({ dock: remembered }, { replace: true });
       }

@@ -8,6 +8,7 @@ import {
   WORKSPACE_DOCK_CATALOG,
   openWorkspaceSubagentRun,
   activateWorkspaceSessionScope,
+  adoptWorkspaceSessionScope,
   closeActiveWorkspaceDockView,
   closeAllWorkspaceDockViews,
   closeWorkspaceDockView,
@@ -118,7 +119,7 @@ describe("workspace navigation port", () => {
   it("restores the catalogue after renderer replacement without opening a phantom tab", () => {
     navigator().go({ session: "s1", dock: WORKSPACE_DOCK_CATALOG });
 
-    activateWorkspaceSessionScope("s1");
+    adoptWorkspaceSessionScope("s1");
 
     expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
     expect(useContextDockStore.getState().dockViewIds).toEqual([]);

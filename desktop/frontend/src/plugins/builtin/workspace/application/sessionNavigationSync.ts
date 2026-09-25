@@ -8,6 +8,7 @@ export interface WorkspaceSessionNavigationPorts {
   getLifecycleSnapshot: () => AgentOpenSessions;
   subscribeActiveSessionId: (listener: AgentSessionListener) => () => void;
   subscribeLifecycle: (listener: AgentSessionLifecycleListener) => () => void;
+  adoptSessionScope: (sessionId: string) => void;
   activateSessionScope: (sessionId: string) => void;
   forgetSessionScopes: (openSessionIds: string[]) => void;
 }
@@ -21,7 +22,7 @@ export function syncWorkspaceSessionLifecycle(
 
 export function bindWorkspaceSessionNavigation(ports: WorkspaceSessionNavigationPorts): () => void {
   ports.forgetSessionScopes(ports.getLifecycleSnapshot().openSessionIds);
-  ports.activateSessionScope(ports.getActiveSessionId());
+  ports.adoptSessionScope(ports.getActiveSessionId());
 
   const unsubscribeSession = ports.subscribeActiveSessionId((sessionId) => {
     ports.activateSessionScope(sessionId);

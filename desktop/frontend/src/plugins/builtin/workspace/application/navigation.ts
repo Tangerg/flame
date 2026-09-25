@@ -154,6 +154,10 @@ export function locateWorkspaceTool(id: string): void {
   workspaceNavigation().locateTool(id);
 }
 
+export function adoptWorkspaceSessionScope(sessionId: string): void {
+  workspaceNavigation().adoptSessionScope(sessionId);
+}
+
 export function activateWorkspaceSessionScope(sessionId: string): void {
   workspaceNavigation().activateSessionScope(sessionId);
 }

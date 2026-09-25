@@ -6,6 +6,7 @@ import { installWorkspaceErrorClassifier } from "./adapters/runtimeWorkspaceErro
 import { installWorkspaceNavigationPort } from "./adapters/navigationStatePort";
 import {
   activateWorkspaceSessionScope,
+  adoptWorkspaceSessionScope,
   forgetWorkspaceSessionScopes,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { WORKSPACE_SCOPE } from "@/plugins/builtin/workspace/public/services";
@@ -41,6 +42,7 @@ export default definePlugin({
     });
     return {
       scopes: {
+        adoptSessionScope: adoptWorkspaceSessionScope,
         activateSessionScope: activateWorkspaceSessionScope,
         forgetSessionScopes: forgetWorkspaceSessionScopes,
       },

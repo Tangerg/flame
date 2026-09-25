@@ -76,6 +76,14 @@ interface WorkspaceNavigationPort {
   openFile(path: string, line?: number): void;
   closeFile(): void;
   locateTool(id: string): void;
+  // Adoption and activation are different moves that only look alike. At start-up
+  // the location is the authority — a deep link or a surviving renderer already
+  // names a dock — so the session takes it. Every later switch reverses that: the
+  // session it moves to is the authority, and the location follows. Inferring
+  // which one applies from "no scope is active" conflates them, because a session
+  // list reconciliation clears that mid-run and the next switch then adopts the
+  // dock belonging to the session it just left.
+  adoptSessionScope(sessionId: string): void;
   activateSessionScope(sessionId: string): void;
   forgetSessionScopes(openSessionIds: string[]): void;
 }

@@ -1,6 +1,7 @@
 import { service } from "dougong";
 
 export interface WorkspaceScope {
+  adoptSessionScope: (sessionId: string) => void;
   activateSessionScope: (sessionId: string) => void;
   forgetSessionScopes: (openSessionIds: string[]) => void;
 }

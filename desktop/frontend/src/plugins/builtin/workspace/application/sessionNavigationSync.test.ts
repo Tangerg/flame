@@ -11,6 +11,7 @@ function ports(overrides: Partial<WorkspaceSessionNavigationPorts> = {}) {
     getLifecycleSnapshot: vi.fn(() => ({ activeSessionId: "s1", openSessionIds: ["s1"] })),
     subscribeActiveSessionId: vi.fn(() => () => {}),
     subscribeLifecycle: vi.fn(() => () => {}),
+    adoptSessionScope: vi.fn(),
     activateSessionScope: vi.fn(),
     forgetSessionScopes: vi.fn(),
     ...overrides,
@@ -30,7 +31,8 @@ describe("bindWorkspaceSessionNavigation", () => {
     const p = ports();
     bindWorkspaceSessionNavigation(p);
 
-    expect(p.activateSessionScope).toHaveBeenCalledWith("s1");
+    expect(p.adoptSessionScope).toHaveBeenCalledWith("s1");
+    expect(p.activateSessionScope).not.toHaveBeenCalled();
     expect(p.forgetSessionScopes).toHaveBeenCalledWith(["s1"]);
   });
 

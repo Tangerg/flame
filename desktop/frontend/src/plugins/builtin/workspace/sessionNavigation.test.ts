@@ -7,6 +7,7 @@ import { AGENT_SESSIONS } from "@/plugins/builtin/agent/public/services";
 import { WORKSPACE_SCOPE } from "@/plugins/builtin/workspace/public/services";
 import {
   activateWorkspaceSessionScope,
+  adoptWorkspaceSessionScope,
   forgetWorkspaceSessionScopes,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
@@ -50,6 +51,7 @@ const ports = definePlugin({
       subscribeLifecycle: () => () => {},
     },
     scopes: {
+      adoptSessionScope: adoptWorkspaceSessionScope,
       activateSessionScope: activateWorkspaceSessionScope,
       forgetSessionScopes: forgetWorkspaceSessionScopes,
     },
@@ -119,6 +121,25 @@ describe("workspace session navigation", () => {
     agentSession.goTo("s1");
     expect(useContextDockStore.getState().activeSessionScopeId).toBe("s1");
     expect(navigator().get().dock).toBe("diff");
+  });
+
+  // A session-list reconciliation drops the active scope pointer while the app
+  // keeps running. That used to read the same as a cold start, so the next move
+  // adopted the dock of the session it was leaving instead of restoring the one
+  // it was entering — the right pane opening on its own, on the sessions that
+  // happened to be reconciled first.
+  it("does not carry the dock into the session it moves to after a reconciliation", async () => {
+    await loadPluginsForTest(ports, sessionNavigation);
+    useContextDockStore.getState().adoptDockLocation("diff");
+    navigator().go({ dock: "diff" });
+
+    forgetWorkspaceSessionScopes([]);
+    expect(useContextDockStore.getState().activeSessionScopeId).toBeNull();
+
+    agentSession.goTo("s2");
+
+    expect(navigator().get().dock).toBeNull();
+    expect(useContextDockStore.getState().dockViewIds).toEqual([]);
   });
 
   it("keeps each session's own tabs", async () => {

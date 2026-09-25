@@ -4,6 +4,7 @@ export {
   openWorkspaceSubagentRun,
   WORKSPACE_SETTINGS_VIEW,
   activateWorkspaceSessionScope,
+  adoptWorkspaceSessionScope,
   closeActiveWorkspaceDockView,
   closeActiveWorkspaceView,
   closeAllWorkspaceDockViews,
