@@ -3,6 +3,7 @@ package transcript
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"strings"
 	"time"
 
@@ -150,13 +151,13 @@ func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 	snapshot.Identity.OccurredAt = snapshot.Identity.OccurredAt.UTC()
 	item := Item{
 		identity: snapshot.Identity, status: snapshot.Status, finishedAt: snapshot.FinishedAt.UTC(),
-		executionDuration: cloneDuration(snapshot.ExecutionDuration),
+		executionDuration: optional.Clone(snapshot.ExecutionDuration),
 		kind:              snapshot.Kind, messagePhase: snapshot.MessagePhase,
 		content: CloneContent(snapshot.Content), text: snapshot.Text,
 		redacted: snapshot.Redacted, question: cloneQuestion(snapshot.Question),
 		tool: cloneToolInvocation(snapshot.Tool), safetyClass: snapshot.SafetyClass,
 		approvalDecision: snapshot.ApprovalDecision,
-		failure:          cloneToolFailure(snapshot.Failure), summary: snapshot.Summary,
+		failure:          optional.Clone(snapshot.Failure), summary: snapshot.Summary,
 		droppedMessages: snapshot.DroppedMessages,
 	}
 	if err := item.validate(); err != nil {
@@ -169,13 +170,13 @@ func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 func (i Item) Snapshot() ItemSnapshot {
 	return ItemSnapshot{
 		Identity: i.identity, Status: i.status, FinishedAt: i.finishedAt,
-		ExecutionDuration: cloneDuration(i.executionDuration),
+		ExecutionDuration: optional.Clone(i.executionDuration),
 		Kind:              i.kind, MessagePhase: i.messagePhase,
 		Content: CloneContent(i.content), Text: i.text,
 		Redacted: i.redacted, Question: cloneQuestion(i.question),
 		Tool: cloneToolInvocation(i.tool), SafetyClass: i.safetyClass,
 		ApprovalDecision: i.approvalDecision,
-		Failure:          cloneToolFailure(i.failure), Summary: i.summary,
+		Failure:          optional.Clone(i.failure), Summary: i.summary,
 		DroppedMessages: i.droppedMessages,
 	}
 }
@@ -294,7 +295,7 @@ func (i Item) settleToolCall(
 	}
 	i.status, i.finishedAt = status, finishedAt.UTC()
 	i.executionDuration = executionDuration
-	i.tool, i.failure = cloneToolInvocation(&invocation), cloneToolFailure(failure)
+	i.tool, i.failure = cloneToolInvocation(&invocation), optional.Clone(failure)
 	if err := i.validate(); err != nil {
 		return Item{}, err
 	}
@@ -470,30 +471,8 @@ func cloneToolInvocation(invocation *ToolInvocation) *ToolInvocation {
 		return nil
 	}
 	copy := *invocation
-	if invocation.Result != nil {
-		result := *invocation.Result
-		copy.Result = &result
-	}
-	if invocation.Offload != nil {
-		offload := *invocation.Offload
-		copy.Offload = &offload
-	}
-	return &copy
-}
-
-func cloneToolFailure(failure *tool.Failure) *tool.Failure {
-	if failure == nil {
-		return nil
-	}
-	copy := *failure
-	return &copy
-}
-
-func cloneDuration(duration *time.Duration) *time.Duration {
-	if duration == nil {
-		return nil
-	}
-	copy := *duration
+	copy.Result = optional.Clone(invocation.Result)
+	copy.Offload = optional.Clone(invocation.Offload)
 	return &copy
 }
 
@@ -584,5 +563,5 @@ func (i Item) Failure() (tool.Failure, bool) {
 	if i.failure == nil {
 		return tool.Failure{}, false
 	}
-	return *cloneToolFailure(i.failure), true
+	return *optional.Clone(i.failure), true
 }

@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"context"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"image"
 	"os"
 	"path/filepath"
@@ -618,7 +619,7 @@ func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
 
 func TestQueueMutationRollbackPreservesTheDispatchReservation(t *testing.T) {
 	directory := t.TempDir()
-	store, err := openWorkbench(directory)
+	store, err := workbenchstate.Open(directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -696,7 +697,7 @@ func TestQueueMutationRollbackPreservesTheDispatchReservation(t *testing.T) {
 	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
 		t.Fatal(renameErr)
 	}
-	reopened, err := openWorkbench(directory)
+	reopened, err := workbenchstate.Open(directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -839,7 +840,7 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 
 	var pending []workbench.PendingRun
 	awaitState(t, "both runtime commands to become durable", func() bool {
-		store, err := openWorkbench(stateDirectory)
+		store, err := workbenchstate.Open(stateDirectory)
 		if err != nil {
 			return false
 		}
@@ -890,7 +891,7 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 		t.Fatalf("starts after durable recovery = %+v", inputs)
 	}
 
-	reopened, err := openWorkbench(stateDirectory)
+	reopened, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

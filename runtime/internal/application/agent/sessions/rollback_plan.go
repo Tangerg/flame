@@ -3,6 +3,7 @@ package sessions
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -154,5 +155,5 @@ func (r RollbackPlan) CheckpointRootIDs() []string {
 
 // PlanReplacement returns an isolated copy of the boundary Plan transition.
 func (r RollbackPlan) PlanReplacement() *plan.Replacement {
-	return clonePlanReplacement(r.planReplacement)
+	return optional.Clone(r.planReplacement)
 }

@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"iter"
 	"slices"
 	"strings"
@@ -121,10 +122,7 @@ type StartCommand struct {
 }
 
 func (s StartCommand) clone() StartCommand {
-	if s.ManualScheduleRun != nil {
-		record := *s.ManualScheduleRun
-		s.ManualScheduleRun = &record
-	}
+	s.ManualScheduleRun = optional.Clone(s.ManualScheduleRun)
 	if s.Options != nil {
 		options := s.Options.Clone()
 		s.Options = &options

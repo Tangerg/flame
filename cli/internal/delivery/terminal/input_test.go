@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"testing"
 	"time"
 
@@ -120,7 +121,7 @@ func awaitStoredDraft(t *testing.T, stateDirectory, sessionID string, want agent
 }
 
 func storedDraft(stateDirectory, sessionID string) (agent.Message, bool, error) {
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		return agent.Message{}, false, err
 	}

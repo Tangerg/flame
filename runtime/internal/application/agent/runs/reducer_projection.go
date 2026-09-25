@@ -2,6 +2,7 @@ package runs
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -113,10 +114,7 @@ func (r *reducer) attachDurableObservation(
 	commit.ModelInvocations = append(commit.ModelInvocations, modelInvocations...)
 	commit.ToolInvocations = append(commit.ToolInvocations, toolInvocations...)
 	commit.ConversationMessages = appendClonedMessages(commit.ConversationMessages, conversationMessages...)
-	if progress != nil {
-		cloned := *progress
-		commit.Progress = &cloned
-	}
+	commit.Progress = optional.Clone(progress)
 	return validateReductionBatch(*batch)
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 	"strings"
 
@@ -76,10 +77,7 @@ type Interrupt struct {
 }
 
 func cloneInterrupt(value Interrupt) Interrupt {
-	if value.Approval != nil {
-		approval := *value.Approval
-		value.Approval = &approval
-	}
+	value.Approval = optional.Clone(value.Approval)
 	if value.Question != nil {
 		question := *value.Question
 		question.Fields = slices.Clone(question.Fields)

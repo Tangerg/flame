@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"testing"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 
 func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 	stateDirectory := t.TempDir()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +72,7 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

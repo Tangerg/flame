@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"maps"
 	"slices"
 	"time"
@@ -176,10 +177,7 @@ func (r *reducer) clone() *reducer {
 		plan.Steps = slices.Clone(r.plan.Steps)
 		cloned.plan = &plan
 	}
-	if r.errFailure != nil {
-		failure := *r.errFailure
-		cloned.errFailure = &failure
-	}
+	cloned.errFailure = optional.Clone(r.errFailure)
 	return &cloned
 }
 

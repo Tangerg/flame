@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 	"time"
 
@@ -258,18 +259,9 @@ func (e EventCommit) clone() EventCommit {
 		}
 	}
 	e.ToolInvocations = slices.Clone(e.ToolInvocations)
-	if e.Progress != nil {
-		progress := *e.Progress
-		e.Progress = &progress
-	}
-	if e.Run != nil {
-		run := *e.Run
-		e.Run = &run
-	}
-	if e.GoalRun != nil {
-		goalRun := *e.GoalRun
-		e.GoalRun = &goalRun
-	}
+	e.Progress = optional.Clone(e.Progress)
+	e.Run = optional.Clone(e.Run)
+	e.GoalRun = optional.Clone(e.GoalRun)
 	return e
 }
 

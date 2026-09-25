@@ -10,11 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/statefile"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -286,7 +285,7 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 			if err != nil {
 				return err
 			}
-			authoring, err := openWorkbench(stateDirectory)
+			authoring, err := workbenchstate.Open(stateDirectory)
 			if err != nil {
 				return fmt.Errorf("open CLI workbench: %w", err)
 			}
@@ -373,17 +372,4 @@ func relativeAge(t time.Time) string {
 	default:
 		return strconv.Itoa(int(d.Hours()/24)) + "d ago"
 	}
-}
-
-// openWorkbench selects this surface's authoring state: an empty directory is
-// the session that keeps nothing on disk.
-func openWorkbench(directory string) (*workbench.Store, error) {
-	if strings.TrimSpace(directory) == "" {
-		return workbench.OpenMemory(workbench.Config{})
-	}
-	persistence, err := statefile.Open(directory)
-	if err != nil {
-		return nil, err
-	}
-	return workbench.Open(persistence, workbench.Config{})
 }

@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/oolong/components/headless"
@@ -15,7 +14,7 @@ import (
 	"github.com/Tangerg/oolong/core/term"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/statefile"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
@@ -184,7 +183,7 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	if err != nil {
 		return preparedSession{}, err
 	}
-	authoring, err := openWorkbench(cfg.StateDirectory)
+	authoring, err := workbenchstate.Open(cfg.StateDirectory)
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("open CLI workbench: %w", err)
 	}
@@ -361,17 +360,4 @@ func requireLoadedPlugin(results []extensions.LifecycleResult, id string) error 
 		return fmt.Errorf("session: required plugin %q is %s", id, result.Phase)
 	}
 	return fmt.Errorf("session: required plugin %q was not discovered", id)
-}
-
-// openWorkbench selects this surface's authoring state: an empty directory is
-// the session that keeps nothing on disk.
-func openWorkbench(directory string) (*workbench.Store, error) {
-	if strings.TrimSpace(directory) == "" {
-		return workbench.OpenMemory(workbench.Config{})
-	}
-	persistence, err := statefile.Open(directory)
-	if err != nil {
-		return nil, err
-	}
-	return workbench.Open(persistence, workbench.Config{})
 }

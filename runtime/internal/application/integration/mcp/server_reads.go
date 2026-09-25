@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -107,9 +108,6 @@ func (c *Coordinator) acceptStatus(status ServerStatus) {
 }
 
 func cloneServerStatus(status ServerStatus) ServerStatus {
-	if status.ToolCount != nil {
-		count := *status.ToolCount
-		status.ToolCount = &count
-	}
+	status.ToolCount = optional.Clone(status.ToolCount)
 	return status
 }

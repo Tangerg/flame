@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 	"sync"
 
@@ -78,10 +79,7 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 		if value.FirstOutputLatencyMillis != nil {
 			value.FirstOutputLatencyMillis = new(*value.FirstOutputLatencyMillis)
 		}
-		if value.ReportedUsage != nil {
-			usage := *value.ReportedUsage
-			value.ReportedUsage = &usage
-		}
+		value.ReportedUsage = optional.Clone(value.ReportedUsage)
 		if value.Message != nil {
 			value.Message = new(value.Message.Clone())
 		}

@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"maps"
 	"slices"
 
@@ -48,10 +49,7 @@ func AfterEventIDFrom(ctx context.Context) string {
 }
 
 func cloneRequestMeta(meta protocol.RequestMeta) protocol.RequestMeta {
-	if meta.ClientInfo != nil {
-		info := *meta.ClientInfo
-		meta.ClientInfo = &info
-	}
+	meta.ClientInfo = optional.Clone(meta.ClientInfo)
 	if meta.ClientCapabilities != nil {
 		capabilities := *meta.ClientCapabilities
 		capabilities.InterruptTypes = slices.Clone(capabilities.InterruptTypes)

@@ -3,6 +3,7 @@ package agentexec
 import (
 	"context"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -161,10 +162,7 @@ type InteractionToolHookDecision struct {
 // AllowToolHook proceeds, optionally escalating to human review and optionally
 // with arguments a hook rewrote.
 func AllowToolHook(requireApproval bool, arguments *tool.Arguments) InteractionToolHookDecision {
-	if arguments != nil {
-		owned := *arguments
-		arguments = &owned
-	}
+	arguments = optional.Clone(arguments)
 	return InteractionToolHookDecision{requireApproval: requireApproval, arguments: arguments}
 }
 

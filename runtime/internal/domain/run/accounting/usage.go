@@ -5,6 +5,7 @@ package accounting
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"math"
 	"slices"
 
@@ -23,10 +24,7 @@ type Totals struct {
 
 // Clone returns an ownership-isolated value.
 func (t Totals) Clone() Totals {
-	if t.CostUSD != nil {
-		cost := *t.CostUSD
-		t.CostUSD = &cost
-	}
+	t.CostUSD = optional.Clone(t.CostUSD)
 	return t
 }
 

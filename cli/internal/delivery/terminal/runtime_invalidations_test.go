@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"slices"
 	"strings"
 	"sync"
@@ -1632,7 +1633,7 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 	replacementID := firstRuntimeSession(t, base)
 	stop()
 
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

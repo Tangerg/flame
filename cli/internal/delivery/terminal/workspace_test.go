@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"context"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"os"
 	"path/filepath"
 	"testing"
@@ -81,7 +82,7 @@ func TestRecentWorkspacePickerCreatesAndSwitchesToTheSelectedRoot(t *testing.T) 
 			t.Fatal(err)
 		}
 	}
-	store, err := openWorkbench(state)
+	store, err := workbenchstate.Open(state)
 	if err != nil {
 		t.Fatal(err)
 	}

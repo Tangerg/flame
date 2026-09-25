@@ -3,6 +3,7 @@ package run
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 	"time"
 
@@ -92,8 +93,8 @@ func Restore(snapshot Snapshot) (Run, error) {
 		sessionID: snapshot.SessionID, id: snapshot.ID, lineage: snapshot.Lineage,
 		modelSelection: snapshot.ModelSelection, goalIncarnationID: goalIncarnationID,
 		state: snapshot.State, activeSegmentID: snapshot.ActiveSegmentID,
-		outcome: cloneOutcome(snapshot.Outcome), detail: snapshot.Detail,
-		failure: cloneFailure(snapshot.Failure), unresolvedEffects: slices.Clone(snapshot.UnresolvedEffects), metrics: snapshot.Metrics,
+		outcome: optional.Clone(snapshot.Outcome), detail: snapshot.Detail,
+		failure: optional.Clone(snapshot.Failure), unresolvedEffects: slices.Clone(snapshot.UnresolvedEffects), metrics: snapshot.Metrics,
 		contextTokens: snapshot.ContextTokens,
 		capabilities:  snapshot.Capabilities.Clone(),
 		createdAt:     snapshot.CreatedAt.UTC(), finishedAt: snapshot.FinishedAt.UTC(),
@@ -111,8 +112,8 @@ func (r Run) Snapshot() Snapshot {
 		SessionID: r.sessionID, ID: r.id, Lineage: r.lineage,
 		ModelSelection: r.modelSelection, GoalIncarnationID: r.goalIncarnationID.String(),
 		State: r.state, ActiveSegmentID: r.activeSegmentID,
-		Outcome: cloneOutcome(r.outcome), Detail: r.detail,
-		Failure: cloneFailure(r.failure), UnresolvedEffects: slices.Clone(r.unresolvedEffects), Metrics: r.metrics,
+		Outcome: optional.Clone(r.outcome), Detail: r.detail,
+		Failure: optional.Clone(r.failure), UnresolvedEffects: slices.Clone(r.unresolvedEffects), Metrics: r.metrics,
 		ContextTokens: r.contextTokens,
 		Capabilities:  r.capabilities.Clone(),
 		CreatedAt:     r.createdAt, FinishedAt: r.finishedAt,
@@ -164,22 +165,6 @@ func (r Run) Equal(other Run) bool {
 		return r.failure == nil && other.failure == nil
 	}
 	return *r.failure == *other.failure
-}
-
-func cloneOutcome(outcome *Outcome) *Outcome {
-	if outcome == nil {
-		return nil
-	}
-	copy := *outcome
-	return &copy
-}
-
-func cloneFailure(failure *Failure) *Failure {
-	if failure == nil {
-		return nil
-	}
-	copy := *failure
-	return &copy
 }
 
 func (r Run) validate() error {
@@ -407,8 +392,8 @@ func (r Run) finish(state State, termination Termination) (Run, error) {
 		return Run{}, err
 	}
 	r.state, r.activeSegmentID = state, ""
-	r.outcome = cloneOutcome(&termination.Outcome)
-	r.detail, r.failure = termination.Detail, cloneFailure(termination.Failure)
+	r.outcome = optional.Clone(&termination.Outcome)
+	r.detail, r.failure = termination.Detail, optional.Clone(termination.Failure)
 	r.finishedAt, r.updatedAt = termination.FinishedAt.UTC(), termination.FinishedAt.UTC()
 	r.messageMark = termination.MessageMark
 	r.unresolvedEffects = slices.Clone(termination.UnresolvedEffects)
@@ -465,7 +450,7 @@ func (r Run) Failure() (Failure, bool) {
 	if r.failure == nil {
 		return Failure{}, false
 	}
-	return *cloneFailure(r.failure), true
+	return *optional.Clone(r.failure), true
 }
 func (r Run) Metrics() Metrics           { return r.metrics }
 func (r Run) ContextTokens() int64       { return r.contextTokens }

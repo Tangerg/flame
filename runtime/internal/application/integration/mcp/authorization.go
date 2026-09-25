@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"sync"
 	"time"
 
@@ -187,9 +188,6 @@ func (a *authorizationAttemptStore) purgeExpiredLocked() {
 }
 
 func cloneAuthorizationAttempt(attempt AuthorizationAttempt) AuthorizationAttempt {
-	if attempt.FinishedAt != nil {
-		finishedAt := *attempt.FinishedAt
-		attempt.FinishedAt = &finishedAt
-	}
+	attempt.FinishedAt = optional.Clone(attempt.FinishedAt)
 	return attempt
 }

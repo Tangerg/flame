@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -931,7 +932,7 @@ func TestRejectedResumeRetirementFailurePreservesTheDurableDecision(t *testing.T
 	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
 		t.Fatal(renameErr)
 	}
-	reopened, err := openWorkbench(stateDirectory)
+	reopened, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -948,7 +949,7 @@ func TestRejectedResumeRetirementFailurePreservesTheDurableDecision(t *testing.T
 	if len(attempts) != 2 || attempts[0].CommandID != pending.CommandID || attempts[1].CommandID != pending.CommandID {
 		t.Fatalf("recovered resume attempts = %+v, want command %s", attempts, pending.CommandID)
 	}
-	reopened, err = openWorkbench(stateDirectory)
+	reopened, err = workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1022,7 +1023,7 @@ func TestAcceptedQuestionResumeSettlementRetriesTheExactDurableDecision(t *testi
 		t.Fatal(err)
 	}
 	awaitState(t, "the accepted resume to settle locally", func() bool {
-		store, openErr := openWorkbench(stateDirectory)
+		store, openErr := workbenchstate.Open(stateDirectory)
 		if openErr != nil {
 			return false
 		}
@@ -1075,7 +1076,7 @@ func TestClosingDuringAnAcceptedResumeCancelsTheRunAndRetiresTheDecision(t *test
 	if _, active := snapshot.ActiveRun(); active {
 		t.Fatalf("terminal close left the resumed run active: %+v", snapshot.Runs)
 	}
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1105,7 +1106,7 @@ func TestMisdirectedAcceptedResumeReceiptCancelsAndSettlesTheRequestedRun(t *tes
 		if len(resumes) != 1 || len(cancellations) != 1 {
 			return false
 		}
-		store, err := openWorkbench(stateDirectory)
+		store, err := workbenchstate.Open(stateDirectory)
 		if err != nil {
 			return false
 		}
@@ -1177,7 +1178,7 @@ func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T)
 	}
 	host.Hides(t, "UNTRUSTED_CONTINUATION_TAIL")
 	host.Hides(t, "apply runtime event")
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1256,7 +1257,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 		},
 	}
 	stateDirectory := t.TempDir()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1292,7 +1293,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 			t.Fatalf("resume attempt %d question = %#v", index+1, attempt.Answers[1].Answer)
 		}
 	}
-	store, err = openWorkbench(stateDirectory)
+	store, err = workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1360,7 +1361,7 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 		}
 	}
 	stateDirectory := t.TempDir()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1382,7 +1383,7 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 	if attempts := runtime.resumeAttempts(); len(attempts) != 0 {
 		t.Fatalf("authoritatively settled resume was replayed: %+v", attempts)
 	}
-	reopened, err := openWorkbench(stateDirectory)
+	reopened, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1429,7 +1430,7 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 		}},
 	}
 	stateDirectory := t.TempDir()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1453,7 +1454,7 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 		attempts[0].CommandID != attempts[1].CommandID || !attempts[0].Equal(attempts[1]) {
 		t.Fatalf("reidentified resume attempts = %+v", attempts)
 	}
-	reopened, err := openWorkbench(stateDirectory)
+	reopened, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1503,7 +1504,7 @@ func TestActiveResumeReconcilesWhenReplayExpiresAfterAnUncertainAttempt(t *testi
 	if !valid {
 		t.Fatalf("expired resume attempts = %+v", attempts)
 	}
-	reopened, err := openWorkbench(stateDirectory)
+	reopened, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1519,7 +1520,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingRunOutbox(t *testing.T) {
 	base.Script = stableCompletedScript
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1550,7 +1551,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingRunOutbox(t *testing.T) {
 		inputs[0].Message.Text != command.Message.Text {
 		t.Fatalf("recovered destination starts = %+v", inputs)
 	}
-	reopened, err := openWorkbench(stateDirectory)
+	reopened, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1602,7 +1603,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 		}},
 	}
 	stateDirectory := t.TempDir()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1624,7 +1625,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 	if len(attempts) < 2 || attempts[0].CommandID != command.CommandID || attempts[1].CommandID != command.CommandID {
 		t.Fatalf("destination resume attempts = %+v", attempts)
 	}
-	reopened, err := openWorkbench(stateDirectory)
+	reopened, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2163,7 +2164,7 @@ func TestClosingDuringAnInvalidAcceptedStartCancelsTheRecoveredRun(t *testing.T)
 	if _, active := snapshot.ActiveRun(); active {
 		t.Fatalf("terminal close left malformed accepted run active: %+v", snapshot.Runs)
 	}
-	reopened, err := openWorkbench(stateDirectory)
+	reopened, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2843,14 +2844,14 @@ func TestSessionChangeOwnsTheComposerUntilItsSnapshotIsInstalled(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "wait for the current session change")
 	awaitState(t, "the rejected prompt to remain durable", func() bool {
-		store, err := openWorkbench(stateDirectory)
+		store, err := workbenchstate.Open(stateDirectory)
 		if err != nil {
 			return false
 		}
 		draft, found := store.Draft(originalSession)
 		return found && draft.Text == "do not orphan this prompt"
 	})
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2921,7 +2922,7 @@ func TestSessionChangeDoesNotInstallAfterAnInFlightDraftSaveFailure(t *testing.T
 		releaseChange: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3431,7 +3432,7 @@ func TestUserCreatedSessionPreservesTheSourceDraft(t *testing.T) {
 	replacementID := firstRuntimeSession(t, backend)
 	stop()
 
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3447,7 +3448,7 @@ func TestUserCreatedSessionPreservesTheSourceDraft(t *testing.T) {
 func TestSessionChangeStopsBeforeMutationWhenTheSourceDraftCannotBeSaved(t *testing.T) {
 	backend := runtimefixture.New()
 	stateDirectory := t.TempDir()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3507,7 +3508,7 @@ func TestPromptSubmissionStopsBeforeRuntimeWhenTheOutboxCannotBeSaved(t *testing
 	base := runtimefixture.New()
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3558,7 +3559,7 @@ func TestPromptSubmissionCommitsHistoryOnlyAfterRuntimeAcknowledgement(t *testin
 	base.Instant = true
 	backend := &recordingRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3572,7 +3573,7 @@ func TestPromptSubmissionCommitsHistoryOnlyAfterRuntimeAcknowledgement(t *testin
 	if got := backend.startCount(); got != 1 {
 		t.Fatalf("runtime started %d runs, want one", got)
 	}
-	reopened, err := openWorkbench(stateDirectory)
+	reopened, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3636,7 +3637,7 @@ func TestStashKeepsTheComposerWhenDraftRetirementFails(t *testing.T) {
 	host.Hides(t, "stashed prompt ·")
 
 	restoreWrites()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3649,7 +3650,7 @@ func TestStashKeepsTheComposerWhenDraftRetirementFails(t *testing.T) {
 	host.Type("stash current prompt")
 	host.Press(input.Enter)
 	host.Shows(t, "stashed prompt")
-	store, err = openWorkbench(stateDirectory)
+	store, err = workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3664,7 +3665,7 @@ func TestStashKeepsTheComposerWhenDraftRetirementFails(t *testing.T) {
 
 func TestApplyingStashDoesNotExposeAnUndurableDraft(t *testing.T) {
 	stateDirectory := t.TempDir()
-	store, err := openWorkbench(stateDirectory)
+	store, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

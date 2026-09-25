@@ -3,6 +3,7 @@ package sessions
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -114,5 +115,5 @@ func (r RestorePlan) Snapshot() Snapshot {
 
 // PlanReplacement returns an isolated copy of the restored Plan transition.
 func (r RestorePlan) PlanReplacement() *plan.Replacement {
-	return clonePlanReplacement(r.planReplacement)
+	return optional.Clone(r.planReplacement)
 }

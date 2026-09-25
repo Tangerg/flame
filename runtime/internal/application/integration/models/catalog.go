@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 	"time"
 
@@ -223,10 +224,7 @@ func cloneDetails(details *Details) *Details {
 	clone.ReasoningLevels = slices.Clone(details.ReasoningLevels)
 	clone.InputModalities = slices.Clone(details.InputModalities)
 	clone.OutputModalities = slices.Clone(details.OutputModalities)
-	if details.Pricing != nil {
-		pricing := *details.Pricing
-		clone.Pricing = &pricing
-	}
+	clone.Pricing = optional.Clone(details.Pricing)
 	return &clone
 }
 

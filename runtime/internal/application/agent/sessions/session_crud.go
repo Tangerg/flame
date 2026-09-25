@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -32,22 +33,14 @@ type Patch struct {
 }
 
 func (p Patch) clone() Patch {
-	p.Title = clonePatchValue(p.Title)
-	p.ModelSelection.Provider = clonePatchValue(p.ModelSelection.Provider)
-	p.ModelSelection.Model = clonePatchValue(p.ModelSelection.Model)
-	p.ModelSelection.ReasoningEffort = clonePatchValue(p.ModelSelection.ReasoningEffort)
-	p.WorkspacePath = clonePatchValue(p.WorkspacePath)
-	p.Favorite = clonePatchValue(p.Favorite)
-	p.Isolated = clonePatchValue(p.Isolated)
+	p.Title = optional.Clone(p.Title)
+	p.ModelSelection.Provider = optional.Clone(p.ModelSelection.Provider)
+	p.ModelSelection.Model = optional.Clone(p.ModelSelection.Model)
+	p.ModelSelection.ReasoningEffort = optional.Clone(p.ModelSelection.ReasoningEffort)
+	p.WorkspacePath = optional.Clone(p.WorkspacePath)
+	p.Favorite = optional.Clone(p.Favorite)
+	p.Isolated = optional.Clone(p.Isolated)
 	return p
-}
-
-func clonePatchValue[T any](value *T) *T {
-	if value == nil {
-		return nil
-	}
-	cloned := *value
-	return &cloned
 }
 
 // List returns every user-facing Session, newest-updated first.

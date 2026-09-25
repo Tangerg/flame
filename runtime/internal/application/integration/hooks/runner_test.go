@@ -3,6 +3,7 @@ package hooks
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"strings"
 	"sync"
 	"testing"
@@ -21,10 +22,7 @@ type commandStub struct {
 func (c *commandStub) RunHookCommand(_ context.Context, req CommandRequest) CommandResult {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if req.Input.Tool != nil {
-		value := *req.Input.Tool
-		req.Input.Tool = &value
-	}
+	req.Input.Tool = optional.Clone(req.Input.Tool)
 	c.requests = append(c.requests, req)
 	if len(c.results) == 0 {
 		return CommandResult{}

@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 	"time"
 
@@ -375,10 +376,7 @@ func NewSegmentEnded(
 	duration time.Duration,
 ) SegmentEnded {
 	end := SegmentEnded{Reason: reason, Duration: duration}
-	if failure != nil {
-		owned := *failure
-		end.failure = &owned
-	}
+	end.failure = optional.Clone(failure)
 	if usage != nil {
 		owned := *usage
 		owned.ByModel = append([]accounting.ModelUsage(nil), usage.ByModel...)

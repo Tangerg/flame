@@ -18,6 +18,19 @@ func Value[T any](value *T, fallback T) T {
 	return *value
 }
 
+// Clone copies what an optional value points at, so an absent one stays absent
+// and a present one stops sharing its storage with the value it came from. The
+// copy is shallow: it isolates the pointer, which is what makes an aggregate's
+// optional field safe to hand out, and says nothing about any reference the
+// pointed-at value holds itself.
+func Clone[T any](value *T) *T {
+	if value == nil {
+		return nil
+	}
+	cloned := *value
+	return &cloned
+}
+
 // Positive resolves an absent policy override to its default and rejects a
 // non-positive one. No schema stands between configuration and this value, and
 // a zero limit is not a smaller limit — it is a policy that admits nothing.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"io"
 	"iter"
 	"slices"
@@ -451,10 +452,7 @@ func (w *workspaceSubscription) flushStalledLocked() bool {
 // without a copy here, because a comment describing the shape of this struct is
 // exactly the thing that goes stale when the struct grows.
 func cloneRuntimeEvent(event protocol.RuntimeEvent) protocol.RuntimeEvent {
-	if event.Workspace != nil {
-		workspace := *event.Workspace
-		event.Workspace = &workspace
-	}
+	event.Workspace = optional.Clone(event.Workspace)
 	event.Paths = slices.Clone(event.Paths)
 	event.Names = slices.Clone(event.Names)
 	event.ServerIDs = slices.Clone(event.ServerIDs)

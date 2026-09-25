@@ -7,6 +7,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"io"
 	"os"
 	"path/filepath"
@@ -871,7 +872,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	base := instantRuntime()
 	target := firstSession(t, base)
 	stateDirectory := t.TempDir()
-	authoring, err := openWorkbench(stateDirectory)
+	authoring, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -898,7 +899,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	if runtime.request.SessionID != target || runtime.request.CommandID == "" {
 		t.Fatalf("delete request = %+v", runtime.request)
 	}
-	reopened, err := openWorkbench(stateDirectory)
+	reopened, err := workbenchstate.Open(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"maps"
 	"net/http"
 	"net/url"
@@ -123,10 +124,7 @@ func (s ServerConfig) Clone() ServerConfig {
 	s.Args = slices.Clone(s.Args)
 	s.Env = slices.Clone(s.Env)
 	s.Headers = maps.Clone(s.Headers)
-	if s.HandshakeTimeout != nil {
-		timeout := *s.HandshakeTimeout
-		s.HandshakeTimeout = &timeout
-	}
+	s.HandshakeTimeout = optional.Clone(s.HandshakeTimeout)
 	return s
 }
 

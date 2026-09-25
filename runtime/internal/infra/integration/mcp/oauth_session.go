@@ -5,6 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"net/http"
 	"net/url"
 	"slices"
@@ -190,7 +191,7 @@ type invalidatingTokenSource struct {
 func newSavingTokenSource(source oauth2.TokenSource, cfg *oauth2.Config, token *oauth2.Token, save func(*oauth2.Config, *oauth2.Token) error) oauth2.TokenSource {
 	config := *cfg
 	config.Scopes = slices.Clone(cfg.Scopes)
-	return &savingTokenSource{source: source, config: config, last: cloneOAuthToken(token), save: save}
+	return &savingTokenSource{source: source, config: config, last: optional.Clone(token), save: save}
 }
 
 func (s *savingTokenSource) Token() (*oauth2.Token, error) {
@@ -207,16 +208,8 @@ func (s *savingTokenSource) Token() (*oauth2.Token, error) {
 	if err := s.save(&s.config, token); err != nil {
 		return nil, err
 	}
-	s.last = cloneOAuthToken(token)
+	s.last = optional.Clone(token)
 	return token, nil
-}
-
-func cloneOAuthToken(token *oauth2.Token) *oauth2.Token {
-	if token == nil {
-		return nil
-	}
-	clone := *token
-	return &clone
 }
 
 func sameOAuthToken(left, right *oauth2.Token) bool {

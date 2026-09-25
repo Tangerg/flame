@@ -3,6 +3,7 @@ package sessions
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -51,7 +52,7 @@ func ownForkPlanReplacement(steps []plan.Step, replacement *plan.Replacement) (*
 	if err := validateForkPlanReplacement(steps, replacement); err != nil {
 		return nil, err
 	}
-	return clonePlanReplacement(replacement), nil
+	return optional.Clone(replacement), nil
 }
 
 func validateForkPlanReplacement(steps []plan.Step, replacement *plan.Replacement) error {
@@ -118,16 +119,5 @@ func (f ForkPlan) Snapshot() Snapshot {
 // PlanReplacement returns an isolated initial Plan transition when the fork
 // boundary held a non-empty Plan.
 func (f ForkPlan) PlanReplacement() *plan.Replacement {
-	return clonePlanReplacement(f.planReplacement)
-}
-
-// clonePlanReplacement hands out an optional Plan transition the caller owns.
-// The value is small and its fields are read-only through accessors, so the
-// copy exists to keep the caller from reseating the owner's pointer target.
-func clonePlanReplacement(replacement *plan.Replacement) *plan.Replacement {
-	if replacement == nil {
-		return nil
-	}
-	owned := *replacement
-	return &owned
+	return optional.Clone(f.planReplacement)
 }

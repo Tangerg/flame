@@ -2,6 +2,7 @@ package accounting
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -32,9 +33,9 @@ func NewTokens(usage chat.Usage) (Tokens, error) {
 // CloneReportedUsage detaches the breakdown pointers so a stored value cannot
 // be advanced through a caller's copy.
 func CloneReportedUsage(usage chat.Usage) chat.Usage {
-	usage.ReasoningTokens = cloneOptionalInt64(usage.ReasoningTokens)
-	usage.CacheReadInputTokens = cloneOptionalInt64(usage.CacheReadInputTokens)
-	usage.CacheWriteInputTokens = cloneOptionalInt64(usage.CacheWriteInputTokens)
+	usage.ReasoningTokens = optional.Clone(usage.ReasoningTokens)
+	usage.CacheReadInputTokens = optional.Clone(usage.CacheReadInputTokens)
+	usage.CacheWriteInputTokens = optional.Clone(usage.CacheWriteInputTokens)
 	return usage
 }
 
@@ -61,12 +62,4 @@ func equalOptionalInt64(left, right *int64) bool {
 		return left == nil && right == nil
 	}
 	return *left == *right
-}
-
-func cloneOptionalInt64(value *int64) *int64 {
-	if value == nil {
-		return nil
-	}
-	cloned := *value
-	return &cloned
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -193,10 +194,7 @@ func failureFromData(data protocol.ProblemData) *Failure {
 func cloneProblemData(data protocol.ProblemData) protocol.ProblemData {
 	data.RequiredCapabilities = slices.Clone(data.RequiredCapabilities)
 	data.Errors = slices.Clone(data.Errors)
-	if data.ActiveRun != nil {
-		active := *data.ActiveRun
-		data.ActiveRun = &active
-	}
+	data.ActiveRun = optional.Clone(data.ActiveRun)
 	return data
 }
 

@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 	"strings"
 	"time"
@@ -143,14 +144,8 @@ func (p Pending) Clone() Pending {
 func clonePendingInterrupt(value transcript.Interrupt) transcript.Interrupt {
 	if value.Approval != nil {
 		approval := *value.Approval
-		if approval.Tool.Result != nil {
-			result := *approval.Tool.Result
-			approval.Tool.Result = &result
-		}
-		if approval.Tool.Offload != nil {
-			offload := *approval.Tool.Offload
-			approval.Tool.Offload = &offload
-		}
+		approval.Tool.Result = optional.Clone(approval.Tool.Result)
+		approval.Tool.Offload = optional.Clone(approval.Tool.Offload)
 		value.Approval = &approval
 	}
 	if value.Question != nil {

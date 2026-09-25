@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
@@ -40,18 +41,9 @@ func NewAdmissionOpeningCommit(
 		commitID: commitID, admit: &admit,
 		scheduleFiring: scheduleFiring, events: cloneEventCommits(events),
 	}
-	if initialSession != nil {
-		value := *initialSession
-		opening.initialSession = &value
-	}
-	if sessionReplacement != nil {
-		value := *sessionReplacement
-		opening.sessionReplacement = &value
-	}
-	if manualScheduleRun != nil {
-		value := *manualScheduleRun
-		opening.manualScheduleRun = &value
-	}
+	opening.initialSession = optional.Clone(initialSession)
+	opening.sessionReplacement = optional.Clone(sessionReplacement)
+	opening.manualScheduleRun = optional.Clone(manualScheduleRun)
 	if err := opening.Validate(); err != nil {
 		return OpeningCommit{}, err
 	}
