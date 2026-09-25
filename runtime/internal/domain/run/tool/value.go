@@ -2,10 +2,23 @@ package tool
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
+
+	"github.com/Tangerg/flame/runtime/internal/exactjson"
+)
+
+// canonicalJSON is the spelling every stored Arguments and Result already
+// carries. Deterministic fixes member order; the escape options reproduce the
+// escaping encoding/json applied when these rows were written. The bytes are the
+// identity — resume and cache lookups compare them — so a value re-encoded under
+// a different spelling would stop matching the one persisted for it.
+var canonicalJSON = json.JoinOptions(
+	json.Deterministic(true),
+	jsontext.EscapeForHTML(true),
+	jsontext.EscapeForJS(true),
 )
 
 var (
@@ -46,7 +59,7 @@ func ArgumentsFromMap(value map[string]any) (Arguments, error) {
 	if value == nil {
 		return Arguments{}, fmt.Errorf("%w: expected an object", ErrInvalidArguments)
 	}
-	encoded, err := json.Marshal(value)
+	encoded, err := json.Marshal(value, canonicalJSON)
 	if err != nil {
 		return Arguments{}, fmt.Errorf("%w: %w", ErrInvalidArguments, err)
 	}
@@ -107,7 +120,7 @@ type Result struct {
 
 // StringResult returns the infallible result value for text output.
 func StringResult(value string) Result {
-	encoded, err := json.Marshal(value)
+	encoded, err := json.Marshal(value, canonicalJSON)
 	if err != nil {
 		panic(fmt.Sprintf("tool: encode string result: %v", err))
 	}
@@ -116,7 +129,7 @@ func StringResult(value string) Result {
 
 // NewResult snapshots and validates an arbitrary JSON-compatible value.
 func NewResult(value any) (Result, error) {
-	encoded, err := json.Marshal(value)
+	encoded, err := json.Marshal(value, canonicalJSON)
 	if err != nil {
 		return Result{}, fmt.Errorf("%w: %w", ErrInvalidResult, err)
 	}
@@ -132,7 +145,7 @@ func ParseResult(data []byte) (Result, error) {
 	if err := decodeValue(data, &value); err != nil {
 		return Result{}, fmt.Errorf("%w: %w", ErrInvalidResult, err)
 	}
-	encoded, err := json.Marshal(value)
+	encoded, err := json.Marshal(value, canonicalJSON)
 	if err != nil {
 		return Result{}, fmt.Errorf("%w: normalize: %w", ErrInvalidResult, err)
 	}
@@ -179,23 +192,12 @@ func (r *Result) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// decodeValue preserves JSON numbers exactly and rejects trailing documents.
-// Tool arguments can contain identifiers larger than IEEE-754's exact integer
-// range; coercing them through float64 would silently change cache identity and
-// exported transcripts. Only encoding/json exposes that choice — decoding into
-// an any through encoding/json/v2 always yields float64 — so these three
-// boundaries keep the v1 decoder while the rest of Runtime uses v2.
+// decodeValue reads one complete tool document. Arguments carry identifiers past
+// IEEE-754's exact integer range, so [exactjson.Numbers] keeps every literal;
+// rounding one would change cache identity and exported transcripts. A trailing
+// second value and a repeated member are both refused by the decoder itself —
+// the repeat matters here because these documents come from a provider, and
+// deciding it by position would let the same call mean two things.
 func decodeValue(data []byte, destination any) error {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-	if err := decoder.Decode(destination); err != nil {
-		return err
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("multiple JSON values")
-		}
-		return err
-	}
-	return nil
+	return json.Unmarshal(data, destination, exactjson.Numbers())
 }

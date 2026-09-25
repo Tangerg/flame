@@ -9,7 +9,6 @@ package transport
 
 import (
 	"bytes"
-	"encoding/json"
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
@@ -70,14 +69,12 @@ func DecodeMessage(encoded []byte) (Message, error) {
 	return message, nil
 }
 
-// Exact numeric literals require encoding/json's UseNumber: decoding a JSON
-// number into an any through encoding/json/v2 yields float64, which silently
-// rounds identifiers beyond IEEE-754's exact integer range. The rest of
-// Runtime uses encoding/json/v2.
+// The envelope is walked as tokens rather than decoded into Go values: this
+// check only decides each value's kind, and a token decoder never converts a
+// number at all, so an id past IEEE-754's exact range is classified without
+// being read through float64.
 func validateJSONRPCEnvelope(encoded []byte) error {
-	decoder := json.NewDecoder(bytes.NewReader(encoded))
-	decoder.UseNumber()
-	parser := jsonEnvelopeParser{decoder: decoder}
+	parser := jsonEnvelopeParser{decoder: jsontext.NewDecoder(bytes.NewReader(encoded))}
 	if _, err := parser.value(true); err != nil {
 		return err
 	}
@@ -96,47 +93,38 @@ const (
 )
 
 type jsonEnvelopeParser struct {
-	decoder *json.Decoder
+	decoder *jsontext.Decoder
 }
 
 func (parser jsonEnvelopeParser) value(envelope bool) (jsonValueKind, error) {
-	token, err := parser.decoder.Token()
+	token, err := parser.decoder.ReadToken()
 	if err != nil {
 		return jsonNull, err
 	}
-	if token == nil {
-		return jsonNull, nil
-	}
-	delimiter, isDelimiter := token.(json.Delim)
-	if !isDelimiter {
-		return jsonScalarKind(token)
-	}
-	switch delimiter {
+	switch token.Kind() {
 	case '{':
 		return parser.object(envelope)
 	case '[':
 		return parser.array()
-	default:
-		return jsonNull, fmt.Errorf("unexpected JSON delimiter %q", delimiter)
-	}
-}
-
-func jsonScalarKind(token json.Token) (jsonValueKind, error) {
-	switch token.(type) {
-	case string:
+	case '"':
 		return jsonString, nil
-	case json.Number:
+	case '0':
 		return jsonNumber, nil
-	case bool:
+	case 't', 'f':
 		return jsonBoolean, nil
+	case 'n':
+		return jsonNull, nil
 	default:
-		return jsonNull, fmt.Errorf("unexpected JSON scalar %T", token)
+		return jsonNull, fmt.Errorf("unexpected JSON token %q", token.Kind())
 	}
 }
 
 func (parser jsonEnvelopeParser) object(envelope bool) (jsonValueKind, error) {
 	members := make(jsonObjectMembers)
-	for parser.decoder.More() {
+	// PeekKind reports KindInvalid once the input cannot yield another token, so
+	// a truncated object leaves the loop and is reported by close rather than
+	// spinning here.
+	for parser.decoder.PeekKind() != '}' && parser.decoder.PeekKind() != jsontext.KindInvalid {
 		member, err := parser.memberName()
 		if err != nil {
 			return jsonObject, err
@@ -152,7 +140,7 @@ func (parser jsonEnvelopeParser) object(envelope bool) (jsonValueKind, error) {
 			)
 		}
 	}
-	if err := parser.close(json.Delim('}'), "JSON object is not closed"); err != nil {
+	if err := parser.close('}', "JSON object is not closed"); err != nil {
 		return jsonObject, err
 	}
 	if envelope {
@@ -164,35 +152,34 @@ func (parser jsonEnvelopeParser) object(envelope bool) (jsonValueKind, error) {
 }
 
 func (parser jsonEnvelopeParser) memberName() (string, error) {
-	token, err := parser.decoder.Token()
+	token, err := parser.decoder.ReadToken()
 	if err != nil {
 		return "", err
 	}
-	member, ok := token.(string)
-	if !ok {
+	if token.Kind() != '"' {
 		return "", errors.New("JSON object member name is not a string")
 	}
-	return member, nil
+	return token.String(), nil
 }
 
 func (parser jsonEnvelopeParser) array() (jsonValueKind, error) {
-	for parser.decoder.More() {
+	for parser.decoder.PeekKind() != ']' && parser.decoder.PeekKind() != jsontext.KindInvalid {
 		if _, err := parser.value(false); err != nil {
 			return jsonArray, err
 		}
 	}
-	if err := parser.close(json.Delim(']'), "JSON array is not closed"); err != nil {
+	if err := parser.close(']', "JSON array is not closed"); err != nil {
 		return jsonArray, err
 	}
 	return jsonArray, nil
 }
 
-func (parser jsonEnvelopeParser) close(expected json.Delim, message string) error {
-	closing, err := parser.decoder.Token()
+func (parser jsonEnvelopeParser) close(expected jsontext.Kind, message string) error {
+	closing, err := parser.decoder.ReadToken()
 	if err != nil {
 		return err
 	}
-	if closing != expected {
+	if closing.Kind() != expected {
 		return errors.New(message)
 	}
 	return nil

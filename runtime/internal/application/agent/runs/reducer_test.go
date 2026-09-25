@@ -1,7 +1,7 @@
 package runs
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -777,7 +777,7 @@ func TestReducerPreservesRawToolResultsAndExplicitFileNudges(t *testing.T) {
 		t.Fatal("completed tool is nil")
 	}
 	result, ok := invocation.Result.Any().(map[string]any)
-	if !ok || result["stdout"] != "hi\n" || result["stderr"] != "oops" || result["exit_code"] != json.Number("0") {
+	if !ok || result["stdout"] != "hi\n" || result["stderr"] != "oops" || result["exit_code"] != jsonv1.Number("0") {
 		t.Fatalf("raw command result = %#v", invocation.Result)
 	}
 

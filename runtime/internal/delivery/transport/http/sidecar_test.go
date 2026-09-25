@@ -2,7 +2,7 @@ package http_test
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	netHTTP "net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -56,7 +56,7 @@ func TestInfoIsMinimalAndTyped(t *testing.T) {
 			Readiness string `json:"readiness"`
 		} `json:"endpoints"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if body.ProtocolVersion != testProtocolVersion {
@@ -83,7 +83,7 @@ func TestInfoDoesNotExposeRuntimePathsOrCapabilities(t *testing.T) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	var body map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	for _, field := range []string{"serverInfo", "capabilities", "agentDocs", "cwd", "home"} {
@@ -119,7 +119,7 @@ func TestLivenessDoesNotCallReadinessProbes(t *testing.T) {
 		InstanceID string `json:"instanceId"`
 		Status     string `json:"status"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if body.Status != "ok" || body.InstanceID != testRuntimeInstanceID {
@@ -151,7 +151,7 @@ func TestReadinessReportsWorstProbe(t *testing.T) {
 		Status     string            `json:"status"`
 		Checks     map[string]string `json:"checks"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if body.InstanceID != testRuntimeInstanceID || body.Status != "unhealthy" || body.Checks["runtime"] != "ok" || body.Checks["storage"] != "unhealthy" {

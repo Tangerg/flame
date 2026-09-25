@@ -1,6 +1,7 @@
 package arch
 
 import (
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/fs"
@@ -101,14 +102,15 @@ func TestApplicationDoesNotOwnOperatingSystemIO(t *testing.T) {
 // depends on: deterministic member order in machine-readable output and durable
 // state, and omitzero where a present-but-empty value is a fact.
 //
-// The exceptions decode a JSON number into an any. Only encoding/json exposes
-// that choice, and rounding a tool argument through float64 would change what
-// the operator reviewed into something else before it executes.
+// The exceptions import the package for [encoding/json.Number] alone.
+// encoding/json/v2 decodes and encodes that type directly but declares no
+// replacement for it, and it is what keeps a tool argument the operator reviewed
+// from becoming something else through float64. Neither file uses the v1 codec.
 func TestCLIUsesOneJSONVocabulary(t *testing.T) {
 	root := moduleRoot(t)
 	exact := map[string]string{
-		"internal/adapter/runtimebinding/tool_material.go": "reads the exact numbers Runtime decoded",
-		"internal/domain/agent/tool_argument_override.go":  "decodes an approval's edited arguments exactly",
+		"internal/exactjson/numbers.go":                    "names json.Number as the exact-number carrier",
+		"internal/adapter/runtimebinding/tool_material.go": "names json.Number to keep an exit code an integer",
 	}
 	found := make(map[string]bool, len(exact))
 	walkProduction(t, root, func(_, path string) {
@@ -126,6 +128,7 @@ func TestCLIUsesOneJSONVocabulary(t *testing.T) {
 				continue
 			}
 			found[file] = true
+			assertOnlyJSONNumberIsUsed(t, file, path)
 		}
 	})
 	for relative, reason := range exact {
@@ -133,6 +136,37 @@ func TestCLIUsesOneJSONVocabulary(t *testing.T) {
 			t.Errorf("%s no longer needs encoding/json (%s); drop it from the exception list", relative, reason)
 		}
 	}
+}
+
+// assertOnlyJSONNumberIsUsed keeps the exception to the one name that earns it.
+// The exception exists because encoding/json/v2 declares no replacement for
+// json.Number; reaching any other name through the same import would bring back
+// the v1 codec the guard above removes, and an import-only check cannot see it.
+func assertOnlyJSONNumberIsUsed(t *testing.T, relative, path string) {
+	t.Helper()
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+	if err != nil {
+		t.Fatalf("parse %s: %v", relative, err)
+	}
+	qualifier := "json"
+	for _, imported := range file.Imports {
+		if strings.Trim(imported.Path.Value, `"`) == "encoding/json" && imported.Name != nil {
+			qualifier = imported.Name.Name
+		}
+	}
+	ast.Inspect(file, func(node ast.Node) bool {
+		selector, isSelector := node.(*ast.SelectorExpr)
+		if !isSelector {
+			return true
+		}
+		receiver, isIdentifier := selector.X.(*ast.Ident)
+		if !isIdentifier || receiver.Name != qualifier || selector.Sel.Name == "Number" {
+			return true
+		}
+		t.Errorf("%s uses %s.%s; the exception covers json.Number alone",
+			relative, qualifier, selector.Sel.Name)
+		return true
+	})
 }
 
 func TestPackagePathsDoNotRepeatOwners(t *testing.T) {
@@ -208,7 +242,8 @@ func ringOf(relative string) ring {
 		return ringComposition
 	case packageWithin(relative, "internal/arch"):
 		return ringComposition
-	case packageWithin(relative, "internal/exactint"):
+	case packageWithin(relative, "internal/exactint"),
+		packageWithin(relative, "internal/exactjson"):
 		return ringMechanism
 	case packageWithin(relative, "internal/domain"):
 		return ringDomain

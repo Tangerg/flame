@@ -344,8 +344,8 @@ func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 func TestSharedCapabilitiesStayPure(t *testing.T) {
 	root := moduleRoot(t)
 	for _, name := range []string{
-		"capture", "completion", "exactint", "httporigin", "idempotency", "identity",
-		"optional",
+		"capture", "completion", "exactint", "exactjson", "httporigin", "idempotency",
+		"identity", "optional",
 	} {
 		forbidExternalImports(t, filepath.Join(root, "internal", name), []string{
 			domainPkg,
@@ -1957,16 +1957,15 @@ func moduleRoot(t *testing.T) string {
 // depends on — deterministic member order where bytes are hashed, compared, or
 // persisted, and omitzero where a present-but-empty value is a fact.
 //
-// The exceptions decode a JSON number into an any. Only encoding/json exposes
-// UseNumber, and rounding a tool-call identifier or a schema bound through
-// float64 would change cache identity, exported transcripts, and published
-// schemas.
+// The one exception imports the package for [encoding/json.Number] alone.
+// encoding/json/v2 decodes and encodes that type directly but declares no
+// replacement for it, and it is what keeps a tool-call identifier or a schema
+// bound from being rounded through float64. Nothing in Runtime, that file
+// included, encodes or decodes with the v1 codec.
 func TestRuntimeUsesOneJSONVocabulary(t *testing.T) {
 	root := moduleRoot(t)
 	exact := map[string]string{
-		filepath.Join("internal", "delivery", "tool_projection.go"):        "projects a Tool schema with exact numeric bounds",
-		filepath.Join("internal", "delivery", "transport", "transport.go"): "parses the JSON-RPC envelope with exact numeric ids",
-		filepath.Join("internal", "domain", "run", "tool", "value.go"):     "decodes Tool arguments with exact numeric identifiers",
+		filepath.Join("internal", "exactjson", "numbers.go"): "names json.Number as the exact-number carrier",
 	}
 	found := make(map[string]bool, len(exact))
 	walkErr := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
@@ -1993,6 +1992,7 @@ func TestRuntimeUsesOneJSONVocabulary(t *testing.T) {
 				continue
 			}
 			found[relative] = true
+			assertOnlyJSONNumberIsUsed(t, relative, path, imported)
 		}
 		return nil
 	})
@@ -2004,4 +2004,33 @@ func TestRuntimeUsesOneJSONVocabulary(t *testing.T) {
 			t.Errorf("%s no longer needs encoding/json (%s); drop it from the exception list", relative, reason)
 		}
 	}
+}
+
+// assertOnlyJSONNumberIsUsed keeps the exception to the one name that earns it.
+// The exception exists because encoding/json/v2 declares no replacement for
+// json.Number; reaching any other name through the same import would bring back
+// the v1 codec the guard above removes, and an import-only check cannot see it.
+func assertOnlyJSONNumberIsUsed(t *testing.T, relative, path string, imported *ast.ImportSpec) {
+	t.Helper()
+	qualifier := "json"
+	if imported.Name != nil {
+		qualifier = imported.Name.Name
+	}
+	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
+	if err != nil {
+		t.Fatalf("parse %s: %v", relative, err)
+	}
+	ast.Inspect(file, func(node ast.Node) bool {
+		selector, isSelector := node.(*ast.SelectorExpr)
+		if !isSelector {
+			return true
+		}
+		receiver, isIdentifier := selector.X.(*ast.Ident)
+		if !isIdentifier || receiver.Name != qualifier || selector.Sel.Name == "Number" {
+			return true
+		}
+		t.Errorf("%s uses %s.%s; the exception covers json.Number alone",
+			relative, qualifier, selector.Sel.Name)
+		return true
+	})
 }

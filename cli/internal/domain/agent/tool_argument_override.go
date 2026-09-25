@@ -2,11 +2,11 @@ package agent
 
 import (
 	"bytes"
-	jsonv1 "encoding/json"
-	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+
+	"github.com/Tangerg/flame/cli/internal/exactjson"
 )
 
 // ToolArgumentOverride is a validated, immutable replacement for one pending
@@ -103,20 +103,13 @@ func (t *ToolArgumentOverride) UnmarshalJSON(encoded []byte) error {
 	return nil
 }
 
-// decodeToolArgumentJSON splits one decode across both JSON vocabularies. v2
-// admits exactly one RFC 7493 value, rejecting the duplicate names that would
-// make the reviewed text and the executed argument object disagree; only v1
-// then decodes a JSON number into an any without rounding an identifier that
-// does not fit float64 exactly.
+// decodeToolArgumentJSON reads the edited text once. The decoder admits exactly
+// one RFC 7493 value, rejecting the duplicate names that would make the reviewed
+// text and the executed argument object disagree, and [exactjson.Numbers] keeps
+// each identifier as written rather than rounding it through float64.
 func decodeToolArgumentJSON(encoded []byte) (any, error) {
-	var raw jsontext.Value
-	if err := json.Unmarshal(encoded, &raw); err != nil {
-		return nil, fmt.Errorf("tool argument override: %w", err)
-	}
-	decoder := jsonv1.NewDecoder(bytes.NewReader(encoded))
-	decoder.UseNumber()
 	var value any
-	if err := decoder.Decode(&value); err != nil {
+	if err := json.Unmarshal(encoded, &value, exactjson.Numbers()); err != nil {
 		return nil, fmt.Errorf("tool argument override: %w", err)
 	}
 	return value, nil

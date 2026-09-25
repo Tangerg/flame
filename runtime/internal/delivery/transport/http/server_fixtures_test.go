@@ -3,7 +3,7 @@ package http_test
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	netHTTP "net/http"
 	"net/http/httptest"
 	"testing"
@@ -105,7 +105,7 @@ func decodeErrorCode(t *testing.T, resp *netHTTP.Response) int {
 			Code int `json:"code"`
 		} `json:"error"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &env); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if env.Error == nil {

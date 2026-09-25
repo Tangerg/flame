@@ -2,7 +2,7 @@ package delivery
 
 import (
 	"context"
-	"encoding/json"
+	jsonv1 "encoding/json"
 	"errors"
 	"math"
 	"testing"
@@ -56,7 +56,7 @@ func TestListToolsMapsRegisteredToolsToWire(t *testing.T) {
 		t.Fatalf("schema = %+v, want decoded object schema", page.Data[0].Parameters)
 	}
 	limit := page.Data[0].Parameters["properties"].(map[string]any)["limit"].(map[string]any)
-	if limit["maximum"] != json.Number("9007199254740993") {
+	if limit["maximum"] != jsonv1.Number("9007199254740993") {
 		t.Fatalf("schema lost exact numeric bound: %v", limit)
 	}
 	page.Data[0].Parameters["type"] = "array"

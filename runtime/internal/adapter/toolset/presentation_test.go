@@ -1,9 +1,8 @@
 package toolset
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
+	jsonv1 "encoding/json"
+	json "encoding/json/v2"
 	"reflect"
 	"strings"
 	"testing"
@@ -58,7 +57,7 @@ func TestPresenterCommandResult(t *testing.T) {
 		tool.Arguments{},
 		mustToolResult(t, map[string]any{"stdout": "out\nerr", "exit_code": 0}),
 	)
-	want := map[string]any{"output": "out\nerr", "exitCode": json.Number("0")}
+	want := map[string]any{"output": "out\nerr", "exitCode": jsonv1.Number("0")}
 	if got := presented.Any(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("presented command = %#v, want %#v", got, want)
 	}
@@ -94,7 +93,7 @@ func TestPresenterSearchResult(t *testing.T) {
 		}}),
 	)
 	want := map[string]any{"hits": []any{
-		map[string]any{"path": "main.go", "lineNumber": json.Number("7"), "snippet": "func main()"},
+		map[string]any{"path": "main.go", "lineNumber": jsonv1.Number("7"), "snippet": "func main()"},
 	}}
 	if got := presented.Any(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("presented search = %#v, want %#v", got, want)
@@ -147,13 +146,11 @@ func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			decoder := json.NewDecoder(bytes.NewReader(encoded))
-			decoder.DisallowUnknownFields()
-			if err := decoder.Decode(reflect.New(contract.ResultType).Interface()); err != nil {
+			// The decoder refuses a trailing value on its own, so matching the
+			// contract exactly is the whole assertion here.
+			if err := json.Unmarshal(encoded, reflect.New(contract.ResultType).Interface(),
+				json.RejectUnknownMembers(true)); err != nil {
 				t.Fatalf("presented result does not match %v: %v", contract.ResultType, err)
-			}
-			if err := decoder.Decode(new(any)); err != io.EOF {
-				t.Fatalf("presented result has trailing JSON: %v", err)
 			}
 		})
 	}

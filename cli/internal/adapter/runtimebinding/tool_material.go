@@ -2,7 +2,7 @@ package runtimebinding
 
 import (
 	"bytes"
-	"encoding/json"
+	jsonv1 "encoding/json"
 	"encoding/json/jsontext"
 	"path/filepath"
 	"strings"
@@ -54,9 +54,11 @@ func projectToolResult(tool *agent.ToolCall, value any) {
 	}
 }
 
-// toolExitCode reads the number Runtime decoded. Runtime preserves tool-call
-// numbers exactly through encoding/json, so a json.Number reaches this binding
-// in process and naming it here is what keeps the exit code an integer.
+// toolExitCode reads the number Runtime decoded. Runtime keeps tool-call numbers
+// as written, so a [jsonv1.Number] reaches this binding in process; naming that
+// type here is what keeps the exit code an integer. It is the standard library's
+// exact-number carrier and encoding/json/v2 has no replacement for it, so the v1
+// import is the type alone — this file decodes nothing.
 func toolExitCode(value any) (int, bool) {
 	switch number := value.(type) {
 	case int:
@@ -66,7 +68,7 @@ func toolExitCode(value any) (int, bool) {
 	case float64:
 		converted := int(number)
 		return converted, float64(converted) == number
-	case json.Number:
+	case jsonv1.Number:
 		parsed, err := number.Int64()
 		return int(parsed), err == nil && int64(int(parsed)) == parsed
 	default:

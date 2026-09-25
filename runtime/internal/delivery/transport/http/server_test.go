@@ -2,7 +2,8 @@ package http_test
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	netHTTP "net/http"
 	"strings"
 	"testing"
@@ -37,7 +38,7 @@ func TestSidecarInfo(t *testing.T) {
 			Name string `json:"name"`
 		} `json:"server"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if body.ProtocolVersion != testProtocolVersion {
@@ -64,7 +65,7 @@ func TestSidecarHealth(t *testing.T) {
 	var body struct {
 		Status string `json:"status"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if body.Status != "ok" {
@@ -88,11 +89,11 @@ func TestDiscoverOverRPC(t *testing.T) {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
 	var env struct {
-		JSONRPC string           `json:"jsonrpc"`
-		Result  json.RawMessage  `json:"result"`
-		Error   *json.RawMessage `json:"error,omitempty"`
+		JSONRPC string          `json:"jsonrpc"`
+		Result  jsontext.Value  `json:"result"`
+		Error   *jsontext.Value `json:"error,omitempty"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &env); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if env.JSONRPC != "2.0" {
@@ -391,12 +392,12 @@ func TestRunsCancelIsRequest(t *testing.T) {
 		t.Fatalf("status = %d, want 200; body = %s", resp.StatusCode, raw)
 	}
 	var env struct {
-		JSONRPC string           `json:"jsonrpc"`
-		ID      json.RawMessage  `json:"id"`
-		Result  json.RawMessage  `json:"result"`
-		Error   *json.RawMessage `json:"error,omitempty"`
+		JSONRPC string          `json:"jsonrpc"`
+		ID      jsontext.Value  `json:"id"`
+		Result  jsontext.Value  `json:"result"`
+		Error   *jsontext.Value `json:"error,omitempty"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &env); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if env.Error != nil {
@@ -501,7 +502,7 @@ func TestMalformedRPCBodyReturnsTransportProblem(t *testing.T) {
 		Type      string `json:"type"`
 		RequestID string `json:"requestId"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&problem); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &problem); err != nil {
 		t.Fatalf("decode problem: %v", err)
 	}
 	if problem.Type != "urn:flame:transport:invalid_request" || problem.RequestID == "" {
@@ -578,7 +579,7 @@ func TestInvalidRPCEnvelopeReturnsTransportProblem(t *testing.T) {
 				Type   string `json:"type"`
 				Detail string `json:"detail"`
 			}
-			if err := json.NewDecoder(resp.Body).Decode(&problem); err != nil {
+			if err := json.UnmarshalRead(resp.Body, &problem); err != nil {
 				t.Fatalf("decode problem: %v", err)
 			}
 			if problem.Type != "urn:flame:transport:invalid_request" ||

@@ -1,7 +1,8 @@
 package tool
 
 import (
-	"encoding/json"
+	jsonv1 "encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"math"
 	"reflect"
@@ -23,11 +24,11 @@ func TestArgumentsCanonicalizeAndOwnValues(t *testing.T) {
 	source["new"] = "retained by caller"
 	projection := arguments.Map()
 	if !reflect.DeepEqual(projection, map[string]any{
-		"a": json.Number("1"), "z": map[string]any{"enabled": true},
+		"a": jsonv1.Number("1"), "z": map[string]any{"enabled": true},
 	}) {
 		t.Fatalf("arguments changed through source ownership: %#v", projection)
 	}
-	projection["a"] = json.Number("2")
+	projection["a"] = jsonv1.Number("2")
 	projection["z"].(map[string]any)["enabled"] = false
 	if got := arguments.Canonical(); got != `{"a":1,"z":{"enabled":true}}` {
 		t.Fatalf("arguments changed through projection ownership: %s", got)
@@ -123,7 +124,7 @@ func TestArgumentsPreserveLargeNumbers(t *testing.T) {
 	if got := arguments.Canonical(); got != `{"id":9007199254740993}` {
 		t.Fatalf("large argument = %s, want exact integer", got)
 	}
-	if got := arguments.Map()["id"]; got != json.Number("9007199254740993") {
+	if got := arguments.Map()["id"]; got != jsonv1.Number("9007199254740993") {
 		t.Fatalf("large argument projection = %#v", got)
 	}
 }
