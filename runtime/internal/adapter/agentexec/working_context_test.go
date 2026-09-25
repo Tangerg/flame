@@ -14,9 +14,6 @@ func testWorkingContextConfig(t *testing.T, config WorkingContextConfig) Working
 	if config.UserHome == "" {
 		config.UserHome = t.TempDir()
 	}
-	if config.Knowledge == nil {
-		config.Knowledge = &stubKnowledgeStore{}
-	}
 	if config.AgentMemory == nil {
 		config.AgentMemory = provenanceMemoryReader{}
 	}
@@ -61,8 +58,6 @@ func TestNewWorkingContextComposerRequiresCompleteDependencies(t *testing.T) {
 	}{
 		{"user home", func(c *WorkingContextConfig) { c.UserHome = "" }},
 		{"relative user home", func(c *WorkingContextConfig) { c.UserHome = "relative" }},
-		{"knowledge", func(c *WorkingContextConfig) { c.Knowledge = nil }},
-		{"typed nil knowledge", func(c *WorkingContextConfig) { c.Knowledge = (*stubKnowledgeStore)(nil) }},
 		{"memory", func(c *WorkingContextConfig) { c.AgentMemory = nil }},
 		{"typed nil memory", func(c *WorkingContextConfig) { c.AgentMemory = (*provenanceMemoryReader)(nil) }},
 		{"memory search", func(c *WorkingContextConfig) { c.AgentMemorySearch = nil }},

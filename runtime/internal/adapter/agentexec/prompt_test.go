@@ -10,7 +10,6 @@ import (
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 )
 
 // TestComposeSystemPrompt_BaseOnly verifies empty context sources yield the
@@ -20,92 +19,28 @@ func TestComposeSystemPrompt_BaseOnly(t *testing.T) {
 	if !strings.Contains(got, "You are Flame") {
 		t.Errorf("base prompt missing identity, got %q", got)
 	}
-	if strings.Contains(got, "## User preferences") || strings.Contains(got, "## Project knowledge") {
+	if strings.Contains(got, "## Pinned memory") || strings.Contains(got, agentDocPromptHeader) {
 		t.Error("empty sources should not produce section headers")
 	}
 }
 
-// TestComposeSystemPrompt_WithMemory verifies the cascade — user
-// then project — appears under stable headers.
-func TestComposeSystemPrompt_WithMemory(t *testing.T) {
-	store := &stubKnowledgeStore{
-		home: "prefer terse output",
-		cwd:  "build with `make test`",
+// TestComposePromptPlacesCuratedMemoryAboveAuthoredInstructions pins the
+// remaining precedence contract: agent-curated memory is context the authored
+// AGENTS.md cascade may override, so it has to be read first.
+func TestComposePromptPlacesCuratedMemoryAboveAuthoredInstructions(t *testing.T) {
+	workspace := t.TempDir()
+	if err := os.WriteFile(filepath.Join(workspace, "AGENTS.md"), []byte("repository convention"), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	got := composeSystemPromptText(t, WorkingContextConfig{Knowledge: store}, "")
-	if !strings.Contains(got, "## User preferences") {
-		t.Error("user section missing")
-	}
-	if !strings.Contains(got, "## Workspace knowledge") {
-		t.Error("workspace section missing")
-	}
-	// User precedes project.
-	userIdx := strings.Index(got, "## User preferences")
-	projIdx := strings.Index(got, "## Workspace knowledge")
-	if userIdx > projIdx {
-		t.Error("user section should appear before project section")
-	}
-}
 
-// TestComposeSystemPrompt_SkipsEmptyScopes verifies absent scopes
-// don't produce empty markdown headers.
-func TestComposeSystemPrompt_SkipsEmptyScopes(t *testing.T) {
-	store := &stubKnowledgeStore{cwd: "only workspace"}
-	got := composeSystemPromptText(t, WorkingContextConfig{Knowledge: store}, "")
-	if strings.Contains(got, "## User preferences") {
-		t.Error("empty user scope should be skipped")
-	}
-	if !strings.Contains(got, "## Workspace knowledge") {
-		t.Error("workspace scope should appear")
-	}
-}
-
-// TestComposePrompt_ProjectMemoryFollowsCWD — the project scope must
-// read the FLAME.md of the TURN's working directory (the per-session
-// cwd), not a directory fixed at construction time.
-func TestComposePrompt_ProjectMemoryFollowsCWD(t *testing.T) {
-	store := &stubKnowledgeStore{cwd: "workspace body"}
-	composeSystemPromptText(t, WorkingContextConfig{Knowledge: store}, "/projects/alpha")
-	if store.workspaceDir != "/projects/alpha" {
-		t.Fatalf("knowledge read dir = %q, want /projects/alpha", store.workspaceDir)
-	}
-}
-
-func TestComposePromptReturnsKnowledgeReadFailure(t *testing.T) {
-	failure := errors.New("knowledge document is oversized")
-	_, err := newTestWorkingContextComposer(t, WorkingContextConfig{
-		Knowledge: &stubKnowledgeStore{err: failure},
-	}).composeSystemMessage(t.Context(), "/projects/alpha")
-	if !errors.Is(err, failure) {
-		t.Fatalf("composeSystemMessage error = %v, want knowledge read failure", err)
-	}
-}
-
-func TestComposePromptPlacesCuratedMemoryBelowHumanProjectKnowledge(t *testing.T) {
-	store := &stubKnowledgeStore{home: "global", cwd: "human workspace rule"}
-	memory := stubAgentMemory{content: "agent learned fact"}
 	got := composeSystemPromptText(t, WorkingContextConfig{
-		Knowledge: store, AgentMemory: memory,
-	}, "/projects/alpha")
-	curatedIndex := strings.Index(got, "## Pinned memory")
-	projectIndex := strings.Index(got, "## Workspace knowledge")
-	if curatedIndex < 0 || projectIndex < 0 || curatedIndex > projectIndex {
-		t.Fatalf("prompt precedence is wrong:\n%s", got)
-	}
-}
+		AgentMemory: stubAgentMemory{content: "agent learned fact"},
+	}, workspace)
 
-func TestComposePromptPreservesTheThreeKnowledgeScopes(t *testing.T) {
-	store := &stubKnowledgeStore{
-		home:        "global preference",
-		projectRoot: "repository convention",
-		cwd:         "workspace override",
-	}
-	got := composeSystemPromptText(t, WorkingContextConfig{Knowledge: store}, "/repo/packages/app")
-	home := strings.Index(got, "global preference")
-	project := strings.Index(got, "repository convention")
-	workspace := strings.Index(got, "workspace override")
-	if home < 0 || project <= home || workspace <= project {
-		t.Fatalf("knowledge cascade precedence is wrong:\n%s", got)
+	curatedIndex := strings.Index(got, "## Pinned memory")
+	authoredIndex := strings.Index(got, agentDocPromptHeader)
+	if curatedIndex < 0 || authoredIndex < 0 || curatedIndex > authoredIndex {
+		t.Fatalf("prompt precedence is wrong:\n%s", got)
 	}
 }
 
@@ -122,6 +57,35 @@ func TestComposePromptUsesInjectedUserHomeForAgentDocs(t *testing.T) {
 	got := composeSystemPromptText(t, WorkingContextConfig{UserHome: userHome}, workspace)
 	if !strings.Contains(got, "injected home rule") {
 		t.Fatalf("prompt did not use injected user home:\n%s", got)
+	}
+}
+
+// TestComposePromptPreservesTheAgentDocumentCascade — the authored cascade is
+// read broadest to narrowest so a workspace document extends, rather than
+// races, the project one.
+func TestComposePromptPreservesTheAgentDocumentCascade(t *testing.T) {
+	projectRoot := t.TempDir()
+	workspace := filepath.Join(projectRoot, "packages", "app")
+	if err := os.MkdirAll(workspace, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Discovery anchors the cascade at the nearest ancestor holding `.git`;
+	// without one the scan is single-level and the project document is invisible.
+	if err := os.MkdirAll(filepath.Join(projectRoot, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectRoot, "AGENTS.md"), []byte("repository convention"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workspace, "AGENTS.md"), []byte("workspace override"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := composeSystemPromptText(t, WorkingContextConfig{}, workspace)
+	project := strings.Index(got, "repository convention")
+	local := strings.Index(got, "workspace override")
+	if project < 0 || local <= project {
+		t.Fatalf("agent document cascade precedence is wrong:\n%s", got)
 	}
 }
 
@@ -154,14 +118,6 @@ func composeSystemPromptText(t *testing.T, config WorkingContextConfig, cwd stri
 	return message.Text()
 }
 
-type stubKnowledgeStore struct {
-	home         string
-	projectRoot  string
-	cwd          string
-	workspaceDir string
-	err          error
-}
-
 type stubAgentMemory struct{ content string }
 
 func (s stubAgentMemory) Items(_ context.Context, scope agentmemory.Scope, _ string) ([]agentmemory.Item, error) {
@@ -170,22 +126,4 @@ func (s stubAgentMemory) Items(_ context.Context, scope agentmemory.Scope, _ str
 	}
 	// Pinned so it reaches the always-on core (the composer injects pinned only).
 	return []agentmemory.Item{{Content: s.content, Pinned: true, Status: agentmemory.StatusActive}}, nil
-}
-
-func (s *stubKnowledgeStore) Entries(_ context.Context, cwd string) ([]knowledge.Entry, error) {
-	s.workspaceDir = cwd
-	if s.err != nil {
-		return nil, s.err
-	}
-	entries := make([]knowledge.Entry, 0, 3)
-	if s.home != "" {
-		entries = append(entries, knowledge.Entry{Scope: knowledge.ScopeHome, Path: "/home/.flame/FLAME.md", Content: s.home})
-	}
-	if s.projectRoot != "" {
-		entries = append(entries, knowledge.Entry{Scope: knowledge.ScopeProjectRoot, Path: "/repo/FLAME.md", Content: s.projectRoot})
-	}
-	if s.cwd != "" {
-		entries = append(entries, knowledge.Entry{Scope: knowledge.ScopeCWD, Path: filepath.Join(cwd, "FLAME.md"), Content: s.cwd})
-	}
-	return entries, nil
 }

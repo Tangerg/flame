@@ -67,7 +67,6 @@ export type {
   MCPHeadersChange,
   MCPServerCandidate,
   UpdateMCPServerRequest,
-  KnowledgeEntry,
   RuntimeEvent,
   RuntimeTopic,
 } from "@flame/runtime-contract/wire";

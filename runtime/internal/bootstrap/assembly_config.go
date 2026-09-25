@@ -91,11 +91,6 @@ type Config struct {
 	Provider string
 	Model    string
 
-	// RecipesGlobalDir is the global recipes directory (<FLAME_HOME>/runtime/recipes) the
-	// recipes.list discovery layers under a project's .flame/recipes.
-	// Empty means only project recipes are listed. The composition root sets it.
-	RecipesGlobalDir string
-
 	// CheckpointDir roots the per-session shadow-git repos backing run-boundary
 	// file snapshots (<FLAME_HOME>/runtime/checkpoints); the checkpoint adapter enables
 	// snapshots + file rollback only when git is present. Empty disables file
@@ -148,7 +143,6 @@ func validateAssemblyConfig(c Config) error {
 		value string
 	}{
 		{name: "SandboxDir", value: c.SandboxDir},
-		{name: "RecipesGlobalDir", value: c.RecipesGlobalDir},
 		{name: "CheckpointDir", value: c.CheckpointDir},
 	} {
 		if configuredPath.value != "" && !filepath.IsAbs(configuredPath.value) {

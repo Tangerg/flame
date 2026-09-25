@@ -3,17 +3,13 @@ import {
   type ModelInvocationQuery,
 } from "@/plugins/builtin/agent/public/run";
 import type { ApprovalRulesQuery } from "@/plugins/builtin/agent/public/approvalPolicy";
-import { basename } from "@/lib/path";
 import { emptyListIfUngated } from "@/lib/rpcErrors";
 import {
   APPROVAL_MODE_KEY,
   APPROVAL_RULES_KEY,
 } from "@/plugins/builtin/agent/public/approvalPolicy";
 import { AGENT_SESSIONS_KEY } from "@/plugins/builtin/agent/public/session";
-import {
-  WORKSPACE_RECIPES_KEY,
-  type WorkspaceRecipesQuery,
-} from "@/plugins/builtin/workspace/public/queries";
+import {} from "@/plugins/builtin/workspace/public/queries";
 import { HOOKS_KEY, type HooksQuery } from "@/plugins/builtin/settings/hooks/public/queries";
 import {
   EMBEDDING_ROLE_KEY,
@@ -26,21 +22,16 @@ import {
 import type {
   WorkspaceDiffQuery,
   WorkspaceFileChangesQuery,
-  WorkspaceGrepQuery,
   WorkspaceListFilesQuery,
-  WorkspaceKnowledgeQuery,
   WorkspaceReadFileQuery,
   WorkspaceDiff,
   AgentMemoryQuery,
   WorkspaceCatalogQuery,
 } from "@/plugins/builtin/workspace/public/queries";
 import {
-  WORKSPACE_AGENT_DOCS_KEY,
   WORKSPACE_DIFF_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
-  WORKSPACE_GREP_KEY,
   WORKSPACE_LIST_FILES_KEY,
-  WORKSPACE_KNOWLEDGE_KEY,
   WORKSPACE_PROJECTS_KEY,
   WORKSPACE_READ_FILE_KEY,
   WORKSPACE_SKILLS_KEY,
@@ -149,13 +140,6 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     },
   });
   contribute({
-    key: WORKSPACE_GREP_KEY,
-    fetcher: async (read, params) => {
-      const { cwd, ...query } = requiredParams<WorkspaceGrepQuery>(WORKSPACE_GREP_KEY, params);
-      return (await read.workspace(cwd)).files.search(query, read.signal);
-    },
-  });
-  contribute({
     key: WORKSPACE_SKILLS_KEY,
     fetcher: async (read, params) => {
       const query = requiredParams<WorkspaceCatalogQuery>(WORKSPACE_SKILLS_KEY, params);
@@ -212,21 +196,6 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     },
   });
   contribute({
-    key: WORKSPACE_KNOWLEDGE_KEY,
-    fetcher: async (read, params) => {
-      const resources = await read.workspace(optionalParams<WorkspaceKnowledgeQuery>(params)?.cwd);
-      return (await pageData(resources.knowledge.list(read.signal)).catch(emptyListIfUngated)).map(
-        (m) => ({
-          scope: m.scope,
-          path: m.path,
-          content: m.content,
-          revision: m.revision,
-          updatedAt: m.updatedAt,
-        }),
-      );
-    },
-  });
-  contribute({
     key: WORKSPACE_AGENT_MEMORY_KEY,
     fetcher: async (read, params) => {
       const q = requiredParams<AgentMemoryQuery>(WORKSPACE_AGENT_MEMORY_KEY, params);
@@ -249,20 +218,6 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
         createdAt: m.createdAt,
         updatedAt: m.updatedAt,
       }));
-    },
-  });
-  contribute({
-    key: WORKSPACE_AGENT_DOCS_KEY,
-    fetcher: async (read, params) => {
-      const query = requiredParams<WorkspaceCatalogQuery>(WORKSPACE_AGENT_DOCS_KEY, params);
-      const resources = await read.workspace(query.cwd);
-      return (await pageData(resources.agentDocs.list(read.signal)).catch(emptyListIfUngated)).map(
-        (d) => ({
-          path: d.path,
-          title: basename(d.path),
-          scope: d.scope,
-        }),
-      );
     },
   });
   contribute({
@@ -325,13 +280,6 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     key: HOOKS_KEY,
     fetcher: async (read, params) =>
       (await read.workspace(optionalParams<HooksQuery>(params)?.cwd)).hooks.list(read.signal),
-  });
-  contribute({
-    key: WORKSPACE_RECIPES_KEY,
-    fetcher: async (read, params) => {
-      const resources = await read.workspace(optionalParams<WorkspaceRecipesQuery>(params)?.cwd);
-      return pageData(resources.recipes.list(read.signal)).catch(emptyListIfUngated);
-    },
   });
   contribute({
     key: WORKSPACE_LIST_FILES_KEY,

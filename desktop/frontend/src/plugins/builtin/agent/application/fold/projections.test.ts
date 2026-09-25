@@ -44,7 +44,6 @@ describe("toolLabel — name-keyed specialised tools", () => {
 
   it("the searches and fetches label by query and url", () => {
     expect(toolLabel(tool("search_memory", { query: "deploy runbook" }))).toBe("deploy runbook");
-    expect(toolLabel(tool("search_conversations", { query: "flaky test" }))).toBe("flaky test");
     expect(toolLabel(tool("search_tools", { query: "screenshot" }))).toBe("screenshot");
     expect(toolLabel(tool("web_fetch", { url: "https://go.dev" }))).toBe("https://go.dev");
     expect(toolLabel(tool("http_request", { url: "https://api.local/health" }))).toBe(

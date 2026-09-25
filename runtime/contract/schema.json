@@ -2501,73 +2501,6 @@
         "workspace"
       ]
     },
-    "GetKnowledgeRequest": {
-      "type": "object",
-      "properties": {
-        "scope": {
-          "$ref": "#/$defs/KnowledgeScope"
-        },
-        "workspace": {
-          "$ref": "#/$defs/WorkspaceRef"
-        }
-      },
-      "required": [
-        "scope"
-      ],
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "scope": {
-                "const": "home"
-              }
-            },
-            "required": [
-              "scope"
-            ]
-          },
-          "then": {
-            "properties": {
-              "workspace": false
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "scope": {
-                "const": "cwd"
-              }
-            },
-            "required": [
-              "scope"
-            ]
-          },
-          "then": {
-            "required": [
-              "workspace"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "scope": {
-                "const": "projectRoot"
-              }
-            },
-            "required": [
-              "scope"
-            ]
-          },
-          "then": {
-            "required": [
-              "workspace"
-            ]
-          }
-        }
-      ]
-    },
     "GetPlanRequest": {
       "type": "object",
       "properties": {
@@ -4096,43 +4029,6 @@
         "compaction"
       ]
     },
-    "KnowledgeEntry": {
-      "type": "object",
-      "properties": {
-        "content": {
-          "type": "string"
-        },
-        "path": {
-          "type": "string",
-          "pattern": "\\S"
-        },
-        "revision": {
-          "type": "string",
-          "minLength": 1
-        },
-        "scope": {
-          "$ref": "#/$defs/KnowledgeScope"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "content",
-        "path",
-        "revision",
-        "scope"
-      ]
-    },
-    "KnowledgeScope": {
-      "type": "string",
-      "enum": [
-        "cwd",
-        "projectRoot",
-        "home"
-      ]
-    },
     "ListApprovalRulesRequest": {
       "type": "object",
       "properties": {
@@ -5462,24 +5358,6 @@
         "data"
       ]
     },
-    "PageOfKnowledgeEntry": {
-      "type": "object",
-      "properties": {
-        "data": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/KnowledgeEntry"
-          }
-        },
-        "nextCursor": {
-          "type": "string",
-          "maxLength": 65536
-        }
-      },
-      "required": [
-        "data"
-      ]
-    },
     "PageOfMCPServer": {
       "type": "object",
       "properties": {
@@ -5595,24 +5473,6 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/Provider"
-          }
-        },
-        "nextCursor": {
-          "type": "string",
-          "maxLength": 65536
-        }
-      },
-      "required": [
-        "data"
-      ]
-    },
-    "PageOfRecipe": {
-      "type": "object",
-      "properties": {
-        "data": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Recipe"
           }
         },
         "nextCursor": {
@@ -6950,45 +6810,6 @@
         "status"
       ]
     },
-    "Recipe": {
-      "type": "object",
-      "properties": {
-        "argumentHint": {
-          "type": "string"
-        },
-        "body": {
-          "type": "string",
-          "pattern": "\\S"
-        },
-        "description": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string",
-          "pattern": "\\S"
-        },
-        "scope": {
-          "$ref": "#/$defs/RecipeScope"
-        },
-        "source": {
-          "type": "string",
-          "pattern": "\\S"
-        }
-      },
-      "required": [
-        "body",
-        "name",
-        "scope",
-        "source"
-      ]
-    },
-    "RecipeScope": {
-      "type": "string",
-      "enum": [
-        "project",
-        "global"
-      ]
-    },
     "RememberScope": {
       "type": "object",
       "properties": {
@@ -8010,27 +7831,6 @@
             "paths": false,
             "runIds": false,
             "scheduleIds": false,
-            "serverIds": false,
-            "sessionIds": false,
-            "topics": false,
-            "type": {
-              "const": "recipes.changed"
-            },
-            "watchId": false,
-            "watchIds": false,
-            "workspace": false
-          },
-          "required": [
-            "sequence",
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "names": false,
-            "paths": false,
-            "runIds": false,
-            "scheduleIds": false,
             "sessionIds": false,
             "topics": false,
             "type": {
@@ -8173,27 +7973,6 @@
             "sessionIds": false,
             "topics": false,
             "type": {
-              "const": "knowledge.changed"
-            },
-            "watchId": false,
-            "watchIds": false,
-            "workspace": false
-          },
-          "required": [
-            "sequence",
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "names": false,
-            "paths": false,
-            "runIds": false,
-            "scheduleIds": false,
-            "serverIds": false,
-            "sessionIds": false,
-            "topics": false,
-            "type": {
               "const": "hooks.changed"
             },
             "watchId": false,
@@ -8306,7 +8085,6 @@
       "enum": [
         "files.changed",
         "skills.changed",
-        "recipes.changed",
         "mcp.changed",
         "schedules.changed",
         "sessions.changed",
@@ -8314,7 +8092,6 @@
         "plan.changed",
         "goals.changed",
         "interrupts.changed",
-        "knowledge.changed",
         "hooks.changed",
         "models.changed",
         "approvals.changed",
@@ -8444,7 +8221,6 @@
       "enum": [
         "files.changed",
         "skills.changed",
-        "recipes.changed",
         "mcp.changed",
         "schedules.changed",
         "sessions.changed",
@@ -8452,7 +8228,6 @@
         "plan.changed",
         "goals.changed",
         "interrupts.changed",
-        "knowledge.changed",
         "hooks.changed",
         "models.changed",
         "approvals.changed",
@@ -9911,82 +9686,6 @@
       "required": [
         "objective",
         "sessionId"
-      ]
-    },
-    "UpdateKnowledgeRequest": {
-      "type": "object",
-      "properties": {
-        "content": {
-          "type": "string"
-        },
-        "expectedRevision": {
-          "type": "string",
-          "minLength": 1
-        },
-        "scope": {
-          "$ref": "#/$defs/KnowledgeScope"
-        },
-        "workspace": {
-          "$ref": "#/$defs/WorkspaceRef"
-        }
-      },
-      "required": [
-        "content",
-        "expectedRevision",
-        "scope"
-      ],
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "scope": {
-                "const": "home"
-              }
-            },
-            "required": [
-              "scope"
-            ]
-          },
-          "then": {
-            "properties": {
-              "workspace": false
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "scope": {
-                "const": "cwd"
-              }
-            },
-            "required": [
-              "scope"
-            ]
-          },
-          "then": {
-            "required": [
-              "workspace"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "scope": {
-                "const": "projectRoot"
-              }
-            },
-            "required": [
-              "scope"
-            ]
-          },
-          "then": {
-            "required": [
-              "workspace"
-            ]
-          }
-        }
       ]
     },
     "UpdateMCPServerRequest": {

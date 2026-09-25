@@ -10,21 +10,18 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"runtime/debug"
 	"sync"
 	"time"
 
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/knowledgefile"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/localruntime"
 )
 
 // Bundle holds every persistence backend opened for one runtime process. All
-// durable stores share one SQLite database under DataDirectory, except
-// Knowledge, which is the user-editable FLAME.md cascade. AgentMemory is the
-// separate SQLite fact ledger + curated memory items.
+// durable stores share one SQLite database under DataDirectory. AgentMemory is
+// the separate SQLite fact ledger + curated memory items.
 type Bundle struct {
 	db        *sql.DB
 	closeOnce sync.Once
@@ -39,7 +36,6 @@ type Bundle struct {
 	Sessions            *sqlitestore.SessionStore
 	Runs                *sqlitestore.RunStore
 	WorkspaceMutations  *WorkspaceMutationStore
-	Knowledge           *knowledgefile.Store
 	AgentMemory         *sqlitestore.AgentMemoryStore
 	ExecutorCheckpoints *ExecutorCheckpointStore
 	Interrupts          *InterruptStore
@@ -66,8 +62,7 @@ type Bundle struct {
 // Config is the process-owned filesystem snapshot persistence consumes. It has
 // no environment or working-directory fallback: startup supplies every path.
 type Config struct {
-	DataDirectory        string
-	DefaultWorkspacePath string
+	DataDirectory string
 }
 
 const externalChangePollInterval = 100 * time.Millisecond
@@ -158,12 +153,6 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		return nil, fmt.Errorf("persistence: data directory: %w", directoryErr)
 	}
 	config.DataDirectory = dataDirectory.Path()
-	if config.DefaultWorkspacePath == "" {
-		return nil, errors.New("persistence: default workspace path is required")
-	}
-	if !filepath.IsAbs(config.DefaultWorkspacePath) {
-		return nil, errors.New("persistence: default workspace path must be absolute")
-	}
 	if mkdirErr := os.MkdirAll(config.DataDirectory, 0o700); mkdirErr != nil {
 		return nil, fmt.Errorf("persistence: create data directory %q: %w", config.DataDirectory, mkdirErr)
 	}
@@ -178,10 +167,6 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 	if err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
-	knowledgeStore, err := knowledgefile.New(config.DataDirectory, config.DefaultWorkspacePath)
-	if err != nil {
-		return nil, errors.Join(fmt.Errorf("knowledge storage: %w", err), db.Close())
-	}
 	return &Bundle{
 		db:                   db,
 		DataDirectory:        config.DataDirectory,
@@ -192,7 +177,6 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		Sessions:            sqlitestore.NewSessionStore(db),
 		Runs:                sqlitestore.NewRunStore(db),
 		WorkspaceMutations:  NewWorkspaceMutationStore(sqlitestore.NewWorkspaceMutationStore(db)),
-		Knowledge:           knowledgeStore,
 		AgentMemory:         sqlitestore.NewAgentMemoryStore(db),
 		ExecutorCheckpoints: NewExecutorCheckpointStore(sqlitestore.NewExecutorCheckpointStore(db)),
 		Interrupts:          NewInterruptStore(sqlitestore.NewInterruptStore(db)),

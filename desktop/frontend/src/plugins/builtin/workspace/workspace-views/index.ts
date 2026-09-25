@@ -1,25 +1,6 @@
 import { lazy } from "react";
 import { defineWorkspaceView } from "./defineWorkspaceView";
-import { DiffTabBadge, InboxBadge, PlanTabBadge } from "./tabBadges";
-
-export const searchView = defineWorkspaceView({
-  id: "search",
-  title: "workspace.view.title.search",
-  icon: "search",
-  order: 10,
-  dock: "workspace",
-  component: lazy(() => import("./search").then((m) => ({ default: m.SearchTab }))),
-});
-
-export const inboxView = defineWorkspaceView({
-  id: "inbox",
-  title: "workspace.view.title.inbox",
-  icon: "bell",
-  badge: InboxBadge,
-  order: 15,
-  dock: "workspace",
-  component: lazy(() => import("./inbox").then((m) => ({ default: m.InboxTab }))),
-});
+import { DiffTabBadge } from "./tabBadges";
 
 export const fileView = defineWorkspaceView({
   id: "file",
@@ -49,15 +30,6 @@ export const skillsView = defineWorkspaceView({
   component: lazy(() => import("./skills").then((m) => ({ default: m.SkillsTab }))),
 });
 
-export const knowledgeView = defineWorkspaceView({
-  id: "knowledge",
-  title: "workspace.view.title.knowledge",
-  icon: "filetext",
-  order: 100,
-  dock: "workspace",
-  component: lazy(() => import("./knowledge").then((m) => ({ default: m.KnowledgeTab }))),
-});
-
 export const agentMemoryView = defineWorkspaceView({
   id: "agent-memory",
   title: "workspace.view.title.agentMemory",
@@ -65,25 +37,6 @@ export const agentMemoryView = defineWorkspaceView({
   order: 105,
   dock: "workspace",
   component: lazy(() => import("./agentMemory").then((m) => ({ default: m.AgentMemoryTab }))),
-});
-
-export const agentDocsView = defineWorkspaceView({
-  id: "agent-docs",
-  title: "workspace.view.title.agentDocs",
-  icon: "book",
-  order: 110,
-  dock: "workspace",
-  component: lazy(() => import("./agent-docs").then((m) => ({ default: m.AgentDocsTab }))),
-});
-
-export const planView = defineWorkspaceView({
-  id: "plan",
-  title: "workspace.view.title.plan",
-  icon: "list",
-  badge: PlanTabBadge,
-  order: 120,
-  dock: "session",
-  component: lazy(() => import("./plan").then((m) => ({ default: m.PlanTab }))),
 });
 
 export const timelineView = defineWorkspaceView({

@@ -10,18 +10,13 @@ import (
 )
 
 const (
-	// MaxAuthoredPromptDocumentBytes bounds one complete AGENTS.md or Recipe
-	// document shared by filesystem discovery and its eventual consumer.
+	// MaxAuthoredPromptDocumentBytes bounds one complete AGENTS.md document
+	// shared by filesystem discovery and its eventual consumer.
 	MaxAuthoredPromptDocumentBytes = 1 << 20
 	// MaxAgentDocumentsPerCascade and MaxAgentDocumentCascadeBytes bound the
 	// complete root-to-leaf instruction set before a model-facing projection.
 	MaxAgentDocumentsPerCascade  = 64
 	MaxAgentDocumentCascadeBytes = 4 << 20
-	// MaxRecipesPerScope, MaxRecipeCascade, and MaxRecipeCascadeBytes bound the
-	// complete project-over-global catalog published to clients.
-	MaxRecipesPerScope    = 128
-	MaxRecipeCascade      = 256
-	MaxRecipeCascadeBytes = 8 << 20
 )
 
 var (
@@ -143,82 +138,6 @@ func (s AgentDocScope) renderPhase() (int, bool) {
 	default:
 		return 0, false
 	}
-}
-
-// RecipeScope identifies the source layer that supplied a recipe.
-type RecipeScope string
-
-const (
-	RecipeScopeProject RecipeScope = "project"
-	RecipeScopeGlobal  RecipeScope = "global"
-)
-
-// Recipe is a discovered prompt template. Source layout and frontmatter have
-// already been resolved; placeholder expansion belongs to the consumer.
-type Recipe struct {
-	Name         string
-	Description  string
-	ArgumentHint string
-	Body         string
-	Scope        RecipeScope
-	Source       string
-}
-
-// ValidateRecipeCascade protects the complete-list contract independently of
-// the normal filesystem discovery path.
-func ValidateRecipeCascade(recipes []Recipe) error {
-	if len(recipes) > MaxRecipeCascade {
-		return fmt.Errorf(
-			"%w: recipe cascade has %d recipes, maximum %d",
-			ErrPromptSourceTooLarge,
-			len(recipes),
-			MaxRecipeCascade,
-		)
-	}
-	perScope := make(map[RecipeScope]int, 2)
-	seen := make(map[string]struct{}, len(recipes))
-	total := 0
-	for index, recipe := range recipes {
-		if strings.TrimSpace(recipe.Name) == "" || strings.TrimSpace(recipe.Body) == "" || strings.TrimSpace(recipe.Source) == "" {
-			return fmt.Errorf("%w: recipe %d is incomplete", ErrInvalidPromptSource, index)
-		}
-		switch recipe.Scope {
-		case RecipeScopeProject, RecipeScopeGlobal:
-		default:
-			return fmt.Errorf("%w: recipe %q has unknown scope %q", ErrInvalidPromptSource, recipe.Name, recipe.Scope)
-		}
-		if _, duplicate := seen[recipe.Name]; duplicate {
-			return fmt.Errorf("%w: recipe catalog repeats visible name %q", ErrInvalidPromptSource, recipe.Name)
-		}
-		seen[recipe.Name] = struct{}{}
-		perScope[recipe.Scope]++
-		if perScope[recipe.Scope] > MaxRecipesPerScope {
-			return fmt.Errorf(
-				"%w: recipe scope %q has more than %d recipes",
-				ErrPromptSourceTooLarge,
-				recipe.Scope,
-				MaxRecipesPerScope,
-			)
-		}
-		material := len(recipe.Description) + len(recipe.ArgumentHint) + len(recipe.Body)
-		for _, value := range []string{recipe.Name, recipe.Description, recipe.ArgumentHint, recipe.Body, recipe.Source} {
-			if !utf8.ValidString(value) {
-				return fmt.Errorf("%w: recipe %q must be valid UTF-8", ErrInvalidPromptSource, recipe.Name)
-			}
-		}
-		if material > MaxAuthoredPromptDocumentBytes {
-			return fmt.Errorf("%w: recipe %q exceeds %d bytes", ErrPromptSourceTooLarge, recipe.Name, MaxAuthoredPromptDocumentBytes)
-		}
-		if material > MaxRecipeCascadeBytes-total {
-			return fmt.Errorf(
-				"%w: recipe cascade exceeds %d bytes",
-				ErrPromptSourceTooLarge,
-				MaxRecipeCascadeBytes,
-			)
-		}
-		total += material
-	}
-	return nil
 }
 
 func validateAuthoredPromptString(document string) error {

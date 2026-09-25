@@ -26,9 +26,7 @@ const longContextCompactionSummary = "## Goal\nKeep the long Run stable.\n\n## P
 func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
-	stores, err := persistence.Open(t.Context(), persistence.Config{
-		DataDirectory: home, DefaultWorkspacePath: home,
-	})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
 	if err != nil {
 		t.Fatal(err)
 	}

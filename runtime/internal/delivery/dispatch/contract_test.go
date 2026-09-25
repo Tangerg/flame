@@ -53,8 +53,8 @@ func (c *capabilityRuntime) SubscribeRuntime(context.Context, protocol.RuntimeSu
 	return &protocol.RuntimeSubscribeResponse{}, func(func(protocol.RuntimeEvent, error) bool) {}, nil
 }
 
-func (c *capabilityRuntime) ListKnowledge(context.Context, protocol.WorkspaceQuery) (*protocol.Page[protocol.KnowledgeEntry], error) {
-	return protocol.NewPage([]protocol.KnowledgeEntry{}), nil
+func (c *capabilityRuntime) ListAgentMemory(context.Context, protocol.AgentMemoryListRequest) (*protocol.AgentMemoryList, error) {
+	return &protocol.AgentMemoryList{Items: []protocol.AgentMemoryItem{}}, nil
 }
 
 func (c *capabilityRuntime) ListRuns(context.Context, protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error) {
@@ -100,13 +100,14 @@ func problemType(t *testing.T, resp *transport.Response) string {
 func TestCapabilityGateRefusesADisabledFeature(t *testing.T) {
 	t.Parallel()
 
-	off := call(t, map[string]bool{"knowledge": false}, "knowledge.list", `{"workspace":{"path":"/workspace"}}`)
+	const params = `{"scope":"project","workspace":{"path":"/workspace"}}`
+	off := call(t, map[string]bool{"agentMemory": false}, "agentMemory.list", params)
 	if got := problemType(t, off); got != "capability_not_negotiated" {
-		t.Fatalf("knowledge.list with the feature off = %q, want capability_not_negotiated", got)
+		t.Fatalf("agentMemory.list with the feature off = %q, want capability_not_negotiated", got)
 	}
-	on := call(t, map[string]bool{"knowledge": true}, "knowledge.list", `{"workspace":{"path":"/workspace"}}`)
+	on := call(t, map[string]bool{"agentMemory": true}, "agentMemory.list", params)
 	if on.Error != nil {
-		t.Fatalf("knowledge.list with the feature on: %+v", on.Error)
+		t.Fatalf("agentMemory.list with the feature on: %+v", on.Error)
 	}
 }
 

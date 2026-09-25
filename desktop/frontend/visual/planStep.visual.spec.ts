@@ -6,15 +6,19 @@ const LONG =
   "Verify that every boundary owner keeps its invariant when the run is resumed after a " +
   "restart, and that the projection never advances the fact on its own account";
 
+// The plan's one surface is the composer pill, so its checklist has to be opened
+// before the step rows exist to measure.
 test("a plan step that wraps keeps its mark on the first line", async ({ page }) => {
   await page.setViewportSize({ width: 1472, height: 900 });
   await page.goto(ROUTE);
   await page.locator("html[data-visual-ready]").waitFor();
+  await page.locator('[data-slot="active-plan-pill"]').focus();
+  await page.getByRole("tooltip").waitFor();
   await page.waitForTimeout(300);
 
   const measured = await page.evaluate((long) => {
     const rows: HTMLElement[] = [];
-    for (const row of document.querySelectorAll("div")) {
+    for (const row of document.querySelectorAll("div, li")) {
       if (row.closest("[data-fixture-chrome]")) continue;
       const kids = [...row.children];
       if (kids.length !== 2) continue;
@@ -46,7 +50,7 @@ test("a plan step that wraps keeps its mark on the first line", async ({ page })
     return { found, short, wrapped };
   }, LONG);
 
-  expect(measured.found, "the plan pane has to render steps").toBeGreaterThan(1);
+  expect(measured.found, "the plan checklist has to render steps").toBeGreaterThan(1);
   expect(
     measured.wrapped.filter((one) => one.lines < 2).length,
     "the long label has to wrap, or this measured the easy case twice",

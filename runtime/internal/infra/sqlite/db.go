@@ -1,9 +1,8 @@
 // Package sqlite hosts the SQLite-backed implementations of Runtime's storage
 // ports. One SQLite file is the single
 // durable backend — sessions / executor checkpoints / interrupts / history /
-// providers each live in their own table, sharing one *sql.DB. Human-authored
-// memory is the deliberate exception: it stays a user-editable FLAME.md file
-// cascade. Agent-extracted ledger and curated memory are ordinary SQLite state.
+// providers each live in their own table, sharing one *sql.DB. Agent-extracted
+// ledger and curated memory are ordinary SQLite state.
 //
 // Driver: modernc.org/sqlite (pure Go). No CGO, cross-compilation
 // works out of the box.
@@ -47,7 +46,7 @@ func modelInvocationUsageColumn() string {
 // the current schema. The returned *sql.DB is safe for concurrent use; callers
 // share it across every
 // sqlite-backed store (session / transcript / interrupt / provider / message /
-// agent memory). Human-authored knowledge (FLAME.md) is file-backed, not here.
+// agent memory).
 //
 // Tuning baked in:
 //   - journal_mode = WAL — concurrent readers don't block the writer
@@ -371,23 +370,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			ON history_items(session_id, seq)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_history_items_offload
 			ON history_items(offload_id) WHERE offload_id != ''`,
-		// Full-text index over past conversation transcripts:
-		// the human-readable user + agent message text, write-through from
-		// history_items and keyed by the same seq (the FTS rowid), so a search
-		// spans every session's conversation. The other columns are stored
-		// UNINDEXED for retrieval/provenance only. porter stemming over unicode61
-		// favors recall ("did we discuss X"); CJK runs tokenize coarsely (no ICU
-		// tokenizer in the pure-Go driver). This is the repo's first FTS5 table —
-		// discardSchema drops its shadow tables via the virtual table (see below).
-		`CREATE VIRTUAL TABLE IF NOT EXISTS transcript_search USING fts5(
-			text,
-			session_id UNINDEXED,
-			run_id UNINDEXED,
-			item_id UNINDEXED,
-			kind UNINDEXED,
-			created_at UNINDEXED,
-			tokenize = 'porter unicode61 remove_diacritics 2'
-		)`,
 		`CREATE TABLE IF NOT EXISTS providers (
 			id        TEXT PRIMARY KEY,
 			api_key   TEXT CHECK (api_key IS NULL OR length(api_key) > 0),

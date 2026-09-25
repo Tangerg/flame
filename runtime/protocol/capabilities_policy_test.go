@@ -9,7 +9,7 @@ func TestMissingFeatureRequirementsHonorsServerSupportAndClientOptIn(t *testing.
 	t.Parallel()
 
 	advertised := map[string]FeatureCapability{
-		FeatureKnowledge: {
+		FeatureSkills: {
 			Enabled: true,
 		},
 		FeatureSubagents: {
@@ -20,7 +20,7 @@ func TestMissingFeatureRequirementsHonorsServerSupportAndClientOptIn(t *testing.
 		Type: RequirementFeature, Name: FeatureSubagents,
 	}}
 
-	if got := MissingFeatureRequirements(advertised, nil, FeatureKnowledge); len(got) != 0 {
+	if got := MissingFeatureRequirements(advertised, nil, FeatureSkills); len(got) != 0 {
 		t.Fatalf("stable server feature gaps = %v, want none", got)
 	}
 	if got := MissingFeatureRequirements(advertised, nil, FeatureSubagents); !slices.Equal(got, wantSubagents) {
@@ -40,10 +40,10 @@ func TestMissingFeatureRequirementsHonorsServerSupportAndClientOptIn(t *testing.
 func TestMissingFeatureRequirementsIsOrderedAndUnique(t *testing.T) {
 	t.Parallel()
 
-	got := MissingFeatureRequirements(nil, nil, FeatureSubagents, FeatureKnowledge, FeatureSubagents)
+	got := MissingFeatureRequirements(nil, nil, FeatureSubagents, FeatureSkills, FeatureSubagents)
 	want := []CapabilityRequirement{
 		{Type: RequirementFeature, Name: FeatureSubagents},
-		{Type: RequirementFeature, Name: FeatureKnowledge},
+		{Type: RequirementFeature, Name: FeatureSkills},
 	}
 	if !slices.Equal(got, want) {
 		t.Fatalf("requirements = %v, want ordered unique %v", got, want)

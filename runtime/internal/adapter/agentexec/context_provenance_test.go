@@ -30,13 +30,11 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 	if canonicalErr != nil {
 		t.Fatal(canonicalErr)
 	}
-	knowledge := &stubKnowledgeStore{home: "user rule", cwd: "workspace rule"}
 	pinnedMemoryID := testAgentMemoryItemID(t, '1')
 	memory := provenanceMemoryReader{items: []agentmemory.Item{{
 		ID: pinnedMemoryID, Content: "remember this", Pinned: true,
 	}}}
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
-		Knowledge:   knowledge,
 		AgentMemory: memory,
 		Plan:        provenancePlanReader{},
 	})
@@ -51,9 +49,7 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 	provenance := decodeContextProvenance(t, message.Metadata)
 	wantKinds := []contextSourceKind{
 		contextSourceBasePrompt,
-		contextSourceUserKnowledge,
 		contextSourcePinnedMemory,
-		contextSourceProjectKnowledge,
 		contextSourceAgentDocument,
 	}
 	gotKinds := make([]contextSourceKind, len(provenance))
@@ -63,9 +59,9 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 	if !slices.Equal(gotKinds, wantKinds) {
 		t.Fatalf("source kinds=%v, want %v", gotKinds, wantKinds)
 	}
-	if provenance[2].Reference != pinnedMemoryID.String() ||
-		provenance[2].Purpose != contextPurposeData ||
-		provenance[4].Reference != canonicalDocument {
+	if provenance[1].Reference != pinnedMemoryID.String() ||
+		provenance[1].Purpose != contextPurposeData ||
+		provenance[2].Reference != canonicalDocument {
 		t.Fatalf("provenance=%+v", provenance)
 	}
 	currentState, stateErr := composer.CurrentSessionState(t.Context(), "session:one")

@@ -7,7 +7,6 @@
     "plan",
     "goals",
     "agentMemory",
-    "knowledge",
     "skills",
     "mcp",
     "schedules",
@@ -565,17 +564,6 @@
       ]
     },
     {
-      "name": "recipes.list",
-      "kind": "unary",
-      "operation": "query",
-      "idempotency": "none",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "workspace_unavailable"
-      ]
-    },
-    {
       "name": "agentDocs.list",
       "kind": "unary",
       "operation": "query",
@@ -1046,55 +1034,6 @@
       "pagination": "none"
     },
     {
-      "name": "knowledge.list",
-      "kind": "unary",
-      "operation": "query",
-      "idempotency": "none",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "workspace_unavailable",
-        "path_outside_root",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "knowledge"
-      ]
-    },
-    {
-      "name": "knowledge.get",
-      "kind": "unary",
-      "operation": "query",
-      "idempotency": "none",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "workspace_unavailable",
-        "path_outside_root",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "knowledge"
-      ]
-    },
-    {
-      "name": "knowledge.update",
-      "kind": "unary",
-      "operation": "command",
-      "idempotency": "replayResponse",
-      "replayCursor": "none",
-      "pagination": "none",
-      "errors": [
-        "workspace_unavailable",
-        "path_outside_root",
-        "revision_conflict",
-        "capability_not_negotiated"
-      ],
-      "features": [
-        "knowledge"
-      ]
-    },
-    {
       "name": "agentMemory.list",
       "kind": "unary",
       "operation": "query",
@@ -1257,9 +1196,6 @@
           "goals.update",
           "interrupts.list",
           "items.list",
-          "knowledge.get",
-          "knowledge.list",
-          "knowledge.update",
           "mcp.authorizationAttempts.create",
           "mcp.authorizationAttempts.get",
           "mcp.servers.create",
@@ -1403,9 +1339,6 @@
         "code": -32013,
         "recoveryAction": "promptUser",
         "methods": [
-          "knowledge.get",
-          "knowledge.list",
-          "knowledge.update",
           "tools.invoke",
           "workspace.diff.get",
           "workspace.files.head",
@@ -1443,7 +1376,6 @@
         "code": -32019,
         "recoveryAction": "refetch",
         "methods": [
-          "knowledge.update",
           "schedules.update",
           "sessions.update",
           "skills.proposals.approve",
@@ -1600,10 +1532,6 @@
           "agentDocs.list",
           "hooks.list",
           "hooks.setTrust",
-          "knowledge.get",
-          "knowledge.list",
-          "knowledge.update",
-          "recipes.list",
           "schedules.create",
           "schedules.update",
           "sessions.create",
@@ -2100,36 +2028,6 @@
       ]
     },
     {
-      "method": "knowledge.list",
-      "rules": [
-        {
-          "requires": [
-            "knowledge"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "knowledge.get",
-      "rules": [
-        {
-          "requires": [
-            "knowledge"
-          ]
-        }
-      ]
-    },
-    {
-      "method": "knowledge.update",
-      "rules": [
-        {
-          "requires": [
-            "knowledge"
-          ]
-        }
-      ]
-    },
-    {
       "method": "agentMemory.list",
       "rules": [
         {
@@ -2226,9 +2124,6 @@
       "type": "skills.changed"
     },
     {
-      "type": "recipes.changed"
-    },
-    {
       "type": "mcp.changed"
     },
     {
@@ -2248,9 +2143,6 @@
     },
     {
       "type": "interrupts.changed"
-    },
-    {
-      "type": "knowledge.changed"
     },
     {
       "type": "hooks.changed"
@@ -3363,12 +3255,6 @@
           ]
         },
         {
-          "tag": "recipes.changed",
-          "required": [
-            "sequence"
-          ]
-        },
-        {
           "tag": "mcp.changed",
           "required": [
             "sequence"
@@ -3431,12 +3317,6 @@
           "optional": [
             "runIds",
             "sessionIds"
-          ]
-        },
-        {
-          "tag": "knowledge.changed",
-          "required": [
-            "sequence"
           ]
         },
         {
@@ -3935,88 +3815,6 @@
           ],
           "forbidden": [
             "dir"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "GetKnowledgeRequest",
-      "rules": [
-        {
-          "when": [
-            {
-              "field": "scope",
-              "operator": "equals",
-              "value": "home"
-            }
-          ],
-          "forbidden": [
-            "workspace"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "scope",
-              "operator": "equals",
-              "value": "cwd"
-            }
-          ],
-          "required": [
-            "workspace"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "scope",
-              "operator": "equals",
-              "value": "projectRoot"
-            }
-          ],
-          "required": [
-            "workspace"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "UpdateKnowledgeRequest",
-      "rules": [
-        {
-          "when": [
-            {
-              "field": "scope",
-              "operator": "equals",
-              "value": "home"
-            }
-          ],
-          "forbidden": [
-            "workspace"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "scope",
-              "operator": "equals",
-              "value": "cwd"
-            }
-          ],
-          "required": [
-            "workspace"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "scope",
-              "operator": "equals",
-              "value": "projectRoot"
-            }
-          ],
-          "required": [
-            "workspace"
           ]
         }
       ]
@@ -7760,49 +7558,10 @@
       ]
     },
     {
-      "type": "KnowledgeEntry",
-      "rules": [
-        {
-          "field": "path",
-          "constraint": "pattern(\"\\\\S\")"
-        },
-        {
-          "field": "revision",
-          "constraint": "nonEmpty"
-        }
-      ]
-    },
-    {
-      "type": "UpdateKnowledgeRequest",
-      "rules": [
-        {
-          "field": "expectedRevision",
-          "constraint": "nonEmpty"
-        }
-      ]
-    },
-    {
       "type": "AgentDoc",
       "rules": [
         {
           "field": "path",
-          "constraint": "pattern(\"\\\\S\")"
-        }
-      ]
-    },
-    {
-      "type": "Recipe",
-      "rules": [
-        {
-          "field": "name",
-          "constraint": "pattern(\"\\\\S\")"
-        },
-        {
-          "field": "body",
-          "constraint": "pattern(\"\\\\S\")"
-        },
-        {
-          "field": "source",
           "constraint": "pattern(\"\\\\S\")"
         }
       ]
@@ -8876,10 +8635,6 @@
       "shape": "RuntimeEvent"
     },
     {
-      "file": "rtevent.recipes-changed.json",
-      "shape": "RuntimeEvent"
-    },
-    {
       "file": "rtevent.mcp-changed.json",
       "shape": "RuntimeEvent"
     },
@@ -8984,10 +8739,6 @@
       "shape": "Schedule"
     },
     {
-      "file": "recipe.json",
-      "shape": "Recipe"
-    },
-    {
       "file": "skill.json",
       "shape": "Skill"
     },
@@ -9014,10 +8765,6 @@
     {
       "file": "hooksList.json",
       "shape": "HooksListResult"
-    },
-    {
-      "file": "knowledgeEntry.json",
-      "shape": "KnowledgeEntry"
     },
     {
       "file": "agentMemoryItem.json",

@@ -2,7 +2,7 @@
 // on a cron trigger as a headless run (no client present). A firing claims
 // schedules whose time has come, starts a run, and records the occurrence.
 //
-// A Schedule stores the final instruction text, not a recipe reference — the
+// A Schedule stores the final instruction text, not a template reference — the
 // scheduler is deliberately decoupled from any authoring source, so deleting or
 // renaming that source cannot break a schedule.
 package schedule

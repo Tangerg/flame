@@ -4,7 +4,6 @@ import {
   AGENT_SESSION_USAGE_KEY,
   synchronizeMountedAgentSessions,
 } from "@/plugins/builtin/agent/public/session";
-import { PENDING_WORK_KEY } from "@/plugins/builtin/agent/public/hitl";
 import {
   APPROVAL_MODE_KEY,
   APPROVAL_RULES_KEY,
@@ -26,13 +25,9 @@ import {
   WORKSPACE_DIFF_KEY,
   WORKSPACE_AGENT_MEMORY_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
-  WORKSPACE_GREP_KEY,
-  WORKSPACE_AGENT_DOCS_KEY,
-  WORKSPACE_KNOWLEDGE_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_MANAGED_SKILLS_KEY,
   WORKSPACE_READ_FILE_KEY,
-  WORKSPACE_RECIPES_KEY,
   WORKSPACE_SKILLS_KEY,
   WORKSPACE_SKILL_DETAIL_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
@@ -47,7 +42,6 @@ const QUERY_KEYS: Record<
   Exclude<WorkspaceInvalidationTarget, "all" | "agentSessionProjection">,
   string
 > = {
-  agentDocs: WORKSPACE_AGENT_DOCS_KEY,
   agentMemory: WORKSPACE_AGENT_MEMORY_KEY,
   approvalMode: APPROVAL_MODE_KEY,
   approvalRules: APPROVAL_RULES_KEY,
@@ -55,15 +49,11 @@ const QUERY_KEYS: Record<
   fileList: WORKSPACE_LIST_FILES_KEY,
   fileRead: WORKSPACE_READ_FILE_KEY,
   filesChanged: WORKSPACE_FILES_CHANGED_KEY,
-  grep: WORKSPACE_GREP_KEY,
   hooks: HOOKS_KEY,
-  knowledge: WORKSPACE_KNOWLEDGE_KEY,
   models: MODELS_KEY,
   mcpServers: MCP_SERVERS_KEY,
   mcpTools: MCP_TOOLS_KEY,
-  pendingWork: PENDING_WORK_KEY,
   providers: PROVIDERS_KEY,
-  recipes: WORKSPACE_RECIPES_KEY,
   schedules: SCHEDULES_KEY,
   sessions: AGENT_SESSIONS_KEY,
   sessionUsage: AGENT_SESSION_USAGE_KEY,

@@ -203,10 +203,6 @@
               "signature": "func(ctx context.Context, request protocol.GoalRequest, options CallOptions) (*protocol.Goal, error)"
             },
             {
-              "name": "GetKnowledge",
-              "signature": "func(ctx context.Context, request protocol.GetKnowledgeRequest, options CallOptions) (*protocol.KnowledgeEntry, error)"
-            },
-            {
               "name": "GetMCPAuthorizationAttempt",
               "signature": "func(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options CallOptions) (*protocol.MCPAuthorizationAttempt, error)"
             },
@@ -283,10 +279,6 @@
               "signature": "func(ctx context.Context, request protocol.ListItemsRequest, options CallOptions) (*protocol.ListItemsResponse, error)"
             },
             {
-              "name": "ListKnowledge",
-              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.KnowledgeEntry], error)"
-            },
-            {
               "name": "ListMCPServers",
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.MCPServer], error)"
             },
@@ -309,10 +301,6 @@
             {
               "name": "ListProviders",
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.Provider], error)"
-            },
-            {
-              "name": "ListRecipes",
-              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.Recipe], error)"
             },
             {
               "name": "ListRuns",
@@ -445,10 +433,6 @@
             {
               "name": "UpdateGoal",
               "signature": "func(ctx context.Context, request protocol.UpdateGoalRequest, options CommandOptions) (*protocol.Goal, error)"
-            },
-            {
-              "name": "UpdateKnowledge",
-              "signature": "func(ctx context.Context, request protocol.UpdateKnowledgeRequest, options CommandOptions) (*protocol.KnowledgeEntry, error)"
             },
             {
               "name": "UpdateMCPServer",
@@ -902,11 +886,6 @@
           "value": "\"isolation\""
         },
         {
-          "name": "FeatureKnowledge",
-          "type": "untyped string",
-          "value": "\"knowledge\""
-        },
-        {
           "name": "FeatureLSP",
           "type": "untyped string",
           "value": "\"lsp\""
@@ -1200,21 +1179,6 @@
           "name": "ItemTypeUserMessage",
           "type": "ItemType",
           "value": "\"userMessage\""
-        },
-        {
-          "name": "KnowledgeScopeCWD",
-          "type": "KnowledgeScope",
-          "value": "\"cwd\""
-        },
-        {
-          "name": "KnowledgeScopeHome",
-          "type": "KnowledgeScope",
-          "value": "\"home\""
-        },
-        {
-          "name": "KnowledgeScopeProjectRoot",
-          "type": "KnowledgeScope",
-          "value": "\"projectRoot\""
         },
         {
           "name": "MCPAuthorizationAttemptCanceled",
@@ -1587,16 +1551,6 @@
           "value": "\"text\""
         },
         {
-          "name": "RecipeScopeGlobal",
-          "type": "RecipeScope",
-          "value": "\"global\""
-        },
-        {
-          "name": "RecipeScopeProject",
-          "type": "RecipeScope",
-          "value": "\"project\""
-        },
-        {
           "name": "RecoveryColdRecover",
           "type": "RecoveryAction",
           "value": "\"coldRecover\""
@@ -1732,11 +1686,6 @@
           "value": "\"interrupts.changed\""
         },
         {
-          "name": "RuntimeKnowledgeChanged",
-          "type": "RuntimeEventType",
-          "value": "\"knowledge.changed\""
-        },
-        {
           "name": "RuntimeMCPChanged",
           "type": "RuntimeEventType",
           "value": "\"mcp.changed\""
@@ -1750,11 +1699,6 @@
           "name": "RuntimePlanChanged",
           "type": "RuntimeEventType",
           "value": "\"plan.changed\""
-        },
-        {
-          "name": "RuntimeRecipesChanged",
-          "type": "RuntimeEventType",
-          "value": "\"recipes.changed\""
         },
         {
           "name": "RuntimeResync",
@@ -1967,11 +1911,6 @@
           "value": "\"interrupts.changed\""
         },
         {
-          "name": "TopicKnowledgeChanged",
-          "type": "RuntimeTopic",
-          "value": "\"knowledge.changed\""
-        },
-        {
           "name": "TopicMCPChanged",
           "type": "RuntimeTopic",
           "value": "\"mcp.changed\""
@@ -1985,11 +1924,6 @@
           "name": "TopicPlanChanged",
           "type": "RuntimeTopic",
           "value": "\"plan.changed\""
-        },
-        {
-          "name": "TopicRecipesChanged",
-          "type": "RuntimeTopic",
-          "value": "\"recipes.changed\""
         },
         {
           "name": "TopicRunsChanged",
@@ -3889,28 +3823,6 @@
           ]
         },
         {
-          "name": "GetKnowledgeRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Scope",
-              "type": "KnowledgeScope",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Workspace",
-              "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
           "name": "GetPlanRequest",
           "kind": "struct",
           "fields": [
@@ -4689,54 +4601,6 @@
           "name": "ItemType",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "KnowledgeEntry",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Path",
-              "type": "string",
-              "tag": "json:\"path\""
-            },
-            {
-              "name": "Scope",
-              "type": "KnowledgeScope",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Content",
-              "type": "string",
-              "tag": "json:\"content\""
-            },
-            {
-              "name": "Revision",
-              "type": "string",
-              "tag": "json:\"revision\""
-            },
-            {
-              "name": "UpdatedAt",
-              "type": "time.Time",
-              "tag": "json:\"updatedAt,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "KnowledgeScope",
-          "kind": "defined",
-          "underlying": "string",
-          "methods": [
-            {
-              "name": "Valid",
-              "signature": "func() bool"
-            }
-          ]
         },
         {
           "name": "ListApprovalRulesRequest",
@@ -6328,53 +6192,6 @@
               "signature": "func() error"
             }
           ]
-        },
-        {
-          "name": "Recipe",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Name",
-              "type": "string",
-              "tag": "json:\"name\""
-            },
-            {
-              "name": "Description",
-              "type": "string",
-              "tag": "json:\"description,omitempty\""
-            },
-            {
-              "name": "ArgumentHint",
-              "type": "string",
-              "tag": "json:\"argumentHint,omitempty\""
-            },
-            {
-              "name": "Body",
-              "type": "string",
-              "tag": "json:\"body\""
-            },
-            {
-              "name": "Scope",
-              "type": "RecipeScope",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Source",
-              "type": "string",
-              "tag": "json:\"source\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "RecipeScope",
-          "kind": "defined",
-          "underlying": "string"
         },
         {
           "name": "RecoveryAction",
@@ -8127,38 +7944,6 @@
               "name": "Objective",
               "type": "string",
               "tag": "json:\"objective\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "UpdateKnowledgeRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Scope",
-              "type": "KnowledgeScope",
-              "tag": "json:\"scope\""
-            },
-            {
-              "name": "Workspace",
-              "type": "*WorkspaceRef",
-              "tag": "json:\"workspace,omitzero\""
-            },
-            {
-              "name": "ExpectedRevision",
-              "type": "string",
-              "tag": "json:\"expectedRevision\""
-            },
-            {
-              "name": "Content",
-              "type": "string",
-              "tag": "json:\"content\""
             }
           ],
           "methods": [

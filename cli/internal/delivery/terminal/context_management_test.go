@@ -3,7 +3,6 @@ package terminal
 import (
 	"context"
 	"errors"
-	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
@@ -187,102 +185,14 @@ func (a *agentMemoryServiceStub) Add(_ context.Context, target agent.MemoryTarge
 	return item, nil
 }
 
-type knowledgeServiceStub struct {
-	mu        sync.Mutex
-	content   map[protocol.KnowledgeScope]string
-	revisions map[protocol.KnowledgeScope]string
-	saved     chan string
-	failed    chan struct{}
-	failNext  bool
-	blockNext <-chan struct{}
-	started   chan string
-}
-
-func newKnowledgeServiceStub() *knowledgeServiceStub {
-	return &knowledgeServiceStub{
-		content: map[protocol.KnowledgeScope]string{
-			protocol.KnowledgeScopeCWD:         "cwd guidance",
-			protocol.KnowledgeScopeProjectRoot: "project rules",
-			protocol.KnowledgeScopeHome:        "global preferences",
-		},
-		revisions: map[protocol.KnowledgeScope]string{
-			protocol.KnowledgeScopeCWD: "rev-cwd", protocol.KnowledgeScopeProjectRoot: "rev-project", protocol.KnowledgeScopeHome: "rev-home",
-		},
-		saved: make(chan string, 1), failed: make(chan struct{}, 1),
-	}
-}
-
-func (k *knowledgeServiceStub) Entries(context.Context, string) ([]workspace.KnowledgeEntry, error) {
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	now := time.Now()
-	return []workspace.KnowledgeEntry{
-		{Path: "/workspace/FLAME.md", Scope: protocol.KnowledgeScopeCWD, Content: k.content[protocol.KnowledgeScopeCWD], Revision: k.revisions[protocol.KnowledgeScopeCWD], UpdatedAt: &now},
-		{Path: "/workspace/FLAME.md", Scope: protocol.KnowledgeScopeProjectRoot, Content: k.content[protocol.KnowledgeScopeProjectRoot], Revision: k.revisions[protocol.KnowledgeScopeProjectRoot], UpdatedAt: &now},
-		{Path: "/workspace/FLAME.md", Scope: protocol.KnowledgeScopeHome, Content: k.content[protocol.KnowledgeScopeHome], Revision: k.revisions[protocol.KnowledgeScopeHome], UpdatedAt: &now},
-	}, nil
-}
-
-func (k *knowledgeServiceStub) Document(_ context.Context, target workspace.KnowledgeTarget) (workspace.KnowledgeEntry, error) {
-	if err := target.Validate(); err != nil {
-		return workspace.KnowledgeEntry{}, err
-	}
-	k.mu.Lock()
-	defer k.mu.Unlock()
-	return workspace.KnowledgeEntry{Path: "/workspace/FLAME.md", Scope: target.Scope, Content: k.content[target.Scope], Revision: k.revisions[target.Scope]}, nil
-}
-
-func (k *knowledgeServiceStub) Save(ctx context.Context, update workspace.KnowledgeUpdate) (workspace.KnowledgeEntry, error) {
-	if err := update.Validate(); err != nil {
-		return workspace.KnowledgeEntry{}, err
-	}
-	target, content := update.Target, update.Content
-	k.mu.Lock()
-	if k.revisions[target.Scope] != update.ExpectedRevision {
-		k.mu.Unlock()
-		return workspace.KnowledgeEntry{}, errors.New("revision conflict")
-	}
-	if k.failNext {
-		k.failNext = false
-		k.mu.Unlock()
-		k.failed <- struct{}{}
-		return workspace.KnowledgeEntry{}, errors.New("write refused")
-	}
-	block := k.blockNext
-	k.blockNext = nil
-	k.mu.Unlock()
-	if block != nil {
-		k.started <- content
-		select {
-		case <-block:
-		case <-ctx.Done():
-			return workspace.KnowledgeEntry{}, context.Cause(ctx)
-		}
-	}
-	k.mu.Lock()
-	k.content[target.Scope] = content
-	k.revisions[target.Scope] += "+1"
-	entry := workspace.KnowledgeEntry{Path: "/workspace/FLAME.md", Scope: target.Scope, Content: content, Revision: k.revisions[target.Scope]}
-	k.mu.Unlock()
-	k.saved <- content
-	return entry, nil
-}
-
-func TestAgentMemoryAndKnowledgeReadersShowScopeAndProvenance(t *testing.T) {
+func TestAgentMemoryReaderShowsScopeAndProvenance(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	knowledgeStore := newKnowledgeServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), AgentMemory: memory, Knowledge: knowledgeStore, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory project")
 	host.Press(input.Enter)
 	host.Shows(t, "Agent memory · project")
 	host.Shows(t, "session  ses_origin")
-	host.Press(input.Esc)
-	host.Shows(t, "Ask flame")
-	host.Type("/knowledge")
-	host.Press(input.Enter)
-	host.Shows(t, "FLAME.md knowledge")
-	host.Shows(t, "global preferences")
 	stop()
 }
 
@@ -472,194 +382,5 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	if err != nil || len(items) != 0 {
 		t.Fatalf("deleted user memory = (%+v, %v)", items, err)
 	}
-	stop()
-}
-
-func TestKnowledgeReadUsesTheRequestedScope(t *testing.T) {
-	knowledgeStore := newKnowledgeServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Knowledge: knowledgeStore, Workspace: "/workspace"})
-	host.Shows(t, "Ask flame")
-	host.Type("/knowledge-read home")
-	host.Press(input.Enter)
-	host.Shows(t, "FLAME.md · home")
-	host.Shows(t, "global preferences")
-	stop()
-}
-
-func TestKnowledgeChangeConvergesTheExactOpenScope(t *testing.T) {
-	knowledgeStore := newKnowledgeServiceStub()
-	source := &runtimeChangeSourceStub{
-		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged},
-	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Knowledge: knowledgeStore, Changes: source, Workspace: "/workspace"})
-	host.Shows(t, "Ask flame")
-	subscription := awaitValue(t, source.subscription, "knowledge change subscription")
-	if !slices.Equal(subscription.Topics, []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged}) {
-		t.Fatalf("knowledge subscription = %v", subscription.Topics)
-	}
-	host.Type("/knowledge-read home")
-	host.Press(input.Enter)
-	host.Shows(t, "global preferences")
-
-	knowledgeStore.mu.Lock()
-	knowledgeStore.content[protocol.KnowledgeScopeHome] = "preferences from runtime change"
-	knowledgeStore.revisions[protocol.KnowledgeScopeHome] = "rev-home+external"
-	knowledgeStore.mu.Unlock()
-	source.events <- changefeed.Event{Type: protocol.RuntimeKnowledgeChanged, Sequence: 1}
-	awaitValue(t, source.applied, "knowledge invalidation")
-	host.Shows(t, "preferences from runtime change")
-	host.Hides(t, "cwd guidance")
-	stop()
-}
-
-func TestKnowledgeResyncConvergesTheExactOpenScope(t *testing.T) {
-	knowledgeStore := newKnowledgeServiceStub()
-	source := &runtimeChangeSourceStub{
-		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged},
-	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Knowledge: knowledgeStore, Changes: source, Workspace: "/workspace"})
-	host.Shows(t, "Ask flame")
-	awaitValue(t, source.subscription, "knowledge resync subscription")
-	host.Type("/knowledge-read home")
-	host.Press(input.Enter)
-	host.Shows(t, "global preferences")
-
-	knowledgeStore.mu.Lock()
-	knowledgeStore.content[protocol.KnowledgeScopeHome] = "preferences from scoped resync"
-	knowledgeStore.revisions[protocol.KnowledgeScopeHome] = "rev-home+resync"
-	knowledgeStore.mu.Unlock()
-	source.events <- changefeed.Event{
-		Type: protocol.RuntimeResync, Sequence: 1, Topics: []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged},
-	}
-	awaitValue(t, source.applied, "knowledge resync")
-	host.Shows(t, "preferences from scoped resync")
-	stop()
-}
-
-func TestKnowledgeEditorPreservesMultilineContentAcrossResize(t *testing.T) {
-	knowledgeStore := newKnowledgeServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Knowledge: knowledgeStore, Workspace: "/workspace"})
-	host.Shows(t, "Ask flame")
-	host.Type("/knowledge-edit projectRoot")
-	host.Press(input.Enter)
-	host.Shows(t, "Edit FLAME.md · projectRoot")
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
-		t.Fatal("knowledge editor did not survive a minimal viewport")
-	}
-	host.Shows(t, "Edit FLAME.md · projectRoot")
-	host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
-	host.Type("line one")
-	host.Press(input.Enter)
-	host.Type("line two")
-	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
-	if got := awaitValue(t, knowledgeStore.saved, "knowledge save"); got != "line one\nline two" {
-		t.Fatalf("saved content = %q", got)
-	}
-	host.Shows(t, "FLAME.md · projectRoot")
-	host.Shows(t, "line one")
-	stop()
-}
-
-func TestKnowledgeEditorRetainsDraftWhenRuntimeSaveFails(t *testing.T) {
-	knowledgeStore := newKnowledgeServiceStub()
-	knowledgeStore.failNext = true
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Knowledge: knowledgeStore, Workspace: "/workspace"})
-	host.Shows(t, "Ask flame")
-	host.Type("/knowledge-edit projectRoot")
-	host.Press(input.Enter)
-	host.Shows(t, "Edit FLAME.md · projectRoot")
-	host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
-	host.Type("unsaved draft")
-	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
-	awaitValue(t, knowledgeStore.failed, "failed knowledge save")
-	host.Shows(t, "Edit FLAME.md · projectRoot")
-	host.Shows(t, "write refused")
-	host.Shows(t, "unsaved draft")
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
-		t.Fatal("failed knowledge editor did not survive a minimal viewport")
-	}
-	host.Shows(t, "unsaved draft")
-	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
-	if got := awaitValue(t, knowledgeStore.saved, "retried knowledge save"); got != "unsaved draft" {
-		t.Fatalf("retried content = %q", got)
-	}
-	host.Shows(t, "FLAME.md · projectRoot")
-	stop()
-}
-
-func TestKnowledgeEditorDoesNotLoseEditsMadeWhileSaving(t *testing.T) {
-	knowledgeStore := newKnowledgeServiceStub()
-	release := make(chan struct{})
-	knowledgeStore.blockNext = release
-	knowledgeStore.started = make(chan string, 1)
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Knowledge: knowledgeStore, Workspace: "/workspace"})
-	host.Shows(t, "Ask flame")
-	host.Type("/knowledge-edit projectRoot")
-	host.Press(input.Enter)
-	host.Shows(t, "Edit FLAME.md · projectRoot")
-	host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
-	host.Type("first draft")
-	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
-	if got := awaitValue(t, knowledgeStore.started, "knowledge save start"); got != "first draft" {
-		t.Fatalf("first submitted content = %q", got)
-	}
-	host.Type(" with newer edits")
-	host.Shows(t, "first draft with newer edits")
-	close(release)
-	if got := awaitValue(t, knowledgeStore.saved, "first knowledge save"); got != "first draft" {
-		t.Fatalf("first saved content = %q", got)
-	}
-	host.Shows(t, "Saved. New edits remain unsaved.")
-	host.Shows(t, "first draft with newer edits")
-	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
-	if got := awaitValue(t, knowledgeStore.saved, "second knowledge save"); got != "first draft with newer edits" {
-		t.Fatalf("second saved content = %q", got)
-	}
-	host.Shows(t, "FLAME.md · projectRoot")
-	stop()
-}
-
-func TestKnowledgeEditorSaveOutlivesSameSessionProjectionReplacement(t *testing.T) {
-	knowledgeStore := newKnowledgeServiceStub()
-	release := make(chan struct{})
-	knowledgeStore.blockNext = release
-	knowledgeStore.started = make(chan string, 1)
-	source := &runtimeChangeSourceStub{
-		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
-		applied: make(chan changefeed.Event, 1),
-	}
-	backend := runtimefixture.New()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, Knowledge: knowledgeStore, Changes: source, SessionID: "ses_demo_1"})
-	host.Shows(t, "Ask flame")
-	awaitValue(t, source.subscription, "runtime change subscription")
-	host.Type("/knowledge-edit projectRoot")
-	host.Press(input.Enter)
-	host.Shows(t, "Edit FLAME.md · projectRoot")
-	host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
-	host.Type("draft survives projection refresh")
-	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
-	if got := awaitValue(t, knowledgeStore.started, "blocked knowledge save"); got != "draft survives projection refresh" {
-		t.Fatalf("blocked save content = %q", got)
-	}
-	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
-		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
-	}); err != nil {
-		t.Fatal(err)
-	}
-
-	source.events <- changefeed.Event{
-		Type: protocol.RuntimeSessionsChanged, Sequence: 1,
-		SessionIDs: []string{"ses_demo_1"},
-	}
-	awaitValue(t, source.applied, "same-session invalidation")
-	host.Shows(t, "draft survives projection refresh")
-	host.Hides(t, "Save interrupted")
-	close(release)
-	if got := awaitValue(t, knowledgeStore.saved, "knowledge save after projection replacement"); got != "draft survives projection refresh" {
-		t.Fatalf("saved content = %q", got)
-	}
-	host.Shows(t, "FLAME.md · projectRoot")
 	stop()
 }

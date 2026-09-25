@@ -25,7 +25,7 @@ import {
   SkeletonList,
   Slider,
   StatusDot,
-  StepRow,
+  StepMark,
   Switch,
   SystemMessage,
   Tag,
@@ -238,9 +238,9 @@ export function VisualAtomsFixture() {
       </Specimen>
       <Specimen name="steps">
         <div {...stylex.props(styles.column)}>
-          <StepRow state="done">Read the contract</StepRow>
-          <StepRow state="active">Fix the owner</StepRow>
-          <StepRow state="pending">Verify</StepRow>
+          <StepMark state="done" />
+          <StepMark state="active" />
+          <StepMark state="pending" />
         </div>
       </Specimen>
       <Specimen name="system-message">

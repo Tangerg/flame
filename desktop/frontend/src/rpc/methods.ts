@@ -3,7 +3,6 @@ import type { MutationPromise } from "./mutation";
 import { createWireCallPath, type MethodsOptions, type WireCall } from "./wireCallPath";
 import type { RunId, SegmentId, SessionId } from "./ids";
 import type {
-  AgentDoc,
   ModelInvocation,
   ListModelInvocationsRequest,
   ApprovalMode,
@@ -21,8 +20,6 @@ import type {
   FileEntry,
   ForkSessionRequest,
   GetDiffRequest,
-  GrepRequest,
-  GrepResult,
   HooksListResult,
   ImportSessionResponse,
   DiscoverResponse,
@@ -35,8 +32,6 @@ import type {
   MCPServer,
   MCPTestResult,
   MCPTool,
-  KnowledgeEntry,
-  KnowledgeScope,
   Model,
   PendingInterruptSet,
   Page,
@@ -53,7 +48,6 @@ import type {
   RollbackSessionResponse,
   RunEvent,
   ReadFileRequest,
-  Recipe,
   ItemListScope,
   ItemOrder,
   RunRef,
@@ -113,7 +107,7 @@ async function callOrDispose<R>(
   }
 }
 
-export interface WorkspaceMethods {
+interface WorkspaceMethods {
   readonly ref: Readonly<WorkspaceRef>;
   changes: {
     list: (signal?: AbortSignal) => Promise<Page<WorkspaceFileChange>>;
@@ -122,7 +116,6 @@ export interface WorkspaceMethods {
     get: (params?: Omit<GetDiffRequest, "workspace">, signal?: AbortSignal) => Promise<Diff>;
   };
   files: {
-    search: (params: Omit<GrepRequest, "workspace">, signal?: AbortSignal) => Promise<GrepResult>;
     list: (
       params?: Omit<ListFilesRequest, "workspace">,
       signal?: AbortSignal,
@@ -131,9 +124,6 @@ export interface WorkspaceMethods {
       params: Omit<ReadFileRequest, "workspace">,
       signal?: AbortSignal,
     ) => Promise<FileContent>;
-  };
-  recipes: {
-    list: (signal?: AbortSignal) => Promise<Page<Recipe>>;
   };
   hooks: {
     list: (signal?: AbortSignal) => Promise<HooksListResult>;
@@ -144,18 +134,6 @@ export interface WorkspaceMethods {
     listProposals: (signal?: AbortSignal) => Promise<Page<SkillProposal>>;
     approveProposal: (ref: Omit<SkillProposalRef, "workspace">) => MutationPromise<void>;
     rejectProposal: (ref: Omit<SkillProposalRef, "workspace">) => MutationPromise<void>;
-  };
-  agentDocs: {
-    list: (signal?: AbortSignal) => Promise<Page<AgentDoc>>;
-  };
-  knowledge: {
-    list: (signal?: AbortSignal) => Promise<Page<KnowledgeEntry>>;
-    get: (scope: KnowledgeScope, signal?: AbortSignal) => Promise<KnowledgeEntry>;
-    update: (params: {
-      scope: KnowledgeScope;
-      content: string;
-      expectedRevision: string;
-    }) => MutationPromise<KnowledgeEntry>;
   };
   agentMemory: {
     list: (signal?: AbortSignal) => Promise<AgentMemoryList>;
@@ -354,14 +332,9 @@ function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
       get: (params, signal) => call("workspace.diff.get", { ...params, workspace }, { signal }),
     },
     files: {
-      search: (params, signal) =>
-        call("workspace.files.search", { ...params, workspace }, { signal }),
       list: (params, signal) =>
         call("workspace.files.list", { ...params, workspace }, signal ? { signal } : undefined),
       read: (params, signal) => call("workspace.files.read", { ...params, workspace }, { signal }),
-    },
-    recipes: {
-      list: (signal) => call("recipes.list", { workspace }, { signal }),
     },
     hooks: {
       list: (signal) => call("hooks.list", { workspace }, { signal }),
@@ -373,16 +346,6 @@ function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
       listProposals: (signal) => call("skills.proposals.list", { workspace }, { signal }),
       approveProposal: (ref) => call("skills.proposals.approve", { ...ref, workspace }),
       rejectProposal: (ref) => call("skills.proposals.reject", { ...ref, workspace }),
-    },
-    agentDocs: {
-      list: (signal) => call("agentDocs.list", { workspace }, { signal }),
-    },
-    knowledge: {
-      list: (signal) => call("knowledge.list", { workspace }, { signal }),
-      get: (scope, signal) =>
-        call("knowledge.get", { scope, ...knowledgeWorkspace(scope, workspace) }, { signal }),
-      update: (params) =>
-        call("knowledge.update", { ...params, ...knowledgeWorkspace(params.scope, workspace) }),
     },
     agentMemory: {
       list: (signal) => call("agentMemory.list", { scope: "project", workspace }, { signal }),
@@ -601,11 +564,4 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       runNow: (id) => call("schedules.runNow", { id }),
     },
   };
-}
-
-function knowledgeWorkspace(
-  scope: KnowledgeScope,
-  workspace: WorkspaceRef,
-): { workspace?: WorkspaceRef } {
-  return scope === "home" ? {} : { workspace };
 }

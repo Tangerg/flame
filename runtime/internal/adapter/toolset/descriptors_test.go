@@ -25,7 +25,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
@@ -78,12 +77,6 @@ func (allWiredToolResults) Fetch(context.Context, string, resultoffload.ID) (str
 type allWiredAgentMemorySearch struct{}
 
 func (allWiredAgentMemorySearch) Search(context.Context, string, string, int) ([]agentmemory.Item, error) {
-	return nil, nil
-}
-
-type allWiredConversationSearch struct{}
-
-func (allWiredConversationSearch) SearchTranscript(context.Context, string, int) ([]transcript.SearchHit, error) {
 	return nil, nil
 }
 
@@ -182,18 +175,17 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 	policy := testApprovalPolicy(t)
 	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
-		DefaultCWD:         t.TempDir(),
-		UserHome:           t.TempDir(),
-		SkillsUserDir:      t.TempDir(), // backs skill
-		PlanMode:           policy,
-		Plan:               rolePlanStore{},
-		GoalReader:         activeGoalStub{},
-		GoalReporter:       activeGoalStub{},
-		Schedules:          allWiredSchedules{},   // backs schedule
-		ToolResults:        allWiredToolResults{}, // backs read_tool_result
-		AgentMemorySearch:  allWiredAgentMemorySearch{},
-		ConversationSearch: allWiredConversationSearch{},
-		SkillProposals:     allWiredSkillProposals{},
+		DefaultCWD:        t.TempDir(),
+		UserHome:          t.TempDir(),
+		SkillsUserDir:     t.TempDir(), // backs skill
+		PlanMode:          policy,
+		Plan:              rolePlanStore{},
+		GoalReader:        activeGoalStub{},
+		GoalReporter:      activeGoalStub{},
+		Schedules:         allWiredSchedules{},   // backs schedule
+		ToolResults:       allWiredToolResults{}, // backs read_tool_result
+		AgentMemorySearch: allWiredAgentMemorySearch{},
+		SkillProposals:    allWiredSkillProposals{},
 		Online: OnlineConfig{
 			JinaAPIKey:       "test-jina",
 			TavilyAPIKey:     "test-tavily",

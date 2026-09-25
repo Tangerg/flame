@@ -159,8 +159,6 @@ Context Dock 是当前 session/cwd 的材料区。它不是永久抢戏的第三
 - memory / skills：围绕当前 cwd 展示。
 
 Global notifications belong to the sidebar status popover and never replace the active session or dock.
-Recipes are discovered and executed through the composer slash menu, whose active workspace catalog
-subscription refreshes on Runtime invalidation. A separate read-only recipe dock is not registered.
 
 Each contextual capability has one dock destination. Review owns changed-file navigation and diffs.
 The conversation owns command execution output; a read-only command history is not a terminal.
@@ -279,8 +277,7 @@ type ContextDockDestinationScope = "workspace" | "session" | "run";
 | Context launcher              | `WorkIndexItem`            | `session`   | `rail` handle into Context Dock                |
 | Files / File Tree             | `ContextDockDestination`   | `workspace` | Context Dock placement is implicit             |
 | Diff / Review                 | `ContextDockDestination`   | `workspace` | Context Dock placement is implicit             |
-| Grep / Symbol Search          | `ContextDockDestination`   | `workspace` | Context Dock placement is implicit             |
-| Skills / Recipes / Agent Docs | `ContextDockDestination`   | `workspace` | Context Dock placement is implicit             |
+| Skills                        | `ContextDockDestination`   | `workspace` | Context Dock placement is implicit             |
 | Memory                        | `ContextDockDestination`   | `workspace` | Context Dock placement is implicit             |
 | Tool Detail                   | `ContextDockDestination`   | `run`       | Context Dock placement is implicit             |
 | Timeline / run notes          | `ContextDockDestination`   | `session`   | Context Dock placement is implicit             |
@@ -451,7 +448,7 @@ information architecture。
 
 以下都是回归：
 
-- 把 Files / Diff / Memory / Skills / Recipes 放回左侧顶级。
+- 把 Files / Diff / Memory / Skills 放回左侧顶级。
 - 把 Project 做成带 opaque id 的主动资源，或维护 active project。
 - Work Index 直接拼业务数据源，而不是消费 navigation read model。
 - Context Dock 使用一份全局 active file / selected diff，切 session 后互相污染。

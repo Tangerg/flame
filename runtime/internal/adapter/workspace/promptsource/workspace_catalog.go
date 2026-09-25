@@ -11,21 +11,6 @@ import (
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
-// Recipes lists project recipes layered over one configured global
-// directory.
-type Recipes struct{ userDir string }
-
-// NewRecipes returns the workspace discovery adapter for recipes.
-func NewRecipes(userDir string) Recipes {
-	return Recipes{userDir: userDir}
-}
-
-var _ workspaceapp.RecipeLister = Recipes{}
-
-func (w Recipes) List(ctx context.Context, cwd string) ([]workspaceapp.Recipe, error) {
-	return listRecipes(ctx, RecipeDirectory(cwd), w.userDir)
-}
-
 // Skills lists project Skills layered over one configured user
 // directory.
 type Skills struct{ userDir string }

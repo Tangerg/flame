@@ -68,9 +68,7 @@ func TestProtocolPreservesUnsuccessfulApprovalResultsAcrossRestart(t *testing.T)
 					Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
 				})
 			})}
-			stores, err := persistence.Open(t.Context(), persistence.Config{
-				DataDirectory: home, DefaultWorkspacePath: home,
-			})
+			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
 			if err != nil {
 				t.Fatal(err)
 			}

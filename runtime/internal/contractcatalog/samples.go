@@ -99,7 +99,6 @@ func Samples() []Sample {
 		// says the stream lost its place.
 		{"rtevent.files-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
 		{"rtevent.skills-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
-		{"rtevent.recipes-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
 		{"rtevent.mcp-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
 		{"rtevent.schedules-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
 		{"rtevent.plan-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
@@ -132,7 +131,6 @@ func Samples() []Sample {
 		{"method.discover.resp.json", reflect.TypeFor[protocol.DiscoverResponse]()},
 		{"request.meta.json", reflect.TypeFor[protocol.RequestMeta]()},
 		{"schedule.json", reflect.TypeFor[protocol.Schedule]()},
-		{"recipe.json", reflect.TypeFor[protocol.Recipe]()},
 		{"skill.json", reflect.TypeFor[protocol.Skill]()},
 		{"managedSkill.json", reflect.TypeFor[protocol.ManagedSkill]()},
 		{"skillProposal.json", reflect.TypeFor[protocol.SkillProposal]()},
@@ -140,7 +138,6 @@ func Samples() []Sample {
 		{"mcpAuthorizationAttempt.json", reflect.TypeFor[protocol.MCPAuthorizationAttempt]()},
 		{"mcpServer.json", reflect.TypeFor[protocol.MCPServer]()},
 		{"hooksList.json", reflect.TypeFor[protocol.HooksListResult]()},
-		{"knowledgeEntry.json", reflect.TypeFor[protocol.KnowledgeEntry]()},
 		{"agentMemoryItem.json", reflect.TypeFor[protocol.AgentMemoryItem]()},
 		{"goal.json", reflect.TypeFor[protocol.Goal]()},
 		{"problemData.json", reflect.TypeFor[protocol.ProblemData]()},

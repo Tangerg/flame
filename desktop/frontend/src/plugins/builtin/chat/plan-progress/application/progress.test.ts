@@ -13,7 +13,7 @@ describe("activePlanState", () => {
   const material = SessionPlan.fromSnapshot("ses-1", 1n, { revision: 3, steps: plan });
 
   it("reports the plan while a step is still in flight", () => {
-    expect(activePlanState(material, true)).toMatchObject({
+    expect(activePlanState(material)).toMatchObject({
       visible: true,
       total: 3,
       done: 1,
@@ -22,15 +22,22 @@ describe("activePlanState", () => {
     });
   });
 
-  it("stays down when the current Run is no longer active", () => {
-    expect(activePlanState(material, false).visible).toBe(false);
-  });
-
-  it("stays down once the plan is finished", () => {
+  it("keeps a finished plan reviewable", () => {
     const done = SessionPlan.fromSnapshot("ses-1", 1n, {
       revision: 4,
       steps: [step(1, "done", "done")],
     });
-    expect(activePlanState(done, true).visible).toBe(false);
+    expect(activePlanState(done)).toMatchObject({
+      visible: true,
+      total: 1,
+      done: 1,
+      percent: 100,
+      current: undefined,
+    });
+  });
+
+  it("stays down when the session has no plan", () => {
+    const empty = SessionPlan.fromSnapshot("ses-1", 1n, { revision: 1, steps: [] });
+    expect(activePlanState(empty).visible).toBe(false);
   });
 });

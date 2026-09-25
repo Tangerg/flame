@@ -17,7 +17,7 @@ import (
 func TestFailedStreamObservationSurvivesRuntimeRestart(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, DefaultWorkspacePath: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
 	if err != nil {
 		t.Fatal(err)
 	}

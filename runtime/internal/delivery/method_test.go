@@ -23,11 +23,11 @@ func TestRegistryViewsAreSnapshots(t *testing.T) {
 	}
 	local.Errors[0] = protocol.ErrRunNotFound.Error()
 	local.CapabilityRules[0].When[0].Field = "corrupted"
-	local.CapabilityRules[0].Requires[0] = protocol.FeatureKnowledge
+	local.CapabilityRules[0].Requires[0] = protocol.FeatureSkills
 	got, ok := Contract().Lookup("sessions.update")
 	if !ok || slices.Equal(got.Errors, local.Errors) ||
 		got.CapabilityRules[0].When[0].Field == "corrupted" ||
-		slices.Equal(got.CapabilityRules[0].Requires, []string{protocol.FeatureKnowledge}) {
+		slices.Equal(got.CapabilityRules[0].Requires, []string{protocol.FeatureSkills}) {
 		t.Fatalf("catalog exposed mutable storage: %+v", got)
 	}
 

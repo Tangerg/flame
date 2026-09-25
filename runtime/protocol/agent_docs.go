@@ -1,8 +1,6 @@
 package protocol
 
-// AgentDocScope is where an AGENTS.md was discovered in the cwd→home hierarchy
-// It mirrors KnowledgeScope's values but is a distinct domain (left
-// separate rather than DRY-coupled — two scopes is under the rule-of-three).
+// AgentDocScope is where an AGENTS.md was discovered in the cwd→home hierarchy.
 type AgentDocScope string
 
 const (

@@ -91,7 +91,6 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	buildConfig.GoalReader = deps.goalReader
 	buildConfig.GoalReporter = deps.goalReporter
 	buildConfig.AgentMemorySearch = deps.agentMemoryReader
-	buildConfig.ConversationSearch = cfg.Stores.Transcript
 	builtToolset, err := toolset.Build(ctx, buildConfig)
 	if err != nil {
 		return environment, fmt.Errorf("runtime: build tools: %w", err)

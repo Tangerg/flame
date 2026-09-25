@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRpcClient, type RpcCallOptions, type RpcClient } from "./client";
 import { RpcError, RpcProtocolError, RpcTransportError } from "./errors";
 import { asRunId, asSegmentId, asSessionId } from "./ids";
-import { createMethods, type WorkspaceMethods } from "./methods";
+import { createMethods } from "./methods";
 import {
   createMutationJournal,
   MutationJournalOwnershipError,
@@ -169,17 +169,12 @@ describe("methods factory", () => {
     const workspace = createMethods({ call } as unknown as RpcClient).workspace({ path: "/repo" });
     const signal = new AbortController().signal;
     await workspace.diff.get(undefined, signal);
-    await workspace.files.search({ query: "name" }, signal);
     await workspace.files.read({ path: "a.ts" }, signal);
-    await workspace.recipes.list(signal);
     await workspace.hooks.list(signal);
     await workspace.skills.listDiscovered(signal);
     await workspace.skills.listProposals(signal);
-    await workspace.agentDocs.list(signal);
-    await workspace.knowledge.list(signal);
-    await workspace.knowledge.get("home", signal);
     await workspace.agentMemory.list(signal);
-    expect(call).toHaveBeenCalledTimes(11);
+    expect(call).toHaveBeenCalledTimes(6);
     for (const invocation of call.mock.calls) expect(invocation[2]).toEqual({ signal });
   });
 
@@ -670,31 +665,6 @@ describe("methods factory", () => {
     const second = call.mock.calls[1]?.[2] as RpcCallOptions | undefined;
     expect(second?.idempotencyKey).toBe(first?.idempotencyKey);
     vi.useRealTimers();
-  });
-
-  it("knowledge carries a workspace only for the scopes that live in one", async () => {
-    async function paramsOf(
-      send: (resources: WorkspaceMethods) => void,
-      method: "knowledge.get" | "knowledge.update",
-    ) {
-      const t = createMemoryTransport();
-      send(createMethods(createRpcClient(t)).workspace({ path: "/repo" }));
-      return (await waitForRequest(t, method)).params;
-    }
-
-    expect(await paramsOf((r) => void r.knowledge.get("home"), "knowledge.get")).toEqual({
-      scope: "home",
-    });
-    expect(await paramsOf((r) => void r.knowledge.get("cwd"), "knowledge.get")).toEqual({
-      scope: "cwd",
-      workspace: { path: "/repo" },
-    });
-    expect(
-      await paramsOf(
-        (r) => void r.knowledge.update({ scope: "home", content: "x", expectedRevision: "r1" }),
-        "knowledge.update",
-      ),
-    ).toEqual({ scope: "home", content: "x", expectedRevision: "r1" });
   });
 
   it("sessions.list sends sessions.list with optional query and returns a Page", async () => {

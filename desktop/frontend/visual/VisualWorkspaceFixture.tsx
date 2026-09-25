@@ -14,18 +14,14 @@ import { fx } from "./fixtureStyles";
 import { type as typeStep } from "@/styles/tokens.stylex";
 
 const STATE_LABELS: Record<VisualWorkspaceState, string> = {
-  "dock-light": "Plan workspace",
+  "dock-light": "Files workspace",
   "dock-review": "Diff review",
-  "dock-inbox": "Inbox",
   "dock-timeline": "Timeline",
   "dock-runs": "Run tree",
   "dock-subagents": "Subagents",
   "dock-diagnostics": "Diagnostics",
   "dock-files": "Files",
-  "dock-search": "Search",
-  "dock-agent-docs": "Agent docs",
   "dock-skills": "Skills",
-  "dock-knowledge": "Knowledge",
   "dock-agent-memory": "Agent memory",
   "dock-feature-off": "Features off",
   "dock-file": "File viewer",

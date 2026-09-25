@@ -78,14 +78,6 @@ export interface AgentMemoryEntry {
   updatedAt: string;
 }
 
-export type WorkspaceKnowledgeScope = "cwd" | "projectRoot" | "home";
-
-export interface WorkspaceAgentDoc {
-  path: string;
-  title: string;
-  scope: WorkspaceKnowledgeScope;
-}
-
 export interface WorkspaceDiffQuery {
   cwd?: string;
   path?: string;
@@ -121,36 +113,6 @@ export interface WorkspaceDiff {
   truncated?: boolean;
 }
 
-export interface WorkspaceGrepQuery {
-  query: string;
-  cwd?: string;
-  path?: string;
-  limit?: number;
-}
-
-export interface WorkspaceGrepMatch {
-  path: string;
-  lineNumber: number;
-  text: string;
-}
-
-export interface WorkspaceGrepResult {
-  matches: WorkspaceGrepMatch[];
-  total: number;
-}
-
-export interface WorkspaceKnowledgeQuery {
-  cwd?: string;
-}
-
-export interface WorkspaceKnowledgeEntry {
-  path: string;
-  scope: WorkspaceKnowledgeScope;
-  content: string;
-  revision: string;
-  updatedAt?: string;
-}
-
 export interface WorkspaceListFilesQuery {
   cwd?: string;
   path?: string;
@@ -179,10 +141,6 @@ export interface WorkspaceFileContent {
   truncated?: boolean;
 }
 
-export interface WorkspaceRecipesQuery {
-  cwd?: string;
-}
-
 export const WORKSPACE_PROJECTS_KEY = "projects";
 export const WORKSPACE_FILES_CHANGED_KEY = "files-changed";
 export const WORKSPACE_DIFF_KEY = "diff";
@@ -191,12 +149,8 @@ export const WORKSPACE_SKILL_DETAIL_KEY = "skill-detail";
 export const WORKSPACE_MANAGED_SKILLS_KEY = "managed-skills";
 export const WORKSPACE_SKILL_PROPOSALS_KEY = "skill-proposals";
 export const WORKSPACE_AGENT_MEMORY_KEY = "agent-memory";
-export const WORKSPACE_KNOWLEDGE_KEY = "knowledge";
-export const WORKSPACE_GREP_KEY = "grep";
-export const WORKSPACE_AGENT_DOCS_KEY = "agent-docs";
 export const WORKSPACE_LIST_FILES_KEY = "list-files";
 export const WORKSPACE_READ_FILE_KEY = "read-file";
-export const WORKSPACE_RECIPES_KEY = "recipes";
 
 export const useWorkspaceProjects =
   createDataQuery<WorkspaceProjectSummary[]>(WORKSPACE_PROJECTS_KEY);
@@ -207,10 +161,6 @@ export const useWorkspaceFileChanges = createParameterizedDataQuery<
 export const useWorkspaceDiff = createParameterizedDataQuery<WorkspaceDiffQuery, WorkspaceDiff>(
   WORKSPACE_DIFF_KEY,
 );
-export const useWorkspaceGrep = createParameterizedDataQuery<
-  WorkspaceGrepQuery,
-  WorkspaceGrepResult
->(WORKSPACE_GREP_KEY);
 export const useWorkspaceSkills = createParameterizedDataQuery<
   WorkspaceCatalogQuery,
   WorkspaceSkillDiscovery
@@ -227,14 +177,6 @@ export const useSkillProposals = createParameterizedDataQuery<
 export const useAgentMemory = createParameterizedDataQuery<AgentMemoryQuery, AgentMemoryEntry[]>(
   WORKSPACE_AGENT_MEMORY_KEY,
 );
-export const useWorkspaceKnowledge = createParameterizedDataQuery<
-  WorkspaceKnowledgeQuery,
-  WorkspaceKnowledgeEntry[]
->(WORKSPACE_KNOWLEDGE_KEY);
-export const useWorkspaceAgentDocs = createParameterizedDataQuery<
-  WorkspaceCatalogQuery,
-  WorkspaceAgentDoc[]
->(WORKSPACE_AGENT_DOCS_KEY);
 export const useWorkspaceListFiles = createParameterizedDataQuery<
   WorkspaceListFilesQuery,
   WorkspaceFileEntry[]

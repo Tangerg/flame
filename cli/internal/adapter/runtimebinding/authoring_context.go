@@ -7,13 +7,10 @@ import (
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 type authoringContextBinding interface {
 	ListAgentDocs(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.Page[protocol.AgentDoc], error)
-	ListRecipes(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.Page[protocol.Recipe], error)
 }
 
 type AuthoringContext struct{ runtime *Connection }
@@ -62,43 +59,6 @@ func agentDocumentRenderPhase(scope protocol.AgentDocScope) int {
 	default:
 		return -1
 	}
-}
-
-func (a *AuthoringContext) Recipes(ctx context.Context, workspacePath string) ([]workspace.AuthoringRecipe, error) {
-	r := a.runtime
-	query, err := authoringWorkspaceQuery(workspacePath)
-	if err != nil {
-		return nil, err
-	}
-	page, err := r.authoringContext.ListRecipes(ctx, query, r.callOptions())
-	if err != nil {
-		return nil, classifyError(err)
-	}
-	values, err := requireCompletePage("list recipes", page)
-	if err != nil {
-		return nil, err
-	}
-	recipes, err := projectUniqueValues("list recipes", values, func(value protocol.Recipe) workspace.AuthoringRecipe {
-		return workspace.AuthoringRecipe{
-			Name: value.Name, Description: value.Description, ArgumentHint: value.ArgumentHint,
-			Body: value.Body, Scope: value.Scope, Source: value.Source,
-		}
-	}, func(recipe workspace.AuthoringRecipe) string {
-		return recipe.Name
-	})
-	if err != nil {
-		return nil, err
-	}
-	for index := 1; index < len(recipes); index++ {
-		if recipes[index].Name < recipes[index-1].Name {
-			return nil, runtimeContractViolation(
-				"list recipes returned name %q out of catalog order after %q",
-				recipes[index].Name,
-				recipes[index-1].Name,
-			)
-		}
-	}
-	return recipes, nil
 }
 
 func authoringWorkspaceQuery(workspace string) (protocol.WorkspaceQuery, error) {

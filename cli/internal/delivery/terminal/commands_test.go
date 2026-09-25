@@ -171,7 +171,6 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		protocol.FeatureMCP:         {},
 		protocol.FeatureSchedules:   {},
 		protocol.FeatureAgentMemory: {},
-		protocol.FeatureKnowledge:   {},
 	}
 	profile := terminalProfileWithFeatures(t, features)
 	application := &app{
@@ -181,7 +180,6 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		mcp:            newMCPServiceStub(),
 		schedules:      newScheduleServiceStub(),
 		agentMemory:    newAgentMemoryServiceStub(),
-		knowledge:      newKnowledgeServiceStub(),
 	}
 	checks := map[string]func(*app) CommandAvailability{
 		protocol.FeatureGoals:       availableWithGoals,
@@ -189,7 +187,6 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		protocol.FeatureMCP:         availableWithMCP,
 		protocol.FeatureSchedules:   availableWithSchedules,
 		protocol.FeatureAgentMemory: availableWithAgentMemory,
-		protocol.FeatureKnowledge:   availableWithKnowledge,
 	}
 	for feature, check := range checks {
 		if availability := check(application); availability.Enabled() || !strings.Contains(availability.Reason(), "was not negotiated") {
@@ -267,7 +264,7 @@ func TestBuiltinCommandsOwnTheirCategoryAndAvailabilityPolicy(t *testing.T) {
 		commandCategoryComposer:    {"attach", "detach", "attachments", "stash", "stashes", "stash-apply", "stash-delete", "editor"},
 		commandCategoryRuntime:     {"tools", "tool-invoke", "model", "models", "usage", "roles", "utility", "embedding", "providers", "provider-test", "provider-config", "approval", "status", "rules", "rule-delete", "steer", "goal", "goal-start", "goal-update", "goal-clear", "goal-stop", "goal-resume", "hooks", "hooks-trust", "hooks-revoke"},
 		commandCategoryAutomation:  {"schedules", "schedule-create", "schedule-edit", "schedule-enable", "schedule-disable", "schedule-run", "schedule-delete"},
-		commandCategoryContext:     {"agent-docs", "recipes", "recipe", "memory", "memory-add", "memory-edit", "memory-pin", "memory-unpin", "memory-approve", "memory-reject", "memory-delete", "knowledge", "knowledge-read", "knowledge-edit", "skills", "skill-library", "skill-proposals", "skill-archive", "skill-restore", "skill-approve", "skill-reject"},
+		commandCategoryContext:     {"agent-docs", "memory", "memory-add", "memory-edit", "memory-pin", "memory-unpin", "memory-approve", "memory-reject", "memory-delete", "skills", "skill-library", "skill-proposals", "skill-archive", "skill-restore", "skill-approve", "skill-reject"},
 		commandCategoryConnections: {"mcp", "mcp-tools", "mcp-create", "mcp-edit", "mcp-probe", "mcp-delete", "mcp-reconnect", "mcp-auth"},
 		commandCategoryWorkspace:   {"workspaces", "changes", "diff", "preview", "grep", "browse", "read"},
 		commandCategoryExtensions:  {"plugins", "reload", "unload"},
@@ -281,12 +278,11 @@ func TestBuiltinCommandsOwnTheirCategoryAndAvailabilityPolicy(t *testing.T) {
 		"steer": true, "goal": true, "goal-start": true, "goal-update": true, "goal-clear": true, "goal-stop": true, "goal-resume": true,
 		"skills": true, "skill-library": true, "skill-proposals": true, "skill-archive": true, "skill-restore": true, "skill-approve": true, "skill-reject": true,
 		"memory": true, "memory-add": true, "memory-edit": true, "memory-pin": true, "memory-unpin": true, "memory-approve": true, "memory-reject": true, "memory-delete": true,
-		"knowledge": true, "knowledge-read": true, "knowledge-edit": true,
 		"mcp": true, "mcp-tools": true, "mcp-create": true, "mcp-edit": true, "mcp-probe": true, "mcp-delete": true, "mcp-reconnect": true, "mcp-auth": true,
 		"schedules": true, "schedule-create": true, "schedule-edit": true, "schedule-enable": true, "schedule-disable": true, "schedule-run": true, "schedule-delete": true,
 		"tools": true, "tool-invoke": true,
-		"agent-docs": true, "recipes": true, "recipe": true,
-		"hooks": true, "hooks-trust": true, "hooks-revoke": true,
+		"agent-docs": true,
+		"hooks":      true, "hooks-trust": true, "hooks-revoke": true,
 		"feedback": true,
 	}
 

@@ -21,7 +21,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
@@ -136,14 +135,7 @@ type workspaceVCSUseCases interface {
 type workspaceDiscoveryUseCases interface {
 	AgentDocs(ctx context.Context, cwd string) ([]workspaceapp.AgentDoc, error)
 	Workspaces(ctx context.Context) ([]workspaceapp.Summary, error)
-	Recipes(ctx context.Context, cwd string) ([]workspaceapp.Recipe, error)
 	Resolve(path string) (workspaceapp.Resolved, error)
-}
-
-type workspaceKnowledgeUseCases interface {
-	Entries(ctx context.Context, cwd string) ([]knowledge.Entry, error)
-	Read(ctx context.Context, scope knowledge.Scope, cwd string) (knowledge.Entry, error)
-	Update(ctx context.Context, scope knowledge.Scope, cwd, expectedRevision, content string) (knowledge.Entry, error)
 }
 
 type workspaceSkillUseCases interface {

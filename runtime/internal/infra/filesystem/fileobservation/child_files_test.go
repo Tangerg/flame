@@ -41,9 +41,9 @@ func TestWatchChildFilesObservesDynamicExactFiles(t *testing.T) {
 }
 
 func TestWatchChildFilesObservesDirectMarkdownAndAliases(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "recipes")
+	root := filepath.Join(t.TempDir(), "documents")
 	events := make(chan []string, 16)
-	watcher, err := WatchChildFiles([]ChildFileTarget{{Key: "recipes", Path: root, Extension: ".md", MaxEntries: 16, MaxBytes: testMaxBytes}}, func(keys []string) { events <- keys }, discardOutage)
+	watcher, err := WatchChildFiles([]ChildFileTarget{{Key: "documents", Path: root, Extension: ".md", MaxEntries: 16, MaxBytes: testMaxBytes}}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestWatchChildFilesObservesDirectMarkdownAndAliases(t *testing.T) {
 		if err := os.WriteFile(file, []byte(body), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		assertObservedKey(t, events, "recipes")
+		assertObservedKey(t, events, "documents")
 	}
 	external := filepath.Join(t.TempDir(), "shared.md")
 	if err := os.WriteFile(external, []byte("shared"), 0o600); err != nil {
@@ -65,23 +65,23 @@ func TestWatchChildFilesObservesDirectMarkdownAndAliases(t *testing.T) {
 	if err := os.Symlink(external, filepath.Join(root, "shared.md")); err != nil {
 		t.Fatal(err)
 	}
-	assertObservedKey(t, events, "recipes")
+	assertObservedKey(t, events, "documents")
 	if err := os.WriteFile(external, []byte("updated"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	assertObservedKey(t, events, "recipes")
+	assertObservedKey(t, events, "documents")
 	if err := os.Remove(external); err != nil {
 		t.Fatal(err)
 	}
-	assertObservedKey(t, events, "recipes")
+	assertObservedKey(t, events, "documents")
 	if err := os.WriteFile(external, []byte("restored"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	assertObservedKey(t, events, "recipes")
+	assertObservedKey(t, events, "documents")
 	if err := os.Remove(file); err != nil {
 		t.Fatal(err)
 	}
-	assertObservedKey(t, events, "recipes")
+	assertObservedKey(t, events, "documents")
 }
 
 func TestWatchChildFilesRequiresPositiveHardLimits(t *testing.T) {

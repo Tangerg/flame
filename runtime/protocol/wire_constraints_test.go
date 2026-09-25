@@ -305,35 +305,6 @@ func TestAgentMemoryTargetIsUnambiguous(t *testing.T) {
 	)
 }
 
-func TestKnowledgeTargetIsUnambiguous(t *testing.T) {
-	t.Parallel()
-
-	workspace := &WorkspaceRef{Path: "/repo"}
-	for _, request := range []WireValidator{
-		GetKnowledgeRequest{Scope: KnowledgeScopeCWD, Workspace: workspace},
-		GetKnowledgeRequest{Scope: KnowledgeScopeProjectRoot, Workspace: workspace},
-		GetKnowledgeRequest{Scope: KnowledgeScopeHome},
-		UpdateKnowledgeRequest{Scope: KnowledgeScopeCWD, Workspace: workspace, ExpectedRevision: "rev-1"},
-		UpdateKnowledgeRequest{Scope: KnowledgeScopeHome, ExpectedRevision: "rev-1"},
-	} {
-		if err := request.ValidateWire(); err != nil {
-			t.Errorf("ValidateWire rejected valid target %T: %v", request, err)
-		}
-	}
-
-	for _, test := range []struct {
-		shape   string
-		request WireValidator
-	}{
-		{shape: "GetKnowledgeRequest", request: GetKnowledgeRequest{Scope: KnowledgeScopeCWD}},
-		{shape: "GetKnowledgeRequest", request: GetKnowledgeRequest{Scope: KnowledgeScopeProjectRoot}},
-		{shape: "GetKnowledgeRequest", request: GetKnowledgeRequest{Scope: KnowledgeScopeHome, Workspace: workspace}},
-		{shape: "UpdateKnowledgeRequest", request: UpdateKnowledgeRequest{Scope: KnowledgeScopeHome, Workspace: workspace, ExpectedRevision: "rev-1"}},
-	} {
-		assertConstraintField(t, test.request.ValidateWire(), test.shape, "workspace")
-	}
-}
-
 func TestRollbackFileRestorationRequiresRunBoundary(t *testing.T) {
 	t.Parallel()
 
@@ -359,7 +330,6 @@ func TestAuthoringContextOutputsAreComplete(t *testing.T) {
 
 	for _, value := range []WireValidator{
 		AgentDoc{Path: "/repo/AGENTS.md", Scope: AgentDocScopeProjectRoot},
-		Recipe{Name: "review", Body: "Review $ARGUMENTS", Scope: RecipeScopeProject, Source: "/repo/review.md"},
 	} {
 		if err := value.ValidateWire(); err != nil {
 			t.Errorf("ValidateWire rejected complete %T: %v", value, err)
@@ -372,9 +342,6 @@ func TestAuthoringContextOutputsAreComplete(t *testing.T) {
 		value WireValidator
 	}{
 		{shape: "AgentDoc", field: "path", value: AgentDoc{Path: " \t", Scope: AgentDocScopeHome}},
-		{shape: "Recipe", field: "name", value: Recipe{Body: "body", Scope: RecipeScopeGlobal, Source: "/recipe.md"}},
-		{shape: "Recipe", field: "body", value: Recipe{Name: "review", Body: " \n\t", Scope: RecipeScopeGlobal, Source: "/recipe.md"}},
-		{shape: "Recipe", field: "source", value: Recipe{Name: "review", Body: "body", Scope: RecipeScopeGlobal}},
 	} {
 		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
 	}

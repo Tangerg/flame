@@ -89,8 +89,8 @@ func TestWatchObservesMissingParentsReplacementAndRemoval(t *testing.T) {
 
 func TestWatchObservesPhysicalSymlinkTargetAndCloseJoins(t *testing.T) {
 	root := t.TempDir()
-	target := filepath.Join(root, "knowledge-target.md")
-	alias := filepath.Join(root, "FLAME.md")
+	target := filepath.Join(root, "document-target.md")
+	alias := filepath.Join(root, "AGENTS.md")
 	if err := os.WriteFile(target, []byte("one"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestWatchObservesPhysicalSymlinkTargetAndCloseJoins(t *testing.T) {
 	}
 	events := make(chan []string, 8)
 	watcher, err := Watch([]Target{{
-		Key: "knowledge", Path: alias, Boundary: root, MaxBytes: testMaxBytes,
+		Key: "document", Path: alias, Boundary: root, MaxBytes: testMaxBytes,
 	}}, func(keys []string) {
 		events <- keys
 	}, discardOutage)
@@ -110,7 +110,7 @@ func TestWatchObservesPhysicalSymlinkTargetAndCloseJoins(t *testing.T) {
 	if err := os.WriteFile(target, []byte("two"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	assertObservedKey(t, events, "knowledge")
+	assertObservedKey(t, events, "document")
 	if err := watcher.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestFingerprintPhysicalTargetRejectsEscapingReplacement(t *testing.T) {
 	if err := os.Mkdir(directory, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	targetPath := filepath.Join(directory, "FLAME.md")
+	targetPath := filepath.Join(directory, "AGENTS.md")
 	if err := os.WriteFile(targetPath, []byte("inside"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -154,14 +154,14 @@ func TestFingerprintPhysicalTargetRejectsEscapingReplacement(t *testing.T) {
 		t.Fatal(err)
 	}
 	outside := t.TempDir()
-	if err := os.WriteFile(filepath.Join(outside, "FLAME.md"), []byte("outside"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(outside, "AGENTS.md"), []byte("outside"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(outside, directory); err != nil {
 		t.Skipf("symlink unsupported: %v", err)
 	}
 	candidate := target{
-		key: "knowledge", path: targetPath, physicalBoundary: physicalBoundary, maxBytes: testMaxBytes,
+		key: "document", path: targetPath, physicalBoundary: physicalBoundary, maxBytes: testMaxBytes,
 	}
 	if _, _, err := fingerprintPhysicalTarget(newFingerprintEncoder(), candidate, physical, roots); err == nil {
 		t.Fatal("replaced target escaped its observation boundary")
@@ -170,8 +170,8 @@ func TestFingerprintPhysicalTargetRejectsEscapingReplacement(t *testing.T) {
 
 func TestAcceptRefreshesOnlyTheExactIdentity(t *testing.T) {
 	root := t.TempDir()
-	first := filepath.Join(root, "first", "FLAME.md")
-	second := filepath.Join(root, "second", "FLAME.md")
+	first := filepath.Join(root, "first", "AGENTS.md")
+	second := filepath.Join(root, "second", "AGENTS.md")
 	for _, path := range []string{first, second} {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
@@ -182,8 +182,8 @@ func TestAcceptRefreshesOnlyTheExactIdentity(t *testing.T) {
 	}
 	events := make(chan []string, 4)
 	watcher, err := Watch([]Target{
-		{Key: "knowledge", Path: first, Boundary: filepath.Dir(first), MaxBytes: testMaxBytes},
-		{Key: "knowledge", Path: second, Boundary: filepath.Dir(second), MaxBytes: testMaxBytes},
+		{Key: "document", Path: first, Boundary: filepath.Dir(first), MaxBytes: testMaxBytes},
+		{Key: "document", Path: second, Boundary: filepath.Dir(second), MaxBytes: testMaxBytes},
 	}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatal(err)
@@ -195,10 +195,10 @@ func TestAcceptRefreshesOnlyTheExactIdentity(t *testing.T) {
 	if err := os.WriteFile(second, []byte("external write"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := watcher.Accept([]string{"knowledge"}, []string{first}); err != nil {
+	if err := watcher.Accept([]string{"document"}, []string{first}); err != nil {
 		t.Fatal(err)
 	}
-	assertObservedKey(t, events, "knowledge")
+	assertObservedKey(t, events, "document")
 	select {
 	case keys := <-events:
 		t.Fatalf("accepted identity produced a duplicate callback: %v", keys)
@@ -208,13 +208,13 @@ func TestAcceptRefreshesOnlyTheExactIdentity(t *testing.T) {
 
 func TestWatchSuppressesMetadataNoiseWithoutSemanticChange(t *testing.T) {
 	root := t.TempDir()
-	target := filepath.Join(root, "FLAME.md")
+	target := filepath.Join(root, "AGENTS.md")
 	if err := os.WriteFile(target, []byte("stable"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	events := make(chan []string, 2)
 	watcher, err := Watch([]Target{{
-		Key: "knowledge", Path: target, Boundary: root, MaxBytes: testMaxBytes,
+		Key: "document", Path: target, Boundary: root, MaxBytes: testMaxBytes,
 	}}, func(keys []string) {
 		events <- keys
 	}, discardOutage)
@@ -241,13 +241,13 @@ func TestWatchSuppressesMetadataNoiseWithoutSemanticChange(t *testing.T) {
 
 func TestWatchBoundsOversizedContentFingerprints(t *testing.T) {
 	root := t.TempDir()
-	target := filepath.Join(root, "FLAME.md")
+	target := filepath.Join(root, "AGENTS.md")
 	if err := os.WriteFile(target, []byte("oversized"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	events := make(chan []string, 2)
 	watcher, err := Watch([]Target{{
-		Key: "knowledge", Path: target, Boundary: root, MaxBytes: 1,
+		Key: "document", Path: target, Boundary: root, MaxBytes: 1,
 	}}, func(keys []string) { events <- keys }, discardOutage)
 	if err != nil {
 		t.Fatal(err)
@@ -256,15 +256,15 @@ func TestWatchBoundsOversizedContentFingerprints(t *testing.T) {
 	if err := os.WriteFile(target, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	assertObservedKey(t, events, "knowledge")
+	assertObservedKey(t, events, "document")
 }
 
 func TestCanonicalTargetsKeepBoundaryPolicyInIdentity(t *testing.T) {
 	root := t.TempDir()
-	path := filepath.Join(root, "FLAME.md")
+	path := filepath.Join(root, "AGENTS.md")
 	targets, err := canonicalTargets([]Target{
-		{Key: "knowledge", Path: path, Boundary: root, MaxBytes: testMaxBytes},
-		{Key: "knowledge", Path: path, Boundary: filepath.Dir(root), MaxBytes: testMaxBytes},
+		{Key: "document", Path: path, Boundary: root, MaxBytes: testMaxBytes},
+		{Key: "document", Path: path, Boundary: filepath.Dir(root), MaxBytes: testMaxBytes},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -279,10 +279,10 @@ func TestCanonicalTargetsKeepBoundaryPolicyInIdentity(t *testing.T) {
 
 func TestCanonicalTargetsValidateEveryDuplicateCandidate(t *testing.T) {
 	root := t.TempDir()
-	path := filepath.Join(root, "FLAME.md")
+	path := filepath.Join(root, "AGENTS.md")
 	_, err := canonicalTargets([]Target{
-		{Key: "knowledge", Path: path, Boundary: root, MaxBytes: testMaxBytes},
-		{Key: "knowledge", Path: path, Boundary: "relative", MaxBytes: testMaxBytes},
+		{Key: "document", Path: path, Boundary: root, MaxBytes: testMaxBytes},
+		{Key: "document", Path: path, Boundary: "relative", MaxBytes: testMaxBytes},
 	})
 	if err == nil {
 		t.Fatal("canonical targets accepted an invalid boundary hidden behind a duplicate")
@@ -380,7 +380,7 @@ func discardOutage(error) {}
 func TestObserverRequiresItsOutageReporter(t *testing.T) {
 	root := t.TempDir()
 	if _, err := Watch(
-		[]Target{{Key: "knowledge", Path: root, MaxBytes: testMaxBytes}},
+		[]Target{{Key: "document", Path: root, MaxBytes: testMaxBytes}},
 		func([]string) {}, nil,
 	); err == nil {
 		t.Fatal("Watch accepted an observation with no outage reporter")

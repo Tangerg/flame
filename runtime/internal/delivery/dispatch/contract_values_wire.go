@@ -44,7 +44,6 @@ func registerValueConstraints(s *Shapes) {
 	registerProviderValues(s)
 	registerModelValues(s)
 	registerToolValues(s)
-	registerKnowledgeValues(s)
 	registerAuthoringContextValues(s)
 	registerAgentMemoryValues(s)
 	registerScheduleValues(s)
@@ -768,30 +767,11 @@ func registerToolValues(s *Shapes) {
 	nonEmpty[protocol.InvokeToolRequest](s, "name")
 }
 
-func registerKnowledgeValues(s *Shapes) {
-	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.KnowledgeEntry](),
-		Constraints: []FieldConstraint{
-			{Field: "path", Kind: ConstraintPattern, Value: `\S`},
-			{Field: "revision", Kind: ConstraintNonEmpty},
-		},
-	})
-	nonEmpty[protocol.UpdateKnowledgeRequest](s, "expectedRevision")
-}
-
 func registerAuthoringContextValues(s *Shapes) {
 	const nonBlankText = `\S`
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.AgentDoc](),
 		Constraints: []FieldConstraint{{Field: "path", Kind: ConstraintPattern, Value: nonBlankText}},
-	})
-	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.Recipe](),
-		Constraints: []FieldConstraint{
-			{Field: "name", Kind: ConstraintPattern, Value: nonBlankText},
-			{Field: "body", Kind: ConstraintPattern, Value: nonBlankText},
-			{Field: "source", Kind: ConstraintPattern, Value: nonBlankText},
-		},
 	})
 }
 

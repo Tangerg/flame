@@ -67,10 +67,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	stores, err := persistence.Open(ctx, persistence.Config{
-		DataDirectory:        cfg.DataDirectory,
-		DefaultWorkspacePath: cfg.DefaultWorkspacePath,
-	})
+	stores, err := persistence.Open(ctx, persistence.Config{DataDirectory: cfg.DataDirectory})
 	if err != nil {
 		return nil, config.Settings{}, err
 	}

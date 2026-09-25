@@ -83,14 +83,7 @@ test("a renderer that forbids the break is caught", async ({ page }) => {
   expect((await spills(page, "main")).length).toBeGreaterThan(0);
 });
 
-const DOCK_STATES = [
-  "dock-light",
-  "dock-review",
-  "dock-inbox",
-  "dock-agent-memory",
-  "dock-knowledge",
-  "dock-timeline",
-];
+const DOCK_STATES = ["dock-light", "dock-review", "dock-agent-memory", "dock-timeline"];
 
 test("a dock view keeps an unbreakable run inside its pane", async ({ page }) => {
   test.setTimeout(DOCK_STATES.length * 20_000 + 30_000);

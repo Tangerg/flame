@@ -40,7 +40,6 @@ const (
 	mcpAuthorizationOperation     operationSlot = "mcp-authorization"
 	scheduleOperation             operationSlot = "schedule"
 	agentMemoryOperation          operationSlot = "agent-memory"
-	knowledgeOperation            operationSlot = "knowledge"
 	diagnosticToolOperation       operationSlot = "diagnostic-tool"
 	authoringContextOperation     operationSlot = "authoring-context"
 	hookOperation                 operationSlot = "hook"

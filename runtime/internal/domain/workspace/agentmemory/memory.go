@@ -1,9 +1,9 @@
 // Package agentmemory defines Flame's agent-maintained long-term memory: the
 // durable facts the agent mines from conversations, folded into addressable
-// memory items. It is distinct from the human-authored FLAME.md cascade
-// (package knowledge) — that stays a user-owned file the agent never writes;
-// this is agent-owned, curated from an append-only fact ledger into discrete,
-// individually addressable items.
+// memory items. It is distinct from the human-authored AGENTS.md cascade —
+// that stays a user-owned file the agent never writes; this is agent-owned,
+// curated from an append-only fact ledger into discrete, individually
+// addressable items.
 //
 // Which items get injected into an agent prompt, and in what order, is a prompt
 // composition policy. This domain owns the durable memory values, lifecycle,

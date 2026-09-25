@@ -15,7 +15,7 @@ import (
 
 func TestObserveExternalChangesIgnoresLocalAndReportsOtherRuntimeCommit(t *testing.T) {
 	root := t.TempDir()
-	config := Config{DataDirectory: filepath.Join(root, "data"), DefaultWorkspacePath: root}
+	config := Config{DataDirectory: filepath.Join(root, "data")}
 	first, err := Open(t.Context(), config)
 	if err != nil {
 		t.Fatalf("Open first: %v", err)
@@ -62,7 +62,7 @@ func TestObserveExternalChangesIgnoresLocalAndReportsOtherRuntimeCommit(t *testi
 }
 
 func TestExternalChangeObserverReportsDatabaseFailure(t *testing.T) {
-	bundle, err := Open(t.Context(), Config{DataDirectory: t.TempDir(), DefaultWorkspacePath: t.TempDir()})
+	bundle, err := Open(t.Context(), Config{DataDirectory: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

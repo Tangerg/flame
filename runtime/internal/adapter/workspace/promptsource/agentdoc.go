@@ -1,7 +1,7 @@
 // Package promptsource is the filesystem adapter for the prompt-source domains:
-// it discovers the AGENTS.md, skill, and recipe files a session exposes, walking
+// it discovers the AGENTS.md and skill files a session exposes, walking
 // the project tree and the well-known user-level directories. The precedence,
-// render, and parse RULES are the domains' (agentdoc / skills / recipes); the
+// render, and parse RULES are the domains' (agentdoc / skills); the
 // file discovery and reads are here.
 package promptsource
 

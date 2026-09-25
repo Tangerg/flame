@@ -3,7 +3,6 @@ import { installAbandonedDraftCleanup } from "../adapters/abandonedDraftCleanup"
 import { installAgentDefaultSessionPort } from "../adapters/agentDefaultSessionPort";
 import { installAgentRuntimeGateway } from "../adapters/agentRuntimeGateway";
 import { installAgentStatePorts } from "../adapters/agentStatePorts";
-import { contributeRuntimePendingWork } from "../adapters/runtimePendingWorkProvider";
 import { installInterruptResponseCoordinator } from "../application/hitl/interruptResponseCoordinator";
 import {
   getActiveSessionId,
@@ -19,7 +18,6 @@ export default definePlugin({
   requires: { runtime: RUNTIME_STREAM },
   provides: { sessions: AGENT_SESSIONS },
   setup(ctx) {
-    contributeRuntimePendingWork(ctx);
     const disposeState = installAgentStatePorts();
     const disposeDefaultSession = installAgentDefaultSessionPort();
     const runtimeGateway = installAgentRuntimeGateway();

@@ -14,15 +14,13 @@ const contextProvenanceMetadataKey = "scope/context_provenance"
 type contextSourceKind string
 
 const (
-	contextSourceBasePrompt       contextSourceKind = "base_prompt"
-	contextSourceUserKnowledge    contextSourceKind = "user_knowledge"
-	contextSourcePinnedMemory     contextSourceKind = "pinned_memory"
-	contextSourceProjectKnowledge contextSourceKind = "project_knowledge"
-	contextSourceAgentDocument    contextSourceKind = "agent_document"
-	contextSourceSessionPlan      contextSourceKind = "session_plan"
-	contextSourceLifecycleHook    contextSourceKind = "lifecycle_hook"
-	contextSourceRecalledMemory   contextSourceKind = "recalled_memory"
-	contextSourceSessionGoal      contextSourceKind = "session_goal"
+	contextSourceBasePrompt     contextSourceKind = "base_prompt"
+	contextSourcePinnedMemory   contextSourceKind = "pinned_memory"
+	contextSourceAgentDocument  contextSourceKind = "agent_document"
+	contextSourceSessionPlan    contextSourceKind = "session_plan"
+	contextSourceLifecycleHook  contextSourceKind = "lifecycle_hook"
+	contextSourceRecalledMemory contextSourceKind = "recalled_memory"
+	contextSourceSessionGoal    contextSourceKind = "session_goal"
 )
 
 type contextPurpose string
@@ -44,8 +42,6 @@ func (c contextSourceKind) purpose() contextPurpose {
 		contextSourceSessionPlan:
 		return contextPurposeData
 	case contextSourceBasePrompt,
-		contextSourceUserKnowledge,
-		contextSourceProjectKnowledge,
 		contextSourceAgentDocument,
 		contextSourceLifecycleHook:
 		return contextPurposeInstruction

@@ -55,7 +55,7 @@ export { StatusDot } from "./status-dot";
 export { toneInk } from "./tone-ink";
 export { gap, vocab } from "./vocabulary";
 export { chevron } from "./chevron";
-export { StepMark, StepRow } from "./step-row";
+export { StepMark } from "./step-row";
 export { Surface } from "./surface";
 export { Switch } from "./switch";
 export { RichTooltip, Tooltip, TooltipProvider } from "./tooltip";

@@ -5,29 +5,19 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 func TestOpenRequiresAndUsesExplicitProcessPaths(t *testing.T) {
-	if _, err := Open(t.Context(), Config{DefaultWorkspacePath: t.TempDir()}); err == nil {
+	if _, err := Open(t.Context(), Config{}); err == nil {
 		t.Fatal("Open accepted an empty data directory")
 	}
-	if _, err := Open(t.Context(), Config{DataDirectory: t.TempDir()}); err == nil {
-		t.Fatal("Open accepted an empty default workspace path")
-	}
-	if _, err := Open(t.Context(), Config{DataDirectory: "relative-data", DefaultWorkspacePath: t.TempDir()}); err == nil {
+	if _, err := Open(t.Context(), Config{DataDirectory: "relative-data"}); err == nil {
 		t.Fatal("Open accepted a relative data directory")
-	}
-	if _, err := Open(t.Context(), Config{DataDirectory: t.TempDir(), DefaultWorkspacePath: "relative-workspace"}); err == nil {
-		t.Fatal("Open accepted a relative default workspace path")
 	}
 
 	dataDirectory := filepath.Join(t.TempDir(), "data")
-	defaultWorkspace := t.TempDir()
-	bundle, err := Open(t.Context(), Config{
-		DataDirectory: dataDirectory, DefaultWorkspacePath: defaultWorkspace,
-	})
+	bundle, err := Open(t.Context(), Config{DataDirectory: dataDirectory})
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -40,22 +30,6 @@ func TestOpenRequiresAndUsesExplicitProcessPaths(t *testing.T) {
 	}
 	if _, statErr := os.Stat(filepath.Join(dataDirectory, "flame.db")); statErr != nil {
 		t.Fatalf("data directory does not own flame.db: %v", statErr)
-	}
-	fresh, err := bundle.Knowledge.Get(t.Context(), knowledge.ScopeCWD, "")
-	if err != nil {
-		t.Fatalf("read default project knowledge: %v", err)
-	}
-	replacement, err := knowledge.NewReplacement(knowledge.ScopeCWD, fresh.Revision, "project")
-	if err != nil {
-		t.Fatalf("prepare project knowledge replacement: %v", err)
-	}
-	if _, err := bundle.Knowledge.Update(
-		t.Context(), "", replacement,
-	); err != nil {
-		t.Fatalf("write default project knowledge: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(defaultWorkspace, "FLAME.md")); err != nil {
-		t.Fatalf("default workspace does not own project knowledge: %v", err)
 	}
 }
 

@@ -30,7 +30,6 @@ var ErrPromptRejected = errors.New("agentexec: prompt rejected by lifecycle hook
 // content is an empty result from its owner, not a missing implementation.
 type WorkingContextConfig struct {
 	UserHome          string
-	Knowledge         KnowledgeReader
 	AgentMemory       AgentMemoryReader
 	AgentMemorySearch AgentMemorySearcher
 	Plan              PlanReader
@@ -63,7 +62,6 @@ func NewWorkingContextComposer(config WorkingContextConfig) (*WorkingContextComp
 		name  string
 		value any
 	}{
-		{"knowledge reader", config.Knowledge},
 		{"memory reader", config.AgentMemory},
 		{"memory searcher", config.AgentMemorySearch},
 		{"plan reader", config.Plan},

@@ -96,7 +96,6 @@ type runtimeResourceObservation struct {
 	skills      bool
 	mcp         bool
 	schedules   bool
-	knowledge   bool
 	hooks       bool
 	models      bool
 	approvals   bool
@@ -104,7 +103,7 @@ type runtimeResourceObservation struct {
 }
 
 func (r runtimeResourceObservation) hasWorkspaceAuthoredResources() bool {
-	return r.knowledge || r.hooks
+	return r.hooks
 }
 
 func (a *app) observedRuntimeResources() runtimeResourceObservation {
@@ -114,7 +113,6 @@ func (a *app) observedRuntimeResources() runtimeResourceObservation {
 		skills:      a.skills != nil && a.runtimeSupports(protocol.FeatureSkills),
 		mcp:         a.mcp != nil && a.runtimeSupports(protocol.FeatureMCP),
 		schedules:   a.schedules != nil && a.runtimeSupports(protocol.FeatureSchedules),
-		knowledge:   a.knowledge != nil && a.runtimeSupports(protocol.FeatureKnowledge),
 		hooks:       a.hooks != nil,
 		models:      true,
 		approvals:   true,
@@ -365,9 +363,6 @@ func (r runtimeChangeMonitor) supportedTopics() []protocol.RuntimeTopic {
 	}
 	if r.resources.schedules {
 		candidates = append(candidates, protocol.TopicSchedulesChanged)
-	}
-	if r.resources.knowledge {
-		candidates = append(candidates, protocol.TopicKnowledgeChanged)
 	}
 	if r.resources.hooks {
 		candidates = append(candidates, protocol.TopicHooksChanged)

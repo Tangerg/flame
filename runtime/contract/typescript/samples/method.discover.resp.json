@@ -80,11 +80,6 @@
         "clientOptIn": false,
         "requiredByRunProtocol": false
       },
-      "knowledge": {
-        "enabled": true,
-        "clientOptIn": false,
-        "requiredByRunProtocol": false
-      },
       "relocate": {
         "enabled": true,
         "clientOptIn": false,

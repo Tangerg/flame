@@ -14,22 +14,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// RecipeLister discovers the precedence-resolved recipes visible from a working
-// directory. Application validates visible-name identity and owns public order.
-// List transfers ownership of the returned recipes to its caller.
-type RecipeLister interface {
-	List(ctx context.Context, cwd string) ([]Recipe, error)
-}
-
-// Discovery owns workspace, recipe, and instruction-document discovery.
+// Discovery owns workspace and instruction-document discovery.
 type Discovery struct {
 	scope      *Scope
 	workspaces Catalog
 	agentDocs  AgentDocFinder
-	recipes    RecipeLister
 }
 
-func NewDiscovery(scope *Scope, workspaces Catalog, agentDocs AgentDocFinder, recipes RecipeLister) (*Discovery, error) {
+func NewDiscovery(scope *Scope, workspaces Catalog, agentDocs AgentDocFinder) (*Discovery, error) {
 	for _, required := range []struct {
 		name  string
 		value any
@@ -37,33 +29,12 @@ func NewDiscovery(scope *Scope, workspaces Catalog, agentDocs AgentDocFinder, re
 		{name: "scope", value: scope},
 		{name: "catalog", value: workspaces},
 		{name: "agent document finder", value: agentDocs},
-		{name: "recipe lister", value: recipes},
 	} {
 		if dependency.Missing(required.value) {
 			return nil, fmt.Errorf("workspace: discovery %s is required", required.name)
 		}
 	}
-	return &Discovery{scope: scope, workspaces: workspaces, agentDocs: agentDocs, recipes: recipes}, nil
-}
-
-// Recipes enumerates the one precedence-resolved Recipe per visible name,
-// ordered by name.
-func (d *Discovery) Recipes(ctx context.Context, cwd string) ([]Recipe, error) {
-	root, err := d.scope.root(cwd)
-	if err != nil {
-		return nil, err
-	}
-	recipes, err := d.recipes.List(ctx, root)
-	if err != nil {
-		return nil, err
-	}
-	if err := ValidateRecipeCascade(recipes); err != nil {
-		return nil, err
-	}
-	slices.SortFunc(recipes, func(first, second Recipe) int {
-		return cmp.Compare(first.Name, second.Name)
-	})
-	return recipes, nil
+	return &Discovery{scope: scope, workspaces: workspaces, agentDocs: agentDocs}, nil
 }
 
 // Resolved is the current filesystem identity of one workspace ref.

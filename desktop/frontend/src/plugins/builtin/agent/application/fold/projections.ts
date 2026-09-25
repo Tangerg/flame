@@ -121,7 +121,6 @@ function nameLabel(tool: AgentToolInvocation): string | undefined {
       return name && path ? `${name}/${path}` : (name ?? path);
     }
     case "search_memory":
-    case "search_conversations":
     case "search_tools":
       return asString(a.query);
     case "web_fetch":

@@ -192,7 +192,7 @@ Flame 大部分 UI ↔ 数据流已经通过插件系统解耦，真正需要"�
 - **`settings/` 各面板的上下文形态**：统一 `ui/`（React 组件）+ `application/`（用例、读模型与 `ports/`）+ `adapters/`（gateway 实现），plugin 入口 `index.{ts,tsx}` 注册面板。只有被其他上下文消费的稳定查询才建立 `public/queries.ts`；其余面板保持叶子。
 - 业务用例依赖 application port；只有 adapter / composition root 调用 `getContainer().client().xxx(...)`。测试优先替换 port，协议 adapter 测试再用 `setContainer({ client })` / `resetContainer()`。
 
-React Query 的 cache 与 provider lookup 是共享技术机制，留在 `lib/data/dataQuery.ts` 与 `queryClient.ts`。Session、Workspace、Approval、Provider、MCP、Hooks、Schedules、Recipes、Usage 的 query key、read model 与 hook 均由所属上下文拥有；跨上下文消费必须经过该上下文的 `public/queries.ts`（或既有 public facade）。`lib/data` 不再充当全局业务模型仓库。
+React Query 的 cache 与 provider lookup 是共享技术机制，留在 `lib/data/dataQuery.ts` 与 `queryClient.ts`。Session、Workspace、Approval、Provider、MCP、Hooks、Schedules、Usage 的 query key、read model 与 hook 均由所属上下文拥有；跨上下文消费必须经过该上下文的 `public/queries.ts`（或既有 public facade）。`lib/data` 不再充当全局业务模型仓库。
 
 Session 的 served-model identity 是 Runtime 持久化的 exact `provider + model` pair。Agent Session adapter
 必须把两者共同投影到 `AgentSessionSummary`；Composer restore 与 Context usage 只按 pair 查模型目录，不能按

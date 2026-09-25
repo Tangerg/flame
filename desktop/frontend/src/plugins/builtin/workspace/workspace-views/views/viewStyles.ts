@@ -9,8 +9,6 @@ export const viewStyles = stylex.create({
   padBlockSm: { paddingBlock: space.s1 },
   sectionPad: { paddingBottom: space.s1 },
   sectionLabel: { paddingBlock: space.s2 },
-  planPad: { paddingBlock: space.s3_5 },
-  planHeading: { paddingInline: 0, paddingTop: 0, paddingBottom: space.s2 },
 
   diffFileHeader: {
     display: "flex",

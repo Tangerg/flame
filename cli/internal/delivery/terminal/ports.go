@@ -116,12 +116,6 @@ type AgentMemory interface {
 	Add(context.Context, agent.MemoryTarget, string) (protocol.AgentMemoryItem, error)
 }
 
-type Knowledge interface {
-	Entries(context.Context, string) ([]workspace.KnowledgeEntry, error)
-	Document(context.Context, workspace.KnowledgeTarget) (workspace.KnowledgeEntry, error)
-	Save(context.Context, workspace.KnowledgeUpdate) (workspace.KnowledgeEntry, error)
-}
-
 type DiagnosticTools interface {
 	Tools(context.Context) ([]workspace.DiagnosticToolDescriptor, error)
 	Invoke(context.Context, workspace.DiagnosticToolInvocation) (workspace.DiagnosticToolResult, error)
@@ -129,7 +123,6 @@ type DiagnosticTools interface {
 
 type AuthoringContext interface {
 	Documents(context.Context, string) ([]protocol.AgentDoc, error)
-	Recipes(context.Context, string) ([]workspace.AuthoringRecipe, error)
 }
 
 type Hooks interface {

@@ -76,13 +76,12 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 		ScheduleTools: []toolcontract.Tool{
 			named(domaintool.ListSchedules), named(domaintool.CreateSchedule), named(domaintool.DeleteSchedule),
 		},
-		ToolResult:         named(domaintool.ReadToolResult),
-		AgentMemorySearch:  named(domaintool.SearchMemory),
-		ConversationSearch: named(domaintool.SearchConversations),
-		GoalGet:            named(domaintool.GetGoal),
-		ProposeSkill:       named(domaintool.ProposeSkill),
-		CodeIntel:          analyzer,
-		ReadTracker:        newReadTracker(),
+		ToolResult:        named(domaintool.ReadToolResult),
+		AgentMemorySearch: named(domaintool.SearchMemory),
+		GoalGet:           named(domaintool.GetGoal),
+		ProposeSkill:      named(domaintool.ProposeSkill),
+		CodeIntel:         analyzer,
+		ReadTracker:       newReadTracker(),
 	})
 	if err != nil {
 		t.Fatalf("newResolver: %v", err)
@@ -113,7 +112,7 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 	for _, name := range []string{
 		"web_fetch", "remote_agent", "lsp", "linear_create_issue", "list_schedules",
 		"create_schedule", "delete_schedule",
-		"search_memory", "search_conversations", "propose_skill",
+		"search_memory", "propose_skill",
 	} {
 		if !registered[name] {
 			t.Errorf("deferred tool %q missing from Run registry: %v", name, registered)

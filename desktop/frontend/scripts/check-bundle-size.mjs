@@ -116,19 +116,7 @@ const LAZY_FEATURES = [
   // quietly. What this guards is the barrel, which pulled all twenty onto startup.
   {
     label: "workspace views",
-    prefixes: [
-      "agent-docs-",
-      "agentMemory-",
-      "diff-",
-      "file-",
-      "inbox-",
-      "knowledge-",
-      "plan-",
-      "search-",
-      "skills-",
-      "SubagentsPanel-",
-      "timeline-",
-    ],
+    prefixes: ["agentMemory-", "diff-", "file-", "skills-", "SubagentsPanel-", "timeline-"],
     ceiling: 250_000,
   },
   { label: "syntax highlighting", prefix: "shiki-", ceiling: 3_000_000 },

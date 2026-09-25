@@ -26,7 +26,6 @@ func buildContract() *Registry {
 	registerWorkspace(registry)
 	registerRuntimeSubscription(registry)
 	registerSkills(registry)
-	registerRecipes(registry)
 	registerAgentDocs(registry)
 	registerMCP(registry)
 	registerHooks(registry)
@@ -37,7 +36,6 @@ func buildContract() *Registry {
 	registerModels(registry)
 	registerTools(registry)
 	registerUsage(registry)
-	registerKnowledge(registry)
 	registerAgentMemory(registry)
 	registerFeedback(registry)
 	return registry

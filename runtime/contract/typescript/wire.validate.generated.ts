@@ -92,7 +92,6 @@ export type WireTypeName =
   | "GenerationParams"
   | "GetDiffRequest"
   | "GetFileHeadRequest"
-  | "GetKnowledgeRequest"
   | "GetPlanRequest"
   | "GetRunRequest"
   | "GetSessionRequest"
@@ -129,8 +128,6 @@ export type WireTypeName =
   | "ItemScopeType"
   | "ItemStatus"
   | "ItemType"
-  | "KnowledgeEntry"
-  | "KnowledgeScope"
   | "ListApprovalRulesRequest"
   | "ListApprovalRulesResult"
   | "ListFilesRequest"
@@ -179,7 +176,6 @@ export type WireTypeName =
   | "ModelUsage"
   | "PageOfAgentDoc"
   | "PageOfFileEntry"
-  | "PageOfKnowledgeEntry"
   | "PageOfMCPServer"
   | "PageOfMCPTool"
   | "PageOfManagedSkill"
@@ -187,7 +183,6 @@ export type WireTypeName =
   | "PageOfModelInvocation"
   | "PageOfPendingInterruptSet"
   | "PageOfProvider"
-  | "PageOfRecipe"
   | "PageOfRunRef"
   | "PageOfSchedule"
   | "PageOfSession"
@@ -216,8 +211,6 @@ export type WireTypeName =
   | "QuestionOption"
   | "ReadFileRequest"
   | "ReadinessStatus"
-  | "Recipe"
-  | "RecipeScope"
   | "RememberScope"
   | "RememberScopeKind"
   | "RequestMeta"
@@ -295,7 +288,6 @@ export type WireTypeName =
   | "TransportKind"
   | "UnresolvedEffect"
   | "UpdateGoalRequest"
-  | "UpdateKnowledgeRequest"
   | "UpdateMCPServerRequest"
   | "UpdateProviderRequest"
   | "UpdateScheduleRequest"
@@ -1111,32 +1103,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     path: allOf([text(), minLength(1)]),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["path", "workspace"]),
-  GetKnowledgeRequest: allOf([
-    object({
-      scope: ref(() => CHECKS.KnowledgeScope),
-      workspace: ref(() => CHECKS.WorkspaceRef),
-    }, ["scope"]),
-    ifThen(
-      fields({
-        scope: literal("home"),
-      }, ["scope"]),
-      fields({
-        workspace: absent(),
-      }, []),
-    ),
-    ifThen(
-      fields({
-        scope: literal("cwd"),
-      }, ["scope"]),
-      fields({}, ["workspace"]),
-    ),
-    ifThen(
-      fields({
-        scope: literal("projectRoot"),
-      }, ["scope"]),
-      fields({}, ["workspace"]),
-    ),
-  ]),
   GetPlanRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -1665,14 +1631,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ItemScopeType: enumOf(["session", "run"]),
   ItemStatus: enumOf(["running", "completed", "incomplete"]),
   ItemType: enumOf(["userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"]),
-  KnowledgeEntry: object({
-    content: text(),
-    path: allOf([text(), pattern("\\S")]),
-    revision: allOf([text(), minLength(1)]),
-    scope: ref(() => CHECKS.KnowledgeScope),
-    updatedAt: text(),
-  }, ["content", "path", "revision", "scope"]),
-  KnowledgeScope: enumOf(["cwd", "projectRoot", "home"]),
   ListApprovalRulesRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -2070,10 +2028,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     data: array(ref(() => CHECKS.FileEntry)),
     nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
-  PageOfKnowledgeEntry: object({
-    data: array(ref(() => CHECKS.KnowledgeEntry)),
-    nextCursor: allOf([text(), maxLength(65536)]),
-  }, ["data"]),
   PageOfMCPServer: object({
     data: array(ref(() => CHECKS.MCPServer)),
     nextCursor: allOf([text(), maxLength(65536)]),
@@ -2100,10 +2054,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["data"]),
   PageOfProvider: object({
     data: array(ref(() => CHECKS.Provider)),
-    nextCursor: allOf([text(), maxLength(65536)]),
-  }, ["data"]),
-  PageOfRecipe: object({
-    data: array(ref(() => CHECKS.Recipe)),
     nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfRunRef: object({
@@ -2626,15 +2576,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     instanceId: text(),
     status: ref(() => CHECKS.HealthStatus),
   }, ["instanceId", "status"]),
-  Recipe: object({
-    argumentHint: text(),
-    body: allOf([text(), pattern("\\S")]),
-    description: text(),
-    name: allOf([text(), pattern("\\S")]),
-    scope: ref(() => CHECKS.RecipeScope),
-    source: allOf([text(), pattern("\\S")]),
-  }, ["body", "name", "scope", "source"]),
-  RecipeScope: enumOf(["project", "global"]),
   RememberScope: object({
     scope: ref(() => CHECKS.RememberScopeKind),
   }, ["scope"]),
@@ -2926,19 +2867,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         paths: absent(),
         runIds: absent(),
         scheduleIds: absent(),
-        serverIds: absent(),
-        sessionIds: absent(),
-        topics: absent(),
-        type: literal("recipes.changed"),
-        watchId: absent(),
-        watchIds: absent(),
-        workspace: absent(),
-      }, ["sequence", "type"]),
-      fields({
-        names: absent(),
-        paths: absent(),
-        runIds: absent(),
-        scheduleIds: absent(),
         sessionIds: absent(),
         topics: absent(),
         type: literal("mcp.changed"),
@@ -3024,19 +2952,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         serverIds: absent(),
         sessionIds: absent(),
         topics: absent(),
-        type: literal("knowledge.changed"),
-        watchId: absent(),
-        watchIds: absent(),
-        workspace: absent(),
-      }, ["sequence", "type"]),
-      fields({
-        names: absent(),
-        paths: absent(),
-        runIds: absent(),
-        scheduleIds: absent(),
-        serverIds: absent(),
-        sessionIds: absent(),
-        topics: absent(),
         type: literal("hooks.changed"),
         watchId: absent(),
         watchIds: absent(),
@@ -3097,7 +3012,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   RuntimeEventNotification: object({
     event: ref(() => CHECKS.RuntimeEvent),
   }, ["event"]),
-  RuntimeEventType: enumOf(["files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"]),
+  RuntimeEventType: enumOf(["files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"]),
   RuntimeInfo: object({
     endpoints: ref(() => CHECKS.RuntimeInfoEndpoints),
     protocolVersion: text(),
@@ -3127,7 +3042,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     watches: array(ref(() => CHECKS.WatchSpec)),
   }, ["topics"]),
   RuntimeSubscribeResponse: object({}, []),
-  RuntimeTopic: enumOf(["files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"]),
+  RuntimeTopic: enumOf(["files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"]),
   SafetyClass: enumOf(["safe", "write", "exec", "network"]),
   Schedule: allOf([
     object({
@@ -3546,34 +3461,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     objective: allOf([text(), pattern("\\S")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["objective", "sessionId"]),
-  UpdateKnowledgeRequest: allOf([
-    object({
-      content: text(),
-      expectedRevision: allOf([text(), minLength(1)]),
-      scope: ref(() => CHECKS.KnowledgeScope),
-      workspace: ref(() => CHECKS.WorkspaceRef),
-    }, ["content", "expectedRevision", "scope"]),
-    ifThen(
-      fields({
-        scope: literal("home"),
-      }, ["scope"]),
-      fields({
-        workspace: absent(),
-      }, []),
-    ),
-    ifThen(
-      fields({
-        scope: literal("cwd"),
-      }, ["scope"]),
-      fields({}, ["workspace"]),
-    ),
-    ifThen(
-      fields({
-        scope: literal("projectRoot"),
-      }, ["scope"]),
-      fields({}, ["workspace"]),
-    ),
-  ]),
   UpdateMCPServerRequest: object({
     autoApproveTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     connection: ref(() => CHECKS.MCPConnectionInput),
@@ -3802,7 +3689,6 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "skills.proposals.list": ref(() => CHECKS.PageOfSkillProposal),
   "skills.proposals.approve": object({}, []),
   "skills.proposals.reject": object({}, []),
-  "recipes.list": ref(() => CHECKS.PageOfRecipe),
   "agentDocs.list": ref(() => CHECKS.PageOfAgentDoc),
   "mcp.servers.list": ref(() => CHECKS.PageOfMCPServer),
   "mcp.servers.create": ref(() => CHECKS.MCPServer),
@@ -3842,9 +3728,6 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "tools.invoke": anything(),
   "usage.session": ref(() => CHECKS.Usage),
   "usage.summary": ref(() => CHECKS.UsageSummary),
-  "knowledge.list": ref(() => CHECKS.PageOfKnowledgeEntry),
-  "knowledge.get": ref(() => CHECKS.KnowledgeEntry),
-  "knowledge.update": ref(() => CHECKS.KnowledgeEntry),
   "agentMemory.list": ref(() => CHECKS.AgentMemoryList),
   "agentMemory.review": object({}, []),
   "agentMemory.update": ref(() => CHECKS.AgentMemoryItem),

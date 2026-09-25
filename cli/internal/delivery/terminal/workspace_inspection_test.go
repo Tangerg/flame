@@ -548,16 +548,16 @@ func TestWorkspaceMonitorWatchesAuthoredResourcesWithoutGitProjection(t *testing
 		subscription: make(chan changefeed.Subscription, 1),
 		supported: []protocol.RuntimeTopic{
 			protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
-			protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged,
+			protocol.TopicSkillsChanged, protocol.TopicHooksChanged,
 		},
 	}
 	monitor := runtimeChangeMonitor{
 		workspace: "/workspace", source: source, watchFiles: true,
-		resources: runtimeResourceObservation{knowledge: true, hooks: true},
+		resources: runtimeResourceObservation{skills: true, hooks: true},
 	}
 	wantTopics := []protocol.RuntimeTopic{
 		protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
-		protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged,
+		protocol.TopicSkillsChanged, protocol.TopicHooksChanged,
 	}
 	if topics := monitor.supportedTopics(); !slices.Equal(topics, wantTopics) {
 		t.Fatalf("authored-resource topics without Git = %v, want %v", topics, wantTopics)
@@ -586,7 +586,6 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 		protocol.FeatureSkills:    {},
 		protocol.FeatureMCP:       {},
 		protocol.FeatureSchedules: {},
-		protocol.FeatureKnowledge: {},
 	}
 	profile := terminalProfileWithFeatures(t, features)
 	application := &app{
@@ -595,7 +594,6 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 		skills:         newSkillServiceStub(),
 		mcp:            newMCPServiceStub(),
 		schedules:      newScheduleServiceStub(),
-		knowledge:      newKnowledgeServiceStub(),
 		hooks:          &hookServiceStub{},
 	}
 	if got := application.observedRuntimeResources(); got != (runtimeResourceObservation{hooks: true, models: true, approvals: true}) {
@@ -608,7 +606,7 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 	}
 	profile = terminalProfileWithFeatures(t, features)
 	want := runtimeResourceObservation{
-		plan: true, goals: true, skills: true, mcp: true, schedules: true, knowledge: true, hooks: true,
+		plan: true, goals: true, skills: true, mcp: true, schedules: true, hooks: true,
 		models: true, approvals: true,
 	}
 	if got := application.observedRuntimeResources(); got != want {

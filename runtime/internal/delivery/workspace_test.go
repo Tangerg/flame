@@ -21,13 +21,11 @@ import (
 )
 
 type workspaceTestConfig struct {
-	Knowledge       workspaceapp.KnowledgeStore
 	Skills          workspaceapp.SkillCatalog
 	Curator         workspaceapp.SkillCurator
 	Proposals       workspaceapp.SkillProposals
 	Hooks           workspaceapp.HookInspector
 	Trust           workspaceapp.HookTrustStore
-	Recipes         workspaceapp.RecipeLister
 	Watcher         workspaceapp.GitStateWatcher
 	AuthoredWatcher workspaceapp.AuthoredResourceWatcher
 }
@@ -37,7 +35,6 @@ type workspaceSurfaces struct {
 	files         *workspaceapp.Files
 	vcs           *workspaceapp.VCS
 	discovery     *workspaceapp.Discovery
-	knowledge     *workspaceapp.Knowledge
 	skills        *workspaceapp.Skills
 	hooks         *workspaceapp.Hooks
 	watch         *workspaceapp.GitWatch
@@ -82,7 +79,7 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 	if authoredWatcher == nil {
 		if filepath.IsAbs(cwd) {
 			var err error
-			authoredWatcher, err = workspaceadapter.NewAuthoredWatcher(cwd, cwd, cwd, "")
+			authoredWatcher, err = workspaceadapter.NewAuthoredWatcher(cwd, cwd)
 			if err != nil {
 				panic(err)
 			}
@@ -104,21 +101,11 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 	if err != nil {
 		panic(err)
 	}
-	if cfg.Knowledge == nil {
-		cfg.Knowledge = &fakeKnowledgeStore{}
-	}
-	knowledge, err := workspaceapp.NewKnowledge(roots, workspaceadapter.Resolver{}, cfg.Knowledge, authoredWatch, nil)
-	if err != nil {
-		panic(err)
-	}
 	files, err := workspaceapp.NewFiles(roots, workspaceadapter.FileBrowser{})
 	if err != nil {
 		panic(err)
 	}
-	if cfg.Recipes == nil {
-		cfg.Recipes = fakeRecipeLister{}
-	}
-	discovery, err := workspaceapp.NewDiscovery(roots, emptyWorkspaceCatalog{}, promptsource.AgentDocs{}, cfg.Recipes)
+	discovery, err := workspaceapp.NewDiscovery(roots, emptyWorkspaceCatalog{}, promptsource.AgentDocs{})
 	if err != nil {
 		panic(err)
 	}
@@ -148,7 +135,6 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 		files:         files,
 		vcs:           vcs,
 		discovery:     discovery,
-		knowledge:     knowledge,
 		skills:        skills,
 		hooks:         hooks,
 		watch:         watch,
@@ -160,7 +146,6 @@ func applyWorkspaceSurfaces(s *Handler, surfaces workspaceSurfaces) {
 	s.workspaceFiles = surfaces.files
 	s.workspaceVCS = surfaces.vcs
 	s.workspaceDiscovery = surfaces.discovery
-	s.workspaceKnowledge = surfaces.knowledge
 	s.workspaceSkills = surfaces.skills
 	s.workspaceHooks = surfaces.hooks
 	s.workspaceWatch = surfaces.watch
@@ -495,12 +480,6 @@ func (f fakeSkillCatalog) List(context.Context, string) (workspaceapp.SkillDisco
 	return workspaceapp.SkillDiscovery{Skills: slices.Clone(f.skills)}, nil
 }
 
-type fakeRecipeLister struct{ recipes []workspaceapp.Recipe }
-
-func (f fakeRecipeLister) List(context.Context, string) ([]workspaceapp.Recipe, error) {
-	return slices.Clone(f.recipes), nil
-}
-
 // TestListDiscoveredSkills maps discovered skills onto the wire,
 // carrying each one's scope through the wire, and defaults cwd to the serve dir.
 func TestListDiscoveredSkills(t *testing.T) {
@@ -515,29 +494,6 @@ func TestListDiscoveredSkills(t *testing.T) {
 	}
 	if len(got.Skills) != 2 || got.Skills[0].Name != "pdf" || got.Skills[0].Scope != "project" || got.Skills[1].Scope != "user" {
 		t.Fatalf("skills = %+v, want pdf(project) + web(user)", got.Skills)
-	}
-}
-
-// TestListRecipes maps the runtime's discovered recipes onto the wire,
-// carrying scope + body through, and defaults cwd to the serve dir.
-func TestListRecipes(t *testing.T) {
-	dir := t.TempDir()
-	s := newWorkspaceHandlerWithConfig(dir, workspaceTestConfig{Recipes: fakeRecipeLister{recipes: []workspaceapp.Recipe{
-		{Name: "review", Description: "review diff", Body: "Review $ARGUMENTS", Scope: workspaceapp.RecipeScopeProject, Source: "/p/review.md"},
-		{Name: "commit", Body: "Write a commit", Scope: workspaceapp.RecipeScopeGlobal, Source: "/g/commit.md"},
-	}}})
-	got, err := s.ListRecipes(context.Background(), protocol.WorkspaceQuery{})
-	if err != nil {
-		t.Fatalf("listRecipes: %v", err)
-	}
-	if len(got.Data) != 2 {
-		t.Fatalf("recipes = %+v, want 2", got.Data)
-	}
-	if got.Data[0].Name != "commit" || got.Data[0].Scope != "global" {
-		t.Errorf("recipe[0] = %+v, want commit(global)", got.Data[0])
-	}
-	if got.Data[1].Name != "review" || got.Data[1].Scope != "project" || got.Data[1].Body != "Review $ARGUMENTS" {
-		t.Errorf("recipe[1] = %+v, want review(project) with body", got.Data[1])
 	}
 }
 

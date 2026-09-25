@@ -4,20 +4,15 @@ export type WorkspaceInvalidationTarget =
   | "agentSessionProjection"
   | "approvalMode"
   | "approvalRules"
-  | "agentDocs"
   | "diff"
   | "fileList"
   | "fileRead"
   | "filesChanged"
-  | "grep"
   | "hooks"
-  | "knowledge"
   | "models"
   | "mcpServers"
   | "mcpTools"
-  | "pendingWork"
   | "providers"
-  | "recipes"
   | "schedules"
   | "sessionUsage"
   | "sessions"
@@ -31,7 +26,6 @@ export type WorkspaceInvalidationTarget =
 type WorkspaceEventType =
   | "files.changed"
   | "skills.changed"
-  | "recipes.changed"
   | "mcp.changed"
   | "schedules.changed"
   | "sessions.changed"
@@ -39,7 +33,6 @@ type WorkspaceEventType =
   | "plan.changed"
   | "goals.changed"
   | "interrupts.changed"
-  | "knowledge.changed"
   | "hooks.changed"
   | "models.changed"
   | "approvals.changed"
@@ -58,20 +51,7 @@ export interface WorkspaceEventLike {
 export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalidationTarget[] {
   switch (ev.type) {
     case "files.changed":
-      return [
-        "filesChanged",
-        "diff",
-        "fileList",
-        "fileRead",
-        "grep",
-        "recipes",
-        "hooks",
-        "knowledge",
-        "agentDocs",
-        "skills",
-      ];
-    case "recipes.changed":
-      return ["recipes"];
+      return ["filesChanged", "diff", "fileList", "fileRead", "hooks", "skills"];
     case "skills.changed":
       return ["skills", "managedSkills", "skillProposals"];
     case "mcp.changed":
@@ -83,13 +63,11 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
     case "runs.changed":
       return ["sessionUsage", "usageSummary", "agentSessionProjection"];
     case "interrupts.changed":
-      return ["agentSessionProjection", "pendingWork"];
+      return ["agentSessionProjection"];
     case "goals.changed":
       return ["agentSessionProjection"];
     case "plan.changed":
       return ["agentSessionProjection"];
-    case "knowledge.changed":
-      return ["knowledge"];
     case "hooks.changed":
       return ["hooks"];
     case "models.changed":

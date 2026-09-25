@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -14,9 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
-
-// defaultTranscriptSearchLimit caps a transcript search that names no limit.
-const defaultTranscriptSearchLimit = 10
 
 type TranscriptStore struct{ db *sql.DB }
 
@@ -31,17 +27,8 @@ func (t *TranscriptStore) AppendItem(ctx context.Context, item transcript.Item) 
 	if err != nil {
 		return fmt.Errorf("sqlite: encode history item: %w", err)
 	}
-	searchText, searchable := transcript.SearchableText(item)
-	// The history write and its full-text index maintenance are one atomic
-	// write-set (RunInTx joins any outer cross-store transaction), so the search
-	// index never drifts from the transcript it mirrors. This is an upsert, so
-	// the index follows in both directions: an item that stops being searchable
-	// loses its row rather than keeping text the transcript no longer contains.
 	return RunInTx(ctx, t.db, func(ctx context.Context) error {
-		if err := t.appendItemRecord(ctx, item, payload, offloadID); err != nil {
-			return err
-		}
-		return t.syncSearchIndex(ctx, item, searchText, searchable)
+		return t.appendItemRecord(ctx, item, payload, offloadID)
 	})
 }
 
@@ -247,38 +234,6 @@ func materializeTranscriptItem(
 	return item, nil
 }
 
-// indexForSearch write-through-indexes a conversation item for transcript search,
-// keyed by the item's history seq so the FTS rowid stays aligned as the item
-// grows (a streamed agent message re-appends with the full text). FTS5 has no
-// rowid upsert, so it is delete-then-insert. Must run inside AppendItem's
-// transaction, after the history_items row exists.
-func (t *TranscriptStore) syncSearchIndex(
-	ctx context.Context,
-	item transcript.Item,
-	text string,
-	searchable bool,
-) error {
-	q := conn(ctx, t.db)
-	var seq int64
-	if err := q.QueryRowContext(ctx, `SELECT seq FROM history_items WHERE item_id = ?`, item.ID()).Scan(&seq); err != nil {
-		return fmt.Errorf("sqlite: locate history item for search index: %w", err)
-	}
-	if _, err := q.ExecContext(ctx, `DELETE FROM transcript_search WHERE rowid = ?`, seq); err != nil {
-		return fmt.Errorf("sqlite: clear search index row: %w", err)
-	}
-	if !searchable {
-		return nil
-	}
-	if _, err := q.ExecContext(ctx,
-		`INSERT INTO transcript_search(rowid, text, session_id, run_id, item_id, kind, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		seq, text, item.SessionID(), item.RunID(), item.ID(), item.Kind(), item.OccurredAt().UnixNano(),
-	); err != nil {
-		return fmt.Errorf("sqlite: index history item for search: %w", err)
-	}
-	return nil
-}
-
 // DeleteRun removes one run's items from a session's history. The Run's own row
 // belongs to the run store; this store owns the item log.
 func (t *TranscriptStore) DeleteRun(ctx context.Context, sessionID, runID string) error {
@@ -298,16 +253,6 @@ func (t *TranscriptStore) DeleteRun(ctx context.Context, sessionID, runID string
 		); err != nil {
 			return fmt.Errorf("sqlite: delete run tool results: %w", err)
 		}
-		// Clear the search index rows (keyed by history seq) before the items they
-		// mirror are deleted, so no stale hits survive.
-		if _, err := q.ExecContext(ctx,
-			`DELETE FROM transcript_search
-			 WHERE rowid IN (
-			   SELECT seq FROM history_items WHERE session_id = ? AND run_id = ?
-			 )`, sessionID, runID,
-		); err != nil {
-			return fmt.Errorf("sqlite: delete run search index: %w", err)
-		}
 		if _, err := q.ExecContext(ctx,
 			`DELETE FROM history_items WHERE session_id = ? AND run_id = ?`, sessionID, runID,
 		); err != nil {
@@ -323,12 +268,6 @@ func (t *TranscriptStore) DeleteSession(ctx context.Context, sessionID string) e
 	}
 	return RunInTx(ctx, t.db, func(ctx context.Context) error {
 		q := conn(ctx, t.db)
-		if _, err := q.ExecContext(ctx,
-			`DELETE FROM transcript_search
-			 WHERE rowid IN (SELECT seq FROM history_items WHERE session_id = ?)`, sessionID,
-		); err != nil {
-			return fmt.Errorf("sqlite: delete session search index: %w", err)
-		}
 		if _, err := q.ExecContext(ctx, `DELETE FROM history_items WHERE session_id = ?`, sessionID); err != nil {
 			return fmt.Errorf("sqlite: delete session items: %w", err)
 		}
@@ -449,71 +388,4 @@ func (t *TranscriptStore) pageItems(ctx context.Context, scope, subject string, 
 		return nil, fmt.Errorf("sqlite: list history items: %w", err)
 	}
 	return out, nil
-}
-
-// SearchTranscript runs a full-text search over past conversation transcripts
-// (user + agent messages across every session), most relevant first. query is
-// natural-language keywords; a non-positive limit falls back to a default. An
-// empty query returns no hits.
-func (t *TranscriptStore) SearchTranscript(ctx context.Context, query string, limit int) ([]transcript.SearchHit, error) {
-	match := ftsMatchQuery(query)
-	if match == "" {
-		return nil, nil
-	}
-	if limit <= 0 {
-		limit = defaultTranscriptSearchLimit
-	}
-	rows, err := conn(ctx, t.db).QueryContext(ctx,
-		`SELECT session_id, run_id, item_id, kind, created_at,
-		        snippet(transcript_search, 0, '[', ']', '…', 12)
-		 FROM transcript_search
-		 WHERE transcript_search MATCH ?
-		 ORDER BY rank
-		 LIMIT ?`, match, limit)
-	if err != nil {
-		return nil, fmt.Errorf("sqlite: search transcripts: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var out []transcript.SearchHit
-	for rows.Next() {
-		var sessionID, runID, itemID, snippet string
-		var kind transcript.ItemKind
-		var createdAt int64
-		if err := rows.Scan(&sessionID, &runID, &itemID, &kind, &createdAt, &snippet); err != nil {
-			return nil, fmt.Errorf("sqlite: scan transcript search hit: %w", err)
-		}
-		hit := transcript.SearchHit{
-			SessionID: sessionID,
-			RunID:     runID,
-			ItemID:    itemID,
-			Kind:      kind,
-			CreatedAt: time.Unix(0, createdAt).UTC(),
-			Snippet:   snippet,
-		}
-		if err := hit.Validate(); err != nil {
-			return nil, fmt.Errorf("sqlite: scan transcript search hit: %w", err)
-		}
-		out = append(out, hit)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("sqlite: search transcripts: %w", err)
-	}
-	return out, nil
-}
-
-// ftsMatchQuery turns natural-language input into a safe FTS5 MATCH expression:
-// each whitespace-separated term becomes a quoted literal (so FTS5 operators or
-// syntax in user text can't be interpreted or throw), joined by implicit AND —
-// hits must contain every term. Empty input yields "".
-func ftsMatchQuery(raw string) string {
-	fields := strings.Fields(raw)
-	if len(fields) == 0 {
-		return ""
-	}
-	quoted := make([]string, len(fields))
-	for i, field := range fields {
-		quoted[i] = `"` + strings.ReplaceAll(field, `"`, `""`) + `"`
-	}
-	return strings.Join(quoted, " ")
 }

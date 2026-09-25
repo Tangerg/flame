@@ -33,7 +33,6 @@ beforeEach(() => {
   for (const topic of [
     "files.changed",
     "skills.changed",
-    "recipes.changed",
     "mcp.changed",
     "schedules.changed",
     "sessions.changed",
@@ -41,7 +40,6 @@ beforeEach(() => {
     "interrupts.changed",
     "goals.changed",
     "plan.changed",
-    "knowledge.changed",
     "hooks.changed",
     "models.changed",
     "approvals.changed",
@@ -71,7 +69,6 @@ describe("runtime workspace event subscription", () => {
     expect(subscribe).toHaveBeenCalledWith(
       expect.objectContaining({
         topics: expect.arrayContaining([
-          "knowledge.changed",
           "hooks.changed",
           "models.changed",
           "approvals.changed",
@@ -84,7 +81,6 @@ describe("runtime workspace event subscription", () => {
   });
 
   it("intersects foldable topics with discovery for an older Runtime", async () => {
-    supportedTopics.delete("knowledge.changed");
     supportedTopics.delete("hooks.changed");
     const signal = new AbortController().signal;
 
@@ -97,7 +93,6 @@ describe("runtime workspace event subscription", () => {
       signal,
     );
     const request = subscribe.mock.calls[0]?.[0];
-    expect(request.topics).not.toContain("knowledge.changed");
     expect(request.topics).not.toContain("hooks.changed");
   });
 

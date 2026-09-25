@@ -54,10 +54,6 @@ type BuildConfig struct {
 	// the tool.
 	AgentMemorySearch builtin.AgentMemorySearch
 
-	// ConversationSearch backs search_conversations (full-text search over past conversation
-	// transcripts). nil omits the tool.
-	ConversationSearch builtin.ConversationSearch
-
 	// MCPToolDisabled reports whether an identified MCP tool is hidden. The
 	// runtime updates the underlying policy after every registry change.
 	MCPToolDisabled func(mcpserver.ToolRef) bool
@@ -191,13 +187,6 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build search_memory: %w", err)
 	}
-	// search_conversations recalls past conversation transcripts (full-text, all
-	// sessions). Working-directory independent, so built once for both roles.
-	// nil searcher → nil tool, simply omitted.
-	conversationSearchTool, err := builtin.NewConversationSearch(config.ConversationSearch)
-	if err != nil {
-		return Built{}, fmt.Errorf("toolset: build search_conversations: %w", err)
-	}
 	// Goal state is working-directory independent and keyed by session. get_goal
 	// is always useful to the root Agent; report_goal_outcome is exposed only to
 	// Runs stamped with a Goal incarnation at admission. That immutable provenance
@@ -221,27 +210,26 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	}
 
 	resolver, err := newResolver(resolverDeps{
-		SkillUsage:         config.SkillUsage,
-		DefaultCWD:         config.DefaultCWD,
-		SkillsUserDir:      config.SkillsUserDir,
-		Online:             online,
-		A2A:                a2aTools.Tools(),
-		LSP:                lspTools,
-		Shell:              shellTools,
-		AskUser:            askUserTool,
-		EnterPlan:          planFamily.Enter,
-		ExitPlan:           planFamily.Exit,
-		Plan:               planFamily.Set,
-		ScheduleTools:      scheduleTools,
-		ToolResult:         toolResultTool,
-		AgentMemorySearch:  agentMemorySearchTool,
-		ConversationSearch: conversationSearchTool,
-		GoalGet:            goalGetTool,
-		GoalReport:         goalReportTool,
-		ProposeSkill:       proposeSkillTool,
-		CodeIntel:          codeIntel,
-		ReadTracker:        tracker,
-		MCPToolDisabled:    config.MCPToolDisabled,
+		SkillUsage:        config.SkillUsage,
+		DefaultCWD:        config.DefaultCWD,
+		SkillsUserDir:     config.SkillsUserDir,
+		Online:            online,
+		A2A:               a2aTools.Tools(),
+		LSP:               lspTools,
+		Shell:             shellTools,
+		AskUser:           askUserTool,
+		EnterPlan:         planFamily.Enter,
+		ExitPlan:          planFamily.Exit,
+		Plan:              planFamily.Set,
+		ScheduleTools:     scheduleTools,
+		ToolResult:        toolResultTool,
+		AgentMemorySearch: agentMemorySearchTool,
+		GoalGet:           goalGetTool,
+		GoalReport:        goalReportTool,
+		ProposeSkill:      proposeSkillTool,
+		CodeIntel:         codeIntel,
+		ReadTracker:       tracker,
+		MCPToolDisabled:   config.MCPToolDisabled,
 	})
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build resolver: %w", err)

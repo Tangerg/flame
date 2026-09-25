@@ -62,14 +62,7 @@ func (authoringContextServiceStub) Documents(context.Context, string) ([]protoco
 	return []protocol.AgentDoc{{Path: "/workspace/AGENTS.md", Scope: protocol.AgentDocScopeProjectRoot}}, nil
 }
 
-func (authoringContextServiceStub) Recipes(context.Context, string) ([]workspace.AuthoringRecipe, error) {
-	return []workspace.AuthoringRecipe{{
-		Name: "review", Description: "review a target", ArgumentHint: "<target>",
-		Body: "Review $1.\nContext: $ARGUMENTS", Scope: protocol.RecipeScopeProject, Source: "/workspace/.flame/recipes/review.md",
-	}}, nil
-}
-
-func TestAuthoringDocumentsAndRecipeExpansionUseTheUnifiedPromptPath(t *testing.T) {
+func TestAuthoringDocumentsUseTheUnifiedReaderPath(t *testing.T) {
 	runtime := &recordingRuntime{Runtime: runtimefixture.New()}
 	runtime.Instant = true
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtime, AuthoringContext: authoringContextServiceStub{}, Workspace: "/workspace"})
@@ -77,40 +70,7 @@ func TestAuthoringDocumentsAndRecipeExpansionUseTheUnifiedPromptPath(t *testing.
 	host.Type("/agent-docs")
 	host.Press(input.Enter)
 	host.Shows(t, "/workspace/AGENTS.md")
-	host.Press(input.Esc)
-	host.Shows(t, "Ask flame")
-	host.Type("/recipes")
-	host.Press(input.Enter)
-	host.Shows(t, "/recipe review <target>")
-	host.Press(input.Esc)
-	host.Shows(t, "Ask flame")
-	host.Type("/recipe rev alpha beta")
-	host.Press(input.Enter)
-	host.Shows(t, "Recipe · review")
-	host.Shows(t, "Review alpha.")
-	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
-		t.Fatal("recipe editor did not survive a minimal viewport")
-	}
-	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
-	awaitState(t, "the expanded recipe to start a run", func() bool {
-		return runtime.startCount() > 0
-	})
-	if got := runtime.startInput().Message.Text; got != "Review alpha.\nContext: alpha beta" {
-		t.Fatalf("recipe prompt = %q", got)
-	}
 	stop()
-}
-
-func TestRecipeInvocationPrefersLongestCompleteNameAndSupportsUniquePrefix(t *testing.T) {
-	recipes := []workspace.AuthoringRecipe{{Name: "review"}, {Name: "review code"}, {Name: "summarize"}}
-	recipe, arguments, err := resolveRecipeInvocation(recipes, "review code carefully")
-	if err != nil || recipe.Name != "review code" || arguments != "carefully" {
-		t.Fatalf("multiword invocation = (%q, %q, %v)", recipe.Name, arguments, err)
-	}
-	recipe, arguments, err = resolveRecipeInvocation(recipes, "sum this file")
-	if err != nil || recipe.Name != "summarize" || arguments != "this file" {
-		t.Fatalf("prefix invocation = (%q, %q, %v)", recipe.Name, arguments, err)
-	}
 }
 
 type hookServiceStub struct {

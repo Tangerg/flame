@@ -29,7 +29,6 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 	a.refreshSkillReader(event.Type == protocol.RuntimeSkillsChanged)
 	a.refreshMCPReader(event.Type == protocol.RuntimeMCPChanged)
 	a.refreshScheduleReader(event.Type == protocol.RuntimeSchedulesChanged)
-	a.refreshKnowledgeReader(event.Type == protocol.RuntimeKnowledgeChanged)
 	a.refreshHooksReader(event.Type == protocol.RuntimeHooksChanged)
 	a.refreshModelReader(event.Type == protocol.RuntimeModelsChanged)
 	a.refreshApprovalReader(event.Type == protocol.RuntimeApprovalsChanged)
@@ -45,7 +44,6 @@ func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
 	a.refreshSkillReader(slices.Contains(topics, protocol.TopicSkillsChanged))
 	a.refreshMCPReader(slices.Contains(topics, protocol.TopicMCPChanged))
 	a.refreshScheduleReader(slices.Contains(topics, protocol.TopicSchedulesChanged))
-	a.refreshKnowledgeReader(slices.Contains(topics, protocol.TopicKnowledgeChanged))
 	a.refreshHooksReader(slices.Contains(topics, protocol.TopicHooksChanged))
 	a.refreshModelReader(slices.Contains(topics, protocol.TopicModelsChanged))
 	a.refreshApprovalReader(slices.Contains(topics, protocol.TopicApprovalsChanged))
@@ -54,17 +52,6 @@ func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
 		invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}),
 		resyncAffectsSession(topics),
 	)
-}
-
-func (a *app) refreshKnowledgeReader(affected bool) {
-	if !affected || a.knowledge == nil || a.dialogs.runtimeReader != runtimeReaderKnowledge || !a.dialogs.readerDialog.Open() {
-		return
-	}
-	if a.dialogs.runtimeSelection.knowledgeEntry {
-		a.refreshRuntimeReader(a.knowledgeDocumentReaderQuery(a.dialogs.runtimeSelection.knowledgeTarget))
-		return
-	}
-	a.refreshRuntimeReader(a.knowledgeEntriesReaderQuery())
 }
 
 func (a *app) refreshHooksReader(affected bool) {

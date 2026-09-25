@@ -29,7 +29,7 @@ func TestAuthoredWatcherReportsOutagesAndRecovers(t *testing.T) {
 			previousLogger := slog.Default()
 			slog.SetDefault(slog.New(observationDiagnostics{Handler: slog.NewTextHandler(io.Discard, nil), failures: reports}))
 			t.Cleanup(func() { slog.SetDefault(previousLogger) })
-			watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), "", "")
+			watcher, err := NewAuthoredWatcher(t.TempDir(), "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -120,21 +120,20 @@ func (d observationDiagnostics) Handle(_ context.Context, record slog.Record) er
 
 func TestAuthoredWatcherMapsGlobalAndWorkspaceCascades(t *testing.T) {
 	home := t.TempDir()
-	knowledgeHome := t.TempDir()
 	skillsHome := t.TempDir()
 	project := t.TempDir()
 	workspace := filepath.Join(project, "packages", "desktop")
 	if err := os.MkdirAll(workspace, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := NewAuthoredWatcher(knowledgeHome, home, skillsHome, "")
+	watcher, err := NewAuthoredWatcher(home, skillsHome)
 	if err != nil {
 		t.Fatal(err)
 	}
 	events := make(chan workspaceapp.AuthoredResource, 8)
 	closer, err := watcher.Watch(
 		[]workspaceapp.AuthoredScope{{Workspace: workspace, ProjectRoot: project}},
-		[]workspaceapp.AuthoredResource{workspaceapp.AuthoredKnowledge, workspaceapp.AuthoredHooks, workspaceapp.AuthoredSkills},
+		[]workspaceapp.AuthoredResource{workspaceapp.AuthoredHooks, workspaceapp.AuthoredSkills},
 		func(resource workspaceapp.AuthoredResource) { events <- resource },
 	)
 	if err != nil {
@@ -146,9 +145,6 @@ func TestAuthoredWatcherMapsGlobalAndWorkspaceCascades(t *testing.T) {
 		path     string
 		resource workspaceapp.AuthoredResource
 	}{
-		{filepath.Join(knowledgeHome, "FLAME.md"), workspaceapp.AuthoredKnowledge},
-		{filepath.Join(project, "FLAME.md"), workspaceapp.AuthoredKnowledge},
-		{filepath.Join(workspace, "FLAME.md"), workspaceapp.AuthoredKnowledge},
 		{filepath.Join(home, ".flame", "hooks.json"), workspaceapp.AuthoredHooks},
 		{filepath.Join(project, ".flame", "hooks.json"), workspaceapp.AuthoredHooks},
 		{filepath.Join(workspace, ".flame", "hooks.json"), workspaceapp.AuthoredHooks},
@@ -178,7 +174,7 @@ func TestAuthoredWatcherScopesSkillsToSelectedWorkspace(t *testing.T) {
 	if err := os.MkdirAll(workspace, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), t.TempDir(), "")
+	watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}

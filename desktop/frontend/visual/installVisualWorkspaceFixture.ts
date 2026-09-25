@@ -34,17 +34,13 @@ import {
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
-  WORKSPACE_AGENT_DOCS_KEY,
   WORKSPACE_MANAGED_SKILLS_KEY,
   WORKSPACE_SKILLS_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
   WORKSPACE_AGENT_MEMORY_KEY,
-  WORKSPACE_KNOWLEDGE_KEY,
   type AgentMemoryEntry,
   type ManagedSkill,
   type SkillProposal,
-  type WorkspaceAgentDoc,
-  type WorkspaceKnowledgeEntry,
   type WorkspaceSkillDiscovery,
   type WorkspaceDiff,
   type WorkspaceFileChange,
@@ -57,16 +53,10 @@ import type { ScheduleConfig } from "@/plugins/builtin/settings/schedules/applic
 import {
   diffView,
   fileView,
-  inboxView,
-  planView,
   timelineView,
-  searchView,
   skillsView,
-  knowledgeView,
   agentMemoryView,
-  agentDocsView,
 } from "@/plugins/builtin/workspace/workspace-views";
-import { PENDING_WORK_KEY, type PendingWorkItem } from "@/plugins/builtin/agent/public/hitl";
 import { DATA_PROVIDER, SHORTCUT, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
 import type { FeatureCapability, ServerCapabilities } from "@/rpc";
@@ -376,25 +366,6 @@ function workspaceDataPlugin(state: VisualWorkspaceState, review: WorkspaceDiff)
       });
 
       ctx.contribute(DATA_PROVIDER, {
-        key: WORKSPACE_KNOWLEDGE_KEY,
-        fetcher: async (): Promise<WorkspaceKnowledgeEntry[]> => [
-          {
-            scope: "cwd",
-            path: "/workspace/scope/FLAME.md",
-            content: "Run the session suite before touching the store.",
-            revision: "rev_07",
-            updatedAt: "2026-07-31T10:00:00Z",
-          },
-          {
-            scope: "projectRoot",
-            path: "/workspace/FLAME.md",
-            content: "Runtime owns durable semantics; the desktop consumes them.",
-            revision: "rev_02",
-            updatedAt: "2026-07-24T09:12:00Z",
-          },
-        ],
-      });
-      ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_AGENT_MEMORY_KEY,
         fetcher: async (): Promise<AgentMemoryEntry[]> => [
           {
@@ -424,14 +395,6 @@ function workspaceDataPlugin(state: VisualWorkspaceState, review: WorkspaceDiff)
         ],
       });
       ctx.contribute(DATA_PROVIDER, {
-        key: WORKSPACE_AGENT_DOCS_KEY,
-        fetcher: async (): Promise<WorkspaceAgentDoc[]> => [
-          { path: "FLAME.md", title: "Workspace instructions", scope: "cwd" },
-          { path: "../FLAME.md", title: "Project instructions", scope: "projectRoot" },
-          { path: "~/.flame/FLAME.md", title: "Personal instructions", scope: "home" },
-        ],
-      });
-      ctx.contribute(DATA_PROVIDER, {
         key: MCP_SERVERS_KEY,
         fetcher: async () => [] satisfies MCPServerSettings[],
       });
@@ -445,32 +408,6 @@ function workspaceDataPlugin(state: VisualWorkspaceState, review: WorkspaceDiff)
                 { path: "go.mod", name: "go.mod", type: "file", sizeBytes: 4_096 },
                 { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
               ] satisfies WorkspaceFileEntry[]),
-      });
-      ctx.contribute(DATA_PROVIDER, {
-        key: PENDING_WORK_KEY,
-        fetcher: async () =>
-          state === "dock-inbox"
-            ? ([
-                {
-                  id: "ses_visual:run_root",
-                  sessionId: VISUAL_SESSION_ID,
-                  rootRunId: "run_root",
-                  kind: "approval",
-                  subject: "shell",
-                  more: 2,
-                  waitingSince: "2026-07-31T07:52:00.000Z",
-                },
-                {
-                  id: "ses_other:run_b",
-                  sessionId: "ses_other",
-                  rootRunId: "run_b",
-                  kind: "question",
-                  subject: "Which database should the migration target?",
-                  more: 0,
-                  waitingSince: "2026-07-31T07:58:00.000Z",
-                },
-              ] satisfies PendingWorkItem[])
-            : [],
       });
       ctx.contribute(DATA_PROVIDER, {
         key: PROVIDERS_KEY,
@@ -525,17 +462,9 @@ async function loadVisualPlugins(plugins: readonly AnyPlugin[]): Promise<void> {
   await loadPluginsForTest(...plugins);
 }
 
-const OPENED_BY_ITS_OWN_STATE = new Set([
-  "inbox",
-  "subagents",
-  "diagnostics",
-  "agent-docs",
-  "skills",
-  "knowledge",
-  "agent-memory",
-]);
+const OPENED_BY_ITS_OWN_STATE = new Set(["subagents", "diagnostics", "skills", "agent-memory"]);
 
-const FULL_VIEW_ID = "search";
+const FULL_VIEW_ID = "file";
 
 export interface VisualWorkspaceConfig {
   pane?: VisualSettingsPane;
@@ -563,7 +492,7 @@ export async function installVisualWorkspaceFixture(
   useRuntimeConnectionStore.setState({
     capabilities:
       state === "dock-feature-off"
-        ? { ...VISUAL_CAPABILITIES, features: { git: feature(true), plan: feature(true) } }
+        ? { ...VISUAL_CAPABILITIES, features: { git: feature(true) } }
         : VISUAL_CAPABILITIES,
   });
   queryClient.setQueryDefaults([WORKSPACE_DIFF_KEY], {
@@ -584,8 +513,6 @@ export async function installVisualWorkspaceFixture(
             ...(OPENED_BY_ITS_OWN_STATE.has(dockViewId) ? [dockViewId] : []),
             "file",
             "diff",
-            "search",
-            "plan",
             "timeline",
           ],
     lastViewId: state === "dock-catalog" ? null : dockViewId,
@@ -618,14 +545,9 @@ export async function installVisualWorkspaceFixture(
     workspaceDataPlugin(state, reviewFiles === undefined ? REVIEW_DIFF : scaledReview(reviewFiles)),
     diffView,
     fileView,
-    inboxView,
-    planView,
     timelineView,
-    searchView,
     skillsView,
-    knowledgeView,
     agentMemoryView,
-    agentDocsView,
     diagnosticsView,
     kernelSettings,
     ...localePlugins,

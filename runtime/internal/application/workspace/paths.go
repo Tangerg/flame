@@ -1,5 +1,5 @@
 // Package workspace contains focused project-scoped application use cases for
-// workspace identity, browsing, knowledge, skills, hooks, and Git observation.
+// workspace identity, browsing, skills, hooks, and Git observation.
 package workspace
 
 import (

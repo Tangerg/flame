@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   projectAskUserAnswer,
-  projectConversationHits,
   projectFetchedPage,
   projectGlobPreview,
   projectHttpPreview,
@@ -73,18 +72,6 @@ describe("prose tool results", () => {
       "Staging resets nightly.",
     ]);
     expect(projectRecalledMemories("No relevant memories found for this project.")).toEqual([]);
-  });
-
-  it("splits a conversation hit into speaker, day and snippet", () => {
-    expect(
-      projectConversationHits(
-        "1. [user · 2026-07-31] why did the retry loop change?\n2. [agent · 2026-08-01] because the backoff used real timers",
-      ),
-    ).toEqual([
-      { speaker: "user", day: "2026-07-31", snippet: "why did the retry loop change?" },
-      { speaker: "agent", day: "2026-08-01", snippet: "because the backoff used real timers" },
-    ]);
-    expect(projectConversationHits("No earlier conversation matched.")).toEqual([]);
   });
 
   it("groups loaded tool names by where they came from", () => {

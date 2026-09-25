@@ -75,7 +75,6 @@ const SAFETY_CLASS: Record<string, "safe" | "write" | "exec" | "network"> = {
   read_skill_resource: "safe",
   propose_skill: "safe",
   search_memory: "safe",
-  search_conversations: "safe",
   search_tools: "safe",
   read_tool_result: "safe",
   ask_user: "safe",
@@ -312,16 +311,6 @@ const MEMORY_CALL = settledTool(
   [
     "1. The compaction cutpoint is chosen by the Runtime, never by the client.",
     "2. A steer arriving during compaction is queued, not dropped.",
-  ].join("\n"),
-);
-
-const CONVERSATIONS_CALL = settledTool(
-  "item_search_conversations",
-  "search_conversations",
-  { query: "atomicity" },
-  [
-    "1. [user · 2026-07-24] Where does the transaction boundary sit?",
-    "2. [assistant · 2026-07-24] Around the store call, so a failed flush rolls the write back.",
   ].join("\n"),
 );
 
@@ -1581,7 +1570,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         metrics: { steps: 4, activeDurationMillis: 4_000 },
       }),
     ],
-    items: [PROMPT, GLOB_CALL, MEMORY_CALL, CONVERSATIONS_CALL, TOOL_SEARCH_CALL, RESPONSE],
+    items: [PROMPT, GLOB_CALL, MEMORY_CALL, TOOL_SEARCH_CALL, RESPONSE],
     pendingInterruptSets: [],
   },
 

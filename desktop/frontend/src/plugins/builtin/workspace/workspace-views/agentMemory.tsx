@@ -47,7 +47,7 @@ function PendingRow({ item }: { item: AgentMemoryEntry }) {
   const { busy, run } = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: t("agentMemory.error"),
-    source: "knowledge",
+    source: "agentMemory",
   });
   return (
     <div {...stylex.props(vs.lineTop, vs.gutter, vs.rowPadTall)}>
@@ -92,7 +92,7 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
   const { busy, run } = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: t("agentMemory.error"),
-    source: "knowledge",
+    source: "agentMemory",
   });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.content);
@@ -186,7 +186,7 @@ function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
   const { busy, run } = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: t("agentMemory.error"),
-    source: "knowledge",
+    source: "agentMemory",
   });
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");

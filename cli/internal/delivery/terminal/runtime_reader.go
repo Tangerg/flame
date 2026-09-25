@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 type runtimeReaderMode uint8
@@ -26,10 +25,8 @@ const (
 	runtimeReaderProviders
 	runtimeReaderApprovalRules
 	runtimeReaderAgentMemory
-	runtimeReaderKnowledge
 	runtimeReaderDiagnosticTools
 	runtimeReaderAgentDocuments
-	runtimeReaderRecipes
 	runtimeReaderHooks
 )
 
@@ -48,8 +45,6 @@ type runtimeReaderQuery struct {
 // or transport state.
 type runtimeReaderSelection struct {
 	skillName         string
-	knowledgeTarget   workspace.KnowledgeTarget
-	knowledgeEntry    bool
 	agentMemoryTarget agent.MemoryTarget
 }
 

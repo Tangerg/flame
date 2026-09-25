@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { workspaceInvalidations } from "./eventInvalidation";
 
-it("refreshes the recipe catalog when authored templates change", () => {
-  expect(workspaceInvalidations({ type: "recipes.changed", sequence: 1 })).toEqual(["recipes"]);
-});
-
 describe("workspaceInvalidations", () => {
   it("maps each subscribed topic to the reads it invalidates", () => {
     expect(workspaceInvalidations({ type: "files.changed", sequence: 1 })).toEqual([
@@ -12,11 +8,7 @@ describe("workspaceInvalidations", () => {
       "diff",
       "fileList",
       "fileRead",
-      "grep",
-      "recipes",
       "hooks",
-      "knowledge",
-      "agentDocs",
       "skills",
     ]);
     expect(workspaceInvalidations({ type: "skills.changed", sequence: 2 })).toEqual([
@@ -32,9 +24,6 @@ describe("workspaceInvalidations", () => {
       "schedules",
     ]);
     expect(workspaceInvalidations({ type: "sessions.changed", sequence: 5 })).toEqual(["sessions"]);
-    expect(workspaceInvalidations({ type: "knowledge.changed", sequence: 6 })).toEqual([
-      "knowledge",
-    ]);
     expect(workspaceInvalidations({ type: "hooks.changed", sequence: 7 })).toEqual(["hooks"]);
     expect(workspaceInvalidations({ type: "models.changed", sequence: 8 })).toEqual([
       "providers",
@@ -60,11 +49,7 @@ describe("workspaceInvalidations", () => {
       "diff",
       "fileList",
       "fileRead",
-      "grep",
-      "recipes",
       "hooks",
-      "knowledge",
-      "agentDocs",
       "skills",
       "agentSessionProjection",
     ]);
@@ -79,7 +64,6 @@ describe("workspaceInvalidations", () => {
     ]);
     expect(workspaceInvalidations({ type: "interrupts.changed", sequence: 2 })).toEqual([
       "agentSessionProjection",
-      "pendingWork",
     ]);
     expect(workspaceInvalidations({ type: "goals.changed", sequence: 3 })).toEqual([
       "agentSessionProjection",

@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-09-22` · 88 methods
+Protocol `2026-09-22` · 84 methods
 
 ## Methods
 
@@ -50,7 +50,6 @@ Protocol `2026-09-22` · 88 methods
 | `skills.proposals.list` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `capability_not_negotiated` |
 | `skills.proposals.approve` | command | unary | replayResponse | none | none | — | `skills` | `workspace_unavailable`, `revision_conflict`, `capability_not_negotiated` |
 | `skills.proposals.reject` | command | unary | replayResponse | none | none | — | `skills` | `workspace_unavailable`, `revision_conflict`, `capability_not_negotiated` |
-| `recipes.list` | query | unary | none | none | none | — | — | `workspace_unavailable` |
 | `agentDocs.list` | query | unary | none | none | none | — | — | `workspace_unavailable` |
 | `mcp.servers.list` | query | unary | none | none | none | — | `mcp` | `capability_not_negotiated` |
 | `mcp.servers.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_already_exists`, `capability_not_negotiated` |
@@ -90,9 +89,6 @@ Protocol `2026-09-22` · 88 methods
 | `tools.invoke` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
 | `usage.session` | query | unary | none | none | none | — | — | `session_not_found` |
 | `usage.summary` | query | unary | none | none | none | — | — | — |
-| `knowledge.list` | query | unary | none | none | none | — | `knowledge` | `workspace_unavailable`, `path_outside_root`, `capability_not_negotiated` |
-| `knowledge.get` | query | unary | none | none | none | — | `knowledge` | `workspace_unavailable`, `path_outside_root`, `capability_not_negotiated` |
-| `knowledge.update` | command | unary | replayResponse | none | none | — | `knowledge` | `workspace_unavailable`, `path_outside_root`, `revision_conflict`, `capability_not_negotiated` |
 | `agentMemory.list` | query | unary | none | none | none | — | `agentMemory` | `capability_not_negotiated` |
 | `agentMemory.review` | command | unary | replayResponse | none | none | — | `agentMemory` | `capability_not_negotiated` |
 | `agentMemory.update` | command | unary | replayResponse | none | none | — | `agentMemory` | `capability_not_negotiated` |
@@ -379,7 +375,6 @@ Forbidden on every variant: `durable`.
 | --- | --- | --- |
 | `files.changed` | `sequence`, `paths` | `watchId`, `workspace` |
 | `skills.changed` | `sequence` | `names` |
-| `recipes.changed` | `sequence` | — |
 | `mcp.changed` | `sequence` | `serverIds` |
 | `schedules.changed` | `sequence` | `scheduleIds` |
 | `sessions.changed` | `sequence` | `sessionIds` |
@@ -387,7 +382,6 @@ Forbidden on every variant: `durable`.
 | `plan.changed` | `sequence` | `sessionIds` |
 | `goals.changed` | `sequence` | `sessionIds` |
 | `interrupts.changed` | `sequence` | `runIds`, `sessionIds` |
-| `knowledge.changed` | `sequence` | — |
 | `hooks.changed` | `sequence` | — |
 | `models.changed` | `sequence` | — |
 | `approvals.changed` | `sequence` | — |
@@ -864,13 +858,7 @@ TypeScript validator from this single registry projection.
 | `ModelCapabilities` | `reasoningDefaultLevel` | `identity` |
 | `ModelCapabilities` | `reasoningDefaultLevel` | `maxLength(32)` |
 | `InvokeToolRequest` | `name` | `nonEmpty` |
-| `KnowledgeEntry` | `path` | `pattern("\\S")` |
-| `KnowledgeEntry` | `revision` | `nonEmpty` |
-| `UpdateKnowledgeRequest` | `expectedRevision` | `nonEmpty` |
 | `AgentDoc` | `path` | `pattern("\\S")` |
-| `Recipe` | `name` | `pattern("\\S")` |
-| `Recipe` | `body` | `pattern("\\S")` |
-| `Recipe` | `source` | `pattern("\\S")` |
 | `AgentMemoryItemRequest` | `id` | `pattern("^mem_[0-9a-f]{32}$")` |
 | `AgentMemoryReviewRequest` | `id` | `pattern("^mem_[0-9a-f]{32}$")` |
 | `AgentMemoryItem` | `id` | `pattern("^mem_[0-9a-f]{32}$")` |
@@ -1085,9 +1073,6 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `goals.get` | always | `goals` |
 | `goals.stop` | always | `goals` |
 | `goals.resume` | always | `goals` |
-| `knowledge.list` | always | `knowledge` |
-| `knowledge.get` | always | `knowledge` |
-| `knowledge.update` | always | `knowledge` |
 | `agentMemory.list` | always | `agentMemory` |
 | `agentMemory.review` | always | `agentMemory` |
 | `agentMemory.update` | always | `agentMemory` |

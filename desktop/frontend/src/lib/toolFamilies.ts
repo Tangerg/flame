@@ -63,7 +63,6 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
     id: "recall",
     tools: [
       { name: "search_memory", icon: "brain" },
-      { name: "search_conversations", icon: "history" },
       { name: "search_tools", icon: "package-search" },
       { name: "read_tool_result", icon: "archive" },
     ],

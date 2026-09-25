@@ -1,7 +1,6 @@
 import type { AgentSessionSummary } from "@/plugins/builtin/agent/public/session";
 import type {
   WorkspaceFileChange as WorkspaceFileChangeSummary,
-  WorkspaceGrepResult,
   WorkspaceProjectSummary,
   WorkspaceDiff,
 } from "@/plugins/builtin/workspace/public/queries";
@@ -53,10 +52,8 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
 
       for (const key of [
         "diff",
-        "grep",
         "skills",
         "skill-proposals",
-        "agent-docs",
         "approval-rules",
         "list-files",
         "read-file",
@@ -116,13 +113,6 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
     );
     expect(proposalRequests[0]?.params).toEqual({ workspace: { path: "/work/beta" } });
     expect(proposals[0]).toMatchObject({ workspace: "/work/beta", name: "verify" });
-
-    const { requests: docRequests } = await runProvider(
-      "agent-docs",
-      [["agentDocs.list", { data: [] }]],
-      { cwd: "/work/gamma" },
-    );
-    expect(docRequests[0]?.params).toEqual({ workspace: { path: "/work/gamma" } });
   });
 
   it("sessions: maps Page<Session>.data into AgentSessionSummary rows (updatedAt → time)", async () => {
@@ -228,24 +218,6 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
       workspace: { path: "/work/auth" },
     });
     expect(value).toEqual({ baseline: { type: "emptyTree" }, files: [], truncated: true });
-  });
-
-  it("grep: forwards params on the wire and returns matches + total verbatim", async () => {
-    const result: WorkspaceGrepResult = {
-      matches: [{ path: "src/a.ts", lineNumber: 12, text: "const x = 1" }],
-      total: 5,
-    };
-    const { value, requests } = await runProvider<WorkspaceGrepResult>(
-      "grep",
-      [["workspace.files.search", result]],
-      { cwd: "/work/auth", query: "const x", limit: 1 },
-    );
-    expect(requests[0]?.params).toEqual({
-      query: "const x",
-      limit: 1,
-      workspace: { path: "/work/auth" },
-    });
-    expect(value).toEqual(result);
   });
 
   it("read-file: preserves the requested and served source-line window", async () => {

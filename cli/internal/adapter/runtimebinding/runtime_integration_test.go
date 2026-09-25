@@ -153,7 +153,7 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 
 func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, workspace string) {
 	t.Helper()
-	for _, topic := range []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged} {
+	for _, topic := range []protocol.RuntimeTopic{protocol.TopicHooksChanged, protocol.TopicSkillsChanged} {
 		if !runtime.Supports(topic) {
 			t.Fatalf("embedded runtime did not advertise %s", topic)
 		}
@@ -162,7 +162,6 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 	partitions, err := (changefeed.SubscriptionLimits{MaxTopics: 2, MaxWatches: 1}).Partition(changefeed.Subscription{
 		Topics: []protocol.RuntimeTopic{
 			protocol.TopicFilesChanged,
-			protocol.TopicKnowledgeChanged,
 			protocol.TopicHooksChanged,
 			protocol.TopicSkillsChanged,
 		},
@@ -206,20 +205,6 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 				}
 			}
 		}()
-	}
-
-	knowledgePath := filepath.Join(workspace, "FLAME.md")
-	if writeFileErr := os.WriteFile(knowledgePath, []byte("# External knowledge\n"), 0o600); writeFileErr != nil {
-		t.Fatalf("write external knowledge: %v", writeFileErr)
-	}
-	awaitRuntimeInvalidation(t, events, streamErrors, protocol.TopicKnowledgeChanged)
-	target, err := workspaceapi.NewKnowledgeTarget(protocol.KnowledgeScopeCWD, workspace)
-	if err != nil {
-		t.Fatal(err)
-	}
-	document, err := runtime.Knowledge().Document(t.Context(), target)
-	if err != nil || document.Content != "# External knowledge\n" {
-		t.Fatalf("knowledge after external invalidation = (%+v, %v)", document, err)
 	}
 
 	hooksDirectory := filepath.Join(workspace, ".flame")
@@ -298,9 +283,6 @@ func requireAuxiliaryCapabilities(t *testing.T, runtime *Connection, sessionID, 
 	if documents, err := authoringContext.Documents(t.Context(), workspace); err != nil {
 		t.Fatalf("Agent documents = (%+v, %v)", documents, err)
 	}
-	if recipes, err := authoringContext.Recipes(t.Context(), workspace); err != nil {
-		t.Fatalf("Recipes = (%+v, %v)", recipes, err)
-	}
 	if catalog, err := hooks.Catalog(t.Context(), workspace); err != nil {
 		t.Fatalf("Hooks = (%+v, %v)", catalog, err)
 	}
@@ -314,8 +296,7 @@ func requireAuxiliaryCapabilities(t *testing.T, runtime *Connection, sessionID, 
 func requireContextManagement(t *testing.T, runtime *Connection, workspace string) {
 	t.Helper()
 	agentMemory := runtime.AgentMemory()
-	knowledgeService := runtime.Knowledge()
-	if agentMemory == nil || knowledgeService == nil {
+	if agentMemory == nil {
 		t.Fatal("context adapters were not advertised")
 	}
 	userTarget, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
@@ -337,29 +318,6 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	}
 	if deleteErr := agentMemory.Delete(t.Context(), added.ID); deleteErr != nil {
 		t.Fatalf("Delete agent memory: %v", deleteErr)
-	}
-	entries, err := knowledgeService.Entries(t.Context(), workspace)
-	if err != nil {
-		t.Fatalf("Entries knowledge = (%+v, %v)", entries, err)
-	}
-	target, err := workspaceapi.NewKnowledgeTarget(protocol.KnowledgeScopeCWD, workspace)
-	if err != nil {
-		t.Fatal(err)
-	}
-	before, err := knowledgeService.Document(t.Context(), target)
-	if err != nil {
-		t.Fatalf("read knowledge before save: %v", err)
-	}
-	update, err := before.Revise(target, "# Integration knowledge\n")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, saveErr := knowledgeService.Save(t.Context(), update); saveErr != nil {
-		t.Fatalf("Save knowledge: %v", saveErr)
-	}
-	document, err := knowledgeService.Document(t.Context(), target)
-	if err != nil || document.Content != "# Integration knowledge\n" {
-		t.Fatalf("Document knowledge = (%+v, %v)", document, err)
 	}
 }
 
@@ -921,7 +879,7 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 	if secondProfile.Discovery().Capabilities.RuntimeTopics[0] == "mutated" {
 		t.Fatal("owner leaked mutable profile state")
 	}
-	if first.AgentMemory() == nil || first.Knowledge() == nil ||
+	if first.AgentMemory() == nil ||
 		first.DiagnosticTools() == nil || first.AuthoringContext() == nil ||
 		first.Hooks() == nil || first.Feedback() == nil {
 		t.Fatal("connection adapters were not composed")

@@ -34,13 +34,10 @@ const (
 	PlanState Resource = "plan"
 	// Schedules — an editable scheduled run was created, updated, or deleted.
 	Schedules Resource = "schedules"
-	// Knowledge — a human-authored knowledge document was conditionally replaced.
-	Knowledge Resource = "knowledge"
 	// Hooks — a project's lifecycle-hook trust decision changed.
 	Hooks Resource = "hooks"
 	// Skills — the managed Skill library or proposal collection changed.
-	Skills  Resource = "skills"
-	Recipes Resource = "recipes"
+	Skills Resource = "skills"
 	// MCP — an MCP server's durable configuration or live projection changed.
 	MCP Resource = "mcp"
 	// Models — provider configuration or a utility/embedding model role changed.
@@ -54,8 +51,8 @@ const (
 // Valid reports whether r belongs to the invalidation vocabulary.
 func (r Resource) Valid() bool {
 	return r == Resync || r == Sessions || r == Runs || r == Interrupts ||
-		r == Goals || r == PlanState || r == Schedules || r == Knowledge ||
-		r == Hooks || r == Skills || r == Recipes || r == MCP || r == Models ||
+		r == Goals || r == PlanState || r == Schedules ||
+		r == Hooks || r == Skills || r == MCP || r == Models ||
 		r == Approvals || r == AgentMemory
 }
 

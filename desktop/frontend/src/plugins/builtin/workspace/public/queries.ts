@@ -1,13 +1,9 @@
 export {
-  WORKSPACE_AGENT_DOCS_KEY,
   WORKSPACE_DIFF_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
-  WORKSPACE_GREP_KEY,
   WORKSPACE_LIST_FILES_KEY,
-  WORKSPACE_KNOWLEDGE_KEY,
   WORKSPACE_PROJECTS_KEY,
   WORKSPACE_READ_FILE_KEY,
-  WORKSPACE_RECIPES_KEY,
   WORKSPACE_SKILLS_KEY,
   WORKSPACE_SKILL_DETAIL_KEY,
   WORKSPACE_MANAGED_SKILLS_KEY,
@@ -22,16 +18,12 @@ export {
   type WorkspaceDiffQuery,
   type WorkspaceFileChange,
   type WorkspaceFileChangesQuery,
-  type WorkspaceGrepQuery,
-  type WorkspaceGrepResult,
   type WorkspaceListFilesQuery,
-  type WorkspaceKnowledgeQuery,
   type WorkspaceCatalogQuery,
   type WorkspaceSkillDetailQuery,
   type WorkspaceProjectSummary,
   type WorkspaceReadFileQuery,
   type AgentMemoryQuery,
-  type WorkspaceRecipesQuery,
 } from "../application/workspaceQueries";
 
 export { useWorkingTreeChanges } from "../application/workingTreeChanges";

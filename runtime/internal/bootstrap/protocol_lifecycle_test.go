@@ -37,9 +37,7 @@ func TestProtocolLifecycleSurvivesColdRestart(t *testing.T) {
 func TestAssemblyPreservesParkedQuestionAcrossCrashLikeRestart(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
-	stores, err := persistence.Open(t.Context(), persistence.Config{
-		DataDirectory: home, DefaultWorkspacePath: home,
-	})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
 	if err != nil {
 		t.Fatalf("open persistence: %v", err)
 	}
@@ -96,9 +94,7 @@ func newProtocolLifecycleFixture(t *testing.T) *protocolLifecycleFixture {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	model := newLifecycleModel()
-	stores, err := persistence.Open(t.Context(), persistence.Config{
-		DataDirectory: home, DefaultWorkspacePath: home,
-	})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
 	if err != nil {
 		t.Fatalf("open persistence: %v", err)
 	}
@@ -402,10 +398,7 @@ func (noMaintenance) Maintain(
 func openProtocolRuntime(t *testing.T, model chat.Model) (*Instance, *delivery.Handler) {
 	t.Helper()
 	dataDirectory := os.Getenv("FLAME_HOME")
-	stores, err := persistence.Open(t.Context(), persistence.Config{
-		DataDirectory:        dataDirectory,
-		DefaultWorkspacePath: dataDirectory,
-	})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: dataDirectory})
 	if err != nil {
 		t.Fatalf("open persistence: %v", err)
 	}

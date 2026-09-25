@@ -9,7 +9,7 @@ import (
 
 func TestComposeConfigInjectsDurableRuntimePolicy(t *testing.T) {
 	const buildID = "sha256:2222222222222222222222222222222222222222222222222222222222222222"
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir(), DefaultWorkspacePath: t.TempDir()})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

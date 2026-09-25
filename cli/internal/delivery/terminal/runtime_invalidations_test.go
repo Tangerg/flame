@@ -977,7 +977,7 @@ func TestRuntimeChangeMonitorPreservesAuthoredWorkspaceScopeAcrossPartitions(t *
 	source := &partitionedRuntimeChangeSourceStub{
 		supported: []protocol.RuntimeTopic{
 			protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
-			protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged,
+			protocol.TopicSkillsChanged, protocol.TopicHooksChanged,
 		},
 		registrations: make(chan runtimeSubscriptionRegistration, 3),
 	}
@@ -989,7 +989,7 @@ func TestRuntimeChangeMonitorPreservesAuthoredWorkspaceScopeAcrossPartitions(t *
 			fileReads.Add(1)
 			return nil, nil
 		}),
-		resources: runtimeResourceObservation{knowledge: true, hooks: true},
+		resources: runtimeResourceObservation{skills: true, hooks: true},
 		subscriptionLimits: changefeed.SubscriptionLimits{
 			MaxTopics: 2, MaxWatches: 1,
 		},
@@ -1005,7 +1005,7 @@ func TestRuntimeChangeMonitorPreservesAuthoredWorkspaceScopeAcrossPartitions(t *
 	for range 3 {
 		registrations = append(registrations, awaitValue(t, source.registrations, "authored-resource partition"))
 	}
-	for _, topic := range []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged} {
+	for _, topic := range []protocol.RuntimeTopic{protocol.TopicSkillsChanged, protocol.TopicHooksChanged} {
 		index := slices.IndexFunc(registrations, func(registration runtimeSubscriptionRegistration) bool {
 			return slices.Contains(registration.subscription.Topics, topic)
 		})

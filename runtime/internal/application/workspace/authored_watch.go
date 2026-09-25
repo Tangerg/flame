@@ -16,15 +16,13 @@ import (
 type AuthoredResource string
 
 const (
-	AuthoredKnowledge AuthoredResource = AuthoredResource(invalidation.Knowledge)
-	AuthoredHooks     AuthoredResource = AuthoredResource(invalidation.Hooks)
-	AuthoredSkills    AuthoredResource = AuthoredResource(invalidation.Skills)
-	AuthoredRecipes   AuthoredResource = AuthoredResource(invalidation.Recipes)
+	AuthoredHooks  AuthoredResource = AuthoredResource(invalidation.Hooks)
+	AuthoredSkills AuthoredResource = AuthoredResource(invalidation.Skills)
 )
 
 // Valid reports whether a is one externally authored product source.
 func (a AuthoredResource) Valid() bool {
-	return a == AuthoredKnowledge || a == AuthoredHooks || a == AuthoredSkills || a == AuthoredRecipes
+	return a == AuthoredHooks || a == AuthoredSkills
 }
 
 // InvalidationResource maps a to the same application-owned change
@@ -38,7 +36,7 @@ func (a AuthoredResource) InvalidationResource() invalidation.Resource {
 
 // AuthoredScope is one canonical workspace identity and its project root.
 // Filesystem layout stays outside Application; these are the semantic roots
-// already used by the Knowledge and Hooks use cases.
+// already used by the Hooks and Skills use cases.
 type AuthoredScope struct {
 	Workspace   string
 	ProjectRoot string
@@ -67,17 +65,23 @@ type AuthoredObservation interface {
 	Accept(changes []AuthoredChange) error
 }
 
+// IdentityInspector supplies the one live identity fact needed to distinguish
+// a nested workspace root from its project-discovery root.
+type IdentityInspector interface {
+	Inspect(path string) (Resolved, error)
+}
+
 // AuthoredWatch resolves client workspace identities before delegating the
 // external observation mechanism. It does not know transport topics.
 type AuthoredWatch struct {
 	scope      *Scope
-	workspaces KnowledgeWorkspaceInspector
+	workspaces IdentityInspector
 	watcher    AuthoredResourceWatcher
 	mu         sync.Mutex
 	active     map[*managedAuthoredObservation]struct{}
 }
 
-func NewAuthoredWatch(scope *Scope, workspaces KnowledgeWorkspaceInspector, watcher AuthoredResourceWatcher) (*AuthoredWatch, error) {
+func NewAuthoredWatch(scope *Scope, workspaces IdentityInspector, watcher AuthoredResourceWatcher) (*AuthoredWatch, error) {
 	for _, required := range []struct {
 		name  string
 		value any

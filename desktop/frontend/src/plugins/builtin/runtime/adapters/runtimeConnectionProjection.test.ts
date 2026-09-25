@@ -95,7 +95,7 @@ describe("runtime connection projection", () => {
     expect(caps.features.multimodal?.enabled).toBe(false);
     expect(caps.runEvents.includes("item.started")).toBe(true);
     expect(runtimeSupportsTopic("files.changed")).toBe(true);
-    expect(runtimeSupportsTopic("knowledge.changed")).toBe(false);
+    expect(runtimeSupportsTopic("hooks.changed")).toBe(false);
     expect(typeof useServerFeature).toBe("function");
   });
 

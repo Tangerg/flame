@@ -1,5 +1,4 @@
 export const fr: Record<string, string> = {
-  "recipes.error.load": "Impossible de charger les recettes.",
   "common.cancel": "Annuler",
   "common.close": "Fermer",
 
@@ -148,7 +147,6 @@ export const fr: Record<string, string> = {
   "tools.preview.pending.requesting": "Requête…",
   "tools.preview.pending.fetching": "Récupération…",
   "tools.preview.idle.noMemories": "(rien rappelé)",
-  "tools.preview.idle.noConversations": "(aucune mention antérieure)",
   "tools.preview.idle.noTools": "(aucun outil chargé)",
   "tools.preview.idle.noResponse": "(aucune réponse)",
   "tools.preview.idle.noPage": "(aucune page)",
@@ -156,12 +154,6 @@ export const fr: Record<string, string> = {
   "tools.http.headers_one": "{{count}} en-tête",
   "tools.http.headers_many": "{{count}} d’en-têtes",
   "tools.http.headers_other": "{{count}} en-têtes",
-  "inbox.title": "Boîte",
-  "inbox.waiting": "{{count}} en attente de vous",
-  "inbox.ask.approval": "Approuver",
-  "inbox.ask.question": "Répondre",
-  "inbox.empty.title": "Rien ne vous attend",
-  "inbox.empty.sub": "Les sessions qui s'arrêtent pour demander apparaissent ici.",
   "goal.summary.active": "Objectif en cours",
   "goal.summary.paused": "Objectif en pause",
   "goal.summary.blocked": "Objectif bloqué",
@@ -330,13 +322,8 @@ export const fr: Record<string, string> = {
   "contextDock.group.workspace": "Espace",
   "contextDock.group.run": "Exécution",
   "contextDock.group.session": "Session",
-  "workspace.view.title.plan": "Plan",
-  "workspace.view.title.agentDocs": "Docs de l'agent",
-  "workspace.view.title.inbox": "Boîte",
   "workspace.view.title.timeline": "Chronologie",
   "workspace.view.title.skills": "Compétences",
-  "workspace.view.title.knowledge": "Connaissances",
-  "workspace.view.title.search": "Recherche",
   "workspace.view.title.diagnostics": "Diagnostic",
   "settings.theme": "Thème",
   "settings.theme.sub":
@@ -540,27 +527,6 @@ export const fr: Record<string, string> = {
   "notifications.dismiss": "Ignorer",
   "notifications.empty.title": "Aucune notification",
 
-  "search.title": "Recherche",
-  "search.placeholder": "Motif de recherche (regex)…",
-  "search.aria": "Motif de recherche",
-  "search.scope": "Regex sur l'espace de travail de la session",
-  "search.prompt.title": "Rechercher dans cet espace de travail",
-  "search.matches_one": "{{count}} correspondance",
-  "search.matches_many": "{{count}} de correspondances",
-  "search.matches_other": "{{count}} correspondances",
-  "search.overflow_one":
-    "{{count}} correspondance de plus n'est pas affichée — affinez la requête.",
-  "search.overflow_many":
-    "{{count}} de correspondances de plus ne sont pas affichées — affinez la requête.",
-  "search.overflow_other":
-    "{{count}} correspondances de plus ne sont pas affichées — affinez la requête.",
-  "search.empty.title": "Aucune correspondance",
-  "search.empty.sub": "Rien dans l'espace de travail ne correspond à ce motif.",
-
-  "plan.title": "Plan",
-  "plan.empty.title": "Aucun plan pour l'instant",
-  "plan.empty.sub": "Lorsque l'agent ébauche un plan, il apparaît ici.",
-
   "tools.family.shell": "Shell",
   "tools.family.files": "Fichiers",
   "tools.family.search": "Recherche",
@@ -593,33 +559,6 @@ export const fr: Record<string, string> = {
   "skills.revision": "Empreinte du contenu {{revision}}",
   "skills.body.empty.title": "Aucune instruction",
   "skills.body.empty.sub": "Cette compétence pointe vers un document sans corps.",
-
-  "knowledge.title": "Connaissances",
-  "knowledge.scopes_one": "{{count}} portée",
-  "knowledge.scopes_many": "{{count}} de portées",
-  "knowledge.scopes_other": "{{count}} portées",
-  "knowledge.scope.cwd": "répertoire courant",
-  "knowledge.scope.projectRoot": "racine du projet",
-  "knowledge.scope.home": "dossier personnel",
-  "knowledge.empty.title": "Aucune connaissance pour l'instant",
-  "knowledge.empty.sub": "Les fichiers FLAME.md que le runtime gère pour l'agent apparaissent ici.",
-  "knowledge.disabled.title": "Connaissances désactivées",
-  "knowledge.disabled.sub": "Ce runtime ne propose pas la fonctionnalité de connaissances.",
-  "knowledge.save": "Enregistrer",
-  "knowledge.saving": "Enregistrement…",
-  "knowledge.revert": "Annuler",
-  "knowledge.saveError": "Échec de l'enregistrement des connaissances",
-  "knowledge.reloadError": "Impossible de recharger la dernière version du document : {{reason}}",
-  "knowledge.updated": "mis à jour",
-  "knowledge.aria": "Contenu des connaissances pour {{path}}",
-
-  "agentDocs.title": "Docs de l'agent",
-  "agentDocs.found_one": "{{count}} trouvé",
-  "agentDocs.found_many": "{{count}} de trouvés",
-  "agentDocs.found_other": "{{count}} trouvés",
-  "agentDocs.empty.title": "Aucune doc d'agent",
-  "agentDocs.empty.sub":
-    "Les fichiers AGENTS.md trouvés à partir du répertoire de travail apparaissent ici.",
 
   "shortcuts.sub":
     "Chaque raccourci enregistré par les plugins intégrés et utilisateur. Appuyez sur une combinaison n'importe où dans l'application pour l'activer ; les conflits de liaison sont toujours résolus en faveur du dernier enregistrement.",
@@ -661,8 +600,6 @@ export const fr: Record<string, string> = {
   "diff.binary": "Fichier binaire",
   "diff.truncated":
     "Diff tronqué à la limite de lignes — les fichiers restants ne sont pas affichés.",
-
-  "plan.list.heading": "Plan de tâches",
 
   "compaction.compacted": "Contexte compacté automatiquement",
   "projects.showMore": "Afficher {{count}} de plus",
@@ -911,8 +848,6 @@ export const fr: Record<string, string> = {
   "skillLibrary.empty.sub":
     "Les compétences que l'agent propose et que vous approuvez sont enregistrées ici.",
   "skillLibrary.error": "Impossible de mettre à jour la compétence.",
-  "plan.unavailable.title": "Plan indisponible",
-  "plan.unavailable.sub": "Ce runtime n'expose pas le plan de l'agent.",
   "skillProposals.sub": "{{count}} en attente de revue",
   "skillProposals.approve": "Approuver",
   "skillProposals.reject": "Rejeter",
@@ -1162,8 +1097,6 @@ export const fr: Record<string, string> = {
   "tool.done.exitPlanMode": "Approbation du plan demandée",
   "tool.doing.searchMemory": "Cherche en mémoire",
   "tool.done.searchMemory": "Mémoire consultée",
-  "tool.doing.searchConversations": "Cherche la conversation",
-  "tool.done.searchConversations": "Conversation consultée",
   "tool.doing.searchTools": "Cherche des outils",
   "tool.done.searchTools": "Outils trouvés",
   "tool.doing.readToolResult": "Lit la sortie stockée",
@@ -1306,9 +1239,6 @@ export const fr: Record<string, string> = {
   "diff.nav.next": "Fichier suivant",
   "diff.nav.collapseAll": "Tout replier",
   "diff.nav.expandAll": "Tout déplier",
-  "search.scope.placeholder": "Dossier ou fichier, ex. src/",
-  "search.scope.aria": "Rechercher dans",
-  "search.narrow": "Restreindre à un dossier",
   "session.row.more": "Autres actions pour {{title}}",
   "project.row.waiting_one": "{{count}} en attente",
   "project.row.waiting_many": "{{count}} en attente",

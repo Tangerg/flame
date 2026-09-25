@@ -14,8 +14,7 @@ const (
 	// wrote, changed on disk.
 	RuntimeFilesChanged RuntimeEventType = "files.changed"
 	// RuntimeSkillsChanged — the discovered skill set changed.
-	RuntimeSkillsChanged  RuntimeEventType = "skills.changed"
-	RuntimeRecipesChanged RuntimeEventType = "recipes.changed"
+	RuntimeSkillsChanged RuntimeEventType = "skills.changed"
 	// RuntimeMCPChanged — an MCP server's registration or connection changed.
 	RuntimeMCPChanged RuntimeEventType = "mcp.changed"
 	// RuntimeSchedulesChanged — a schedule was created, edited, deleted or fired.
@@ -33,8 +32,6 @@ const (
 	RuntimeGoalsChanged RuntimeEventType = "goals.changed"
 	// RuntimeInterruptsChanged — a waiting set opened, was answered, or was canceled.
 	RuntimeInterruptsChanged RuntimeEventType = "interrupts.changed"
-	// RuntimeKnowledgeChanged — one human-authored knowledge document changed.
-	RuntimeKnowledgeChanged RuntimeEventType = "knowledge.changed"
 	// RuntimeHooksChanged — a project's lifecycle-hook trust decision changed.
 	RuntimeHooksChanged RuntimeEventType = "hooks.changed"
 	// RuntimeModelsChanged — provider configuration or a model role changed.
@@ -57,7 +54,6 @@ type RuntimeTopic string
 const (
 	TopicFilesChanged       = RuntimeTopic(RuntimeFilesChanged)
 	TopicSkillsChanged      = RuntimeTopic(RuntimeSkillsChanged)
-	TopicRecipesChanged     = RuntimeTopic(RuntimeRecipesChanged)
 	TopicMCPChanged         = RuntimeTopic(RuntimeMCPChanged)
 	TopicSchedulesChanged   = RuntimeTopic(RuntimeSchedulesChanged)
 	TopicSessionsChanged    = RuntimeTopic(RuntimeSessionsChanged)
@@ -65,7 +61,6 @@ const (
 	TopicPlanChanged        = RuntimeTopic(RuntimePlanChanged)
 	TopicGoalsChanged       = RuntimeTopic(RuntimeGoalsChanged)
 	TopicInterruptsChanged  = RuntimeTopic(RuntimeInterruptsChanged)
-	TopicKnowledgeChanged   = RuntimeTopic(RuntimeKnowledgeChanged)
 	TopicHooksChanged       = RuntimeTopic(RuntimeHooksChanged)
 	TopicModelsChanged      = RuntimeTopic(RuntimeModelsChanged)
 	TopicApprovalsChanged   = RuntimeTopic(RuntimeApprovalsChanged)
@@ -78,9 +73,9 @@ const (
 // the protocol vocabulary for another.
 func RuntimeTopics() []RuntimeTopic {
 	return []RuntimeTopic{
-		TopicFilesChanged, TopicSkillsChanged, TopicRecipesChanged, TopicMCPChanged, TopicSchedulesChanged,
+		TopicFilesChanged, TopicSkillsChanged, TopicMCPChanged, TopicSchedulesChanged,
 		TopicSessionsChanged, TopicRunsChanged, TopicPlanChanged, TopicGoalsChanged,
-		TopicInterruptsChanged, TopicKnowledgeChanged, TopicHooksChanged,
+		TopicInterruptsChanged, TopicHooksChanged,
 		TopicModelsChanged, TopicApprovalsChanged, TopicAgentMemoryChanged,
 	}
 }

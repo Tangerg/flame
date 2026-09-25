@@ -6,15 +6,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
-
-// KnowledgeReader is the prompt composer's read-only view of human-authored
-// FLAME.md content.
-type KnowledgeReader interface {
-	Entries(ctx context.Context, cwd string) ([]knowledge.Entry, error)
-}
 
 // PlanReader is the prompt composer's read-only view of the current Session
 // Plan.

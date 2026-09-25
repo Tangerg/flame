@@ -51,7 +51,6 @@ import {
 import goal from "./chat/goal";
 import narrativeRails from "./chat/narrative-rails";
 import planProgress from "./chat/plan-progress";
-import recipesSlash from "./chat/recipes";
 import pluginsPane from "./settings/plugins-pane";
 import providersPane from "./settings/providers";
 import contextUsage from "./chat/context-usage";
@@ -83,14 +82,9 @@ import {
   webSearchPreview,
 } from "./chat/tools/previews";
 import {
-  agentDocsView,
   diffView,
   fileView,
-  knowledgeView,
   agentMemoryView,
-  inboxView,
-  planView,
-  searchView,
   skillsView,
   timelineView,
 } from "./workspace/workspace-views";
@@ -149,7 +143,6 @@ export const toolRenderingPlugins: AnyPlugin[] = [
 const composer: AnyPlugin[] = [
   composerBootstrap,
   slashHints,
-  recipesSlash,
   composerToolbar,
   composerRunOptions,
   composerKeymap,
@@ -169,16 +162,11 @@ const panes: AnyPlugin[] = [
   schedulesPane,
   diffView,
   fileView,
-  planView,
   subagentsView,
   markdownFile,
   timelineView,
   skillsView,
-  searchView,
-  agentDocsView,
-  knowledgeView,
   agentMemoryView,
-  inboxView,
   diagnostics,
 ];
 

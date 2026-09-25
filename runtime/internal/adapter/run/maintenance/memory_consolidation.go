@@ -97,9 +97,8 @@ type messageReader interface {
 }
 
 // MemoryConsolidator extracts durable facts into a daily append-only ledger,
-// then folds due ledger entries into curated memory items. It never writes the
-// human-owned FLAME.md cascade. Derived vectors belong to semantic search, not
-// this curation lifecycle.
+// then folds due ledger entries into curated memory items. Derived vectors
+// belong to semantic search, not this curation lifecycle.
 type MemoryConsolidator struct {
 	history messageReader
 	memory  agentMemory

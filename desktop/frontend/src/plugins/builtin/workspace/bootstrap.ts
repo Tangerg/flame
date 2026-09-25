@@ -1,6 +1,5 @@
 import { definePlugin } from "@/plugins/sdk";
 import { installConversationArchiveGateway } from "./adapters/runtimeConversationArchiveGateway";
-import { installWorkspaceKnowledgeGateway } from "./adapters/runtimeKnowledgeGateway";
 import { installAgentMemoryGateway } from "./adapters/runtimeAgentMemoryGateway";
 import { installSkillCurationGateway } from "./adapters/runtimeSkillCurationGateway";
 import { installWorkspaceErrorClassifier } from "./adapters/runtimeWorkspaceErrorClassifier";
@@ -20,12 +19,10 @@ export default definePlugin({
   },
   setup(ctx) {
     const agentMemory = installAgentMemoryGateway();
-    const knowledge = installWorkspaceKnowledgeGateway();
     const skillCuration = installSkillCurationGateway();
     const conversationArchive = installConversationArchiveGateway();
     const disposers = [
       () => conversationArchive.dispose(),
-      () => knowledge.dispose(),
       () => agentMemory.dispose(),
       () => skillCuration.dispose(),
       installWorkspaceErrorClassifier(),
@@ -41,7 +38,6 @@ export default definePlugin({
       },
       mutationLifecycle: {
         replaceRuntimeGeneration() {
-          knowledge.replaceRuntimeGeneration();
           skillCuration.replaceRuntimeGeneration();
           agentMemory.replaceRuntimeGeneration();
           conversationArchive.replaceRuntimeGeneration();

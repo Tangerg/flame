@@ -45,7 +45,6 @@ type HandlerConfig struct {
 	WorkspaceFiles         workspaceFileUseCases
 	WorkspaceVCS           workspaceVCSUseCases
 	WorkspaceDiscovery     workspaceDiscoveryUseCases
-	WorkspaceKnowledge     workspaceKnowledgeUseCases
 	WorkspaceSkills        workspaceSkillUseCases
 	WorkspaceHooks         workspaceHookUseCases
 	WorkspaceWatch         workspaceWatchUseCases
@@ -81,7 +80,6 @@ type Handler struct {
 	workspaceFiles         workspaceFileUseCases
 	workspaceVCS           workspaceVCSUseCases
 	workspaceDiscovery     workspaceDiscoveryUseCases
-	workspaceKnowledge     workspaceKnowledgeUseCases
 	workspaceSkills        workspaceSkillUseCases
 	workspaceHooks         workspaceHookUseCases
 	workspaceWatch         workspaceWatchUseCases
@@ -153,7 +151,6 @@ func (c HandlerConfig) validate() error {
 		{name: "WorkspaceFiles", value: c.WorkspaceFiles},
 		{name: "WorkspaceVCS", value: c.WorkspaceVCS},
 		{name: "WorkspaceDiscovery", value: c.WorkspaceDiscovery},
-		{name: "WorkspaceKnowledge", value: c.WorkspaceKnowledge},
 		{name: "WorkspaceSkills", value: c.WorkspaceSkills},
 		{name: "WorkspaceHooks", value: c.WorkspaceHooks},
 		{name: "WorkspaceWatch", value: c.WorkspaceWatch},
@@ -234,7 +231,6 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		workspaceFiles:           cfg.WorkspaceFiles,
 		workspaceVCS:             cfg.WorkspaceVCS,
 		workspaceDiscovery:       cfg.WorkspaceDiscovery,
-		workspaceKnowledge:       cfg.WorkspaceKnowledge,
 		workspaceSkills:          cfg.WorkspaceSkills,
 		workspaceHooks:           cfg.WorkspaceHooks,
 		workspaceWatch:           cfg.WorkspaceWatch,
@@ -328,7 +324,6 @@ func capabilitiesFor(
 		Features: advertisedFeatures(map[string]bool{
 			protocol.FeatureReasoning: true,
 			protocol.FeatureMCP:       true,
-			protocol.FeatureKnowledge: true,
 			protocol.FeatureSkills:    true,
 			protocol.FeatureGit:       features.git,
 			protocol.FeatureFileWatch: true,

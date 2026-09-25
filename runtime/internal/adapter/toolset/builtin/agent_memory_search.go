@@ -61,8 +61,7 @@ func agentMemorySearchDefinition() toolcontract.FuncConfig {
 		Name: tool.SearchMemory,
 		Description: "Search curated long-term memory for the current project, including durable decisions, " +
 			"conventions, and user preferences from earlier work. Use it when needed context is not already in " +
-			"the prompt. This is distilled memory, not raw conversation history; use search_conversations to " +
-			"recall what was said.",
+			"the prompt. Use grep for source code.",
 	}
 }
 

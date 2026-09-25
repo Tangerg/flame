@@ -244,7 +244,7 @@ func (r RuntimeSubscribeRequest) ValidateWire() error {
 	return collectWireViolations("RuntimeSubscribeRequest",
 		requiredItems("topics", r.Topics),
 		uniqueItems("topics", r.Topics),
-		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
+		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
 	)
 }
 
@@ -501,25 +501,6 @@ func (s SessionUsageRequest) ValidateWire() error {
 func (u UsageSummaryRequest) ValidateWire() error {
 	return collectWireViolations("UsageSummaryRequest",
 		optionalPositiveNumber("sinceDays", u.SinceDays),
-	)
-}
-
-func (g GetKnowledgeRequest) ValidateWire() error {
-	return collectWireViolations("GetKnowledgeRequest",
-		closedEnum("scope", string(g.Scope), []string{"cwd", "projectRoot", "home"}, false),
-		forbiddenWhen(wireFieldEquals(g, "scope", "home"), "workspace", g),
-		requiredWhen(wireFieldEquals(g, "scope", "cwd"), "workspace", g),
-		requiredWhen(wireFieldEquals(g, "scope", "projectRoot"), "workspace", g),
-	)
-}
-
-func (u UpdateKnowledgeRequest) ValidateWire() error {
-	return collectWireViolations("UpdateKnowledgeRequest",
-		requiredText("expectedRevision", u.ExpectedRevision),
-		closedEnum("scope", string(u.Scope), []string{"cwd", "projectRoot", "home"}, false),
-		forbiddenWhen(wireFieldEquals(u, "scope", "home"), "workspace", u),
-		requiredWhen(wireFieldEquals(u, "scope", "cwd"), "workspace", u),
-		requiredWhen(wireFieldEquals(u, "scope", "projectRoot"), "workspace", u),
 	)
 }
 
@@ -1304,8 +1285,8 @@ func (r RuntimeEvent) ValidateWire() error {
 		maxItemLength("sessionIds", r.SessionIDs, 256),
 		identityItems("runIds", r.RunIDs),
 		maxItemLength("runIds", r.RunIDs, 256),
-		closedEnum("type", string(r.Type), []string{"files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"}, false),
-		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
+		closedEnum("type", string(r.Type), []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"}, false),
+		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
 		requiredWhen(wireFieldEquals(r, "type", "files.changed"), "sequence", r),
 		requiredWhen(wireFieldEquals(r, "type", "files.changed"), "paths", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "files.changed"), "names", r),
@@ -1325,17 +1306,6 @@ func (r RuntimeEvent) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "runIds", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "topics", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "recipes.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "serverIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "scheduleIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "sessionIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "recipes.changed"), "watchIds", r),
 		requiredWhen(wireFieldEquals(r, "type", "mcp.changed"), "sequence", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "mcp.changed"), "paths", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "mcp.changed"), "watchId", r),
@@ -1404,17 +1374,6 @@ func (r RuntimeEvent) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(r, "type", "interrupts.changed"), "scheduleIds", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "interrupts.changed"), "topics", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "interrupts.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "knowledge.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "knowledge.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "knowledge.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "knowledge.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "knowledge.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "knowledge.changed"), "serverIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "knowledge.changed"), "scheduleIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "knowledge.changed"), "sessionIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "knowledge.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "knowledge.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "knowledge.changed"), "watchIds", r),
 		requiredWhen(wireFieldEquals(r, "type", "hooks.changed"), "sequence", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "hooks.changed"), "paths", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "hooks.changed"), "watchId", r),
@@ -2407,27 +2366,10 @@ func (m ModelCapabilities) ValidateWire() error {
 	)
 }
 
-func (k KnowledgeEntry) ValidateWire() error {
-	return collectWireViolations("KnowledgeEntry",
-		requiredTextPattern("path", k.Path, "\\S"),
-		requiredText("revision", k.Revision),
-		closedEnum("scope", string(k.Scope), []string{"cwd", "projectRoot", "home"}, false),
-	)
-}
-
 func (a AgentDoc) ValidateWire() error {
 	return collectWireViolations("AgentDoc",
 		requiredTextPattern("path", a.Path, "\\S"),
 		closedEnum("scope", string(a.Scope), []string{"cwd", "projectRoot", "home"}, false),
-	)
-}
-
-func (r Recipe) ValidateWire() error {
-	return collectWireViolations("Recipe",
-		requiredTextPattern("name", r.Name, "\\S"),
-		requiredTextPattern("body", r.Body, "\\S"),
-		requiredTextPattern("source", r.Source, "\\S"),
-		closedEnum("scope", string(r.Scope), []string{"project", "global"}, false),
 	)
 }
 
@@ -2472,7 +2414,7 @@ func (s ServerCapabilities) ValidateWire() error {
 		uniqueItems("streamingMethods", s.StreamingMethods),
 		textPatternItems("streamingMethods", s.StreamingMethods, "\\S"),
 		closedEnumItems("runEvents", s.RunEvents, []string{"segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"}),
-		closedEnumItems("runtimeTopics", s.RuntimeTopics, []string{"files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
+		closedEnumItems("runtimeTopics", s.RuntimeTopics, []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
 	)
 }
 

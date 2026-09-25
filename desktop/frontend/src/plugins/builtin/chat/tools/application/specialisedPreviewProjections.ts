@@ -88,25 +88,6 @@ export function projectRecalledMemories(result: string | undefined): string[] {
   return entries;
 }
 
-export interface ConversationHit {
-  speaker: string;
-  day: string;
-  snippet: string;
-}
-
-export function projectConversationHits(result: string | undefined): ConversationHit[] {
-  const hits: ConversationHit[] = [];
-  for (const line of resultLines(result)) {
-    const parsed = /^\d+\.\s+\[([^·\]]+)·\s*([^\]]+)\]\s*(.*)$/.exec(line);
-    if (parsed) {
-      hits.push({ speaker: parsed[1]!.trim(), day: parsed[2]!.trim(), snippet: parsed[3]! });
-    } else if (hits.length > 0) {
-      hits[hits.length - 1]!.snippet += `\n${line}`;
-    }
-  }
-  return hits;
-}
-
 export interface ToolSearchGroup {
   source: string;
   names: string[];

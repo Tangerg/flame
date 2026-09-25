@@ -19,7 +19,7 @@ import (
 // would take every Session and in-flight Run with it.
 func TestExternalChangeObserverSurvivesANotificationDefect(t *testing.T) {
 	root := t.TempDir()
-	config := Config{DataDirectory: filepath.Join(root, "data"), DefaultWorkspacePath: root}
+	config := Config{DataDirectory: filepath.Join(root, "data")}
 	observed, err := Open(t.Context(), config)
 	if err != nil {
 		t.Fatalf("Open observed Runtime: %v", err)

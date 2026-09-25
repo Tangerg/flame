@@ -48,7 +48,6 @@ func descriptors() iter.Seq2[string, builtInDescriptor] {
 			{tool.LoadSkill, builtInDescriptor{safety: tool.SafetyClassSafe, activity: loadSkillActivity}},
 			{tool.ReadSkillResource, builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reading a Skill resource"}},
 			{tool.SearchMemory, builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Searching project memory"}},
-			{tool.SearchConversations, builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Searching earlier conversations"}},
 			{tool.SearchTools, builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Loading additional tools"}},
 			{tool.AskUser, builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Waiting for your answer"}},
 			{tool.EnterPlanMode, builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Entering Plan mode"}},

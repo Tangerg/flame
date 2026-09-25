@@ -12,9 +12,9 @@ import (
 func TestTopicsReturnsAnOwnedCompleteInventory(t *testing.T) {
 	t.Parallel()
 	want := []protocol.RuntimeTopic{
-		protocol.TopicFilesChanged, protocol.TopicSkillsChanged, protocol.TopicRecipesChanged, protocol.TopicMCPChanged, protocol.TopicSchedulesChanged,
+		protocol.TopicFilesChanged, protocol.TopicSkillsChanged, protocol.TopicMCPChanged, protocol.TopicSchedulesChanged,
 		protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicGoalsChanged, protocol.TopicInterruptsChanged,
-		protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged,
+		protocol.TopicHooksChanged, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged,
 		protocol.TopicAgentMemoryChanged,
 	}
 	got := Topics()
@@ -106,7 +106,7 @@ func TestSubscriptionLimitsKeepWorkspaceObservationAtomicAcrossTopicPartitions(t
 	requested := Subscription{
 		Topics: []protocol.RuntimeTopic{
 			protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
-			protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged,
+			protocol.TopicHooksChanged, protocol.TopicSkillsChanged,
 		},
 		Watches: []Watch{{ID: "active", Workspace: "/workspace"}},
 	}
@@ -115,7 +115,6 @@ func TestSubscriptionLimitsKeepWorkspaceObservationAtomicAcrossTopicPartitions(t
 		t.Fatal(err)
 	}
 	want := []Subscription{
-		{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicKnowledgeChanged}, Watches: requested.Watches},
 		{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicHooksChanged}, Watches: requested.Watches},
 		{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSkillsChanged}, Watches: requested.Watches},
 		{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged}},
@@ -130,7 +129,7 @@ func TestSubscriptionLimitsKeepWorkspaceObservationAtomicAcrossTopicPartitions(t
 func TestSubscriptionLimitsRepeatWorkspaceObservationForEveryWatchPartition(t *testing.T) {
 	t.Parallel()
 	requested := Subscription{
-		Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged},
+		Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged},
 		Watches: []Watch{
 			{ID: "first", Workspace: "/first"},
 			{ID: "second", Workspace: "/second"},
@@ -153,7 +152,7 @@ func TestSubscriptionLimitsRepeatWorkspaceObservationForEveryWatchPartition(t *t
 
 func TestSubscriptionLimitsRejectUnrepresentableWorkspaceObservation(t *testing.T) {
 	t.Parallel()
-	for _, topic := range []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged} {
+	for _, topic := range []protocol.RuntimeTopic{protocol.TopicHooksChanged, protocol.TopicSkillsChanged} {
 		requested := Subscription{
 			Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, topic},
 			Watches: []Watch{{ID: "active", Workspace: "/workspace"}},
@@ -173,7 +172,7 @@ func TestSubscriptionLimitsPreserveEveryDeliveryInvariant(t *testing.T) {
 	}{
 		{topic: protocol.TopicSessionsChanged},
 		{topic: protocol.TopicRunsChanged},
-		{topic: protocol.TopicKnowledgeChanged, observesWorkspace: true},
+
 		{topic: protocol.TopicHooksChanged, observesWorkspace: true},
 		{topic: protocol.TopicSkillsChanged, observesWorkspace: true},
 	}

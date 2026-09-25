@@ -8,7 +8,7 @@ import (
 func TestPingAnswersWhileOpenAndFailsOnceClosed(t *testing.T) {
 	root := t.TempDir()
 	bundle, err := Open(t.Context(), Config{
-		DataDirectory: filepath.Join(root, "data"), DefaultWorkspacePath: root,
+		DataDirectory: filepath.Join(root, "data"),
 	})
 	if err != nil {
 		t.Fatalf("Open: %v", err)

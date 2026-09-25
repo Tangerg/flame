@@ -21,7 +21,6 @@ func Topics() []protocol.RuntimeTopic {
 	return []protocol.RuntimeTopic{
 		protocol.TopicFilesChanged,
 		protocol.TopicSkillsChanged,
-		protocol.TopicRecipesChanged,
 		protocol.TopicMCPChanged,
 		protocol.TopicSchedulesChanged,
 		protocol.TopicSessionsChanged,
@@ -29,7 +28,6 @@ func Topics() []protocol.RuntimeTopic {
 		protocol.TopicPlanChanged,
 		protocol.TopicGoalsChanged,
 		protocol.TopicInterruptsChanged,
-		protocol.TopicKnowledgeChanged,
 		protocol.TopicHooksChanged,
 		protocol.TopicModelsChanged,
 		protocol.TopicApprovalsChanged,
@@ -117,7 +115,7 @@ func workspaceObservedTopics(topics []protocol.RuntimeTopic) []protocol.RuntimeT
 	var observed []protocol.RuntimeTopic
 	for _, topic := range topics {
 		switch topic {
-		case protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged:
+		case protocol.TopicHooksChanged, protocol.TopicSkillsChanged:
 			observed = append(observed, topic)
 		}
 	}

@@ -69,7 +69,6 @@ type app struct {
 	mcp              MCPManagement
 	schedules        Schedules
 	agentMemory      AgentMemory
-	knowledge        Knowledge
 	diagnosticTools  DiagnosticTools
 	authoringContext AuthoringContext
 	hooks            Hooks
@@ -139,7 +138,6 @@ type appConfig struct {
 	mcp              MCPManagement
 	schedules        Schedules
 	agentMemory      AgentMemory
-	knowledge        Knowledge
 	diagnosticTools  DiagnosticTools
 	authoringContext AuthoringContext
 	hooks            Hooks
@@ -195,7 +193,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		runtimeProfile: cfg.runtimeProfile,
 		changes:        cfg.changes, transfers: cfg.transfers, usage: cfg.usage, modelConfig: cfg.modelConfig,
 		goals: cfg.goals, skills: cfg.skills, mcp: cfg.mcp, schedules: cfg.schedules,
-		agentMemory: cfg.agentMemory, knowledge: cfg.knowledge,
+		agentMemory:      cfg.agentMemory,
 		diagnosticTools:  cfg.diagnosticTools,
 		authoringContext: cfg.authoringContext, hooks: cfg.hooks, feedback: cfg.feedback,
 		session:    sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
@@ -434,7 +432,7 @@ func (a *app) submit() {
 }
 
 // dispatchPrompt owns the single path from an authored message to either the
-// active run or its durable follow-up queue. Callers such as recipe expansion
+// active run or its durable follow-up queue. Callers such as prompt submission
 // cannot bypass session-change exclusion, prompt history, or composer cleanup.
 func (a *app) dispatchPrompt(message agent.Message) {
 	if err := a.validateMessageCapabilities(message); err != nil {

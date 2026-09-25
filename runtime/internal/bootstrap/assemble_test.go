@@ -90,13 +90,6 @@ func TestNewRequiresRuntimeDependencies(t *testing.T) {
 			want: "runtime: SandboxReadOnlyPaths[0] must be absolute when set",
 		},
 		{
-			name: "relative recipes global directory",
-			edit: func(cfg *Config) {
-				cfg.RecipesGlobalDir = "relative-recipes"
-			},
-			want: "runtime: RecipesGlobalDir must be absolute when set",
-		},
-		{
 			name: "relative checkpoint directory",
 			edit: func(cfg *Config) {
 				cfg.CheckpointDir = "relative-checkpoints"
@@ -314,9 +307,7 @@ func runtimeConfigWithRequiredDeps(t *testing.T) Config {
 	}
 
 	workspace := t.TempDir()
-	stores, err := persistence.Open(t.Context(), persistence.Config{
-		DataDirectory: t.TempDir(), DefaultWorkspacePath: workspace,
-	})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

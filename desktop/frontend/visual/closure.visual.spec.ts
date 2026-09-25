@@ -472,16 +472,12 @@ const LOCALE_ROUTES: FixtureRoute[] = [
 ];
 
 const DOCK_LOCALE_STATES = [
-  "dock-inbox",
-  "dock-knowledge",
   "dock-files",
-  "dock-search",
   "dock-runs",
   "dock-timeline",
   "dock-subagents",
   "dock-agent-memory",
   "dock-skills",
-  "dock-agent-docs",
   "dock-diagnostics",
 ] as const;
 
@@ -673,7 +669,7 @@ test("coarse pointers receive real 44px controls without overlapping hit targets
     expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
 
     for (const control of [
-      page.getByRole("tab", { name: "Plan" }),
+      page.getByRole("tab", { name: "File" }),
       page.getByRole("button", { name: "Collapse right workspace" }),
       page.getByRole("button", { name: "Add to message" }),
     ]) {
@@ -705,7 +701,7 @@ test("a pointer-only affordance is permanently shown where there is no pointer",
     expect(await page.evaluate(() => matchMedia("(hover: none)").matches)).toBe(true);
 
     await openFixture(page, { fixture: "workspace", state: "dock-light" });
-    const close = page.getByRole("button", { name: "Close Plan" });
+    const close = page.getByRole("button", { name: "Close File" });
     await expect.poll(() => close.evaluate((n) => getComputedStyle(n).opacity)).toBe("1");
     await expect.poll(() => close.evaluate((n) => getComputedStyle(n).visibility)).toBe("visible");
 

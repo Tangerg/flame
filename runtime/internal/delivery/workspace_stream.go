@@ -566,14 +566,8 @@ func (s *Handler) SubscribeRuntime(ctx context.Context, request protocol.Runtime
 
 func subscribedAuthoredResources(topics map[protocol.RuntimeTopic]bool) []workspaceapp.AuthoredResource {
 	resources := make([]workspaceapp.AuthoredResource, 0, 2)
-	if topics[protocol.TopicKnowledgeChanged] {
-		resources = append(resources, workspaceapp.AuthoredKnowledge)
-	}
 	if topics[protocol.TopicHooksChanged] {
 		resources = append(resources, workspaceapp.AuthoredHooks)
-	}
-	if topics[protocol.TopicRecipesChanged] {
-		resources = append(resources, workspaceapp.AuthoredRecipes)
 	}
 	if topics[protocol.TopicSkillsChanged] {
 		resources = append(resources, workspaceapp.AuthoredSkills)

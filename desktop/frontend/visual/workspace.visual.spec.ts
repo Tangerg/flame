@@ -93,18 +93,12 @@ async function starveTheRow(page: Page): Promise<void> {
 
 async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): Promise<void> {
   if (state === "dock-light") {
-    await expect(page.getByRole("tab", { name: "Plan" })).toHaveAttribute("data-active", "");
-    await expect(page.getByText("Task plan", { exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "File" })).toHaveAttribute("data-active", "");
     return;
   }
   if (state === "dock-review") {
     await expect(page.locator("[data-diff-file]")).toHaveCount(2);
     await page.locator('[data-diff-file] span[style*="color"]').first().waitFor();
-    return;
-  }
-  if (state === "dock-inbox") {
-    await expect(page.getByText("Which database should the migration target?")).toBeVisible();
-    await expect(page.getByText("+2", { exact: true })).toBeVisible();
     return;
   }
   if (state === "dock-empty") {
@@ -136,21 +130,13 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
   const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {
     "dock-subagents": "Sub-agent 4 of 4",
     "dock-diagnostics": "run + RPC spans appear here",
-    "dock-agent-docs": "3 found",
     "dock-skills": "2 available",
-    "dock-knowledge": "2 scopes",
     "dock-agent-memory": "1 pending",
     "dock-feature-off": "Skills are off",
   };
   const catalogueReady = CATALOGUE_READY[state];
   if (catalogueReady !== undefined) {
     await expect(page.locator(".agent-workspace-view:visible")).toContainText(catalogueReady);
-    return;
-  }
-  if (state === "dock-search") {
-    await expect(page.locator(".agent-workspace-view:visible")).toContainText(
-      "regex over the session workspace",
-    );
     return;
   }
   if (state === "dock-files") {
@@ -200,17 +186,17 @@ for (const state of VISUAL_WORKSPACE_STATES) {
 
 test("collapse and reopen preserve the dock workspace", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
-  await expect(page.getByTestId("active-dock-view")).toHaveText("plan");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("file");
 
   await page.getByRole("button", { name: "Collapse right workspace" }).click();
   await expect(page.getByTestId("dock-open")).toHaveText("false");
   await expect(page.getByTestId("active-dock-view")).toHaveText("");
-  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,search,plan,timeline");
+  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,timeline");
   await page.getByRole("button", { name: "Open right workspace" }).click();
 
   await expect(page.getByTestId("dock-open")).toHaveText("true");
-  await expect(page.getByTestId("active-dock-view")).toHaveText("plan");
-  await expect(page.getByRole("tab", { name: "Plan" })).toHaveAttribute("data-active", "");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("file");
+  await expect(page.getByRole("tab", { name: "File" })).toHaveAttribute("data-active", "");
 });
 
 test("an unsafe narrow row folds the dock without forgetting its tabs", async ({ page }) => {
@@ -242,13 +228,13 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
   expect(geometry.dockVisible).toBe(false);
   expect(geometry.conversationWidth).toBe(geometry.rowWidth);
   await expect(page.getByRole("button", { name: /^Open material full width/ })).toBeEnabled();
-  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,search,plan,timeline");
+  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,timeline");
   expect(page.url()).toBe(location);
   expect(await page.evaluate(() => history.length)).toBe(historyLength);
   await page.setViewportSize({ width: 1520, height: 900 });
   await expect(page.locator(".agent-dock-row")).toHaveAttribute("data-dock", "open");
-  await expect(page.getByTestId("active-dock-view")).toHaveText("plan");
-  await expect(page.getByRole("tab", { name: "Plan" })).toBeVisible();
+  await expect(page.getByTestId("active-dock-view")).toHaveText("file");
+  await expect(page.getByRole("tab", { name: "File" })).toBeVisible();
 });
 
 test("the model remains readable when the dock narrows the composer", async ({ page }) => {
@@ -264,23 +250,23 @@ test("the model remains readable when the dock narrows the composer", async ({ p
 test("closing tabs selects a neighbor without collapsing the workspace", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
-  await page.getByRole("tab", { name: "Plan" }).hover();
-  await page.getByRole("button", { name: "Close Plan" }).click();
-  await expect(page.getByTestId("active-dock-view")).toHaveText("timeline");
-  await expect(page.getByTestId("dock-open")).toHaveText("true");
-
   await page.getByRole("tab", { name: "Timeline" }).hover();
   await page.getByRole("button", { name: "Close Timeline" }).click();
-  await expect(page.getByTestId("active-dock-view")).toHaveText("search");
-  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,search");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("diff");
+  await expect(page.getByTestId("dock-open")).toHaveText("true");
+
+  await page.getByRole("tab", { name: "Diff" }).hover();
+  await page.getByRole("button", { name: "Close Diff" }).click();
+  await expect(page.getByTestId("active-dock-view")).toHaveText("file");
+  await expect(page.getByTestId("dock-view-ids")).toHaveText("file");
 });
 
 test("add-panel menu restores a closed singleton and focuses it", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
-  await page.getByRole("tab", { name: "Search" }).hover();
-  await page.getByRole("button", { name: "Close Search" }).click();
-  await expect(page.getByTestId("dock-view-ids")).not.toContainText("search");
+  await page.getByRole("tab", { name: "Timeline" }).hover();
+  await page.getByRole("button", { name: "Close Timeline" }).click();
+  await expect(page.getByTestId("dock-view-ids")).not.toContainText("timeline");
 
   await page.getByRole("button", { name: "Browse panels" }).click();
 
@@ -292,12 +278,12 @@ test("add-panel menu restores a closed singleton and focuses it", async ({ page 
   });
   expect(onTop).toBe(true);
 
-  await page.getByRole("combobox").fill("Search");
-  await page.getByRole("option", { name: "Search" }).waitFor();
+  await page.getByRole("combobox").fill("Timeline");
+  await page.getByRole("option", { name: "Timeline" }).waitFor();
   await page.keyboard.press("Enter");
 
-  await expect(page.getByTestId("active-dock-view")).toHaveText("search");
-  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,plan,timeline,search");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("timeline");
+  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,timeline");
 });
 
 test("files browse and preview share one dock tab", async ({ page }) => {
@@ -357,13 +343,13 @@ for (const theme of ["light", "dark"] as const) {
 test("dock tabs use roving focus and arrow-key activation", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
-  const plan = page.getByRole("tab", { name: "Plan" });
-  await plan.focus();
-  await plan.press("ArrowLeft");
+  const file = page.getByRole("tab", { name: "File" });
+  await file.focus();
+  await file.press("ArrowRight");
 
-  await expect(page.getByTestId("active-dock-view")).toHaveText("search");
-  await expect(page.getByRole("tab", { name: "Search" })).toBeFocused();
-  await expect(page.getByRole("tab", { name: "Search" })).toHaveAttribute("data-active", "");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("diff");
+  await expect(page.getByRole("tab", { name: "Diff" })).toBeFocused();
+  await expect(page.getByRole("tab", { name: "Diff" })).toHaveAttribute("data-active", "");
 });
 
 test("the active overflow tab stays visible and both hidden edges remain signposted", async ({
@@ -380,7 +366,7 @@ test("the active overflow tab stays visible and both hidden edges remain signpos
   await expect(strip).toHaveAttribute("data-overflow-end", "");
   const [stripBox, activeBox] = await Promise.all([
     strip.boundingBox(),
-    page.getByRole("tab", { name: "Plan" }).boundingBox(),
+    page.getByRole("tab", { name: "File" }).boundingBox(),
   ]);
   expect(stripBox).not.toBeNull();
   expect(activeBox).not.toBeNull();
@@ -444,7 +430,7 @@ test("all dock views share one stable user-owned width", async ({ page }) => {
   await expect(separator).toHaveAttribute("aria-valuenow", settledWidth);
   await expect(persistedRatio).toHaveText(String(settledRatio));
 
-  await page.getByRole("tab", { name: "Plan" }).click();
+  await page.getByRole("tab", { name: "File" }).click();
   await expect(separator).toHaveAttribute("aria-valuenow", settledWidth);
   await expect(persistedRatio).toHaveText(String(settledRatio));
 });
@@ -649,21 +635,21 @@ test("dock close control reveals its contextual glyph on hover and focus", async
 test("a dock tab closes on a middle click", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
-  const plan = page.getByRole("tab", { name: "Plan" });
-  await expect(plan).toBeVisible();
-  await plan.click({ button: "middle" });
+  const timeline = page.getByRole("tab", { name: "Timeline" });
+  await expect(timeline).toBeVisible();
+  await timeline.click({ button: "middle" });
 
-  await expect(page.getByTestId("dock-view-ids")).not.toContainText("plan");
+  await expect(page.getByTestId("dock-view-ids")).not.toContainText("timeline");
 });
 
 test("a dock tab closes from the keyboard", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
-  const plan = page.getByRole("tab", { name: "Plan" });
-  await plan.focus();
-  await expect(plan).toBeFocused();
-  await plan.press("Delete");
-  await expect(page.getByTestId("dock-view-ids")).not.toContainText("plan");
+  const timeline = page.getByRole("tab", { name: "Timeline" });
+  await timeline.focus();
+  await expect(timeline).toBeFocused();
+  await timeline.press("Delete");
+  await expect(page.getByTestId("dock-view-ids")).not.toContainText("timeline");
 
   const reachable = await page.evaluate(() => {
     const strip = document.querySelector('[aria-label="Right workspace panels"]');

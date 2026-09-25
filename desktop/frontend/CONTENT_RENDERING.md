@@ -24,7 +24,7 @@
 | 组件真正吃什么（视图模型） | [§3 视图模型](#3--视图模型组件真正吃的东西) |
 | 某个卡片怎么渲染 | [§4 内容区渲染物](#4--内容区渲染物d-区) |
 | 顶部那几条横幅 | [§5 常驻条](#5--常驻条c-区) |
-| 某个工具的参数和卡片形态 | [§7 三十个工具](#7--三十个内置工具) |
+| 某个工具的参数和卡片形态 | [§7 二十九个工具](#7--二十九个内置工具) |
 | 数字/时间/截断怎么写 | [§8 呈现约定](#8--呈现约定打磨基线) |
 | 设置面板、文件树、诊断这些面的字段 | [§9 全量参数字典](#9--全量参数字典其余-surface) |
 
@@ -1094,7 +1094,7 @@ Goal 与 Composer 同宽，以重叠 1px 接缝组成一个 stack；空态不留
 
 ---
 
-## 7 · 三十个内置工具
+## 7 · 二十九个内置工具
 
 ### 7.0 读法
 
@@ -1102,12 +1102,12 @@ Goal 与 Composer 同宽，以重叠 1px 接缝组成一个 stack；空态不留
 
 三条通则：
 
-1. **只有 5 个工具的结果被 runtime 归一化并登记了 schema**：`glob` `grep` `apply_patch` `shell` `web_search`。它们的 result 是 camelCase 且有契约守着。**其余 25 个的结果形状是约定不是契约** —— 改了不会有任何门禁报警，所有读取必须防御式。
+1. **只有 5 个工具的结果被 runtime 归一化并登记了 schema**：`glob` `grep` `apply_patch` `shell` `web_search`。它们的 result 是 camelCase 且有契约守着。**其余 24 个的结果形状是约定不是契约** —— 改了不会有任何门禁报警，所有读取必须防御式。
 2. 归一化**幂等**：结果里已有目标键就原样返回。
 3. 多数只读工具直接返回**模型读的散文**。给它们做展开体 = 解析散文，parser 只能锚在后端真的会发的**那一处结构**上，找不到就退化成纯文本 —— 后端改文案的代价是"展开体变朴素"，不是"展开体说错话"。
 
 > **图标是一工具一字形，有测试守着。** 曾经 16 个字形铺 32 个工具，滚动的 transcript 就是四种形状在重复 —— 等于没有形状。
-> **颜色不参与工具身份**：tone 只表达状态（running / failed / refused）。三十个形状承担变化，调色板保住它自己的职责。
+> **颜色不参与工具身份**：tone 只表达状态（running / failed / refused）。二十九个形状承担变化，调色板保住它自己的职责。
 
 ---
 
@@ -1554,16 +1554,6 @@ interface SearchMemoryArguments { query: string; limit?: number }  // limit 1–
 type SearchMemoryResult = string;   // 每条 "N. content"，content 可换行续接
 ```
 
-#### `search_conversations` — 搜历史会话
-
-图标 `history` · 「Searching earlier conversations」· **标题** = `query`
-**展开体** 三列（说话人 / 日期 / 摘录）
-
-```ts
-interface SearchConversationsArguments { query: string; limit?: number }  // 1–20，默认 8
-type SearchConversationsResult = string;   // 每条 "N. [speaker · YYYY-MM-DD] snippet"
-```
-
 #### `search_tools` — 按需加载更多工具
 
 图标 `package-search` · 「Loading additional tools」· **标题** = `query`
@@ -1924,17 +1914,7 @@ interface AgentMemoryItem {
 }
 ```
 
-### 9.7 知识文件（G 区）
-
-```ts
-interface MemoryEntry {                        // 用户可编辑的 FLAME.md
-  scope: "cwd" | "projectRoot" | "home";
-  path: string; content: string; updatedAt?: string;
-}
-interface AgentDoc { path: string; scope: "cwd" | "projectRoot" | "home"; title?: string }
-```
-
-### 9.8 MCP（H 设置）
+### 9.7 MCP（H 设置）
 
 ```ts
 interface McpServer {
@@ -1983,7 +1963,7 @@ type SecretChange = { type: "set"; value: string } | { type: "clear" };
 - **终态保留窗口由服务端能力公布**（pending 不按该窗口清理）→ 过期后的查询要引导「重新发起登录」，而不是「重试这个 id」。
 - UI 换 URL origin / 换进程目标时**必须**逼用户对凭证表态 —— 运行时绝不把凭证静默带到新 origin。
 
-### 9.9 定时任务（H 设置）
+### 9.8 定时任务（H 设置）
 
 ```ts
 interface Schedule {          // 协议形状，与 §7.7 工具出参的 snake_case ScheduleView 不是一回事
@@ -1997,16 +1977,9 @@ interface Schedule {          // 协议形状，与 §7.7 工具出参的 snake_
 // schedules.runNow → { runId, sessionId }（→ 直接跳过去）
 ```
 
-### 9.10 Recipes 与 Hooks（H 设置）
+### 9.9 Hooks（H 设置）
 
 ```ts
-interface Recipe {
-  name: string; description?: string; body: string;
-  argumentHint?: string;
-  scope: "project" | "global";
-  source: string;             // 文件路径，从左截断
-}
-
 interface HooksListResult {
   hooks: HookInfo[];
   projectRoot?: string;
@@ -2021,7 +1994,7 @@ interface HookInfo {
 }
 ```
 
-### 9.12 审批策略（H 设置）
+### 9.10 审批策略（H 设置）
 
 ```ts
 type ApprovalMode = "safe" | "balanced" | "yolo";   // 全局姿态，不是 per-run
@@ -2035,7 +2008,7 @@ interface ApprovalRule {
 }
 ```
 
-### 9.13 工具目录（G 区）
+### 9.11 工具目录（G 区）
 
 ```ts
 interface ToolSpec {
@@ -2047,7 +2020,7 @@ interface ToolSpec {
 
 ⚠️ 这是**直接诊断**目录 —— **不是运行入口的覆盖点，也不是 Agent 的完整工具集**（一个 Run 的工具集由运行时按会话 / 审批策略 / Skills / MCP 统一装配）。面板文案不要暗示它可配置。
 
-### 9.14 能力发现（决定什么该出现在界面上）
+### 9.12 能力发现（决定什么该出现在界面上）
 
 ```ts
 interface DiscoverResponse {
@@ -2075,10 +2048,10 @@ interface ServerCapabilities {
 }
 ```
 
-**17 个 feature**：`reasoning` `multimodal` `compaction` `plan` `goals` `agentMemory` `knowledge` `skills` `mcp` `schedules` `git` `checkpoints` `fileWatch` `lsp` `sessionExport` `relocate` `subagents`。
+**16 个 feature**：`reasoning` `multimodal` `compaction` `plan` `goals` `agentMemory` `skills` `mcp` `schedules` `git` `checkpoints` `fileWatch` `lsp` `sessionExport` `relocate` `subagents`。
 **关闭的域整块不渲染** —— 不是渲染出来再报错。
 
-### 9.15 后台变更通知：哪个话题让哪块 UI 失效
+### 9.13 后台变更通知：哪个话题让哪块 UI 失效
 
 ```ts
 type RuntimeEvent =
@@ -2108,7 +2081,7 @@ type RuntimeEvent =
 | `interrupts.changed` | G 区待办 |
 | `resync` | **全量重拉列出的话题** |
 
-### 9.16 回滚与导出
+### 9.14 回滚与导出
 
 ```ts
 interface RollbackSessionResponse {
@@ -2138,7 +2111,7 @@ interface SessionArtifact {
 
 ⚠️ 归档里的错误类型是一套**更小的 11 值 camelCase 枚举**（`internalError` `runLost` `agentStuck` `rateLimited` `invalidApiKey` `timeout` `providerUnavailable` `providerRejected` `deniedByUser` `toolFailed` `childRunCanceled`），**与在线的 snake_case `ProblemData.type` 不是同一张表** —— 别复用同一个查表函数。
 
-### 9.17 分页
+### 9.15 分页
 
 ```ts
 interface Page<T> { data: T[]; nextCursor?: string }

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { forEachSeed } from "@/test/arbitrary";
 import {
   projectAskUserAnswer,
-  projectConversationHits,
   projectFetchedPage,
   projectGlobPreview,
   projectHttpPreview,
@@ -18,7 +17,6 @@ const PROJECTIONS = [
   ["glob", projectGlobPreview],
   ["webSearch", projectWebSearchPreview],
   ["recalledMemories", projectRecalledMemories],
-  ["conversationHits", projectConversationHits],
   ["toolSearchGroups", projectToolSearchGroups],
   ["httpPreview", projectHttpPreview],
   ["fetchedPage", projectFetchedPage],
@@ -89,7 +87,6 @@ describe("every specialised tool preview projection", () => {
       projectSkillPreview,
       projectWebSearchPreview,
       projectRecalledMemories,
-      projectConversationHits,
       projectToolSearchGroups,
     ];
     forEachSeed(200, (a) => {

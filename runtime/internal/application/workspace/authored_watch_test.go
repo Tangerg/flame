@@ -71,7 +71,7 @@ func TestAuthoredWatchResolvesAndDeduplicatesScopes(t *testing.T) {
 	}, watcher)
 	closer, err := useCases.Watch(
 		[]string{"", root},
-		[]AuthoredResource{AuthoredKnowledge, AuthoredKnowledge, AuthoredHooks, AuthoredSkills},
+		[]AuthoredResource{AuthoredHooks, AuthoredHooks, AuthoredSkills},
 		func(AuthoredResource) {},
 	)
 	if err != nil {
@@ -81,7 +81,7 @@ func TestAuthoredWatchResolvesAndDeduplicatesScopes(t *testing.T) {
 	if !reflect.DeepEqual(watcher.scopes, []AuthoredScope{{Workspace: root, ProjectRoot: root}}) {
 		t.Fatalf("scopes = %+v", watcher.scopes)
 	}
-	if !reflect.DeepEqual(watcher.resources, []AuthoredResource{AuthoredKnowledge, AuthoredHooks, AuthoredSkills}) {
+	if !reflect.DeepEqual(watcher.resources, []AuthoredResource{AuthoredHooks, AuthoredSkills}) {
 		t.Fatalf("resources = %+v", watcher.resources)
 	}
 }
@@ -153,7 +153,7 @@ func TestNewAuthoredWatchRequiresCompleteDependencies(t *testing.T) {
 	for _, test := range []struct {
 		name      string
 		scope     *Scope
-		inspector KnowledgeWorkspaceInspector
+		inspector IdentityInspector
 		watcher   AuthoredResourceWatcher
 	}{
 		{name: "scope", inspector: staticWorkspaceInspector{}, watcher: &recordingAuthoredWatcher{}},
@@ -170,7 +170,7 @@ func TestNewAuthoredWatchRequiresCompleteDependencies(t *testing.T) {
 	}
 }
 
-func newAuthoredWatch(t *testing.T, scope *Scope, inspector KnowledgeWorkspaceInspector, watcher AuthoredResourceWatcher) *AuthoredWatch {
+func newAuthoredWatch(t *testing.T, scope *Scope, inspector IdentityInspector, watcher AuthoredResourceWatcher) *AuthoredWatch {
 	t.Helper()
 	watch, err := NewAuthoredWatch(scope, inspector, watcher)
 	if err != nil {

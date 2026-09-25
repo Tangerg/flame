@@ -1,65 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  scopeLabelKey,
-  workspaceAgentDocsViewModel,
-  workspaceKnowledgeViewModel,
-  workspaceSkillsViewModel,
-} from "./workspaceCatalogViewModel";
+import { workspaceSkillsViewModel } from "./workspaceCatalogViewModel";
 
 describe("workspace catalog view models", () => {
-  it("gates knowledge rows when the runtime capability is off", () => {
-    expect(
-      workspaceKnowledgeViewModel(
-        [
-          {
-            path: "/custom/data/FLAME.md",
-            scope: "cwd",
-            content: "knowledge",
-            revision: "rev-1",
-            updatedAt: "2026-01-01T00:00:00Z",
-          },
-        ],
-        false,
-      ),
-    ).toEqual({
-      rows: [],
-      count: 0,
-      enabled: false,
-      isEmpty: true,
-    });
-  });
-
-  it("projects knowledge row identity and scope labels", () => {
-    expect(
-      workspaceKnowledgeViewModel(
-        [
-          {
-            path: "/custom/data/FLAME.md",
-            scope: "projectRoot",
-            content: "knowledge",
-            revision: "rev-1",
-          },
-        ],
-        true,
-      ),
-    ).toEqual({
-      rows: [
-        {
-          id: "projectRoot",
-          scope: "projectRoot",
-          scopeLabelKey: "knowledge.scope.projectRoot",
-          path: "/custom/data/FLAME.md",
-          content: "knowledge",
-          revision: "rev-1",
-          updatedAt: undefined,
-        },
-      ],
-      count: 1,
-      enabled: true,
-      isEmpty: false,
-    });
-  });
-
   it("gates skills rows when the runtime capability is off", () => {
     expect(
       workspaceSkillsViewModel(
@@ -73,36 +15,12 @@ describe("workspace catalog view models", () => {
     });
   });
 
-  it("projects skills and agent docs into stable rows", () => {
+  it("projects skills into stable rows", () => {
     expect(
       workspaceSkillsViewModel(
         [{ name: "review", description: "Review code", scope: "project" as const }],
         true,
       ).rows,
     ).toEqual([{ id: "review", name: "review", description: "Review code", scope: "project" }]);
-
-    expect(
-      workspaceAgentDocsViewModel([
-        { path: "AGENTS.md", title: "", scope: "cwd" },
-        { path: "root/AGENTS.md", title: "Root rules", scope: "projectRoot" },
-      ]).rows,
-    ).toEqual([
-      {
-        id: "AGENTS.md",
-        title: "AGENTS.md",
-        path: "AGENTS.md",
-        scopeLabelKey: "knowledge.scope.cwd",
-      },
-      {
-        id: "root/AGENTS.md",
-        title: "Root rules",
-        path: "root/AGENTS.md",
-        scopeLabelKey: "knowledge.scope.projectRoot",
-      },
-    ]);
-  });
-
-  it("falls back to raw unknown scope labels", () => {
-    expect(scopeLabelKey("workspace")).toBe("workspace");
   });
 });

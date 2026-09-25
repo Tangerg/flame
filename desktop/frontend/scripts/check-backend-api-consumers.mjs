@@ -22,15 +22,26 @@ const TSCONFIG_PATH = resolve(ROOT, "tsconfig.json");
 
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
 const operations = new Set(manifest.methods.map((method) => method.name));
-// Direct tool diagnostics are a terminal feature (CLI /tools and /tool-invoke).
-// Desktop presents agent tool calls in the conversation and manages MCP in settings.
-// Keep these methods out of its SDK rather than adding a UI solely for coverage.
-const terminalDiagnostics = new Set(["tools.list", "tools.invoke"]);
+// Operations the terminal owns. Each still has a product consumer — the CLI —
+// so the method is not orphaned; it simply has no reason to enter Desktop's SDK,
+// and adding a UI solely for coverage would be the wrong trade.
+//
+//   tools.list / tools.invoke  — CLI /tools and /tool-invoke. Desktop presents
+//     agent tool calls in the conversation and manages MCP in settings.
+//   workspace.files.search     — CLI /grep. Desktop searches through the agent.
+//   agentDocs.list             — CLI /agent-docs. Desktop reads AGENTS.md in the
+//     file view like any other file.
+const terminalOperations = new Set([
+  "tools.list",
+  "tools.invoke",
+  "workspace.files.search",
+  "agentDocs.list",
+]);
 // Desktop stopped reading `workspace.files.head`: a tool preview shows the recorded
 // result, and the file view reads ranges through `workspace.files.read`. The method is
 // Runtime's to retire; drop this entry in the same change that removes it there.
 const awaitingRuntimeRemoval = new Set(["workspace.files.head"]);
-const notDesktopOperations = new Set([...terminalDiagnostics, ...awaitingRuntimeRemoval]);
+const notDesktopOperations = new Set([...terminalOperations, ...awaitingRuntimeRemoval]);
 const sidecarEndpoints = new Set(
   manifest.httpEndpoints
     .filter((endpoint) => endpoint.kind === "sidecar")

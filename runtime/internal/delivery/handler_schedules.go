@@ -13,7 +13,7 @@ import (
 
 // Schedule operations manage the cron-triggered headless runs the
 // application scheduler fires. A schedule stores the final instructions
-// text, so the runtime fires it without resolving a recipe.
+// text, so the runtime fires it without resolving a template.
 
 // ListSchedules returns every schedule, newest-created first (schedules.list).
 func (s *Handler) ListSchedules(ctx context.Context, query protocol.PageQuery) (*protocol.Page[protocol.Schedule], error) {

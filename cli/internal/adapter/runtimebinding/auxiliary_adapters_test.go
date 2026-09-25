@@ -79,9 +79,8 @@ func TestDiagnosticToolAdapterRejectsBrokenCatalogs(t *testing.T) {
 }
 
 type authoringContextBindingStub struct {
-	t       *testing.T
-	docs    *protocol.Page[protocol.AgentDoc]
-	recipes *protocol.Page[protocol.Recipe]
+	t    *testing.T
+	docs *protocol.Page[protocol.AgentDoc]
 }
 
 func (a *authoringContextBindingStub) ListAgentDocs(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.AgentDoc], error) {
@@ -94,18 +93,10 @@ func (a *authoringContextBindingStub) ListAgentDocs(_ context.Context, request p
 	return &owned, nil
 }
 
-func (a *authoringContextBindingStub) ListRecipes(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Recipe], error) {
-	assertWorkspaceQuery(a.t, request, options)
-	return a.recipes, nil
-}
-
-func TestAuthoringContextAdapterProjectsDocumentsAndRecipes(t *testing.T) {
+func TestAuthoringContextAdapterProjectsDocuments(t *testing.T) {
 	stub := &authoringContextBindingStub{
 		t:    t,
 		docs: protocol.NewPage([]protocol.AgentDoc{{Path: "/workspace/AGENTS.md", Scope: protocol.AgentDocScopeProjectRoot}}),
-		recipes: protocol.NewPage([]protocol.Recipe{{
-			Name: "review", Body: "review $ARGUMENTS", Scope: protocol.RecipeScopeProject, Source: "/workspace/.flame/recipes/review.md",
-		}}),
 	}
 	adapter := &AuthoringContext{runtime: &Connection{authoringContext: stub, meta: requestMeta("test")}}
 	documents, err := adapter.Documents(t.Context(), "/workspace")
@@ -115,10 +106,6 @@ func TestAuthoringContextAdapterProjectsDocumentsAndRecipes(t *testing.T) {
 	stub.docs.Data[0].Path = "/mutated/AGENTS.md"
 	if documents[0].Path != "/workspace/AGENTS.md" {
 		t.Fatal("agent document projection aliases runtime catalog storage")
-	}
-	recipes, err := adapter.Recipes(t.Context(), "/workspace")
-	if err != nil || len(recipes) != 1 {
-		t.Fatalf("Recipes = (%+v, %v)", recipes, err)
 	}
 }
 
@@ -146,16 +133,6 @@ func TestAuthoringContextAdapterRejectsInvalidWireValues(t *testing.T) {
 			})},
 			read: func(adapter *AuthoringContext) error {
 				_, err := adapter.Documents(t.Context(), "/workspace")
-				return err
-			},
-		}, {
-			name: "out-of-order recipe catalog",
-			stub: &authoringContextBindingStub{recipes: protocol.NewPage([]protocol.Recipe{
-				{Name: "zeta", Body: "zeta", Scope: protocol.RecipeScopeGlobal, Source: "/zeta.md"},
-				{Name: "alpha", Body: "alpha", Scope: protocol.RecipeScopeProject, Source: "/alpha.md"},
-			})},
-			read: func(adapter *AuthoringContext) error {
-				_, err := adapter.Recipes(t.Context(), "/workspace")
 				return err
 			},
 		},

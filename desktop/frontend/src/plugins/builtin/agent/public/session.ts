@@ -1,5 +1,4 @@
 export {
-  activeSessionWorkspaceSelection,
   closeActiveAgentSession,
   getAgentSessionLifecycleSnapshot,
   getActiveSessionId,

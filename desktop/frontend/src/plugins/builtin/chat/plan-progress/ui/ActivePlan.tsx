@@ -4,7 +4,6 @@ import { Gauge, Pressable, RichTooltip, StepMark, vocab } from "@/ui";
 import { disclosureExitTransition, disclosureTransition } from "@/lib/motion";
 import { useT } from "@/lib/i18n";
 import { type PlanStep, useSessionPlan } from "@/plugins/builtin/agent/public/plan";
-import { useIsCurrentRootRunning } from "@/plugins/builtin/agent/public/run";
 import { activePlanState, type ActivePlanState } from "../application/progress";
 import {
   color,
@@ -69,44 +68,30 @@ const ap = stylex.create({
 
 export function ActivePlan() {
   const plan = useSessionPlan();
-  const progress = activePlanState(plan, useIsCurrentRootRunning());
+  const progress = activePlanState(plan);
 
   return (
     <AnimatePresence initial={false}>
-      {progress.visible && progress.current && (
-        <PlanPill
-          key={plan.identity}
-          steps={plan.steps}
-          progress={progress}
-          current={progress.current}
-        />
-      )}
+      {progress.visible && <PlanPill key={plan.identity} steps={plan.steps} progress={progress} />}
     </AnimatePresence>
   );
 }
 
-function PlanPill({
-  steps,
-  progress,
-  current,
-}: {
-  steps: readonly PlanStep[];
-  progress: ActivePlanState;
-  current: PlanStep;
-}) {
+function PlanPill({ steps, progress }: { steps: readonly PlanStep[]; progress: ActivePlanState }) {
   const t = useT();
-  const currentIndex = Math.max(
-    0,
-    steps.findIndex((step) => step.id === current.id),
-  );
-  const progressLabel = t("plan.progress", {
-    current: currentIndex + 1,
-    total: progress.total,
-  });
   const completionLabel = t("plan.complete", {
     done: progress.done,
     total: progress.total,
   });
+  // A plan with no step in flight is either finished or not started; its standing
+  // is the completion count, not a position nothing currently occupies.
+  const currentIndex = progress.current
+    ? steps.findIndex((step) => step.id === progress.current?.id)
+    : -1;
+  const progressLabel =
+    currentIndex < 0
+      ? completionLabel
+      : t("plan.progress", { current: currentIndex + 1, total: progress.total });
 
   const trigger = (
     <Pressable

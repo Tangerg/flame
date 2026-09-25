@@ -13,51 +13,38 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileobservation"
 )
 
 const (
-	authoredKnowledgeKey = "knowledge"
-	authoredHooksKey     = "hooks"
-	authoredSkillsKey    = "skills"
-	authoredRecipesKey   = "recipes"
+	authoredHooksKey  = "hooks"
+	authoredSkillsKey = "skills"
 )
 
-// AuthoredWatcher maps the Knowledge, Hooks, Skills, and Recipes filesystem layouts onto the
+// AuthoredWatcher maps the Hooks and Skills filesystem layouts onto the
 // workspace application's semantic observation port. Global roots are fixed at
 // process composition; request-owned workspace roots arrive from Application.
 type AuthoredWatcher struct {
-	knowledgeHome string
-	hooksHome     string
-	skillsHome    string
-	recipesHome   string
+	hooksHome  string
+	skillsHome string
 }
 
 var _ workspaceapp.AuthoredResourceWatcher = AuthoredWatcher{}
 
-// NewAuthoredWatcher binds the global Knowledge, Hooks, Skills, and Recipes roots
-// explicitly. Empty Skills or Recipes roots disable their global observation;
+// NewAuthoredWatcher binds the global Hooks and Skills roots
+// explicitly. An empty Skills root disables its global observation;
 // project sources remain observable from request scopes.
-func NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome, recipesHome string) (AuthoredWatcher, error) {
-	if knowledgeHome == "" || !filepath.IsAbs(knowledgeHome) {
-		return AuthoredWatcher{}, errors.New("workspace authored watcher: knowledge home must be absolute")
-	}
+func NewAuthoredWatcher(hooksHome, skillsHome string) (AuthoredWatcher, error) {
 	if hooksHome == "" || !filepath.IsAbs(hooksHome) {
 		return AuthoredWatcher{}, errors.New("workspace authored watcher: hooks home must be absolute")
 	}
 	if skillsHome != "" && !filepath.IsAbs(skillsHome) {
 		return AuthoredWatcher{}, errors.New("workspace authored watcher: skills home must be absolute when set")
 	}
-	if recipesHome != "" && !filepath.IsAbs(recipesHome) {
-		return AuthoredWatcher{}, errors.New("workspace authored watcher: recipes home must be absolute when set")
-	}
 	return AuthoredWatcher{
-		knowledgeHome: filepath.Clean(knowledgeHome),
-		hooksHome:     filepath.Clean(hooksHome),
-		skillsHome:    cleanOptionalPath(skillsHome),
-		recipesHome:   cleanOptionalPath(recipesHome),
+		hooksHome:  filepath.Clean(hooksHome),
+		skillsHome: cleanOptionalPath(skillsHome),
 	}, nil
 }
 
@@ -68,13 +55,7 @@ func (a AuthoredWatcher) Watch(
 	resources []workspaceapp.AuthoredResource,
 	notify func(workspaceapp.AuthoredResource),
 ) (workspaceapp.AuthoredObservation, error) {
-	targets := make([]fileobservation.Target, 0, 2+len(scopes)*4)
-	if slices.Contains(resources, workspaceapp.AuthoredKnowledge) {
-		targets = append(targets, knowledgeTarget(a.knowledgeHome))
-		for _, scope := range scopes {
-			targets = append(targets, knowledgeTarget(scope.ProjectRoot), knowledgeTarget(scope.Workspace))
-		}
-	}
+	targets := make([]fileobservation.Target, 0, 1+len(scopes)*2)
 	if slices.Contains(resources, workspaceapp.AuthoredHooks) {
 		targets = append(targets, fileobservation.Target{
 			Key: authoredHooksKey, Path: filepath.Join(a.hooksHome, ".flame", "hooks.json"),
@@ -99,8 +80,6 @@ func (a AuthoredWatcher) Watch(
 	files, err := fileobservation.Watch(targets, func(keys []string) {
 		for _, key := range keys {
 			switch key {
-			case authoredKnowledgeKey:
-				notify(workspaceapp.AuthoredKnowledge)
 			case authoredHooksKey:
 				notify(workspaceapp.AuthoredHooks)
 			}
@@ -140,14 +119,10 @@ func (a *authoredObservation) Accept(changes []workspaceapp.AuthoredChange) erro
 	identities := make([]string, 0, len(changes))
 	for _, change := range changes {
 		switch change.Resource {
-		case workspaceapp.AuthoredKnowledge:
-			keys = append(keys, authoredKnowledgeKey)
 		case workspaceapp.AuthoredHooks:
 			keys = append(keys, authoredHooksKey)
 		case workspaceapp.AuthoredSkills:
 			keys = append(keys, authoredSkillsKey)
-		case workspaceapp.AuthoredRecipes:
-			keys = append(keys, authoredRecipesKey)
 		}
 		identities = append(identities, change.Identities...)
 	}
@@ -163,14 +138,6 @@ func (a AuthoredWatcher) directoryFileTargets(
 	resources []workspaceapp.AuthoredResource,
 ) []fileobservation.ChildFileTarget {
 	targets := make([]fileobservation.ChildFileTarget, 0, 2*(len(scopes)+1))
-	if slices.Contains(resources, workspaceapp.AuthoredRecipes) {
-		if a.recipesHome != "" {
-			targets = append(targets, promptsource.RecipeFileTarget(a.recipesHome))
-		}
-		for _, scope := range scopes {
-			targets = append(targets, promptsource.RecipeFileTarget(promptsource.RecipeDirectory(scope.Workspace)))
-		}
-	}
 	if !slices.Contains(resources, workspaceapp.AuthoredSkills) {
 		return targets
 	}
@@ -197,13 +164,6 @@ func cleanOptionalPath(path string) string {
 		return ""
 	}
 	return filepath.Clean(path)
-}
-
-func knowledgeTarget(root string) fileobservation.Target {
-	return fileobservation.Target{
-		Key: authoredKnowledgeKey, Path: filepath.Join(root, "FLAME.md"), Boundary: root,
-		MaxBytes: knowledge.MaxDocumentBytes,
-	}
 }
 
 func directoriesRootToLeaf(root, leaf string) ([]string, error) {

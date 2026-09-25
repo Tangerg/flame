@@ -116,10 +116,7 @@ func openProtocolRuntimeWithStores(
 ) (*Instance, *delivery.Handler, *persistence.Bundle) {
 	t.Helper()
 	dataDirectory := os.Getenv("FLAME_HOME")
-	stores, err := persistence.Open(t.Context(), persistence.Config{
-		DataDirectory:        dataDirectory,
-		DefaultWorkspacePath: dataDirectory,
-	})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: dataDirectory})
 	if err != nil {
 		t.Fatalf("open persistence: %v", err)
 	}

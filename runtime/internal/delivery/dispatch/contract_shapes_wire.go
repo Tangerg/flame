@@ -396,7 +396,6 @@ func registerEventUnions(s *Shapes) {
 		Variants: []VariantSpec{
 			{Tag: string(protocol.RuntimeFilesChanged), Required: []string{"sequence", "paths"}, Optional: []string{"watchId", "workspace"}},
 			{Tag: string(protocol.RuntimeSkillsChanged), Required: []string{"sequence"}, Optional: []string{"names"}},
-			{Tag: string(protocol.RuntimeRecipesChanged), Required: []string{"sequence"}},
 			{Tag: string(protocol.RuntimeMCPChanged), Required: []string{"sequence"}, Optional: []string{"serverIds"}},
 			{Tag: string(protocol.RuntimeSchedulesChanged), Required: []string{"sequence"}, Optional: []string{"scheduleIds"}},
 			{Tag: string(protocol.RuntimeSessionsChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
@@ -404,7 +403,6 @@ func registerEventUnions(s *Shapes) {
 			{Tag: string(protocol.RuntimePlanChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
 			{Tag: string(protocol.RuntimeGoalsChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
 			{Tag: string(protocol.RuntimeInterruptsChanged), Required: []string{"sequence"}, Optional: []string{"runIds", "sessionIds"}},
-			{Tag: string(protocol.RuntimeKnowledgeChanged), Required: []string{"sequence"}},
 			{Tag: string(protocol.RuntimeHooksChanged), Required: []string{"sequence"}},
 			{Tag: string(protocol.RuntimeModelsChanged), Required: []string{"sequence"}},
 			{Tag: string(protocol.RuntimeApprovalsChanged), Required: []string{"sequence"}},
@@ -598,23 +596,6 @@ func registerObjectConstraints(s *Shapes) {
 			Forbidden: []string{"dir"},
 		}},
 	})
-
-	knowledgeTargetRules := []ConditionalRule{{
-		When:      []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.KnowledgeScopeHome)}},
-		Forbidden: []string{"workspace"},
-	}, {
-		When:     []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.KnowledgeScopeCWD)}},
-		Required: []string{"workspace"},
-	}, {
-		When:     []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.KnowledgeScopeProjectRoot)}},
-		Required: []string{"workspace"},
-	}}
-	for _, target := range []reflect.Type{
-		typeOf[protocol.GetKnowledgeRequest](),
-		typeOf[protocol.UpdateKnowledgeRequest](),
-	} {
-		s.constraint(ObjectConstraintSpec{GoType: target, Rules: knowledgeTargetRules})
-	}
 
 	// A file end line is meaningful only as the end of a window that starts at
 	// an explicit line. Structured-diff row budgets likewise have no meaning on

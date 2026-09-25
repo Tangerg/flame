@@ -463,11 +463,6 @@ export interface GetFileHeadRequest {
   workspace: WorkspaceRef;
 }
 
-export interface GetKnowledgeRequest {
-  scope: KnowledgeScope;
-  workspace?: WorkspaceRef;
-}
-
 export interface GetPlanRequest {
   sessionId: string;
 }
@@ -629,16 +624,6 @@ export type ItemScopeType = "session" | "run";
 export type ItemStatus = "running" | "completed" | "incomplete";
 
 export type ItemType = "userMessage" | "agentMessage" | "reasoning" | "question" | "toolCall" | "compaction";
-
-export interface KnowledgeEntry {
-  content: string;
-  path: string;
-  revision: string;
-  scope: KnowledgeScope;
-  updatedAt?: string;
-}
-
-export type KnowledgeScope = "cwd" | "projectRoot" | "home";
 
 export interface ListApprovalRulesRequest {
   sessionId: string;
@@ -897,8 +882,6 @@ export type PageOfAgentDoc = Page<AgentDoc>;
 
 export type PageOfFileEntry = Page<FileEntry>;
 
-export type PageOfKnowledgeEntry = Page<KnowledgeEntry>;
-
 export type PageOfMCPServer = Page<MCPServer>;
 
 export type PageOfMCPTool = Page<MCPTool>;
@@ -912,8 +895,6 @@ export type PageOfModelInvocation = Page<ModelInvocation>;
 export type PageOfPendingInterruptSet = Page<PendingInterruptSet>;
 
 export type PageOfProvider = Page<Provider>;
-
-export type PageOfRecipe = Page<Recipe>;
 
 export type PageOfRunRef = Page<RunRef>;
 
@@ -1080,17 +1061,6 @@ export interface ReadinessStatus {
   status: HealthStatus;
 }
 
-export interface Recipe {
-  argumentHint?: string;
-  body: string;
-  description?: string;
-  name: string;
-  scope: RecipeScope;
-  source: string;
-}
-
-export type RecipeScope = "project" | "global";
-
 export interface RememberScope {
   scope: RememberScopeKind;
 }
@@ -1225,7 +1195,6 @@ export interface RunSummary {
 export type RuntimeEvent =
   | { type: "files.changed"; paths: string[]; sequence: number; watchId?: string; workspace?: WorkspaceRef }
   | { type: "skills.changed"; names?: string[]; sequence: number }
-  | { type: "recipes.changed"; sequence: number }
   | { type: "mcp.changed"; sequence: number; serverIds?: string[] }
   | { type: "schedules.changed"; scheduleIds?: string[]; sequence: number }
   | { type: "sessions.changed"; sequence: number; sessionIds?: string[] }
@@ -1233,7 +1202,6 @@ export type RuntimeEvent =
   | { type: "plan.changed"; sequence: number; sessionIds?: string[] }
   | { type: "goals.changed"; sequence: number; sessionIds?: string[] }
   | { type: "interrupts.changed"; runIds?: string[]; sequence: number; sessionIds?: string[] }
-  | { type: "knowledge.changed"; sequence: number }
   | { type: "hooks.changed"; sequence: number }
   | { type: "models.changed"; sequence: number }
   | { type: "approvals.changed"; sequence: number }
@@ -1244,7 +1212,7 @@ export interface RuntimeEventNotification {
   event: RuntimeEvent;
 }
 
-export type RuntimeEventType = "files.changed" | "skills.changed" | "recipes.changed" | "mcp.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "knowledge.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed" | "resync";
+export type RuntimeEventType = "files.changed" | "skills.changed" | "mcp.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed" | "resync";
 
 export interface RuntimeInfo {
   endpoints: RuntimeInfoEndpoints;
@@ -1282,7 +1250,7 @@ export interface RuntimeSubscribeRequest {
 export interface RuntimeSubscribeResponse {
 }
 
-export type RuntimeTopic = "files.changed" | "skills.changed" | "recipes.changed" | "mcp.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "knowledge.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed";
+export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed";
 
 export type SafetyClass = "safe" | "write" | "exec" | "network";
 
@@ -1544,13 +1512,6 @@ export interface UpdateGoalRequest {
   sessionId: string;
 }
 
-export interface UpdateKnowledgeRequest {
-  content: string;
-  expectedRevision: string;
-  scope: KnowledgeScope;
-  workspace?: WorkspaceRef;
-}
-
 export interface UpdateMCPServerRequest {
   autoApproveTools?: string[];
   connection?: MCPConnectionInput;
@@ -1718,7 +1679,6 @@ export const WIRE_ENUMS = {
   ItemScopeType: ["session", "run"],
   ItemStatus: ["running", "completed", "incomplete"],
   ItemType: ["userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"],
-  KnowledgeScope: ["cwd", "projectRoot", "home"],
   LivenessState: ["ok"],
   MCPAuthorizationAttemptStatusType: ["pending", "succeeded", "failed", "canceled"],
   MCPHandshakeTimeoutType: ["unbounded", "bounded"],
@@ -1733,15 +1693,14 @@ export const WIRE_ENUMS = {
   ProviderCredentialRequirement: ["apiKeyRequired", "apiKeyOptional"],
   ProviderKeySource: ["stored", "env"],
   QuestionFieldType: ["text", "choice"],
-  RecipeScope: ["project", "global"],
   RememberScopeKind: ["session", "project", "global"],
   RestoreType: ["history", "files", "both"],
   RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
   RunProtocolFeature: ["subagents"],
   RunReplayScope: ["runtimeInstanceRootSegment"],
   RunStatus: ["running", "waiting", "finished"],
-  RuntimeEventType: ["files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"],
-  RuntimeTopic: ["files.changed", "skills.changed", "recipes.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"],
+  RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"],
+  RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
   ScheduleWorkspaceMode: ["default"],
   SegmentOutcomeType: ["interrupt", "suspended", "completed", "timedOut", "failed", "canceled", "lost"],

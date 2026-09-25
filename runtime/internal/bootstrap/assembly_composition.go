@@ -104,7 +104,6 @@ type workspaceComposition struct {
 	agentMemory      *agentmemoryapp.Coordinator
 	memoryCuration   *agentmemoryapp.Curation
 	authoredWatch    *workspace.AuthoredWatch
-	knowledge        *workspace.Knowledge
 	skills           *workspace.Skills
 	skillMaintenance *workspace.SkillMaintenance
 	skillStore       *skillauthoring.Store
@@ -127,28 +126,13 @@ func buildWorkspaceComposition(
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build hook management: %w", err)
 	}
-	authoredWatcher, err := workspaceadapter.NewAuthoredWatcher(
-		cfg.Stores.DataDirectory,
-		cfg.UserHome,
-		cfg.SkillsUserDir,
-		cfg.RecipesGlobalDir,
-	)
+	authoredWatcher, err := workspaceadapter.NewAuthoredWatcher(cfg.UserHome, cfg.SkillsUserDir)
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource watcher: %w", err)
 	}
 	authoredWatch, err := workspace.NewAuthoredWatch(scope, workspaceadapter.Resolver{}, authoredWatcher)
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource observation: %w", err)
-	}
-	knowledge, err := workspace.NewKnowledge(
-		scope,
-		workspaceadapter.Resolver{},
-		cfg.Stores.Knowledge,
-		authoredWatch,
-		publish,
-	)
-	if err != nil {
-		return workspaceComposition{}, fmt.Errorf("runtime: build knowledge: %w", err)
 	}
 	skillStore, err := skillauthoring.NewStore(cfg.SkillsUserDir, skills.ScopeUser)
 	if err != nil {
@@ -192,7 +176,6 @@ func buildWorkspaceComposition(
 		agentMemory:      memoryReview,
 		memoryCuration:   memoryCuration,
 		authoredWatch:    authoredWatch,
-		knowledge:        knowledge,
 		skills:           workspaceSkills,
 		skillMaintenance: skillMaintenance,
 		skillStore:       skillStore,
@@ -274,7 +257,6 @@ func buildExecutionComposition(
 	}
 	workingContexts, err := agentexec.NewWorkingContextComposer(agentexec.WorkingContextConfig{
 		UserHome:          cfg.UserHome,
-		Knowledge:         workspaceServices.knowledge,
 		AgentMemory:       modelServices.agentMemoryRead,
 		AgentMemorySearch: modelServices.agentMemoryRead,
 		Plan:              cfg.Stores.Plan,

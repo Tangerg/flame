@@ -34,7 +34,6 @@ import type {
   ForkSessionRequest,
   GetDiffRequest,
   GetFileHeadRequest,
-  GetKnowledgeRequest,
   GetPlanRequest,
   GetRunRequest,
   GetSessionRequest,
@@ -47,7 +46,6 @@ import type {
   ImportSessionRequest,
   ImportSessionResponse,
   InvokeToolRequest,
-  KnowledgeEntry,
   ListApprovalRulesRequest,
   ListApprovalRulesResult,
   ListFilesRequest,
@@ -68,7 +66,6 @@ import type {
   MCPTestResult,
   PageOfAgentDoc,
   PageOfFileEntry,
-  PageOfKnowledgeEntry,
   PageOfMCPServer,
   PageOfMCPTool,
   PageOfManagedSkill,
@@ -76,7 +73,6 @@ import type {
   PageOfModelInvocation,
   PageOfPendingInterruptSet,
   PageOfProvider,
-  PageOfRecipe,
   PageOfRunRef,
   PageOfSchedule,
   PageOfSession,
@@ -119,7 +115,6 @@ import type {
   SubscribeRunResponse,
   TestProviderRequest,
   UpdateGoalRequest,
-  UpdateKnowledgeRequest,
   UpdateMCPServerRequest,
   UpdateProviderRequest,
   UpdateScheduleRequest,
@@ -141,7 +136,6 @@ const FEATURES = [
   "plan",
   "goals",
   "agentMemory",
-  "knowledge",
   "skills",
   "mcp",
   "schedules",
@@ -199,7 +193,6 @@ const METHOD_NAMES = [
   "skills.proposals.list",
   "skills.proposals.approve",
   "skills.proposals.reject",
-  "recipes.list",
   "agentDocs.list",
   "mcp.servers.list",
   "mcp.servers.create",
@@ -239,9 +232,6 @@ const METHOD_NAMES = [
   "tools.invoke",
   "usage.session",
   "usage.summary",
-  "knowledge.list",
-  "knowledge.get",
-  "knowledge.update",
   "agentMemory.list",
   "agentMemory.review",
   "agentMemory.update",
@@ -305,7 +295,6 @@ const VALUE_METHOD_NAMES = [
   "skills.discovered.get",
   "skills.library.list",
   "skills.proposals.list",
-  "recipes.list",
   "agentDocs.list",
   "mcp.servers.list",
   "mcp.servers.create",
@@ -339,9 +328,6 @@ const VALUE_METHOD_NAMES = [
   "tools.invoke",
   "usage.session",
   "usage.summary",
-  "knowledge.list",
-  "knowledge.get",
-  "knowledge.update",
   "agentMemory.list",
   "agentMemory.update",
   "agentMemory.add",
@@ -643,13 +629,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "recipes.list": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "none",
-  },
   "agentDocs.list": {
     operation: "query",
     response: "unary",
@@ -923,27 +902,6 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
-  "knowledge.list": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "none",
-  },
-  "knowledge.get": {
-    operation: "query",
-    response: "unary",
-    idempotency: "none",
-    replayCursor: "none",
-    pagination: "none",
-  },
-  "knowledge.update": {
-    operation: "command",
-    response: "unary",
-    idempotency: "replayResponse",
-    replayCursor: "none",
-    pagination: "none",
-  },
   "agentMemory.list": {
     operation: "query",
     response: "unary",
@@ -1163,15 +1121,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "goals.resume": [
     { requires: ["goals"] },
   ],
-  "knowledge.list": [
-    { requires: ["knowledge"] },
-  ],
-  "knowledge.get": [
-    { requires: ["knowledge"] },
-  ],
-  "knowledge.update": [
-    { requires: ["knowledge"] },
-  ],
   "agentMemory.list": [
     { requires: ["agentMemory"] },
   ],
@@ -1230,7 +1179,6 @@ export interface WireShapes {
   "skills.proposals.list": { params: WorkspaceQuery; result: PageOfSkillProposal };
   "skills.proposals.approve": { params: SkillProposalRef };
   "skills.proposals.reject": { params: SkillProposalRef };
-  "recipes.list": { params: WorkspaceQuery; result: PageOfRecipe };
   "agentDocs.list": { params: WorkspaceQuery; result: PageOfAgentDoc };
   "mcp.servers.list": { params: Record<string, never>; result: PageOfMCPServer };
   "mcp.servers.create": { params: MCPServerCandidate; result: MCPServer };
@@ -1270,9 +1218,6 @@ export interface WireShapes {
   "tools.invoke": { params: InvokeToolRequest; result: unknown };
   "usage.session": { params: SessionUsageRequest; result: Usage };
   "usage.summary": { params: UsageSummaryRequest; result: UsageSummary };
-  "knowledge.list": { params: WorkspaceQuery; result: PageOfKnowledgeEntry };
-  "knowledge.get": { params: GetKnowledgeRequest; result: KnowledgeEntry };
-  "knowledge.update": { params: UpdateKnowledgeRequest; result: KnowledgeEntry };
   "agentMemory.list": { params: AgentMemoryListRequest; result: AgentMemoryList };
   "agentMemory.review": { params: AgentMemoryReviewRequest };
   "agentMemory.update": { params: AgentMemoryUpdateRequest; result: AgentMemoryItem };

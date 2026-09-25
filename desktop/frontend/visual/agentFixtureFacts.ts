@@ -7,7 +7,6 @@ export const VISUAL_RUNTIME_FEATURES = [
   "git",
   "plan",
   "skills",
-  "knowledge",
   "agentMemory",
   "schedules",
   "relocate",

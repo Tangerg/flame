@@ -49,12 +49,12 @@ export const useNotificationStore = create<NotificationStoreState & Notification
 );
 
 export type NotifySource =
+  | "agentMemory"
   | "composer"
   | "events"
   | "goal"
   | "import"
   | "mcp"
-  | "knowledge"
   | "project"
   | "render"
   | "session"

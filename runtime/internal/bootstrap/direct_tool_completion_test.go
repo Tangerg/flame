@@ -67,7 +67,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 				message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 				return &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}}, nil
 			})}
-			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, DefaultWorkspacePath: home})
+			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
 			if err != nil {
 				t.Fatal(err)
 			}

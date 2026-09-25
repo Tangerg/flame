@@ -8,15 +8,17 @@ export interface ActivePlanState {
   current: PlanStep | undefined;
 }
 
-export function activePlanState(plan: SessionPlan, currentRunActive: boolean): ActivePlanState {
+// The pill is the session's one plan surface, so it is bound to the plan's
+// existence rather than to a running Run: a finished plan stays reviewable
+// between turns, and an absent one shows nothing.
+export function activePlanState(plan: SessionPlan): ActivePlanState {
   const { done, total } = plan.progress();
-  const current = plan.activeStep();
 
   return {
-    visible: currentRunActive && current !== undefined,
+    visible: total > 0,
     total,
     done,
     percent: total > 0 ? Math.round((done / total) * 100) : 0,
-    current,
+    current: plan.activeStep(),
   };
 }

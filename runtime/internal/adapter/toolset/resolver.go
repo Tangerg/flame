@@ -102,26 +102,25 @@ type staticSpec struct {
 // shell and LSP tools are built once but read the Run's cwd per call. Online,
 // A2A, and code-intelligence capabilities are also built once and held.
 type resolverDeps struct {
-	DefaultCWD         string
-	SkillsUserDir      string
-	SkillUsage         builtin.SkillUsageRecorder
-	Online             []toolcontract.Tool // network tools (web/httpreq)
-	A2A                []toolcontract.Tool // remote A2A delegation tools
-	LSP                []toolcontract.Tool // code-intelligence tools
-	Shell              []toolcontract.Tool // shell tools (shell / read_shell_output / stop_shell); nil means omitted
-	AskUser            toolcontract.Tool   // ask_user HITL tool (both groups)
-	EnterPlan          toolcontract.Tool   // enter_plan_mode (root group only); nil → omitted
-	ExitPlan           toolcontract.Tool   // exit_plan_mode (root group only); nil → omitted
-	Plan               toolcontract.Tool   // set_plan execution-plan tool (root group only); nil → omitted
-	ScheduleTools      []toolcontract.Tool // schedule management tools (root group only); nil → omitted
-	ToolResult         toolcontract.Tool   // read_tool_result offloaded-output reader (both groups); nil → omitted
-	AgentMemorySearch  toolcontract.Tool   // search_memory agent-memory reader (both groups); nil → omitted
-	ConversationSearch toolcontract.Tool   // search_conversations past-transcript reader (both groups); nil → omitted
-	GoalGet            toolcontract.Tool   // get_goal state reader (root group only); nil → omitted
-	GoalReport         toolcontract.Tool   // report_goal_outcome loop signal (Goal-owned root Runs only); nil → omitted
-	ProposeSkill       toolcontract.Tool   // propose_skill pending submission (root group only); nil → omitted
-	CodeIntel          *codeintel.Analyzer // backs post-mutation diagnostics
-	ReadTracker        *readTracker        // backs the read-before-patch and stale-read guards
+	DefaultCWD        string
+	SkillsUserDir     string
+	SkillUsage        builtin.SkillUsageRecorder
+	Online            []toolcontract.Tool // network tools (web/httpreq)
+	A2A               []toolcontract.Tool // remote A2A delegation tools
+	LSP               []toolcontract.Tool // code-intelligence tools
+	Shell             []toolcontract.Tool // shell tools (shell / read_shell_output / stop_shell); nil means omitted
+	AskUser           toolcontract.Tool   // ask_user HITL tool (both groups)
+	EnterPlan         toolcontract.Tool   // enter_plan_mode (root group only); nil → omitted
+	ExitPlan          toolcontract.Tool   // exit_plan_mode (root group only); nil → omitted
+	Plan              toolcontract.Tool   // set_plan execution-plan tool (root group only); nil → omitted
+	ScheduleTools     []toolcontract.Tool // schedule management tools (root group only); nil → omitted
+	ToolResult        toolcontract.Tool   // read_tool_result offloaded-output reader (both groups); nil → omitted
+	AgentMemorySearch toolcontract.Tool   // search_memory agent-memory reader (both groups); nil → omitted
+	GoalGet           toolcontract.Tool   // get_goal state reader (root group only); nil → omitted
+	GoalReport        toolcontract.Tool   // report_goal_outcome loop signal (Goal-owned root Runs only); nil → omitted
+	ProposeSkill      toolcontract.Tool   // propose_skill pending submission (root group only); nil → omitted
+	CodeIntel         *codeintel.Analyzer // backs post-mutation diagnostics
+	ReadTracker       *readTracker        // backs the read-before-patch and stale-read guards
 	// MCPToolDisabled reports whether an identified MCP tool is hidden.
 	MCPToolDisabled func(mcpserver.ToolRef) bool
 }
@@ -157,7 +156,6 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 			{tool: d.Plan, audience: audienceRoot, placement: afterSkill},
 			{tool: d.ToolResult, audience: audienceBoth, placement: afterSkill},
 			{tool: d.AgentMemorySearch, audience: audienceBoth, placement: afterSkill, deferred: true},
-			{tool: d.ConversationSearch, audience: audienceBoth, placement: afterSkill, deferred: true},
 			{tool: d.ProposeSkill, audience: audienceRoot, placement: afterSkill, deferred: true},
 			{tool: d.GoalGet, audience: audienceRoot, placement: rootTail},
 			{tool: d.GoalReport, audience: audienceRoot, placement: rootTail, requiresGoalRun: true},

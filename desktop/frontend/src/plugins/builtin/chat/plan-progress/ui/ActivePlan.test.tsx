@@ -7,7 +7,6 @@ const model = vi.hoisted(() => ({
   sessionId: "ses-a",
   generation: 1n,
   revision: 1,
-  running: true,
   steps: [
     {
       id: "step-1",
@@ -15,10 +14,6 @@ const model = vi.hoisted(() => ({
       status: "active" as "active" | "done" | "pending",
     },
   ],
-}));
-
-vi.mock("@/plugins/builtin/agent/public/run", () => ({
-  useIsCurrentRootRunning: () => model.running,
 }));
 
 vi.mock("@/plugins/builtin/agent/public/plan", async (importOriginal) => {
@@ -38,7 +33,6 @@ describe("ActivePlan", () => {
     model.sessionId = "ses-a";
     model.generation = 1n;
     model.revision = 1;
-    model.running = true;
     model.steps = [{ id: "step-1", text: "Inspect", status: "active" }];
   });
 
@@ -97,17 +91,29 @@ describe("ActivePlan", () => {
     },
   );
 
-  it("shows a non-dismissible Plan only while its current Run is active", async () => {
+  it("keeps a non-dismissible finished Plan reviewable between turns", async () => {
     const { rerender } = render(<ActivePlan />);
 
     expect(screen.queryByRole("button", { name: "Dismiss plan banner" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Step 1 / 1" })).not.toBeNull();
 
-    model.running = false;
+    model.revision = 2;
+    model.steps = [{ id: "step-1", text: "Inspect", status: "done" }];
     rerender(<ActivePlan />);
 
+    // No step is in flight, so the pill states the completion count instead of a
+    // position, and stays put rather than taking the plan away with the Run.
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: "Step 1 / 1" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "1 of 1 complete" })).not.toBeNull();
+    });
+  });
+
+  it("stays down when the session has no plan", async () => {
+    model.steps = [];
+    render(<ActivePlan />);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /complete|Step/ })).toBeNull();
     });
   });
 

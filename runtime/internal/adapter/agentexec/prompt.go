@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -23,9 +22,8 @@ import (
 const agentMemoryInjectBudget = 4096
 
 // basePrompt is the always-on identity / behavioral preamble. It
-// stays small on purpose — project-specific context lives in agent memory,
-// FLAME.md, or AGENTS.md and gets appended during prompt assembly.
-// Anything user-specific lives in ~/.flame/FLAME.md.
+// stays small on purpose — project-specific context lives in agent memory or
+// AGENTS.md and gets appended during prompt assembly.
 const basePrompt = `You are Flame, a general-purpose AI coding agent.
 
 You can read and modify files, run shell commands, search the
@@ -39,14 +37,11 @@ error, read the message and adjust — don't blindly retry. If a
 task is ambiguous, ask one focused question rather than guess.`
 
 // composeSystemMessage assembles the system prompt for one turn. Global
-// context loads from broadest to narrowest so more local knowledge extends and
-// overrides the broader layer:
+// context loads from broadest to narrowest so more local instructions extend
+// and override the broader layer:
 //
 //	<base prompt>
-//	<user knowledge>       (~/.flame/FLAME.md — global, user-managed)
 //	<pinned agent memory>  (durable, project-scoped, agent-managed)
-//	<project knowledge>    (<project-root>/FLAME.md, when distinct)
-//	<workspace knowledge>  (<cwd>/FLAME.md — per-session workspace root)
 //	<discovered>      (agentdoc cascade — global AGENTS.md first
 //	                   (~/.flame, ~/.agents), then project root → cwd)
 //
@@ -56,10 +51,7 @@ task is ambiguous, ask one focused question rather than guess.`
 // project A briefs the model about project A regardless of where the runtime
 // server process was started.
 //
-// KnowledgeReader is the prompt's human-authored knowledge surface; agentdoc is the
-// read-only cross-tool AGENTS.md convention.
-// The Knowledge reader supplies one complete cascade, so a read error
-// fails prompt construction instead of silently deleting user instructions.
+// The AGENTS.md cascade is the one human-authored instruction surface.
 // Memory remains best-effort enrichment. Current Goal and Plan are authoritative
 // Session state: read failures fail construction instead of silently
 // retaining or deleting an old snapshot. An existing Agent document is likewise
@@ -74,22 +66,6 @@ func (w *WorkingContextComposer) composeSystemMessage(
 		basePrompt,
 		contextSourceBasePrompt.source("builtin:flame"),
 	)
-
-	knowledgeEntries, err := w.config.Knowledge.Entries(ctx, cwd)
-	if err != nil {
-		return corechat.Message{}, fmt.Errorf("agentexec: load knowledge cascade: %w", err)
-	}
-	for _, entry := range knowledgeEntries {
-		if entry.Scope != knowledge.ScopeHome {
-			continue
-		}
-		if content := strings.TrimSpace(entry.Content); content != "" {
-			prompt.append(
-				"## User preferences (from ~/.flame/FLAME.md)\n\n"+content,
-				contextSourceUserKnowledge.source(entry.Path),
-			)
-		}
-	}
 
 	// The always-on core is the PINNED items (project + user scope). Non-pinned
 	// approved memory is surfaced per turn by relevance (the recall block), so a
@@ -110,25 +86,6 @@ func (w *WorkingContextComposer) composeSystemMessage(
 		pinned = appendPinned(pinned, userItems)
 	}
 	newPinnedMemoryPrompt(pinned, agentMemoryInjectBudget).appendTo(&prompt)
-
-	for _, entry := range knowledgeEntries {
-		content := strings.TrimSpace(entry.Content)
-		if content == "" {
-			continue
-		}
-		switch entry.Scope {
-		case knowledge.ScopeProjectRoot:
-			prompt.append(
-				"## Project knowledge (from <project-root>/FLAME.md)\n\n"+content,
-				contextSourceProjectKnowledge.source(entry.Path),
-			)
-		case knowledge.ScopeCWD:
-			prompt.append(
-				"## Workspace knowledge (from <cwd>/FLAME.md)\n\n"+content,
-				contextSourceProjectKnowledge.source(entry.Path),
-			)
-		}
-	}
 
 	// AGENTS.md cascade. Missing/empty sources contribute nothing; an existing
 	// invalid source remains observable so a turn cannot run under silently

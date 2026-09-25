@@ -28,7 +28,7 @@ func TestProjectSkillsWithEmptyUserLibrary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), userRoot, filepath.Join(userRoot, "skills"), "")
+	watcher, err := workspaceadapter.NewAuthoredWatcher(userRoot, filepath.Join(userRoot, "skills"))
 	if err != nil {
 		t.Fatal(err)
 	}

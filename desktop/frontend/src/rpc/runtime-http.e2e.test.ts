@@ -1,13 +1,11 @@
 import { execFile } from "node:child_process";
 import {
-  chmod,
   lstat,
   mkdir,
   mkdtemp,
   readFile,
   realpath,
   rm,
-  stat,
   symlink,
   writeFile,
 } from "node:fs/promises";
@@ -1607,7 +1605,7 @@ for await (const line of lines) {
     }
   }, 30_000);
 
-  it("reconciles Knowledge and Agent Memory mutations after their responses are lost", async () => {
+  it("reconciles Agent Memory mutations after their responses are lost", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
     const requestMeta = (): RequestMeta => ({
@@ -1634,34 +1632,15 @@ for await (const line of lines) {
     const workspaceRoot = join(root, "workspace-state-replay-cutpoints");
     await mkdir(workspaceRoot);
     const workspace = client.workspace({ path: workspaceRoot });
-    const initialKnowledge = await workspace.knowledge.get("cwd");
     const streamController = new AbortController();
     const subscription = await client.runtimeEvents.subscribe(
-      { topics: ["knowledge.changed", "agentMemory.changed"] },
+      { topics: ["agentMemory.changed"] },
       streamController.signal,
     );
     const events = subscription.events[Symbol.asyncIterator]();
-    let knowledgeRevision = initialKnowledge.revision;
     let memoryId: string | undefined;
 
     try {
-      const saved = await callAfterCommitLoss("knowledge.update", (faultClient) =>
-        faultClient.workspace({ path: workspaceRoot }).knowledge.update({
-          scope: "cwd",
-          content: "knowledge replay cutpoint\n",
-          expectedRevision: initialKnowledge.revision,
-        }),
-      );
-      knowledgeRevision = saved.revision;
-      await expect(nextRuntimeEvent(events, "knowledge.changed")).resolves.toMatchObject({
-        type: "knowledge.changed",
-      });
-      await expect(workspace.knowledge.get("cwd")).resolves.toMatchObject({
-        scope: "cwd",
-        content: "knowledge replay cutpoint\n",
-        revision: saved.revision,
-      });
-
       const added = await callAfterCommitLoss("agentMemory.add", (faultClient) =>
         faultClient.agentMemory.add({
           scope: "project",
@@ -1708,9 +1687,6 @@ for await (const line of lines) {
       expect((await workspace.agentMemory.list()).items).toEqual([]);
     } finally {
       if (memoryId) await client.agentMemory.delete(memoryId).catch(() => undefined);
-      await workspace.knowledge
-        .update({ scope: "cwd", content: "", expectedRevision: knowledgeRevision })
-        .catch(() => undefined);
       streamController.abort();
       await events.return?.();
     }
@@ -3753,224 +3729,6 @@ for await (const line of lines) {
     await events.return?.();
   }, 30_000);
 
-  it("preserves the home, project-root and workspace knowledge cascade", async () => {
-    if (!client) throw new Error("runtime client was not initialized");
-
-    const projectRoot = join(root, "workspace-knowledge-project");
-    const workspaceRoot = join(projectRoot, "packages", "desktop");
-    await mkdir(workspaceRoot, { recursive: true });
-    await execFileAsync("git", ["init", "--quiet"], { cwd: projectRoot });
-    const workspace = client.workspace({ path: workspaceRoot });
-
-    const streamController = new AbortController();
-    const subscription = await client.runtimeEvents.subscribe(
-      {
-        topics: ["files.changed", "knowledge.changed"],
-        watches: [{ watchId: "knowledge-files", workspace: { path: workspaceRoot } }],
-      },
-      streamController.signal,
-    );
-    const events = subscription.events[Symbol.asyncIterator]();
-    const initialHome = await workspace.knowledge.get("home");
-    const initialProject = await workspace.knowledge.get("projectRoot");
-    const initialCwd = await workspace.knowledge.get("cwd");
-
-    const savedHome = await workspace.knowledge.update({
-      scope: "home",
-      content: "home knowledge\n",
-      expectedRevision: initialHome.revision,
-    });
-    await expect(nextRuntimeEvent(events, "knowledge.changed")).resolves.toMatchObject({
-      type: "knowledge.changed",
-    });
-    const savedProject = await workspace.knowledge.update({
-      scope: "projectRoot",
-      content: "project-root knowledge\n",
-      expectedRevision: initialProject.revision,
-    });
-    await expect(nextRuntimeEvent(events, "knowledge.changed")).resolves.toMatchObject({
-      type: "knowledge.changed",
-    });
-    const savedCwd = await workspace.knowledge.update({
-      scope: "cwd",
-      content: "workspace knowledge\n",
-      expectedRevision: initialCwd.revision,
-    });
-    await expect(nextRuntimeEvent(events, "knowledge.changed")).resolves.toMatchObject({
-      type: "knowledge.changed",
-    });
-    expect(savedHome).toMatchObject({
-      scope: "home",
-      content: "home knowledge\n",
-      revision: expect.any(String),
-      updatedAt: expect.any(String),
-    });
-
-    await expect(workspace.knowledge.get("home")).resolves.toMatchObject({
-      scope: "home",
-      content: "home knowledge\n",
-      revision: savedHome.revision,
-    });
-    await expect(workspace.knowledge.get("projectRoot")).resolves.toMatchObject({
-      scope: "projectRoot",
-      content: "project-root knowledge\n",
-      revision: savedProject.revision,
-    });
-    await expect(workspace.knowledge.get("cwd")).resolves.toMatchObject({
-      scope: "cwd",
-      content: "workspace knowledge\n",
-      revision: savedCwd.revision,
-    });
-    await expect(workspace.knowledge.list()).resolves.toMatchObject({
-      data: [
-        {
-          scope: "home",
-          content: "home knowledge\n",
-          revision: savedHome.revision,
-          updatedAt: expect.any(String),
-        },
-        {
-          scope: "projectRoot",
-          content: "project-root knowledge\n",
-          revision: savedProject.revision,
-          updatedAt: expect.any(String),
-        },
-        {
-          scope: "cwd",
-          content: "workspace knowledge\n",
-          revision: savedCwd.revision,
-          updatedAt: expect.any(String),
-        },
-      ],
-    });
-    await expect(readFile(join(projectRoot, "FLAME.md"), "utf8")).resolves.toBe(
-      "project-root knowledge\n",
-    );
-    await expect(readFile(join(workspaceRoot, "FLAME.md"), "utf8")).resolves.toBe(
-      "workspace knowledge\n",
-    );
-
-    await expect(
-      workspace.knowledge.update({
-        scope: "cwd",
-        content: "stale overwrite",
-        expectedRevision: initialCwd.revision,
-      }),
-    ).rejects.toSatisfy(
-      (error: unknown) =>
-        error instanceof RpcError && errorType(error.data) === "revision_conflict",
-    );
-
-    const clearedHome = await workspace.knowledge.update({
-      scope: "home",
-      content: "",
-      expectedRevision: savedHome.revision,
-    });
-    await nextRuntimeEvent(events, "knowledge.changed");
-    const clearedProject = await workspace.knowledge.update({
-      scope: "projectRoot",
-      content: "",
-      expectedRevision: savedProject.revision,
-    });
-    await nextRuntimeEvent(events, "knowledge.changed");
-    const clearedCwd = await workspace.knowledge.update({
-      scope: "cwd",
-      content: "",
-      expectedRevision: savedCwd.revision,
-    });
-    await nextRuntimeEvent(events, "knowledge.changed");
-    await expect(workspace.knowledge.list()).resolves.toMatchObject({
-      data: [
-        { scope: "home", content: "", revision: clearedHome.revision },
-        { scope: "projectRoot", content: "", revision: clearedProject.revision },
-        { scope: "cwd", content: "", revision: clearedCwd.revision },
-      ],
-    });
-
-    for (const change of [
-      {
-        scope: "home" as const,
-        path: join(runtimeStore, "FLAME.md"),
-        content: "external home\n",
-      },
-      {
-        scope: "projectRoot" as const,
-        path: join(projectRoot, "FLAME.md"),
-        content: "external project\n",
-      },
-      {
-        scope: "cwd" as const,
-        path: join(workspaceRoot, "FLAME.md"),
-        content: "external cwd\n",
-      },
-    ]) {
-      await writeFile(change.path, change.content);
-      await expect(nextRuntimeEvent(events, "knowledge.changed")).resolves.toMatchObject({
-        type: "knowledge.changed",
-      });
-      await expect(workspace.knowledge.get(change.scope)).resolves.toMatchObject({
-        scope: change.scope,
-        content: change.content,
-      });
-    }
-    streamController.abort();
-    await events.return?.();
-  }, 30_000);
-
-  it("confines knowledge symlinks to their scope and preserves the physical file", async () => {
-    if (!client) throw new Error("runtime client was not initialized");
-
-    const workspaceRoot = join(root, "workspace-knowledge-boundary");
-    const outside = join(root, "knowledge-outside.md");
-    await mkdir(workspaceRoot);
-    await writeFile(outside, "outside secret\n", { mode: 0o600 });
-    const alias = join(workspaceRoot, "FLAME.md");
-    await symlink(outside, alias);
-    const workspace = client.workspace({ path: workspaceRoot });
-
-    for (const request of [
-      () => workspace.knowledge.get("cwd"),
-      () => workspace.knowledge.list(),
-      () =>
-        workspace.knowledge.update({
-          scope: "cwd",
-          content: "must not escape\n",
-          expectedRevision:
-            "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-        }),
-    ]) {
-      await expect(request()).rejects.toSatisfy(
-        (error: unknown) =>
-          error instanceof RpcError && errorType(error.data) === "path_outside_root",
-      );
-    }
-    await expect(readFile(outside, "utf8")).resolves.toBe("outside secret\n");
-
-    await rm(alias);
-    const physical = join(workspaceRoot, "private", "knowledge.md");
-    await mkdir(join(workspaceRoot, "private"));
-    await writeFile(physical, "before\n", { mode: 0o600 });
-    await chmod(physical, 0o600);
-    await symlink(join("private", "knowledge.md"), alias);
-
-    const before = await workspace.knowledge.get("cwd");
-    expect(before).toMatchObject({ scope: "cwd", content: "before\n" });
-    const saved = await workspace.knowledge.update({
-      scope: "cwd",
-      content: "after\n",
-      expectedRevision: before.revision,
-    });
-    expect(saved).toMatchObject({ scope: "cwd", content: "after\n" });
-    expect((await lstat(alias)).isSymbolicLink()).toBe(true);
-    await expect(readFile(physical, "utf8")).resolves.toBe("after\n");
-    expect((await stat(physical)).mode & 0o777).toBe(0o600);
-    await expect(workspace.knowledge.list()).resolves.toMatchObject({
-      data: expect.arrayContaining([
-        expect.objectContaining({ scope: "cwd", content: "after\n", revision: saved.revision }),
-      ]),
-    });
-  }, 30_000);
-
   it("round-trips project and user agent memory through durable cold reads", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
@@ -4126,7 +3884,7 @@ for await (const line of lines) {
     );
   }, 30_000);
 
-  it("consumes workspace files, recipes, agent docs and hook trust through bound APIs", async () => {
+  it("consumes workspace files and hook trust through bound APIs", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
     const projectRoot = join(root, "workspace-side-api-project");
@@ -4134,13 +3892,9 @@ for await (const line of lines) {
     await mkdir(workspaceRoot, { recursive: true });
     await execFileAsync("git", ["init", "--quiet"], { cwd: projectRoot });
 
-    const projectRecipe = join(workspaceRoot, ".flame", "recipes", "project-side-api.md");
-    const globalRecipe = join(runtimeStore, "recipes", "global-side-api.md");
     await Promise.all([
-      mkdir(join(workspaceRoot, ".flame", "recipes"), { recursive: true }),
       mkdir(join(projectRoot, ".flame"), { recursive: true }),
       mkdir(join(runtimeHome, ".flame"), { recursive: true }),
-      mkdir(join(runtimeStore, "recipes"), { recursive: true }),
       mkdir(join(workspaceRoot, "nested"), { recursive: true }),
     ]);
     await Promise.all([
@@ -4151,14 +3905,6 @@ for await (const line of lines) {
       writeFile(join(projectRoot, "AGENTS.md"), "project-root instructions\n"),
       writeFile(join(workspaceRoot, ".flame", "AGENTS.md"), "workspace instructions\n"),
       writeFile(join(runtimeHome, ".flame", "AGENTS.md"), "home instructions\n"),
-      writeFile(
-        projectRecipe,
-        '---\ndescription: Project side API recipe\nargumentHint: "[target]"\n---\nReview $1\n',
-      ),
-      writeFile(
-        globalRecipe,
-        "---\ndescription: Global side API recipe\n---\nExplain $ARGUMENTS\n",
-      ),
       writeFile(
         join(runtimeHome, ".flame", "hooks.json"),
         JSON.stringify({ hooks: [{ event: "SessionStart", inject: "global hook context" }] }),
@@ -4173,8 +3919,6 @@ for await (const line of lines) {
 
     const resolved = await client.workspaces.resolve({ path: workspaceRoot });
     const canonicalWorkspaceRoot = await realpath(workspaceRoot);
-    const canonicalRuntimeHome = await realpath(runtimeHome);
-    const canonicalRuntimeData = await realpath(runtimeData);
     expect(resolved).toMatchObject({
       ref: { path: canonicalWorkspaceRoot },
       projectRoot: await realpath(projectRoot),
@@ -4186,13 +3930,6 @@ for await (const line of lines) {
     await expect(
       workspace.files.read({ path: "alpha.txt", startLine: 1, endLine: 2 }),
     ).resolves.toMatchObject({ content: "first\nworkspace-side-api-marker", startLine: 1 });
-    await expect(workspace.files.search({ query: "workspace-side-api-marker" })).resolves.toEqual({
-      matches: [
-        { path: "alpha.txt", lineNumber: 2, text: "workspace-side-api-marker" },
-        { path: "nested/bravo.txt", lineNumber: 1, text: "workspace-side-api-marker" },
-      ],
-      total: 2,
-    });
 
     const listed = await workspace.files.list({ recursive: true, limit: 1 }).autoPagingToArray();
     expect(listed).toEqual(
@@ -4235,33 +3972,6 @@ for await (const line of lines) {
       (error: unknown) =>
         error instanceof RpcError && errorType(error.data) === "path_outside_root",
     );
-
-    await expect(workspace.recipes.list()).resolves.toMatchObject({
-      data: expect.arrayContaining([
-        expect.objectContaining({
-          name: "project-side-api",
-          description: "Project side API recipe",
-          argumentHint: "[target]",
-          body: "Review $1",
-          scope: "project",
-          source: join(canonicalWorkspaceRoot, ".flame", "recipes", "project-side-api.md"),
-        }),
-        expect.objectContaining({
-          name: "global-side-api",
-          description: "Global side API recipe",
-          body: "Explain $ARGUMENTS",
-          scope: "global",
-          source: join(canonicalRuntimeData, "runtime", "recipes", "global-side-api.md"),
-        }),
-      ]),
-    });
-    await expect(workspace.agentDocs.list()).resolves.toEqual({
-      data: [
-        { path: join(canonicalRuntimeHome, ".flame", "AGENTS.md"), scope: "home" },
-        { path: join(resolved.projectRoot, "AGENTS.md"), scope: "projectRoot" },
-        { path: join(canonicalWorkspaceRoot, ".flame", "AGENTS.md"), scope: "cwd" },
-      ],
-    });
 
     const untrusted = await workspace.hooks.list();
     expect(untrusted).toMatchObject({

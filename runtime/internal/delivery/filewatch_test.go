@@ -10,11 +10,9 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/knowledgefile"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -89,10 +87,10 @@ func TestWorkspaceSubscribe_NonRepoInert(t *testing.T) {
 	}
 }
 
-// TestWorkspaceSubscribe_ExternalAuthoredFiles verifies that the two
-// file-backed, user-authored resources converge when another process edits
-// them. Git observation is deliberately irrelevant here: neither FLAME.md nor
-// hooks.json needs to be staged before its query projection becomes stale.
+// TestWorkspaceSubscribe_ExternalAuthoredFiles verifies that the file-backed,
+// user-authored resources converge when another process edits them. Git
+// observation is deliberately irrelevant here: neither hooks.json nor a SKILL.md
+// needs to be staged before its query projection becomes stale.
 func TestWorkspaceSubscribe_ExternalAuthoredFiles(t *testing.T) {
 	dir := t.TempDir()
 	s := newWorkspaceHandler(dir)
@@ -103,7 +101,6 @@ func TestWorkspaceSubscribe_ExternalAuthoredFiles(t *testing.T) {
 	_, seq, err := s.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{
 		Topics: []protocol.RuntimeTopic{
 			protocol.TopicFilesChanged,
-			protocol.TopicKnowledgeChanged,
 			protocol.TopicHooksChanged,
 			protocol.TopicSkillsChanged,
 		},
@@ -113,11 +110,6 @@ func TestWorkspaceSubscribe_ExternalAuthoredFiles(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 	events := drainSeq(ctx, seq)
-
-	if err := os.WriteFile(filepath.Join(dir, "FLAME.md"), []byte("external knowledge\n"), 0o644); err != nil {
-		t.Fatalf("write knowledge: %v", err)
-	}
-	assertRuntimeEventType(t, events, protocol.RuntimeKnowledgeChanged)
 
 	if err := os.MkdirAll(filepath.Join(dir, ".flame"), 0o755); err != nil {
 		t.Fatalf("create hook directory: %v", err)
@@ -139,10 +131,9 @@ func TestWorkspaceSubscribe_ExternalAuthoredFiles(t *testing.T) {
 
 func TestWorkspaceSubscribe_GlobalAuthoredFilesDoNotRequireWorkspaceWatch(t *testing.T) {
 	workspaceRoot := t.TempDir()
-	knowledgeHome := t.TempDir()
 	hooksHome := t.TempDir()
 	skillsHome := t.TempDir()
-	authored, err := workspaceadapter.NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome, "")
+	authored, err := workspaceadapter.NewAuthoredWatcher(hooksHome, skillsHome)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,16 +143,12 @@ func TestWorkspaceSubscribe_GlobalAuthoredFilesDoNotRequireWorkspaceWatch(t *tes
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	_, seq, err := s.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{Topics: []protocol.RuntimeTopic{
-		protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged,
+		protocol.TopicHooksChanged, protocol.TopicSkillsChanged,
 	}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	events := drainSeq(ctx, seq)
-	if err := os.WriteFile(filepath.Join(knowledgeHome, "FLAME.md"), []byte("global knowledge"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	assertRuntimeEventType(t, events, protocol.RuntimeKnowledgeChanged)
 	if err := os.MkdirAll(filepath.Join(hooksHome, ".flame"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -178,66 +165,13 @@ func TestWorkspaceSubscribe_GlobalAuthoredFilesDoNotRequireWorkspaceWatch(t *tes
 	}
 	assertRuntimeEventType(t, events, protocol.RuntimeSkillsChanged)
 
-	if err := os.WriteFile(filepath.Join(workspaceRoot, "FLAME.md"), []byte("unwatched workspace"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(workspaceRoot, "AGENTS.md"), []byte("unwatched workspace"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	select {
 	case event := <-events:
 		t.Fatalf("workspace path without a watch produced %+v", event)
 	case <-time.After(300 * time.Millisecond):
-	}
-}
-
-func TestWorkspaceSubscribe_KnowledgeUpdateDoesNotDoublePublishFromFileObservation(t *testing.T) {
-	dir := t.TempDir()
-	store, err := knowledgefile.New(dir, dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	surfaces := newWorkspaceSurfaces(dir, workspaceTestConfig{Knowledge: store})
-	s := &Handler{}
-	applyWorkspaceSurfaces(s, surfaces)
-	s.workspaceHub = newWorkspaceHub()
-	s.workspaceKnowledge, err = workspaceapp.NewKnowledge(
-		surfaces.roots, workspaceadapter.Resolver{}, store, surfaces.authoredWatch,
-		func(notice invalidation.Notice) {
-			if event, ok := runtimeEventFor(notice); ok {
-				s.workspaceHub.publish(event)
-			}
-		},
-	)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, seq, err := s.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{
-		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicKnowledgeChanged},
-		Watches: []protocol.WatchSpec{{WatchID: "knowledge", Workspace: protocol.WorkspaceRef{Path: dir}}},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	events := drainSeq(ctx, seq)
-	current, err := s.GetKnowledge(ctx, protocol.GetKnowledgeRequest{
-		Scope: protocol.KnowledgeScopeCWD, Workspace: &protocol.WorkspaceRef{Path: dir},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.UpdateKnowledge(ctx, protocol.UpdateKnowledgeRequest{
-		Scope: protocol.KnowledgeScopeCWD, Workspace: &protocol.WorkspaceRef{Path: dir},
-		ExpectedRevision: current.Revision, Content: "one event\n",
-	}); err != nil {
-		t.Fatal(err)
-	}
-	assertRuntimeEventType(t, events, protocol.RuntimeKnowledgeChanged)
-	select {
-	case event := <-events:
-		t.Fatalf("knowledge.update published a duplicate observation event: %+v", event)
-	case <-time.After(500 * time.Millisecond):
 	}
 }
 
@@ -255,7 +189,7 @@ func TestWorkspaceSubscribe_SkillArchiveDoesNotDoublePublishFromTreeObservation(
 	if err != nil {
 		t.Fatal(err)
 	}
-	authored, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), t.TempDir(), skillsHome, "")
+	authored, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), skillsHome)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -352,56 +286,5 @@ func TestWorkspaceSubscribe_MissingWatchID(t *testing.T) {
 		Watches: []protocol.WatchSpec{{}},
 	}); err == nil {
 		t.Fatal("watch missing watchId must be invalid_params")
-	}
-}
-
-func TestRecipeObservationRefreshesExternalCatalogChanges(t *testing.T) {
-	workspace := t.TempDir()
-	global := filepath.Join(t.TempDir(), "recipes")
-	authored, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), t.TempDir(), "", global)
-	if err != nil {
-		t.Fatal(err)
-	}
-	s := newWorkspaceHandlerWithConfig(workspace, workspaceTestConfig{AuthoredWatcher: authored, Recipes: promptsource.NewRecipes(global)})
-	s.workspaceHub = newWorkspaceHub()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	_, seq, err := s.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{
-		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicRecipesChanged},
-		Watches: []protocol.WatchSpec{{WatchID: "recipes", Workspace: protocol.WorkspaceRef{Path: workspace}}},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	events := drainSeq(ctx, seq)
-	projectFile := filepath.Join(workspace, ".flame", "recipes", "review.md")
-	for _, step := range []struct {
-		path, body, want string
-		remove           bool
-	}{
-		{path: filepath.Join(global, "review.md"), body: "global prompt", want: "global prompt"},
-		{path: projectFile, body: "project prompt", want: "project prompt"},
-		{path: projectFile, body: "updated project prompt", want: "updated project prompt"},
-		{path: projectFile, remove: true, want: "global prompt"},
-	} {
-		if step.remove {
-			err = os.Remove(step.path)
-		} else {
-			if err = os.MkdirAll(filepath.Dir(step.path), 0o700); err != nil {
-				t.Fatal(err)
-			}
-			err = os.WriteFile(step.path, []byte(step.body), 0o600)
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-		assertRuntimeEventType(t, events, protocol.RuntimeRecipesChanged)
-		catalog, err := s.ListRecipes(ctx, protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: workspace}})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(catalog.Data) != 1 || catalog.Data[0].Body != step.want {
-			t.Fatalf("catalog after %q = %+v, want %q", step.path, catalog.Data, step.want)
-		}
 	}
 }

@@ -32,7 +32,6 @@ func ComposeConfig(cfg config.Settings, stores *persistence.Bundle, resolver Cha
 		ProviderRegistry:         providers,
 		Provider:                 cfg.Provider,
 		Model:                    cfg.Model,
-		RecipesGlobalDir:         filepath.Join(stores.DataDirectory, "recipes"),
 		CheckpointDir:            filepath.Join(stores.DataDirectory, "checkpoints"),
 		ToolResultOffloadEnabled: cfg.ToolResultOffload.Enabled,
 		ToolResultThreshold:      cfg.ToolResultOffload.Threshold,

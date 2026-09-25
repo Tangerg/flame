@@ -32,19 +32,19 @@ function advertising(
 
 describe("the capability preflight", () => {
   it("refuses a gated method the server says it cannot do", () => {
-    expect(unnegotiated("knowledge.list", {}, advertising({ knowledge: false }))).toEqual([
-      "knowledge",
+    expect(unnegotiated("skills.discovered.list", {}, advertising({ skills: false }))).toEqual([
+      "skills",
     ]);
-    expect(unnegotiated("knowledge.list", {}, advertising({ knowledge: true }))).toEqual([]);
+    expect(unnegotiated("skills.discovered.list", {}, advertising({ skills: true }))).toEqual([]);
   });
 
   it("reads an unadvertised key as off", () => {
-    expect(unnegotiated("knowledge.list", {}, advertising({}))).toEqual(["knowledge"]);
+    expect(unnegotiated("skills.discovered.list", {}, advertising({}))).toEqual(["skills"]);
   });
 
   it("allows everything until something has been negotiated", () => {
-    expect(unnegotiated("knowledge.list", {}, null)).toEqual([]);
-    expect(unnegotiated("knowledge.list", {}, undefined)).toEqual([]);
+    expect(unnegotiated("skills.discovered.list", {}, null)).toEqual([]);
+    expect(unnegotiated("skills.discovered.list", {}, undefined)).toEqual([]);
   });
 
   it("leaves an ungated method alone", () => {
