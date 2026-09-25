@@ -488,7 +488,7 @@ func (r *reducer) endSegment(ended SegmentEnded) (factReduction, error) {
 		return factReduction{}, fmt.Errorf("%w: segment end: %w", errExecutorContract, err)
 	}
 	closure, err := r.closeOpenToolContext(
-		terminalToolResult(ended.Reason, r.cancelReason()),
+		TerminalToolResult(ended.Reason, r.cancelReason()),
 		nil,
 	)
 	if err != nil {
@@ -605,7 +605,7 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 	}
 	out = append(out, terminal)
 	closure, err := r.closeOpenToolContext(
-		terminalToolResult(outcome, detail),
+		TerminalToolResult(outcome, detail),
 		nil,
 	)
 	if err != nil {

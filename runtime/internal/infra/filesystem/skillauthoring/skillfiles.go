@@ -11,14 +11,14 @@ import (
 	"os"
 	"path/filepath"
 
+	skillspec "github.com/Tangerg/scope/skills"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
-const skillFile = "SKILL.md"
-
 func readSkill(root *os.Root, dir string) ([]byte, bool, error) {
-	path := filepath.Join(dir, skillFile)
+	path := filepath.Join(dir, skillspec.SkillFile)
 	content, found, err := readBoundedFile(root, path)
 	if err != nil {
 		return nil, false, fmt.Errorf("skillauthoring: read %q: %w", dir, err)
@@ -106,7 +106,7 @@ func stageProposal(ctx context.Context, root *os.Root, destination string, conte
 	if err := contextError(ctx, "publish proposal"); err != nil {
 		return err
 	}
-	if err := root.Rename(temporary, filepath.Join(destination, skillFile)); err != nil {
+	if err := root.Rename(temporary, filepath.Join(destination, skillspec.SkillFile)); err != nil {
 		existing, found, readErr := readSkill(root, destination)
 		if readErr == nil && found && bytes.Equal(existing, content) {
 			published = true
@@ -128,7 +128,7 @@ func stageSkill(ctx context.Context, root *os.Root, destination string, content 
 			err = errors.Join(err, fmt.Errorf("skillauthoring: clean skill staging directory: %w", cleanupErr))
 		}
 	}()
-	if err := writeFile(root, filepath.Join(temporary, skillFile), content); err != nil {
+	if err := writeFile(root, filepath.Join(temporary, skillspec.SkillFile), content); err != nil {
 		return err
 	}
 	if err := contextError(ctx, "publish skill"); err != nil {

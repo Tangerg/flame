@@ -19,7 +19,7 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-const recoveryLostToolResult = "tool result unavailable because execution state was lost"
+const lostToolResult = "tool result unavailable because execution state was lost"
 
 // RecoveryStore exposes durable application facts and atomically applies the
 // recovery plan derived from them. It never validates executor payloads or
@@ -570,7 +570,7 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 	if err != nil {
 		return err
 	}
-	_, closure, err := conversationSnapshot.history.CloseOpenToolCalls(recoveryLostToolResult)
+	_, closure, err := conversationSnapshot.history.CloseOpenToolCalls(lostToolResult)
 	if err != nil {
 		return fmt.Errorf(
 			"runs: close recovery conversation for root Run %q: %w",

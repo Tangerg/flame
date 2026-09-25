@@ -1456,7 +1456,7 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 	}
 	resultText, textual := result.Output.Text()
 	if result.ID != "provider_call_open" || result.Name != "ask_user" ||
-		!textual || resultText != recoveryLostToolResult || !result.IsError ||
+		!textual || resultText != lostToolResult || !result.IsError ||
 		lostRuns[0].State().MessageMark() != 3 {
 		t.Fatalf("closure/lost Run = %#v / %+v", result, lostRuns[0])
 	}

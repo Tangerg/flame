@@ -376,12 +376,7 @@ func (p parkedRunTerminalization) abandonmentFailure() *tool.Failure {
 }
 
 func (p parkedRunTerminalization) terminalConversationMessages() ([]corechat.Message, error) {
-	resultText := "tool call canceled before completion"
-	if p.outcome == rundomain.OutcomeLost {
-		resultText = "tool result unavailable because execution state was lost"
-	} else if p.detail != "" {
-		resultText += ": " + p.detail
-	}
+	resultText := runs.TerminalToolResult(p.outcome, p.detail)
 	history, err := conversation.New(p.snapshot.Messages)
 	if err != nil {
 		return nil, fmt.Errorf(

@@ -57,14 +57,14 @@ func TestConfiguredKeysExposeMultilineAndTranscriptNavigation(t *testing.T) {
 		chord input.Chord
 		want  keymap.Action
 	}{
-		{chord: input.Chord{Code: input.Enter, Mods: input.Shift}, want: headless.InsertNewline},
+		{chord: input.Shift.With(input.Enter), want: headless.InsertNewline},
 		{chord: input.Chord{Code: input.PageUp}, want: scrollPageUp},
 		{chord: input.Chord{Code: input.PageDown}, want: scrollPageDown},
-		{chord: input.Chord{Code: input.Home, Mods: input.Ctrl}, want: scrollTop},
-		{chord: input.Chord{Code: input.End, Mods: input.Ctrl}, want: scrollBottom},
-		{chord: input.Chord{Code: input.Character, Rune: ';', Mods: input.Ctrl}, want: manageQueue},
-		{chord: input.Chord{Code: input.Character, Rune: 'g', Mods: input.Ctrl}, want: showTimeline},
-		{chord: input.Chord{Code: input.Character, Rune: 'x', Mods: input.Ctrl}, want: showShortcuts},
+		{chord: input.Ctrl.With(input.Home), want: scrollTop},
+		{chord: input.Ctrl.With(input.End), want: scrollBottom},
+		{chord: input.Ctrl.Rune(';'), want: manageQueue},
+		{chord: input.Ctrl.Rune('g'), want: showTimeline},
+		{chord: input.Ctrl.Rune('x'), want: showShortcuts},
 	}
 	for _, test := range tests {
 		got, ok := bindings.editor.Action(test.chord)
@@ -72,10 +72,10 @@ func TestConfiguredKeysExposeMultilineAndTranscriptNavigation(t *testing.T) {
 			t.Errorf("binding %s = %q, %v; want %q", test.chord, got, ok, test.want)
 		}
 	}
-	if _, ok := bindings.global.Action(input.Chord{Code: input.Character, Rune: 'r', Mods: input.Ctrl}); ok {
+	if _, ok := bindings.global.Action(input.Ctrl.Rune('r')); ok {
 		t.Fatal("session switching leaked into the modal-global key scope")
 	}
-	if got, ok := bindings.global.Action(input.Chord{Code: input.Character, Rune: 'c', Mods: input.Ctrl}); !ok || got != cancelRun {
+	if got, ok := bindings.global.Action(input.Ctrl.Rune('c')); !ok || got != cancelRun {
 		t.Fatalf("global cancel binding = %q, %v", got, ok)
 	}
 }

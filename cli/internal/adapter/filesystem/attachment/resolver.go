@@ -20,8 +20,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode"
-	"unicode/utf8"
+
+	"github.com/Tangerg/oolong/core/fuzzy"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
@@ -312,9 +312,15 @@ func (c *completionSearch) visitFile(relative string, entry os.DirEntry) {
 		return
 	}
 	relative = filepath.ToSlash(relative)
-	score, at, matched := fuzzyPath(c.query, relative)
+	// Oolong owns how well a name answers a query, and its offsets are what the
+	// completion widget highlights, so producing them anywhere else would leave
+	// the ranking and the highlight free to disagree.
+	match, matched := fuzzy.Score(c.query, relative)
 	if matched {
-		c.matches = append(c.matches, PathMatch{Path: relative, Detail: formatByteSize(info.Size()), Matched: at, score: score})
+		c.matches = append(c.matches, PathMatch{
+			Path: relative, Detail: formatByteSize(info.Size()),
+			Matched: match.At, score: match.Score,
+		})
 	}
 }
 
@@ -399,52 +405,6 @@ func ignoredDirectory(name string) bool {
 	default:
 		return false
 	}
-}
-
-// fuzzyPath is a filesystem-local subsequence matcher. Keeping it here avoids
-// making a non-terminal adapter depend on oolong merely to rank names.
-func fuzzyPath(pattern, candidate string) (int, []int, bool) {
-	if pattern == "" {
-		return 0, nil, true
-	}
-	rest := pattern
-	matched := make([]int, 0, utf8.RuneCountInString(pattern))
-	score, previous := 0, -2
-	prevRune := rune(-1)
-	for offset, value := range candidate {
-		if rest == "" {
-			break
-		}
-		want, size := utf8.DecodeRuneInString(rest)
-		if !runeEqualFold(value, want) {
-			prevRune = value
-			continue
-		}
-		score += 10
-		if offset == 0 || strings.ContainsRune(" _-./:", prevRune) {
-			score += 20
-		}
-		if previous >= 0 && offset == previous+utf8.RuneLen(prevRune) {
-			score += 12
-		}
-		matched = append(matched, offset)
-		previous = offset
-		rest = rest[size:]
-		prevRune = value
-	}
-	return score, matched, rest == ""
-}
-
-func runeEqualFold(a, b rune) bool {
-	if a == b {
-		return true
-	}
-	for folded := unicode.SimpleFold(a); folded != a; folded = unicode.SimpleFold(folded) {
-		if folded == b {
-			return true
-		}
-	}
-	return false
 }
 
 func formatByteSize(value int64) string {

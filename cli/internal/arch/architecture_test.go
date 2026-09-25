@@ -60,8 +60,32 @@ func TestDependenciesPointInward(t *testing.T) {
 	})
 }
 
+// oolongAlgorithms names the Oolong packages that are not the terminal
+// framework: they depend on nothing but the standard library, describe no
+// terminal, and answer a question the CLI would otherwise answer twice. Ranking
+// a name against a query is one such question — the completion widget
+// highlights the offsets the ranking produced, so a second ranking would put
+// the order and the highlight in different hands.
+//
+// Everything else in Oolong is the framework and stops at terminal delivery.
+// Add to this list only for a package with no Oolong imports of its own; one
+// that reaches back into the framework would carry it past the boundary.
+var oolongAlgorithms = map[string]struct{}{
+	oolongPath + "/core/fuzzy": {},
+}
+
+var oolongAlgorithmsUsed = map[string]bool{}
+
 func TestExternalFrameworksStopAtTheirAdapters(t *testing.T) {
 	root := moduleRoot(t)
+	clear(oolongAlgorithmsUsed)
+	t.Cleanup(func() {
+		for allowed := range oolongAlgorithms {
+			if !oolongAlgorithmsUsed[allowed] {
+				t.Errorf("%s is no longer imported outside terminal delivery; drop it from oolongAlgorithms", allowed)
+			}
+		}
+	})
 	walkProduction(t, root, func(relative, path string) {
 		for _, imported := range imports(t, path) {
 			switch {
@@ -70,9 +94,14 @@ func TestExternalFrameworksStopAtTheirAdapters(t *testing.T) {
 					t.Errorf("%s imports the concrete Runtime binding outside runtimebinding", relative)
 				}
 			case importsPath(imported, oolongPath):
-				if !strings.HasPrefix(relative, "internal/delivery/terminal/") {
-					t.Errorf("%s imports Oolong outside terminal delivery", relative)
+				if strings.HasPrefix(relative, "internal/delivery/terminal/") {
+					continue
 				}
+				if _, algorithm := oolongAlgorithms[imported]; !algorithm {
+					t.Errorf("%s imports Oolong outside terminal delivery", relative)
+					continue
+				}
+				oolongAlgorithmsUsed[imported] = true
 			case importsPath(imported, cobraPath), importsPath(imported, viperPath):
 				if !strings.HasPrefix(relative, "internal/delivery/cmd/") {
 					t.Errorf("%s imports command framework outside cmd delivery", relative)

@@ -80,7 +80,11 @@ func (r *reducer) cancelReason() string {
 	return r.cfg.CancelReason()
 }
 
-func terminalToolResult(outcome run.Outcome, detail string) string {
+// TerminalToolResult is the text an open tool call carries once its Run ended
+// without producing one. Every path that closes a parked or recovered tool call
+// takes it from here: the text reaches the model as the call's result, so two
+// spellings would make the same ended Run read as two different histories.
+func TerminalToolResult(outcome run.Outcome, detail string) string {
 	var result string
 	switch outcome {
 	case run.OutcomeCanceled:
@@ -88,7 +92,7 @@ func terminalToolResult(outcome run.Outcome, detail string) string {
 	case run.OutcomeTimedOut:
 		result = "tool call did not complete before the run timed out"
 	case run.OutcomeLost:
-		result = "tool result unavailable because execution state was lost"
+		result = lostToolResult
 	case run.OutcomeFailed:
 		result = "tool call did not complete because the run failed"
 	default:

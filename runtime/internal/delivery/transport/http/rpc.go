@@ -9,6 +9,8 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 )
 
@@ -126,14 +128,17 @@ type transportProblem struct {
 // even where they share a word.
 const transportProblemNamespace = "urn:flame:transport:"
 
-// The closed set of problems the transport answers with itself.
+// The closed set of problems the transport answers with itself. invalid_request
+// and internal_error are protocol vocabulary rather than transport vocabulary —
+// a caller meets the same two symbols in an RPC error and a run outcome — so
+// they are taken from their owner instead of spelled again here.
 const (
 	problemUnsupportedMediaType   = "unsupported_media_type"
 	problemRequestTooLarge        = "request_too_large"
-	problemInvalidRequest         = "invalid_request"
+	problemInvalidRequest         = protocol.ProblemInvalidRequest
 	problemUnauthorized           = "unauthorized"
 	problemResponseEncodingFailed = "response_encoding_failed"
-	problemInternalError          = "internal_error"
+	problemInternalError          = protocol.ProblemInternalError
 )
 
 func writeProblem(w http.ResponseWriter, status int, typ, detail string, noCache bool) {
