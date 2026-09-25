@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 
@@ -36,7 +37,7 @@ func TestModelResolversRejectMissingCredentialLookup(t *testing.T) {
 }
 
 func TestLiveRoleResolversRejectIncompleteConstruction(t *testing.T) {
-	selection := mustRoleSelection(t, "deepseek", "deepseek-chat")
+	selection := testsupport.MustModelSelection("deepseek", "deepseek-chat")
 	role := &pointerRoleSource{}
 	resolver := &pointerChatResolver{}
 

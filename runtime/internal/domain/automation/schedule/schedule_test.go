@@ -2,13 +2,13 @@ package schedule
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
@@ -200,7 +200,10 @@ func TestScheduleValidate(t *testing.T) {
 		want error // nil = accept
 	}{
 		{"valid, default model", func(s Draft) Draft { return s }, nil},
-		{"valid, paired model", func(s Draft) Draft { s.ModelSelection = mustSelection(t, "anthropic", "claude"); return s }, nil},
+		{"valid, paired model", func(s Draft) Draft {
+			s.ModelSelection = testsupport.MustModelSelection("anthropic", "claude")
+			return s
+		}, nil},
 		{"missing instructions", func(s Draft) Draft { s.Instructions = ""; return s }, ErrInstructionsRequired},
 		{"blank instructions", func(s Draft) Draft { s.Instructions = " \n\t"; return s }, ErrInstructionsRequired},
 		{"missing cron", func(s Draft) Draft { s.Cron = ""; return s }, ErrCronRequired},
@@ -249,7 +252,7 @@ func TestScheduleApplyPatch(t *testing.T) {
 		t.Fatalf("patched schedule = %+v", got)
 	}
 
-	replacement := mustSelection(t, "anthropic", "claude")
+	replacement := testsupport.MustModelSelection("anthropic", "claude")
 	got, err = sc.Edit(Patch{Selection: &replacement}, sc.Revision(), time.Unix(2, 0))
 	if err != nil || got.ModelSelection() != replacement {
 		t.Fatalf("selection patch = %+v, %v", got.ModelSelection(), err)
@@ -263,15 +266,6 @@ func TestScheduleApplyPatch(t *testing.T) {
 	if _, err := exhausted.Edit(Patch{}, exhausted.Revision(), time.Unix(2, 0)); !errors.Is(err, ErrRevisionExhausted) {
 		t.Fatalf("exhausted edit error = %v, want ErrRevisionExhausted", err)
 	}
-}
-
-func mustSelection(t testing.TB, provider, model string) modelref.Selection {
-	t.Helper()
-	selection, err := modelref.New(provider, model)
-	if err != nil {
-		t.Fatalf("modelref.New(%q, %q): %v", provider, model, err)
-	}
-	return selection
 }
 
 func TestScheduleScheduledAfter(t *testing.T) {

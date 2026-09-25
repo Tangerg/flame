@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"slices"
 	"testing"
 	"time"
@@ -60,34 +61,6 @@ func (t *testProviderRegistry) Update(_ context.Context, id string, patch provid
 	}
 	t.entries[id] = entry
 	return entry, nil
-}
-
-func modelProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provider {
-	t.Helper()
-	entry, err := provider.New(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	patch := provider.Patch{}
-	if rawKey != "" {
-		key, keyErr := provider.NewAPIKey(rawKey)
-		if keyErr != nil {
-			t.Fatal(keyErr)
-		}
-		patch.APIKey = provider.Set(key)
-	}
-	if rawBaseURL != "" {
-		baseURL, baseURLErr := provider.NewBaseURL(rawBaseURL)
-		if baseURLErr != nil {
-			t.Fatal(baseURLErr)
-		}
-		patch.BaseURL = provider.Set(baseURL)
-	}
-	entry, err = entry.Apply(patch)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return entry
 }
 
 type testCatalog struct {
@@ -157,7 +130,7 @@ func TestListProvidersOwnsCatalogOrder(t *testing.T) {
 
 func TestListProvidersOmitsValidRegistryOnlyProviders(t *testing.T) {
 	c := newTestCoordinator(Config{
-		Providers: &testProviderRegistry{listed: []provider.Provider{modelProvider(t, "extension", "", "")}},
+		Providers: &testProviderRegistry{listed: []provider.Provider{testsupport.MustProvider("extension", "", "")}},
 		Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
 			t, "supported", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability(),
 		)}},
@@ -348,7 +321,7 @@ func (f *fakeProber) Probe(_ context.Context, entry provider.Provider) error {
 
 func TestListModelsPrefersRemoteModelsAndEnrichesKnownEntries(t *testing.T) {
 	registry := &testProviderRegistry{entries: map[string]provider.Provider{
-		"test-endpoint": modelProvider(t, "test-endpoint", "k", "http://host:1234/v1"),
+		"test-endpoint": testsupport.MustProvider("test-endpoint", "k", "http://host:1234/v1"),
 	}}
 	catalog := testCatalog{
 		metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(t, "test-endpoint", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())},
@@ -499,7 +472,7 @@ func TestTestProviderRequiresAConfiguredSupportedProvider(t *testing.T) {
 	prober := &fakeProber{}
 	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{entries: map[string]provider.Provider{
-			"anthropic": modelProvider(t, "anthropic", "sk-secret", ""),
+			"anthropic": testsupport.MustProvider("anthropic", "sk-secret", ""),
 		}},
 		Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(t, "anthropic", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability())}},
 		Prober:  prober,

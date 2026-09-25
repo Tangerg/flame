@@ -22,6 +22,18 @@ func DefaultModelSelection() modelref.Selection {
 	return selection
 }
 
+// MustModelSelection builds the exact provider/model pair a fixture names. A
+// pair that does not resolve is a broken fixture rather than a behavior under
+// test, so it panics like the rest of this package instead of reporting a
+// failure the test would have to interpret.
+func MustModelSelection(provider, model string) modelref.Selection {
+	selection, err := modelref.New(provider, model)
+	if err != nil {
+		panic(err)
+	}
+	return selection
+}
+
 // RunDraft supplies the deterministic model identity used by valid Run fixtures
 // when the behavior under test does not care which model executes the Run.
 func RunDraft(draft run.Draft) run.Draft {

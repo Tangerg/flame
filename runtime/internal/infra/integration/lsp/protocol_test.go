@@ -3,6 +3,7 @@ package lsp
 import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -57,7 +58,7 @@ func TestParseLocationsSupportsProtocolUnion(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parseLocations: %v", err)
 			}
-			if !locationsEqual(got, test.want) {
+			if !slices.Equal(got, test.want) {
 				t.Fatalf("locations = %+v, want %+v", got, test.want)
 			}
 		})
@@ -163,18 +164,6 @@ func TestHoverTextRejectsMalformedAndUnknownShapes(t *testing.T) {
 			t.Errorf("hoverText(%q) succeeded, want error", raw)
 		}
 	}
-}
-
-func locationsEqual(left, right []Location) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for index := range left {
-		if left[index] != right[index] {
-			return false
-		}
-	}
-	return true
 }
 
 func TestDiagnosticSeverityClosesProtocolVocabulary(t *testing.T) {

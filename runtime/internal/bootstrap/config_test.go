@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"os"
 	"path/filepath"
 	"testing"
@@ -89,7 +90,7 @@ func TestSeedConfiguredProvider(t *testing.T) {
 		{
 			name: "enabled provider wins over config",
 			stored: map[string]provider.Provider{
-				"anthropic": bootstrapProvider(t, "anthropic", "sk-stored", "https://stored"),
+				"anthropic": testsupport.MustProvider("anthropic", "sk-stored", "https://stored"),
 			},
 			cfg:     config.Settings{Provider: "anthropic", APIKey: config.FileAPIKey("sk-new"), BaseURL: "https://api"},
 			wantKey: "sk-stored", wantBaseURL: "https://stored",
@@ -112,7 +113,7 @@ func TestSeedConfiguredProvider(t *testing.T) {
 }
 
 func TestSeedConfiguredProviderDoesNotUndoAnExplicitDurableClear(t *testing.T) {
-	stored := bootstrapProvider(t, "anthropic", "", "https://stored.example.test")
+	stored := testsupport.MustProvider("anthropic", "", "https://stored.example.test")
 	registry := &providerRegistry{stored: map[string]provider.Provider{"anthropic": stored}}
 	settings := config.Settings{
 		Provider: "anthropic",
@@ -265,34 +266,6 @@ func (p *providerRegistry) Update(_ context.Context, id string, patch provider.P
 	}
 	p.stored[id] = stored
 	return stored, nil
-}
-
-func bootstrapProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provider {
-	t.Helper()
-	entry, err := provider.New(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	patch := provider.Patch{}
-	if rawKey != "" {
-		key, keyErr := provider.NewAPIKey(rawKey)
-		if keyErr != nil {
-			t.Fatal(keyErr)
-		}
-		patch.APIKey = provider.Set(key)
-	}
-	if rawBaseURL != "" {
-		baseURL, baseURLErr := provider.NewBaseURL(rawBaseURL)
-		if baseURLErr != nil {
-			t.Fatal(baseURLErr)
-		}
-		patch.BaseURL = provider.Set(baseURL)
-	}
-	entry, err = entry.Apply(patch)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return entry
 }
 
 func assertBootstrapProvider(t *testing.T, entry provider.Provider, wantKey, wantBaseURL string) {

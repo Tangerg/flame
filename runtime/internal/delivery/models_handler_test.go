@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
@@ -85,7 +86,7 @@ func TestSetUtilityRoleRequiresConfiguredProvider(t *testing.T) {
 func TestSetUtilityRoleRejectsPartialSelection(t *testing.T) {
 	saver := &utilitySaverRecorder{}
 	s := modelRoleServer(map[string]provider.Provider{
-		"anthropic": serverProvider(t, "anthropic", "sk-secret", ""),
+		"anthropic": testsupport.MustProvider("anthropic", "sk-secret", ""),
 	}, saver)
 
 	_, err := s.SetUtilityRole(context.Background(), protocol.UtilityRole{Provider: "anthropic"})
@@ -116,7 +117,7 @@ func TestSetUtilityRoleClassifiesInvalidIdentityBeforePersistence(t *testing.T) 
 func TestSetUtilityRoleStoresConfiguredProvider(t *testing.T) {
 	saver := &utilitySaverRecorder{}
 	s := modelRoleServer(map[string]provider.Provider{
-		"anthropic": serverProvider(t, "anthropic", "sk-secret", ""),
+		"anthropic": testsupport.MustProvider("anthropic", "sk-secret", ""),
 	}, saver)
 
 	got, err := s.SetUtilityRole(context.Background(), protocol.UtilityRole{

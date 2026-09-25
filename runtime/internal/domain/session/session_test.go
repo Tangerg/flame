@@ -43,7 +43,7 @@ func TestSessionOwnsExactSelectionAcrossEditAndFork(t *testing.T) {
 
 func TestSessionConstruction(t *testing.T) {
 	startedAt := time.Unix(1, 0).In(time.FixedZone("fixture", 3600))
-	selection := mustModelSelection(t, "provider", "model")
+	selection := mustModelSelection("provider", "model")
 	created, err := New(Draft{
 		ID: "ses_root", Title: "  Research  ", Workspace: mustWorkspace(t, "/work/project"),
 		Selection: selection, CreatedAt: startedAt,
@@ -65,7 +65,7 @@ func TestSessionConstruction(t *testing.T) {
 }
 
 func TestSessionConstructionRejectsInvalidState(t *testing.T) {
-	selection := mustModelSelection(t, "provider", "model")
+	selection := mustModelSelection("provider", "model")
 	valid := Draft{ID: "ses_1", Workspace: mustWorkspace(t, "/work"), Selection: selection, CreatedAt: time.Unix(1, 0)}
 	tests := map[string]Draft{
 		"missing identity":   {Workspace: valid.Workspace, Selection: selection, CreatedAt: valid.CreatedAt},
@@ -122,7 +122,7 @@ func TestSessionApplyOwnsNormalizationRevisionAndTime(t *testing.T) {
 	startedAt := time.Unix(1, 0).UTC()
 	current := mustNew(t, Draft{ID: "ses_1", Title: "Before", Workspace: mustWorkspace(t, "/work"), CreatedAt: startedAt})
 	title := "  After  "
-	selection := mustModelSelection(t, "provider", "model")
+	selection := mustModelSelection("provider", "model")
 	favorite := true
 	next, changed, err := current.Apply(Patch{
 		Title: &title, Selection: &selection, Favorite: &favorite,
@@ -168,7 +168,7 @@ func TestSessionFork(t *testing.T) {
 	isolated := true
 	parent := mustNew(t, Draft{
 		ID: "ses_parent", Title: "Research", Workspace: mustWorkspace(t, "/work/project"),
-		Selection: mustModelSelection(t, "provider", "model"), CreatedAt: startedAt,
+		Selection: mustModelSelection("provider", "model"), CreatedAt: startedAt,
 	})
 	parent, _, _ = parent.Apply(Patch{Isolated: &isolated}, startedAt.Add(time.Second))
 	childAt := startedAt.Add(2 * time.Second)
@@ -219,7 +219,7 @@ func TestSessionRestoreReplacementKeepsTargetRevisionSpace(t *testing.T) {
 func TestSessionRevisionOverflow(t *testing.T) {
 	current, err := Restore(Snapshot{
 		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), CreatedAt: time.Unix(1, 0),
-		Selection: mustModelSelection(t, "provider", "model"),
+		Selection: mustModelSelection("provider", "model"),
 		UpdatedAt: time.Unix(1, 0), Revision: exactint.Maximum,
 	})
 	if err != nil {
@@ -231,7 +231,7 @@ func TestSessionRevisionOverflow(t *testing.T) {
 	}
 	_, err = Restore(Snapshot{
 		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), CreatedAt: time.Unix(1, 0),
-		Selection: mustModelSelection(t, "provider", "model"),
+		Selection: mustModelSelection("provider", "model"),
 		UpdatedAt: time.Unix(1, 0), Revision: exactint.Maximum + 1,
 	})
 	if !errors.Is(err, ErrInvalid) {
@@ -242,22 +242,13 @@ func TestSessionRevisionOverflow(t *testing.T) {
 func mustNew(t *testing.T, draft Draft) Session {
 	t.Helper()
 	if !draft.Selection.Configured() {
-		draft.Selection = mustModelSelection(t, "test-provider", "test-model")
+		draft.Selection = mustModelSelection("test-provider", "test-model")
 	}
 	value, err := New(draft)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
 	return value
-}
-
-func mustModelSelection(t *testing.T, provider, model string) modelref.Selection {
-	t.Helper()
-	selection, err := modelref.New(provider, model)
-	if err != nil {
-		t.Fatalf("modelref.New: %v", err)
-	}
-	return selection
 }
 
 func mustWorkspace(t *testing.T, path string) Workspace {
@@ -267,4 +258,14 @@ func mustWorkspace(t *testing.T, path string) Workspace {
 		t.Fatalf("NewWorkspace(%q): %v", path, err)
 	}
 	return workspace
+}
+
+// mustModelSelection stays local: testsupport builds session fixtures, so this
+// package's own test cannot import it without a cycle.
+func mustModelSelection(provider, model string) modelref.Selection {
+	selection, err := modelref.New(provider, model)
+	if err != nil {
+		panic(err)
+	}
+	return selection
 }

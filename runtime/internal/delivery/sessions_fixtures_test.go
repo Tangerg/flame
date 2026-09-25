@@ -979,11 +979,7 @@ type allowModelSelections struct{}
 func (allowModelSelections) AdmitSelection(modelref.Selection) error { return nil }
 
 func fixtureDefaultModelSelection() modelref.Selection {
-	selection, err := modelref.New("test-provider", "test-model")
-	if err != nil {
-		panic(err)
-	}
-	return selection
+	return testsupport.MustModelSelection("test-provider", "test-model")
 }
 
 // emptySessionRunStore is the explicit no-Run dependency for delivery fixtures

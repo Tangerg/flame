@@ -3,11 +3,11 @@ package delivery
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -46,7 +46,7 @@ func TestResumeRun_KeepsInterruptOpenWhenStartFails(t *testing.T) {
 		}},
 		time.Unix(1, 0).UTC(),
 	)
-	pending.Continuations[0].ModelSelection = mustResumeSelection(t, "openai", "gpt")
+	pending.Continuations[0].ModelSelection = testsupport.MustModelSelection("openai", "gpt")
 	if err := rt.interrupts.Open(ctx, pending); err != nil {
 		t.Fatalf("seed interrupt: %v", err)
 	}
@@ -80,15 +80,6 @@ func TestResumeRun_KeepsInterruptOpenWhenStartFails(t *testing.T) {
 	if _, found, err := rt.interrupts.Get(ctx, "run_1"); err != nil || !found {
 		t.Fatalf("interrupt changed after rejected resume Start (found=%v err=%v)", found, err)
 	}
-}
-
-func mustResumeSelection(t testing.TB, provider, model string) modelref.Selection {
-	t.Helper()
-	selection, err := modelref.New(provider, model)
-	if err != nil {
-		t.Fatalf("modelref.New(%q, %q): %v", provider, model, err)
-	}
-	return selection
 }
 
 func TestResumeRunRejectsMissingAndUnknownItemCoverage(t *testing.T) {

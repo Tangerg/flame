@@ -2,6 +2,7 @@ package runs
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"math"
 	"slices"
 	"strings"
@@ -215,7 +216,7 @@ func TestStartExecutionValidateRejectsNonCanonicalAdmissionPolicy(t *testing.T) 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			test.execution.ModelSelection = mustSelection("provider", "model")
+			test.execution.ModelSelection = testsupport.MustModelSelection("provider", "model")
 			test.execution.WorkingContext = validRootExecutionStart().WorkingContext
 			if err := test.execution.Validate(); err == nil {
 				t.Fatal("Validate accepted non-canonical admission policy")
@@ -226,7 +227,7 @@ func TestStartExecutionValidateRejectsNonCanonicalAdmissionPolicy(t *testing.T) 
 
 func validRootExecutionStart() RootExecutionStart {
 	return RootExecutionStart{
-		ModelSelection: mustSelection("provider", "model"),
+		ModelSelection: testsupport.MustModelSelection("provider", "model"),
 		WorkingContext: []corechat.Message{
 			corechat.NewUserMessage(corechat.NewTextPart("hello")),
 		},

@@ -212,7 +212,7 @@ func mustCatalogSession(t *testing.T, id, title, workspace string, favorite bool
 	t.Helper()
 	value, err := Restore(Snapshot{
 		ID: id, Title: title, Workspace: *mustCatalogWorkspace(t, workspace),
-		Selection: mustModelSelection(t, "provider", "model"), Favorite: favorite,
+		Selection: mustModelSelection("provider", "model"), Favorite: favorite,
 		CreatedAt: updatedAt.Add(-time.Second), UpdatedAt: updatedAt, Revision: 1,
 	})
 	if err != nil {

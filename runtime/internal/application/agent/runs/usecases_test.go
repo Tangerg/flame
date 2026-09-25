@@ -388,7 +388,7 @@ func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, 
 		control.requestRootCancel = executor.requestRootCancellation
 	}
 	freshCreatedAt := time.Date(2026, 7, 13, 1, 2, 3, 0, time.UTC)
-	defaultSelection := mustUseCaseSelection("test-provider", "test-model")
+	defaultSelection := testsupport.MustModelSelection("test-provider", "test-model")
 	projection := &fakeRunProjection{runs: map[string]run.Run{
 		"run_1": runForSegment(testSegment()),
 		"run_new": runForSegment(segmentSpec{
@@ -423,14 +423,6 @@ func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, 
 	}
 	deps.Admissions = testsupport.NewAdmissionGate()
 	return mustNewCoordinator(deps)
-}
-
-func mustUseCaseSelection(provider, model string) modelref.Selection {
-	selection, err := modelref.New(provider, model)
-	if err != nil {
-		panic(err)
-	}
-	return selection
 }
 
 func TestWaitSessionStartableResolvesWorkingTreeBoundary(t *testing.T) {
@@ -561,7 +553,7 @@ func TestStartOwnsCompleteAdmissionSequence(t *testing.T) {
 
 	result, err := c.Start(context.Background(), StartCommand{
 		SessionID:      "ses_1",
-		ModelSelection: mustUseCaseSelection("provider", "model"),
+		ModelSelection: testsupport.MustModelSelection("provider", "model"),
 		Capabilities:   run.Capabilities{ChildRuns: true},
 		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 	})
@@ -588,7 +580,7 @@ func TestStartOwnsCompleteAdmissionSequence(t *testing.T) {
 		t.Fatalf("opening = %+v, want fresh run admission", opening)
 	} else if !replaced ||
 		replacement.State().ID() != "ses_1" ||
-		replacement.State().Selection() != mustUseCaseSelection("provider", "model") {
+		replacement.State().Selection() != testsupport.MustModelSelection("provider", "model") {
 		t.Fatalf("opening Session replacement = %+v, want ses_1/model", replacement)
 	}
 }
@@ -622,7 +614,7 @@ func TestStartSettlesAfterOpeningWithoutWaitingForExecutorActivation(t *testing.
 	go func() {
 		result, err := coordinator.Start(t.Context(), StartCommand{
 			SessionID:      "ses_1",
-			ModelSelection: mustUseCaseSelection("provider", "model"),
+			ModelSelection: testsupport.MustModelSelection("provider", "model"),
 			Input: []transcript.ContentBlock{{
 				Kind: transcript.TextContent, Text: "hello",
 			}},
@@ -669,7 +661,7 @@ func TestStartSettlesAfterOpeningWithoutWaitingForExecutorActivation(t *testing.
 func TestStartResolvesTheSessionSelectionBeforeExecutorAndDurableAdmission(t *testing.T) {
 	exec := &fakeExecutor{}
 	effects := &fakeEffects{}
-	want := mustUseCaseSelection("default-provider", "default-model")
+	want := testsupport.MustModelSelection("default-provider", "default-model")
 	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_1", Workspace: testsupport.MustWorkspace("/work"), Selection: want,
 	})}
@@ -697,7 +689,7 @@ func TestStartResolvesTheSessionSelectionBeforeExecutorAndDurableAdmission(t *te
 func TestStartWithoutOverrideUsesTheSessionExactModelSelection(t *testing.T) {
 	exec := &fakeExecutor{}
 	effects := &fakeEffects{}
-	sessionSelection := mustUseCaseSelection("provider-b", "shared-model")
+	sessionSelection := testsupport.MustModelSelection("provider-b", "shared-model")
 	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_1", Workspace: testsupport.MustWorkspace("/work"), Selection: sessionSelection,
 	})}
@@ -733,7 +725,7 @@ func TestScheduledStartCarriesExactInitialSessionInOpening(t *testing.T) {
 	result, err := coordinator.Start(t.Context(), StartCommand{
 		RunID: "run_new", NewSessionID: "ses_1", ScheduleFiring: "sch_test:1000",
 		NewSessionTitle: "Scheduled", DefaultWorkspacePath: "/work",
-		ModelSelection: mustUseCaseSelection("provider", "model"),
+		ModelSelection: testsupport.MustModelSelection("provider", "model"),
 		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "scheduled work"}},
 	})
 	if err != nil {
@@ -748,7 +740,7 @@ func TestScheduledStartCarriesExactInitialSessionInOpening(t *testing.T) {
 	}
 	if initial.ID() != "ses_1" || initial.Title() != "Scheduled" ||
 		initial.Workspace().Path() != "/work" ||
-		initial.Selection() != mustUseCaseSelection("provider", "model") || initial.Revision() != 1 {
+		initial.Selection() != testsupport.MustModelSelection("provider", "model") || initial.Revision() != 1 {
 		t.Fatalf("opening initial Session = %+v", initial.Snapshot())
 	}
 }
@@ -767,7 +759,7 @@ func TestScheduledSessionExistsOnlyWhenItsRunOpens(t *testing.T) {
 	command := StartCommand{
 		RunID: "run_new", NewSessionID: "ses_scheduled", ScheduleFiring: "sch_test:1000",
 		NewSessionTitle: "Scheduled", DefaultWorkspacePath: "/work",
-		ModelSelection: mustUseCaseSelection("provider", "model"),
+		ModelSelection: testsupport.MustModelSelection("provider", "model"),
 		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 	}
 
@@ -817,12 +809,12 @@ func TestStartStagesTheSessionItsAdmissionHolds(t *testing.T) {
 	effects := &fakeEffects{}
 	relocated := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_1", Workspace: testsupport.MustWorkspace("/relocated"),
-		Selection: mustUseCaseSelection("test-provider", "test-model"), Revision: 2,
+		Selection: testsupport.MustModelSelection("test-provider", "test-model"), Revision: 2,
 	})
 	sessions := &relocatingSessions{
 		fakeRunSessions: &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{
 			ID: "ses_1", Workspace: testsupport.MustWorkspace("/work"),
-			Selection: mustUseCaseSelection("test-provider", "test-model"), Revision: 1,
+			Selection: testsupport.MustModelSelection("test-provider", "test-model"), Revision: 1,
 		})},
 		after: relocated,
 	}
@@ -883,7 +875,7 @@ func TestManualScheduleStartCarriesRunFactInOpening(t *testing.T) {
 	result, err := coordinator.Start(t.Context(), StartCommand{
 		RunID: "run_manual", NewSessionID: "ses_manual", ManualScheduleRun: &record,
 		NewSessionTitle: "Scheduled", DefaultWorkspacePath: "/work",
-		ModelSelection: mustUseCaseSelection("provider", "model"),
+		ModelSelection: testsupport.MustModelSelection("provider", "model"),
 		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "scheduled work"}},
 	})
 	if err != nil {
@@ -1030,7 +1022,7 @@ func TestStartReleasesStagedExecutionWhenSessionReplacementPreparationFails(t *t
 
 	_, err := coordinator.Start(t.Context(), StartCommand{
 		SessionID:      "ses_1",
-		ModelSelection: mustUseCaseSelection("provider", "model"),
+		ModelSelection: testsupport.MustModelSelection("provider", "model"),
 		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 	})
 	if !errors.Is(err, session.ErrInvalid) {
@@ -1846,7 +1838,7 @@ func TestResumeRehydrateRestoresChildAdmissionBeforeAnyChildExists(t *testing.T)
 	createdAt := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
 	pending := testApprovalPending("member_root", createdAt)
 	pending.Capabilities.ChildRuns = true
-	pending.Continuations[0].ModelSelection = mustUseCaseSelection("openai", "model")
+	pending.Continuations[0].ModelSelection = testsupport.MustModelSelection("openai", "model")
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
@@ -2623,7 +2615,7 @@ func TestStartRejectsCurrentInputOutsideSelectedModelCapabilitiesBeforeStaging(t
 
 	_, err := c.Start(t.Context(), StartCommand{
 		SessionID:      "ses_1",
-		ModelSelection: mustUseCaseSelection("provider", "text-model"),
+		ModelSelection: testsupport.MustModelSelection("provider", "text-model"),
 		Input: []transcript.ContentBlock{{
 			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("image"),
 		}},
@@ -2677,7 +2669,7 @@ func TestStartRevalidatesComposedHistoryAgainstSelectedModelBeforeStaging(t *tes
 
 	_, err := c.Start(t.Context(), StartCommand{
 		SessionID:      "ses_1",
-		ModelSelection: mustUseCaseSelection("provider", "text-model"),
+		ModelSelection: testsupport.MustModelSelection("provider", "text-model"),
 		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "continue"}},
 	})
 	if !errors.Is(err, ErrUnsupportedMedia) {
@@ -2731,7 +2723,7 @@ func TestStartRefusesASessionThatAlreadyHasARunAndNamesIt(t *testing.T) {
 
 			_, err := c.Start(context.Background(), StartCommand{
 				SessionID:      "ses_1",
-				ModelSelection: mustUseCaseSelection("provider", "model"),
+				ModelSelection: testsupport.MustModelSelection("provider", "model"),
 				Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hi"}},
 			})
 			conflict, ok := errors.AsType[*ActiveRunConflictError](err)

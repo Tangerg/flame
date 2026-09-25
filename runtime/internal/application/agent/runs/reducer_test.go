@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -27,7 +26,7 @@ import (
 func testReducerConfig() reducerConfig {
 	now := time.Date(2026, 7, 13, 1, 2, 3, 0, time.UTC)
 	return reducerConfig{
-		RunID: "run_1", SegmentID: "seg_1", SessionID: "ses_1", WorkspaceCWD: "/work", ModelSelection: mustReducerSelection("anthropic", "claude"), CreatedAt: now,
+		RunID: "run_1", SegmentID: "seg_1", SessionID: "ses_1", WorkspaceCWD: "/work", ModelSelection: testsupport.MustModelSelection("anthropic", "claude"), CreatedAt: now,
 		Now: func() time.Time { return now },
 	}
 }
@@ -707,14 +706,6 @@ func committedConversationMessages(reductions []reduction) []corechat.Message {
 		}
 	}
 	return messages
-}
-
-func mustReducerSelection(provider, model string) modelref.Selection {
-	selection, err := modelref.New(provider, model)
-	if err != nil {
-		panic(err)
-	}
-	return selection
 }
 
 func TestReducerResolvesSpawningItemByExecutorCallIdentity(t *testing.T) {

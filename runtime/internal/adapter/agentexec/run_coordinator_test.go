@@ -3,6 +3,7 @@ package agentexec
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -75,11 +76,7 @@ func mustNewRunCoordinator(t *testing.T, deps runs.Dependencies) *runs.Coordinat
 }
 
 func testDefaultSelection() modelref.Selection {
-	selection, err := modelref.New("test-provider", "test-model")
-	if err != nil {
-		panic(err)
-	}
-	return selection
+	return testsupport.MustModelSelection("test-provider", "test-model")
 }
 
 type inertRunProjection struct{}

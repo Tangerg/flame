@@ -2,6 +2,7 @@ package runs
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 
@@ -9,15 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
-
-func checkpointSelection(t *testing.T, provider, model string) modelref.Selection {
-	t.Helper()
-	selection, err := modelref.New(provider, model)
-	if err != nil {
-		t.Fatalf("modelref.New: %v", err)
-	}
-	return selection
-}
 
 func TestExecutorCheckpointValidatesOnlyApplicationEnvelope(t *testing.T) {
 	valid := ExecutorCheckpoint{
@@ -30,7 +22,7 @@ func TestExecutorCheckpointValidatesOnlyApplicationEnvelope(t *testing.T) {
 			Isolated:          true,
 			GoalIncarnationID: "lease-1",
 		},
-		ModelSelection: checkpointSelection(t, "anthropic", "claude"),
+		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
 		Usage:          accounting.Snapshot{},
 	}
 	if err := valid.Validate(); err != nil {
@@ -92,14 +84,14 @@ func TestExecutorCheckpointValidatesCrossAggregateOwnership(t *testing.T) {
 			CWD:          "/scratch/project",
 			WorkspaceCWD: "/workspace/project",
 		},
-		ModelSelection: checkpointSelection(t, "anthropic", "claude"),
+		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
 	}
 	expected := ExecutorCheckpointExpectation{
 		RootMemberID:   "member-root",
 		SessionID:      "session-1",
 		CWD:            "/scratch/project",
 		WorkspaceCWD:   "/workspace/project",
-		ModelSelection: checkpointSelection(t, "anthropic", "claude"),
+		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
 	}
 	if err := checkpoint.ValidateFor(expected); err != nil {
 		t.Fatalf("ValidateFor: %v", err)
@@ -126,10 +118,10 @@ func TestExecutorCheckpointValidatesCrossAggregateOwnership(t *testing.T) {
 		{name: "isolation", mutate: func(value *ExecutorCheckpointExpectation) { value.Isolated = true }},
 		{name: "goal incarnation", mutate: func(value *ExecutorCheckpointExpectation) { value.GoalIncarnationID = "other-lease" }},
 		{name: "provider", mutate: func(value *ExecutorCheckpointExpectation) {
-			value.ModelSelection = checkpointSelection(t, "openai", "claude")
+			value.ModelSelection = testsupport.MustModelSelection("openai", "claude")
 		}},
 		{name: "model", mutate: func(value *ExecutorCheckpointExpectation) {
-			value.ModelSelection = checkpointSelection(t, "anthropic", "claude-sonnet")
+			value.ModelSelection = testsupport.MustModelSelection("anthropic", "claude-sonnet")
 		}},
 		{name: "empty model selection", mutate: func(value *ExecutorCheckpointExpectation) {
 			value.ModelSelection = modelref.Selection{}

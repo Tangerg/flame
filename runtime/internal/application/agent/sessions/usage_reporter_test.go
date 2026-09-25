@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -73,17 +72,8 @@ func mustUsageCost(t *testing.T, usd float64) accounting.Cost {
 
 func finishedRun(t *testing.T, provider, model string, at time.Time, usage accounting.Usage) run.Run {
 	t.Helper()
-	return testsupport.MustRestoreRun(run.Snapshot{ID: fmt.Sprintf("run_%d", at.UnixNano()), SessionID: "session-1", ModelSelection: mustUsageSelection(t, provider, model), State: run.Completed,
+	return testsupport.MustRestoreRun(run.Snapshot{ID: fmt.Sprintf("run_%d", at.UnixNano()), SessionID: "session-1", ModelSelection: testsupport.MustModelSelection(provider, model), State: run.Completed,
 		FinishedAt: at, Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &usage})})
-}
-
-func mustUsageSelection(t testing.TB, provider, model string) modelref.Selection {
-	t.Helper()
-	selection, err := modelref.New(provider, model)
-	if err != nil {
-		t.Fatalf("modelref.New(%q, %q): %v", provider, model, err)
-	}
-	return selection
 }
 
 func TestFoldRunFoldsAllDimensions(t *testing.T) {

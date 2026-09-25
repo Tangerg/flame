@@ -2,6 +2,7 @@ package run_test
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -48,21 +49,21 @@ func TestRunTreeCanonicalPostorderAndSubtree(t *testing.T) {
 		t.Fatalf("NewTree: %v", err)
 	}
 	wantTree := []string{"run_a0", "run_a1", "run_a", "run_b", "run_root"}
-	if got := tree.Postorder(); !equalStrings(got, wantTree) {
+	if got := tree.Postorder(); !slices.Equal(got, wantTree) {
 		t.Fatalf("Postorder = %v, want %v", got, wantTree)
 	}
 	wantSubtree := []string{"run_a0", "run_a1", "run_a"}
 	subtree, ok := tree.SubtreePostorder("run_a")
-	if !ok || !equalStrings(subtree, wantSubtree) {
+	if !ok || !slices.Equal(subtree, wantSubtree) {
 		t.Fatalf("SubtreePostorder(run_a) = %v, %t; want %v, true", subtree, ok, wantSubtree)
 	}
 	subtree[0] = "mutated"
-	if got, _ := tree.SubtreePostorder("run_a"); !equalStrings(got, wantSubtree) {
+	if got, _ := tree.SubtreePostorder("run_a"); !slices.Equal(got, wantSubtree) {
 		t.Fatalf("SubtreePostorder leaked mutable storage: %v", got)
 	}
 	complete := tree.Postorder()
 	complete[0] = "mutated"
-	if got := tree.Postorder(); !equalStrings(got, wantTree) {
+	if got := tree.Postorder(); !slices.Equal(got, wantTree) {
 		t.Fatalf("Postorder leaked mutable storage: %v", got)
 	}
 	if got, ok := tree.SubtreePostorder("run_missing"); ok || got != nil {
@@ -139,16 +140,4 @@ func TestRunTreeRejectsInvalidTopology(t *testing.T) {
 			}
 		})
 	}
-}
-
-func equalStrings(left, right []string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for index := range left {
-		if left[index] != right[index] {
-			return false
-		}
-	}
-	return true
 }

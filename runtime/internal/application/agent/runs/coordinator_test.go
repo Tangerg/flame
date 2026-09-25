@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -750,7 +749,7 @@ func (emptyConversationReader) Read(context.Context, string) ([]corechat.Message
 func testSegment() segmentSpec {
 	return segmentSpec{
 		RunID: "run_1", SegmentID: "seg_1", SessionID: "ses_1",
-		ExecutorID: "turn_1", ModelSelection: mustSelection("openai", "model"),
+		ExecutorID: "turn_1", ModelSelection: testsupport.MustModelSelection("openai", "model"),
 		CreatedAt: time.Date(2026, 7, 13, 1, 2, 3, 0, time.UTC),
 	}
 }
@@ -769,7 +768,7 @@ func TestResumedExecutorRouteRetainsGoalLeaseForTerminalAccounting(t *testing.T)
 	createdAt := time.Date(2026, 7, 30, 1, 2, 3, 0, time.UTC)
 	pending := testApprovalPending("member_root", createdAt)
 	pending.GoalIncarnationID = "goal-lease-1"
-	pending.Continuations[0].ModelSelection = mustSelection("openai", "model")
+	pending.Continuations[0].ModelSelection = testsupport.MustModelSelection("openai", "model")
 	continuation := mustTreeContinuation(t, pending)
 	spec := testSegment()
 	spec.Continuation = continuation
@@ -829,14 +828,6 @@ func TestResumedExecutorRoutesBindLiveTopologyWithoutPersistingIt(t *testing.T) 
 	}); err == nil || !strings.Contains(err.Error(), "want Run") {
 		t.Fatalf("wrong live parent error = %v", err)
 	}
-}
-
-func mustSelection(provider, model string) modelref.Selection {
-	selection, err := modelref.New(provider, model)
-	if err != nil {
-		panic(err)
-	}
-	return selection
 }
 
 func testAdmittedSegment(t *testing.T, c *Coordinator, spec segmentSpec) segmentSpec {
@@ -1284,7 +1275,7 @@ func resumedTreePending(createdAt time.Time) Pending {
 					ParentRunID:     "run_a",
 					RootRunID:       "run_1",
 				},
-				ModelSelection: mustSelection("openai", "model"),
+				ModelSelection: testsupport.MustModelSelection("openai", "model"),
 				RunCreatedAt:   createdAt,
 			},
 			{
@@ -1295,7 +1286,7 @@ func resumedTreePending(createdAt time.Time) Pending {
 					ParentRunID:     "run_1",
 					RootRunID:       "run_1",
 				},
-				ModelSelection: mustSelection("openai", "model"),
+				ModelSelection: testsupport.MustModelSelection("openai", "model"),
 				RunCreatedAt:   createdAt,
 			},
 			{
@@ -1306,13 +1297,13 @@ func resumedTreePending(createdAt time.Time) Pending {
 					ParentRunID:     "run_1",
 					RootRunID:       "run_1",
 				},
-				ModelSelection: mustSelection("openai", "model"),
+				ModelSelection: testsupport.MustModelSelection("openai", "model"),
 				RunCreatedAt:   createdAt,
 			},
 			{
 				RunID:          "run_1",
 				MemberID:       "member_root",
-				ModelSelection: mustSelection("openai", "model"),
+				ModelSelection: testsupport.MustModelSelection("openai", "model"),
 				RunCreatedAt:   createdAt,
 			},
 		},

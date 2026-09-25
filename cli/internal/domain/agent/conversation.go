@@ -3,6 +3,7 @@ package agent
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -142,19 +143,7 @@ func (c *Conversation) MatchesSnapshot(snapshot SessionSnapshot) bool {
 	return equalPlans(c.plan, expected.plan) &&
 		c.usage.Equal(expected.usage) && equalInteractions(c.interactions, expected.interactions) &&
 		c.outcome.Equal(expected.outcome) && c.phase == expected.phase && c.runID == expected.runID &&
-		c.segmentID == expected.segmentID && equalRunCatalogs(c.Runs(), expected.Runs())
-}
-
-func equalRunCatalogs(left, right []Run) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for index, run := range left {
-		if !run.Equal(right[index]) {
-			return false
-		}
-	}
-	return true
+		c.segmentID == expected.segmentID && slices.EqualFunc(c.Runs(), expected.Runs(), Run.Equal)
 }
 
 func (c *Conversation) Starting() error {

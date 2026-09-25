@@ -2,6 +2,7 @@ package builtin
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 	"time"
@@ -66,8 +67,7 @@ func testSessionActiveGoal() goalstate.Goal {
 }
 
 func testSelection() modelref.Selection {
-	selection, _ := modelref.New("provider", "model")
-	return selection
+	return testsupport.MustModelSelection("provider", "model")
 }
 
 func testSessionContext() context.Context {

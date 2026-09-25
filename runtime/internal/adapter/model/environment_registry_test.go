@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
@@ -42,34 +43,6 @@ func (f *fakeRegistry) Update(_ context.Context, id string, patch provider.Patch
 	return updated, nil
 }
 
-func configuredProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provider {
-	t.Helper()
-	entry, err := provider.New(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	patch := provider.Patch{}
-	if rawKey != "" {
-		key, keyErr := provider.NewAPIKey(rawKey)
-		if keyErr != nil {
-			t.Fatal(keyErr)
-		}
-		patch.APIKey = provider.Set(key)
-	}
-	if rawBaseURL != "" {
-		baseURL, baseURLErr := provider.NewBaseURL(rawBaseURL)
-		if baseURLErr != nil {
-			t.Fatal(baseURLErr)
-		}
-		patch.BaseURL = provider.Set(baseURL)
-	}
-	entry, err = entry.Apply(patch)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return entry
-}
-
 func providerCredential(t *testing.T, entry provider.Provider) (string, provider.KeySource) {
 	t.Helper()
 	credential, configured := entry.Credential()
@@ -96,7 +69,7 @@ func registryWithEnvironment(t *testing.T, inner *fakeRegistry, envKeys map[stri
 
 func TestStoredCredentialWinsEnvironmentFallback(t *testing.T) {
 	inner := &fakeRegistry{stored: map[string]provider.Provider{
-		"anthropic": configuredProvider(t, "anthropic", "sk-stored", "https://x"),
+		"anthropic": testsupport.MustProvider("anthropic", "sk-stored", "https://x"),
 	}}
 	registry := registryWithEnvironment(t, inner, map[string]string{"anthropic": "sk-env"})
 
@@ -126,7 +99,7 @@ func TestEnvironmentOnlyProviderIsEnabled(t *testing.T) {
 
 func TestEnvironmentFallbackPreservesStoredEndpoint(t *testing.T) {
 	inner := &fakeRegistry{stored: map[string]provider.Provider{
-		"deepseek": configuredProvider(t, "deepseek", "", "https://ep"),
+		"deepseek": testsupport.MustProvider("deepseek", "", "https://ep"),
 	}}
 	registry := registryWithEnvironment(t, inner, map[string]string{"deepseek": "sk-env"})
 	got, _, err := registry.Get(t.Context(), "deepseek")
@@ -142,7 +115,7 @@ func TestEnvironmentFallbackPreservesStoredEndpoint(t *testing.T) {
 
 func TestUpdateNeverPersistsEnvironmentCredential(t *testing.T) {
 	inner := &fakeRegistry{stored: map[string]provider.Provider{
-		"deepseek": configuredProvider(t, "deepseek", "sk-stored", "https://old"),
+		"deepseek": testsupport.MustProvider("deepseek", "sk-stored", "https://old"),
 	}}
 	registry := registryWithEnvironment(t, inner, map[string]string{"deepseek": "sk-env"})
 	baseURL, _ := provider.NewBaseURL("https://new")
@@ -171,7 +144,7 @@ func TestUpdateNeverPersistsEnvironmentCredential(t *testing.T) {
 
 func TestListMergesEnvironmentOnlyProvidersAndSorts(t *testing.T) {
 	inner := &fakeRegistry{stored: map[string]provider.Provider{
-		"openai": configuredProvider(t, "openai", "sk-stored", ""),
+		"openai": testsupport.MustProvider("openai", "sk-stored", ""),
 	}}
 	registry := registryWithEnvironment(t, inner, map[string]string{
 		"anthropic": "sk-env",
@@ -211,7 +184,7 @@ func TestEnvironmentSnapshotRejectsInvalidInputAndIgnoresCallerMutation(t *testi
 
 func TestRegistryRejectsMismatchedStoredIdentity(t *testing.T) {
 	inner := &fakeRegistry{stored: map[string]provider.Provider{
-		"openai": configuredProvider(t, "anthropic", "sk", ""),
+		"openai": testsupport.MustProvider("anthropic", "sk", ""),
 	}}
 	registry := registryWithEnvironment(t, inner, nil)
 	_, _, err := registry.Get(t.Context(), "openai")

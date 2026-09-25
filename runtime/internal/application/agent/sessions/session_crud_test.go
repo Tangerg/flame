@@ -252,7 +252,7 @@ func TestPrepareScheduledBuildsOneUnpersistedInitialAggregate(t *testing.T) {
 
 	current, initial, err := coordinator.PrepareScheduled(
 		t.Context(), "ses_scheduled", " Scheduled ", "/requested",
-		mustTestSelection(t, "provider", "model"),
+		testsupport.MustModelSelection("provider", "model"),
 	)
 	if err != nil {
 		t.Fatalf("PrepareScheduled: %v", err)
@@ -262,7 +262,7 @@ func TestPrepareScheduledBuildsOneUnpersistedInitialAggregate(t *testing.T) {
 	}
 	if current.ID() != "ses_scheduled" || current.Title() != "Scheduled" ||
 		current.Workspace().Path() != "/resolved/scheduled" ||
-		current.Selection() != mustTestSelection(t, "provider", "model") ||
+		current.Selection() != testsupport.MustModelSelection("provider", "model") ||
 		current.Revision() != 1 || !current.CreatedAt().Equal(createdAt) {
 		t.Fatalf("scheduled aggregate = %+v", current.Snapshot())
 	}
@@ -274,7 +274,7 @@ func TestPrepareScheduledBuildsOneUnpersistedInitialAggregate(t *testing.T) {
 func TestPrepareScheduledReusesCommittedAggregateWithoutWorkspaceAdmission(t *testing.T) {
 	existing := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_scheduled", Title: "Existing", Workspace: testsupport.MustWorkspace("/existing"),
-		Selection: mustTestSelection(t, "provider", "existing-model"),
+		Selection: testsupport.MustModelSelection("provider", "existing-model"),
 	})
 	store := &crudSessionStore{current: existing}
 	coordinator := mustNewCoordinator(testDependencies(&crudStores{session: store}, Dependencies{
@@ -283,7 +283,7 @@ func TestPrepareScheduledReusesCommittedAggregateWithoutWorkspaceAdmission(t *te
 
 	current, initial, err := coordinator.PrepareScheduled(
 		t.Context(), existing.ID(), "Ignored", "/unavailable",
-		mustTestSelection(t, "ignored-provider", "ignored-model"),
+		testsupport.MustModelSelection("ignored-provider", "ignored-model"),
 	)
 	if err != nil {
 		t.Fatalf("PrepareScheduled existing: %v", err)
@@ -354,7 +354,7 @@ func TestCoordinatorUpdateAppliesPatch(t *testing.T) {
 	ctx := context.Background()
 
 	title := "  Renamed  "
-	selection := mustTestSelection(t, "anthropic", "claude-opus-4-8")
+	selection := testsupport.MustModelSelection("anthropic", "claude-opus-4-8")
 	provider, model, effort := selection.Provider(), selection.Model(), "high"
 	selection, selectionErr := modelref.NewWithReasoningEffort(provider, model, effort)
 	if selectionErr != nil {

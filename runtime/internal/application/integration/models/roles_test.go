@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"sync"
 	"testing"
 	"time"
@@ -255,9 +256,9 @@ func configuredRoleConfig(t *testing.T) Config {
 	t.Helper()
 	return Config{
 		Providers: &testProviderRegistry{entries: map[string]provider.Provider{
-			"anthropic": modelProvider(t, "anthropic", "key", ""),
-			"openai":    modelProvider(t, "openai", "key", ""),
-			"provider":  modelProvider(t, "provider", "key", ""),
+			"anthropic": testsupport.MustProvider("anthropic", "key", ""),
+			"openai":    testsupport.MustProvider("openai", "key", ""),
+			"provider":  testsupport.MustProvider("provider", "key", ""),
 		}},
 		Catalog: testCatalog{metadata: []ProviderMetadata{
 			providerMetadataFixture(t, "anthropic", ProviderEndpointOptional, ProviderModelsBundled, EmbeddingCapabilityWithoutDefault()),

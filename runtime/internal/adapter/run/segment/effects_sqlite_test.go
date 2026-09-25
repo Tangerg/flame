@@ -962,7 +962,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	if insertErr := sessions.Insert(ctx, goalSession); insertErr != nil {
 		t.Fatalf("seed goal session: %v", insertErr)
 	}
-	selection := mustEffectSelection(t, "provider", "model")
+	selection := testsupport.MustModelSelection("provider", "model")
 	g, err := goal.New("ses_goal", "finish", selection, run.Capabilities{}, "lease_goal", created)
 	if err != nil {
 		t.Fatalf("new goal: %v", err)
@@ -1055,7 +1055,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 	parkedAt := time.Unix(2, 0).UTC()
 	if admitErr := state.Admit(ctx, run.Draft{
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open",
-		ModelSelection: mustEffectSelection(t, "anthropic", "claude"),
+		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
 		Capabilities: run.Capabilities{
 			InterruptKinds: []interrupt.Kind{interrupt.Question},
 		},
@@ -1075,7 +1075,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 	checkpoint := executorCheckpoint(t, rootMemberID, "opaque waiting checkpoint", runs.ExecutorCheckpoint{
 		BuildID:        checkpointBuildID,
 		Scope:          runs.ExecutionScope{SessionID: "ses_1"},
-		ModelSelection: mustEffectSelection(t, "anthropic", "claude"),
+		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
 		Usage:          accounting.Snapshot{},
 	})
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
@@ -1183,7 +1183,7 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 	checkpoint := executorCheckpoint(t, rootMemberID, "opaque rollback checkpoint", runs.ExecutorCheckpoint{
 		BuildID:        checkpointBuildID,
 		Scope:          runs.ExecutionScope{SessionID: "ses_rollback"},
-		ModelSelection: mustEffectSelection(t, "anthropic", "claude"),
+		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
 		Usage:          accounting.Snapshot{},
 	})
 	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))

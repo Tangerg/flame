@@ -1340,10 +1340,10 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 			checkpoint.Scope.GoalIncarnationID = "goal_other"
 		}},
 		{name: "provider", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.ModelSelection = mustCheckpointSelection("openai", checkpoint.ModelSelection.Model())
+			checkpoint.ModelSelection = testsupport.MustModelSelection("openai", checkpoint.ModelSelection.Model())
 		}},
 		{name: "model", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.ModelSelection = mustCheckpointSelection(checkpoint.ModelSelection.Provider(), "model_other")
+			checkpoint.ModelSelection = testsupport.MustModelSelection(checkpoint.ModelSelection.Provider(), "model_other")
 		}},
 		{name: "capabilities", mutate: func(checkpoint *ExecutorCheckpoint) {
 			checkpoint.Capabilities.ChildRuns = true

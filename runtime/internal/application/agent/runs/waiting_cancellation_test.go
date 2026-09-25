@@ -74,10 +74,10 @@ func TestPrepareWaitingCancellationRejectsCheckpointBoundToDifferentApplicationF
 		"session":          func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" },
 		"goal incarnation": func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" },
 		"provider": func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.ModelSelection = mustSelection("anthropic", checkpoint.ModelSelection.Model())
+			checkpoint.ModelSelection = testsupport.MustModelSelection("anthropic", checkpoint.ModelSelection.Model())
 		},
 		"model": func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.ModelSelection = mustSelection(checkpoint.ModelSelection.Provider(), "other-model")
+			checkpoint.ModelSelection = testsupport.MustModelSelection(checkpoint.ModelSelection.Provider(), "other-model")
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

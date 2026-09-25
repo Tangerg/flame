@@ -3,6 +3,7 @@ package runs
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -53,10 +54,10 @@ func TestCancellationPlanPartitionsCanonicalSubtree(t *testing.T) {
 	if plan.treeState != run.Running || plan.hasPending {
 		t.Fatalf("tree state/pending = %s/%t, want running/false", plan.treeState, plan.hasPending)
 	}
-	if got, want := cancellationRunIDs(plan.targetSubtree), []string{"run_a0", "run_a1", "run_a"}; !sameStrings(got, want) {
+	if got, want := cancellationRunIDs(plan.targetSubtree), []string{"run_a0", "run_a1", "run_a"}; !slices.Equal(got, want) {
 		t.Fatalf("target subtree = %v, want %v", got, want)
 	}
-	if got, want := cancellationRunIDs(plan.survivingTree), []string{"run_b", "run_root"}; !sameStrings(got, want) {
+	if got, want := cancellationRunIDs(plan.survivingTree), []string{"run_b", "run_root"}; !slices.Equal(got, want) {
 		t.Fatalf("surviving tree = %v, want %v", got, want)
 	}
 	if plan.target.memberID != "member_a" || !plan.target.hasMember {
@@ -148,7 +149,9 @@ func TestCancellationRejectsLiveOwnerFactDrift(t *testing.T) {
 	}{
 		{"segment", func(live *liveSegment) { live.record.SegmentID = "seg_other" }},
 		{"creation time", func(live *liveSegment) { live.record.CreatedAt = spec.CreatedAt.Add(time.Second) }},
-		{"model", func(live *liveSegment) { live.record.ModelSelection = mustSelection("anthropic", "model") }},
+		{"model", func(live *liveSegment) {
+			live.record.ModelSelection = testsupport.MustModelSelection("anthropic", "model")
+		}},
 		{"run capabilities", func(live *liveSegment) {
 			live.record.Capabilities.ChildRuns = true
 		}},
@@ -247,16 +250,4 @@ func cancellationRunIDs(runs []cancellationRun) []string {
 		ids[index] = run.run.ID()
 	}
 	return ids
-}
-
-func sameStrings(left, right []string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for index := range left {
-		if left[index] != right[index] {
-			return false
-		}
-	}
-	return true
 }

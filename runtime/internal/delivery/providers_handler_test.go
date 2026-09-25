@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
@@ -100,37 +101,9 @@ func handlerWithProviders(rt *providerFake) *Handler {
 	return handlerWithModels(models.Config{Providers: rt, Catalog: rt, Prober: rt})
 }
 
-func serverProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provider {
-	t.Helper()
-	entry, err := provider.New(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	patch := provider.Patch{}
-	if rawKey != "" {
-		key, keyErr := provider.NewAPIKey(rawKey)
-		if keyErr != nil {
-			t.Fatal(keyErr)
-		}
-		patch.APIKey = provider.Set(key)
-	}
-	if rawBaseURL != "" {
-		baseURL, baseURLErr := provider.NewBaseURL(rawBaseURL)
-		if baseURLErr != nil {
-			t.Fatal(baseURLErr)
-		}
-		patch.BaseURL = provider.Set(baseURL)
-	}
-	entry, err = entry.Apply(patch)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return entry
-}
-
 func TestListProvidersMergesSupportedCatalogWithRegistry(t *testing.T) {
 	s := handlerWithProviders(&providerFake{entries: map[string]provider.Provider{
-		"anthropic": serverProvider(t, "anthropic", "sk-ant-secret", ""),
+		"anthropic": testsupport.MustProvider("anthropic", "sk-ant-secret", ""),
 	}})
 
 	page, err := s.ListProviders(context.Background())
@@ -222,7 +195,7 @@ func TestUpdateProviderRequiresBaseURLWhenMetadataRequiresIt(t *testing.T) {
 
 func TestUpdateProviderPreservesOmittedFieldsAndClearsExplicitly(t *testing.T) {
 	rt := &providerFake{entries: map[string]provider.Provider{
-		"anthropic": serverProvider(t, "anthropic", "sk-ant-secret", "https://old.test"),
+		"anthropic": testsupport.MustProvider("anthropic", "sk-ant-secret", "https://old.test"),
 	}}
 	s := handlerWithProviders(rt)
 
@@ -279,7 +252,7 @@ func TestTestProviderUsesConfiguredProvider(t *testing.T) {
 	probeErr := errors.New("bad key")
 	rt := &providerFake{
 		entries: map[string]provider.Provider{
-			"anthropic": serverProvider(t, "anthropic", "sk-ant-secret", ""),
+			"anthropic": testsupport.MustProvider("anthropic", "sk-ant-secret", ""),
 		},
 		probeErr: probeErr,
 	}
@@ -307,7 +280,7 @@ func TestProviderProbeReturnsSanitizedActions(t *testing.T) {
 		{errors.New("HTTP 401 secret-token"), protocol.ProblemProviderTestFailed},
 	} {
 		t.Run(tt.kind, func(t *testing.T) {
-			rt := &providerFake{entries: map[string]provider.Provider{"anthropic": serverProvider(t, "anthropic", "secret-key", "")}, probeErr: tt.cause}
+			rt := &providerFake{entries: map[string]provider.Provider{"anthropic": testsupport.MustProvider("anthropic", "secret-key", "")}, probeErr: tt.cause}
 			result, err := handlerWithProviders(rt).TestProvider(t.Context(), "anthropic")
 			if err != nil {
 				t.Fatal(err)

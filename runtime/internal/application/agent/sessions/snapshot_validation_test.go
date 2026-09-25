@@ -211,7 +211,7 @@ func offloadedSnapshot(result string) Snapshot {
 // becomes a session — before anything is written.
 func TestPortableSnapshotRefusesABrokenRunLineage(t *testing.T) {
 	capabilities := run.Capabilities{}
-	selection := mustTestSelection(t, "provider", "model")
+	selection := testsupport.MustModelSelection("provider", "model")
 	root := func() PortableRun {
 		return PortableRun{
 			SessionID: "ses_1", ID: "run_root", Outcome: run.OutcomeCompleted,
@@ -255,7 +255,7 @@ func TestPortableSnapshotRefusesABrokenRunLineage(t *testing.T) {
 }
 
 func TestPortableSnapshotDelegatesModelIdentityToRun(t *testing.T) {
-	selection := mustTestSelection(t, "provider", "model")
+	selection := testsupport.MustModelSelection("provider", "model")
 	capabilities := run.Capabilities{}
 	at := time.Unix(1, 0).UTC()
 	portable := PortableSnapshot{
@@ -282,7 +282,7 @@ func TestPortableSnapshotChildInheritsRootCapabilities(t *testing.T) {
 		InterruptKinds: []interrupt.Kind{interrupt.Approval},
 	}
 	at := time.Unix(1, 0).UTC()
-	selection := mustTestSelection(t, "provider", "model")
+	selection := testsupport.MustModelSelection("provider", "model")
 	portable := PortableSnapshot{
 		Session: PortableSession{
 			ID: "ses_1", Title: "t", CWD: "/w", Selection: selection,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 
@@ -62,7 +63,7 @@ func TestAuxiliaryCallObservation(t *testing.T) {
 					}
 					return mustResolvedChat(t, model, nil), nil
 				},
-			}, mustRoleSelection(t, "anthropic", "claude-test"), staticRoleSource{})
+			}, testsupport.MustModelSelection("anthropic", "claude-test"), staticRoleSource{})
 			if err != nil {
 				t.Fatal(err)
 			}

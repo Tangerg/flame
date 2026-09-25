@@ -11,21 +11,13 @@ import (
 
 const testExecutorBuildID = testsupport.BuildID
 
-func mustCheckpointSelection(provider, model string) modelref.Selection {
-	selection, err := modelref.New(provider, model)
-	if err != nil {
-		panic(err)
-	}
-	return selection
-}
-
 func testExecutorCheckpoint() ExecutorCheckpoint {
 	return ExecutorCheckpoint{
 		RootMemberID:   "member_root",
 		Payload:        []byte(`{"root":"member_root"}`),
 		BuildID:        testExecutorBuildID,
 		Scope:          ExecutionScope{SessionID: "ses_1"},
-		ModelSelection: mustCheckpointSelection("openai", "model"),
+		ModelSelection: testsupport.MustModelSelection("openai", "model"),
 	}
 }
 
@@ -50,11 +42,11 @@ func TestTreeInterruptedRejectsCheckpointBoundToDifferentApplicationFacts(t *tes
 		goalIncarnationID string
 		selection         modelref.Selection
 	}{
-		{name: "root", root: "other_root", session: "ses_1", selection: mustCheckpointSelection("openai", "model")},
-		{name: "session", root: "member_root", session: "other_session", selection: mustCheckpointSelection("openai", "model")},
-		{name: "goal incarnation", root: "member_root", session: "ses_1", goalIncarnationID: "other_goal", selection: mustCheckpointSelection("openai", "model")},
-		{name: "provider", root: "member_root", session: "ses_1", selection: mustCheckpointSelection("anthropic", "model")},
-		{name: "model", root: "member_root", session: "ses_1", selection: mustCheckpointSelection("openai", "gpt-other")},
+		{name: "root", root: "other_root", session: "ses_1", selection: testsupport.MustModelSelection("openai", "model")},
+		{name: "session", root: "member_root", session: "other_session", selection: testsupport.MustModelSelection("openai", "model")},
+		{name: "goal incarnation", root: "member_root", session: "ses_1", goalIncarnationID: "other_goal", selection: testsupport.MustModelSelection("openai", "model")},
+		{name: "provider", root: "member_root", session: "ses_1", selection: testsupport.MustModelSelection("anthropic", "model")},
+		{name: "model", root: "member_root", session: "ses_1", selection: testsupport.MustModelSelection("openai", "gpt-other")},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			barrier := mustTreeInterrupted(t, testExecutorCheckpoint(), []MemberInterruption{{
@@ -116,7 +108,7 @@ func TestTreeInterruptedOwnsCheckpointAndInterruptions(t *testing.T) {
 		t.Fatalf("owned interruptions = %+v", ownedInterruptions)
 	}
 	if err := barrier.validateFor(
-		"member_root", "ses_1", "", mustCheckpointSelection("openai", "model"),
+		"member_root", "ses_1", "", testsupport.MustModelSelection("openai", "model"),
 	); err != nil {
 		t.Fatalf("owned barrier no longer validates: %v", err)
 	}

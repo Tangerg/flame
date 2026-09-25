@@ -47,15 +47,6 @@ func installRunsegmentTraceCapture(t *testing.T) (*sdktrace.TracerProvider, *tra
 	return runsegmentTraceProvider, runsegmentTraceExporter
 }
 
-func mustEffectSelection(t testing.TB, provider, model string) modelref.Selection {
-	t.Helper()
-	selection, err := modelref.New(provider, model)
-	if err != nil {
-		t.Fatalf("modelref.New(%q, %q): %v", provider, model, err)
-	}
-	return selection
-}
-
 func singleRunPending(
 	t testing.TB,
 	runID, sessionID, memberID, requestID, itemID string,
@@ -84,7 +75,7 @@ func singleRunPending(
 		Continuations: []runs.Continuation{{
 			RunID:          runID,
 			MemberID:       memberID,
-			ModelSelection: mustEffectSelection(t, "anthropic", "claude"),
+			ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
 			RunCreatedAt:   runCreatedAt,
 		}},
 		CreatedAt: barrierCreatedAt,
@@ -578,7 +569,7 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 			name: "frozen model selection", identity: "frozen_model_selection",
 			mutate: func(_ *runs.Pending, record *run.Run) {
 				snapshot := record.Snapshot()
-				snapshot.ModelSelection = mustEffectSelection(t, "openai", "gpt")
+				snapshot.ModelSelection = testsupport.MustModelSelection("openai", "gpt")
 				*record = testsupport.MustRestoreRun(snapshot)
 			},
 		},

@@ -347,15 +347,6 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	return coordinator
 }
 
-func mustTestSelection(t *testing.T, provider, model string) modelref.Selection {
-	t.Helper()
-	selection, err := modelref.New(provider, model)
-	if err != nil {
-		t.Fatalf("modelref.New: %v", err)
-	}
-	return selection
-}
-
 type inertExecutionReleaser struct{}
 
 func (inertExecutionReleaser) Release(context.Context, runs.ExecutorRef) error { return nil }

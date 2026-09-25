@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 
@@ -49,7 +50,7 @@ func TestResolvedChatRejectsTypedNilInputTokenCounter(t *testing.T) {
 }
 
 func TestLiveUtilityModelResolvesMainForEveryUse(t *testing.T) {
-	selection := mustRoleSelection(t, "anthropic", "claude-test")
+	selection := testsupport.MustModelSelection("anthropic", "claude-test")
 	model := newTestChatModel(t)
 	calls := 0
 	resolver := recordingChatResolver{resolve: func(got modelref.Selection) (ResolvedChat, error) {
@@ -78,7 +79,7 @@ func TestLiveUtilityModelResolvesMainForEveryUse(t *testing.T) {
 }
 
 func TestLiveUtilityModelReturnsConfiguredRoleFailureWithoutFallback(t *testing.T) {
-	mainSelection := mustRoleSelection(t, "anthropic", "claude-main")
+	mainSelection := testsupport.MustModelSelection("anthropic", "claude-main")
 	utilityRole := mustRole(t, "openai", "utility-model")
 	utilitySelection := utilityRole.Selection()
 	model := newTestChatModel(t)
@@ -102,15 +103,6 @@ func TestLiveUtilityModelReturnsConfiguredRoleFailureWithoutFallback(t *testing.
 	if len(resolved) != 1 || !resolved[0].Equal(utilitySelection) {
 		t.Fatalf("resolved selections = %#v, want utility only", resolved)
 	}
-}
-
-func mustRoleSelection(t testing.TB, providerID, model string) modelref.Selection {
-	t.Helper()
-	selection, err := modelref.New(providerID, model)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return selection
 }
 
 func mustRole(t testing.TB, providerID, model string) modelref.Role {

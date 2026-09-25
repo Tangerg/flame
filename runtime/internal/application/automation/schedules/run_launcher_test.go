@@ -2,12 +2,12 @@ package schedules
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
 type fakeRunStarter struct {
@@ -25,7 +25,7 @@ func TestRunLauncherUsesApplicationRunEntry(t *testing.T) {
 	runStarter := &fakeRunStarter{canceled: make(chan struct{})}
 	launcher := NewRunLauncher(runStarter, "/default")
 	scheduled := mustStoredSchedule(t, schedule.Snapshot{
-		ID: "sch_1", Instructions: "summarize", ModelSelection: mustScheduleSelection("p", "m"),
+		ID: "sch_1", Instructions: "summarize", ModelSelection: testsupport.MustModelSelection("p", "m"),
 	})
 
 	ranAt := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
@@ -50,12 +50,4 @@ func TestRunLauncherUsesApplicationRunEntry(t *testing.T) {
 		t.Fatalf("manual schedule Run fact = %+v", runStarter.cmd.ManualScheduleRun)
 	}
 	<-runStarter.canceled
-}
-
-func mustScheduleSelection(provider, model string) modelref.Selection {
-	selection, err := modelref.New(provider, model)
-	if err != nil {
-		panic(err)
-	}
-	return selection
 }
