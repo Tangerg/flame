@@ -193,13 +193,13 @@ var providers = mustProviderCatalog(
 	bundledProvider(ProviderMoonshot, moonshot.ModelK3, "MOONSHOT_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return moonshot.NewChat(ctx, moonshot.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 	}),
-	bundledProvider(ProviderDeepSeek, deepseek.ModelV4Flash, "DEEPSEEK_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
+	bundledProvider(ProviderDeepSeek, deepseek.ModelFlash, "DEEPSEEK_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return deepseek.NewChat(ctx, deepseek.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 	}),
 	bundledProvider(ProviderAlibaba, alibaba.ModelQwen37Plus, "ALIBABA_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return alibaba.NewChat(ctx, alibaba.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 	}).withEmbedding(bundledModels(alibaba.ModelEmbeddingV4), buildAlibabaEmbeddingModel),
-	bundledProvider(ProviderFireworks, fireworks.ModelGPTOSS20B, "FIREWORKS_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
+	bundledProvider(ProviderFireworks, fireworks.ModelGPTOSS120B, "FIREWORKS_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return fireworks.NewChat(ctx, fireworks.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 	}),
 	bundledProvider(ProviderGroq, groq.ModelGPTOSS20B, "GROQ_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
@@ -220,7 +220,7 @@ var providers = mustProviderCatalog(
 	bundledProvider(ProviderPerplexity, perplexity.ModelSonar, "PERPLEXITY_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return perplexity.NewChat(ctx, perplexity.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 	}),
-	bundledProvider(ProviderTogether, together.ModelRnj1Instruct, "TOGETHER_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
+	bundledProvider(ProviderTogether, together.ModelGPTOSS120B, "TOGETHER_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {
 		return together.NewChat(ctx, together.ChatConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 	}),
 	bundledProvider(ProviderXAI, xai.ModelGrok45, "XAI_API_KEY", func(ctx context.Context, s ClientSpec, o chat.Options) (chat.Model, error) {

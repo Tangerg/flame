@@ -1,7 +1,8 @@
 package llm
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -105,7 +106,7 @@ func TestBuildChatDeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		call := calls.Add(1)
 		if call == 2 {
-			if err := json.NewDecoder(request.Body).Decode(&secondRequest); err != nil {
+			if err := json.UnmarshalRead(request.Body, &secondRequest); err != nil {
 				t.Errorf("decode second request: %v", err)
 				http.Error(writer, "invalid request", http.StatusBadRequest)
 				return
@@ -120,7 +121,7 @@ func TestBuildChatDeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client, _, err := BuildChat(t.Context(), mustClientSpec(t, ProviderDeepSeek, deepseek.ModelV4Flash, "test-key", server.URL))
+	client, _, err := BuildChat(t.Context(), mustClientSpec(t, ProviderDeepSeek, deepseek.ModelFlash, "test-key", server.URL))
 	if err != nil {
 		t.Fatalf("BuildChat: %v", err)
 	}
@@ -163,7 +164,7 @@ func TestBuildChatDeepSeekClassifiesRateLimit(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	client, _, err := BuildChat(t.Context(), mustClientSpec(t, ProviderDeepSeek, deepseek.ModelV4Flash, "test-key", server.URL))
+	client, _, err := BuildChat(t.Context(), mustClientSpec(t, ProviderDeepSeek, deepseek.ModelFlash, "test-key", server.URL))
 	if err != nil {
 		t.Fatalf("BuildChat: %v", err)
 	}
@@ -319,10 +320,10 @@ func TestDirectAnthropicExposesNativeInputTokenCounting(t *testing.T) {
 		}
 		countRequests.Add(1)
 		var body struct {
-			Model    string            `json:"model"`
-			Messages []json.RawMessage `json:"messages"`
+			Model    string           `json:"model"`
+			Messages []jsontext.Value `json:"messages"`
 		}
-		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+		if err := json.UnmarshalRead(request.Body, &body); err != nil {
 			t.Errorf("decode count request: %v", err)
 			http.Error(writer, "invalid request", http.StatusBadRequest)
 			return
