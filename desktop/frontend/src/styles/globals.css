@@ -1220,6 +1220,13 @@ html.theme-dark {
 }
 
 .msg-scroll-viewport {
+  /* The mask promotes this scroller to its own compositing layer, and a layer
+     with no opaque backing rasterises from black — WebKit shows that frame
+     whenever the transcript relayouts, which a running turn does constantly.
+     Backing it with the surface the content card already paints costs nothing
+     visually (the mask fades this to the identical colour beneath) and leaves
+     the layer nothing black to reveal. */
+  background: var(--app-content-surface);
   --transcript-fade: 24px;
   --transcript-bottom-edge: calc(100% - var(--composer-overlay, 0px));
   -webkit-mask-image: linear-gradient(
