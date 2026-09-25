@@ -19,6 +19,9 @@ import {
   CalendarX,
   ChartColumn,
   Check,
+  Circle,
+  CircleCheck,
+  CircleDot,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -121,6 +124,9 @@ export type IconName =
   | "more"
   | "x"
   | "check"
+  | "circle"
+  | "circle-check"
+  | "circle-dot"
   | "branch"
   | "globe"
   | "book"
@@ -218,6 +224,9 @@ const ICON_MAP = {
   more: Ellipsis,
   x: X,
   check: Check,
+  circle: Circle,
+  "circle-check": CircleCheck,
+  "circle-dot": CircleDot,
   branch: GitBranch,
   globe: Globe,
   book: Book,

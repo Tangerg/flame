@@ -1,27 +1,31 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, corner, motion, space, surface } from "@/styles/tokens.stylex";
-import { Icon } from "@/ui/icons";
+import { color, space } from "@/styles/tokens.stylex";
+import { Icon, type IconName } from "@/ui/icons";
 
 export type StepState = "done" | "active" | "pending";
 
 const styles = stylex.create({
   mark: { display: "grid", height: "1lh", width: space.s4, flexShrink: 0, placeItems: "center" },
-  dot: { height: space.s3, width: space.s3 },
-  pending: { borderWidth: "1.5px", borderStyle: "solid", borderColor: surface.fieldStrong },
-  active: {
-    backgroundColor: color.accent,
-    boxShadow: "var(--shadow-live-glow)",
-    animation: motion.pulseDot,
-  },
   done: { color: color.success },
+  active: { color: color.fg },
+  pending: { color: color.fgFaint },
 });
+
+// One glyph at one size for every standing, so the column reads as a single
+// scale and only its ink says how far the work got. The marks it replaces mixed
+// a bare tick with two discs, and gave the current step the live-session glow —
+// which borrowed a status light to mean "current" and left the column looking
+// like a radio group.
+const GLYPH: Record<StepState, IconName> = {
+  done: "circle-check",
+  active: "circle-dot",
+  pending: "circle",
+};
 
 export function StepMark({ state }: { state: StepState }) {
   return (
     <div {...stylex.props(styles.mark)}>
-      {state === "done" && <Icon name="check" size="sm" {...stylex.props(styles.done)} />}
-      {state === "active" && <div {...stylex.props(styles.dot, corner.pill, styles.active)} />}
-      {state === "pending" && <div {...stylex.props(styles.dot, corner.pill, styles.pending)} />}
+      <Icon name={GLYPH[state]} size="sm" className={stylex.props(styles[state]).className} />
     </div>
   );
 }
