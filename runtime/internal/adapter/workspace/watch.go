@@ -284,8 +284,7 @@ func semanticGitFingerprint(lifetime context.Context, root string) ([sha256.Size
 func gitObservation(lifetime context.Context, root string, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(lifetime, gitObservationTimeout)
 	defer cancel()
-	full := append([]string{"--no-pager", "--no-optional-locks", "-C", root}, args...)
-	result, err := process.Run(ctx, nil, full...)
+	result, err := process.At(ctx, root, args...)
 	if err != nil {
 		return nil, fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
 	}

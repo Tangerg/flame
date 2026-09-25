@@ -73,12 +73,11 @@ func IsRepo(ctx context.Context, dir string) (bool, error) {
 		return false, ErrUnavailable
 	}
 	args := []string{"rev-parse", "--is-inside-work-tree"}
-	full := append([]string{"--no-pager", "--no-optional-locks", "-C", dir, "-c", "core.quotepath=false"}, args...)
 	// The only expected negative result is identified from Git's stable English
 	// diagnostic. Exit 128 alone is not enough: unsafe ownership, corrupt
 	// metadata, and an unreadable repository use the same status and must remain
 	// observable to the caller.
-	result, err := process.Run(ctx, []string{"LC_ALL=C", "LANG=C"}, full...)
+	result, err := process.At(ctx, dir, args...)
 	if err != nil {
 		return false, gitProcessError(args, err)
 	}
@@ -112,8 +111,7 @@ func runAllowingExitCode(ctx context.Context, dir string, allowedExitCode int, a
 	// improve a later read. Some Git commands still perform mandatory metadata
 	// refreshes; the workspace watcher compares semantic Git state before it
 	// publishes and therefore does not expose those implementation writes.
-	full := append([]string{"--no-pager", "--no-optional-locks", "-C", dir, "-c", "core.quotepath=false"}, args...)
-	result, err := process.Run(ctx, []string{"LC_ALL=C", "LANG=C"}, full...)
+	result, err := process.At(ctx, dir, args...)
 	if err != nil {
 		return nil, gitProcessError(args, err)
 	}

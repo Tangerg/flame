@@ -73,8 +73,7 @@ func gitExitCode(err error) int {
 // gitIn runs a git query inside the real repo at cwd (no shadow GIT_DIR), used
 // to discover what a new shadow repo can seed from. Returns trimmed stdout.
 func gitIn(ctx context.Context, cwd string, args ...string) (string, error) {
-	command := append([]string{"--no-pager", "--no-optional-locks", "-C", cwd}, args...)
-	result, err := process.Run(ctx, []string{"LC_ALL=C", "LANG=C"}, command...)
+	result, err := process.At(ctx, cwd, args...)
 	if err != nil {
 		return "", fmt.Errorf("checkpoint: git %s: %w", args[0], err)
 	}

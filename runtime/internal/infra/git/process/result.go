@@ -83,3 +83,26 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 	}
 	return Result{}, fmt.Errorf("process: wait: %w", waitErr)
 }
+
+// parsingLocale keeps Git's diagnostics and its collation in one language, so a
+// caller reading them is reading the same text on every machine.
+var parsingLocale = []string{"LC_ALL=C", "LANG=C"}
+
+// At runs Git against the repository at dir with the flags that keep an
+// invocation's behavior and its output independent of everything outside the
+// request: no pager to block on, no optional lock taken for a read, and no
+// path escaping chosen by the user's configuration. Callers pass only what they
+// are asking Git to do.
+//
+// Assembling this prefix per call site is what let it drift: two sites read
+// paths Git had escaped because they omitted core.quotepath, and one compared
+// output across runs without pinning the locale that produced it.
+func At(ctx context.Context, dir string, args ...string) (Result, error) {
+	prefix := []string{
+		"--no-pager",
+		"--no-optional-locks",
+		"-C", dir,
+		"-c", "core.quotepath=false",
+	}
+	return Run(ctx, parsingLocale, append(prefix, args...)...)
+}
