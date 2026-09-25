@@ -39,7 +39,7 @@ func (s *Handler) CreateSchedule(ctx context.Context, in protocol.CreateSchedule
 	if err != nil {
 		return nil, mapScheduleErr(err, "")
 	}
-	created, err := s.schedules.Create(ctx, scheduleapp.CreateCommand{
+	created, err := s.schedules.Create(ctx, schedule.Draft{
 		Title:          in.Title,
 		Instructions:   in.Instructions,
 		CWD:            workspaceRefPath(in.Workspace),

@@ -61,16 +61,6 @@ type Dependencies struct {
 	Invalidations invalidation.Publish
 }
 
-// CreateCommand is the complete editable state of a new schedule.
-type CreateCommand struct {
-	Title          string
-	Instructions   string
-	CWD            string
-	ModelSelection modelref.Selection
-	Cron           string
-	Enabled        bool
-}
-
 // Patch is the Application input for editing a Schedule. CWD and model fields
 // remain untrusted external spellings until Update admits them; the Domain
 // patch receives only their resolved values. Update borrows this input until
@@ -160,17 +150,12 @@ func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit paginat
 }
 
 // Create validates, normalizes, schedules, and persists a new schedule.
-func (c *Coordinator) Create(ctx context.Context, cmd CreateCommand) (schedule.Schedule, error) {
-	if err := c.models.AdmitSelection(cmd.ModelSelection); err != nil {
+// Create admits a draft's model selection, then lets the domain decide whether
+// the draft itself is a schedule. The draft is the Domain's own admitted input
+// value, so this use case takes it rather than restating its fields.
+func (c *Coordinator) Create(ctx context.Context, draft schedule.Draft) (schedule.Schedule, error) {
+	if err := c.models.AdmitSelection(draft.ModelSelection); err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: model selection is not admitted: %w", err)
-	}
-	draft := schedule.Draft{
-		Title:          cmd.Title,
-		Instructions:   cmd.Instructions,
-		CWD:            cmd.CWD,
-		ModelSelection: cmd.ModelSelection,
-		Cron:           cmd.Cron,
-		Enabled:        cmd.Enabled,
 	}
 	if err := draft.Validate(); err != nil {
 		return schedule.Schedule{}, err

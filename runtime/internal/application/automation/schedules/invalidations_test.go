@@ -60,7 +60,7 @@ func TestCommittedScheduleMutationsPublishExactInvalidations(t *testing.T) {
 		},
 	})
 
-	if _, err := coordinator.Create(t.Context(), CreateCommand{
+	if _, err := coordinator.Create(t.Context(), schedule.Draft{
 		Instructions: "create", Cron: "@daily", Enabled: true,
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -104,7 +104,7 @@ func TestScheduleMutationsPublishOnlyAfterActualCommit(t *testing.T) {
 			var err error
 			switch operation {
 			case "create":
-				_, err = coordinator.Create(t.Context(), CreateCommand{Instructions: "create", Cron: "@daily", Enabled: true})
+				_, err = coordinator.Create(t.Context(), schedule.Draft{Instructions: "create", Cron: "@daily", Enabled: true})
 			case "update":
 				title := "after"
 				_, err = coordinator.Update(t.Context(), UpdateCommand{

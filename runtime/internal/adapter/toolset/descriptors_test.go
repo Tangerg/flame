@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
-	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
@@ -65,7 +64,7 @@ type allWiredSchedules struct{}
 func (allWiredSchedules) ListPage(context.Context, string, pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error) {
 	return pagination.Page[schedule.Schedule]{}, nil
 }
-func (allWiredSchedules) Create(context.Context, scheduleapp.CreateCommand) (schedule.Schedule, error) {
+func (allWiredSchedules) Create(context.Context, schedule.Draft) (schedule.Schedule, error) {
 	return schedule.Schedule{}, nil
 }
 func (allWiredSchedules) Delete(context.Context, string) error { return nil }

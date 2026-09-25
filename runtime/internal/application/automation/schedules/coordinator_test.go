@@ -198,7 +198,7 @@ func TestCreateOwnsScheduleAdmission(t *testing.T) {
 	})
 	c.now = func() time.Time { return now }
 
-	created, err := c.Create(t.Context(), CreateCommand{
+	created, err := c.Create(t.Context(), schedule.Draft{
 		Instructions: "review",
 		CWD:          "workspace",
 		Cron:         "0 13 * * *",
@@ -302,7 +302,7 @@ func TestCreateValidatesBeforeResolvingCWD(t *testing.T) {
 			return "", errors.New("unexpected resolution")
 		}),
 	})
-	_, err := c.Create(t.Context(), CreateCommand{CWD: "missing", Cron: "@daily", Enabled: true})
+	_, err := c.Create(t.Context(), schedule.Draft{CWD: "missing", Cron: "@daily", Enabled: true})
 	if !errors.Is(err, schedule.ErrInstructionsRequired) {
 		t.Fatalf("Create error = %v, want ErrInstructionsRequired", err)
 	}

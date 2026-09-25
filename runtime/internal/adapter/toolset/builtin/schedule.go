@@ -9,7 +9,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
-	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	scheduledomain "github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -66,7 +65,7 @@ type scheduleView struct {
 // It intentionally excludes revisioned updates and firing operations.
 type ScheduleManagement interface {
 	ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[scheduledomain.Schedule], error)
-	Create(ctx context.Context, cmd scheduleapp.CreateCommand) (scheduledomain.Schedule, error)
+	Create(ctx context.Context, draft scheduledomain.Draft) (scheduledomain.Schedule, error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -130,7 +129,7 @@ func (s *scheduleManagementTools) create(ctx context.Context, in createScheduleA
 	if err != nil {
 		return scheduleResponse{}, toolfailure.Definite(fmt.Errorf("create_schedule: %w", err))
 	}
-	created, err := s.coordinator.Create(ctx, scheduleapp.CreateCommand{
+	created, err := s.coordinator.Create(ctx, scheduledomain.Draft{
 		Title:          in.Title,
 		Instructions:   in.Instructions,
 		CWD:            in.WorkspacePath,

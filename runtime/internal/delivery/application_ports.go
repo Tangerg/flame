@@ -111,7 +111,7 @@ type feedbackUseCases interface {
 // scheduleManagementUseCases borrows mutation inputs for each synchronous call.
 // Returned Schedules own their admitted values.
 type scheduleManagementUseCases interface {
-	Create(ctx context.Context, cmd schedules.CreateCommand) (schedule.Schedule, error)
+	Create(ctx context.Context, draft schedule.Draft) (schedule.Schedule, error)
 	Delete(ctx context.Context, id string) error
 	ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error)
 	Update(ctx context.Context, cmd schedules.UpdateCommand) (schedule.Schedule, error)
