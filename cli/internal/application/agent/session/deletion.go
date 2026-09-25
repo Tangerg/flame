@@ -37,7 +37,7 @@ func Delete(
 	backoff retry.Backoff,
 ) (DeletionResult, error) {
 	if authoring == nil {
-		return DeletionResult{}, errors.New("CLI workbench is unavailable")
+		return DeletionResult{}, workbench.ErrUnavailable
 	}
 	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return DeletionResult{}, err

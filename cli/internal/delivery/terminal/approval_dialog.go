@@ -442,13 +442,11 @@ func (a *app) settleAcknowledgedResume(commandID agent.CommandID) {
 }
 
 func (a *app) retireAcknowledgedResume(commandID agent.CommandID) error {
-	pending, ok := a.workbench.PendingResume(a.session.current.ID)
-	if !ok {
+	if _, ok := a.workbench.PendingResume(a.session.current.ID); !ok {
 		return nil
 	}
-	if pending.Command.CommandID != commandID {
-		return errors.New("pending resume command identity changed")
-	}
+	// The store claims the identity under its own lock, so re-deciding it here
+	// would both restate the rule and read it a moment before the claim.
 	return a.workbench.AcknowledgePendingResume(a.session.current.ID, commandID)
 }
 

@@ -209,9 +209,9 @@ func (r RecoveryCommit) Validate() error {
 
 func validateLostRunReplacement(recovery rundomain.Replacement) error {
 	lost := recovery.State()
-	failure, failed := lost.Failure()
-	if !failed {
-		return errors.New("lost Run replacement has no failure")
+	failure, err := lost.LostFailure()
+	if err != nil {
+		return err
 	}
 	return recovery.ValidateDerivedBy(func(expected rundomain.Run) (rundomain.Run, error) {
 		return expected.RecoverLost(failure, lost.FinishedAt(), lost.MessageMark())

@@ -148,7 +148,7 @@ func Rollback(
 	backoff retry.Backoff,
 ) (RollbackResult, error) {
 	if authoring == nil {
-		return RollbackResult{}, errors.New("CLI workbench is unavailable")
+		return RollbackResult{}, workbench.ErrUnavailable
 	}
 	latest, err := runtime.GetSession(ctx, preview.request.SessionID)
 	if err != nil {

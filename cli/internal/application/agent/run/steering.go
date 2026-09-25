@@ -31,7 +31,7 @@ func StageSteer(
 	policy mutation.ReplayPolicy,
 ) (workbench.PendingSteer, error) {
 	if authoring == nil {
-		return workbench.PendingSteer{}, errors.New("CLI workbench is unavailable")
+		return workbench.PendingSteer{}, workbench.ErrUnavailable
 	}
 	if err := request.Validate(); err != nil {
 		return workbench.PendingSteer{}, err
@@ -109,7 +109,7 @@ func RecoverSteers(
 	backoff retry.Backoff,
 ) error {
 	if authoring == nil {
-		return errors.New("CLI workbench is unavailable")
+		return workbench.ErrUnavailable
 	}
 	var deferredSessions []string
 	for _, pending := range authoring.PendingSteers() {

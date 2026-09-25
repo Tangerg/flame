@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	skillspec "github.com/Tangerg/scope/skills"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/destructive"
 )
 
 var (
@@ -239,14 +241,13 @@ func (p Proposal) Validate() error {
 	return nil
 }
 
+// dangerousSkillPattern carries only what a published Skill must not teach but
+// a single command may still legitimately be. Piping a download into a shell is
+// the standing example: it is how much of the world installs software, so it is
+// not a catastrophe to confirm before, and it is not something to publish as an
+// instruction. Everything irreversible is [destructive.Command]'s to know.
 var dangerousSkillPattern = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)\brm\s+-[a-z]*r[a-z]*f[a-z]*\s+(/|~|\$\{?HOME\}?)(\s|$)`),
-	regexp.MustCompile(`(?i)\brm\s+-[a-z]*f[a-z]*r[a-z]*\s+(/|~|\$\{?HOME\}?)(\s|$)`),
-	regexp.MustCompile(`(?i)--no-preserve-root`),
-	regexp.MustCompile(`:\s*\(\s*\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:`),
 	regexp.MustCompile(`(?i)\b(curl|wget)\b[^\n|]*\|\s*(sudo\s+)?(sh|bash|zsh)\b`),
-	regexp.MustCompile(`(?i)\bmkfs(\.\w+)?\b`),
-	regexp.MustCompile(`(?i)\bdd\b[^\n|]*\bof=/dev/`),
 }
 
 // ProposalSafetyIssue classifies built-in proposal safety checks.
@@ -260,6 +261,9 @@ const (
 // SafetyIssue reports whether proposal content contains a known destructive instruction.
 func (p Proposal) SafetyIssue() ProposalSafetyIssue {
 	content := p.Name + "\n" + p.Description + "\n" + p.Instructions
+	if destructive.Command(content) {
+		return ProposalDangerousInstruction
+	}
 	for _, re := range dangerousSkillPattern {
 		if re.MatchString(content) {
 			return ProposalDangerousInstruction

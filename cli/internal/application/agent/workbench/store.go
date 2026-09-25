@@ -18,6 +18,11 @@ import (
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
+// ErrUnavailable reports a use case that reached for authoring state a surface
+// never opened. The store is optional by design — a session can keep nothing on
+// disk — so every caller meets the same absence and now names it the same way.
+var ErrUnavailable = errors.New("CLI workbench is unavailable")
+
 const (
 	defaultHistoryCapacity   = 1000
 	defaultStashCapacity     = 100

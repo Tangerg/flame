@@ -56,13 +56,25 @@ func ValidateMemoryItem(item protocol.AgentMemoryItem) error {
 	return nil
 }
 
+// NormalizeMemoryContent trims what a caller offered and refuses what is left
+// when nothing is. Both moments need the same answer — the binding before it
+// sends the content and the target after Runtime echoes it back — so the rule
+// and the trimming that decides it live together here.
+func NormalizeMemoryContent(content string) (string, error) {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return "", errors.New("add agent memory: content is empty")
+	}
+	return content, nil
+}
+
 func (t MemoryTarget) ValidateAddResult(content string, result protocol.AgentMemoryItem) error {
 	if err := t.Validate(); err != nil {
 		return err
 	}
-	content = strings.TrimSpace(content)
-	if content == "" {
-		return errors.New("add agent memory: content is empty")
+	content, err := NormalizeMemoryContent(content)
+	if err != nil {
+		return err
 	}
 	var problems []error
 	if err := ValidateMemoryItem(result); err != nil {

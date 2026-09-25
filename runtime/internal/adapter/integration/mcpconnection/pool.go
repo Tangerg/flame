@@ -5,7 +5,6 @@ package mcpconnection
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -57,15 +56,15 @@ func (p *Pool) Statuses() []mcpserver.ConnectionStatus {
 
 func (p *Pool) Tools(server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	items, err := p.inner.Tools(server)
-	return items, mapError(err)
+	return items, err
 }
 
 func (p *Pool) Reconnect(ctx context.Context, name mcpserver.ServerName) error {
-	return mapError(p.inner.Reconnect(ctx, name))
+	return p.inner.Reconnect(ctx, name)
 }
 
 func (p *Pool) Authorize(ctx context.Context, name mcpserver.ServerName) error {
-	return mapError(p.inner.Authorize(ctx, name))
+	return p.inner.Authorize(ctx, name)
 }
 
 func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
@@ -73,7 +72,7 @@ func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
 	if err != nil {
 		return err
 	}
-	return mapError(p.inner.Probe(ctx, cfg))
+	return p.inner.Probe(ctx, cfg)
 }
 
 func (p *Pool) Configure(ctx context.Context, server mcpserver.Server) error {
@@ -81,11 +80,11 @@ func (p *Pool) Configure(ctx context.Context, server mcpserver.Server) error {
 	if err != nil {
 		return err
 	}
-	return mapError(p.inner.Configure(ctx, cfg))
+	return p.inner.Configure(ctx, cfg)
 }
 
 func (p *Pool) Detach(name mcpserver.ServerName) error {
-	return mapError(p.inner.Detach(name))
+	return p.inner.Detach(name)
 }
 
 // SetToolSink wires live connection changes to the resolver's atomically
@@ -167,11 +166,4 @@ func flattenEnv(values map[string]string) []string {
 	}
 	slices.Sort(entries)
 	return entries
-}
-
-func mapError(err error) error {
-	if errors.Is(err, mcp.ErrUnknownServer) {
-		return fmt.Errorf("%w: %w", mcpserver.ErrUnknownServer, err)
-	}
-	return err
 }

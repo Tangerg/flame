@@ -247,9 +247,9 @@ func validateTerminalRunReplacement(replacement rundomain.Replacement) error {
 		case rundomain.OutcomeCanceled:
 			return expected.CancelWaiting(state.Detail(), state.FinishedAt(), state.MessageMark())
 		case rundomain.OutcomeLost:
-			failure, failed := state.Failure()
-			if !failed {
-				return rundomain.Run{}, errors.New("lost Run replacement has no failure")
+			failure, err := state.LostFailure()
+			if err != nil {
+				return rundomain.Run{}, err
 			}
 			return expected.RecoverLost(failure, state.FinishedAt(), state.MessageMark())
 		default:

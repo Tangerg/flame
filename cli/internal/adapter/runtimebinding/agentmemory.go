@@ -162,9 +162,9 @@ func (a *AgentMemory) Add(ctx context.Context, target agent.MemoryTarget, conten
 	if err != nil {
 		return protocol.AgentMemoryItem{}, err
 	}
-	content = strings.TrimSpace(content)
-	if content == "" {
-		return protocol.AgentMemoryItem{}, errors.New("add agent memory: content is empty")
+	content, err = agent.NormalizeMemoryContent(content)
+	if err != nil {
+		return protocol.AgentMemoryItem{}, err
 	}
 	options := r.commandOptions()
 	request := protocol.AgentMemoryAddRequest{Scope: validated.Scope, Content: content}

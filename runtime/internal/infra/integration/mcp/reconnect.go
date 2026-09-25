@@ -17,7 +17,7 @@ import (
 // Reconnect tears down a configured server's current session (if any) and
 // re-dials it, then rebuilds the live model-facing tool set and pushes it to
 // the tool sink so the model immediately sees the refreshed server. The status
-// walks connecting -> (connected | failed). Returns [ErrUnknownServer] for an
+// walks connecting -> (connected | failed). Returns [mcpserver.ErrUnknownServer] for an
 // unconfigured name.
 // planAttempt claims a known, open server and detaches its live session under
 // one hold of the lock: the session to close, the configuration to dial, and the
@@ -35,7 +35,7 @@ func (c *Connections) planAttempt(
 	}
 	configuredServer := c.find(name)
 	if configuredServer == nil {
-		return nil, ServerConfig{}, nil, fmt.Errorf("%w: %q", ErrUnknownServer, name)
+		return nil, ServerConfig{}, nil, fmt.Errorf("%w: %q", mcpserver.ErrUnknownServer, name)
 	}
 	cfg, err := plan(configuredServer)
 	if err != nil {
@@ -136,7 +136,7 @@ func reusableOAuth(current, candidate ServerConfig, handler auth.OAuthHandler) a
 // handler and its refreshing token source are persisted when a session store
 // is configured. Blocks until the user completes the browser flow or
 // [oauthFlowTimeout] elapses. Returns
-// [ErrUnknownServer] for an unconfigured name. Serialized with the other dials.
+// [mcpserver.ErrUnknownServer] for an unconfigured name. Serialized with the other dials.
 func (c *Connections) Authorize(ctx context.Context, name mcpserver.ServerName) (err error) {
 	detachedSession, cfg, attempt, err := c.planAttempt(ctx, name, func(configuredServer *server) (ServerConfig, error) {
 		if configuredServer.config.Transport != TransportHTTP {
