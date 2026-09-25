@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"iter"
-	"slices"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -138,10 +137,7 @@ func projectAnswer(value agent.InterruptAnswer) (protocol.InterruptResponse, err
 		}
 	case agent.QuestionAnswer:
 		response.Response.Type = protocol.InterruptResponseAnswer
-		response.Response.Answers = make([][]string, len(answer.Values))
-		for index, answers := range answer.Values {
-			response.Response.Answers[index] = slices.Clone(answers)
-		}
+		response.Response.Answers = agent.CloneAnswers(answer.Values)
 	default:
 		return protocol.InterruptResponse{}, fmt.Errorf("answer for item %s has unsupported type %T", value.ItemID, value.Answer)
 	}

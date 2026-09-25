@@ -123,14 +123,7 @@ func projectQuestion(runID, itemID string, value *protocol.Question) (agent.Ques
 	}
 	question := agent.Question{
 		RunID: runID, ItemID: itemID, Fields: make([]agent.QuestionField, 0, len(value.Fields)),
-		Answers: make([][]string, len(value.Answers)),
-	}
-	if value.Answers == nil {
-		question.Answers = nil
-	} else {
-		for index, answers := range value.Answers {
-			question.Answers[index] = slices.Clone(answers)
-		}
+		Answers: agent.CloneAnswers(value.Answers),
 	}
 	for _, field := range value.Fields {
 		projected := agent.QuestionField{

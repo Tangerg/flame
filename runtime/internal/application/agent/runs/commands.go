@@ -249,17 +249,10 @@ type ResumeCommand struct {
 func (r ResumeCommand) clone() ResumeCommand {
 	r.Responses = slices.Clone(r.Responses)
 	for index := range r.Responses {
-		if r.Responses[index].Approval != nil {
-			approval := *r.Responses[index].Approval
-			r.Responses[index].Approval = &approval
-		}
-		if r.Responses[index].Question != nil {
-			question := *r.Responses[index].Question
-			question.Answers = make([][]string, len(question.Answers))
-			for answerIndex, answers := range r.Responses[index].Question.Answers {
-				question.Answers[answerIndex] = slices.Clone(answers)
-			}
-			r.Responses[index].Question = &question
+		r.Responses[index].Approval = optional.Clone(r.Responses[index].Approval)
+		if question := optional.Clone(r.Responses[index].Question); question != nil {
+			question.Answers = transcript.CloneAnswers(question.Answers)
+			r.Responses[index].Question = question
 		}
 	}
 	r.Input = transcript.CloneContent(r.Input)

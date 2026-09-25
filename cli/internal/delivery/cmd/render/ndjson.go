@@ -421,7 +421,7 @@ func encodeInteraction(interaction agent.Interaction) *interactionJSON {
 	case agent.Question:
 		out := &interactionJSON{
 			Kind: "question", RunID: item.RunID, ItemID: item.ItemID,
-			Title: item.Title, Detail: item.Detail, Answers: cloneStringMatrix(item.Answers),
+			Title: item.Title, Detail: item.Detail, Answers: agent.CloneAnswers(item.Answers),
 		}
 		for _, field := range item.Fields {
 			encoded := questionFieldJSON{
@@ -439,17 +439,6 @@ func encodeInteraction(interaction agent.Interaction) *interactionJSON {
 	default:
 		return nil
 	}
-}
-
-func cloneStringMatrix(values [][]string) [][]string {
-	if values == nil {
-		return nil
-	}
-	cloned := make([][]string, len(values))
-	for index, row := range values {
-		cloned[index] = slices.Clone(row)
-	}
-	return cloned
 }
 
 // Close reports the first write error, if any. There is nothing to flush: a line

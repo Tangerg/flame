@@ -171,7 +171,7 @@ func (q Question) Accept(answer QuestionAnswer) (Question, error) {
 		return Question{}, err
 	}
 	accepted := q.Clone()
-	accepted.Answers = cloneAnswerValues(answer.Values)
+	accepted.Answers = CloneAnswers(answer.Values)
 	return accepted, nil
 }
 
@@ -331,11 +331,15 @@ func cloneQuestion(question Question) Question {
 	for i := range question.Fields {
 		question.Fields[i].Options = slices.Clone(question.Fields[i].Options)
 	}
-	question.Answers = cloneAnswerValues(question.Answers)
+	question.Answers = CloneAnswers(question.Answers)
 	return question
 }
 
-func cloneAnswerValues(values [][]string) [][]string {
+// CloneAnswers isolates a Question's answer values. Answers cross the wire, the
+// binding, and the renderer as a bare [][]string, so every boundary that builds
+// or forwards one needs the same isolation; the Question owns what that means,
+// and Clone uses this too.
+func CloneAnswers(values [][]string) [][]string {
 	if values == nil {
 		return nil
 	}
@@ -367,7 +371,7 @@ func CloneAnswer(answer Answer) Answer {
 		return item
 	case QuestionAnswer:
 		cloned := item
-		cloned.Values = cloneAnswerValues(item.Values)
+		cloned.Values = CloneAnswers(item.Values)
 		return cloned
 	default:
 		return nil
