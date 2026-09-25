@@ -3,6 +3,7 @@ package runs
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"sync"
 	"time"
 
@@ -113,10 +114,7 @@ func (r *runTreeOwner) rejectActivation(cause error) error {
 func (r *runTreeOwner) committedTerminalRun() (run.Run, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.terminalRun == nil {
-		return run.Run{}, false
-	}
-	return *r.terminalRun, true
+	return optional.Present(r.terminalRun)
 }
 
 // stop cancels the run context. Called on a true terminal (never on a parked

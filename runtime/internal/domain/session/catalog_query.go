@@ -3,6 +3,7 @@ package session
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -194,10 +195,7 @@ func (r CatalogRead) Filter() CatalogFilter { return r.filter }
 func (r CatalogRead) Limit() int            { return r.limit }
 
 func (r CatalogRead) After() (CatalogAnchor, bool) {
-	if r.after == nil {
-		return CatalogAnchor{}, false
-	}
-	return *r.after, true
+	return optional.Present(r.after)
 }
 
 // ValidateCatalog checks one complete unfiltered Session catalog. Complete reads

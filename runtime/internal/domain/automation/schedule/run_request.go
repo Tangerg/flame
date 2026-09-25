@@ -3,6 +3,7 @@ package schedule
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -138,10 +139,7 @@ func (r RunRequest) Validate() error {
 func (r RunRequest) ScheduleID() string   { return r.scheduleID.String() }
 func (r RunRequest) Execution() Execution { return r.execution }
 func (r RunRequest) ManualRecord() (RunRecord, bool) {
-	if r.manualRecord == nil {
-		return RunRecord{}, false
-	}
-	return *r.manualRecord, true
+	return optional.Present(r.manualRecord)
 }
 func (r RunRequest) OccurrenceID() string { return r.occurrenceID.String() }
 func (r RunRequest) SessionID() string    { return r.sessionID }

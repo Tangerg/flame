@@ -105,19 +105,27 @@ func (f ForkPlan) Child() session.Session { return f.snapshot.Session }
 
 // Snapshot returns an ownership-isolated complete child projection.
 func (f ForkPlan) Snapshot() Snapshot {
-	var steps []plan.Step
-	if f.planReplacement != nil {
-		steps = f.planReplacement.State().Steps()
-	}
-	return Snapshot{
-		Session: f.snapshot.Session, Messages: cloneSnapshotMessages(f.snapshot.Messages),
-		Runs: slices.Clone(f.snapshot.Runs), Items: slices.Clone(f.snapshot.Items),
-		ToolResults: slices.Clone(f.snapshot.ToolResults), Plan: steps,
-	}
+	return capturedSnapshot(f.snapshot, f.planReplacement)
 }
 
 // PlanReplacement returns an isolated initial Plan transition when the fork
 // boundary held a non-empty Plan.
 func (f ForkPlan) PlanReplacement() *plan.Replacement {
 	return optional.Clone(f.planReplacement)
+}
+
+// capturedSnapshot projects a decided plan's captured state into the isolated
+// Snapshot its caller may keep. Fork and restore capture different things and
+// decide different transitions, but what a caller receives afterwards is one
+// projection, so it is written once rather than beside each decision.
+func capturedSnapshot(captured Snapshot, replacement *plan.Replacement) Snapshot {
+	var steps []plan.Step
+	if replacement != nil {
+		steps = replacement.State().Steps()
+	}
+	return Snapshot{
+		Session: captured.Session, Messages: cloneSnapshotMessages(captured.Messages),
+		Runs: slices.Clone(captured.Runs), Items: slices.Clone(captured.Items),
+		ToolResults: slices.Clone(captured.ToolResults), Plan: steps,
+	}
 }

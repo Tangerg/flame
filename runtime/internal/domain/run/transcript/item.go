@@ -515,10 +515,7 @@ func (i Item) Status() ItemStatus    { return i.status }
 func (i Item) OccurredAt() time.Time { return i.identity.OccurredAt }
 func (i Item) FinishedAt() time.Time { return i.finishedAt }
 func (i Item) ExecutionDuration() (time.Duration, bool) {
-	if i.executionDuration == nil {
-		return 0, false
-	}
-	return *i.executionDuration, true
+	return optional.Present(i.executionDuration)
 }
 func (i Item) Kind() ItemKind                      { return i.kind }
 func (i Item) MessagePhase() MessagePhase          { return i.messagePhase }

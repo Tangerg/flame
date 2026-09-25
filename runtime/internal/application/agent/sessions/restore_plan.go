@@ -102,15 +102,7 @@ func (r RestorePlan) SessionReplacement() session.Replacement { return r.session
 
 // Snapshot returns an ownership-isolated complete restored projection.
 func (r RestorePlan) Snapshot() Snapshot {
-	var steps []plan.Step
-	if r.planReplacement != nil {
-		steps = r.planReplacement.State().Steps()
-	}
-	return Snapshot{
-		Session: r.snapshot.Session, Messages: cloneSnapshotMessages(r.snapshot.Messages),
-		Runs: slices.Clone(r.snapshot.Runs), Items: slices.Clone(r.snapshot.Items),
-		ToolResults: slices.Clone(r.snapshot.ToolResults), Plan: steps,
-	}
+	return capturedSnapshot(r.snapshot, r.planReplacement)
 }
 
 // PlanReplacement returns an isolated copy of the restored Plan transition.

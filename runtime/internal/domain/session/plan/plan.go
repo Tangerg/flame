@@ -7,6 +7,7 @@ package plan
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	"strings"
 	"time"
 
@@ -133,10 +134,7 @@ func (c Current) Validate() error {
 
 // State returns the immutable committed State and whether one has been written.
 func (c Current) State() (State, bool) {
-	if c.state == nil {
-		return State{}, false
-	}
-	return *c.state, true
+	return optional.Present(c.state)
 }
 
 // Steps returns the latest ordered value. Unwritten and explicitly cleared

@@ -97,18 +97,12 @@ func (d ToolAuthorizationDecision) Denied() (string, bool) { return d.reason, d.
 
 // EffectiveArguments reports the replacement arguments, when policy supplied any.
 func (d ToolAuthorizationDecision) EffectiveArguments() (tool.Arguments, bool) {
-	if d.arguments == nil {
-		return tool.Arguments{}, false
-	}
-	return *d.arguments, true
+	return optional.Present(d.arguments)
 }
 
 // Approval reports the prompt this call waits on, when it waits on one.
 func (d ToolAuthorizationDecision) Approval() (runs.ApprovalPrompt, bool) {
-	if d.approval == nil {
-		return runs.ApprovalPrompt{}, false
-	}
-	return *d.approval, true
+	return optional.Present(d.approval)
 }
 
 func toolDenialReason(reason string) string {
@@ -179,10 +173,7 @@ func (d InteractionToolHookDecision) Denied() (string, bool) { return d.reason, 
 
 // EffectiveArguments reports the rewritten arguments, when a hook supplied any.
 func (d InteractionToolHookDecision) EffectiveArguments() (tool.Arguments, bool) {
-	if d.arguments == nil {
-		return tool.Arguments{}, false
-	}
-	return *d.arguments, true
+	return optional.Present(d.arguments)
 }
 
 // RequiresApproval reports a hook escalating a call the gate would have passed.

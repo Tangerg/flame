@@ -237,18 +237,12 @@ func (o OpeningCommit) Resume() (run.TreeResumeDraft, bool) {
 
 // InitialSession returns the new Session inserted with a root admission.
 func (o OpeningCommit) InitialSession() (session.Session, bool) {
-	if o.initialSession == nil {
-		return session.Session{}, false
-	}
-	return *o.initialSession, true
+	return optional.Present(o.initialSession)
 }
 
 // SessionReplacement returns the existing Session revision written with an admission.
 func (o OpeningCommit) SessionReplacement() (session.Replacement, bool) {
-	if o.sessionReplacement == nil {
-		return session.Replacement{}, false
-	}
-	return *o.sessionReplacement, true
+	return optional.Present(o.sessionReplacement)
 }
 
 // ScheduleFiring returns the occurrence accepted with a scheduled admission.
@@ -256,10 +250,7 @@ func (o OpeningCommit) ScheduleFiring() string { return o.scheduleFiring }
 
 // ManualScheduleRun returns the manual Schedule execution recorded with an admission.
 func (o OpeningCommit) ManualScheduleRun() (schedule.RunRecord, bool) {
-	if o.manualScheduleRun == nil {
-		return schedule.RunRecord{}, false
-	}
-	return *o.manualScheduleRun, true
+	return optional.Present(o.manualScheduleRun)
 }
 
 // Events returns isolated opening projections in their canonical order.

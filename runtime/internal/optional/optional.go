@@ -18,6 +18,18 @@ func Value[T any](value *T, fallback T) T {
 	return *value
 }
 
+// Present resolves an optional value and reports whether it was there at all.
+// It is the accessor half of this package: callers that must distinguish an
+// absent value from a zero one ask for both at once, rather than each deciding
+// again what a nil pointer means.
+func Present[T any](value *T) (T, bool) {
+	if value == nil {
+		var absent T
+		return absent, false
+	}
+	return *value, true
+}
+
 // Clone copies what an optional value points at, so an absent one stays absent
 // and a present one stops sharing its storage with the value it came from. The
 // copy is shallow: it isolates the pointer, which is what makes an aggregate's
