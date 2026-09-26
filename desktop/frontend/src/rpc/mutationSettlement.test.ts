@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { rejected } from "@/test/rejected";
-import { RpcTransportError } from "./errors";
-import type { MutationPromise } from "./mutation";
+import { RpcError, RpcTransportError } from "./errors";
+import { createMutationPromise, type MutationPromise } from "./mutation";
 import { createMutationSettler, MutationSettlementClosedError } from "./mutationSettlement";
 
 afterEach(() => vi.useRealTimers());
@@ -14,6 +14,31 @@ function resolvedMutation<T>(value: T): MutationPromise<T> {
 }
 
 describe("unary mutation settlement", () => {
+  it.each(["internal_error", "idempotency_conflict", "idempotency_store_mismatch"] as const)(
+    "retains %s for an explicit same-command retry without reopening",
+    async (type) => {
+      const failure = new RpcError({ message: "command outcome unknown", data: { type } });
+      const execute = vi
+        .fn<(_key: string) => Promise<string>>()
+        .mockRejectedValueOnce(failure)
+        .mockResolvedValueOnce("recovered");
+      const open = vi.fn((signal: AbortSignal) =>
+        createMutationPromise(execute, "original-command", { signal }),
+      );
+      const settler = createMutationSettler();
+
+      await expect(settler.settle("sessions.rollback:ses_1", open)).rejects.toBe(failure);
+      expect(execute).toHaveBeenCalledOnce();
+      await expect(settler.settle("sessions.rollback:ses_1", open)).resolves.toBe("recovered");
+      expect(open).toHaveBeenCalledOnce();
+      expect(execute.mock.calls.map(([key]) => key)).toEqual([
+        "original-command",
+        "original-command",
+      ]);
+      settler.dispose();
+    },
+  );
+
   it("replays a timed-out attempt with the same logical mutation", async () => {
     vi.useFakeTimers();
     const retry = vi.fn((_options?: { signal?: AbortSignal }) => resolvedMutation("committed"));

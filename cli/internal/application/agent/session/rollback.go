@@ -270,7 +270,7 @@ func reconcileRollback(
 		result.Outcome = mutation.Confirmed
 		return result, rollbackErr
 	}
-	if pending.Request().HistoryOnly() && !mutation.OutcomeUnknown(rollbackErr) {
+	if (pending.Request().HistoryOnly() && !mutation.OutcomeUnknown(rollbackErr)) || fileRollbackRefused(rollbackErr) {
 		if err := validateBefore(pending, after); err == nil {
 			result.Outcome = mutation.Rejected
 			return result, rollbackErr
@@ -281,6 +281,17 @@ func reconcileRollback(
 		fmt.Errorf("rollback session: %w", rollbackErr),
 		errors.New("authoritative session does not prove whether the rollback committed"),
 	)
+}
+
+func fileRollbackRefused(err error) bool {
+	// The public problem type is the Runtime's settlement fact. Its cause chain
+	// can still include a checkpoint error when clearing the durable intent
+	// failed; that internal_error must remain unknown to this journal.
+	if problem, ok := errors.AsType[protocol.ProblemError](err); ok {
+		kind := problem.Problem().Type
+		return kind == protocol.ErrCheckpointUnavailable.Error() || kind == protocol.ErrCheckpointConflict.Error()
+	}
+	return err == protocol.ErrCheckpointUnavailable || err == protocol.ErrCheckpointConflict
 }
 
 func validateBefore(pending workbench.PendingSessionRollback, snapshot agent.SessionSnapshot) error {

@@ -357,6 +357,10 @@ export const ja: Record<string, string> = {
   "settings.connection.reset": "デフォルトに戻す",
   "settings.connection.status.checking": "Runtime を確認中…",
   "settings.connection.status.reconnecting": "再接続中…",
+  "agent.steer.accepted": "受け付け済み・モデルのコンテキストへの追加待ち",
+  "agent.steer.applied": "モデルのコンテキストに追加済み",
+  "agent.steer.notApplied":
+    "受け付けた指示がモデルのコンテキストに追加される前に実行が終了しました。",
   "agent.inputNotApplied": "未適用",
   "agent.synchronizationIncomplete":
     "実行の同期が完了していません。セッションを開き直して再試行してください。",
@@ -452,6 +456,7 @@ export const ja: Record<string, string> = {
   "agent.runTree.status.finished": "完了",
   "agent.runTree.status.error": "エラー",
   "agent.runTree.status.canceled": "キャンセル済み",
+  "agent.runOutcome.unresolvedEffects": "結果を確認できない操作",
   "agent.runOutcome.canceled": "キャンセル済み",
   "agent.steps_other": "{{count}} ステップ",
   "agent.runTree.action.cancel": "この実行をキャンセル",
@@ -699,8 +704,8 @@ export const ja: Record<string, string> = {
   "providers.fromEnv": "環境変数から",
   "providers.utility.title": "補助モデル",
   "providers.utility.desc":
-    "バックグラウンド作業向けの安価なモデル — 要約、タイトル、事実抽出。未設定時はメインモデルにフォールバックします。 新しい実行に適用されます。",
-  "providers.utility.main": "メインモデルを使う",
+    "要約、タイトル、事実抽出に使うモデルです。未設定時は Runtime の既定モデルを使用します。変更は実行中の処理を含め、次の補助呼び出しから反映されます。",
+  "providers.utility.main": "Runtime の既定モデルを使用",
   "providers.utility.error": "補助モデルを設定できませんでした。",
   "providers.embedding.title": "埋め込みモデル",
   "providers.embedding.desc":
@@ -840,7 +845,7 @@ export const ja: Record<string, string> = {
     "セッションを開くか選択して、そのプロジェクトメモリをレビューしてください。プロジェクト横断のメモリは「ユーザー」に切り替えてください。",
   "agentMemory.error": "メモリを更新できませんでした。",
   "schedules.intro":
-    "保存したプロンプトをスケジュール実行します。ランタイムが稼働している間、各実行は新しいセッションで始まります — 出力はサイドバーで確認できます。",
+    "保存したプロンプトをスケジュール実行します。ランタイムが稼働している間、各実行は新しいセッションで始まります — 出力はサイドバーで確認できます。 無効化や削除は今後のスケジュールを停止します。すでに受け付けた実行は開始される場合があり、別途キャンセルが必要です。",
   "schedules.add": "新しいスケジュール",
   "schedules.save": "保存",
   "schedules.saving": "保存中…",
@@ -852,7 +857,8 @@ export const ja: Record<string, string> = {
   "schedules.edit": "スケジュールを編集",
   "schedules.delete": "スケジュールを削除",
   "schedules.delete.title": "このスケジュールを削除しますか？",
-  "schedules.delete.body": "「{{title}}」とその指示は削除され、元に戻せません。",
+  "schedules.delete.body":
+    "「{{title}}」とその指示は削除され、元に戻せません。 すでに受け付けた実行は開始される場合があり、別途キャンセルが必要です。",
   "schedules.delete.confirm": "削除",
   "schedules.empty": "スケジュールがありません",
   "schedules.empty.sub":
@@ -862,7 +868,8 @@ export const ja: Record<string, string> = {
   "schedules.error.save": "スケジュールを保存できませんでした。",
   "schedules.model.default": "Runtime の既定モデル",
   "schedules.reasoning.default": "モデルの既定値",
-  "schedules.model.hint": "今後のスケジュール実行に適用されます。実行中の処理には影響しません。",
+  "schedules.model.hint":
+    "今後のスケジュールに適用されます。すでに受け付けた実行は受付時の設定を保持します。",
   "schedules.model.unavailable":
     "保存済みモデルが現在の一覧にありません。選択を変更するまで設定は保持されます。",
   "schedules.form.title": "タイトル（任意）",
@@ -901,6 +908,10 @@ export const ja: Record<string, string> = {
   "rpcError.session_busy": "セッションは実行中です — 現在の実行が終わるまで待ってください。",
   "rpcError.checkpoint_unavailable":
     "そのターンにはファイルのチェックポイントがありません — 何も変更されていません。",
+  "rpcError.checkpoint_conflict":
+    "チェックポイントに保存されていないファイルを保護するため、復元を拒否しました。ファイルは変更されていません。",
+  "rpcError.prompt_source_too_large":
+    "指示ファイルがサイズまたは数の上限を超えています。内容を短くするかファイル数を減らして、再試行してください。",
   "rpcError.workspace_unavailable": "そのワークスペースはランタイムのディスク上に存在しません。",
   "rpcError.vcs_unavailable": "このフォルダは git リポジトリではありません。",
   "rpcError.rate_limited":
@@ -1201,5 +1212,6 @@ export const ja: Record<string, string> = {
   "file.change.add": "作業ツリーで追加",
   "file.change.mod": "作業ツリーで変更",
   "file.change.del": "作業ツリーで削除",
+  "file.change.renamed": "{{path}} から名前を変更",
   "file.change.below": "作業ツリーの変更を含む",
 };

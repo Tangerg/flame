@@ -31,6 +31,7 @@ import { DelegatedRunLink } from "./DelegatedRunLink";
 import { renderMessageBlocks, type BlockCtx } from "./BlockRenderer";
 import { MESSAGE_CONTENT_CLASS } from "./messageContent";
 import { messageStyles as ms } from "./messageStyles";
+import { UnresolvedRunEffects } from "./UnresolvedRunEffects";
 
 const styles = stylex.create({
   headLine: { minWidth: 0, flex: 1 },
@@ -159,6 +160,7 @@ function SubagentTranscript({ entry }: { entry: SubagentEntry }) {
         {model.detail && (
           <p {...stylex.props(styles.detail, typeStep.uiSm, toneInk[model.ink])}>{model.detail}</p>
         )}
+        <UnresolvedRunEffects effects={narrative.run.outcome?.unresolvedEffects} />
         {narrative.messages.length === 0 && (
           <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("agent.runTree.material.empty")}</p>
         )}

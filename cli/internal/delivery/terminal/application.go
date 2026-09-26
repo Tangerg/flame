@@ -19,6 +19,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
+	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
@@ -81,6 +82,7 @@ type app struct {
 	operations       *operationOwner
 	session          sessionState
 	execution        executionState
+	steers           steerReceipts
 	dialogs          dialogState
 
 	transcript  *transcriptView
@@ -150,6 +152,7 @@ type appConfig struct {
 	pluginIssues     []extensions.SourceIssue
 	attachments      *attachment.Resolver
 	initialDraft     agent.Message
+	recoveredSteers  []runworkflow.SteerResult
 	settings         settings.Config
 
 	options     agent.RunOptions
@@ -241,6 +244,9 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	a.configureCompletion(appearance)
 	a.registerCommands()
 	a.buildInterface(appearance, cfg.keyBindings.editor)
+	for _, result := range cfg.recoveredSteers {
+		a.steers.accept(result)
+	}
 	a.restore(cfg.snapshot)
 	a.restoreSessionOutbox()
 	_ = a.persistDraft()

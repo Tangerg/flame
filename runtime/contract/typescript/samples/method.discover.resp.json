@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-09-22",
+  "protocolVersion": "2026-09-26",
   "serverInfo": {
     "instanceId": "runtime_019c765b-2f8f-7e36-a2b4-31cb11f48d10",
     "name": "flame",
@@ -111,7 +111,10 @@
       },
       "runtimeSubscription": {
         "maxTopics": 32,
-        "maxWatches": 32
+        "maxWatches": 32,
+        "maxPaths": 256,
+        "maxDirectoryEntries": 10000,
+        "maxFileBytes": 1048576
       }
     }
   }

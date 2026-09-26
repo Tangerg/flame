@@ -94,7 +94,7 @@ func TestMockSteerRevisionExhaustionDoesNotEmitPartialEvent(t *testing.T) {
 	runtime.runs[run.id] = run
 	session.active = run.id
 
-	err := runtime.SteerRun(t.Context(), agent.SteerRun{
+	_, err := runtime.SteerRun(t.Context(), agent.SteerRun{
 		RunID: run.id, SegmentID: segment.id, Message: agent.Message{Text: "do not partially emit"},
 	})
 	if !errors.Is(err, errSessionRevisionExhausted) {
@@ -309,7 +309,7 @@ func TestRuntimePreservesAuthoredMessageTextAcrossRunMutations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := runtime.SteerRun(t.Context(), agent.SteerRun{
+	if _, err := runtime.SteerRun(t.Context(), agent.SteerRun{
 		RunID: opened.RunID, SegmentID: continued.SegmentID,
 		Message: agent.Message{Text: steerText},
 	}); err != nil {

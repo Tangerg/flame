@@ -3,6 +3,7 @@ package terminal
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -184,6 +185,7 @@ func TestSkillCatalogLifecycleAndProposalReviewCommands(t *testing.T) {
 	host.Type("/skill-approve user/release-checks")
 	host.Press(input.Enter)
 	host.Shows(t, "Approve Skill proposal")
+	host.Shows(t, "Run every release gate.")
 	if !host.Resize(1, 1) || !host.Repaint() || !host.Resize(96, 28) {
 		t.Fatal("skill proposal confirmation did not survive a minimal viewport")
 	}
@@ -199,6 +201,7 @@ func TestSkillCatalogLifecycleAndProposalReviewCommands(t *testing.T) {
 	host.Type("/skill-reject project/cleanup")
 	host.Press(input.Enter)
 	host.Shows(t, "Reject Skill proposal")
+	host.Shows(t, "Remove only generated output.")
 	host.Press(input.Down)
 	host.Press(input.Enter)
 	host.Shows(t, "rejecting skill proposal complete · project/cleanup")
@@ -207,6 +210,80 @@ func TestSkillCatalogLifecycleAndProposalReviewCommands(t *testing.T) {
 		t.Fatalf("rejected decision = %+v", rejected)
 	}
 	stop()
+}
+
+func TestSkillProposalFinalReviewShowsTheExactResolvedRevision(t *testing.T) {
+	service := newSkillServiceStub()
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Skills: service})
+	defer stop()
+	host.Shows(t, "Ask flame")
+	host.Type("/skill-proposals")
+	host.Press(input.Enter)
+	host.Shows(t, "Run every release gate.")
+	host.Press(input.Esc)
+	host.Shows(t, "Ask flame")
+
+	revision := strings.Repeat("a", 64)
+	service.mu.Lock()
+	service.proposals[0].Revision = revision
+	service.proposals[0].Instructions = "Review the replacement instructions before publishing."
+	service.mu.Unlock()
+	host.Type("/skill-approve user/release-checks")
+	host.Press(input.Enter)
+	host.Shows(t, "Review the replacement instructions before publishing.")
+	host.Hides(t, "Run every release gate.")
+	host.Shows(t, revision)
+	host.Press(input.Down)
+	host.Press(input.Enter)
+	decision := awaitValue(t, service.decisions, "reviewed revision approval")
+	if decision.reference.Revision != revision {
+		t.Fatalf("approved revision = %q, want reviewed %q", decision.reference.Revision, revision)
+	}
+}
+
+func TestSkillProposalChangeAfterFinalReviewCannotApproveUnseenContent(t *testing.T) {
+	service := newSkillServiceStub()
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Skills: service})
+	defer stop()
+	host.Shows(t, "Ask flame")
+	host.Type("/skill-approve user/release-checks")
+	host.Press(input.Enter)
+	host.Shows(t, "Run every release gate.")
+	service.mu.Lock()
+	service.proposals[0].Revision = strings.Repeat("b", 64)
+	service.proposals[0].Instructions = "Unreviewed replacement."
+	service.mu.Unlock()
+	host.Press(input.Down)
+	host.Press(input.Enter)
+	host.Shows(t, "approving skill proposal failed: proposal changed")
+	select {
+	case decision := <-service.decisions:
+		t.Fatalf("approved unseen proposal: %+v", decision)
+	default:
+	}
+}
+
+func TestSkillProposalFinalReviewCanScrollToCompleteInstructions(t *testing.T) {
+	service := newSkillServiceStub()
+	service.proposals[0].Instructions = strings.Repeat("A complete instruction line.\n", 80) + "Final instruction must remain reviewable."
+	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Skills: service})
+	defer stop()
+	host.Shows(t, "Ask flame")
+	host.Type("/skill-approve user/release-checks")
+	host.Press(input.Enter)
+	host.Shows(t, "Approve Skill proposal")
+	for range 12 {
+		host.Press(input.PageDown)
+	}
+	host.Shows(t, "Final instruction must remain reviewable.")
+	host.Shows(t, "Approve and publish")
+	host.Press(input.Esc)
+	host.Shows(t, "Ask flame")
+	select {
+	case decision := <-service.decisions:
+		t.Fatalf("reading dispatched a decision: %+v", decision)
+	default:
+	}
 }
 
 func TestSkillLifecycleDoesNotReportSuccessWhenManagedCatalogIsUnchanged(t *testing.T) {

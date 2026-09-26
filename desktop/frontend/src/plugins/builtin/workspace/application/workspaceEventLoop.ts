@@ -35,11 +35,19 @@ export interface WorkspaceEventLoop {
   retarget(target: WorkspaceWatchTarget): void;
 }
 
-export type WorkspaceWatchTarget = { type: "none" } | { type: "workspace"; cwd?: string };
+export interface WorkspaceReadTarget {
+  cwd?: string;
+  paths: readonly string[];
+}
+
+export type WorkspaceWatchTarget = ({ type: "none" } | { type: "workspace"; cwd?: string }) & {
+  reads?: readonly WorkspaceReadTarget[];
+};
 
 function sameTarget(left: WorkspaceWatchTarget, right: WorkspaceWatchTarget): boolean {
   return (
     left.type === right.type &&
+    JSON.stringify(left.reads ?? []) === JSON.stringify(right.reads ?? []) &&
     (left.type === "none" || right.type === "none" || left.cwd === right.cwd)
   );
 }

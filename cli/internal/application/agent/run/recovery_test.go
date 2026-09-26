@@ -42,7 +42,7 @@ func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
 	}
 }
 
-func TestRecoverAttachesBeforeReadingALiveRun(t *testing.T) {
+func TestRecoverInstallsTheSnapshotSubscriptionHeadForALiveRun(t *testing.T) {
 	runtime := runtimefixture.New()
 	runtime.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
@@ -74,7 +74,7 @@ func TestRecoverAttachesBeforeReadingALiveRun(t *testing.T) {
 	}
 }
 
-func TestAttachSessionPerformsTheHeadAttachmentBeforeItsAuthoritativeRead(t *testing.T) {
+func TestAttachSessionUsesTheSubscriptionSnapshotWithoutASecondMaterialRead(t *testing.T) {
 	runtime := runtimefixture.New()
 	runtime.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
@@ -95,7 +95,7 @@ func TestAttachSessionPerformsTheHeadAttachmentBeforeItsAuthoritativeRead(t *tes
 	if recovered.Run.ID != opened.RunID || recovered.Stream.Events == nil {
 		t.Fatalf("attached state = %+v", recovered)
 	}
-	if got := observed.snapshot(); !slices.Equal(got, []string{"read", "attach", "read"}) {
+	if got := observed.snapshot(); !slices.Equal(got, []string{"read", "snapshot subscribe"}) {
 		t.Fatalf("recovery operations = %v", got)
 	}
 	if _, err := runtime.CancelRun(t.Context(), agent.CancelRun{RunID: opened.RunID, Reason: "test complete"}); err != nil {
@@ -228,7 +228,11 @@ func (o *orderedSource) GetSession(ctx context.Context, id string) (agent.Sessio
 }
 
 func (o *orderedSource) SubscribeRun(ctx context.Context, request agent.SubscribeRun) (agent.SegmentStream, error) {
-	o.record("attach")
+	if request.Snapshot && request.SessionID != "" && request.AfterEventID == "" {
+		o.record("snapshot subscribe")
+	} else {
+		o.record("attach")
+	}
 	return o.source.SubscribeRun(ctx, request)
 }
 

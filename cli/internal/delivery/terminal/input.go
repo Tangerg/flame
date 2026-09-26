@@ -168,7 +168,7 @@ func isEscapeEvent(event input.Event) bool {
 }
 
 func (a *app) handleEscape() bool {
-	if a.execution.blocksAdmission() {
+	if a.execution.blocksAdmission() || a.operations.Active(inputPreparationOperation) {
 		a.confirmation.Reset()
 		a.cancel()
 		return true
@@ -237,7 +237,7 @@ func (a *app) handleGlobalAction(action keymap.Action) bool {
 }
 
 func (a *app) handleCancelGesture() {
-	if a.dialogs.approval != nil || a.dialogs.questionnaire != nil {
+	if a.dialogs.approval != nil || a.dialogs.questionnaire != nil || a.operations.Active(inputPreparationOperation) {
 		a.cancel()
 		return
 	}

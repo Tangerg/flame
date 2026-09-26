@@ -192,6 +192,7 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
             data: [
               { path: "src/a.ts", status: "modified", added: 3, removed: 1 },
               { path: "logo.png", status: "untracked", binary: true },
+              { path: "new.png", previousPath: "old.png", status: "renamed", binary: true },
             ],
           },
         ],
@@ -202,6 +203,14 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
     expect(rows).toEqual([
       { path: "src/a.ts", change: "mod", added: 3, removed: 1, binary: undefined },
       { path: "logo.png", change: "add", added: undefined, removed: undefined, binary: true },
+      {
+        path: "new.png",
+        previousPath: "old.png",
+        change: "renamed",
+        added: undefined,
+        removed: undefined,
+        binary: true,
+      },
     ]);
   });
 

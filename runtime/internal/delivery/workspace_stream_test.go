@@ -85,6 +85,7 @@ func TestWorkspaceHubEndsOnlyTheSubscriptionWhoseExactSequenceSpaceIsExhausted(t
 	var delivered []protocol.RuntimeEvent
 	for event, err := range subscriptionEventSequence(
 		exhaustingEvents,
+		nil,
 		exhausting.exhausted,
 		func() { hub.drained(exhausting) },
 		func() {

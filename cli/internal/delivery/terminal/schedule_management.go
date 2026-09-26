@@ -115,7 +115,7 @@ func (a *app) PrepareDeleteSchedule(identity string) error {
 		if title == "" {
 			title = scheduled.ID
 		}
-		a.confirmAction("Delete scheduled run", "Delete "+title+" ("+scheduled.ID+")?", "Delete permanently", func() {
+		a.confirmAction("Delete scheduled run", "Delete "+title+" ("+scheduled.ID+")? Already claimed runs may still start.", "Delete permanently", func() {
 			a.deleteSchedule(scheduled.ID)
 		})
 	})
@@ -223,7 +223,11 @@ func (a *app) updateSchedule(request protocol.UpdateScheduleRequest, label strin
 				a.message(label + " failed: " + err.Error())
 				return
 			}
-			a.reportScheduleMutation("schedule updated · "+updated.ID, presentation)
+			message := "schedule updated · " + updated.ID
+			if request.Enabled != nil && !*request.Enabled {
+				message += " · already claimed runs may still start"
+			}
+			a.reportScheduleMutation(message, presentation)
 		},
 	)
 	if !started {

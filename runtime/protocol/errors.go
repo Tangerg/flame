@@ -169,9 +169,13 @@ var (
 	ErrWorkspaceUnavailable  = errors.New("workspace_unavailable")
 	ErrCapabilityNotNeg      = errors.New("capability_not_negotiated")
 	ErrCheckpointUnavailable = errors.New("checkpoint_unavailable")
-	ErrUnsupportedMime       = errors.New("unsupported_mime")
-	ErrPathOutsideRoot       = errors.New("path_outside_root")
-	ErrInterruptNotOpen      = errors.New("interrupt_not_open")
+	// ErrCheckpointConflict is a definitive file-restore refusal: checkout did
+	// not start and the Runtime has cleared this request's recovery intent.
+	ErrCheckpointConflict   = errors.New("checkpoint_conflict")
+	ErrPromptSourceTooLarge = errors.New("prompt_source_too_large")
+	ErrUnsupportedMime      = errors.New("unsupported_mime")
+	ErrPathOutsideRoot      = errors.New("path_outside_root")
+	ErrInterruptNotOpen     = errors.New("interrupt_not_open")
 	// ErrSessionHasActiveRun: runs.start found the session already holding a
 	// non-terminal root run. The runtime does NOT cancel it — which run continues is
 	// a decision only the person can make, and an implicit cancel would throw work

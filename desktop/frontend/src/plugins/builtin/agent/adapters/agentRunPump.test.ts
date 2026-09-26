@@ -19,6 +19,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   nextFrame = 0;
 });
@@ -82,6 +84,115 @@ function pumpWith(
 }
 
 describe("agent run pump reattach", () => {
+  it("bounds successful acknowledgements followed by EOF at the same opaque cursor", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const positions: RunStreamPosition[] = [];
+    const onSynchronizationFailed = vi.fn();
+    const applyEvents = vi.fn(() => true);
+    const pump = createAgentRunPump({
+      sessionId: "ses_1",
+      isCancelled: () => false,
+      readEpoch: () => 0n,
+      applyEvents,
+      onSynchronizationFailed,
+      reattach: async (position) => {
+        positions.push(position);
+        return { ...streamOf([], "opaque:cursor"), cursor: "opaque:cursor" };
+      },
+    });
+    const settled = pump
+      .pump(streamOf([], "opaque:cursor"), new AbortController().signal)
+      .catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(99);
+    expect(positions).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(positions).toHaveLength(1);
+    await vi.runAllTimersAsync();
+    expect(await settled).toMatchObject({
+      message: expect.stringContaining("run synchronization incomplete"),
+    });
+    expect(positions.map(({ recovery }) => recovery)).toEqual(["replay", "replay", "cold"]);
+    expect(positions.every(({ lastEventId }) => lastEventId === "opaque:cursor")).toBe(true);
+    expect(applyEvents).not.toHaveBeenCalled();
+    expect(onSynchronizationFailed).toHaveBeenCalledOnce();
+    expect(pump.isActive()).toBe(false);
+  });
+
+  it("resets no-progress recovery when a folded fact advances the opaque cursor", async () => {
+    vi.useFakeTimers();
+    let attempts = 0;
+    const { pump, positions } = pumpWith((position) =>
+      Promise.resolve({
+        ...streamOf(
+          ++attempts === 2
+            ? [frame("new-cursor", progressed)]
+            : attempts === 4
+              ? [frame("terminal", finished)]
+              : [],
+        ),
+        cursor: position.lastEventId,
+      }),
+    );
+    const settled = pump.pump(streamOf([], "initial"), new AbortController().signal);
+    await vi.runAllTimersAsync();
+    await settled;
+    expect(positions).toHaveLength(4);
+    expect(positions.every(({ recovery }) => recovery === "replay")).toBe(true);
+    expect(positions.at(-1)?.lastEventId).toBe("new-cursor");
+  });
+
+  it("gives a later outage a fresh cold budget after genuine progress", async () => {
+    vi.useFakeTimers();
+    let attempts = 0;
+    const { pump, positions } = pumpWith((position) =>
+      Promise.resolve({
+        ...streamOf(
+          ++attempts === 3
+            ? [frame("new-cursor", progressed)]
+            : attempts === 7
+              ? [frame("terminal", finished)]
+              : [],
+        ),
+        cursor: position.lastEventId,
+      }),
+    );
+    const settled = pump.pump(streamOf([], "initial"), new AbortController().signal);
+    await vi.runAllTimersAsync();
+    await settled;
+    expect(positions.filter(({ recovery }) => recovery === "cold")).toHaveLength(2);
+  });
+
+  it("cancels the local backoff without reopening the stream", async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const { pump, positions } = pumpWith(async () => null);
+    const settled = pump.pump(streamOf([], "cursor"), controller.signal);
+    await vi.advanceTimersByTimeAsync(25);
+    controller.abort();
+    await settled;
+    expect(positions).toHaveLength(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("stops a second invalid stream and retains its request diagnostic", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const failure = new RpcProtocolError("event", [], "request-second");
+    const invalid = (): RunStream => ({
+      result: { runId: RUN, segmentId: SEGMENT },
+      events: { [Symbol.asyncIterator]: () => ({ next: () => Promise.reject(failure) }) },
+    });
+    const { pump, positions } = pumpWith(async () => ({ ...invalid(), cursor: "" }));
+    const settled = pump
+      .pump(invalid(), new AbortController().signal)
+      .catch((error: unknown) => error);
+    await vi.runAllTimersAsync();
+    expect(await settled).toMatchObject({ cause: failure });
+    expect(positions).toHaveLength(1);
+    expect(positions[0]?.recovery).toBe("cold");
+  });
+
   it("resumes from the last event it folded when a stream ends without a terminal", async () => {
     const { pump, positions } = pumpWith((position) =>
       Promise.resolve({ ...streamOf([frame("evt_9", finished)]), cursor: position.lastEventId }),

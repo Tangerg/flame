@@ -1,6 +1,7 @@
 package statefile
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -104,7 +105,7 @@ func TestStoreRejectsUnsafeNamesAndNonRegularState(t *testing.T) {
 	}
 }
 
-func TestStoreRejectsSymlinkReplacementAndRecoversARecreatedRoot(t *testing.T) {
+func TestStoreRejectsSymlinksAndRequiresReopenAfterRootReplacement(t *testing.T) {
 	parent := t.TempDir()
 	configured := filepath.Join(parent, "state")
 	store := openStore(t, configured)
@@ -136,15 +137,22 @@ func TestStoreRejectsSymlinkReplacementAndRecoversARecreatedRoot(t *testing.T) {
 	if err := os.Mkdir(configured, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Replace(filepath.Join("sessions", "two.json"), []byte("inside")); err != nil {
+	if err := store.Replace(filepath.Join("sessions", "two.json"), []byte("inside")); err == nil {
+		t.Fatal("live Store switched ownership to a replacement root")
+	}
+	if entries, err := os.ReadDir(configured); err != nil || len(entries) != 0 {
+		t.Fatalf("replacement root received old owner state: %v, %v", entries, err)
+	}
+	reopened := openStore(t, configured)
+	if err := reopened.Replace(filepath.Join("sessions", "two.json"), []byte("inside")); err != nil {
 		t.Fatal(err)
 	}
-	body, err := store.Read(filepath.Join("sessions", "two.json"), 16)
+	body, err := reopened.Read(filepath.Join("sessions", "two.json"), 16)
 	if err != nil || string(body) != "inside" {
 		t.Fatalf("Read() = %q, %v", body, err)
 	}
 	if _, err := os.Stat(filepath.Join(configured, "sessions", "two.json")); err != nil {
-		t.Fatalf("state was not written through rebound root: %v", err)
+		t.Fatalf("new owner did not write the replacement root: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(pinned, "sessions", "one.json")); err != nil {
 		t.Fatalf("original pinned state was damaged: %v", err)
@@ -177,6 +185,64 @@ func TestOpenRequiresAnAbsoluteRoot(t *testing.T) {
 	for _, root := range []string{"", "   ", "relative"} {
 		if _, err := Open(root); err == nil {
 			t.Fatalf("Open(%q) unexpectedly succeeded", root)
+		}
+	}
+}
+
+func TestAdmittedReplacementKeepsItsDirectoryAfterStoreClose(t *testing.T) {
+	root := t.TempDir()
+	store := openStore(t, root)
+	// Pause an admitted write before its file I/O, then retire the Store. Its
+	// independently pinned directory remains owned by that one operation.
+	directory, base, err := store.replacementDirectory("inputs/prepared.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = directory.Close() }()
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	body := []byte("complete input after owner close")
+	if err := replaceStateFile(directory, base, body); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(root, "inputs", "prepared.json"))
+	if err != nil || !slices.Equal(got, body) {
+		t.Fatalf("admitted replacement lost its pinned directory: %q, %v", got, err)
+	}
+	if err := store.Replace("late.json", body); err == nil {
+		t.Fatal("closed Store admitted a new replacement")
+	}
+}
+
+func TestConcurrentReplacementsPublishWholeFiles(t *testing.T) {
+	root := t.TempDir()
+	store := openStore(t, root)
+	bodies := [][]byte{bytes.Repeat([]byte("a"), 64<<10), bytes.Repeat([]byte("b"), 64<<10)}
+	if err := store.Replace("shared.json", bodies[0]); err != nil {
+		t.Fatal(err)
+	}
+	finished := make(chan error, len(bodies))
+	for _, body := range bodies {
+		go func() {
+			for range 8 {
+				if err := store.Replace("shared.json", body); err != nil {
+					finished <- err
+					return
+				}
+			}
+			finished <- nil
+		}()
+	}
+	for range 32 {
+		got, err := os.ReadFile(filepath.Join(root, "shared.json"))
+		if err != nil || (!bytes.Equal(got, bodies[0]) && !bytes.Equal(got, bodies[1])) {
+			t.Fatalf("concurrent replacement exposed partial bytes: length %d, %v", len(got), err)
+		}
+	}
+	for range bodies {
+		if err := <-finished; err != nil {
+			t.Fatal(err)
 		}
 	}
 }

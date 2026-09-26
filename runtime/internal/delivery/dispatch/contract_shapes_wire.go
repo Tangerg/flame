@@ -423,12 +423,12 @@ func registerArtifactUnions(s *Shapes) {
 		GoType:        typeOf[protocol.ArtifactOutcome](),
 		Discriminator: "type",
 		Variants: []VariantSpec{
-			{Tag: string(protocol.ArtifactOutcomeCompleted)},
+			{Tag: string(protocol.ArtifactOutcomeCompleted), Optional: []string{"unresolvedEffects"}},
 			{
-				Tag: string(protocol.ArtifactOutcomeTimedOut), Required: []string{"error"},
+				Tag: string(protocol.ArtifactOutcomeTimedOut), Required: []string{"error"}, Optional: []string{"unresolvedEffects"},
 				AllowedValues: allowedArtifactProblemTypes("error.type", protocol.ArtifactProblemTimeout),
 			}, {
-				Tag: string(protocol.ArtifactOutcomeFailed), Required: []string{"error"},
+				Tag: string(protocol.ArtifactOutcomeFailed), Required: []string{"error"}, Optional: []string{"unresolvedEffects"},
 				AllowedValues: allowedArtifactProblemTypes(
 					"error.type",
 					protocol.ArtifactProblemInternalError,
@@ -440,9 +440,9 @@ func registerArtifactUnions(s *Shapes) {
 					protocol.ArtifactProblemProviderRejected,
 				),
 			},
-			{Tag: string(protocol.ArtifactOutcomeCanceled), Optional: []string{"detail"}},
+			{Tag: string(protocol.ArtifactOutcomeCanceled), Optional: []string{"detail", "unresolvedEffects"}},
 			{
-				Tag: string(protocol.ArtifactOutcomeLost), Required: []string{"error"},
+				Tag: string(protocol.ArtifactOutcomeLost), Required: []string{"error"}, Optional: []string{"unresolvedEffects"},
 				AllowedValues: allowedArtifactProblemTypes("error.type", protocol.ArtifactProblemRunLost),
 			},
 		},

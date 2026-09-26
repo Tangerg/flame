@@ -16,7 +16,6 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
@@ -36,8 +35,6 @@ func NewGitWatcher(lifetime context.Context) GitWatcher {
 	return GitWatcher{lifetime: lifetime}
 }
 
-var _ workspaceapp.GitStateWatcher = GitWatcher{}
-
 const gitWatchDebounce = 200 * time.Millisecond
 
 const gitObservationTimeout = 10 * time.Second
@@ -45,7 +42,7 @@ const gitObservationTimeout = 10 * time.Second
 // Watch observes every distinct repository reached from roots. A
 // non-repository root is intentionally inert: its diff view is unavailable as
 // well, but the surrounding workspace subscription remains valid.
-func (g GitWatcher) Watch(roots []string, notify func()) (io.Closer, error) {
+func (g GitWatcher) Watch(roots []string, notify func([]string), report func(error)) (io.Closer, error) {
 	if g.lifetime == nil {
 		return nil, errors.New("workspace: Git watcher lifetime is required")
 	}
@@ -65,24 +62,12 @@ func (g GitWatcher) Watch(roots []string, notify func()) (io.Closer, error) {
 		return nil, err
 	}
 	w := &gitWatch{
-		fsw: fsw, notify: notify, repositories: repositories, lifetime: lifetime, stop: stop,
+		fsw: fsw, notify: notify, report: report, repositories: repositories, lifetime: lifetime, stop: stop,
 		done: make(chan struct{}), exited: make(chan struct{}),
 	}
-	addedDirectories := make(map[string]struct{})
-	for _, repository := range repositories {
-		// The per-worktree git directory owns HEAD/index, while the common
-		// directory owns packed refs and branch tips. They are identical for an
-		// ordinary checkout and distinct for `git worktree` checkouts.
-		for _, gitDir := range []string{repository.gitDir, repository.commonDir} {
-			if err := addGitWatch(fsw, addedDirectories, gitDir, false); err != nil {
-				stop()
-				return nil, closeFailedWatch(fsw, err)
-			}
-		}
-		if err := addGitWatch(fsw, addedDirectories, filepath.Join(repository.commonDir, "refs", "heads"), true); err != nil {
-			stop()
-			return nil, closeFailedWatch(fsw, err)
-		}
+	if err := w.reconcileDirectories(); err != nil {
+		stop()
+		return nil, closeFailedWatch(fsw, err)
 	}
 	go w.run()
 	return w, nil
@@ -186,7 +171,8 @@ func addGitWatch(watcher *fsnotify.Watcher, added map[string]struct{}, directory
 
 type gitWatch struct {
 	fsw          *fsnotify.Watcher
-	notify       func()
+	notify       func([]string)
+	report       func(error)
 	repositories []watchedRepository
 	lifetime     context.Context
 	stop         context.CancelFunc
@@ -196,18 +182,25 @@ type gitWatch struct {
 }
 
 func (g *gitWatch) run() {
-	defer recoverWatchDefect()
 	defer close(g.exited)
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			slog.Error("workspace: git watch panicked", "panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+			g.fail(errors.New("git observation stopped after a defect"))
+		}
+	}()
 	timer := time.NewTimer(gitWatchDebounce)
 	defer timer.Stop()
 	timer.Stop()
 	armed := false
+	failures := 0
 	for {
 		select {
 		case <-g.done:
 			return
 		case _, ok := <-g.fsw.Events:
 			if !ok {
+				g.fail(errors.New("git observation channel closed"))
 				return
 			}
 			if !armed {
@@ -216,6 +209,7 @@ func (g *gitWatch) run() {
 			}
 		case err, ok := <-g.fsw.Errors:
 			if !ok {
+				g.fail(errors.New("git observation channel closed"))
 				return
 			}
 			slog.ErrorContext(g.lifetime, "workspace: git watcher notification failed", "error", err)
@@ -227,14 +221,44 @@ func (g *gitWatch) run() {
 		case <-timer.C:
 			armed = false
 			changed, err := g.semanticStateChanged()
+			err = errors.Join(err, g.reconcileDirectories())
 			if err != nil && g.lifetime.Err() == nil {
 				slog.ErrorContext(g.lifetime, "workspace: read watched git state failed", "error", err)
+				failures++
+				if failures >= 5 {
+					g.fail(fmt.Errorf("git observation failed after retries: %w", err))
+					return
+				}
+				timer.Reset(gitWatchDebounce << failures)
+				armed = true
+			} else {
+				failures = 0
 			}
-			if changed && g.notify != nil {
-				g.notify()
+			if len(changed) > 0 && g.notify != nil {
+				g.notify(changed)
 			}
 		}
 	}
+}
+
+// The backend drops registrations when directories disappear. Reconcile its
+// current handles after sampling so a recreated Git directory remains observed.
+func (g *gitWatch) reconcileDirectories() error {
+	registered := make(map[string]struct{})
+	for _, directory := range g.fsw.WatchList() {
+		registered[directory] = struct{}{}
+	}
+	for _, repository := range g.repositories {
+		for _, directory := range []string{repository.gitDir, repository.commonDir} {
+			if err := addGitWatch(g.fsw, registered, directory, false); err != nil {
+				return err
+			}
+		}
+		if err := addGitWatch(g.fsw, registered, filepath.Join(repository.commonDir, "refs", "heads"), true); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // semanticStateChanged distinguishes Git state from Git's storage mechanics.
@@ -242,8 +266,8 @@ func (g *gitWatch) run() {
 // HEAD and every staged entry are identical. Publishing that replacement as a
 // change lets a diff refetch wake its own watcher forever. The watcher therefore
 // compares the committed HEAD and stage entries that clients can actually read.
-func (g *gitWatch) semanticStateChanged() (bool, error) {
-	changed := false
+func (g *gitWatch) semanticStateChanged() ([]string, error) {
+	var changed []string
 	var failures []error
 	for index := range g.repositories {
 		repository := &g.repositories[index]
@@ -253,7 +277,7 @@ func (g *gitWatch) semanticStateChanged() (bool, error) {
 			continue
 		}
 		if next != repository.fingerprint {
-			changed = true
+			changed = append(changed, repository.root)
 		}
 		repository.fingerprint = next
 	}
@@ -317,11 +341,8 @@ type nopWatch struct{}
 
 func (nopWatch) Close() error { return nil }
 
-// recoverWatchDefect keeps a defect in this detached watch from ending the
-// process. The watch stops, which every consumer already treats as a watch that
-// is no longer reporting; the stack goes to the operator.
-func recoverWatchDefect() {
-	if recovered := recover(); recovered != nil {
-		slog.Error("workspace: git watch panicked", "panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+func (g *gitWatch) fail(err error) {
+	if g.lifetime.Err() == nil && g.report != nil {
+		g.report(err)
 	}
 }

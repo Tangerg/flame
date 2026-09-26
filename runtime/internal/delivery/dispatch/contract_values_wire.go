@@ -920,6 +920,13 @@ func registerRuntimeValues(s *Shapes) {
 			{Field: "topics", Kind: ConstraintUniqueItems},
 		},
 	})
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.WatchSpec](),
+		Constraints: []FieldConstraint{
+			{Field: "paths", Kind: ConstraintNonEmptyItems},
+			{Field: "paths", Kind: ConstraintUniqueItems},
+		},
+	})
 
 	// Sequence zero is the sentinel before the hub assigns a frame. Every array is
 	// a narrowing set: when present it names at least one unique resource. Variant
@@ -1000,6 +1007,9 @@ func registerRuntimeValues(s *Shapes) {
 		Constraints: []FieldConstraint{
 			{Field: "maxTopics", Kind: ConstraintPositive},
 			{Field: "maxWatches", Kind: ConstraintPositive},
+			{Field: "maxPaths", Kind: ConstraintPositive},
+			{Field: "maxDirectoryEntries", Kind: ConstraintPositive},
+			{Field: "maxFileBytes", Kind: ConstraintPositive},
 		},
 	})
 }

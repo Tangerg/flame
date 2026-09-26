@@ -152,6 +152,10 @@ func (r *Runtime) GetSession(ctx context.Context, id string) (agent.SessionSnaps
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	return r.sessionSnapshotLocked(id)
+}
+
+func (r *Runtime) sessionSnapshotLocked(id string) (agent.SessionSnapshot, error) {
 	state, ok := r.sessions[id]
 	if !ok {
 		return agent.SessionSnapshot{}, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, id)

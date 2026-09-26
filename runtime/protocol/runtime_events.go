@@ -103,6 +103,12 @@ type RuntimeSubscribeRequest struct {
 type WatchSpec struct {
 	WatchID   string       `json:"watchId"`
 	Workspace WorkspaceRef `json:"workspace"`
+	// Paths are exact workspace-relative targets; "." selects its root directory.
+	// Files observe content up to the advertised byte budget, then metadata.
+	// Directories observe immediate entry metadata only, never recursive content.
+	// Missing targets remain observed through their nearest existing parent.
+	// Omission requests Git metadata observation without content targets.
+	Paths []string `json:"paths,omitempty"`
 }
 
 // RuntimeSubscribeResponse is the (empty) streaming ack — the first frame of the

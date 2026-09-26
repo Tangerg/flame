@@ -57,6 +57,25 @@ func (r *observationRoots) access(boundary, physical string) (*os.Root, string, 
 		return nil, "", false, err
 	}
 	root := r.byBoundary[boundary]
+	if root != nil {
+		named, err := os.Stat(boundary)
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, "", false, nil
+		}
+		if err != nil {
+			return nil, "", false, fmt.Errorf("inspect observation boundary %q: %w", boundary, err)
+		}
+		pinned, err := root.Stat(".")
+		if err != nil {
+			return nil, "", false, fmt.Errorf("inspect pinned observation boundary %q: %w", boundary, err)
+		}
+		if !os.SameFile(named, pinned) {
+			// Reconciliation must not mix a new pathname with the old directory
+			// handle. Report the lost binding before a retry can pin its successor.
+			r.byBoundary[boundary] = nil
+			return nil, "", false, errors.Join(fmt.Errorf("observation boundary %q was replaced", boundary), root.Close())
+		}
+	}
 	if root == nil {
 		// A catalog may not exist until its first authored file. Pin its boundary
 		// when it appears; until then the observer watches the existing ancestor.

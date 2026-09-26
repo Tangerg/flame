@@ -28,6 +28,7 @@ const CHANGE_MARK: Record<WorkspaceFileChange["change"], string> = {
   add: "A",
   mod: "M",
   del: "D",
+  renamed: "R",
 };
 
 const ft = stylex.create({
@@ -42,6 +43,7 @@ const ft = stylex.create({
   add: { color: color.success },
   mod: { color: color.warning },
   del: { color: color.negative },
+  renamed: { color: color.warning },
   dirMark: {
     height: space.s1_5,
     width: space.s1_5,
@@ -53,7 +55,7 @@ const ft = stylex.create({
 interface TreeContext {
   cwd?: string;
   focusedPath: string | null;
-  changes: ReadonlyMap<string, WorkspaceFileChange["change"]>;
+  changes: ReadonlyMap<string, WorkspaceFileChange>;
   onFocusPath: (path: string) => void;
   onSelectFile: (path: string) => void;
 }
@@ -82,7 +84,9 @@ function TreeNode({
   const dirChanged = isDir && changedBelow(tree.changes, entry.path);
   const statusId = useId();
   const status = change
-    ? t(`file.change.${change}`)
+    ? change.change === "renamed"
+      ? t("file.change.renamed", { path: change.previousPath ?? "" })
+      : t(`file.change.${change.change}`)
     : dirChanged
       ? t("file.change.below")
       : undefined;
@@ -112,7 +116,7 @@ function TreeNode({
       aria-label={entry.name}
       aria-describedby={status ? statusId : undefined}
       aria-current={selected ? "true" : undefined}
-      title={entry.path}
+      title={change?.previousPath ? `${change.previousPath} → ${entry.path}` : entry.path}
       onFocus={() => tree.onFocusPath(entry.path)}
     >
       {isDir ? (
@@ -129,10 +133,19 @@ function TreeNode({
         size="sm"
         className={stylex.props(vocab.hold, vocab.muted).className}
       />
-      <span {...stylex.props(vocab.truncate, ft.name)}>{entry.name}</span>
+      <span {...stylex.props(vocab.truncate, ft.name)}>
+        {entry.name}
+        {change?.previousPath && (
+          <span {...stylex.props(vocab.muted)}> ← {change.previousPath}</span>
+        )}
+      </span>
       {change && (
-        <span aria-hidden title={status} {...stylex.props(ft.mark, ft[change], typeStep.uiXs)}>
-          {CHANGE_MARK[change]}
+        <span
+          aria-hidden
+          title={status}
+          {...stylex.props(ft.mark, ft[change.change], typeStep.uiXs)}
+        >
+          {CHANGE_MARK[change.change]}
         </span>
       )}
       {dirChanged && <span aria-hidden title={status} {...stylex.props(ft.dirMark, corner.pill)} />}

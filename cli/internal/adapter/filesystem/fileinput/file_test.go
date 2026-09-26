@@ -58,6 +58,23 @@ func TestOpenExpectedRejectsReplacement(t *testing.T) {
 	}
 }
 
+func TestOpenExpectedRejectsAnInPlaceChangeBeforeOpening(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "input")
+	if err := os.WriteFile(path, []byte("first"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("same inode, different input"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := OpenExpected(path, expected, 0); !errors.Is(err, ErrChanged) {
+		t.Fatalf("OpenExpected changed source = %v, want ErrChanged", err)
+	}
+}
+
 func TestSameVersionRequiresStableIdentityAndMetadata(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "input")

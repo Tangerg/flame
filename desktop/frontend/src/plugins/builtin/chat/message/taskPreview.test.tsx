@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen } from "@testing-library/react";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import { ToolCard } from "@/plugins/builtin/chat/tools/public/rendering";
@@ -33,6 +33,7 @@ describe("delegated reply preview", () => {
       />,
     );
 
+    await act(async () => vi.dynamicImportSettled());
     expect(await screen.findByRole("heading", { name: "Audit reply" })).toBeTruthy();
     expect(screen.getByText("Finding 20.")).toBeTruthy();
     expect(screen.getByRole("region", { name: tool.fn }).tabIndex).toBe(0);

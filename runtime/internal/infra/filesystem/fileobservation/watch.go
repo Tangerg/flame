@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
@@ -25,6 +26,9 @@ type Target struct {
 	Path     string
 	Boundary string
 	MaxBytes int64
+	// MaxEntries enables observation of a directory's immediate entry metadata.
+	// It never follows child directories or reads child file contents.
+	MaxEntries int
 }
 
 // Observation owns one live exact-path observation and can accept selected
@@ -77,6 +81,7 @@ type target struct {
 	path             string
 	physicalBoundary string
 	maxBytes         int64
+	maxEntries       int
 }
 
 // openObservation opens the roots a canonical target set needs and the
@@ -138,13 +143,16 @@ func canonicalTarget(index int, candidate Target) (target, error) {
 	if candidate.MaxBytes <= 0 {
 		return target{}, fmt.Errorf("observe files: target %d byte limit must be positive", index)
 	}
+	if candidate.MaxEntries < 0 {
+		return target{}, fmt.Errorf("observe files: target %d entry limit must not be negative", index)
+	}
 	boundary, err := resolveTargetBoundary(index, candidate.Boundary)
 	if err != nil {
 		return target{}, err
 	}
 	return target{
 		key: candidate.Key, path: filepath.Clean(candidate.Path),
-		physicalBoundary: boundary, maxBytes: candidate.MaxBytes,
+		physicalBoundary: boundary, maxBytes: candidate.MaxBytes, maxEntries: candidate.MaxEntries,
 	}, nil
 }
 
@@ -209,9 +217,18 @@ func (w *watch) reconcile(initial bool, accepted acceptance) error {
 		if changed && !slices.Contains(changedKeys, candidate.key) {
 			changedKeys = append(changedKeys, candidate.key)
 		}
-		if err := collectParentDirectories(directories, candidate.path, physical); err != nil {
+		if err := collectParentDirectories(directories, candidate.path, physical, candidate.physicalBoundary); err != nil {
 			w.stateMu.Unlock()
 			return err
+		}
+		if candidate.maxEntries > 0 && physical != "" {
+			info, err := os.Stat(physical)
+			if err == nil && info.IsDir() {
+				directories[physical] = struct{}{}
+			} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+				w.stateMu.Unlock()
+				return fmt.Errorf("observe files: inspect directory %q: %w", physical, err)
+			}
 		}
 	}
 	if err := w.replaceDirectories(directories); err != nil {
@@ -360,8 +377,50 @@ func fingerprintPhysicalTarget(
 		}
 	} else {
 		encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)
+		if physicalInfo.IsDir() && candidate.maxEntries > 0 {
+			if err := fingerprintDirectory(encoder, root, name, candidate.maxEntries); err != nil {
+				return fingerprint{}, "", err
+			}
+		}
 	}
 	return encoder.sum(), physical, nil
+}
+
+func fingerprintDirectory(encoder *fingerprintEncoder, root *os.Root, name string, limit int) error {
+	var directory *os.File
+	var err error
+	if root != nil {
+		directory, err = root.Open(name)
+	} else {
+		directory, err = os.Open(name)
+	}
+	if err != nil {
+		return fmt.Errorf("observe files: open directory: %w", err)
+	}
+	defer directory.Close()
+	entries, err := directory.ReadDir(limit + 1)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("observe files: read directory: %w", err)
+	}
+	if len(entries) > limit {
+		return fmt.Errorf("observe files: directory exceeds %d immediate entries", limit)
+	}
+	slices.SortFunc(entries, func(a, b os.DirEntry) int { return strings.Compare(a.Name(), b.Name()) })
+	for _, entry := range entries {
+		var info os.FileInfo
+		var err error
+		if root != nil {
+			info, err = root.Lstat(filepath.Join(name, entry.Name()))
+		} else {
+			info, err = os.Lstat(filepath.Join(name, entry.Name()))
+		}
+		if err != nil {
+			return fmt.Errorf("observe files: inspect directory entry: %w", err)
+		}
+		encoder.field(fingerprintFieldLogicalPath, entry.Name())
+		encoder.fileInfo(fingerprintFieldChildInfo, info)
+	}
+	return nil
 }
 
 func (w *watch) Close() error {

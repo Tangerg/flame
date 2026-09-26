@@ -115,8 +115,11 @@ type RollbackSessionRequest struct {
 	ToRunID   string `json:"toRunId,omitempty"`
 	// RestoreType selects what the rollback rewinds; the default
 	// "history". "files"/"both" restore the working tree to ToRunID's
-	// checkpoint and require ToRunID + features.checkpoints; "both" is atomic
-	// (files first — if they fail, history is left untouched).
+	// checkpoint and require ToRunID + features.checkpoints. Only checkpointed
+	// files are restored; ignored and oversized material is not archived. A
+	// conflicting target is refused before checkout. "both" restores files
+	// before committing history; partial failures retain a durable recovery
+	// intent. External filesystem writers do not participate in that ordering.
 	RestoreType RestoreType `json:"restoreType,omitempty"`
 }
 
@@ -126,7 +129,7 @@ type RestoreType string
 const (
 	RestoreHistory RestoreType = "history" // chat history only (default; files untouched)
 	RestoreFiles   RestoreType = "files"   // working-tree files only (history untouched)
-	RestoreBoth    RestoreType = "both"    // both, atomically (files first)
+	RestoreBoth    RestoreType = "both"    // files first, then history, with durable recovery
 )
 
 // RollbackSessionResponse — sessions.rollback result. DroppedRuns lists what
@@ -181,9 +184,9 @@ type ExportSessionResponse struct {
 // artifact it doesn't recognize; development builds do not migrate old
 // artifacts.
 //
-// Version 27 makes provider, model, and reasoning-effort identities bounded,
-// printable canonical values everywhere they occur, including usage-map keys.
-const SessionArtifactVersion = 27
+// Version 28 preserves unresolved external effects as read-only terminal history.
+// Imported process and effect identities never authorize execution or recovery.
+const SessionArtifactVersion = 28
 
 // SessionArtifact is the portable, round-trippable form of a session: its
 // identity plus the full conversation — chat messages (the model's context),
@@ -263,9 +266,10 @@ type ArtifactRun struct {
 // ArtifactOutcome is a non-interrupt terminal fact. Its string discriminator
 // is intentionally independent from the live RunOutcome wire union.
 type ArtifactOutcome struct {
-	Type   ArtifactOutcomeType `json:"type"`
-	Error  *ArtifactProblem    `json:"error,omitzero"`
-	Detail string              `json:"detail,omitempty"`
+	Type              ArtifactOutcomeType `json:"type"`
+	Error             *ArtifactProblem    `json:"error,omitzero"`
+	Detail            string              `json:"detail,omitempty"`
+	UnresolvedEffects []UnresolvedEffect  `json:"unresolvedEffects,omitempty"`
 }
 
 // ArtifactOutcomeType is the closed terminal vocabulary portable across

@@ -21,15 +21,18 @@ type runBinding interface {
 
 func (r *Connection) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
 	if err := input.Validate(); err != nil {
-		return agent.SegmentStream{}, err
+		return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
 	}
-	content, err := r.projectInput(ctx, input.Message)
+	if err := r.requireInputCapabilities(input.Message); err != nil {
+		return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+	}
+	content, err := input.Message.PreparedInput(input.Input)
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
 	}
 	options, err := r.runCommandOptionsFor(input.CommandID)
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
 	}
 	request := protocol.StartRunRequest{
 		SessionID: input.SessionID, Input: content,
@@ -70,26 +73,29 @@ func generationParamsPresent(value protocol.GenerationParams) bool {
 
 func (r *Connection) ResumeRun(ctx context.Context, input agent.ResumeRun) (agent.SegmentStream, error) {
 	if err := input.Validate(); err != nil {
-		return agent.SegmentStream{}, err
+		return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
 	}
 	request := protocol.ResumeRunRequest{RunID: input.RunID, Responses: make([]protocol.InterruptResponse, 0, len(input.Answers))}
 	for _, answer := range input.Answers {
 		projected, err := projectAnswer(answer)
 		if err != nil {
-			return agent.SegmentStream{}, err
+			return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
 		}
 		request.Responses = append(request.Responses, projected)
 	}
 	if input.Message != nil {
-		content, err := r.projectInput(ctx, *input.Message)
+		if err := r.requireInputCapabilities(*input.Message); err != nil {
+			return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+		}
+		content, err := input.Message.PreparedInput(input.Input)
 		if err != nil {
-			return agent.SegmentStream{}, err
+			return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
 		}
 		request.Input = content
 	}
 	options, err := r.runCommandOptionsFor(input.CommandID)
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
 	}
 	ack, events, err := r.runs.ResumeRun(ctx, request, options)
 	if err != nil {
@@ -151,40 +157,51 @@ func (r *Connection) SubscribeRun(ctx context.Context, input agent.SubscribeRun)
 	if err := input.Validate(); err != nil {
 		return agent.SegmentStream{}, err
 	}
+	if input.Snapshot {
+		return r.subscribeSnapshot(ctx, input)
+	}
+	stream, _, err := r.subscribeRun(ctx, input)
+	return stream, err
+}
+
+func (r *Connection) subscribeRun(ctx context.Context, input agent.SubscribeRun) (agent.SegmentStream, *protocol.SessionSnapshot, error) {
 	options, err := r.subscriptionOptions(input.AfterEventID)
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return agent.SegmentStream{}, nil, err
 	}
 	ack, events, err := r.runs.SubscribeRun(ctx, protocol.SubscribeRunRequest{
-		RunID: input.RunID, SegmentID: input.SegmentID,
+		RunID: input.RunID, SegmentID: input.SegmentID, Snapshot: input.Snapshot,
 	}, options)
 	if err != nil {
-		return agent.SegmentStream{}, classifyError(err)
+		return agent.SegmentStream{}, nil, classifyError(err)
 	}
 	if ack == nil || events == nil {
-		return agent.SegmentStream{}, runtimeContractViolation("subscribe run returned an incomplete stream")
+		return agent.SegmentStream{}, nil, runtimeContractViolation("subscribe run returned an incomplete stream")
+	}
+	if (ack.Snapshot != nil) != input.Snapshot {
+		return agent.SegmentStream{}, nil, runtimeContractViolation("subscribe run snapshot does not match the request")
 	}
 	headEventID := ""
 	if ack.HeadEventID != nil {
 		headEventID = *ack.HeadEventID
 	}
 	if _, err := r.subscriptionOptions(headEventID); err != nil {
-		return agent.SegmentStream{}, runtimeContractViolation("subscribe run returned an invalid head event id: %v", err)
+		return agent.SegmentStream{}, nil, runtimeContractViolation("subscribe run returned an invalid head event id: %v", err)
 	}
 	stream := agent.SegmentStream{
 		RunID: ack.RunID, SegmentID: ack.SegmentID, HeadEventID: headEventID,
 		Events: projectEventStream(events, ack.SegmentID),
 	}
 	if err := stream.ValidateSubscription(); err != nil {
-		return agent.SegmentStream{}, runtimeContractViolation("subscribe run returned an invalid stream: %v", err)
+		return agent.SegmentStream{}, nil, runtimeContractViolation("subscribe run returned an invalid stream: %v", err)
 	}
 	if stream.RunID != input.RunID || stream.SegmentID != input.SegmentID {
-		return agent.SegmentStream{}, runtimeContractViolation(
+		return agent.SegmentStream{}, nil, runtimeContractViolation(
 			"subscribe run returned segment %s/%s for %s/%s",
 			stream.RunID, stream.SegmentID, input.RunID, input.SegmentID,
 		)
 	}
-	return stream, nil
+	return stream, ack.Snapshot, nil
 }
 
 func (r *Connection) CancelRun(ctx context.Context, input agent.CancelRun) (agent.RunCancellation, error) {
@@ -231,28 +248,31 @@ func (r *Connection) CancelRun(ctx context.Context, input agent.CancelRun) (agen
 	return projected, nil
 }
 
-func (r *Connection) SteerRun(ctx context.Context, input agent.SteerRun) error {
+func (r *Connection) SteerRun(ctx context.Context, input agent.SteerRun) (protocol.SteerRunResponse, error) {
 	if err := input.Validate(); err != nil {
-		return err
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
 	}
-	content, err := r.projectInput(ctx, input.Message)
+	if err := r.requireInputCapabilities(input.Message); err != nil {
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+	}
+	content, err := input.Message.PreparedInput(input.Input)
 	if err != nil {
-		return err
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
 	}
 	options, err := r.commandOptionsFor(input.CommandID)
 	if err != nil {
-		return err
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
 	}
 	receipt, err := r.runs.SteerRun(ctx, protocol.SteerRunRequest{
 		RunID: input.RunID, ExpectedSegmentID: input.SegmentID, Input: content,
 	}, options)
 	if err != nil {
-		return classifyError(err)
+		return protocol.SteerRunResponse{}, classifyError(err)
 	}
 	if receipt == nil {
-		return runtimeContractViolation("steer run returned nil")
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", agent.ErrSteerReceiptUnavailable, runtimeContractViolation("steer run returned nil"))
 	}
-	return nil
+	return *receipt, nil
 }
 
 func projectEventStream(source iter.Seq2[protocol.RunEvent, error], streamSegmentID string) agent.EventStream {

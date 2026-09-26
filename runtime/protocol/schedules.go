@@ -49,6 +49,8 @@ const (
 // revision-checked partial patch. Workspace sets an explicit binding;
 // WorkspaceMode="default" clears one. Omitting both preserves the binding, and
 // they are mutually exclusive.
+// Disabling stops future claims. An already claimed occurrence retains its
+// accepted input and may still start; cancel its Run separately when required.
 type UpdateScheduleRequest struct {
 	ID               string                `json:"id"`
 	ExpectedRevision uint64                `json:"expectedRevision"`
@@ -63,7 +65,8 @@ type UpdateScheduleRequest struct {
 	Enabled          *bool                 `json:"enabled,omitzero"`
 }
 
-// DeleteScheduleRequest — schedules.delete body.
+// DeleteScheduleRequest — schedules.delete body. Deletion stops future claims;
+// it does not revoke an already claimed occurrence or cancel its Run.
 type DeleteScheduleRequest struct {
 	ID string `json:"id"`
 }

@@ -591,6 +591,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       detail: text(),
       error: ref(() => CHECKS.ArtifactProblem),
       type: ref(() => CHECKS.ArtifactOutcomeType),
+      unresolvedEffects: array(ref(() => CHECKS.UnresolvedEffect)),
     }, []),
     oneOf([
       fields({
@@ -2141,6 +2142,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         errors: absent(),
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
+        type: literal("checkpoint_conflict"),
+      }, ["type"]),
+      fields({
+        activeRun: absent(),
+        errors: absent(),
+        requiredCapabilities: absent(),
+        retryAfterSeconds: absent(),
         type: literal("checkpoint_unavailable"),
       }, ["type"]),
       fields({
@@ -2293,6 +2301,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
         type: literal("path_outside_root"),
+      }, ["type"]),
+      fields({
+        activeRun: absent(),
+        errors: absent(),
+        requiredCapabilities: absent(),
+        retryAfterSeconds: absent(),
+        type: literal("prompt_source_too_large"),
       }, ["type"]),
       fields({
         activeRun: absent(),
@@ -3168,7 +3183,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     runs: array(ref(() => CHECKS.ArtifactRun)),
     session: ref(() => CHECKS.ArtifactSession),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
-    version: allOf([integer(), minimum(27), maximum(27)]),
+    version: allOf([integer(), minimum(28), maximum(28)]),
   }, ["items", "messages", "runs", "session", "toolResults", "version"]),
   SessionSnapshot: object({
     goal: ref(() => CHECKS.Goal),
@@ -3430,9 +3445,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     snapshot: ref(() => CHECKS.SessionSnapshot),
   }, ["runId", "segmentId"]),
   SubscriptionLimits: object({
+    maxDirectoryEntries: allOf([integer(), minimum(1)]),
+    maxFileBytes: allOf([integer(), minimum(1)]),
+    maxPaths: allOf([integer(), minimum(1)]),
     maxTopics: allOf([integer(), minimum(1)]),
     maxWatches: allOf([integer(), minimum(1)]),
-  }, ["maxTopics", "maxWatches"]),
+  }, ["maxDirectoryEntries", "maxFileBytes", "maxPaths", "maxTopics", "maxWatches"]),
   SuppressibleRunEventType: enumOf(["segment.progress", "item.delta"]),
   TestProviderRequest: object({
     provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3562,6 +3580,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, []),
   WatchSpec: object({
+    paths: allOf([array(text()), minItems(1), uniqueItems()]),
     watchId: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["watchId", "workspace"]),

@@ -85,6 +85,7 @@ func artifactRunFromPortable(run sessions.PortableRun) (protocol.ArtifactRun, er
 		ProtocolProfile: presentArtifactProtocolProfile(run.Capabilities),
 		Outcome: protocol.ArtifactOutcome{
 			Type: outcome, Error: problem, Detail: run.Detail,
+			UnresolvedEffects: presentUnresolvedEffects(run.UnresolvedEffects),
 		},
 		CreatedAt: run.CreatedAt, FinishedAt: run.FinishedAt,
 		UpdatedAt: run.UpdatedAt, MessageMark: run.MessageMark,

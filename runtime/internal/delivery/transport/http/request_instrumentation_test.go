@@ -187,7 +187,7 @@ func TestRecordingResponseWriterCommitsFirstStatus(t *testing.T) {
 func captureHTTPSpans(t *testing.T) *tracetest.InMemoryExporter {
 	t.Helper()
 	exporter := tracetest.NewInMemoryExporter()
-	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter), sdktrace.WithSampler(sdktrace.AlwaysSample()))
 	previousTracer := tracer
 	tracer = provider.Tracer("test/http")
 	t.Cleanup(func() {

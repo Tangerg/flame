@@ -46,18 +46,55 @@ func (a *app) steerRun(instruction string) error {
 		return fmt.Errorf("steer blocked: save command draft: %w", saveDraftErr)
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
+	a.restoreComposer(sourceDraft)
+	a.draftState.Reset(a.session.current.ID, sourceDraft)
+	if a.operations.Active(inputPreparationOperation) || a.operations.Active(steerRunOperation) {
+		return errors.New("another input or steer operation is already running")
+	}
+	started := a.runSessionAdmissionFence(inputPreparationOperation, false,
+		func(ctx context.Context) (*workbench.PreparedInput, error) {
+			blocks, err := a.runtime.PrepareInput(ctx, request.Message)
+			if err != nil {
+				return nil, err
+			}
+			return a.workbench.PrepareInput(ctx, request.Message, blocks)
+		},
+		func(prepared *workbench.PreparedInput, prepareErr error) {
+			if prepareErr != nil {
+				a.message("prepare steer input: " + prepareErr.Error())
+				a.drainQueue()
+				return
+			}
+			current, _, err := a.currentDraft()
+			if err != nil || !current.Equal(sourceDraft) {
+				a.message("steer preparation canceled because the draft changed")
+				a.drainQueue()
+				return
+			}
+			if err := a.deliverPreparedSteer(request, sourceDraft, prepared); err != nil {
+				a.message(err.Error())
+				a.drainQueue()
+			}
+		},
+	)
+	if !started {
+		return errors.New("another input preparation is already running")
+	}
+	return nil
+}
+
+func (a *app) deliverPreparedSteer(request agent.SteerRun, sourceDraft agent.Message, input *workbench.PreparedInput) error {
 	pending, err := runworkflow.StageSteer(
-		a.workbench, a.session.current.ID, request, sourceDraft, commandReplayPolicy(a.runtimeProfile),
+		a.workbench, a.session.current.ID, request, sourceDraft, commandReplayPolicy(a.runtimeProfile), input,
 	)
 	if err != nil {
 		a.reportWorkbenchIssue(workbenchSteerOutbox, fmt.Errorf("save steer command journal: %w", err))
-		a.restoreComposer(sourceDraft)
-		a.draftState.Reset(a.session.current.ID, sourceDraft)
 		return err
 	}
 	a.reportWorkbenchIssue(workbenchSteerOutbox, nil)
 	a.restoreComposer(agent.Message{})
 	a.draftState.Reset(a.session.current.ID, agent.Message{})
+	a.steers.track(pending)
 	started := a.runSessionSettlement(steerRunOperation, false,
 		func(ctx context.Context) (runworkflow.SteerResult, error) {
 			return runworkflow.DeliverSteer(
@@ -65,13 +102,14 @@ func (a *app) steerRun(instruction string) error {
 			)
 		},
 		func(result runworkflow.SteerResult, deliveryErr error) {
-			a.settleSteer(result, deliveryErr, runID)
+			a.settleSteer(result, deliveryErr)
 		},
 	)
 	if !started {
+		a.steers.reject(pending)
 		recovered, err := a.rejectSteer(pending)
 		if err != nil {
-			a.restoreComposer(workbenchMergeSteerAttachments(a, message.Attachments))
+			a.restoreComposer(workbenchMergeSteerAttachments(a, request.Message.Attachments))
 			return fmt.Errorf("another steer operation is already running; restore attachments: %w", err)
 		}
 		a.restoreComposer(recovered)
@@ -81,15 +119,17 @@ func (a *app) steerRun(instruction string) error {
 	return nil
 }
 
-func (a *app) settleSteer(result runworkflow.SteerResult, deliveryErr error, runID string) {
+func (a *app) settleSteer(result runworkflow.SteerResult, deliveryErr error) {
 	switch result.Outcome {
 	case mutation.Confirmed:
+		a.steers.accept(result)
+		a.presentSteerReceipts()
 		if err := a.acknowledgeSteer(result.Pending); err != nil {
 			a.message("steer accepted; local settlement pending: " + err.Error())
 			return
 		}
-		a.message("steer accepted for " + shortIdentity(runID))
 	case mutation.Rejected:
+		a.steers.reject(result.Pending)
 		recovered, err := a.rejectSteer(result.Pending)
 		if err != nil {
 			a.restoreComposer(workbenchMergeSteerAttachments(a, result.Pending.Message().Attachments))

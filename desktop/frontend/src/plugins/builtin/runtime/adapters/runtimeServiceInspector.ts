@@ -72,11 +72,12 @@ export function runtimeServiceInspector(): RuntimeConnectionInspector<ServerCapa
       let readiness: ReadinessStatus;
       let discovery: Awaited<ReturnType<typeof client.runtime.discover>>;
       try {
+        // Own every sibling even when an adapter throws before returning its promise.
         [info, liveness, readiness, discovery] = await Promise.all([
-          sidecar.info(linkedSignal),
-          sidecar.liveness(linkedSignal),
-          sidecar.readiness(linkedSignal),
-          client.runtime.discover(linkedSignal),
+          Promise.resolve().then(() => sidecar.info(linkedSignal)),
+          Promise.resolve().then(() => sidecar.liveness(linkedSignal)),
+          Promise.resolve().then(() => sidecar.readiness(linkedSignal)),
+          Promise.resolve().then(() => client.runtime.discover(linkedSignal)),
         ]);
       } catch (error) {
         cohort.abort();

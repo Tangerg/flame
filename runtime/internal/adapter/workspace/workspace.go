@@ -17,10 +17,13 @@ import (
 
 var (
 	// ErrCheckpointUnavailable means the file-checkpoint store is disabled (git
-	// absent) or holds no snapshot for the target run. Callers translate this
-	// sentinel at their own boundary.
+	// absent), holds no snapshot for the target run, or overlaps the workspace.
+	// Callers translate this sentinel at their own boundary.
 	ErrCheckpointUnavailable = checkpoint.ErrUnavailable
-	// ErrCheckpointRestoreIncomplete means Git started a work-tree reset but did
+	// ErrCheckpointConflict rejects a restore before checkout could overwrite
+	// working-tree material absent from the pre-restore archive.
+	ErrCheckpointConflict = checkpoint.ErrConflict
+	// ErrCheckpointRestoreIncomplete means Git started a work-tree checkout but did
 	// not finish; orchestration must keep its durable recovery intent.
 	ErrCheckpointRestoreIncomplete = checkpoint.ErrRestoreIncomplete
 )
@@ -108,9 +111,9 @@ func (c *Checkpoints) Snapshot(ctx context.Context, sessionID, cwd, runID string
 	return c.store.Snapshot(ctx, sessionID, cwd, runID)
 }
 
-// Restore resets sessionID's working tree (at cwd) to the runID snapshot. A
+// Restore checks out sessionID's working tree (at cwd) to the runID snapshot. A
 // disabled store or missing snapshot surfaces as [ErrCheckpointUnavailable]; a
-// failed reset that may have changed part of the tree surfaces as
+// failed checkout that may have changed part of the tree surfaces as
 // [ErrCheckpointRestoreIncomplete].
 func (c *Checkpoints) Restore(ctx context.Context, sessionID, cwd, runID string) error {
 	if !c.CheckpointsEnabled() {

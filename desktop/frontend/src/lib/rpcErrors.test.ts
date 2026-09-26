@@ -48,15 +48,19 @@ describe("the protocol error copy table", () => {
     expect(orphaned).toEqual([]);
   });
 
-  it.each(["denied_by_user", "tool_failed", "tool_canceled", "child_run_canceled"])(
-    "explains %s rather than leaving the banner to say 'unknown'",
-    (type) => {
-      expect(isWireProblemType(type)).toBe(true);
-      const copy = describeErrorType(type);
-      expect(copy).toBeDefined();
-      expect(copy).not.toBe(`rpcError.${type}`);
-    },
-  );
+  it.each([
+    "denied_by_user",
+    "tool_failed",
+    "tool_canceled",
+    "child_run_canceled",
+    "checkpoint_conflict",
+    "prompt_source_too_large",
+  ])("explains %s rather than leaving the banner to say 'unknown'", (type) => {
+    expect(isWireProblemType(type)).toBe(true);
+    const copy = describeErrorType(type);
+    expect(copy).toBeDefined();
+    expect(copy).not.toBe(`rpcError.${type}`);
+  });
 
   it("answers nothing for a symbol it does not map, so callers supply their own fallback", () => {
     expect(describeErrorType(undefined)).toBeUndefined();

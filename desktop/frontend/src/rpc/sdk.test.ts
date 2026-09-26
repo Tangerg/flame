@@ -151,7 +151,13 @@ describe("createFlameClient", () => {
         },
         runReplay: { scope: "runtimeInstanceRootSegment", maxEvents: 1, maxBytes: 1 },
         mcpAuthorizationAttempts: { retentionSeconds: 600 },
-        runtimeSubscription: { maxTopics: 1, maxWatches: 1 },
+        runtimeSubscription: {
+          maxTopics: 1,
+          maxWatches: 1,
+          maxPaths: 256,
+          maxDirectoryEntries: 10000,
+          maxFileBytes: 1048576,
+        },
       },
     } satisfies ServerCapabilities;
     const client = createFlameClient(transport, {

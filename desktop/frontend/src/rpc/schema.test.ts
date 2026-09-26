@@ -105,12 +105,24 @@ describe("the published JSON Schema bundle", () => {
           maxBytes: 16_777_216,
         },
         mcpAuthorizationAttempts: { retentionSeconds: 600 },
-        runtimeSubscription: { maxTopics: 32, maxWatches: 32 },
+        runtimeSubscription: {
+          maxTopics: 32,
+          maxWatches: 32,
+          maxPaths: 256,
+          maxDirectoryEntries: 10000,
+          maxFileBytes: 1048576,
+        },
       }),
     ).toBe(true);
     expect(
       runtimeLimits?.({
-        runtimeSubscription: { maxTopics: 32, maxWatches: 32 },
+        runtimeSubscription: {
+          maxTopics: 32,
+          maxWatches: 32,
+          maxPaths: 256,
+          maxDirectoryEntries: 10000,
+          maxFileBytes: 1048576,
+        },
       }),
     ).toBe(false);
 

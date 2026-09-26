@@ -259,7 +259,8 @@ func TestPendingResumePersistenceFailureReopensTheBatchReviewForRetry(t *testing
 
 func blockStateDirectoryWrites(t *testing.T, stateDirectory string) func() {
 	t.Helper()
-	if err := os.RemoveAll(stateDirectory); err != nil {
+	backupDirectory := stateDirectory + ".temporarily-blocked"
+	if err := os.Rename(stateDirectory, backupDirectory); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(stateDirectory, []byte("block durable state writes"), 0o600); err != nil {
@@ -272,11 +273,11 @@ func blockStateDirectoryWrites(t *testing.T, stateDirectory string) func() {
 			return
 		}
 		blocked = false
-		if err := os.RemoveAll(stateDirectory); err != nil {
+		if err := os.Remove(stateDirectory); err != nil {
 			t.Error(err)
 			return
 		}
-		if err := os.MkdirAll(stateDirectory, 0o700); err != nil {
+		if err := os.Rename(backupDirectory, stateDirectory); err != nil {
 			t.Error(err)
 		}
 	}

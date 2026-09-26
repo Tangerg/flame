@@ -13,6 +13,7 @@ import { selectCurrentRootRun } from "../view/runTree";
 import { agentCommandOwner } from "../agentCommandOwner";
 import { useCurrentRootMaterial } from "../run/runReadModel";
 import { ExactSequence } from "@/foundation/exactSequence";
+import { synchronizeMountedAgentSession } from "../session/refreshSessionProjection";
 
 type SendToAgent = (input: AgentInput, options?: AgentRunStartOptions) => boolean;
 export function useChatSend(): (input: AgentInput) => boolean {
@@ -74,8 +75,18 @@ function steerRunningTurn({ sessionId, runId, segmentId, input }: SteerRunningTu
   void owner.settle(runtime.steerRun(runId, segmentId, input)).then(
     (result) => {
       if (!owner.isCurrent()) return;
-      view.reconcileMessageIdentity(sessionId, localId, result.userItemId);
+      const messages = view.getSession(sessionId)?.view.messages;
+      if (
+        messages &&
+        !messages.some((message) => message.id === localId || message.id === result.userItemId)
+      ) {
+        view.appendLocalUserMessage(sessionId, localId, input);
+      }
+      view.reconcileMessageIdentity(sessionId, localId, result.userItemId, runId);
       effect.settle();
+      void synchronizeMountedAgentSession(sessionId, "after-live").catch((error: unknown) => {
+        console.warn("[session] steer reconciliation failed:", sessionId, error);
+      });
     },
     (err: unknown) => {
       if (!owner.isCurrent()) return;

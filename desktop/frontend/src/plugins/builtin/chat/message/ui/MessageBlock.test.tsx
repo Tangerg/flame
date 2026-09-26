@@ -49,6 +49,47 @@ function row(
 }
 
 describe("MessageBlock turn identity", () => {
+  it("keeps terminal evidence visible when the selected narrative row has no rendered blocks", () => {
+    const empty = row("complete", "", "assistant", "commentary");
+    empty.message.blocks = [];
+    render(
+      <MessageBlock
+        row={empty}
+        ctx={CTX}
+        sessionId="session-evidence"
+        isLast
+        isRunning={false}
+        terminalFooter={<div>Unconfirmed operation evidence</div>}
+      />,
+    );
+    expect(screen.getByText("Unconfirmed operation evidence")).toBeTruthy();
+  });
+
+  it("distinguishes an accepted steer from its applied durable Item", () => {
+    const accepted = row("complete", "Check the image", "user");
+    accepted.message = {
+      ...accepted.message,
+      runId: null,
+      steer: { runId: "run_1", status: "accepted" },
+    };
+    const { rerender } = render(
+      <MessageBlock row={accepted} ctx={CTX} sessionId="session-steer" isLast isRunning />,
+    );
+    expect(screen.getByText("Accepted · waiting for model context")).toBeTruthy();
+    expect(screen.queryByText("Entered model context")).toBeNull();
+    const applied = {
+      ...accepted,
+      message: {
+        ...accepted.message,
+        runId: "run_1",
+        steer: { runId: "run_1", status: "applied" as const },
+      },
+    };
+    rerender(<MessageBlock row={applied} ctx={CTX} sessionId="session-steer" isLast isRunning />);
+    expect(screen.getByText("Entered model context")).toBeTruthy();
+    expect(screen.queryByText("Accepted · waiting for model context")).toBeNull();
+  });
+
   it("keeps role identity semantic without adding visible chrome to every turn", () => {
     const { container, rerender } = render(
       <MessageBlock

@@ -119,16 +119,22 @@ type SteerRun struct {
 	RunID     string
 	SegmentID string
 	Message   Message
+	Input     []protocol.ContentBlock `json:"-"`
 }
+
+// ErrSteerReceiptUnavailable marks a successful Runtime call whose acceptance
+// receipt is missing. It does not authorize restoring or resending the input.
+var ErrSteerReceiptUnavailable = errors.New("steer acceptance receipt is unavailable")
 
 func (s SteerRun) Clone() SteerRun {
 	s.Message = s.Message.Clone()
+	s.Input = slices.Clone(s.Input)
 	return s
 }
 
 func (s SteerRun) Equal(other SteerRun) bool {
 	return s.CommandID == other.CommandID && s.RunID == other.RunID &&
-		s.SegmentID == other.SegmentID && s.Message.Equal(other.Message)
+		s.SegmentID == other.SegmentID && s.Message.Equal(other.Message) && slices.Equal(s.Input, other.Input)
 }
 
 func (m Message) Clone() Message {

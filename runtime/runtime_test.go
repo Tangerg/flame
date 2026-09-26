@@ -138,6 +138,8 @@ func TestRuntimeModelDiscoveryDistinguishesMissingConfigurationFromEmptyEndpoint
 	}
 
 	var requests atomic.Int64
+	var response atomic.Value
+	response.Store(`{"data":[]}`)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Add(1)
 		if r.Method != http.MethodGet || r.URL.Path != "/models" {
@@ -147,7 +149,7 @@ func TestRuntimeModelDiscoveryDistinguishesMissingConfigurationFromEmptyEndpoint
 			t.Error("model discovery did not carry the configured test credential")
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"data":[]}`))
+		_, _ = w.Write([]byte(response.Load().(string)))
 	}))
 	t.Cleanup(server.Close)
 	if _, err := runtime.UpdateProvider(t.Context(), protocol.UpdateProviderRequest{
@@ -170,6 +172,16 @@ func TestRuntimeModelDiscoveryDistinguishesMissingConfigurationFromEmptyEndpoint
 	page, err = runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, CallOptions{})
 	if err != nil || page == nil || len(page.Data) != 0 || requests.Load() != 1 {
 		t.Fatalf("ListModels with empty endpoint = (%+v, %v), requests=%d; want an authoritative empty catalog", page, err, requests.Load())
+	}
+	response.Store(`{"data":[{"id":"model-z"},{"id":"model-a"},{"id":"model-z"}]}`)
+	page, err = runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, CallOptions{})
+	if err != nil || page == nil || len(page.Data) != 2 || page.Data[0].ID != "model-a" || page.Data[1].ID != "model-z" {
+		t.Fatalf("ListModels with repeated remote identities = (%+v, %v), want sorted unique models", page, err)
+	}
+	response.Store(`{"data":[{"id":"model-z"},{"id":"invalid model"},{"id":"model-z"}]}`)
+	page, err = runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, CallOptions{})
+	if page != nil || !errors.Is(err, protocol.ErrProviderError) {
+		t.Fatalf("ListModels with invalid remote identity = (%+v, %v), want provider error", page, err)
 	}
 }
 

@@ -26,7 +26,7 @@ type workspaceTestConfig struct {
 	Proposals       workspaceapp.SkillProposals
 	Hooks           workspaceapp.HookInspector
 	Trust           workspaceapp.HookTrustStore
-	Watcher         workspaceapp.GitStateWatcher
+	Watcher         workspaceapp.FileWatcher
 	AuthoredWatcher workspaceapp.AuthoredResourceWatcher
 }
 
@@ -37,7 +37,7 @@ type workspaceSurfaces struct {
 	discovery     *workspaceapp.Discovery
 	skills        *workspaceapp.Skills
 	hooks         *workspaceapp.Hooks
-	watch         *workspaceapp.GitWatch
+	watch         *workspaceapp.Watch
 	authoredWatch *workspaceapp.AuthoredWatch
 }
 
@@ -73,7 +73,7 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 	}
 	watcher := cfg.Watcher
 	if watcher == nil {
-		watcher = workspaceadapter.NewGitWatcher(context.Background())
+		watcher = workspaceadapter.NewFileWatcher(context.Background())
 	}
 	authoredWatcher := cfg.AuthoredWatcher
 	if authoredWatcher == nil {
@@ -113,7 +113,7 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 	if err != nil {
 		panic(err)
 	}
-	watch, err := workspaceapp.NewGitWatch(roots, watcher)
+	watch, err := workspaceapp.NewWatch(roots, watcher)
 	if err != nil {
 		panic(err)
 	}

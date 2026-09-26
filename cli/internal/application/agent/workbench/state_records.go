@@ -210,12 +210,17 @@ func (s *Store) restoreSessionState(name string, state sessionState) error {
 		s.drafts[state.SessionID] = state.Draft.Clone()
 	}
 	if len(state.PendingRuns) > 0 {
+		for index := range state.PendingRuns {
+			pending := &state.PendingRuns[index]
+			pending.Command.Input, pending.inputFailure = s.readInput(pending.InputDigest)
+		}
 		s.pendingRuns[state.SessionID] = clonePendingRunSlice(state.PendingRuns)
 	}
 	if state.PendingResume != nil {
 		if err := state.PendingResume.validate(); err != nil {
 			return fmt.Errorf("state %s pending resume: %w", name, err)
 		}
+		state.PendingResume.Command.Input, state.PendingResume.inputFailure = s.readInput(state.PendingResume.InputDigest)
 		s.pendingResumes[state.SessionID] = clonePendingResume(*state.PendingResume)
 	}
 	if state.PendingRollback != nil {
@@ -236,6 +241,7 @@ func (s *Store) restoreSessionState(name string, state sessionState) error {
 		if err := pending.validateSession(state.SessionID); err != nil {
 			return fmt.Errorf("state %s pending steer: %w", name, err)
 		}
+		pending.command.Input, pending.inputFailure = s.readInput(pending.inputDigest)
 		s.pendingSteers[state.SessionID] = pending
 	}
 	return nil

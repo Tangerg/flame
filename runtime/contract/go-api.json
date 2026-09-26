@@ -1508,7 +1508,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-09-22\""
+          "value": "\"2026-09-26\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -1788,7 +1788,7 @@
         {
           "name": "SessionArtifactVersion",
           "type": "untyped int",
-          "value": "27"
+          "value": "28"
         },
         {
           "name": "SessionStatusIdle",
@@ -1962,6 +1962,10 @@
           "type": "error"
         },
         {
+          "name": "ErrCheckpointConflict",
+          "type": "error"
+        },
+        {
           "name": "ErrCheckpointUnavailable",
           "type": "error"
         },
@@ -2027,6 +2031,10 @@
         },
         {
           "name": "ErrPathOutsideRoot",
+          "type": "error"
+        },
+        {
+          "name": "ErrPromptSourceTooLarge",
           "type": "error"
         },
         {
@@ -2639,6 +2647,11 @@
               "name": "Detail",
               "type": "string",
               "tag": "json:\"detail,omitempty\""
+            },
+            {
+              "name": "UnresolvedEffects",
+              "type": "[]UnresolvedEffect",
+              "tag": "json:\"unresolvedEffects,omitempty\""
             }
           ],
           "methods": [
@@ -7805,6 +7818,21 @@
               "name": "MaxWatches",
               "type": "int",
               "tag": "json:\"maxWatches\""
+            },
+            {
+              "name": "MaxPaths",
+              "type": "int",
+              "tag": "json:\"maxPaths\""
+            },
+            {
+              "name": "MaxDirectoryEntries",
+              "type": "int",
+              "tag": "json:\"maxDirectoryEntries\""
+            },
+            {
+              "name": "MaxFileBytes",
+              "type": "int64",
+              "tag": "json:\"maxFileBytes\""
             }
           ],
           "methods": [
@@ -8292,6 +8320,17 @@
               "name": "Workspace",
               "type": "WorkspaceRef",
               "tag": "json:\"workspace\""
+            },
+            {
+              "name": "Paths",
+              "type": "[]string",
+              "tag": "json:\"paths,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },

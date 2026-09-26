@@ -214,20 +214,33 @@ func (s *Store) ListFiles(name, extension string) (_ []string, err error) {
 // created beside the destination, so Rename cannot cross filesystems and
 // intentionally replaces the prior snapshot instead of conflict-renaming it.
 func (s *Store) Replace(name string, body []byte) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if err := s.ensureRoot(); err != nil {
-		return err
-	}
-	relative, err := stateName(name)
-	if err != nil {
-		return err
-	}
-	directory, err := s.openDirectory(filepath.Dir(relative), true)
+	directory, base, err := s.replacementDirectory(name)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = directory.Close() }()
+	return replaceStateFile(directory, base, body)
+}
+
+// A replacement owns an independent directory handle before releasing the
+// store lock. Large writes and Sync cannot block unrelated authoring records;
+// Close may retire the Store while an already-admitted replacement finishes
+// safely through its own handle. Concurrent replacements still commit at Rename.
+func (s *Store) replacementDirectory(name string) (*os.Root, string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.ensureRoot(); err != nil {
+		return nil, "", err
+	}
+	relative, err := stateName(name)
+	if err != nil {
+		return nil, "", err
+	}
+	directory, err := s.openDirectory(filepath.Dir(relative), true)
+	return directory, filepath.Base(relative), err
+}
+
+func replaceStateFile(directory *os.Root, base string, body []byte) error {
 	temporary, temporaryName, err := createTemporary(directory)
 	if err != nil {
 		return fmt.Errorf("create state snapshot: %w", err)
@@ -249,7 +262,7 @@ func (s *Store) Replace(name string, body []byte) error {
 	if err := temporary.Close(); err != nil {
 		return fmt.Errorf("close state snapshot: %w", err)
 	}
-	if err := directory.Rename(temporaryName, filepath.Base(relative)); err != nil {
+	if err := directory.Rename(temporaryName, base); err != nil {
 		return fmt.Errorf("replace state snapshot: %w", err)
 	}
 	removeTemporary = false
@@ -299,28 +312,11 @@ func (s *Store) ensureRoot() error {
 		return errors.New("state root is not a directory")
 	}
 	opened, err := s.root.Stat(".")
-	if err == nil && opened.IsDir() && os.SameFile(expected, opened) {
-		return nil
-	}
-	replacement, err := s.boundary.OpenRoot(s.rootName)
 	if err != nil {
-		return fmt.Errorf("reopen state directory: %w", err)
+		return fmt.Errorf("inspect pinned state directory: %w", err)
 	}
-	rebound, err := replacement.Stat(".")
-	if err != nil || !rebound.IsDir() || !os.SameFile(expected, rebound) {
-		_ = replacement.Close()
-		if err != nil {
-			return fmt.Errorf("inspect reopened state directory: %w", err)
-		}
-		return errors.New("state directory changed while it was being reopened")
-	}
-	previous := s.root
-	s.cleanup.Stop()
-	goruntime.KeepAlive(s)
-	s.root = replacement
-	s.addCleanup()
-	if err := previous.Close(); err != nil {
-		return fmt.Errorf("close replaced state directory: %w", err)
+	if !opened.IsDir() || !os.SameFile(expected, opened) {
+		return errors.New("state root changed; reopen the workbench before using the replacement directory")
 	}
 	return nil
 }

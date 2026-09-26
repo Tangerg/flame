@@ -1404,7 +1404,9 @@ func (inertQueryStores) Save(context.Context, string, plan.Replacement) error { 
 
 type inertWorkspaceMutations struct{}
 
-func (inertWorkspaceMutations) Record(context.Context, sessions.WorkspaceMutation) error { return nil }
+func (inertWorkspaceMutations) Record(context.Context, sessions.WorkspaceMutation) (bool, error) {
+	return true, nil
+}
 
 func (inertWorkspaceMutations) Complete(context.Context, sessions.WorkspaceMutation) error {
 	return nil

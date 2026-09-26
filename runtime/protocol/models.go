@@ -1,11 +1,12 @@
 package protocol
 
 // UtilityRole is the (provider, model) the in-house maintenance services run
-// on (models.getUtilityRole / setUtilityRole). Empty model = unset → those run
-// on the main Run model. Provider must be configured when the role is assigned.
+// on (models.getUtilityRole / setUtilityRole). Empty model uses the Runtime
+// composition's default selection. Provider must be configured when assigned.
 // The selection remains stored if credentials later change, so clients that
 // need effective availability join it with providers.list.
-// Saving updates future Runs; it does not replace a live or waiting Run's deployment.
+// Saving affects the next utility invocation, including during an existing Run.
+// It does not replace that Run's main-model deployment or an in-flight invocation.
 type UtilityRole struct {
 	Provider string `json:"provider,omitempty"`
 	Model    string `json:"model,omitempty"`

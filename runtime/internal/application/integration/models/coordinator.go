@@ -52,8 +52,10 @@ type ProviderProber interface {
 
 // ProviderModelLister discovers a provider's available model identities by
 // probing a caller-configured endpoint whose model set is not in the static
-// catalog. Endpoint results are authoritative;
-// the coordinator validates identity and owns public order for every result.
+// catalog. Endpoint results are authoritative, including an empty list. The
+// adapter validates remote identities and collapses repeated identical IDs.
+// Implementations return unique identities; the coordinator verifies this port
+// contract and owns public ordering and metadata enrichment.
 type ProviderModelLister interface {
 	ListModels(ctx context.Context, entry provider.Provider) ([]string, error)
 }

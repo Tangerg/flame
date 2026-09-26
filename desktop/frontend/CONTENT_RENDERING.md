@@ -626,7 +626,7 @@ interface BlockCtx {
 | 4.9 | 提问卡 | D3 | `Item{question}` / interrupt | 待答 → 已答 |
 | 4.10 | 压缩条 | D3，全宽无 chrome | `Item{compaction}` | 原子 |
 | 4.11 | 子 agent 叙事 | D3，挂在父工具卡下 | 子 run 的全部 Item | 跟随子 run |
-| 4.12 | Run 异常终态提示 | D5 | 根 Run `outcome` | 仅 canceled |
+| 4.12 | Run terminal details | D5 | Root Run `outcome` | Canceled detail and unresolved Effect evidence |
 | 4.13 | 日期分隔 / caption / 操作条 / 等待指示 | D1 / D2 / D4 / D3 尾 | 派生 | — |
 
 ---
@@ -647,6 +647,7 @@ interface BlockCtx {
 **渲染要求**
 
 - **`instant: true`** —— 不走打字机揭示。用户自己刚打的字重放一遍是荒谬的。
+- A successful steer receipt shows “Accepted · waiting for model context”. Only the matching durable User Item shows “Entered model context”. A terminal authoritative refresh removes an absent accepted input and reports that it was not applied; no command is replayed automatically.
 - 用户 turn **只取所需宽度**；助手 turn 占满。两者都全宽会让 transcript 读成"两种文档交替"而不是"一份文档带旁注"。
 - 图片 `data` 是**纯 base64**，前端负责拼 `data:${mime};base64,${data}`。
 
@@ -668,7 +669,7 @@ interface BlockCtx {
 
 - **只有最后一个 text 块允许显示光标**：一条 turn 里非末尾的 running 文本要强制降为 complete —— 已完成 turn 中间闪光标是谎言。
 - **壳阶段 `content` 缺席**要折成一个空 text 块供 delta 打补丁，不是跳过。
-- provisional text 先进入既有 work narrative；terminal `finalAnswer` 到达后，fold 必须把同一 `itemId` 的 text 移入稳定独立 row。live、completed-only replay 与 mixed hydration 必须收敛，不能重复正文或遗留空过程行。
+- Provisional text enters the work narrative. A terminal Item replaces all of its provisional blocks with the complete ordered `content`, including images and empty text. `finalAnswer` moves that Item into its stable independent row; commentary remains in the work narrative. Live completion, replay, and cold history use the same projection and cannot retain stale preview text or duplicate media.
 - commentary、canceled/waiting work narrative 不挂 context menu/message actions；只有 `finalAnswer` 拥有 Copy/Regenerate/Good/Poor。若同 Run 的 final answer 紧邻 commentary，presentation planner 只折叠前一行的 reasoning/tools wave，不合并两个 message identity。
 - Markdown 包裹层用 `<div>` 不是 `<p>`（渲染器自己会产出 `<p>`，嵌套是非法 HTML，浏览器会静默拆开外层）。
 
@@ -676,7 +677,7 @@ interface BlockCtx {
 
 ### 4.3 图片
 
-**位置** D3，紧跟同条消息的文本块。
+**Placement** D3. Assistant images retain their exact position among the Item’s text blocks; user attachments follow the authored text.
 **字段** `mime` `data`。
 **要求** 需**预留盒子**（宽高比）避免加载完成后跳版；点击进灯箱。
 
@@ -976,7 +977,7 @@ Plan, Goal, and schedule tools omit their transcript rows only after Runtime rep
 | --- | --- | --- | --- |
 | `canceled` | ■ | neutral | `detail`（区分"被用户取消" vs "被超时取消"，`runs.cancel` 的 reason 经此回流） |
 
-这一行只消费终态类型与 Runtime 提供的 `detail`；不重复 duration、steps、token、cost 或 Context accounting。
+This row consumes the terminal type and Runtime detail without repeating accounting. Any terminal outcome can independently carry `unresolvedEffects`; a disclosure exposes their exact process and Effect identifiers, cause, reason, and detail. The same disclosure appears in delegated Run details. Its presence does not prove external success, failure, cancellation, or rollback, and it remains visible when the last narrative row has no rendered content.
 
 ---
 

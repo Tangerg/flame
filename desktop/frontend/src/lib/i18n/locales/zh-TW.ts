@@ -356,6 +356,9 @@ export const zhTW: Record<string, string> = {
   "settings.connection.reset": "恢復預設",
   "settings.connection.status.checking": "正在檢查 Runtime…",
   "settings.connection.status.reconnecting": "正在重新連線…",
+  "agent.steer.accepted": "已接收，等待進入模型上下文",
+  "agent.steer.applied": "已進入模型上下文",
+  "agent.steer.notApplied": "本次執行已結束，有已接收的指令未進入模型上下文。",
   "agent.inputNotApplied": "尚未套用",
   "agent.synchronizationIncomplete": "執行同步未完成。請重新開啟工作階段以重試。",
   "runtime.connection.reconnecting": "Runtime 連線已中斷，正在重新連線…",
@@ -451,6 +454,7 @@ export const zhTW: Record<string, string> = {
   "agent.runTree.status.finished": "已完成",
   "agent.runTree.status.error": "錯誤",
   "agent.runTree.status.canceled": "已取消",
+  "agent.runOutcome.unresolvedEffects": "有未確認結果的操作",
   "agent.runOutcome.canceled": "已取消",
   "agent.steps_other": "{{count}} 步",
   "agent.runTree.action.cancel": "取消此次執行",
@@ -698,8 +702,8 @@ export const zhTW: Record<string, string> = {
   "providers.fromEnv": "來自環境變數",
   "providers.utility.title": "輔助模型",
   "providers.utility.desc":
-    "用於背景工作的較便宜模型 —— 摘要、標題、事實抽取。未設定時回退到主模型。 對新的執行生效。",
-  "providers.utility.main": "使用主模型",
+    "用於摘要、標題和事實擷取。未設定時使用 Runtime 預設模型。變更從下一次輔助呼叫生效，包括目前執行中的輔助呼叫。",
+  "providers.utility.main": "使用 Runtime 預設模型",
   "providers.utility.error": "無法設定輔助模型。",
   "providers.embedding.title": "Embedding 模型",
   "providers.embedding.desc":
@@ -830,7 +834,7 @@ export const zhTW: Record<string, string> = {
     "開啟或選擇一個工作階段以審閱其專案記憶。切換到「使用者」可檢視跨專案記憶。",
   "agentMemory.error": "無法更新記憶。",
   "schedules.intro":
-    "依排程執行已存的提示。只要執行時在服務中，每次執行都會開一個新的工作階段 —— 輸出可在側邊欄找到。",
+    "依排程執行已存的提示。只要執行時在服務中，每次執行都會開一個新的工作階段 —— 輸出可在側邊欄找到。 停用或刪除只停止後續排程；已領取的任務仍可能啟動，需要另外取消。",
   "schedules.add": "新增排程",
   "schedules.save": "儲存",
   "schedules.saving": "正在儲存…",
@@ -842,7 +846,8 @@ export const zhTW: Record<string, string> = {
   "schedules.edit": "編輯排程",
   "schedules.delete": "刪除排程",
   "schedules.delete.title": "刪除這個排程？",
-  "schedules.delete.body": "「{{title}}」及其指令都會消失，且無法復原。",
+  "schedules.delete.body":
+    "「{{title}}」及其指令都會消失，且無法復原。 已領取的任務仍可能啟動，需要另外取消。",
   "schedules.delete.confirm": "刪除",
   "schedules.empty": "沒有排程",
   "schedules.empty.sub": "新增一個，讓提示依 cron 觸發執行 —— 例如平日的站立會議或每晚的檢視。",
@@ -851,7 +856,7 @@ export const zhTW: Record<string, string> = {
   "schedules.error.save": "無法儲存排程。",
   "schedules.model.default": "Runtime 預設模型",
   "schedules.reasoning.default": "模型預設強度",
-  "schedules.model.hint": "套用至之後觸發的排程任務，不影響正在執行的任務。",
+  "schedules.model.hint": "套用至後續排程。已領取的任務保留領取時的設定。",
   "schedules.model.unavailable": "目前目錄中沒有此已儲存模型。在你變更選擇前，將保留原設定。",
   "schedules.form.title": "標題（選填）",
   "schedules.form.instructions": "要執行的指令…",
@@ -874,6 +879,8 @@ export const zhTW: Record<string, string> = {
 
   "rpcError.session_busy": "工作階段正忙 —— 請等目前的執行結束。",
   "rpcError.checkpoint_unavailable": "該輪沒有檔案檢查點 —— 未變更任何檔案。",
+  "rpcError.checkpoint_conflict": "為保護未存入檢查點的檔案，已拒絕還原。未變更任何檔案。",
+  "rpcError.prompt_source_too_large": "指令檔案超過大小或數量限制。請縮短內容或減少檔案後重試。",
   "rpcError.workspace_unavailable": "執行環境磁碟上不存在該工作區。",
   "rpcError.vcs_unavailable": "該資料夾不是 git 倉庫。",
   "rpcError.rate_limited": "模型供應方正在限流 —— 稍等一下再重試。",
@@ -1156,5 +1163,6 @@ export const zhTW: Record<string, string> = {
   "file.change.add": "工作樹中新增",
   "file.change.mod": "工作樹中已修改",
   "file.change.del": "工作樹中已刪除",
+  "file.change.renamed": "重新命名自 {{path}}",
   "file.change.below": "包含工作樹變更",
 };

@@ -309,6 +309,7 @@ func capabilitiesFor(
 			MCPAuthorizationAttempts: mcpAuthorizationAttempts,
 			RuntimeSubscription: protocol.SubscriptionLimits{
 				MaxTopics: protocol.MaxSubscriptionTopics, MaxWatches: protocol.MaxSubscriptionWatches,
+				MaxPaths: workspaceapp.MaxWatchPaths, MaxDirectoryEntries: workspaceapp.MaxWatchDirectoryEntries, MaxFileBytes: workspaceapp.MaxWatchFileBytes,
 			},
 		},
 		// The streaming methods, read from the registry that routes them. A

@@ -1,3 +1,5 @@
+// @vitest-environment-options { "url": "http://localhost:5173/" }
+// Exercise the real CORS boundary from the supported standalone Desktop dev origin.
 import { execFile } from "node:child_process";
 import {
   lstat,
@@ -18,6 +20,7 @@ import {
 import { createServer as createNetServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { Readable } from "node:stream";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createFlameClient, type FlameClient } from "./sdk";
@@ -198,9 +201,7 @@ function faultUnaryResponse(
 const isolatedFetch: typeof fetch = async (input, init) => {
   const payload =
     typeof init?.body === "string" ? (JSON.parse(init.body) as { method?: string }) : {};
-  if (payload.method && isWireStreamingMethodName(payload.method as WireMethodName)) {
-    return globalThis.fetch(input, init);
-  }
+  const streaming = payload.method && isWireStreamingMethodName(payload.method as WireMethodName);
   const headers = new Headers(init?.headers);
   headers.set("Connection", "close");
   const url =
@@ -214,25 +215,32 @@ const isolatedFetch: typeof fetch = async (input, init) => {
         signal: init?.signal ?? undefined,
       },
       (response) => {
+        const responseHeaders = new Headers();
+        for (const [name, value] of Object.entries(response.headers)) {
+          if (Array.isArray(value)) {
+            for (const item of value) responseHeaders.append(name, item);
+          } else if (value !== undefined) {
+            responseHeaders.set(name, value);
+          }
+        }
+        const responseOptions = {
+          status: response.statusCode ?? 500,
+          statusText: response.statusMessage,
+          headers: responseHeaders,
+        };
+        if (streaming) {
+          // Keep real socket failures on the native stream. The browser polyfill
+          // leaves a rejected cancel() promise after SIGKILL followed by client.close().
+          // Node and lib.dom declare incompatible BYOB overloads for the same Web API.
+          const body = Readable.toWeb(response) as unknown as ReadableStream<Uint8Array>;
+          resolve(new Response(body, responseOptions));
+          return;
+        }
         const chunks: Buffer[] = [];
         response.on("data", (chunk: Buffer) => chunks.push(chunk));
         response.once("error", reject);
         response.once("end", () => {
-          const responseHeaders = new Headers();
-          for (const [name, value] of Object.entries(response.headers)) {
-            if (Array.isArray(value)) {
-              for (const item of value) responseHeaders.append(name, item);
-            } else if (value !== undefined) {
-              responseHeaders.set(name, value);
-            }
-          }
-          resolve(
-            new Response(Buffer.concat(chunks), {
-              status: response.statusCode ?? 500,
-              statusText: response.statusMessage,
-              headers: responseHeaders,
-            }),
-          );
+          resolve(new Response(Buffer.concat(chunks), responseOptions));
         });
       },
     );
@@ -3894,6 +3902,7 @@ for await (const line of lines) {
 
     await Promise.all([
       mkdir(join(projectRoot, ".flame"), { recursive: true }),
+      mkdir(join(workspaceRoot, ".flame"), { recursive: true }),
       mkdir(join(runtimeHome, ".flame"), { recursive: true }),
       mkdir(join(workspaceRoot, "nested"), { recursive: true }),
     ]);

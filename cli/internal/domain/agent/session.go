@@ -448,8 +448,8 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 	return nil
 }
 
-// RestoreAttachedSnapshot restores a cold projection that was read after a
-// cursorless subscription was attached. HeadEventID is the exact journal
+// RestoreAttachedSnapshot restores a coherent projection and successor tail
+// returned by one Runtime subscription. HeadEventID is the exact journal
 // position preceding that stream; retaining it closes a second-disconnect gap
 // before the first replayable event arrives.
 func (c *Conversation) RestoreAttachedSnapshot(snapshot SessionSnapshot, stream SegmentStream) error {

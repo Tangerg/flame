@@ -34,6 +34,7 @@ func registerRuns(registry *Registry) {
 			protocol.ErrSessionNotFound.Error(),
 			protocol.ErrSessionBusy.Error(),
 			protocol.ErrSessionHasActiveRun.Error(),
+			protocol.ErrPromptSourceTooLarge.Error(),
 			protocol.ErrUnsupportedMime.Error(),
 			protocol.ErrCapabilityNotNeg.Error(),
 		},

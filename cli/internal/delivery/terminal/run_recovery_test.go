@@ -40,7 +40,11 @@ func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 	if err := store.SaveDraft(pending.SessionID(), source); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.StagePendingSteer(pending, source); err != nil {
+	preparedInput, err := store.PrepareInput(t.Context(), pending.Message(), pending.Command().Input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.StagePendingSteer(pending, source, preparedInput); err != nil {
 		t.Fatal(err)
 	}
 

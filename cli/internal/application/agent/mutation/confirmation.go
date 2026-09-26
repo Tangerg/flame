@@ -123,6 +123,9 @@ func AcknowledgementUncertain(err error) bool {
 // same command's outcome in the store that originally owned it.
 func OutcomeUnknown(err error) bool {
 	return AcknowledgementUncertain(err) ||
+		errors.Is(err, agent.ErrCommandConflict) ||
+		errors.Is(err, agent.ErrCommandNotDispatched) ||
+		errors.Is(err, agent.ErrCommandInputUnavailable) ||
 		errors.Is(err, agent.ErrCommandStoreMismatch) ||
 		errors.Is(err, ErrReplayGuaranteeUnavailable)
 }

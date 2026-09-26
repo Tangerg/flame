@@ -1371,7 +1371,7 @@ func TestPublishedLimitWireConstraints(t *testing.T) {
 				Scope: ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1, MaxBytes: 1,
 			},
 			MCPAuthorizationAttempts: MCPAuthorizationAttemptLimits{RetentionSeconds: 1},
-			RuntimeSubscription:      SubscriptionLimits{MaxTopics: 1, MaxWatches: 1},
+			RuntimeSubscription:      SubscriptionLimits{MaxTopics: 1, MaxWatches: 1, MaxPaths: 1, MaxDirectoryEntries: 1, MaxFileBytes: 1},
 		}
 	}
 	if err := validRuntimeLimits(nil).ValidateWire(); err != nil {

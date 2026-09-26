@@ -120,6 +120,7 @@ func registerSessions(registry *Registry) {
 			protocol.ErrRunNotFound.Error(),
 			protocol.ErrSessionBusy.Error(),
 			protocol.ErrCheckpointUnavailable.Error(),
+			protocol.ErrCheckpointConflict.Error(),
 		},
 		CapabilityRules: []CapabilityRule{
 			{

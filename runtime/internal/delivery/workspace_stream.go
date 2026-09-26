@@ -474,12 +474,9 @@ func cloneRuntimeEvent(event protocol.RuntimeEvent) protocol.RuntimeEvent {
 // refetch it will not perform. Frames for topics it did not ask for are filtered here
 // rather than at the producer — one hub, many subscriptions, each with its own set.
 //
-// When the request carries watches, the subscription also asks the workspace use
-// case to monitor those working directories' Git state and emits a debounced
-// resync on any change (commit / stage / checkout / merge) — the client then
-// re-reads the diff. (Working-tree file
-// edits aren't watched directly — see gitWatcher; the agent's own edits arrive as
-// files.changed from its tools.)
+// Watches observe Git state and the bounded exact paths the client is currently
+// reading. Content notifications preserve workspace/path identity; Git notices
+// invalidate only the watch whose semantic HEAD/index state changed.
 func (s *Handler) SubscribeRuntime(ctx context.Context, request protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error) {
 	topics, err := s.subscribedTopics(request.Topics)
 	if err != nil {
@@ -500,19 +497,33 @@ func (s *Handler) SubscribeRuntime(ctx context.Context, request protocol.Runtime
 		return nil, nil, errSubscriptionAdmissionsClosed
 	}
 
+	observationErrors := make(chan error, 1)
+	reportObservationError := func(err error) {
+		select {
+		case observationErrors <- err:
+		default:
+		}
+	}
 	var fileWatcher io.Closer
 	if len(workingDirectories) > 0 {
-		fileWatcher, err = s.workspaceWatch.Watch(workingDirectories, func() {
-			s.workspaceHub.publishTo(subscription, protocol.RuntimeEvent{
-				Type:     protocol.RuntimeResync,
-				Topics:   []protocol.RuntimeTopic{protocol.TopicFilesChanged},
-				WatchIDs: watchIDs,
-			})
-		})
+		scopes := make([]workspaceapp.WatchScope, len(request.Watches))
+		for index, watch := range request.Watches {
+			scopes[index] = workspaceapp.WatchScope{Key: watch.WatchID, Root: watch.Workspace.Path, Paths: watch.Paths}
+		}
+		fileWatcher, err = s.workspaceWatch.Watch(scopes, func(change workspaceapp.ObservationChange) {
+			event := protocol.RuntimeEvent{
+				Type: protocol.RuntimeFilesChanged, WatchID: change.Key,
+				Workspace: &protocol.WorkspaceRef{Path: change.Root}, Paths: change.Paths,
+			}
+			if len(change.Paths) == 0 {
+				event = protocol.RuntimeEvent{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}, WatchIDs: []string{change.Key}}
+			}
+			s.workspaceHub.publishTo(subscription, event)
+		}, reportObservationError)
 		if err != nil {
 			unregister()
 			close(events)
-			return nil, nil, wireWorkspaceError(fmt.Errorf("start git watcher: %w", err))
+			return nil, nil, wireWorkspaceError(fmt.Errorf("start workspace watcher: %w", err))
 		}
 	}
 	var authoredWatcher io.Closer
@@ -558,6 +569,7 @@ func (s *Handler) SubscribeRuntime(ctx context.Context, request protocol.Runtime
 	})
 	return &protocol.RuntimeSubscribeResponse{}, subscriptionEventSequence(
 		events,
+		observationErrors,
 		subscription.exhausted,
 		func() { s.workspaceHub.drained(subscription) },
 		stopSubscription,
@@ -582,6 +594,7 @@ func subscribedAuthoredResources(topics map[protocol.RuntimeTopic]bool) []worksp
 // consumer.
 func subscriptionEventSequence(
 	events <-chan protocol.RuntimeEvent,
+	failures <-chan error,
 	exhausted <-chan struct{},
 	queueDrained func(),
 	stopSubscription func(),
@@ -590,6 +603,10 @@ func subscriptionEventSequence(
 		defer stopSubscription()
 		for {
 			select {
+			case err := <-failures:
+				yield(protocol.RuntimeEvent{}, wireWorkspaceError(fmt.Errorf("workspace observation ended: %w", err)))
+				return
+
 			case event, open := <-events:
 				if !open {
 					return

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RunEvent, RunProtocolProfile, RunRef } from "@/rpc";
+import type { RunEvent, RunOutcome, RunProtocolProfile, RunRef } from "@/rpc";
 import {
   runtimeAgentEvent,
   runtimeCancelResult,
@@ -37,6 +37,63 @@ function event(value: RunEvent["event"]): RunEvent {
 }
 
 describe("Runtime → Agent fact adapter", () => {
+  it.each(["completed", "canceled", "failed", "timedOut", "lost"] as const)(
+    "retains unresolved effects for %s through live, cold, and cancellation projections",
+    (type) => {
+      const unresolvedEffects = [
+        {
+          processId: "process_child",
+          effectId: "effect_external",
+          cause: "executor_failure",
+          reason: "response_lost",
+          detail: "connection closed",
+        },
+      ];
+      const outcome = {
+        type,
+        error: { type: "run_lost", detail: "unknown" },
+        unresolvedEffects,
+      } as RunOutcome;
+      const run = runningRoot({
+        status: "finished",
+        activeSegmentId: undefined,
+        finishedAt: "2026-08-12T08:00:02.000Z",
+        outcome,
+      });
+      const projected = runtimeRunFact(run);
+      expect(projected.outcome?.unresolvedEffects).toEqual(unresolvedEffects);
+      expect(projected.outcome?.unresolvedEffects).not.toBe(unresolvedEffects);
+      const live = runtimeAgentEvent(
+        event({ type: "segment.finished", outcome, metrics: METRICS, contextTokens: 0 }),
+      );
+      expect(live.event).toMatchObject({ outcome: projected.outcome });
+      expect(runtimeCancelResult({ type: "root", run })).toMatchObject({ run: projected });
+      const child = {
+        ...run,
+        id: "run_child",
+        parentRunId: run.id,
+        rootRunId: run.id,
+        spawnedByItemId: "spawn_child",
+      };
+      expect(runtimeCancelResult({ type: "child", rootRun: run, run: child })).toMatchObject({
+        run: { id: "run_child", outcome: projected.outcome },
+        rootRun: projected,
+      });
+    },
+  );
+
+  it("omits an empty unresolved effect collection", () => {
+    const mapped = runtimeRunFact(
+      runningRoot({
+        status: "finished",
+        activeSegmentId: undefined,
+        finishedAt: "2026-08-12T08:00:02.000Z",
+        outcome: { type: "canceled", unresolvedEffects: [] },
+      }),
+    );
+    expect(mapped.outcome).toEqual({ type: "canceled" });
+  });
+
   it("normalizes a live root Run into a complete product fact", () => {
     expect(
       runtimeRunFact(

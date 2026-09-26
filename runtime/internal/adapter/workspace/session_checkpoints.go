@@ -23,6 +23,8 @@ func (s SessionCheckpoints) Restore(ctx context.Context, sessionID, cwd, runID s
 		switch {
 		case errors.Is(err, ErrCheckpointUnavailable):
 			return sessions.ErrCheckpointUnavailable
+		case errors.Is(err, ErrCheckpointConflict):
+			return fmt.Errorf("%w: %w", sessions.ErrCheckpointConflict, err)
 		case errors.Is(err, ErrCheckpointRestoreIncomplete):
 			return fmt.Errorf("%w: %v", sessions.ErrCheckpointRestoreIncomplete, err)
 		default:

@@ -63,7 +63,12 @@ interface AgentStore {
   ) => boolean;
   retireProjectionGeneration: (sessionIds: readonly string[]) => void;
   replaceServerScope: (sessionIds: readonly string[]) => void;
-  reconcileMessageIdentity: (sessionId: string, fromId: string, toId: string) => void;
+  reconcileMessageIdentity: (
+    sessionId: string,
+    fromId: string,
+    toId: string,
+    steerRunId?: string,
+  ) => void;
   dropMessage: (sessionId: string, id: string) => void;
   dropSession: (sessionId: string) => void;
   setStop: (sessionId: string, action: StopCurrentRootRunAction | null) => void;
@@ -281,10 +286,10 @@ export const useAgentStore = create<AgentStore>((set) => ({
         ? state
         : { sessions, projectionGenerationSequence: viewEpoch };
     }),
-  reconcileMessageIdentity: (sessionId, fromId, toId) =>
+  reconcileMessageIdentity: (sessionId, fromId, toId, steerRunId) =>
     set((state) => {
       const sessions = patchView(state.sessions, sessionId, (view) =>
-        reconcileMessageIdentity(view, fromId, toId),
+        reconcileMessageIdentity(view, fromId, toId, steerRunId),
       );
       return sessions === state.sessions ? state : { sessions };
     }),

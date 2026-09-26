@@ -39,4 +39,6 @@ const (
 	codeSkillNotFound                   = -32034
 	codeSkillUnavailable                = -32035
 	codeScheduleNotFound                = -32036
+	codeCheckpointConflict              = -32037
+	codePromptSourceTooLarge            = -32038
 )

@@ -34,6 +34,7 @@ import {
 } from "@/plugins/builtin/workspace/public/queries";
 import {
   workspaceInvalidations,
+  workspaceQueryAffected,
   type WorkspaceEventLike,
   type WorkspaceInvalidationTarget,
 } from "../domain/eventInvalidation";
@@ -67,27 +68,34 @@ const QUERY_KEYS: Record<
 
 function invalidateWorkspaceTargets(
   targets: WorkspaceInvalidationTarget[],
-  sessionIds?: readonly string[],
+  event: WorkspaceEventLike,
 ): void {
   if (targets.includes("all")) {
     replaceWorkspaceReadModels();
     return;
   }
   if (targets.includes("agentSessionProjection")) {
-    synchronizeMountedAgentSessions({ sessionIds, ownership: "after-live" });
+    synchronizeMountedAgentSessions({ sessionIds: event.sessionIds, ownership: "after-live" });
   }
   for (const target of targets) {
     if (target === "all") continue;
     if (target === "agentSessionProjection") {
       continue;
     }
-    void replaceCachedRead({ queryKey: [QUERY_KEYS[target]] });
-    if (target === "skills") void replaceCachedRead({ queryKey: [WORKSPACE_SKILL_DETAIL_KEY] });
+    const predicate = (query: { queryKey: readonly unknown[] }) =>
+      workspaceQueryAffected(
+        target,
+        query.queryKey[1] as { cwd?: string; path?: string } | undefined,
+        event,
+      );
+    void replaceCachedRead({ queryKey: [QUERY_KEYS[target]], predicate });
+    if (target === "skills")
+      void replaceCachedRead({ queryKey: [WORKSPACE_SKILL_DETAIL_KEY], predicate });
   }
 }
 
 export function invalidateWorkspaceEvent(ev: WorkspaceEventLike): void {
-  invalidateWorkspaceTargets(workspaceInvalidations(ev), ev.sessionIds);
+  invalidateWorkspaceTargets(workspaceInvalidations(ev), ev);
 }
 
 export function invalidateWorkspaceEverything(): void {

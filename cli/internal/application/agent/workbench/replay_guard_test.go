@@ -28,7 +28,7 @@ func TestStorePersistsRunAndResumeReplayOwnership(t *testing.T) {
 	}); stagePendingRunErr != nil {
 		t.Fatal(stagePendingRunErr)
 	}
-	if markPendingRunDispatchingErr := store.MarkPendingRunDispatching(start.SessionID, start.CommandID, startGuard); markPendingRunDispatchingErr != nil {
+	if markPendingRunDispatchingErr := store.MarkPendingRunDispatching(start.SessionID, start.CommandID, startGuard, nil); markPendingRunDispatchingErr != nil {
 		t.Fatal(markPendingRunDispatchingErr)
 	}
 	cancelID, err := store.MarkPendingRunCanceling(start.SessionID, start.CommandID, cancelGuard)
@@ -49,7 +49,7 @@ func TestStorePersistsRunAndResumeReplayOwnership(t *testing.T) {
 		},
 		Interactions: []agent.Interaction{approval}, Replay: resumeGuard,
 	}
-	if stagePendingResumeErr := store.StagePendingResume("ses_2", resume); stagePendingResumeErr != nil {
+	if stagePendingResumeErr := store.StagePendingResume("ses_2", resume, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 

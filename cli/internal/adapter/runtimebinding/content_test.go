@@ -31,7 +31,7 @@ func TestProjectInputReadsTypedAttachmentsAtDispatch(t *testing.T) {
 			protocol.FeatureMultimodal: {Enabled: true},
 		}),
 	}
-	blocks, err := runtime.projectInput(t.Context(), agent.Message{
+	blocks, err := runtime.PrepareInput(t.Context(), agent.Message{
 		Text: "prompt",
 		Attachments: []agent.Attachment{
 			{ID: "text", Kind: protocol.ContentBlockText, Name: "notes.txt", Path: textPath, MimeType: "text/plain", Size: 5},
@@ -39,7 +39,7 @@ func TestProjectInputReadsTypedAttachmentsAtDispatch(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("projectInput: %v", err)
+		t.Fatalf("PrepareInput: %v", err)
 	}
 	if len(blocks) != 3 || blocks[0].Type != protocol.ContentBlockText || blocks[0].Text != "prompt" ||
 		blocks[1].Type != protocol.ContentBlockText || blocks[2].Type != protocol.ContentBlockImage ||
@@ -54,12 +54,12 @@ func TestProjectInputPreservesMeaningfulTextAndOmitsBlankText(t *testing.T) {
 	}}
 
 	const authored = "  indented\ntrailing  \n"
-	blocks, err := runtime.projectInput(t.Context(), agent.Message{Text: authored})
+	blocks, err := runtime.PrepareInput(t.Context(), agent.Message{Text: authored})
 	if err != nil || len(blocks) != 1 || blocks[0].Text != authored {
 		t.Fatalf("meaningful projection = (%+v, %v)", blocks, err)
 	}
 
-	blocks, err = runtime.projectInput(t.Context(), agent.Message{
+	blocks, err = runtime.PrepareInput(t.Context(), agent.Message{
 		Text: " \n\t",
 		Attachments: []agent.Attachment{{
 			ID: "text", Kind: protocol.ContentBlockText, Name: "notes.txt", Path: "/notes.txt",
@@ -81,15 +81,15 @@ func TestProjectInputRejectsImagesBeforeReadingWithoutMultimodalCapability(t *te
 		reads++
 		return []byte("image"), nil
 	}}
-	blocks, err := runtime.projectInput(t.Context(), agent.Message{Attachments: []agent.Attachment{{
+	blocks, err := runtime.PrepareInput(t.Context(), agent.Message{Attachments: []agent.Attachment{{
 		ID: "image", Kind: protocol.ContentBlockImage, Name: "image.png", Path: "/image.png",
 		MimeType: "image/png", Size: 5,
 	}}})
 	if err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
-		t.Fatalf("projectInput error = %v, want ErrIncompatibleRuntime", err)
+		t.Fatalf("PrepareInput error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if blocks != nil || reads != 0 {
-		t.Fatalf("projectInput = (%+v, %v), want no blocks or attachment reads", blocks, reads)
+		t.Fatalf("PrepareInput = (%+v, %v), want no blocks or attachment reads", blocks, reads)
 	}
 }
 
@@ -106,15 +106,15 @@ func TestProjectInputRejectsInvalidTextBytesAtDispatch(t *testing.T) {
 			runtime := &Connection{loadAttachment: func(context.Context, string, int64) ([]byte, error) {
 				return test.data, nil
 			}}
-			blocks, err := runtime.projectInput(t.Context(), agent.Message{Attachments: []agent.Attachment{{
+			blocks, err := runtime.PrepareInput(t.Context(), agent.Message{Attachments: []agent.Attachment{{
 				ID: "text", Kind: protocol.ContentBlockText, Name: "notes.txt", Path: "/notes.txt",
 				MimeType: "text/plain", Size: int64(len(test.data)),
 			}}})
 			if err == nil || !strings.Contains(err.Error(), "not valid text") {
-				t.Fatalf("projectInput error = %v, want invalid text", err)
+				t.Fatalf("PrepareInput error = %v, want invalid text", err)
 			}
 			if blocks != nil {
-				t.Fatalf("projectInput blocks = %+v, want nil", blocks)
+				t.Fatalf("PrepareInput blocks = %+v, want nil", blocks)
 			}
 		})
 	}

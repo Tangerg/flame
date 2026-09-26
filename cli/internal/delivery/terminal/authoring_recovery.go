@@ -23,6 +23,12 @@ func (a *app) restorePendingRuns() {
 	if len(pending) == 0 {
 		return
 	}
+	if pending[0].State != workbench.PendingRunQueued {
+		if _, err := pending[0].ReplayCommand(); err != nil {
+			a.fail(fmt.Errorf("recover pending run input: %w", err))
+			return
+		}
+	}
 	if pending[0].State == workbench.PendingRunDispatching &&
 		!commandReplaySafe(pending[0].Replay, a.runtimeProfile) {
 		a.fail(errors.New("recover pending run: replay guarantee expired or belongs to another runtime"))
@@ -60,12 +66,15 @@ func (a *app) restorePendingResume() {
 	if !ok {
 		return
 	}
+	if _, err := pending.ReplayCommand(); err != nil {
+		a.fail(fmt.Errorf("recover interaction input: %w", err))
+		return
+	}
 	if !commandReplayStoreMatches(pending.Replay, a.runtimeProfile) {
 		a.fail(errors.New("recover interaction decisions: command belongs to another runtime"))
 		return
 	}
-	if a.execution.conversation.Phase() != agent.ConversationWaiting || a.execution.conversation.RunID() != pending.Command.RunID ||
-		!sameInteractions(a.execution.conversation.Interactions(), pending.Interactions) {
+	if err := a.execution.conversation.ValidateInteractionReview(pending.Command.RunID, pending.Interactions); err != nil {
 		// The authoritative snapshot has advanced beyond this decision. Its exact
 		// runtime outcome is therefore already visible and the local outbox can be
 		// retired without replaying an obsolete command.

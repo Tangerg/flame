@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RpcConnectionError, RpcError, type FlameClient } from "@/rpc";
+import { RpcConnectionError, RpcError, RpcProtocolError, type FlameClient } from "@/rpc";
 import { asRunId, asSegmentId } from "@/rpc";
 import type { RunStream, RunStreamPosition } from "./agentRunPump";
 import { createRunStreamReattach } from "./runStreamReattach";
@@ -40,6 +40,20 @@ function runClient(subscribe: FlameClient["runs"]["subscribe"]): Pick<FlameClien
 }
 
 describe("run stream reattach", () => {
+  it("propagates invalid acknowledgements to the pump synchronization diagnostic", async () => {
+    const error = new RpcProtocolError("runs.subscribe result", [], "request_invalid_ack");
+    const subscribe = vi.fn<FlameClient["runs"]["subscribe"]>().mockRejectedValue(error);
+    const recoverProjection = vi.fn(async () => {});
+    const reattach = createRunStreamReattach({
+      sessionId: "ses_1",
+      client: () => runClient(subscribe),
+      isCancelled: () => false,
+      recoverProjection,
+    });
+    await expect(reattach(position("replay"), new AbortController().signal)).rejects.toBe(error);
+    expect(recoverProjection).not.toHaveBeenCalled();
+  });
+
   it("commits the snapshot supplied with the cold tail and returns its successor cursor", async () => {
     useAgentStore.getState().setCommandError("ses_1", { code: "old" });
     const recoverProjection = vi.fn(async (_signal: AbortSignal) => {});

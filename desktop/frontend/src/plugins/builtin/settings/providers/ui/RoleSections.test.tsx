@@ -59,7 +59,7 @@ describe("Provider role mutation material", () => {
     const view = render(<UtilityModelSection />);
 
     fireEvent.click(screen.getByRole("button", { name: "Utility model" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Use main model" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Use Runtime default" }));
     await screen.findByText("retired role failure");
 
     provider.generation = 2;
@@ -79,7 +79,7 @@ describe("Provider role mutation material", () => {
 
     const trigger = screen.getByRole("button", { name: "Utility model" });
     fireEvent.click(trigger);
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Use main model" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Use Runtime default" }));
     await waitFor(() => expect(provider.setUtilityRole).toHaveBeenCalledOnce());
 
     const ariaDisabledWhilePending = trigger.getAttribute("aria-disabled");
@@ -106,11 +106,11 @@ describe("Provider role mutation material", () => {
     );
   });
 
-  it("offers a retry instead of the main-model default when loading failed", () => {
+  it("offers a retry instead of the Runtime default when loading failed", () => {
     const retry = vi.fn();
     provider.roleState = { kind: "error", retry };
     render(<UtilityModelSection />);
-    expect(screen.queryByText(/use main model/i)).toBeNull();
+    expect(screen.queryByText(/use runtime default/i)).toBeNull();
     expect(screen.getByRole("alert").textContent).toMatch(/unknown/i);
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     expect(retry).toHaveBeenCalledOnce();

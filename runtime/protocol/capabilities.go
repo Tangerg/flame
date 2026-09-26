@@ -160,6 +160,9 @@ type RunReplayLimits struct {
 
 // SubscriptionLimits caps one runtime subscription.
 type SubscriptionLimits struct {
-	MaxTopics  int `json:"maxTopics"`
-	MaxWatches int `json:"maxWatches"`
+	MaxTopics           int   `json:"maxTopics"`
+	MaxWatches          int   `json:"maxWatches"`
+	MaxPaths            int   `json:"maxPaths"`
+	MaxDirectoryEntries int   `json:"maxDirectoryEntries"`
+	MaxFileBytes        int64 `json:"maxFileBytes"`
 }

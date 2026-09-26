@@ -28,7 +28,7 @@ func (s *Store) PendingResume(sessionID string) (PendingResume, bool) {
 
 // StagePendingResume transfers a completed interaction review into the durable
 // command outbox before delivery starts.
-func (s *Store) StagePendingResume(sessionID string, pending PendingResume) error {
+func (s *Store) StagePendingResume(sessionID string, pending PendingResume, input *PreparedInput) error {
 	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
@@ -36,6 +36,15 @@ func (s *Store) StagePendingResume(sessionID string, pending PendingResume) erro
 		return err
 	}
 	pending = clonePendingResume(pending)
+	if pending.Command.Message != nil {
+		blocks, digest, err := input.bind(s, *pending.Command.Message)
+		if err != nil {
+			return err
+		}
+		pending.Command.Input, pending.InputDigest = blocks, digest
+	} else if input != nil {
+		return errors.New("resume without a message cannot own prepared input")
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if current, exists := s.pendingResumes[sessionID]; exists {
@@ -101,6 +110,9 @@ func (s *Store) RequeuePendingResume(
 	defer s.mu.Unlock()
 	pending, err := s.claimPendingResumeLocked(sessionID, commandID)
 	if err != nil {
+		return PendingResume{}, err
+	}
+	if _, err := pending.ReplayCommand(); err != nil {
 		return PendingResume{}, err
 	}
 	pending = clonePendingResume(pending)
@@ -184,6 +196,24 @@ func (s *Store) SavePendingRuns(sessionID string, commands []PendingRun) error {
 	commands = clonePendingRunSlice(commands)
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	for _, current := range s.pendingRuns[sessionID] {
+		if current.State == PendingRunQueued {
+			continue
+		}
+		index := pendingRunIndex(commands, current.Command.CommandID)
+		if index < 0 || !pendingRunEqual(current, commands[index]) || current.InputDigest != commands[index].InputDigest {
+			return errors.New("queue edit cannot replace a dispatched command")
+		}
+	}
+	for _, pending := range commands {
+		if pending.State == PendingRunQueued {
+			continue
+		}
+		index := pendingRunIndex(s.pendingRuns[sessionID], pending.Command.CommandID)
+		if index < 0 || s.pendingRuns[sessionID][index].State == PendingRunQueued {
+			return errors.New("queue edit cannot dispatch a command")
+		}
+	}
 	if err := s.saveSessionState(sessionID, s.drafts[sessionID], commands); err != nil {
 		return err
 	}
@@ -199,6 +229,7 @@ func (s *Store) MarkPendingRunDispatching(
 	sessionID string,
 	commandID agent.CommandID,
 	replay commandreplay.Guard,
+	input *PreparedInput,
 ) error {
 	if err := commandID.Validate(); err != nil {
 		return err
@@ -212,7 +243,18 @@ func (s *Store) MarkPendingRunDispatching(
 	if index < 0 {
 		return errors.New("pending run is absent")
 	}
+	current := s.pendingRuns[sessionID][index]
+	if current.State != PendingRunQueued {
+		_, err := current.ReplayCommand()
+		return err
+	}
+	blocks, digest, err := input.bind(s, current.Command.Message)
+	if err != nil {
+		return err
+	}
 	next := clonePendingRuns(s.pendingRuns)
+	next[sessionID][index].Command.Input = blocks
+	next[sessionID][index].InputDigest = digest
 	if err := next[sessionID][index].beginDispatch(replay); err != nil {
 		return err
 	}

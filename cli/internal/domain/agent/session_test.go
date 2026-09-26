@@ -282,6 +282,27 @@ func TestSessionSnapshotRestoresAChildOwnedInterrupt(t *testing.T) {
 	if conversation.RunID() != root.ID || conversation.Interactions()[0].(Approval).RunID != child.ID {
 		t.Fatalf("restored tree = root %s interactions %+v", conversation.RunID(), conversation.Interactions())
 	}
+	if err := conversation.ValidateInteractionReview(root.ID, []Interaction{approval}); err != nil {
+		t.Fatalf("child review rejected under its waiting root: %v", err)
+	}
+	for _, test := range []struct {
+		name         string
+		rootID       string
+		interactions []Interaction
+	}{
+		{name: "child command target", rootID: child.ID, interactions: []Interaction{approval}},
+		{name: "another root", rootID: "run_other", interactions: []Interaction{approval}},
+		{name: "missing member", rootID: root.ID},
+		{name: "duplicate member", rootID: root.ID, interactions: []Interaction{approval, approval}},
+		{name: "another member", rootID: root.ID, interactions: []Interaction{Approval{RunID: "run_unrelated", ItemID: approval.ItemID}}},
+		{name: "stale item", rootID: root.ID, interactions: []Interaction{Approval{RunID: child.ID, ItemID: "item_earlier"}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := conversation.ValidateInteractionReview(test.rootID, test.interactions); err == nil {
+				t.Fatal("accepted a review outside the authoritative waiting set")
+			}
+		})
+	}
 }
 
 func TestSessionSnapshotRestoresLatestFinishedRun(t *testing.T) {

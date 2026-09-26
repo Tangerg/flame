@@ -166,6 +166,10 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 	if err != nil {
 		return sessions.PortableRun{}, err
 	}
+	effects, err := portableUnresolvedEffectsFromArtifact(path+".outcome.unresolvedEffects", artifact.Outcome.UnresolvedEffects)
+	if err != nil {
+		return sessions.PortableRun{}, err
+	}
 	capabilities, err := portableCapabilitiesFromArtifact(path+".protocolProfile", artifact.ProtocolProfile)
 	if err != nil {
 		return sessions.PortableRun{}, err
@@ -182,14 +186,27 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 		SessionID: artifact.SessionID, ID: artifact.ID, SpawnedByItemID: artifact.SpawnedByItemID,
 		ParentRunID: artifact.ParentRunID, RootRunID: artifact.RootRunID,
 		Selection: selection, Outcome: outcome,
-		Failure:       failure,
-		Metrics:       metrics,
-		ContextTokens: artifact.ContextTokens,
-		Capabilities:  capabilities,
-		Detail:        artifact.Outcome.Detail,
-		CreatedAt:     artifact.CreatedAt, FinishedAt: artifact.FinishedAt,
+		Failure:           failure,
+		UnresolvedEffects: effects,
+		Metrics:           metrics,
+		ContextTokens:     artifact.ContextTokens,
+		Capabilities:      capabilities,
+		Detail:            artifact.Outcome.Detail,
+		CreatedAt:         artifact.CreatedAt, FinishedAt: artifact.FinishedAt,
 		UpdatedAt: artifact.UpdatedAt, MessageMark: artifact.MessageMark,
 	}, nil
+}
+
+func portableUnresolvedEffectsFromArtifact(path string, values []protocol.UnresolvedEffect) ([]run.UnresolvedEffect, error) {
+	effects := make([]run.UnresolvedEffect, 0, len(values))
+	for index, value := range values {
+		effect, err := run.NewUnresolvedEffect(value.ProcessID, value.EffectID, value.Cause, value.Reason, value.Detail)
+		if err != nil {
+			return nil, invalidArtifact(fmt.Sprintf("%s[%d]", path, index), "%v", err)
+		}
+		effects = append(effects, effect)
+	}
+	return effects, nil
 }
 
 // portableCapabilitiesFromArtifact restores the run's frozen contract, or nothing when

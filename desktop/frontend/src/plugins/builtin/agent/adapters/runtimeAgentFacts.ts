@@ -68,16 +68,20 @@ function runtimeProblem(problem: ProblemData): AgentProblem {
 }
 
 function runtimeRunOutcome(outcome: RunOutcome): AgentRunOutcome {
+  const evidence = outcome.unresolvedEffects?.length
+    ? { unresolvedEffects: outcome.unresolvedEffects.map((effect) => ({ ...effect })) }
+    : {};
   switch (outcome.type) {
     case "completed":
-      return { type: "completed" };
+      return { type: "completed", ...evidence };
     case "timedOut":
     case "failed":
     case "lost":
-      return { type: outcome.type, error: runtimeProblem(outcome.error) };
+      return { type: outcome.type, error: runtimeProblem(outcome.error), ...evidence };
     case "canceled":
       return {
         type: outcome.type,
+        ...evidence,
         ...(outcome.detail !== undefined ? { detail: outcome.detail } : {}),
       };
   }

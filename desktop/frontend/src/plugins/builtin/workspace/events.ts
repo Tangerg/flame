@@ -17,6 +17,11 @@ import {
 } from "./adapters/sessionWorkspaceCwd";
 import { createWorkspaceEventLoop } from "./application/workspaceEventLoop";
 import { startWorkspaceEventSubscription } from "./application/workspaceEventSubscription";
+import {
+  installWorkspaceFocusRefresh,
+  subscribeWorkspaceReadTargets,
+  workspaceReadTargets,
+} from "./adapters/workspaceReadObservation";
 import { RUNTIME_SERVER_SCOPE, RUNTIME_STREAM } from "@/plugins/builtin/runtime/public/services";
 import { WORKSPACE_MUTATION_LIFECYCLE } from "@/plugins/builtin/workspace/public/services";
 
@@ -39,6 +44,7 @@ export default definePlugin({
     });
 
     const disposeProjectIndex = installProjectIndexRefresh();
+    const disposeFocus = installWorkspaceFocusRefresh();
     const disposeServerScope = ctx.serverScope.subscribeReplacement(replaceWorkspaceServerScope);
     const disposeSubscription = startWorkspaceEventSubscription({
       canSubscribe: canSubscribeWorkspaceEvents,
@@ -53,6 +59,8 @@ export default definePlugin({
         console.warn("[workspace-events] target resolution failed:", error),
       subscribeWorkspaceCwdInputs: (onChange) =>
         subscribeWorkspaceCwdInputs(ctx.sessions, onChange),
+      readTargets: workspaceReadTargets,
+      subscribeReadTargets: subscribeWorkspaceReadTargets,
       loop,
     });
 
@@ -60,6 +68,7 @@ export default definePlugin({
       disposeSubscription();
       disposeServerScope();
       disposeProjectIndex();
+      disposeFocus();
     });
   },
 });

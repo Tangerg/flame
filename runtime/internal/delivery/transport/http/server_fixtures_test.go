@@ -60,7 +60,7 @@ func validTestCapabilities() protocol.ServerCapabilities {
 				Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1, MaxBytes: 1,
 			},
 			MCPAuthorizationAttempts: protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 1},
-			RuntimeSubscription:      protocol.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1},
+			RuntimeSubscription:      protocol.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1, MaxPaths: 1, MaxDirectoryEntries: 1, MaxFileBytes: 1},
 		},
 	}
 }

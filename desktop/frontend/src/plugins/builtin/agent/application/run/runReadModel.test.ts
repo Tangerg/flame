@@ -84,5 +84,11 @@ describe("CurrentRootMaterial", () => {
     ];
 
     expect(CurrentRootMaterial.from(failed).terminalTurnIndex(rows)).toBe(-1);
+    failed.outcome = {
+      type: "failed",
+      error: { message: "Provider failed" },
+      unresolvedEffects: [{ processId: "p", effectId: "e", cause: "unknown" }],
+    };
+    expect(CurrentRootMaterial.from(failed).terminalTurnIndex(rows)).toBe(0);
   });
 });

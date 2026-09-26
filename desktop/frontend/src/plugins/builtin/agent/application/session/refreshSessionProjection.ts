@@ -4,6 +4,9 @@ import type { SessionProjectionSynchronizationOwnership } from "../ports/session
 import { agentRuntime, type AgentSessionMaterialRead } from "../ports/runtimeGateway";
 import { agentSessionView } from "../ports/sessionView";
 import { projectAgentSessionSnapshot } from "./sessionSnapshot";
+import { reconcileSteerMessages } from "../view/viewMutations";
+import { notifyInfo } from "@/plugins/sdk";
+import { t } from "@/lib/i18n";
 
 interface RefreshSessionProjectionOptions {
   invalidateQueuedRunEvents?: boolean;
@@ -51,7 +54,11 @@ export async function revalidateAgentSessionMaterial(
   const projected = projectAgentSessionSnapshot(material.snapshot);
   const shared = material.projectAssociatedSharedMaterial(projected.shared);
   const view = shared === projected.shared ? projected : { ...projected, shared };
-  const committed = viewPort.commitViewRefresh(sessionId, token, view);
+  const previous = viewPort.getSession(sessionId)?.view;
+  const reconciled = previous ? reconcileSteerMessages(previous, view) : { view, unapplied: false };
+  const committed = viewPort.commitViewRefresh(sessionId, token, reconciled.view);
+  if (committed && reconciled.unapplied)
+    notifyInfo(t("agent.steer.notApplied"), { source: "session" });
   return {
     authoritativeView: view,
     committed,

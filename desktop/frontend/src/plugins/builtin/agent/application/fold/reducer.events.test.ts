@@ -37,6 +37,36 @@ beforeEach(async () => {
 });
 
 describe("reducer — run lifecycle", () => {
+  it.each(["processId", "effectId", "cause", "reason", "detail"] as const)(
+    "does not suppress a terminal contradiction in unresolved effect %s",
+    (field) => {
+      const effect = {
+        processId: "process",
+        effectId: "effect",
+        cause: "unknown",
+        reason: "lost",
+        detail: "no receipt",
+      };
+      const started = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
+      const finish = testRunEvent(
+        started,
+        runFinished({ type: "canceled", unresolvedEffects: [effect] }),
+      );
+      const settled = reduceAgentEvent(started, finish);
+      expect(reduceAgentEvent(settled, { ...finish, eventId: "replay" })).toBe(settled);
+      expect(() =>
+        reduceAgentEvent(settled, {
+          ...finish,
+          eventId: "conflict",
+          event: runFinished({
+            type: "canceled",
+            unresolvedEffects: [{ ...effect, [field]: "different" }],
+          }),
+        }),
+      ).toThrow("agent.fold.runStatusMismatch");
+      expect(settled.runsById.run_1?.outcome?.unresolvedEffects).toEqual([effect]);
+    },
+  );
   it("segment.started flips running + records ids; segment.finished flips off", () => {
     let s = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
     expect(selectCurrentRootRun(s)).toMatchObject({
@@ -109,6 +139,43 @@ describe("reducer — run lifecycle", () => {
 });
 
 describe("reducer — item fold", () => {
+  it.each(["commentary", "finalAnswer"] as const)(
+    "replaces a provisional item with complete ordered media in %s and converges with cold history",
+    (phase) => {
+      const image = { type: "image", mime: "image/png", data: "aGVsbG8=" };
+      for (const content of [
+        [image],
+        [{ type: "text", text: "before" }, image, { type: "text", text: "after" }],
+      ]) {
+        const complete = item({
+          id: "media",
+          type: "agentMessage",
+          status: "completed",
+          phase,
+          content,
+        });
+        let live = reduce(
+          EMPTY_AGENT_SESSION_VIEW,
+          started(item({ id: "media", type: "agentMessage", content: [] })),
+        );
+        live = reduce(live, delta("media", { type: "content", text: "provisional" }));
+        live = reduce(live, completed(complete));
+        const cold = reduceDurableItem(EMPTY_AGENT_SESSION_VIEW, complete);
+        expect(live.messages).toEqual(cold.messages);
+        expect(live.messages[0]!.blocks.map((block) => block.kind)).toEqual(
+          content.map((part) => part.type),
+        );
+        expect(live.messages[0]!.blocks).not.toContainEqual(
+          expect.objectContaining({ text: "provisional" }),
+        );
+        expect(reduce(live, completed(complete)).messages).toEqual(live.messages);
+        expect(
+          reduce(live, started(item({ id: "media", type: "agentMessage", content: [] }))),
+        ).toBe(live);
+      }
+    },
+  );
+
   it("agentMessage start + content deltas + completed build one streaming text block", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, started(item({ id: "item_1", type: "agentMessage", content: [] })));
@@ -307,9 +374,15 @@ describe("reducer — item fold", () => {
           content: [{ type: "image", mime: "image/png", data: "aGVsbG8=" }],
         }),
       );
-      if (receiptFirst) state = reconcileMessageIdentity(state, "local-steer-1", "item_image");
+      if (receiptFirst) {
+        state = reconcileMessageIdentity(state, "local-steer-1", "item_image", "run_1");
+      }
+      expect(state.messages[0]?.steer?.status).toBe(receiptFirst ? "accepted" : undefined);
+      expect(state.messages[0]?.runId).toBeNull();
       state = reduce(state, applied);
-      if (!receiptFirst) state = reconcileMessageIdentity(state, "local-steer-1", "item_image");
+      if (!receiptFirst)
+        state = reconcileMessageIdentity(state, "local-steer-1", "item_image", "run_1");
+      expect(state.messages[0]?.steer).toEqual({ runId: "run_1", status: "applied" });
       expect(state.messages).toHaveLength(1);
       expect(state.messages[0]).toMatchObject({ id: "item_image", runId: "run_1" });
       expect(state.messages[0]!.blocks).toEqual([
@@ -736,7 +809,7 @@ describe("reducer — interrupt idempotency + terminal cleanup", () => {
     expect(s.toolCalls.tool_1?.status).toBe("err");
   });
 
-  it("an empty completed snapshot does not wipe already-streamed text (B3)", () => {
+  it("an authoritative empty completion removes provisional text", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, started(item({ id: "m1", type: "agentMessage", content: [] })));
     s = reduce(s, delta("m1", { type: "content", text: "hello world" }));
@@ -745,7 +818,7 @@ describe("reducer — interrupt idempotency + terminal cleanup", () => {
       completed(item({ id: "m1", type: "agentMessage", status: "completed", content: [] })),
     );
     const block = s.messages.flatMap((m) => m.blocks).find((b) => b.kind === "text");
-    expect(block).toMatchObject({ kind: "text", text: "hello world", status: "complete" });
+    expect(block).toMatchObject({ kind: "text", itemId: "m1", text: "", status: "complete" });
   });
 });
 

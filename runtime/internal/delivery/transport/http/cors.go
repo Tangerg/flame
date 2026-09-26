@@ -40,7 +40,7 @@ func corsMiddleware(origins []string) func(http.Handler) http.Handler {
 		// backend trace. Trace correlation is W3C-only — no X-Trace-Id.
 		// Omitting the trace headers fails the preflight for EVERY method,
 		// since browser tracing injects traceparent unconditionally.
-		AllowedHeaders:   append(requestHeaders(), "traceparent", "tracestate", "baggage"),
+		AllowedHeaders:   append(requestHeaders(), "Accept", "traceparent", "tracestate", "baggage"),
 		ExposedHeaders:   []string{"Request-Id", "X-Server", "X-Method"},
 		AllowCredentials: true,
 		MaxAge:           600,

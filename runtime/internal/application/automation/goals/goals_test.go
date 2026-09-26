@@ -49,7 +49,7 @@ func installGoalTraceCapture(t *testing.T) *notifyingSpanExporter {
 		goalTraceExporter = &notifyingSpanExporter{
 			InMemoryExporter: tracetest.NewInMemoryExporter(),
 		}
-		tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(goalTraceExporter))
+		tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(goalTraceExporter), sdktrace.WithSampler(sdktrace.AlwaysSample()))
 		otel.SetTracerProvider(tp)
 	})
 	goalTraceExporter.Reset()

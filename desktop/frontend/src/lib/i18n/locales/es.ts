@@ -374,6 +374,10 @@ export const es: Record<string, string> = {
   "settings.connection.reset": "Restaurar predeterminado",
   "settings.connection.status.checking": "Comprobando el runtime…",
   "settings.connection.status.reconnecting": "Reconectando…",
+  "agent.steer.accepted": "Aceptada · esperando entrar en el contexto del modelo",
+  "agent.steer.applied": "Incorporada al contexto del modelo",
+  "agent.steer.notApplied":
+    "La ejecución terminó antes de que una instrucción aceptada entrara en el contexto del modelo.",
   "agent.inputNotApplied": "Aún no aplicado",
   "agent.synchronizationIncomplete":
     "La sincronización está incompleta. Vuelve a abrir la sesión para reintentarlo.",
@@ -476,6 +480,7 @@ export const es: Record<string, string> = {
   "agent.runTree.status.finished": "Finalizado",
   "agent.runTree.status.error": "Error",
   "agent.runTree.status.canceled": "Cancelado",
+  "agent.runOutcome.unresolvedEffects": "Operaciones con resultados sin confirmar",
   "agent.runOutcome.canceled": "Cancelado",
   "agent.steps_one": "{{count}} paso",
   "agent.steps_many": "{{count}} pasos",
@@ -746,8 +751,8 @@ export const es: Record<string, string> = {
   "providers.fromEnv": "del entorno",
   "providers.utility.title": "Modelo auxiliar",
   "providers.utility.desc":
-    "Modelo para resúmenes, títulos y extracción de hechos. Si no se configura, se usa el modelo principal. Se aplica a las nuevas ejecuciones.",
-  "providers.utility.main": "Usar el modelo principal",
+    "Modelo para resúmenes, títulos y extracción de hechos. Sin selección, usa el modelo predeterminado de Runtime. Los cambios se aplican a la siguiente llamada auxiliar, incluso durante una ejecución en curso.",
+  "providers.utility.main": "Usar el modelo predeterminado de Runtime",
   "providers.utility.error": "No se pudo establecer el modelo auxiliar.",
   "providers.embedding.title": "Modelo de embeddings",
   "providers.embedding.desc":
@@ -893,7 +898,7 @@ export const es: Record<string, string> = {
     "Abre o selecciona una sesión para revisar su memoria de proyecto. Cambia a Usuario para la memoria entre proyectos.",
   "agentMemory.error": "No se pudo actualizar la memoria.",
   "schedules.intro":
-    "Ejecuta un prompt guardado según una programación. Cada ejecución inicia una sesión nueva mientras el runtime esté sirviendo; encontrarás su salida en la barra lateral.",
+    "Ejecuta un prompt guardado según una programación. Cada ejecución inicia una sesión nueva mientras el runtime esté sirviendo; encontrarás su salida en la barra lateral. Desactivar o eliminar detiene la programación futura. Las ejecuciones ya aceptadas pueden iniciarse y deben cancelarse por separado.",
   "schedules.add": "Nueva programación",
   "schedules.save": "Guardar",
   "schedules.saving": "Guardando…",
@@ -906,7 +911,7 @@ export const es: Record<string, string> = {
   "schedules.delete": "Eliminar programación",
   "schedules.delete.title": "¿Eliminar esta programación?",
   "schedules.delete.body":
-    "«{{title}}» y sus instrucciones desaparecen. Esto no se puede deshacer.",
+    "«{{title}}» y sus instrucciones desaparecen. Esto no se puede deshacer. Las ejecuciones ya aceptadas pueden iniciarse y deben cancelarse por separado.",
   "schedules.delete.confirm": "Eliminar",
   "schedules.empty": "No hay programaciones",
   "schedules.empty.sub":
@@ -917,7 +922,7 @@ export const es: Record<string, string> = {
   "schedules.model.default": "Modelo predeterminado del Runtime",
   "schedules.reasoning.default": "Valor predeterminado del modelo",
   "schedules.model.hint":
-    "Se aplica a futuras ejecuciones programadas. No afecta a las que ya están en curso.",
+    "Se aplica a la programación futura. Las ejecuciones ya aceptadas conservan su configuración.",
   "schedules.model.unavailable":
     "El modelo guardado no figura en el catálogo actual. La selección se conserva hasta que la cambies.",
   "schedules.form.title": "Título (opcional)",
@@ -955,6 +960,10 @@ export const es: Record<string, string> = {
   "rpcError.session_busy": "La sesión está ocupada — espera a que termine la ejecución actual.",
   "rpcError.checkpoint_unavailable":
     "No hay punto de restauración de archivos para ese turno — no se cambió nada.",
+  "rpcError.checkpoint_conflict":
+    "Se rechazó la restauración para proteger archivos no guardados en el punto de restauración. No se modificó ningún archivo.",
+  "rpcError.prompt_source_too_large":
+    "Los archivos de instrucciones superan el límite de tamaño o cantidad. Acórtalos o usa menos archivos y vuelve a intentarlo.",
   "rpcError.workspace_unavailable": "Ese espacio de trabajo no existe en el disco del runtime.",
   "rpcError.vcs_unavailable": "Esta carpeta no es un repositorio git.",
   "rpcError.rate_limited":
@@ -1278,5 +1287,6 @@ export const es: Record<string, string> = {
   "file.change.add": "Añadido en el árbol de trabajo",
   "file.change.mod": "Modificado en el árbol de trabajo",
   "file.change.del": "Eliminado en el árbol de trabajo",
+  "file.change.renamed": "Renombrado desde {{path}}",
   "file.change.below": "Contiene cambios del árbol de trabajo",
 };

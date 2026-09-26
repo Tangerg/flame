@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-09-22` · 84 methods
+Protocol `2026-09-26` · 84 methods
 
 ## Methods
 
@@ -19,11 +19,11 @@ Protocol `2026-09-22` · 84 methods
 | `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `session_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
 | `sessions.delete` | command | unary | replayResponse | none | none | — | — | `session_not_found` |
 | `sessions.fork` | command | unary | replayResponse | none | none | — | — | `session_not_found`, `run_not_found` |
-| `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `checkpoint_unavailable`, `capability_not_negotiated` |
+| `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `session_not_found`, `capability_not_negotiated` |
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `capability_not_negotiated` |
 | `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
-| `runs.start` | command | stream | replayRunStream | run | none | — | — | `session_not_found`, `session_busy`, `session_has_active_run`, `unsupported_mime`, `capability_not_negotiated` |
+| `runs.start` | command | stream | replayRunStream | run | none | — | — | `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated` |
 | `runs.resume` | command | stream | replayRunStream | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated` |
 | `runs.subscribe` | subscription | stream | none | run | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment`, `replay_cursor_invalid`, `replay_unavailable`, `capability_not_negotiated` |
 | `runs.cancel` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_finished`, `session_busy`, `capability_not_negotiated` |
@@ -50,7 +50,7 @@ Protocol `2026-09-22` · 84 methods
 | `skills.proposals.list` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `capability_not_negotiated` |
 | `skills.proposals.approve` | command | unary | replayResponse | none | none | — | `skills` | `workspace_unavailable`, `revision_conflict`, `capability_not_negotiated` |
 | `skills.proposals.reject` | command | unary | replayResponse | none | none | — | `skills` | `workspace_unavailable`, `revision_conflict`, `capability_not_negotiated` |
-| `agentDocs.list` | query | unary | none | none | none | — | — | `workspace_unavailable` |
+| `agentDocs.list` | query | unary | none | none | none | — | — | `workspace_unavailable`, `prompt_source_too_large` |
 | `mcp.servers.list` | query | unary | none | none | none | — | `mcp` | `capability_not_negotiated` |
 | `mcp.servers.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_already_exists`, `capability_not_negotiated` |
 | `mcp.servers.update` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `capability_not_negotiated` |
@@ -70,7 +70,7 @@ Protocol `2026-09-22` · 84 methods
 | `schedules.create` | command | unary | replayResponse | none | none | — | `schedules` | `workspace_unavailable`, `capability_not_negotiated` |
 | `schedules.update` | command | unary | replayResponse | none | none | — | `schedules` | `schedule_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
 | `schedules.delete` | command | unary | replayResponse | none | none | — | `schedules` | `capability_not_negotiated` |
-| `schedules.runNow` | command | unary | replayResponse | none | none | — | `schedules` | `schedule_not_found`, `capability_not_negotiated` |
+| `schedules.runNow` | command | unary | replayResponse | none | none | — | `schedules` | `schedule_not_found`, `prompt_source_too_large`, `capability_not_negotiated` |
 | `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.update` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
 | `goals.clear` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
@@ -143,6 +143,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | --- | --- | --- |
 | `agent_stuck` | — | `detail`, `docUrl` |
 | `capability_not_negotiated` | `requiredCapabilities` | `detail`, `docUrl` |
+| `checkpoint_conflict` | — | `detail`, `docUrl` |
 | `checkpoint_unavailable` | — | `detail`, `docUrl` |
 | `child_run_canceled` | — | `detail`, `docUrl` |
 | `denied_by_user` | — | `detail`, `docUrl` |
@@ -165,6 +166,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `mcp_server_not_found` | — | `detail`, `docUrl` |
 | `method_not_found` | — | `detail`, `docUrl` |
 | `path_outside_root` | — | `detail`, `docUrl` |
+| `prompt_source_too_large` | — | `detail`, `docUrl` |
 | `provider_error` | — | `detail`, `docUrl` |
 | `provider_not_configured` | — | — |
 | `provider_rejected` | — | `detail`, `docUrl` |
@@ -392,11 +394,11 @@ Forbidden on every variant: `durable`.
 
 | tag | required | optional |
 | --- | --- | --- |
-| `completed` | — | — |
-| `timedOut` | `error` | — |
-| `failed` | `error` | — |
-| `canceled` | — | `detail` |
-| `lost` | `error` | — |
+| `completed` | — | `unresolvedEffects` |
+| `timedOut` | `error` | `unresolvedEffects` |
+| `failed` | `error` | `unresolvedEffects` |
+| `canceled` | — | `detail`, `unresolvedEffects` |
+| `lost` | `error` | `unresolvedEffects` |
 
 ### `ArtifactItem`
 
@@ -534,8 +536,8 @@ TypeScript validator from this single registry projection.
 | `ArtifactToolResult` | `itemId` | `nonEmpty` |
 | `ArtifactToolResult` | `itemId` | `identity` |
 | `ArtifactToolResult` | `itemId` | `maxLength(256)` |
-| `SessionArtifact` | `version` | `minimum(27)` |
-| `SessionArtifact` | `version` | `maximum(27)` |
+| `SessionArtifact` | `version` | `minimum(28)` |
+| `SessionArtifact` | `version` | `maximum(28)` |
 | `ArtifactProblem` | `retryAfterSeconds` | `positive` |
 | `ArtifactProblem` | `retryAfterSeconds` | `maximum(9223372036)` |
 | `ContentBlock` | `text` | `pattern("\\S")` |
@@ -969,6 +971,8 @@ TypeScript validator from this single registry projection.
 | `MCPAuthorizationAttemptLimits` | `retentionSeconds` | `maximum(9223372036)` |
 | `RuntimeSubscribeRequest` | `topics` | `nonEmptyItems` |
 | `RuntimeSubscribeRequest` | `topics` | `uniqueItems` |
+| `WatchSpec` | `paths` | `nonEmptyItems` |
+| `WatchSpec` | `paths` | `uniqueItems` |
 | `RuntimeEvent` | `sequence` | `positive` |
 | `RuntimeEvent` | `sequence` | `maximum(9007199254740991)` |
 | `RuntimeEvent` | `paths` | `nonEmptyItems` |
@@ -1024,6 +1028,9 @@ TypeScript validator from this single registry projection.
 | `IdempotencyLimits` | `namespace` | `pattern("^idp_[0-9a-f]{32}$")` |
 | `SubscriptionLimits` | `maxTopics` | `positive` |
 | `SubscriptionLimits` | `maxWatches` | `positive` |
+| `SubscriptionLimits` | `maxPaths` | `positive` |
+| `SubscriptionLimits` | `maxDirectoryEntries` | `positive` |
+| `SubscriptionLimits` | `maxFileBytes` | `positive` |
 
 ## Capability gating
 

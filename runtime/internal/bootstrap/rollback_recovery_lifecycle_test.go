@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -16,7 +17,7 @@ import (
 // TestUnfinishedFileRollbackFencesTheSessionUntilRecovery walks the sequence a
 // unit test cannot: an operation that stopped with its recovery intent logged,
 // then the next command, then a query, then a restart, then the next command
-// again. The intent is the only record that a reset may have changed part of the
+// again. The intent is the only record that a checkout may have changed part of the
 // tree, so until recovery re-drives it the Session admits no Run and no other
 // rollback may displace it — and after recovery the Session works again.
 func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
@@ -25,8 +26,13 @@ func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 	}
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
-	if out, err := exec.Command("git", "-C", home, "init", "-q").CombinedOutput(); err != nil {
+	workspace := t.TempDir()
+	if out, err := exec.Command("git", "-C", workspace, "init", "-q").CombinedOutput(); err != nil {
 		t.Fatalf("git init workspace: %v: %s", err, out)
+	}
+	material := filepath.Join(workspace, "material.txt")
+	if err := os.WriteFile(material, []byte("checkpoint material"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 	model := newReplyStub("ok")
 	ctx := protocolLifecycleContext(t.Context())
@@ -41,7 +47,7 @@ func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 		}
 	})
 	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
-		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "rollback recovery",
+		Workspace: &protocol.WorkspaceRef{Path: workspace}, Title: "rollback recovery",
 	})
 	if err != nil {
 		t.Fatalf("sessions.create: %v", err)
@@ -55,14 +61,17 @@ func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 	}
 	waitForRunEvents(t, collectRunEvents(events), "first turn")
 	waitForProtocolRunTerminal(t, ctx, api, started.RunID)
+	if err := os.WriteFile(material, []byte("material after the checkpoint"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
-	// The crash window: the intent committed, the reset may have changed part of
+	// The crash window: the intent committed, the checkout may have changed part of
 	// the tree, and nothing cleared it.
 	unfinished := sessions.WorkspaceMutation{
 		SessionID: session.ID, CWD: session.Workspace.Ref.Path,
 		ToRunID: started.RunID, RestoreHistory: true,
 	}
-	if err := stores.WorkspaceMutations.Record(ctx, unfinished); err != nil {
+	if _, err := stores.WorkspaceMutations.Record(ctx, unfinished); err != nil {
 		t.Fatalf("record unfinished rollback: %v", err)
 	}
 
@@ -95,6 +104,9 @@ func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 	})
 	if pending, err := stores.WorkspaceMutations.ListPending(ctx); err != nil || len(pending) != 0 {
 		t.Fatalf("pending after recovery = (%+v, %v), want none", pending, err)
+	}
+	if content, err := os.ReadFile(material); err != nil || string(content) != "checkpoint material" {
+		t.Fatalf("material after recovery = %q, error = %v", content, err)
 	}
 	resumedRun, events, err := api.StartRun(ctx, protocol.StartRunRequest{
 		SessionID: session.ID,

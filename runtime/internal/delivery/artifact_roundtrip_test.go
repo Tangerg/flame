@@ -35,8 +35,8 @@ import (
 // is that the document this build writes is the version the contract named. Bumping
 // it is a breaking act, so it should cost a deliberate edit here.
 func TestArtifactVersionMatchesCurrentContractBaseline(t *testing.T) {
-	if protocol.SessionArtifactVersion != 27 {
-		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v27",
+	if protocol.SessionArtifactVersion != 28 {
+		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v28",
 			protocol.SessionArtifactVersion)
 	}
 }
@@ -389,9 +389,14 @@ func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err != nil {
 		t.Fatalf("model selection: %v", err)
 	}
+	effect, err := run.NewUnresolvedEffect("process_historical", "effect_historical", "canceled", "execution stopped", "external result is unconfirmed")
+	if err != nil {
+		t.Fatalf("unresolved effect: %v", err)
+	}
 	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_done", State: run.Canceled,
 		ModelSelection: selection, Outcome: &outcome,
-		Detail: "user stopped execution",
+		Detail:            "user stopped execution",
+		UnresolvedEffects: []run.UnresolvedEffect{effect},
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{
 			Total: accounting.Totals{
 				InputTokens: 100, OutputTokens: 20, CacheReadTokens: 5,

@@ -3,6 +3,8 @@ package agent
 import (
 	"iter"
 	"slices"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // EventStream is the ordered event stream of one run segment. A stream yields
@@ -17,6 +19,7 @@ type SegmentStream struct {
 	SegmentID   string
 	UserItemID  string
 	HeadEventID string
+	Snapshot    *SessionSnapshot
 	Events      EventStream
 }
 
@@ -25,25 +28,31 @@ type StartRun struct {
 	SessionID string
 	Message   Message
 	Options   RunOptions
+	Input     []protocol.ContentBlock `json:"-"`
 }
 
 func (s StartRun) Clone() StartRun {
 	s.Message = s.Message.Clone()
 	s.Options = s.Options.Clone()
+	s.Input = slices.Clone(s.Input)
 	return s
 }
 
 func (s StartRun) Equal(other StartRun) bool {
 	return s.CommandID == other.CommandID && s.SessionID == other.SessionID &&
-		s.Message.Equal(other.Message) && s.Options.Equal(other.Options)
+		s.Message.Equal(other.Message) && s.Options.Equal(other.Options) && slices.Equal(s.Input, other.Input)
 }
 
 // SubscribeRun rebinds one exact segment. AfterEventID is an opaque checkpoint
 // previously accepted from that segment. Empty means attach at its current head.
+// Snapshot requests coherent material and its successor tail, requires SessionID
+// for projection correlation, and cannot carry AfterEventID.
 type SubscribeRun struct {
+	SessionID    string
 	RunID        string
 	SegmentID    string
 	AfterEventID string
+	Snapshot     bool
 }
 
 // InterruptAnswer pairs a response with the pending item it answers. A resume
@@ -58,13 +67,14 @@ type ResumeRun struct {
 	RunID     string
 	Answers   []InterruptAnswer
 	Message   *Message
+	Input     []protocol.ContentBlock `json:"-"`
 }
 
 // Equal reports whether two resume commands carry the same complete decision
 // set. Answer order is semantic because the command consumes the runtime's
 // ordered interaction set atomically.
 func (r ResumeRun) Equal(other ResumeRun) bool {
-	if r.CommandID != other.CommandID || r.RunID != other.RunID || (r.Message == nil) != (other.Message == nil) {
+	if r.CommandID != other.CommandID || r.RunID != other.RunID || (r.Message == nil) != (other.Message == nil) || !slices.Equal(r.Input, other.Input) {
 		return false
 	}
 	if r.Message != nil && !r.Message.Equal(*other.Message) {
@@ -79,6 +89,7 @@ func (r ResumeRun) Equal(other ResumeRun) bool {
 // command. Delivery adapters may retain the clone across retries or process
 // restarts without sharing the interaction editor's draft state.
 func (r ResumeRun) Clone() ResumeRun {
+	r.Input = slices.Clone(r.Input)
 	answers := r.Answers
 	r.Answers = make([]InterruptAnswer, len(answers))
 	for index, response := range answers {

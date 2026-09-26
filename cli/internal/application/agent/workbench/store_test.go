@@ -236,7 +236,7 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 		},
 		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
-	if stagePendingResumeErr := store.StagePendingResume(sessionID, resume); stagePendingResumeErr != nil {
+	if stagePendingResumeErr := store.StagePendingResume(sessionID, resume, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 	draft := agent.Message{Text: "stash only this draft"}
@@ -453,7 +453,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 		},
 		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
-	if stagePendingResumeErr := store.StagePendingResume(sessionID, resume); stagePendingResumeErr != nil {
+	if stagePendingResumeErr := store.StagePendingResume(sessionID, resume, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 	draft := agent.Message{Text: "unsent draft"}
@@ -1165,10 +1165,10 @@ func TestPendingRunStateMachineRejectsUndeliveredSettlement(t *testing.T) {
 		t.Fatalf("invalid acknowledgement committed history: %+v", history)
 	}
 
-	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard()); err != nil {
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard(), nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard()); err != nil {
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard(), nil); err != nil {
 		t.Fatalf("idempotent dispatch returned %v", err)
 	}
 	if err := store.AcknowledgePendingRun(command.SessionID, command.CommandID); err != nil {
@@ -1255,7 +1255,7 @@ func TestPendingRunSequenceKeepsTheOnlyDeliveryStateAtTheFIFOBoundary(t *testing
 	if err := store.SavePendingRuns("ses_1", commands); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.MarkPendingRunDispatching("ses_1", commands[1].Command.CommandID, commandreplay.UnprotectedGuard()); err == nil {
+	if err := store.MarkPendingRunDispatching("ses_1", commands[1].Command.CommandID, commandreplay.UnprotectedGuard(), nil); err == nil {
 		t.Fatal("non-front command entered dispatching state")
 	}
 	if got := store.PendingRuns("ses_1"); len(got) != 2 || got[0].State != PendingRunQueued || got[1].State != PendingRunQueued {
@@ -1309,7 +1309,7 @@ func stageDispatchingPendingRun(t *testing.T, store *Store, command agent.StartR
 	if err := store.StagePendingRun(queuedPendingRun(command)); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard()); err != nil {
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, commandreplay.UnprotectedGuard(), nil); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -1341,7 +1341,7 @@ func TestStorePersistsPendingInteractionResumeUntilExactSettlement(t *testing.T)
 		},
 		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
-	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending); stagePendingResumeErr != nil {
+	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 	pending.Command.Answers[0].Answer = agent.ApprovalAnswer{Decision: protocol.ApprovalApprove}
@@ -1391,10 +1391,10 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 		},
 		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
-	if err := store.StagePendingResume("ses_1", pending); err != nil {
+	if err := store.StagePendingResume("ses_1", pending, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.StagePendingResume("ses_1", pending); err != nil {
+	if err := store.StagePendingResume("ses_1", pending, nil); err != nil {
 		t.Fatalf("identical idempotent resume staging returned %v", err)
 	}
 
@@ -1402,7 +1402,7 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 	changedAnswer.Command.Answers[0].Answer = agent.ApprovalAnswer{
 		Decision: protocol.ApprovalDeny, Reason: "not this command",
 	}
-	if err := store.StagePendingResume("ses_1", changedAnswer); err == nil {
+	if err := store.StagePendingResume("ses_1", changedAnswer, nil); err == nil {
 		t.Fatal("same resume identity accepted a different answer")
 	}
 	changedInteraction := clonePendingResume(pending)
@@ -1410,13 +1410,13 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 		RunID: approval.RunID, ItemID: approval.ItemID, Title: "Different request", Rememberable: true,
 		Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Status: agent.ToolRunning},
 	}
-	if err := store.StagePendingResume("ses_1", changedInteraction); err == nil {
+	if err := store.StagePendingResume("ses_1", changedInteraction, nil); err == nil {
 		t.Fatal("same resume identity accepted a different interaction")
 	}
 	message := agent.Message{Text: "additional guidance"}
 	changedMessage := clonePendingResume(pending)
 	changedMessage.Command.Message = &message
-	if err := store.StagePendingResume("ses_1", changedMessage); err == nil {
+	if err := store.StagePendingResume("ses_1", changedMessage, nil); err == nil {
 		t.Fatal("same resume identity accepted a different message")
 	}
 
@@ -1447,7 +1447,7 @@ func TestStoreRequeuesAnExpiredResumeWithOneDurableReplacementIdentity(t *testin
 		Interactions: []agent.Interaction{approval},
 		Replay:       protectedReplayGuard(t, "runtime-a", time.Now().UTC().Add(-time.Second)),
 	}
-	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending); stagePendingResumeErr != nil {
+	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 	replay := protectedReplayGuard(t, "runtime-a", time.Now().UTC().Add(time.Hour))
@@ -1495,7 +1495,7 @@ func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
 		Interactions: []agent.Interaction{approval}, Replay: commandreplay.UnprotectedGuard(),
 	}
 
-	if err := store.StagePendingResume("ses_1", pending); err == nil {
+	if err := store.StagePendingResume("ses_1", pending, nil); err == nil {
 		t.Fatal("pending resume without command identity was accepted")
 	}
 	if restored, found := store.PendingResume("ses_1"); found {
@@ -1532,7 +1532,7 @@ func TestStorePersistsTheCompleteMixedInteractionReview(t *testing.T) {
 		},
 		Interactions: []agent.Interaction{approval, question}, Replay: commandreplay.UnprotectedGuard(),
 	}
-	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending); stagePendingResumeErr != nil {
+	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 	reopened, err := OpenDirectory(directory, Config{})

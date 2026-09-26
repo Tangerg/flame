@@ -80,17 +80,17 @@ export function ModelInvocationHistory({ run }: { run: AgentRunView }) {
                       {t("timeline.firstOutput")} {fmtDuration(call.firstOutputLatencyMillis)}
                     </span>
                   )}
-                  {call.usage && call.usage.cacheReadTokens > 0 && (
+                  {call.usage?.cacheReadTokens !== undefined && (
                     <span>
                       {t("usage.cache")} {fmtTokens(call.usage.cacheReadTokens)}
                     </span>
                   )}
-                  {call.usage && call.usage.cacheWriteTokens > 0 && (
+                  {call.usage?.cacheWriteTokens !== undefined && (
                     <span>
                       {t("usage.cacheWrite")} {fmtTokens(call.usage.cacheWriteTokens)}
                     </span>
                   )}
-                  {call.usage && call.usage.reasoningTokens > 0 && (
+                  {call.usage?.reasoningTokens !== undefined && (
                     <span>
                       {t("usage.reasoning")} {fmtTokens(call.usage.reasoningTokens)}
                     </span>

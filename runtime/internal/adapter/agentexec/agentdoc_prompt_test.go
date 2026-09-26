@@ -1,6 +1,7 @@
 package agentexec
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -23,36 +24,38 @@ func TestAgentDocumentsPromptAnnotatesEachSource(t *testing.T) {
 	}
 }
 
-func TestAgentDocumentsPromptKeepsMostSpecificFilesWithinBudget(t *testing.T) {
+func TestAgentDocumentsPromptKeepsCompleteCascadeAtExactBudget(t *testing.T) {
 	files := []workspace.AgentDocFile{
 		{Path: "/root/AGENTS.md", Content: strings.Repeat("a", 100), Scope: workspace.AgentDocScopeProjectRoot},
 		{Path: "/leaf/AGENTS.md", Content: "leaf", Scope: workspace.AgentDocScopeCWD},
 	}
-	out := agentDocumentsPromptForTest(t, files, 200).text
-	if strings.Contains(out, "/root/AGENTS.md") || !strings.Contains(out, "leaf") {
-		t.Fatalf("budgeted docs = %q", out)
+	expected := agentDocPromptHeader + "\n\n<!-- From: /root/AGENTS.md -->\n" + strings.Repeat("a", 100) + "\n\n<!-- From: /leaf/AGENTS.md -->\nleaf\n"
+	prompt := agentDocumentsPromptForTest(t, files, len(expected))
+	if got := agentDocPromptHeader + "\n\n" + prompt.text; got != expected {
+		t.Fatalf("complete cascade = %q, want %q", got, expected)
 	}
-	prompt := agentDocumentsPromptForTest(t, files, 200)
-	if len(prompt.sources) != 1 || prompt.sources[0].Reference != "/leaf/AGENTS.md" {
+	if len(prompt.sources) != 2 || prompt.sources[0].Reference != "/root/AGENTS.md" || prompt.sources[1].Reference != "/leaf/AGENTS.md" {
 		t.Fatalf("projected sources = %v", prompt.sources)
 	}
-	if agentDocumentsPromptForTest(t, nil, agentDocPromptMaxBytes).text != "" ||
-		agentDocumentsPromptForTest(t, files, 0).text != "" {
-		t.Fatal("empty input or budget must render no prompt text")
+	if agentDocumentsPromptForTest(t, nil, 0).text != "" {
+		t.Fatal("empty input must render no prompt text")
 	}
 }
 
-func TestAgentDocumentsPromptDropsUnrenderableLessSpecificFile(t *testing.T) {
+func TestAgentDocumentsPromptRejectsOverflowWithoutDroppingAncestors(t *testing.T) {
 	files := []workspace.AgentDocFile{
-		{Path: "/root/AGENTS.md", Content: strings.Repeat("r", agentDocPromptMaxBytes), Scope: workspace.AgentDocScopeProjectRoot},
+		{Path: "/home/AGENTS.md", Content: strings.Repeat("r", agentDocPromptMaxBytes/2), Scope: workspace.AgentDocScopeHome},
+		{Path: "/root/AGENTS.md", Content: strings.Repeat("n", agentDocPromptMaxBytes/2), Scope: workspace.AgentDocScopeProjectRoot},
 		{Path: "/leaf/AGENTS.md", Content: "leaf", Scope: workspace.AgentDocScopeCWD},
 	}
-	prompt := agentDocumentsPromptForTest(t, files, agentDocPromptMaxBytes)
-	if strings.Contains(prompt.text, "/root/AGENTS.md") || !strings.Contains(prompt.text, "leaf") {
-		t.Fatalf("budgeted docs = %q, want only the renderable leaf document", prompt.text)
-	}
-	if len(prompt.sources) != 1 || prompt.sources[0].Reference != "/leaf/AGENTS.md" {
-		t.Fatalf("projected sources = %v, want only the leaf source", prompt.sources)
+	for _, budget := range []int{agentDocPromptMaxBytes, 0} {
+		prompt, err := newAgentDocumentsPrompt(files, budget)
+		if !errors.Is(err, workspace.ErrPromptSourceTooLarge) {
+			t.Fatalf("budget %d error = %v, want explicit overflow", budget, err)
+		}
+		if prompt.text != "" || len(prompt.sources) != 0 {
+			t.Fatalf("overflow returned a partial prompt: %+v", prompt)
+		}
 	}
 }
 

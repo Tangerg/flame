@@ -204,7 +204,13 @@ const VISUAL_CAPABILITIES: ServerCapabilities = {
   streamingMethods: [],
   limits: {
     runReplay: { scope: "runtimeInstanceRootSegment", maxEvents: 2_048, maxBytes: 16_777_216 },
-    runtimeSubscription: { maxTopics: 32, maxWatches: 32 },
+    runtimeSubscription: {
+      maxTopics: 32,
+      maxWatches: 32,
+      maxPaths: 256,
+      maxDirectoryEntries: 10000,
+      maxFileBytes: 1048576,
+    },
     idempotency: { namespace: "idp_visual_fixture", retentionSeconds: 86_400 },
     mcpAuthorizationAttempts: { retentionSeconds: 600 },
   },

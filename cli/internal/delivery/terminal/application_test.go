@@ -1263,7 +1263,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_demo_1", workbench.PendingResume{
 		Command: command, Interactions: snapshot.Interactions, Replay: durableCommandReplayGuard(t),
-	}); stagePendingResumeErr != nil {
+	}, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 	runtime := &replayingResumeRuntime{Runtime: base}
@@ -1371,7 +1371,7 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 		Replay: protectedCommandReplayGuard(
 			t, profile.Discovery().Capabilities.Limits.Idempotency.Namespace, time.Now().UTC().Add(-time.Second),
 		),
-	}); stagePendingResumeErr != nil {
+	}, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 	runtime := &replayingResumeRuntime{Runtime: base}
@@ -1440,7 +1440,7 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 		Replay: protectedCommandReplayGuard(
 			t, profile.Discovery().Capabilities.Limits.Idempotency.Namespace, time.Now().UTC().Add(-time.Second),
 		),
-	}); stagePendingResumeErr != nil {
+	}, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 	runtime := &replayingResumeRuntime{Runtime: base}
@@ -1609,7 +1609,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_demo_2", workbench.PendingResume{
 		Command: command, Interactions: snapshot.Interactions, Replay: durableCommandReplayGuard(t),
-	}); stagePendingResumeErr != nil {
+	}, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 	runtime := &replayingResumeRuntime{Runtime: base}
@@ -4256,7 +4256,7 @@ func TestApprovalRememberFlameliesToLaterRuns(t *testing.T) {
 	}
 	host.Type("/rules")
 	host.Press(input.Enter)
-	host.Shows(t, "approval rules")
+	host.Shows(t, "Approval rules")
 	host.Shows(t, rules[0].ID)
 	host.Shows(t, "session  allow")
 

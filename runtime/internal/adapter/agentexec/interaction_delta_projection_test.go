@@ -18,7 +18,7 @@ import (
 // payload outside the contract they share.
 func TestUnparsableDeltaIsReportedNotDropped(t *testing.T) {
 	exporter := tracetest.NewInMemoryExporter()
-	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter), sdktrace.WithSampler(sdktrace.AlwaysSample()))
 	previous := otel.GetTracerProvider()
 	otel.SetTracerProvider(provider)
 	t.Cleanup(func() { otel.SetTracerProvider(previous) })

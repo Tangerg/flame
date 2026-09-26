@@ -14,6 +14,7 @@ import {
   type WorkspaceFileEntry,
   type WorkspaceListFilesQuery,
   type WorkspaceReadFileQuery,
+  type WorkspaceFileChange,
 } from "../application/workspaceQueries";
 import { FileViewTab } from "./file";
 import { FileTree } from "./views/FileTree";
@@ -23,6 +24,9 @@ const selection = vi.hoisted(() => ({
   current: { status: "ready" } as
     { status: "ready"; cwd?: string } | { status: "resolving"; sessionId: string },
 }));
+
+const changes = vi.hoisted(() => new Map<string, WorkspaceFileChange>());
+vi.mock("../application/workingTreeChanges", () => ({ useWorkingTreeFiles: () => changes }));
 
 vi.mock("@/plugins/builtin/agent/public/session", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/plugins/builtin/agent/public/session")>()),
@@ -38,6 +42,7 @@ const file: WorkspaceFileEntry = { name: "main.go", path: "src/main.go", type: "
 let uninstallClassifier: () => void;
 
 beforeEach(async () => {
+  changes.clear();
   uninstallClassifier = installWorkspaceErrorClassifier();
   selection.current = { status: "ready" };
   useContextDockStore.setState({
@@ -83,6 +88,20 @@ function mount(children: React.ReactNode) {
 }
 
 describe("workspace files panel", () => {
+  it("shows the rename relationship while preserving unknown binary statistics", () => {
+    changes.set(file.path, {
+      path: file.path,
+      previousPath: "old/main.go",
+      change: "renamed",
+      binary: true,
+    });
+    mount(<FileTree entries={[file]} onSelectFile={() => {}} />);
+    const row = screen.getByRole("treeitem", { name: "main.go" });
+    expect(row.textContent).toContain("← old/main.go");
+    expect(row.textContent).toContain("R");
+    expect(row.getAttribute("title")).toBe("old/main.go → src/main.go");
+    expect(screen.getByText("Renamed from old/main.go", { selector: "span[hidden]" })).toBeTruthy();
+  });
   it("reads a file in the Runtime default workspace", async () => {
     openWorkspaceFile("src/main.go");
     mount(<FileViewTab />);

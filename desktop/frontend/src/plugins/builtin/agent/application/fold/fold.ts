@@ -189,6 +189,9 @@ export function appendUserMessage(
                     runId: item.runId,
                     createdAt: item.createdAt,
                     blocks: userContentBlocks(item.content),
+                    ...(message.steer
+                      ? { steer: { ...message.steer, status: "applied" as const } }
+                      : {}),
                   }
                 : message,
             ),
@@ -205,61 +208,65 @@ export function appendUserMessage(
   return closeAssistantTurn({ ...state, messages: [...state.messages, msg] }, item.runId);
 }
 
-export function foldText(
+export function foldAgentMessage(
   state: AgentSessionView,
   item: ItemOf<"agentMessage">,
   status: BlockStatus,
 ): AgentSessionView {
-  if (item.phase === "finalAnswer") return foldFinalText(state, item, status);
-  const text = contentText(item.content);
-  return upsertBlock(
-    state,
-    item,
-    (b) => b.kind === "text" && b.itemId === item.id,
-    () => ({ kind: "text", itemId: item.id, text, status }),
-    (b) => (b.kind === "text" ? { ...b, text: text || b.text, status } : b),
+  const blocks: ContentBlock[] =
+    status === "running"
+      ? [{ kind: "text", itemId: item.id, text: contentText(item.content), status }]
+      : (item.content ?? []).map((part): ContentBlock =>
+          part.type === "text"
+            ? { kind: "text", itemId: item.id, text: part.text, status }
+            : { kind: "image", itemId: item.id, mime: part.mime, data: part.data },
+        );
+  // Empty terminal Items still need their identity so replay cannot open another turn.
+  if (blocks.length === 0) blocks.push({ kind: "text", itemId: item.id, text: "", status });
+  if (item.phase === "finalAnswer") return foldFinalMessage(state, item, blocks);
+  const owns = (block: ContentBlock) => assistantItemBlock(block, item.id);
+  const existing = state.messages.find(
+    (message) => message.runId === item.runId && message.blocks.some(owns),
   );
+  const turn = existing
+    ? { state, id: existing.id }
+    : ensureTurn(state, item.runId, item.id, item.createdAt);
+  return mutateMessage(turn.state, turn.id, (message) => {
+    const first = message.blocks.findIndex(owns);
+    const retained = message.blocks.filter((block) => !owns(block));
+    retained.splice(first < 0 ? retained.length : first, 0, ...blocks);
+    return { ...message, blocks: retained };
+  });
 }
 
-function foldFinalText(
+function assistantItemBlock(block: ContentBlock, itemId: string): boolean {
+  return (block.kind === "text" || block.kind === "image") && block.itemId === itemId;
+}
+
+function foldFinalMessage(
   state: AgentSessionView,
   item: ItemOf<"agentMessage">,
-  status: BlockStatus,
+  blocks: ContentBlock[],
 ): AgentSessionView {
   const finalId = `final:${item.id}`;
-  const projectedText = contentText(item.content);
-  const previous = state.messages
-    .flatMap((message) => message.blocks)
-    .find(
-      (block): block is Extract<ContentBlock, { kind: "text" }> =>
-        block.kind === "text" && block.itemId === item.id,
-    );
-  const block: Extract<ContentBlock, { kind: "text" }> = {
-    kind: "text",
-    itemId: item.id,
-    text: projectedText || previous?.text || "",
-    status,
-  };
 
   let foundFinal = false;
   const messages: Message[] = [];
   for (const message of state.messages) {
     if (message.id === finalId) {
       foundFinal = true;
-      messages.push({ ...message, phase: "finalAnswer", blocks: [block] });
+      messages.push({ ...message, phase: "finalAnswer", blocks });
       continue;
     }
     if (message.runId !== item.runId) {
       messages.push(message);
       continue;
     }
-    const blocks = message.blocks.filter(
-      (candidate) => !(candidate.kind === "text" && candidate.itemId === item.id),
-    );
-    if (blocks.length === message.blocks.length) {
+    const retained = message.blocks.filter((candidate) => !assistantItemBlock(candidate, item.id));
+    if (retained.length === message.blocks.length) {
       messages.push(message);
-    } else if (blocks.length > 0) {
-      messages.push({ ...message, phase: "commentary", blocks });
+    } else if (retained.length > 0) {
+      messages.push({ ...message, phase: "commentary", blocks: retained });
     }
   }
 
@@ -270,7 +277,7 @@ function foldFinalText(
       phase: "finalAnswer",
       createdAt: item.createdAt,
       runId: item.runId,
-      blocks: [block],
+      blocks,
     });
   }
   return closeAssistantTurn({ ...state, messages }, item.runId);

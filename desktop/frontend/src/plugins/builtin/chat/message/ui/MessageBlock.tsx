@@ -98,7 +98,7 @@ function MessageBlockInner({
 
   const roleLabel = t(isUser ? "role.user" : "role.assistant");
 
-  if (content.length === 0) return null;
+  if (content.length === 0) return terminalFooter ?? null;
 
   const messageContent = (
     <div
@@ -149,7 +149,14 @@ function MessageBlockInner({
           ) : (
             <MessageContextMenu msg={msg}>{messageContent}</MessageContextMenu>
           )}
-          {isUser && msg.runId === null && <Badge>{t("agent.inputNotApplied")}</Badge>}
+          {isUser && msg.steer && (
+            <Badge>
+              {t(msg.steer.status === "accepted" ? "agent.steer.accepted" : "agent.steer.applied")}
+            </Badge>
+          )}
+          {isUser && !msg.steer && msg.runId === null && (
+            <Badge>{t("agent.inputNotApplied")}</Badge>
+          )}
           {actionsVisibility !== "absent" && (
             <div
               data-reveal={actionsVisibility === "hover" ? "hover" : undefined}

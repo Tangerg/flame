@@ -8,6 +8,55 @@ import (
 	"time"
 )
 
+func TestDirectoryObservationRejectsEntryOverflow(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"one", "two"} {
+		if err := os.WriteFile(filepath.Join(root, name), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	observation, err := Watch([]Target{{Key: "root", Path: root, Boundary: root, MaxEntries: 1, MaxBytes: testMaxBytes}}, nil, discardOutage)
+	if observation != nil || err == nil {
+		t.Fatalf("overflow registration = (%v, %v)", observation, err)
+	}
+}
+
+func TestDirectoryObservationDoesNotRecurseOrFollowChildSymlinks(t *testing.T) {
+	root, outside := t.TempDir(), t.TempDir()
+	nested := filepath.Join(root, "nested")
+	if err := os.Mkdir(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "outside")); err != nil {
+		t.Fatal(err)
+	}
+	nestedFile := filepath.Join(nested, "not-observed")
+	if err := os.WriteFile(nestedFile, []byte("before"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	notified := make(chan []string, 8)
+	observation, err := Watch([]Target{{Key: "root", Path: root, Boundary: root, MaxEntries: 10, MaxBytes: testMaxBytes}}, func(keys []string) { notified <- keys }, discardOutage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer observation.Close()
+	if err := os.WriteFile(filepath.Join(outside, "not-observed"), []byte("outside"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(nestedFile, []byte("nested"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case keys := <-notified:
+		t.Fatalf("recursed outside immediate entries: %v", keys)
+	case <-time.After(3 * debounce):
+	}
+	if err := os.WriteFile(filepath.Join(root, "direct"), []byte("entry"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	assertObservedKey(t, notified, "root")
+}
+
 const testMaxBytes int64 = 1 << 20
 
 func TestWatchCloseJoinsErrorReporting(t *testing.T) {

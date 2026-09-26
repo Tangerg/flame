@@ -20,12 +20,12 @@ func NewWorkspaceMutationStore(storage *sqlite.WorkspaceMutationStore) *Workspac
 	return &WorkspaceMutationStore{storage: storage}
 }
 
-func (w *WorkspaceMutationStore) Record(ctx context.Context, mutation sessions.WorkspaceMutation) error {
-	err := w.storage.Record(ctx, storedWorkspaceMutation(mutation))
+func (w *WorkspaceMutationStore) Record(ctx context.Context, mutation sessions.WorkspaceMutation) (bool, error) {
+	created, err := w.storage.Record(ctx, storedWorkspaceMutation(mutation))
 	if errors.Is(err, sqlite.ErrWorkspaceMutationPending) {
-		return fmt.Errorf("%w: %w", sessions.ErrWorkspaceMutationPending, err)
+		return false, fmt.Errorf("%w: %w", sessions.ErrWorkspaceMutationPending, err)
 	}
-	return err
+	return created, err
 }
 
 func (w *WorkspaceMutationStore) Complete(ctx context.Context, mutation sessions.WorkspaceMutation) error {

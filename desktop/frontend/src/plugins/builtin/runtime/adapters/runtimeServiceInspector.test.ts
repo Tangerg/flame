@@ -27,7 +27,13 @@ const discovery: DiscoverResponse = {
       idempotency: { namespace: "idp_test", retentionSeconds: 86_400 },
       runReplay: { scope: "runtimeInstanceRootSegment", maxEvents: 2048, maxBytes: 16_777_216 },
       mcpAuthorizationAttempts: { retentionSeconds: 600 },
-      runtimeSubscription: { maxTopics: 32, maxWatches: 32 },
+      runtimeSubscription: {
+        maxTopics: 32,
+        maxWatches: 32,
+        maxPaths: 256,
+        maxDirectoryEntries: 10000,
+        maxFileBytes: 1048576,
+      },
     },
   },
 };
@@ -216,5 +222,31 @@ describe("runtime service inspector", () => {
       "protocol mismatch",
     );
     expect(liveSignal?.aborted).toBe(true);
+  });
+
+  it("owns sibling rejections when discovery throws before returning a promise", async () => {
+    const canceled = vi.fn();
+    const pending = (signal?: AbortSignal) =>
+      new Promise<never>((_resolve, reject) => {
+        signal?.addEventListener("abort", () => {
+          canceled();
+          reject(new DOMException("inspection retired", "AbortError"));
+        });
+      });
+    const client = sidecar({
+      info: vi.fn(pending),
+      liveness: vi.fn(pending),
+      readiness: vi.fn(pending),
+    });
+    const failure = new Error("discovery client closed synchronously");
+    const discover = vi.fn(() => {
+      throw failure;
+    });
+    setContainer({ sidecar: () => client, client: () => runtimeClient(discover) });
+
+    await expect(runtimeServiceInspector().inspect(new AbortController().signal)).rejects.toBe(
+      failure,
+    );
+    expect(canceled).toHaveBeenCalledTimes(3);
   });
 });

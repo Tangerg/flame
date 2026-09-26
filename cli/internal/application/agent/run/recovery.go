@@ -18,8 +18,8 @@ type RecoverySource interface {
 }
 
 // Recovery is a coherent cold projection and, while its run is still executing,
-// a stream attached before the final read. Stream is empty for waiting and
-// finished runs.
+// its successor stream from the same Runtime subscription. Stream is empty for
+// waiting and finished runs.
 type Recovery struct {
 	Snapshot agent.SessionSnapshot
 	Run      agent.Run
@@ -36,38 +36,19 @@ func RecoveryRequired(err error) bool {
 		errors.Is(err, agent.ErrReplayUnavailable)
 }
 
-// RecoverSegment follows the runtime's attach-then-read rule. For a live run it first
-// attaches at the current segment head and only then performs the durable read,
-// preventing an unobserved gap between the snapshot and later stream events.
+// RecoverSegment requests Runtime's coherent material and successor tail for a
+// running root. Waiting and finished roots need only their authoritative read.
 func RecoverSegment(ctx context.Context, source RecoverySource, sessionID, runID string) (Recovery, error) {
 	first, run, err := read(ctx, source, sessionID, runID)
 	if err != nil || run.Status != protocol.RunStatusRunning {
 		return Recovery{Snapshot: first, Run: run}, err
 	}
-	stream, release, err := attach(ctx, source, run)
-	if err != nil {
-		return Recovery{}, err
-	}
-	second, current, err := read(ctx, source, sessionID, runID)
-	if err != nil {
-		release()
-		return Recovery{}, err
-	}
-	if current.Status != protocol.RunStatusRunning {
-		release()
-		return Recovery{Snapshot: second, Run: current}, nil
-	}
-	if current.ActiveSegmentID != stream.SegmentID {
-		release()
-		return Recovery{}, fmt.Errorf("%w: run %s changed from segment %s to %s during recovery", agent.ErrStaleSegment, runID, stream.SegmentID, current.ActiveSegmentID)
-	}
-	return Recovery{Snapshot: second, Run: current, Stream: releaseWhenDone(stream, release)}, nil
+	return attach(ctx, source, sessionID, run)
 }
 
 // AttachSession obtains a coherent session projection and, when its current
-// root Run is executing, a cursorless tail that was attached before the final
-// cold read. It retries when another client crosses a Run or Segment boundary
-// during that handshake.
+// root Run is executing, the successor tail from that same subscription. It
+// retries when a Run or Segment boundary is crossed before subscription.
 func AttachSession(ctx context.Context, source RecoverySource, sessionID string) (Recovery, error) {
 	for range sessionAttachAttempts {
 		first, err := readSnapshot(ctx, source, sessionID)
@@ -79,48 +60,48 @@ func AttachSession(ctx context.Context, source RecoverySource, sessionID string)
 			return stateWithoutStream(first), nil
 		}
 
-		stream, release, err := attach(ctx, source, run)
+		recovered, err := attach(ctx, source, sessionID, run)
 		if err != nil {
 			if RecoveryRequired(err) {
 				continue
 			}
 			return Recovery{}, err
 		}
-		second, err := readSnapshot(ctx, source, sessionID)
-		if err != nil {
-			release()
-			return Recovery{}, err
-		}
-		current, active := second.ActiveRun()
-		if !active || current.Status != protocol.RunStatusRunning {
-			release()
-			return stateWithoutStream(second), nil
-		}
-		if current.ID != stream.RunID || current.ActiveSegmentID != stream.SegmentID {
-			release()
-			continue
-		}
-		return Recovery{
-			Snapshot: second,
-			Run:      current,
-			Stream:   releaseWhenDone(stream, release),
-		}, nil
+		return recovered, nil
 	}
 	return Recovery{}, fmt.Errorf("%w: session %s did not hold a stable active segment", agent.ErrStaleSegment, sessionID)
 }
 
-func attach(ctx context.Context, source RecoverySource, run agent.Run) (agent.SegmentStream, context.CancelFunc, error) {
+func attach(ctx context.Context, source RecoverySource, sessionID string, run agent.Run) (Recovery, error) {
 	streamCtx, release := context.WithCancel(ctx)
-	stream, err := source.SubscribeRun(streamCtx, agent.SubscribeRun{RunID: run.ID, SegmentID: run.ActiveSegmentID})
+	stream, err := source.SubscribeRun(streamCtx, agent.SubscribeRun{
+		SessionID: sessionID, RunID: run.ID, SegmentID: run.ActiveSegmentID, Snapshot: true,
+	})
 	if err != nil {
 		release()
-		return agent.SegmentStream{}, nil, err
+		return Recovery{}, err
 	}
 	if err := stream.ValidateSubscription(); err != nil {
 		release()
-		return agent.SegmentStream{}, nil, fmt.Errorf("recover run: %w", err)
+		return Recovery{}, fmt.Errorf("recover run: %w", err)
 	}
-	return stream, release, nil
+	if stream.Snapshot == nil {
+		release()
+		return Recovery{}, errors.New("recover run: subscription omitted the requested snapshot")
+	}
+	snapshot := *stream.Snapshot
+	if err := snapshot.Validate(); err != nil {
+		release()
+		return Recovery{}, fmt.Errorf("recover run: %w", err)
+	}
+	current, active := snapshot.ActiveRun()
+	if snapshot.Session.ID != sessionID || !active || current.Status != protocol.RunStatusRunning ||
+		current.ID != run.ID || stream.RunID != current.ID || current.ActiveSegmentID != stream.SegmentID ||
+		stream.SegmentID != run.ActiveSegmentID {
+		release()
+		return Recovery{}, errors.New("recover run: subscription snapshot does not match the requested running root")
+	}
+	return Recovery{Snapshot: snapshot, Run: current, Stream: releaseWhenDone(stream, release)}, nil
 }
 
 func releaseWhenDone(stream agent.SegmentStream, release context.CancelFunc) agent.SegmentStream {

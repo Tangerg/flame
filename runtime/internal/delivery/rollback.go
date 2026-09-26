@@ -57,12 +57,18 @@ func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessi
 // errors (the boundary sentinels are already wire-mapped inside the resolver).
 func wireRollbackErr(err error, sessionID string) error {
 	switch {
+	case errors.Is(err, sessions.ErrRollbackRecoveryPending):
+		return NewFailure(errors.Join(protocol.ErrInternalError, err), "file rollback recovery is still pending; retain the original request for recovery")
+	case errors.Is(err, sessions.ErrCheckpointRestoreIncomplete):
+		return err
 	case errors.Is(err, sessions.ErrSessionBusy):
 		return NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q has a run in flight", sessionID))
 	case errors.Is(err, sessions.ErrWorkspaceMutationPending):
 		return NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q has an unfinished file rollback that must be recovered first", sessionID))
 	case errors.Is(err, sessions.ErrCheckpointUnavailable):
 		return protocol.ErrCheckpointUnavailable
+	case errors.Is(err, sessions.ErrCheckpointConflict):
+		return NewFailure(errors.Join(protocol.ErrCheckpointConflict, err), "file restore was refused to preserve unarchived workspace material; move the conflicting files or directories before trying again")
 	case errors.Is(err, transcript.ErrRunNotFound):
 		return protocol.ErrRunNotFound
 	case errors.Is(err, transcript.ErrNotRoot):

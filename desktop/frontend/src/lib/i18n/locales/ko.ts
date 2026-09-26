@@ -356,6 +356,9 @@ export const ko: Record<string, string> = {
   "settings.connection.reset": "기본값 복원",
   "settings.connection.status.checking": "Runtime 확인 중…",
   "settings.connection.status.reconnecting": "다시 연결하는 중…",
+  "agent.steer.accepted": "접수됨 · 모델 컨텍스트 반영 대기 중",
+  "agent.steer.applied": "모델 컨텍스트에 반영됨",
+  "agent.steer.notApplied": "접수된 지시가 모델 컨텍스트에 반영되기 전에 실행이 종료되었습니다.",
   "agent.inputNotApplied": "아직 적용되지 않음",
   "agent.synchronizationIncomplete":
     "실행 동기화가 완료되지 않았습니다. 세션을 다시 열어 재시도하세요.",
@@ -451,6 +454,7 @@ export const ko: Record<string, string> = {
   "agent.runTree.status.finished": "완료",
   "agent.runTree.status.error": "오류",
   "agent.runTree.status.canceled": "취소됨",
+  "agent.runOutcome.unresolvedEffects": "결과가 확인되지 않은 작업",
   "agent.runOutcome.canceled": "취소됨",
   "agent.steps_other": "{{count}}단계",
   "agent.runTree.action.cancel": "이 실행 취소",
@@ -695,8 +699,8 @@ export const ko: Record<string, string> = {
   "providers.fromEnv": "환경 변수에서",
   "providers.utility.title": "보조 모델",
   "providers.utility.desc":
-    "백그라운드 작업용 저렴한 모델 — 요약, 제목, 사실 추출. 없으면 주 모델로 돌아갑니다. 새 실행에 적용됩니다.",
-  "providers.utility.main": "주 모델 사용",
+    "요약, 제목, 사실 추출용 모델입니다. 미설정 시 Runtime 기본 모델을 사용합니다. 변경 사항은 진행 중인 실행에서도 다음 보조 호출부터 적용됩니다.",
+  "providers.utility.main": "Runtime 기본 모델 사용",
   "providers.utility.error": "보조 모델을 설정할 수 없습니다.",
   "providers.embedding.title": "임베딩 모델",
   "providers.embedding.desc":
@@ -835,7 +839,7 @@ export const ko: Record<string, string> = {
     "세션을 열거나 선택해 프로젝트 메모리를 검토하세요. 프로젝트 간 메모리는 사용자로 전환하세요.",
   "agentMemory.error": "메모리를 업데이트할 수 없습니다.",
   "schedules.intro":
-    "저장한 프롬프트를 일정에 따라 실행합니다. 런타임이 서비스 중이면 각 실행은 새 세션으로 시작합니다 — 출력은 사이드바에서 확인하세요.",
+    "저장한 프롬프트를 일정에 따라 실행합니다. 런타임이 서비스 중이면 각 실행은 새 세션으로 시작합니다 — 출력은 사이드바에서 확인하세요. 비활성화나 삭제는 이후 예약만 중지합니다. 이미 접수된 실행은 시작될 수 있으며 별도로 취소해야 합니다.",
   "schedules.add": "새 일정",
   "schedules.save": "저장",
   "schedules.saving": "저장 중…",
@@ -847,7 +851,8 @@ export const ko: Record<string, string> = {
   "schedules.edit": "일정 편집",
   "schedules.delete": "일정 삭제",
   "schedules.delete.title": "이 일정을 삭제할까요?",
-  "schedules.delete.body": '"{{title}}"과(와) 해당 지시가 사라지며 되돌릴 수 없습니다.',
+  "schedules.delete.body":
+    '"{{title}}"과(와) 해당 지시가 사라지며 되돌릴 수 없습니다. 이미 접수된 실행은 시작될 수 있으며 별도로 취소해야 합니다.',
   "schedules.delete.confirm": "삭제",
   "schedules.empty": "일정이 없습니다",
   "schedules.empty.sub":
@@ -857,8 +862,7 @@ export const ko: Record<string, string> = {
   "schedules.error.save": "일정을 저장할 수 없습니다.",
   "schedules.model.default": "Runtime 기본 모델",
   "schedules.reasoning.default": "모델 기본값",
-  "schedules.model.hint":
-    "이후 예약 실행에 적용되며, 이미 실행 중인 작업에는 영향을 주지 않습니다.",
+  "schedules.model.hint": "이후 예약에 적용됩니다. 이미 접수된 실행은 접수 당시 설정을 유지합니다.",
   "schedules.model.unavailable":
     "저장된 모델이 현재 목록에 없습니다. 선택을 변경할 때까지 기존 설정을 유지합니다.",
   "schedules.form.title": "제목 (선택)",
@@ -895,6 +899,10 @@ export const ko: Record<string, string> = {
   "rpcError.session_busy": "세션이 실행 중입니다 — 현재 실행이 끝날 때까지 기다리세요.",
   "rpcError.checkpoint_unavailable":
     "해당 턴에는 파일 체크포인트가 없습니다 — 변경된 파일이 없습니다.",
+  "rpcError.checkpoint_conflict":
+    "체크포인트에 저장되지 않은 파일을 보호하기 위해 복원을 거부했습니다. 변경된 파일은 없습니다.",
+  "rpcError.prompt_source_too_large":
+    "지침 파일이 크기 또는 개수 제한을 초과했습니다. 내용을 줄이거나 파일 수를 줄인 후 다시 시도하세요.",
   "rpcError.workspace_unavailable": "런타임 디스크에 해당 작업 공간이 없습니다.",
   "rpcError.vcs_unavailable": "이 폴더는 git 저장소가 아닙니다.",
   "rpcError.rate_limited": "모델 제공자가 요청 속도를 제한하고 있습니다 — 잠시 후 다시 시도하세요.",
@@ -1187,5 +1195,6 @@ export const ko: Record<string, string> = {
   "file.change.add": "작업 트리에서 추가됨",
   "file.change.mod": "작업 트리에서 수정됨",
   "file.change.del": "작업 트리에서 삭제됨",
+  "file.change.renamed": "{{path}}에서 이름 변경됨",
   "file.change.below": "작업 트리 변경 사항 포함",
 };

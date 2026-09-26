@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RpcTransportError } from "./errors";
+import { RpcError, RpcTransportError } from "./errors";
 import { createMutationPromise, type MutationPromise } from "./mutation";
 import {
   createMutationJournal,
@@ -184,6 +184,59 @@ describe("mutation journal", () => {
     await expect(first.retry()).resolves.toBeUndefined();
     expect(storage.keys()).toEqual([]);
   });
+
+  it.each(["internal_error", "idempotency_conflict", "idempotency_store_mismatch"] as const)(
+    "retains the exact durable restore identity after %s without automatic replay",
+    async (type) => {
+      const storage = new MemoryStorage();
+      const current = journal(storage);
+      const params = { sessionId: "ses_1", toRunId: "run_1", restoreType: "files" };
+      const reservation = current.reserve("sessions.rollback", params)!;
+      const original = structuredClone([...storage.values.entries()]);
+      const failure = new RpcError({ message: "restore outcome unknown", data: { type } });
+      failure.cause = new RpcError({
+        message: "an earlier restore was refused",
+        data: { type: "checkpoint_unavailable" },
+      });
+      const execute = vi.fn().mockRejectedValue(failure);
+      const first = deliver(reservation, execute);
+
+      await expect(first).rejects.toBe(failure);
+      expect(execute).toHaveBeenCalledOnce();
+      expect([...storage.values.entries()]).toEqual(original);
+
+      current.dispose();
+      const restarted = journal(storage);
+      const replay = restarted.reserve("sessions.rollback", params)!;
+      expect(replay.idempotencyKey).toBe(first.idempotencyKey);
+      expect([...storage.values.entries()]).toEqual(original);
+      await expect(deliver(replay, () => "recovered")).resolves.toBe("recovered");
+      expect(storage.keys()).toEqual([]);
+    },
+  );
+
+  it.each(["checkpoint_conflict", "checkpoint_unavailable"] as const)(
+    "retires a definitive %s restore refusal using its public type",
+    async (type) => {
+      const storage = new MemoryStorage();
+      const current = journal(storage);
+      const reservation = current.reserve("sessions.rollback", {
+        sessionId: "ses_1",
+        toRunId: "run_1",
+        restoreType: "files",
+      })!;
+      const refusal = new RpcError({ message: "restore did not start", data: { type } });
+      refusal.cause = new RpcError({
+        message: "local diagnostic",
+        data: { type: "internal_error" },
+      });
+      const execute = vi.fn().mockRejectedValue(refusal);
+
+      await expect(deliver(reservation, execute)).rejects.toBe(refusal);
+      expect(execute).toHaveBeenCalledOnce();
+      expect(storage.keys()).toEqual([]);
+    },
+  );
 
   it("retires identities from a replaced Runtime store instead of replaying them", () => {
     const storage = new MemoryStorage();

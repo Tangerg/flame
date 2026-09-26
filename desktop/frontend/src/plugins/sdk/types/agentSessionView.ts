@@ -57,6 +57,7 @@ export interface Message {
   createdAt?: string;
   runId: string | null;
   blocks: ContentBlock[];
+  steer?: { runId: string; status: "accepted" | "applied" };
 }
 
 export interface RunUsage {
@@ -75,13 +76,24 @@ export interface AgentProblem {
 
 export type AgentRunStatus = "running" | "waiting" | "finished";
 
+export interface AgentUnresolvedEffect {
+  processId: string;
+  effectId: string;
+  cause: string;
+  reason?: string;
+  detail?: string;
+}
+
 export type AgentRunFailureOutcome = {
   type: "timedOut" | "failed" | "lost";
   error: AgentProblem;
+  unresolvedEffects?: AgentUnresolvedEffect[];
 };
 
 export type AgentRunOutcome =
-  { type: "completed" } | AgentRunFailureOutcome | { type: "canceled"; detail?: string };
+  | { type: "completed"; unresolvedEffects?: AgentUnresolvedEffect[] }
+  | AgentRunFailureOutcome
+  | { type: "canceled"; detail?: string; unresolvedEffects?: AgentUnresolvedEffect[] };
 
 export interface AgentRunMetrics {
   steps: number;

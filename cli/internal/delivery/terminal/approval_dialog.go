@@ -329,6 +329,12 @@ func (a *app) resumeInteractions() {
 	}
 	runID := a.execution.conversation.RunID()
 	review := a.dialogs.interactionReview
+	if err := a.execution.conversation.ValidateInteractionReview(runID, review.Items()); err != nil {
+		failure := fmt.Errorf("resume blocked: %w", err)
+		review.ReportSubmissionFailure(failure)
+		a.fail(failure)
+		return
+	}
 	commandID := mutation.NewCommandID()
 	command := agent.ResumeRun{CommandID: commandID, RunID: runID, Answers: answers}
 	replay := commandReplayGuard(a.runtimeProfile)
@@ -336,7 +342,7 @@ func (a *app) resumeInteractions() {
 		pending := workbench.PendingResume{
 			Command: command.Clone(), Interactions: review.Items(), Replay: replay,
 		}
-		if err := a.workbench.StagePendingResume(a.session.current.ID, pending); err != nil {
+		if err := a.workbench.StagePendingResume(a.session.current.ID, pending, nil); err != nil {
 			failure := fmt.Errorf("resume blocked: save interaction decisions: %w", err)
 			review.ReportSubmissionFailure(failure)
 			a.message(failure.Error())
@@ -391,7 +397,7 @@ func (a *app) deliverInteractionResume(
 			}
 			return agent.SegmentStream{}, &resumeRunCallError{err: err}
 		}
-		if err := stream.ValidateResume(command.RunID, nil); err != nil {
+		if err := stream.ValidateResume(command.RunID, command.Message); err != nil {
 			return agent.SegmentStream{}, agent.NewAcceptedMutationError(stream, fmt.Errorf("resume run: %w", err))
 		}
 		return stream, nil

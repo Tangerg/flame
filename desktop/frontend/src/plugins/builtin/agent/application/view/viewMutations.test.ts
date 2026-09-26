@@ -10,6 +10,7 @@ import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import {
   dropMessage,
   reconcileMessageIdentity,
+  reconcileSteerMessages,
   resolveInterrupt,
   setCommandError,
 } from "./viewMutations";
@@ -76,6 +77,51 @@ function pendingInterrupt(
 }
 
 describe("view mutations - messages", () => {
+  it("preserves an accepted steer through a live snapshot and applies only its exact durable Item", () => {
+    const pending = {
+      ...message("accepted"),
+      role: "user" as const,
+      runId: null,
+      steer: { runId: "run_1", status: "accepted" as const },
+    };
+    const previous = view({ messages: [pending] });
+    const active = view({ runsById: { run_1: { id: "run_1", status: "running" } as never } });
+    const retained = reconcileSteerMessages(previous, active);
+    expect(retained).toEqual({ view: { ...active, messages: [pending] }, unapplied: false });
+    const applied = { ...active, messages: [{ ...pending, steer: undefined, runId: "run_1" }] };
+    expect(reconcileSteerMessages(previous, applied)).toMatchObject({
+      unapplied: false,
+      view: { messages: [{ id: "accepted", runId: "run_1", steer: { status: "applied" } }] },
+    });
+    const unrelated = {
+      ...active,
+      messages: [{ ...pending, id: "same-payload-other-item", steer: undefined, runId: "run_1" }],
+    };
+    expect(reconcileSteerMessages(previous, unrelated).view.messages.map(({ id }) => id)).toEqual([
+      "same-payload-other-item",
+      "accepted",
+    ]);
+  });
+
+  it("removes an unapplied steer only after a full terminal snapshot and reports it once", () => {
+    const previous = view({
+      messages: [
+        { ...message("accepted"), runId: null, steer: { runId: "run_1", status: "accepted" } },
+      ],
+    });
+    const terminal = view({ runsById: { run_1: { id: "run_1", status: "finished" } as never } });
+    const settled = reconcileSteerMessages(previous, terminal);
+    expect(settled.view.messages).toEqual([]);
+    expect(settled.unapplied).toBe(true);
+    expect(reconcileSteerMessages(settled.view, terminal).unapplied).toBe(false);
+  });
+
+  it("marks a late receipt applied when its durable Item survived an authoritative refresh", () => {
+    const current = view({ messages: [{ ...message("durable"), role: "user" }] });
+    const accepted = reconcileMessageIdentity(current, "missing-local", "durable", "run_1");
+    expect(accepted.messages[0]?.steer).toEqual({ runId: "run_1", status: "applied" });
+  });
+
   it("relabels an optimistic message without touching unrelated messages", () => {
     const original = view({
       messages: [message("local-1"), message("assistant-1")],

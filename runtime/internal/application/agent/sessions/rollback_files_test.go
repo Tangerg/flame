@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -69,16 +70,43 @@ func TestMutationCompletionDetachesFromCallerCancellation(t *testing.T) {
 }
 
 type observingMutations struct {
-	canceled bool
-	bounded  bool
+	canceled    bool
+	bounded     bool
+	completeErr error
 }
 
-func (*observingMutations) Record(context.Context, WorkspaceMutation) error { return nil }
+func (*observingMutations) Record(context.Context, WorkspaceMutation) (bool, error) { return true, nil }
 
 func (o *observingMutations) Complete(ctx context.Context, _ WorkspaceMutation) error {
 	o.canceled = ctx.Err() != nil
 	_, o.bounded = ctx.Deadline()
-	return nil
+	return o.completeErr
+}
+
+type refusedCheckpoint struct{ err error }
+
+func (r refusedCheckpoint) Restore(context.Context, string, string, string) error { return r.err }
+func (refusedCheckpoint) DropSession(string) error                                { return nil }
+
+func TestRollbackRefusalKeepsCleanupFailureDistinctFromCompletedRefusal(t *testing.T) {
+	for _, refusal := range []error{ErrCheckpointUnavailable, ErrCheckpointConflict} {
+		t.Run(refusal.Error(), func(t *testing.T) {
+			cleanupFailure := errors.New("intent cleanup failed")
+			mutations := &observingMutations{completeErr: cleanupFailure}
+			coordinator := mustNewCoordinator(Dependencies{Mutations: mutations, Checkpoints: refusedCheckpoint{err: refusal}})
+			spec := RollbackSpec{SessionID: "ses_1", ToRunID: "run_1", Scope: RestoreBoth}
+			mutation := WorkspaceMutation{SessionID: spec.SessionID, CWD: "/workspace", ToRunID: spec.ToRunID, RestoreHistory: true}
+			err := coordinator.restoreRollbackFiles(t.Context(), spec, mutation.CWD, mutation, true)
+			if !errors.Is(err, ErrRollbackRecoveryPending) || !errors.Is(err, cleanupFailure) || !errors.Is(err, refusal) {
+				t.Fatalf("failed refusal cleanup = %v, want pending intent and both causes", err)
+			}
+			mutations.completeErr = nil
+			err = coordinator.restoreRollbackFiles(t.Context(), spec, mutation.CWD, mutation, true)
+			if !errors.Is(err, refusal) || errors.Is(err, ErrRollbackRecoveryPending) {
+				t.Fatalf("completed refusal = %v, want definitive refusal", err)
+			}
+		})
+	}
 }
 
 func (*observingMutations) ListPending(context.Context) ([]WorkspaceMutation, error) {

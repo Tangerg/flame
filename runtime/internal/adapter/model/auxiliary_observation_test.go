@@ -39,7 +39,7 @@ func TestAuxiliaryCallObservation(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			exporter := tracetest.NewInMemoryExporter()
-			provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter))
+			provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exporter), sdktrace.WithSampler(sdktrace.AlwaysSample()))
 			previous := otel.GetTracerProvider()
 			otel.SetTracerProvider(provider)
 			t.Cleanup(func() { otel.SetTracerProvider(previous); _ = provider.Shutdown(context.Background()) })

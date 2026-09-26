@@ -17,12 +17,12 @@ function useChangedFiles(): WorkspaceFileChange[] | undefined {
   ).data;
 }
 
-const NO_CHANGES: ReadonlyMap<string, WorkspaceFileChange["change"]> = new Map();
+const NO_CHANGES: ReadonlyMap<string, WorkspaceFileChange> = new Map();
 
-export function useWorkingTreeFiles(): ReadonlyMap<string, WorkspaceFileChange["change"]> {
+export function useWorkingTreeFiles(): ReadonlyMap<string, WorkspaceFileChange> {
   const data = useChangedFiles();
   return useMemo(
-    () => (data ? new Map(data.map((file) => [file.path, file.change])) : NO_CHANGES),
+    () => (data ? new Map(data.map((file) => [file.path, file])) : NO_CHANGES),
     [data],
   );
 }

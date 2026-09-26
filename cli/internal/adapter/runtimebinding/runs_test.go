@@ -175,7 +175,7 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 	if _, err := runtime.CancelRun(t.Context(), agent.CancelRun{CommandID: commandID, RunID: "run_1"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := runtime.SteerRun(t.Context(), agent.SteerRun{CommandID: commandID, RunID: "run_1", SegmentID: "seg_1", Message: agent.Message{Text: "steer"}}); err != nil {
+	if _, err := runtime.SteerRun(t.Context(), agent.SteerRun{CommandID: commandID, RunID: "run_1", SegmentID: "seg_1", Message: agent.Message{Text: "steer"}}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -213,7 +213,8 @@ func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapab
 		{
 			name: "steer",
 			call: func(ctx context.Context, runtime *Connection) error {
-				return runtime.SteerRun(ctx, agent.SteerRun{RunID: "run_1", SegmentID: "seg_1", Message: message})
+				_, err := runtime.SteerRun(ctx, agent.SteerRun{RunID: "run_1", SegmentID: "seg_1", Message: message})
+				return err
 			},
 		},
 	} {
@@ -616,10 +617,39 @@ func TestSteerRunBindsStructuredInputToTheObservedSegment(t *testing.T) {
 		return nil, protocol.ErrStaleSegment
 	}
 	runtime := &Connection{runs: stub, meta: requestMeta("test"), loadAttachment: loadAttachmentFile}
-	err := runtime.SteerRun(t.Context(), agent.SteerRun{
+	_, err := runtime.SteerRun(t.Context(), agent.SteerRun{
 		RunID: "run_1", SegmentID: "seg_2", Message: agent.Message{Text: "focus on the parser"},
 	})
 	if !errors.Is(err, agent.ErrStaleSegment) {
 		t.Fatalf("SteerRun error = %v, want ErrStaleSegment", err)
+	}
+}
+
+func TestSteerRunReturnsTheExactAcceptanceReceipt(t *testing.T) {
+	want := protocol.SteerRunResponse{UserItemID: "item_reserved_opaque"}
+	connection := &Connection{meta: requestMeta("test"), runs: runBindingStub{
+		steer: func(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) (*protocol.SteerRunResponse, error) {
+			return &want, nil
+		},
+	}}
+	got, err := connection.SteerRun(t.Context(), agent.SteerRun{
+		RunID: "run_1", SegmentID: "seg_1", Message: agent.Message{Text: "preserve the receipt"},
+	})
+	if err != nil || got != want {
+		t.Fatalf("steer receipt = %+v, error %v", got, err)
+	}
+}
+
+func TestSteerRunDistinguishesMissingReceiptFromRefusal(t *testing.T) {
+	connection := &Connection{meta: requestMeta("test"), runs: runBindingStub{
+		steer: func(context.Context, protocol.SteerRunRequest, flameruntime.CommandOptions) (*protocol.SteerRunResponse, error) {
+			return nil, nil
+		},
+	}}
+	_, err := connection.SteerRun(t.Context(), agent.SteerRun{
+		RunID: "run_1", SegmentID: "seg_1", Message: agent.Message{Text: "preserve accepted input"},
+	})
+	if !errors.Is(err, agent.ErrSteerReceiptUnavailable) || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+		t.Fatalf("missing accepted receipt = %v", err)
 	}
 }

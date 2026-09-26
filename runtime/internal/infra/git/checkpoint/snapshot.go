@@ -8,13 +8,14 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 )
 
 // maxCheckpointFileSize caps a single file the checkpoint will stage (2 MiB
 // guard). A large unignored binary — a dataset, a built artifact a project
 // forgot to .gitignore — would otherwise bloat every snapshot and the shadow
-// repo. Oversize files are left out, so a restore won't revert them: an
-// acceptable trade-off against unbounded growth.
+// repo. Oversize files are left out; restore refuses a target that would
+// overwrite their current material.
 const maxCheckpointFileSize = 2 << 20
 
 const (
@@ -29,6 +30,9 @@ const (
 // re-tags the existing HEAD instead of minting an empty commit, so a no-change
 // Run costs one ref and zero objects. Idempotent per Run (the tag is moved).
 func (s *Store) Snapshot(ctx context.Context, sessionID, cwd, runID string) error {
+	if err := s.checkStorageBoundary(ctx, cwd); err != nil {
+		return err
+	}
 	mu := s.treeLockFor(cwd)
 	mu.Lock()
 	defer mu.Unlock()
@@ -129,8 +133,24 @@ func (s *Store) stageChanges(ctx context.Context, gitDir, cwd string) error {
 		return err
 	}
 	if err := s.updateIndex(ctx, gitDir, cwd,
-		[]string{"rm", "-q", "-f", "--cached", "--ignore-unmatch", "--"}, untrack); err != nil {
+		[]string{"rm", "-q", "-r", "-f", "--cached", "--ignore-unmatch", "--"}, untrack); err != nil {
 		return err
+	}
+	if len(untrack) > 0 {
+		// A cached file masks a directory that replaced it. Removing that entry
+		// exposes its children to the same ignore and size policy before capture.
+		out, err = s.gitOutput(ctx, gitDir, cwd, args...)
+		if err != nil {
+			return err
+		}
+		stage, untrack, err = checkpointCandidates(ctx, cwd, out)
+		if err != nil {
+			return err
+		}
+		if err := s.updateIndex(ctx, gitDir, cwd,
+			[]string{"rm", "-q", "-r", "-f", "--cached", "--ignore-unmatch", "--"}, untrack); err != nil {
+			return err
+		}
 	}
 	return s.updateIndex(ctx, gitDir, cwd, []string{"add", "--force", "--"}, stage)
 }
@@ -166,13 +186,14 @@ func checkpointCandidates(ctx context.Context, cwd string, output []byte) ([]str
 		// failures are operational errors, not evidence that the file vanished.
 		info, err := os.Lstat(filepath.Join(cwd, p))
 		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
+			if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
 				stage = append(stage, p)
 				continue
 			}
 			return nil, nil, fmt.Errorf("checkpoint: inspect %q: %w", p, err)
 		}
 		if !info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 {
+			untrack = append(untrack, p)
 			continue
 		}
 		if info.Size() > maxCheckpointFileSize {

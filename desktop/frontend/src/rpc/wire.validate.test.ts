@@ -694,7 +694,13 @@ describe("the generated wire checks", () => {
 
     expect(
       validateWire("RuntimeLimits", {
-        runtimeSubscription: { maxTopics: 32, maxWatches: 32 },
+        runtimeSubscription: {
+          maxTopics: 32,
+          maxWatches: 32,
+          maxPaths: 256,
+          maxDirectoryEntries: 10000,
+          maxFileBytes: 1048576,
+        },
       }),
     ).toEqual([
       { path: "RuntimeLimits.idempotency", detail: "is required" },

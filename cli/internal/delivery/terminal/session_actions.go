@@ -140,7 +140,10 @@ func (r rollbackPreview) Description() string {
 		boundary = shortIdentity(r.request.ToRunID)
 	}
 	if r.request.FilesOnly() {
-		return fmt.Sprintf("Restore files to %s while keeping chat history?", boundary)
+		return fmt.Sprintf("Restore checkpointed files to %s while keeping chat history? Ignored and oversized files are not archived; conflicting unarchived content blocks restore.", boundary)
+	}
+	if r.request.RestoresFiles() {
+		return fmt.Sprintf("Restore checkpointed files to %s, then remove %d later runs? Ignored and oversized files are not archived; conflicting unarchived content blocks restore. Partial failures retain recovery intent.", boundary, r.settlement.DroppedCount())
 	}
 	return fmt.Sprintf("Restore %s to %s and remove %d later runs?", r.request.Scope, boundary, r.settlement.DroppedCount())
 }
@@ -267,6 +270,10 @@ func parseRollbackArgument(sessionID, argument string) (agent.RollbackSession, e
 }
 
 func (a *app) confirmAction(title, question, action string, confirm func()) {
+	a.confirmActionWithContent(title, question, action, "", confirm)
+}
+
+func (a *app) confirmActionWithContent(title, question, action, content string, confirm func()) {
 	a.dismissConfirmation()
 	generation := a.session.context
 	confirmed := false
@@ -292,13 +299,21 @@ func (a *app) confirmAction(title, question, action string, confirm func()) {
 		}
 	}
 	form.GaveUp = dismiss
-	body := kit.NewForm(kit.FormConfig{
+	formBody := kit.NewForm(kit.FormConfig{
 		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
+	var body headless.Widget = formBody
+	placement := layout.Placement{Width: 78, Height: 9}
+	if content != "" {
+		viewport := headless.NewViewport(headless.Static{Of: kit.NewParagraph(content, a.transcript.theme.Text)})
+		viewport.Scroll().Wheel(a.loop.Environment().Wheel())
+		body = &confirmationContentPane{viewport: viewport, form: formBody}
+		placement = layout.Placement{Width: 96, Height: 26}
+	}
 	dialog = kit.NewDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
-		Title: title, Body: body, Where: layout.Placement{Width: 78, Height: 9},
+		Title: title, Body: body, Where: placement,
 	})
 	a.dialogs.confirmationDialog = dialog
 	dialog.Controller().Show()

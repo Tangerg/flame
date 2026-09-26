@@ -39,7 +39,7 @@ func installRunsegmentTraceCapture(t *testing.T) (*sdktrace.TracerProvider, *tra
 	t.Helper()
 	runsegmentTraceOnce.Do(func() {
 		runsegmentTraceExporter = tracetest.NewInMemoryExporter()
-		runsegmentTraceProvider = sdktrace.NewTracerProvider(sdktrace.WithSyncer(runsegmentTraceExporter))
+		runsegmentTraceProvider = sdktrace.NewTracerProvider(sdktrace.WithSyncer(runsegmentTraceExporter), sdktrace.WithSampler(sdktrace.AlwaysSample()))
 		otel.SetTracerProvider(runsegmentTraceProvider)
 	})
 	runsegmentTraceExporter.Reset()

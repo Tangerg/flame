@@ -6,6 +6,7 @@ import type {
 } from "../ports/runtimeGateway";
 import { configureAgentRuntimeGateway } from "../ports/runtimeGateway";
 import { useAgentStore } from "../../adapters/agentStore";
+import { useNotificationStore } from "@/plugins/sdk/notifications";
 import { installAgentStatePorts } from "../../adapters/agentStatePorts";
 import {
   refreshAgentSessionProjection,
@@ -55,6 +56,55 @@ afterEach(() => {
 });
 
 describe("refreshAgentSessionProjection", () => {
+  it.each([false, true])(
+    "reports an unapplied steer only after a committed terminal read (superseded=%s)",
+    async (superseded) => {
+      useAgentStore.getState().appendLocalMessage(SESSION_ID, {
+        id: "reserved_user_item",
+        role: "user",
+        runId: null,
+        blocks: [{ kind: "text", text: "Use the attached reference", status: "complete" }],
+        steer: { runId: "run_steered", status: "accepted" },
+      });
+      const read = Promise.withResolvers<AgentSessionMaterialRead>();
+      const terminal: AgentSessionSnapshot = {
+        items: [],
+        pendingInterruptSets: [],
+        runs: [
+          {
+            id: "run_steered",
+            sessionId: SESSION_ID,
+            parentRunId: null,
+            rootRunId: "run_steered",
+            spawnedByItemId: null,
+            status: "finished",
+            activeSegmentId: null,
+            outcome: { type: "completed" },
+            metrics: {
+              steps: 1,
+              activeDurationMillis: 1,
+              usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
+            },
+            createdAt: "2026-09-26T00:00:00Z",
+            finishedAt: "2026-09-26T00:00:01Z",
+          },
+        ],
+      };
+      restoreRuntime = configureAgentRuntimeGateway({
+        loadSessionSnapshot: () => read.promise,
+      } as unknown as AgentRuntimeGateway);
+      const refreshing = refreshAgentSessionProjection(SESSION_ID);
+      expect(useNotificationStore.getState().log).toHaveLength(0);
+      if (superseded) useAgentStore.getState().setCommandError(SESSION_ID, { code: "newer_fact" });
+      read.resolve(material(terminal));
+      await refreshing;
+      expect(useNotificationStore.getState().log).toHaveLength(superseded ? 0 : 1);
+      expect(useAgentStore.getState().sessions[SESSION_ID]!.view.messages).toHaveLength(
+        superseded ? 1 : 0,
+      );
+    },
+  );
+
   it("preserves the mounted owner's shared settlement for repeated notifications", async () => {
     const pending = Promise.withResolvers<boolean>();
     useAgentStore.getState().setSynchronize(SESSION_ID, () => pending.promise);

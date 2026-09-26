@@ -15,6 +15,10 @@ import (
 // run has no snapshot.
 var (
 	ErrCheckpointUnavailable = errors.New("sessions: checkpoint unavailable")
+	ErrCheckpointConflict    = errors.New("sessions: checkpoint restore conflicts with unarchived material")
+	// ErrRollbackRecoveryPending covers an adopted intent or failed refusal
+	// cleanup. A persisted intent can still restore files at recovery.
+	ErrRollbackRecoveryPending = errors.New("sessions: file rollback recovery is pending")
 	// ErrCheckpointRestoreIncomplete marks a restore that may already have
 	// changed part of the working tree. The durable mutation intent must remain
 	// pending so boot recovery can re-drive the operation.
@@ -84,7 +88,7 @@ type RollbackResult struct {
 // state, and applies the history truncation. It returns the resolved Session
 // view with the mutation result so callers do not re-read a newer revision.
 //
-// The guards live with the use case: a file restore's `git reset --hard`
+// The guards live with the use case: a file restore's checkout
 // writes a working tree a sibling session sharing the cwd would race, and that
 // sibling's tool writes never take the checkpoint lock, so the mutation must see
 // any in-flight run on the tree, not just this session's.
@@ -112,7 +116,7 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 	defer sessionMutation.Release()
 
 	// Read the Session under the claim. The claim is what stops a relocation from
-	// committing, so a read before it could hand this reset a working tree the
+	// committing, so a read before it could hand this restore a working tree the
 	// Session no longer has — and the view it returns a workspace that moved.
 	currentSession, err := c.Get(ctx, spec.SessionID)
 	if err != nil {
@@ -150,19 +154,18 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 			return result, err
 		}
 	}
-	// Every file restore is logged before Git touches the working tree. A reset
+	// Every file restore is logged before Git touches the working tree. A checkout
 	// updates multiple paths and can fail after changing only some of them, so
 	// even files-only rollback needs boot recovery. RestoreHistory distinguishes
 	// that operation from the cross-resource files+history variant.
-	mutation, recorded, err := c.recordRollbackMutation(ctx, spec, cwd)
+	mutation, freshMutation, err := c.recordRollbackMutation(ctx, spec, cwd)
 	if err != nil {
 		return result, err
 	}
 
-	// Errors before reset begins leave the tree unchanged, so their intent can be
-	// cleared. ErrCheckpointRestoreIncomplete is different: reset may have
-	// changed only part of the tree, and its intent must survive for recovery.
-	if restoreRollbackFilesErr := c.restoreRollbackFiles(ctx, spec, cwd, mutation, recorded); restoreRollbackFilesErr != nil {
+	// A fresh intent may be cleared if checkout never began. An adopted intent
+	// or incomplete checkout may already have changed files and must survive.
+	if restoreRollbackFilesErr := c.restoreRollbackFiles(ctx, spec, cwd, mutation, freshMutation); restoreRollbackFilesErr != nil {
 		if restoreFiles && errors.Is(restoreRollbackFilesErr, ErrCheckpointRestoreIncomplete) {
 			c.transientState.ForgetWorkspace(cwd)
 		}
@@ -183,7 +186,7 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 		}
 	}
 
-	if recorded {
+	if restoreFiles {
 		if completeMutationDetachedErr := c.completeMutationDetached(ctx, mutation); completeMutationDetachedErr != nil {
 			return result, completeMutationDetachedErr
 		}
@@ -259,7 +262,7 @@ func (c *Coordinator) resolveRollbackBoundary(
 
 func (c *Coordinator) quiesceRollbackWorkspace(sessionID, cwd string) error {
 	// A Session can own shells below its isolated copy, while sibling Sessions
-	// can own shells below the real working tree being reset. Retire both
+	// can own shells below the real working tree being restored. Retire both
 	// ownership scopes before Git changes any path.
 	if err := c.transientState.QuiesceSession(sessionID); err != nil {
 		return fmt.Errorf("sessions: quiesce process-local Session state before file rollback: %w", err)
@@ -282,10 +285,11 @@ func (c *Coordinator) recordRollbackMutation(
 		SessionID: spec.SessionID, CWD: cwd, ToRunID: spec.ToRunID,
 		RestoreHistory: spec.Scope.RestoresHistory(),
 	}
-	if err := c.mutations.Record(ctx, mutation); err != nil {
+	created, err := c.mutations.Record(ctx, mutation)
+	if err != nil {
 		return WorkspaceMutation{}, false, err
 	}
-	return mutation, true, nil
+	return mutation, created, nil
 }
 
 func (c *Coordinator) retireRestoredWorkspace(sessionID, cwd string) error {
@@ -306,20 +310,26 @@ func (c *Coordinator) restoreRollbackFiles(
 	spec RollbackSpec,
 	cwd string,
 	mutation WorkspaceMutation,
-	recorded bool,
+	freshMutation bool,
 ) error {
 	if !spec.Scope.RestoresFiles() {
 		return nil
 	}
 	err := c.restore(ctx, spec.SessionID, cwd, spec.ToRunID)
-	if err == nil || !recorded || errors.Is(err, ErrCheckpointRestoreIncomplete) {
+	if err == nil || errors.Is(err, ErrCheckpointRestoreIncomplete) {
 		return err
+	}
+	if !freshMutation {
+		// This attempt may be safe to refuse while an earlier attempt already
+		// changed files. Only completion can retire that adopted recovery intent.
+		return fmt.Errorf("%w: %w", ErrRollbackRecoveryPending, err)
 	}
 	cleanupErr := c.completeMutationDetached(ctx, mutation)
 	if cleanupErr == nil {
 		return err
 	}
-	return errors.Join(err, fmt.Errorf("sessions: clear failed rollback intent: %w", cleanupErr))
+	return fmt.Errorf("%w: %w", ErrRollbackRecoveryPending,
+		errors.Join(err, fmt.Errorf("sessions: clear failed rollback intent: %w", cleanupErr)))
 }
 
 func projectDroppedRuns(boundary transcript.Boundary, runs []run.Run, inputs map[string][]transcript.ContentBlock) []DroppedRun {

@@ -26,10 +26,11 @@ type SessionReader interface {
 }
 
 type Lifecycle interface {
+	PrepareInput(context.Context, agent.Message) ([]protocol.ContentBlock, error)
 	StartRun(context.Context, agent.StartRun) (agent.SegmentStream, error)
 	ResumeRun(context.Context, agent.ResumeRun) (agent.SegmentStream, error)
 	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
-	SteerRun(context.Context, agent.SteerRun) error
+	SteerRun(context.Context, agent.SteerRun) (protocol.SteerRunResponse, error)
 	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
 }
 
@@ -67,6 +68,14 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		return fmt.Errorf("one-shot command replay policy: %w", err)
 	}
 	defer func() { runErr = errors.Join(runErr, invocation.Renderer.Close()) }()
+	invocation.Start = invocation.Start.Clone()
+	if invocation.Start.Input == nil {
+		prepared, err := invocation.Runtime.PrepareInput(ctx, invocation.Start.Message)
+		if err != nil {
+			return fmt.Errorf("prepare one-shot input: %w", err)
+		}
+		invocation.Start.Input = prepared
+	}
 
 	startReplay, err := invocation.ReplayPolicy.NewGuard()
 	if err != nil {

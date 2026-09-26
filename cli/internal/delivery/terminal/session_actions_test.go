@@ -82,7 +82,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 				}},
 			},
 			Interactions: []agent.Interaction{approval},
-		}); stagePendingResumeErr != nil {
+		}, nil); stagePendingResumeErr != nil {
 			t.Fatal(stagePendingResumeErr)
 		}
 	}
@@ -678,25 +678,25 @@ type blockedSteeringRuntime struct {
 	err     error
 }
 
-func (b *blockedSteeringRuntime) SteerRun(ctx context.Context, request agent.SteerRun) error {
+func (b *blockedSteeringRuntime) SteerRun(ctx context.Context, request agent.SteerRun) (protocol.SteerRunResponse, error) {
 	select {
 	case b.entered <- request:
 	case <-ctx.Done():
-		return ctx.Err()
+		return protocol.SteerRunResponse{}, ctx.Err()
 	}
 	select {
 	case <-b.release:
-		return b.err
+		return protocol.SteerRunResponse{}, b.err
 	case <-ctx.Done():
-		return ctx.Err()
+		return protocol.SteerRunResponse{}, ctx.Err()
 	}
 }
 
-func (s *steeringRuntime) SteerRun(_ context.Context, request agent.SteerRun) error {
+func (s *steeringRuntime) SteerRun(_ context.Context, request agent.SteerRun) (protocol.SteerRunResponse, error) {
 	s.mu.Lock()
 	s.request = request
 	s.mu.Unlock()
-	return s.err
+	return protocol.SteerRunResponse{}, s.err
 }
 
 func (s *steeringRuntime) lastSteer() agent.SteerRun {
@@ -712,27 +712,31 @@ type uncertainSteeringRuntime struct {
 
 	mu       sync.Mutex
 	requests []agent.SteerRun
+	receipt  protocol.SteerRunResponse
 }
 
 type committedThenCanceledSteeringRuntime struct {
 	*runtimefixture.Runtime
 
 	committed chan agent.SteerRun
+	receipt   protocol.SteerRunResponse
 }
 
 func (c *committedThenCanceledSteeringRuntime) SteerRun(
 	ctx context.Context,
 	request agent.SteerRun,
-) error {
-	if err := c.Runtime.SteerRun(ctx, request); err != nil {
-		return err
+) (protocol.SteerRunResponse, error) {
+	receipt, err := c.Runtime.SteerRun(ctx, request)
+	if err != nil {
+		return protocol.SteerRunResponse{}, err
 	}
+	c.receipt = receipt
 	select {
 	case c.committed <- request.Clone():
 	default:
 	}
 	<-ctx.Done()
-	return context.Cause(ctx)
+	return protocol.SteerRunResponse{}, context.Cause(ctx)
 }
 
 type cachedSteeringRuntime struct {
@@ -740,28 +744,31 @@ type cachedSteeringRuntime struct {
 
 	accepted agent.SteerRun
 	attempts []agent.SteerRun
+	receipt  protocol.SteerRunResponse
 }
 
-func (c *cachedSteeringRuntime) SteerRun(_ context.Context, request agent.SteerRun) error {
+func (c *cachedSteeringRuntime) SteerRun(_ context.Context, request agent.SteerRun) (protocol.SteerRunResponse, error) {
 	c.attempts = append(c.attempts, request.Clone())
 	if !request.Equal(c.accepted) {
-		return errors.New("replayed steer does not match the accepted command")
+		return protocol.SteerRunResponse{}, errors.New("replayed steer does not match the accepted command")
 	}
-	return nil
+	return c.receipt, nil
 }
 
-func (u *uncertainSteeringRuntime) SteerRun(ctx context.Context, request agent.SteerRun) error {
+func (u *uncertainSteeringRuntime) SteerRun(ctx context.Context, request agent.SteerRun) (protocol.SteerRunResponse, error) {
 	u.mu.Lock()
 	u.requests = append(u.requests, request)
 	attempt := len(u.requests)
 	u.mu.Unlock()
 	if attempt == 1 {
-		if err := u.Runtime.SteerRun(ctx, request); err != nil {
-			return err
+		receipt, err := u.Runtime.SteerRun(ctx, request)
+		if err != nil {
+			return protocol.SteerRunResponse{}, err
 		}
-		return fmt.Errorf("lost steer acknowledgement: %w", context.DeadlineExceeded)
+		u.receipt = receipt
+		return protocol.SteerRunResponse{}, fmt.Errorf("lost steer acknowledgement: %w", context.DeadlineExceeded)
 	}
-	return nil
+	return u.receipt, nil
 }
 
 func (u *uncertainSteeringRuntime) steerAttempts() []agent.SteerRun {
@@ -882,7 +889,7 @@ func TestSteerConfirmsATimedOutAcknowledgementWithOneIdentity(t *testing.T) {
 	host.Shows(t, "thinking")
 	host.Type("/steer keep one identity")
 	host.Press(input.Enter)
-	host.Shows(t, "steer accepted")
+	host.Shows(t, "steer applied to model context")
 
 	attempts := backend.steerAttempts()
 	if len(attempts) != 2 || attempts[0].CommandID == "" || attempts[0].CommandID != attempts[1].CommandID ||
@@ -935,12 +942,13 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	}
 	stop()
 
-	replay := &cachedSteeringRuntime{Runtime: base, accepted: accepted}
+	replay := &cachedSteeringRuntime{Runtime: base, accepted: accepted, receipt: runtime.receipt}
 	restarted, stopRestarted := runUIFromConfig(t, Config{
 		Runtime: replay, RuntimeProfile: &profile, Workspace: workspace,
 		SessionID: sessionID, StateDirectory: stateDirectory,
 	})
 	restarted.Shows(t, "focus on parsing")
+	restarted.Shows(t, "steer applied to model context")
 	if len(replay.attempts) != 1 || !replay.attempts[0].Equal(accepted) {
 		t.Fatalf("restart steer attempts = %+v", replay.attempts)
 	}

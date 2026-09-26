@@ -10,6 +10,8 @@ export const MAPPED_TYPES: readonly string[] = [
   "run_finished",
   "stale_segment",
   "checkpoint_unavailable",
+  "checkpoint_conflict",
+  "prompt_source_too_large",
   "workspace_unavailable",
   "vcs_unavailable",
   "rate_limited",

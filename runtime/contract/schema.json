@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-09-22",
+  "protocolVersion": "2026-09-26",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -830,6 +830,12 @@
         },
         "type": {
           "$ref": "#/$defs/ArtifactOutcomeType"
+        },
+        "unresolvedEffects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UnresolvedEffect"
+          }
         }
       },
       "oneOf": [
@@ -5813,6 +5819,20 @@
             "requiredCapabilities": false,
             "retryAfterSeconds": false,
             "type": {
+              "const": "checkpoint_conflict"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "activeRun": false,
+            "errors": false,
+            "requiredCapabilities": false,
+            "retryAfterSeconds": false,
+            "type": {
               "const": "checkpoint_unavailable"
             }
           },
@@ -6113,6 +6133,20 @@
             "retryAfterSeconds": false,
             "type": {
               "const": "path_outside_root"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "activeRun": false,
+            "errors": false,
+            "requiredCapabilities": false,
+            "retryAfterSeconds": false,
+            "type": {
+              "const": "prompt_source_too_large"
             }
           },
           "required": [
@@ -8701,8 +8735,8 @@
         },
         "version": {
           "type": "integer",
-          "minimum": 27,
-          "maximum": 27
+          "minimum": 28,
+          "maximum": 28
         }
       },
       "required": [
@@ -9561,6 +9595,18 @@
     "SubscriptionLimits": {
       "type": "object",
       "properties": {
+        "maxDirectoryEntries": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxFileBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxPaths": {
+          "type": "integer",
+          "minimum": 1
+        },
         "maxTopics": {
           "type": "integer",
           "minimum": 1
@@ -9571,6 +9617,9 @@
         }
       },
       "required": [
+        "maxDirectoryEntries",
+        "maxFileBytes",
+        "maxPaths",
         "maxTopics",
         "maxWatches"
       ]
@@ -10071,6 +10120,14 @@
     "WatchSpec": {
       "type": "object",
       "properties": {
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
         "watchId": {
           "type": "string"
         },

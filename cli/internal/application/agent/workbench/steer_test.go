@@ -25,7 +25,7 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 		t.Fatal(saveDraftErr)
 	}
 	pending := steerTestPending(t, sessionID, attachment)
-	if stagePendingSteerErr := store.StagePendingSteer(pending, source); stagePendingSteerErr != nil {
+	if stagePendingSteerErr := store.StagePendingSteer(pending, source, preparedTestInput(t, store, pending.Message(), pending.Command().Input)); stagePendingSteerErr != nil {
 		t.Fatal(stagePendingSteerErr)
 	}
 	if draft, found := store.Draft(sessionID); found {
@@ -78,7 +78,7 @@ func TestPendingSteerAcknowledgementIsRestartIdempotentAndPreservesDraft(t *test
 	if saveDraftErr := store.SaveDraft(sessionID, source); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	if stagePendingSteerErr := store.StagePendingSteer(pending, source); stagePendingSteerErr != nil {
+	if stagePendingSteerErr := store.StagePendingSteer(pending, source, preparedTestInput(t, store, pending.Message(), pending.Command().Input)); stagePendingSteerErr != nil {
 		t.Fatal(stagePendingSteerErr)
 	}
 	newer := agent.Message{Text: "keep this newer thought"}
@@ -176,6 +176,10 @@ func steerTestPending(
 			CommandID: "cli_11111111111111111111111111111111",
 			RunID:     "run_1", SegmentID: "seg_1",
 			Message: agent.Message{Text: "inspect the parser", Attachments: []agent.Attachment{attachment}},
+			Input: []protocol.ContentBlock{
+				{Type: protocol.ContentBlockText, Text: "inspect the parser"},
+				{Type: protocol.ContentBlockText, Text: "fixture attachment"},
+			},
 		},
 		stagedAt,
 		replay,
@@ -202,7 +206,7 @@ func TestSteerSettlementRefusesAnotherCommandsSteer(t *testing.T) {
 		t.Fatal(err)
 	}
 	pending := steerTestPending(t, sessionID, attachment)
-	if err := store.StagePendingSteer(pending, source); err != nil {
+	if err := store.StagePendingSteer(pending, source, preparedTestInput(t, store, pending.Message(), pending.Command().Input)); err != nil {
 		t.Fatal(err)
 	}
 

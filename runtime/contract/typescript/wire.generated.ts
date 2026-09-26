@@ -9,10 +9,10 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-09-22";
+export const PROTOCOL_VERSION = "2026-09-26";
 
 // The only Session Artifact version this runtime imports or exports.
-export const SESSION_ARTIFACT_VERSION = 27;
+export const SESSION_ARTIFACT_VERSION = 28;
 
 // The maximum length of one opaque pagination cursor on the public wire.
 export const MAXIMUM_PAGINATION_CURSOR_CHARACTERS = 65536;
@@ -187,11 +187,11 @@ export type ArtifactItem =
   | { type: "compaction"; createdAt: string; droppedMessages?: number; id: string; runId: string; status: "completed"; summary: string };
 
 export type ArtifactOutcome =
-  | { type: "completed" }
-  | { type: "timedOut"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "timeout" } }
-  | { type: "failed"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internalError" | "agentStuck" | "rateLimited" | "invalidApiKey" | "timeout" | "providerUnavailable" | "providerRejected" } }
-  | { type: "canceled"; detail?: string }
-  | { type: "lost"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "runLost" } };
+  | { type: "completed"; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "timedOut"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "timeout" }; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "failed"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internalError" | "agentStuck" | "rateLimited" | "invalidApiKey" | "timeout" | "providerUnavailable" | "providerRejected" }; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "canceled"; detail?: string; unresolvedEffects?: UnresolvedEffect[] }
+  | { type: "lost"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "runLost" }; unresolvedEffects?: UnresolvedEffect[] };
 
 export type ArtifactOutcomeType = "completed" | "timedOut" | "failed" | "canceled" | "lost";
 
@@ -948,6 +948,7 @@ export interface PlanStep {
 export type ProblemData =
   | { type: "agent_stuck"; detail?: string; docUrl?: string }
   | { type: "capability_not_negotiated"; detail?: string; docUrl?: string; requiredCapabilities: CapabilityRequirement[] }
+  | { type: "checkpoint_conflict"; detail?: string; docUrl?: string }
   | { type: "checkpoint_unavailable"; detail?: string; docUrl?: string }
   | { type: "child_run_canceled"; detail?: string; docUrl?: string }
   | { type: "denied_by_user"; detail?: string; docUrl?: string }
@@ -970,6 +971,7 @@ export type ProblemData =
   | { type: "mcp_server_not_found"; detail?: string; docUrl?: string }
   | { type: "method_not_found"; detail?: string; docUrl?: string }
   | { type: "path_outside_root"; detail?: string; docUrl?: string }
+  | { type: "prompt_source_too_large"; detail?: string; docUrl?: string }
   | { type: "provider_error"; detail?: string; docUrl?: string }
   | { type: "provider_not_configured" }
   | { type: "provider_rejected"; detail?: string; docUrl?: string }
@@ -1473,6 +1475,9 @@ export interface SubscribeRunResponse {
 }
 
 export interface SubscriptionLimits {
+  maxDirectoryEntries: number;
+  maxFileBytes: number;
+  maxPaths: number;
   maxTopics: number;
   maxWatches: number;
 }
@@ -1594,6 +1599,7 @@ export interface UtilityRole {
 }
 
 export interface WatchSpec {
+  paths?: string[];
   watchId: string;
   workspace: WorkspaceRef;
 }

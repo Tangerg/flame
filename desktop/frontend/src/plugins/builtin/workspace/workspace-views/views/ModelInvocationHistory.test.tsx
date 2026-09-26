@@ -59,6 +59,8 @@ describe("Model invocation history", () => {
     expect(screen.getByText("↑—")).toBeTruthy();
     expect(screen.getByText("↓—")).toBeTruthy();
     expect(screen.getByText("cache read 31")).toBeTruthy();
+    expect(screen.getByText("cache write 0")).toBeTruthy();
+    expect(screen.getByText("reasoning 0")).toBeTruthy();
     expect(screen.queryByText("1h 00m")).toBeNull();
     expect(query.read).toHaveBeenLastCalledWith(run, undefined);
     fireEvent.click(screen.getByRole("button", { name: "Older calls" }));

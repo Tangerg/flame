@@ -22,6 +22,8 @@ const (
 // PendingRun is one durable runtime outbox entry. State distinguishes intent
 // that has never left the queue from an ambiguous command handshake.
 type PendingRun struct {
+	InputDigest     inputDigest `json:"inputDigest,omitzero"`
+	inputFailure    error
 	State           PendingRunState     `json:"state"`
 	Command         agent.StartRun      `json:"command"`
 	Replay          commandreplay.Guard `json:"replay"`
@@ -31,14 +33,21 @@ type PendingRun struct {
 
 // PendingResume is a HITL decision whose command may already have reached the
 // runtime. It remains durable until the runtime either acknowledges the exact
-// command identity or definitively rejects it.
+// command identity or definitively rejects it. Command addresses the root;
+// Interactions retain the members from the authoritative waiting set reviewed
+// by the terminal before staging.
 type PendingResume struct {
+	InputDigest  inputDigest `json:"inputDigest,omitzero"`
+	inputFailure error
 	Command      agent.ResumeRun     `json:"-"`
 	Interactions []agent.Interaction `json:"interactions"`
 	Replay       commandreplay.Guard `json:"replay"`
 }
 
 func (p PendingResume) validate() error {
+	if err := p.InputDigest.validate(); err != nil {
+		return err
+	}
 	if err := p.Command.Validate(); err != nil {
 		return err
 	}
@@ -50,11 +59,6 @@ func (p PendingResume) validate() error {
 	}
 	if err := agent.ValidateInteractions(p.Interactions); err != nil {
 		return err
-	}
-	for index, interaction := range p.Interactions {
-		if agent.InteractionRunID(interaction) != p.Command.RunID {
-			return fmt.Errorf("interaction %d belongs to another run", index+1)
-		}
 	}
 	if len(p.Command.Answers) != len(p.Interactions) {
 		return errors.New("resume answer count does not match interactions")
@@ -72,6 +76,7 @@ func (p PendingResume) validate() error {
 }
 
 type pendingResumeJSON struct {
+	InputDigest  inputDigest              `json:"inputDigest,omitzero"`
 	CommandID    agent.CommandID          `json:"commandId"`
 	RunID        string                   `json:"runId"`
 	Message      *agent.Message           `json:"message,omitzero"`
@@ -160,6 +165,7 @@ func (p PendingResume) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	wire := pendingResumeJSON{
+		InputDigest:  p.InputDigest,
 		CommandID:    p.Command.CommandID,
 		RunID:        p.Command.RunID,
 		Message:      p.Command.Message,
@@ -184,6 +190,7 @@ func (p *PendingResume) UnmarshalJSON(encoded []byte) error {
 		return err
 	}
 	decoded := PendingResume{
+		InputDigest: wire.InputDigest,
 		Command: agent.ResumeRun{
 			CommandID: wire.CommandID, RunID: wire.RunID, Message: wire.Message,
 			Answers: make([]agent.InterruptAnswer, len(wire.Interactions)),
@@ -207,6 +214,9 @@ func (p *PendingResume) UnmarshalJSON(encoded []byte) error {
 }
 
 func (p PendingRun) validate(sessionID string) error {
+	if err := p.InputDigest.validate(); err != nil {
+		return err
+	}
 	if p.State != PendingRunQueued && p.State != PendingRunDispatching && p.State != PendingRunCanceling {
 		return fmt.Errorf("state %q is invalid", p.State)
 	}
@@ -234,6 +244,9 @@ func (p PendingRun) validate(sessionID string) error {
 	}
 	if p.State == PendingRunQueued && (p.Replay.Protected() || p.CancelReplay.Protected()) {
 		return errors.New("queued run carries a runtime replay guard")
+	}
+	if p.State == PendingRunQueued && (p.InputDigest != "" || p.Command.Input != nil) {
+		return errors.New("queued run carries prepared input")
 	}
 	if p.Command.SessionID != sessionID {
 		return fmt.Errorf("command belongs to session %s", p.Command.SessionID)
@@ -281,9 +294,14 @@ func (p *PendingRun) requeue() (agent.CommandID, error) {
 	if p.State != PendingRunDispatching {
 		return "", fmt.Errorf("pending run cannot be requeued from %q", p.State)
 	}
+	if _, err := p.ReplayCommand(); err != nil {
+		return "", err
+	}
 	replacement := mutation.NewCommandID()
 	p.State = PendingRunQueued
 	p.Command.CommandID = replacement
+	p.Command.Input = nil
+	p.InputDigest = ""
 	p.CancelCommandID = ""
 	p.Replay = commandreplay.UnprotectedGuard()
 	p.CancelReplay = commandreplay.UnprotectedGuard()

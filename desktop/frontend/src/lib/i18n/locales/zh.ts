@@ -402,8 +402,8 @@ export const zh: Record<string, string> = {
   "providers.empty.sub": "运行时报告没有受支持的 LLM 提供方。",
   "providers.utility.title": "辅助模型",
   "providers.utility.desc":
-    "用更便宜的模型跑后台工作——摘要、标题、事实提取。未设置时回落到主模型。 对新的运行生效。",
-  "providers.utility.main": "使用主模型",
+    "用于摘要、标题和事实提取。未设置时使用 Runtime 默认模型。修改从下一次辅助调用生效，包括当前运行中的辅助调用。",
+  "providers.utility.main": "使用 Runtime 默认模型",
   "providers.utility.error": "设置辅助模型失败。",
   "providers.embedding.title": "嵌入模型",
   "providers.embedding.desc":
@@ -493,6 +493,9 @@ export const zh: Record<string, string> = {
   "settings.connection.reset": "恢复默认",
   "settings.connection.status.checking": "正在检查 Runtime…",
   "settings.connection.status.reconnecting": "正在重新连接…",
+  "agent.steer.accepted": "已接收，等待进入模型上下文",
+  "agent.steer.applied": "已进入模型上下文",
+  "agent.steer.notApplied": "本次运行已结束，有已接收的指令未进入模型上下文。",
   "agent.inputNotApplied": "尚未应用",
   "agent.synchronizationIncomplete": "运行同步未完成。请重新打开会话以重试。",
   "runtime.connection.reconnecting": "Runtime 连接已断开，正在重新连接…",
@@ -587,6 +590,7 @@ export const zh: Record<string, string> = {
   "agent.runTree.status.finished": "已完成",
   "agent.runTree.status.error": "出错",
   "agent.runTree.status.canceled": "已取消",
+  "agent.runOutcome.unresolvedEffects": "有未确认结果的操作",
   "agent.runOutcome.canceled": "已取消",
   "agent.steps_other": "{{count}} 步",
   "agent.runTree.action.cancel": "取消此次运行",
@@ -657,7 +661,7 @@ export const zh: Record<string, string> = {
   "skills.body.empty.title": "没有内容",
   "skills.body.empty.sub": "该技能解析到的文档没有正文。",
   "schedules.intro":
-    "按计划运行一段存好的 prompt。运行时在线期间,每次触发开一个新会话 —— 在边栏查看输出。",
+    "按计划运行一段存好的 prompt。运行时在线期间,每次触发开一个新会话 —— 在边栏查看输出。 停用或删除只停止后续调度；已领取的任务仍可能启动，需要单独取消。",
   "schedules.add": "新建定时任务",
   "schedules.save": "保存",
   "schedules.saving": "保存中…",
@@ -669,7 +673,8 @@ export const zh: Record<string, string> = {
   "schedules.edit": "编辑任务",
   "schedules.delete": "删除任务",
   "schedules.delete.title": "删除这个计划任务？",
-  "schedules.delete.body": "“{{title}}”及其指令都会消失，且无法撤销。",
+  "schedules.delete.body":
+    "“{{title}}”及其指令都会消失，且无法撤销。 已领取的任务仍可能启动，需要单独取消。",
   "schedules.delete.confirm": "删除",
   "schedules.empty": "暂无定时任务",
   "schedules.empty.sub": "新建一个,按 cron 触发一段 prompt —— 比如工作日站会、或每晚 review。",
@@ -678,7 +683,7 @@ export const zh: Record<string, string> = {
   "schedules.error.save": "保存定时任务失败。",
   "schedules.model.default": "Runtime 默认模型",
   "schedules.reasoning.default": "模型默认强度",
-  "schedules.model.hint": "对之后触发的计划任务生效，不影响正在执行的任务。",
+  "schedules.model.hint": "用于后续调度。已领取的任务保留领取时的配置。",
   "schedules.model.unavailable": "当前目录中没有此已保存模型。在你修改选择前，将保留原配置。",
   "schedules.form.title": "标题(可选)",
   "schedules.form.instructions": "要执行的指令…",
@@ -871,6 +876,8 @@ export const zh: Record<string, string> = {
 
   "rpcError.session_busy": "会话正忙 —— 请等当前运行结束。",
   "rpcError.checkpoint_unavailable": "该轮没有文件检查点 —— 未改动任何文件。",
+  "rpcError.checkpoint_conflict": "为保护未存入检查点的文件，已拒绝恢复。未改动任何文件。",
+  "rpcError.prompt_source_too_large": "指令文件超过大小或数量限制。请缩短内容或减少文件后重试。",
   "rpcError.workspace_unavailable": "运行时磁盘上不存在该工作区。",
   "rpcError.vcs_unavailable": "该目录不是 git 仓库。",
   "rpcError.rate_limited": "模型提供方正在限流 —— 稍等一下再重试。",
@@ -1151,6 +1158,7 @@ export const zh: Record<string, string> = {
   "file.change.add": "工作树中新增",
   "file.change.mod": "工作树中已修改",
   "file.change.del": "工作树中已删除",
+  "file.change.renamed": "重命名自 {{path}}",
   "file.change.below": "包含工作树改动",
   "file.unsupported.sub": "Flame 以文本方式显示工作区文件，请用对应的应用打开它。",
 };

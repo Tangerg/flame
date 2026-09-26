@@ -107,6 +107,10 @@ func (r *Connection) readMaterialSnapshot(
 	if snapshot == nil {
 		return coldRead{}, runtimeContractViolation("get session snapshot returned nil")
 	}
+	return r.snapshotMaterial(snapshot)
+}
+
+func (r *Connection) snapshotMaterial(snapshot *protocol.SessionSnapshot) (coldRead, error) {
 	planEnabled := r.profile.Supports(protocol.FeaturePlan)
 	if planEnabled && snapshot.Plan == nil {
 		return coldRead{}, runtimeContractViolation("get session snapshot omitted plan while the plan feature is enabled")
@@ -121,6 +125,57 @@ func (r *Connection) readMaterialSnapshot(
 		runs: snapshot.Runs, items: snapshot.Items, plan: snapshot.Plan, goal: snapshot.Goal,
 		interrupts: snapshot.Interrupts,
 	}, nil
+}
+
+func (r *Connection) subscribeSnapshot(ctx context.Context, input agent.SubscribeRun) (agent.SegmentStream, error) {
+	request := protocol.GetSessionRequest{SessionID: input.SessionID}
+	previous, err := r.readSession(ctx, request)
+	if err != nil {
+		return agent.SegmentStream{}, err
+	}
+	for range snapshotStabilityAttempts {
+		streamCtx, release := context.WithCancel(ctx)
+		stream, snapshot, err := r.subscribeRun(streamCtx, input)
+		if err != nil {
+			release()
+			return agent.SegmentStream{}, err
+		}
+		current, err := r.readSession(ctx, request)
+		if err != nil {
+			release()
+			return agent.SegmentStream{}, err
+		}
+		if !sessionProjectionEqual(previous, current) {
+			release()
+			previous = current
+			continue
+		}
+		material, err := r.snapshotMaterial(snapshot)
+		if err != nil {
+			release()
+			return agent.SegmentStream{}, err
+		}
+		for _, run := range material.runs {
+			if run.SessionID != input.SessionID {
+				release()
+				return agent.SegmentStream{}, runtimeContractViolation("subscribe run snapshot returned run %s from session %s for %s", run.ID, run.SessionID, input.SessionID)
+			}
+		}
+		material.session = current
+		projected, err := projectSnapshot(material)
+		if err != nil {
+			release()
+			return agent.SegmentStream{}, runtimeContractViolation("subscribe run snapshot projection is invalid: %v", err)
+		}
+		stream.Snapshot = &projected
+		events := stream.Events
+		stream.Events = func(yield func(agent.RunEvent, error) bool) {
+			defer release()
+			events(yield)
+		}
+		return stream, nil
+	}
+	return agent.SegmentStream{}, fmt.Errorf("%w: session %s changed throughout snapshot subscription", agent.ErrDisconnected, input.SessionID)
 }
 
 func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {

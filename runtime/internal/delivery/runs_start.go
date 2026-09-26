@@ -10,6 +10,7 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -85,6 +86,8 @@ func wireRunStartErr(err error) error {
 		}}
 	}
 	switch {
+	case errors.Is(err, workspaceapp.ErrPromptSourceTooLarge):
+		return wireWorkspaceError(err)
 	case errors.Is(err, runs.ErrInputRequired):
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), "input must contain a user text or image block")
 	case modelref.IsInvalid(err):

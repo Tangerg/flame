@@ -11,7 +11,7 @@ const AgentDocsList Name = "agentDocs.list"
 func registerAgentDocs(registry *Registry) {
 	registry.query(MethodMeta{
 		Name:   AgentDocsList,
-		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
+		Errors: []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrPromptSourceTooLarge.Error()},
 	}, func(service interface {
 		ListAgentDocs(context.Context, protocol.WorkspaceQuery) (*protocol.Page[protocol.AgentDoc], error)
 	}, ctx context.Context, request protocol.WorkspaceQuery) (*protocol.Page[protocol.AgentDoc], error) {

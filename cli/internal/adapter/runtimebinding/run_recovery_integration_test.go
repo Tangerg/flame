@@ -1,25 +1,104 @@
 package runtimebinding
 
 import (
+	"bytes"
 	"context"
-	"encoding/json/jsontext"
-	json "encoding/json/v2"
-	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	runapplication "github.com/Tangerg/flame/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+func TestRunningTreeRecoveryUsesTheRuntimeSnapshotAndSuccessorTail(t *testing.T) {
+	configureIntegrationRuntime(t)
+	childEntered := make(chan struct{})
+	releaseChild := make(chan struct{})
+	var entered, release sync.Once
+	t.Cleanup(func() { release.Do(func() { close(releaseChild) }) })
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		body, err := io.ReadAll(request.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		request.Body = io.NopCloser(bytes.NewReader(body))
+		if bytes.Contains(body, []byte("child approval probe")) {
+			entered.Do(func() { close(childEntered) })
+			select {
+			case <-releaseChild:
+			case <-request.Context().Done():
+				return
+			}
+		}
+		runtimefixture.ServeDelegatedApproval(w, request)
+	}))
+	t.Cleanup(provider.Close)
+	t.Setenv("FLAME_PROVIDER", "deepseek")
+	t.Setenv("FLAME_MODEL", "deepseek-chat")
+	t.Setenv("FLAME_BASEURL", provider.URL)
+	connection := openIntegrationRuntime(t, t.TempDir())
+	if _, err := connection.SetApprovalMode(t.Context(), protocol.ApprovalModeYolo); err != nil {
+		t.Fatal(err)
+	}
+	session, err := connection.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	opened, err := connection.StartRun(ctx, agent.StartRun{
+		SessionID: session.ID, Message: agent.Message{Text: "delegate approval probe"},
+		Options: agent.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-childEntered:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	recovered, err := runapplication.RecoverSegment(ctx, connection, session.ID, opened.RunID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recovered.Snapshot.Runs) != 2 || recovered.Stream.Snapshot == nil || recovered.Stream.HeadEventID == "" {
+		t.Fatalf("coherent running tree = %+v, stream=%+v", recovered.Snapshot.Runs, recovered.Stream)
+	}
+	conversation := agent.NewConversation()
+	if err := conversation.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream); err != nil {
+		t.Fatal(err)
+	}
+	release.Do(func() { close(releaseChild) })
+	childFinished := false
+	for event, err := range recovered.Stream.Events {
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, finished := event.Event.(agent.RunFinished); finished && event.RunID != opened.RunID {
+			childFinished = true
+		}
+		if _, err := conversation.ApplyRunEvent(event); err != nil {
+			t.Fatalf("apply recovered tree event %s: %v", event.EventID, err)
+		}
+	}
+	if !childFinished || conversation.Phase() != agent.ConversationIdle || conversation.Outcome().Status != protocol.OutcomeCompleted {
+		t.Fatalf("recovered tree: childFinished=%t phase=%s outcome=%+v", childFinished, conversation.Phase(), conversation.Outcome())
+	}
+}
+
 func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 	configureIntegrationRuntime(t)
-	provider := httptest.NewServer(http.HandlerFunc(delegatedApprovalResponse))
+	provider := httptest.NewServer(http.HandlerFunc(runtimefixture.ServeDelegatedApproval))
 	t.Cleanup(provider.Close)
 	t.Setenv("FLAME_PROVIDER", "deepseek")
 	t.Setenv("FLAME_MODEL", "deepseek-chat")
@@ -127,79 +206,4 @@ func (*recoveryRenderer) Close() error                            { return nil }
 func (r *recoveryRenderer) Render(event agent.RunEvent) error {
 	r.events = append(r.events, event.Clone())
 	return nil
-}
-
-func delegatedApprovalResponse(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		Stream   bool `json:"stream"`
-		Messages []struct {
-			Role       string         `json:"role"`
-			Content    jsontext.Value `json:"content"`
-			ToolCallID string         `json:"tool_call_id"`
-		} `json:"messages"`
-		Tools []jsontext.Value `json:"tools"`
-	}
-	if err := json.UnmarshalRead(r.Body, &request); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	content, callID, name, arguments := "maintenance complete", "", "", ""
-	if len(request.Tools) > 0 {
-		matched := false
-		for _, message := range slices.Backward(request.Messages) {
-			switch {
-			case message.Role == "tool" && message.ToolCallID == "child_shell":
-				content = "child complete"
-			case message.Role == "tool" && message.ToolCallID == "delegate_child":
-				content = "root complete"
-			case message.Role == "user" && strings.Contains(string(message.Content), "child approval probe"):
-				callID, name, arguments = "child_shell", "shell", `{"command":"printf approved","description":"Return the approved marker"}`
-			case message.Role == "user" && strings.Contains(string(message.Content), "delegate approval probe"):
-				callID, name, arguments = "delegate_child", "delegate_task", `{"summary":"approval probe","instructions":"child approval probe"}`
-			default:
-				continue
-			}
-			matched = true
-			break
-		}
-		if !matched {
-			http.Error(w, "unexpected delegated approval request", http.StatusBadRequest)
-			return
-		}
-	}
-	delta := map[string]any{"role": "assistant", "content": content}
-	finish := "stop"
-	if name != "" {
-		delta = map[string]any{
-			"role": "assistant", "tool_calls": []any{map[string]any{
-				"index": 0, "id": callID, "type": "function",
-				"function": map[string]any{"name": name, "arguments": arguments},
-			}},
-		}
-		finish = "tool_calls"
-	}
-	choice := map[string]any{"index": 0, "finish_reason": finish}
-	object := "chat.completion"
-	if request.Stream {
-		object = "chat.completion.chunk"
-		choice["delta"] = delta
-	} else {
-		choice["message"] = delta
-	}
-	body := map[string]any{
-		"id": "chatcmpl_probe", "object": object, "created": 1, "model": "deepseek-chat",
-		"choices": []any{choice}, "usage": map[string]int{"prompt_tokens": 4, "completion_tokens": 2, "total_tokens": 6},
-	}
-	if request.Stream {
-		w.Header().Set("Content-Type", "text/event-stream")
-		data, err := json.Marshal(body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		_, _ = fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", data)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.MarshalWrite(w, body)
 }

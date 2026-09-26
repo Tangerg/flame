@@ -43,7 +43,15 @@ func (r *Runtime) SubscribeRun(ctx context.Context, in agent.SubscribeRun) (agen
 	if err != nil {
 		return agent.SegmentStream{}, err
 	}
-	return r.bindSegmentLocked(ctx, run, segment, start, head, "", fault), nil
+	stream := r.bindSegmentLocked(ctx, run, segment, start, head, "", fault)
+	if in.Snapshot {
+		snapshot, err := r.sessionSnapshotLocked(in.SessionID)
+		if err != nil {
+			return agent.SegmentStream{}, err
+		}
+		stream.Snapshot = &snapshot
+	}
+	return stream, nil
 }
 
 func replayIndex(events []agent.RunEvent, eventID string) int {

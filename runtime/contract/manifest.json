@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-09-22",
+  "protocolVersion": "2026-09-26",
   "features": [
     "reasoning",
     "multimodal",
@@ -133,6 +133,7 @@
         "run_not_found",
         "session_busy",
         "checkpoint_unavailable",
+        "checkpoint_conflict",
         "capability_not_negotiated"
       ],
       "features": [
@@ -191,6 +192,7 @@
         "session_not_found",
         "session_busy",
         "session_has_active_run",
+        "prompt_source_too_large",
         "unsupported_mime",
         "capability_not_negotiated"
       ]
@@ -571,7 +573,8 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
-        "workspace_unavailable"
+        "workspace_unavailable",
+        "prompt_source_too_large"
       ]
     },
     {
@@ -831,6 +834,7 @@
       "pagination": "none",
       "errors": [
         "schedule_not_found",
+        "prompt_source_too_large",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1237,6 +1241,14 @@
         ]
       },
       {
+        "type": "checkpoint_conflict",
+        "code": -32037,
+        "recoveryAction": "promptUser",
+        "methods": [
+          "sessions.rollback"
+        ]
+      },
+      {
         "type": "checkpoint_unavailable",
         "code": -32009,
         "recoveryAction": "promptUser",
@@ -1345,6 +1357,16 @@
           "workspace.files.list",
           "workspace.files.read",
           "workspace.files.search"
+        ]
+      },
+      {
+        "type": "prompt_source_too_large",
+        "code": -32038,
+        "recoveryAction": "promptUser",
+        "methods": [
+          "agentDocs.list",
+          "runs.start",
+          "schedules.runNow"
         ]
       },
       {
@@ -2223,6 +2245,13 @@
           ]
         },
         {
+          "tag": "checkpoint_conflict",
+          "optional": [
+            "detail",
+            "docUrl"
+          ]
+        },
+        {
           "tag": "checkpoint_unavailable",
           "optional": [
             "detail",
@@ -2363,6 +2392,13 @@
         },
         {
           "tag": "path_outside_root",
+          "optional": [
+            "detail",
+            "docUrl"
+          ]
+        },
+        {
+          "tag": "prompt_source_too_large",
           "optional": [
             "detail",
             "docUrl"
@@ -3360,12 +3396,18 @@
       "discriminator": "type",
       "variants": [
         {
-          "tag": "completed"
+          "tag": "completed",
+          "optional": [
+            "unresolvedEffects"
+          ]
         },
         {
           "tag": "timedOut",
           "required": [
             "error"
+          ],
+          "optional": [
+            "unresolvedEffects"
           ],
           "allowedValues": [
             {
@@ -3380,6 +3422,9 @@
           "tag": "failed",
           "required": [
             "error"
+          ],
+          "optional": [
+            "unresolvedEffects"
           ],
           "allowedValues": [
             {
@@ -3399,13 +3444,17 @@
         {
           "tag": "canceled",
           "optional": [
-            "detail"
+            "detail",
+            "unresolvedEffects"
           ]
         },
         {
           "tag": "lost",
           "required": [
             "error"
+          ],
+          "optional": [
+            "unresolvedEffects"
           ],
           "allowedValues": [
             {
@@ -5766,11 +5815,11 @@
       "rules": [
         {
           "field": "version",
-          "constraint": "minimum(27)"
+          "constraint": "minimum(28)"
         },
         {
           "field": "version",
-          "constraint": "maximum(27)"
+          "constraint": "maximum(28)"
         }
       ]
     },
@@ -8122,6 +8171,19 @@
       ]
     },
     {
+      "type": "WatchSpec",
+      "rules": [
+        {
+          "field": "paths",
+          "constraint": "nonEmptyItems"
+        },
+        {
+          "field": "paths",
+          "constraint": "uniqueItems"
+        }
+      ]
+    },
+    {
       "type": "RuntimeEvent",
       "rules": [
         {
@@ -8387,6 +8449,18 @@
         },
         {
           "field": "maxWatches",
+          "constraint": "positive"
+        },
+        {
+          "field": "maxPaths",
+          "constraint": "positive"
+        },
+        {
+          "field": "maxDirectoryEntries",
+          "constraint": "positive"
+        },
+        {
+          "field": "maxFileBytes",
           "constraint": "positive"
         }
       ]

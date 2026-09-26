@@ -113,6 +113,21 @@ func TestSubscribeRunNeedsRunAndSegment(t *testing.T) {
 	}
 }
 
+func TestSnapshotSubscriptionRequiresItsSessionWithoutAReplayCursor(t *testing.T) {
+	request := SubscribeRun{RunID: "run_1", SegmentID: "seg_1", Snapshot: true}
+	if err := request.Validate(); err == nil {
+		t.Fatal("snapshot subscription accepted no Session identity")
+	}
+	request.SessionID = "ses_1"
+	if err := request.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	request.AfterEventID = "evt_opaque"
+	if err := request.Validate(); err == nil {
+		t.Fatal("snapshot subscription accepted a replay cursor")
+	}
+}
+
 func TestCancelRunUsesRuntimeWireConstraints(t *testing.T) {
 	if err := (CancelRun{RunID: "run_1", Reason: strings.Repeat("界", 1025)}).Validate(); err == nil {
 		t.Fatal("oversized cancellation reason was accepted")

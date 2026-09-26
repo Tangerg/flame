@@ -362,9 +362,9 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: build workspace discovery: %w", err)
 	}
-	workspaceWatch, err := workspace.NewGitWatch(
+	workspaceWatch, err := workspace.NewWatch(
 		workspaceServices.scope,
-		workspaceadapter.NewGitWatcher(lifetime.context),
+		workspaceadapter.NewFileWatcher(lifetime.context),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: build workspace git watch: %w", err)

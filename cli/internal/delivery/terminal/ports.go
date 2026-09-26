@@ -15,6 +15,7 @@ import (
 // capabilities remain separate so an unavailable negotiated feature is nil
 // instead of a partially functioning Runtime method set.
 type Runtime interface {
+	PrepareInput(context.Context, agent.Message) ([]protocol.ContentBlock, error)
 	ListSessions(context.Context, agent.SessionQuery) (agent.SessionPage, error)
 	GetSession(context.Context, string) (agent.SessionSnapshot, error)
 	CreateSession(context.Context, agent.CreateSession) (agent.Session, error)
@@ -26,7 +27,7 @@ type Runtime interface {
 	StartRun(context.Context, agent.StartRun) (agent.SegmentStream, error)
 	ResumeRun(context.Context, agent.ResumeRun) (agent.SegmentStream, error)
 	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
-	SteerRun(context.Context, agent.SteerRun) error
+	SteerRun(context.Context, agent.SteerRun) (protocol.SteerRunResponse, error)
 	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
 	// ListModels may return discovered models and provider-specific errors together.
 	ListModels(context.Context) ([]protocol.Model, error)

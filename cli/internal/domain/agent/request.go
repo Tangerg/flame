@@ -83,6 +83,14 @@ func (m Message) Validate() error {
 }
 
 func (s SubscribeRun) Validate() error {
+	if s.Snapshot {
+		if err := runtimeprotocol.ValidateSessionID(s.SessionID); err != nil {
+			return fmt.Errorf("subscribe run snapshot: %w", err)
+		}
+		if s.AfterEventID != "" {
+			return errors.New("subscribe run snapshot cannot replay a cursor")
+		}
+	}
 	if err := runtimeprotocol.ValidateRunID(s.RunID); err != nil {
 		return fmt.Errorf("subscribe run: %w", err)
 	}
@@ -98,6 +106,9 @@ func (s SubscribeRun) Validate() error {
 }
 
 func (r ResumeRun) Validate() error {
+	if r.Message == nil && r.Input != nil {
+		return errors.New("resume run: prepared input has no message")
+	}
 	if r.CommandID != "" {
 		if err := r.CommandID.Validate(); err != nil {
 			return fmt.Errorf("resume run: %w", err)

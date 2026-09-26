@@ -159,13 +159,14 @@ type Snapshot struct {
 }
 
 // WorkspaceCheckpoints is the coordinator's view of a session's working-tree
-// checkpoint store (shadow git): Restore resets the tree to a run-boundary
+// checkpoint store (shadow git): Restore checks out the tree to a run-boundary
 // snapshot — the filesystem half of a file rollback — and DropSession
 // discards a deleted session's snapshots as the last step of the delete cascade.
-// Restore is reentrant (a git reset to an already-restored tree is a no-op), so
+// Restore is reentrant (checking out an already-restored tree is a no-op), so
 // the recoverable operation can re-drive it at boot. A disabled store or missing
-// snapshot surfaces as [ErrCheckpointUnavailable]; a reset that may have changed
-// only part of the tree surfaces as [ErrCheckpointRestoreIncomplete]. The
+// snapshot surfaces as [ErrCheckpointUnavailable]; unarchived material blocking
+// the target surfaces as [ErrCheckpointConflict]. A checkout that may have
+// changed only part of the tree surfaces as [ErrCheckpointRestoreIncomplete].
 // Implementations translate storage failures into these use-case errors.
 type WorkspaceCheckpoints interface {
 	Restore(ctx context.Context, sessionID, cwd, runID string) error
@@ -201,7 +202,7 @@ type GoalMutationGuard interface {
 }
 
 // WorkspaceMutations is the recoverable operation log for file rollbacks:
-// a Git reset is not atomic across paths, and the optional durable-history cut
+// a Git checkout is not atomic across paths, and the optional durable-history cut
 // cannot share its transaction. Record logs the intent before the tree is
 // touched, Complete clears it once all requested effects commit, and ListPending
 // returns interrupted operations for boot recovery. Its store commits writes
@@ -213,7 +214,8 @@ type GoalMutationGuard interface {
 // Record reports [ErrWorkspaceMutationPending] for any other operation on that
 // Session or tree and Complete clears only the operation it is given.
 type WorkspaceMutations interface {
-	Record(ctx context.Context, m WorkspaceMutation) error
+	// Record returns true only when this call created the durable intent.
+	Record(ctx context.Context, m WorkspaceMutation) (bool, error)
 	Complete(ctx context.Context, m WorkspaceMutation) error
 	ListPending(ctx context.Context) ([]WorkspaceMutation, error)
 }
@@ -244,7 +246,7 @@ type Coordinator struct {
 	paths                 WorkspaceResolver
 	models                ModelAdmitter
 	defaultModelSelection modelref.Selection
-	// checkpoints resets the working tree to a run-boundary checkpoint for a file
+	// checkpoints restores the working tree to a run-boundary checkpoint for a file
 	// rollback and drops a deleted session's snapshots; nil disables both (file
 	// restore is rejected as [ErrCheckpointUnavailable], drop no-ops).
 	checkpoints WorkspaceCheckpoints

@@ -3,21 +3,120 @@ package workspace
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
+
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
+
+type gitFailureSignal struct{ failed chan struct{} }
+
+func (s gitFailureSignal) Write(data []byte) (int, error) {
+	if strings.Contains(string(data), "read watched git state failed") {
+		select {
+		case s.failed <- struct{}{}:
+		default:
+		}
+	}
+	return len(data), nil
+}
+
+func TestGitWatchRetriesFailedSamplingWithoutAnotherEvent(t *testing.T) {
+	if !GitAvailable() {
+		t.Skip("git not on PATH")
+	}
+	root := t.TempDir()
+	gitCommand(t, root, "init", "-b", "main")
+	states, err := watchedRepositories(t.Context(), []string{root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fsw, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fsw.Add(filepath.Join(root, ".git")); err != nil {
+		t.Fatal(err)
+	}
+	ctx, stop := context.WithCancel(t.Context())
+	notified := make(chan []string, 1)
+	failures := make(chan error, 1)
+	w := &gitWatch{fsw: fsw, repositories: states, lifetime: ctx, stop: stop, done: make(chan struct{}), exited: make(chan struct{}), notify: func(roots []string) { notified <- roots }, report: func(err error) { failures <- err }}
+	go w.run()
+	defer w.Close()
+	failed := make(chan struct{}, 1)
+	logger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(gitFailureSignal{failed: failed}, nil)))
+	defer slog.SetDefault(logger)
+	index := filepath.Join(root, ".git", "index")
+	if err := os.WriteFile(index, []byte("corrupt"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-failed:
+	case <-time.After(3 * time.Second):
+		t.Fatal("first sample did not fail")
+	}
+	for _, directory := range fsw.WatchList() {
+		if err := fsw.Remove(directory); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Remove(index); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "new.txt"), []byte("staged"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitCommand(t, root, "add", "new.txt")
+	select {
+	case roots := <-notified:
+		if !slices.Equal(roots, []string{root}) {
+			t.Fatalf("changed roots = %v", roots)
+		}
+	case err := <-failures:
+		t.Fatalf("repair failed: %v", err)
+	case <-time.After(3 * time.Second):
+		t.Fatal("repaired state was not sampled without a second event")
+	}
+}
+
+func TestGitWatchReportsBackendTermination(t *testing.T) {
+	if !GitAvailable() {
+		t.Skip("git not on PATH")
+	}
+	root := t.TempDir()
+	gitCommand(t, root, "init", "-b", "main")
+	failures := make(chan error, 1)
+	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(err error) { failures <- err })
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer watcher.Close()
+	if err := watcher.(*gitWatch).fsw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-failures:
+	case <-time.After(time.Second):
+		t.Fatal("terminated backend remained silently subscribed")
+	}
+}
 
 func TestGitWatcherAllowsNonRepositoryRoot(t *testing.T) {
 	if !GitAvailable() {
 		t.Skip("git not on PATH")
 	}
 	root := t.TempDir()
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func() {})
+	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(error) {})
 	if err != nil {
 		t.Fatalf("non-repository root should produce an inert watcher: %v", err)
 	}
@@ -29,7 +128,7 @@ func TestGitWatcherAllowsNonRepositoryRoot(t *testing.T) {
 func TestGitWatcherPreservesRegistrationCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	watcher, err := NewGitWatcher(ctx).Watch([]string{t.TempDir()}, func() {})
+	watcher, err := NewGitWatcher(ctx).Watch([]string{t.TempDir()}, func([]string) {}, func(error) {})
 	if watcher != nil {
 		_ = watcher.Close()
 		t.Error("canceled registration returned a watcher")
@@ -53,7 +152,7 @@ func TestGitWatcherRejectsCorruptRepositoryConfiguration(t *testing.T) {
 	if err := os.WriteFile(configPath, []byte("["), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func() {})
+	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(error) {})
 	if watcher != nil {
 		_ = watcher.Close()
 		t.Error("failed repository discovery returned a watcher")
@@ -64,7 +163,7 @@ func TestGitWatcherRejectsCorruptRepositoryConfiguration(t *testing.T) {
 	if err := os.WriteFile(configPath, config, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err = NewGitWatcher(t.Context()).Watch([]string{root}, func() {})
+	watcher, err = NewGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(error) {})
 	if err != nil {
 		t.Fatalf("register after repairing configuration: %v", err)
 	}
@@ -89,7 +188,7 @@ func TestGitWatcherIgnoresIndexStatRefreshButPublishesStageChange(t *testing.T) 
 	gitCommand(t, root, "commit", "-m", "initial")
 
 	notified := make(chan struct{}, 2)
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func() { notified <- struct{}{} })
+	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func([]string) { notified <- struct{}{} }, func(error) {})
 	if err != nil {
 		t.Fatalf("watch repository: %v", err)
 	}
@@ -146,7 +245,7 @@ func TestGitWatcherResolvesRepositoryFromNestedWorkspace(t *testing.T) {
 	gitCommand(t, root, "commit", "-m", "initial")
 
 	notified := make(chan struct{}, 1)
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{nested}, func() { notified <- struct{}{} })
+	watcher, err := NewGitWatcher(t.Context()).Watch([]string{nested}, func([]string) { notified <- struct{}{} }, func(error) {})
 	if err != nil {
 		t.Fatalf("watch nested workspace: %v", err)
 	}
@@ -182,12 +281,12 @@ func TestGitWatcherKeepsDistinctScopesWithinOneRepository(t *testing.T) {
 	gitCommand(t, root, "add", "packages/first/tracked.txt", "packages/second/tracked.txt")
 
 	notified := make(chan struct{}, 1)
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{first, second}, func() {
+	watcher, err := NewGitWatcher(t.Context()).Watch([]string{first, second}, func([]string) {
 		select {
 		case notified <- struct{}{}:
 		default:
 		}
-	})
+	}, func(error) {})
 	if err != nil {
 		t.Fatalf("watch sibling workspace scopes: %v", err)
 	}
@@ -244,12 +343,12 @@ func TestGitWatcherObservesLinkedWorktreeFromNestedWorkspace(t *testing.T) {
 	}
 
 	notified := make(chan struct{}, 1)
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{nested}, func() {
+	watcher, err := NewGitWatcher(t.Context()).Watch([]string{nested}, func([]string) {
 		select {
 		case notified <- struct{}{}:
 		default:
 		}
-	})
+	}, func(error) {})
 	if err != nil {
 		t.Fatalf("watch linked worktree: %v", err)
 	}
@@ -316,7 +415,7 @@ func TestGitWatcherRejectsUnreadableInitialIndex(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".git", "index"), []byte("invalid index"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func() {})
+	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func([]string) {}, func(error) {})
 	if watcher != nil {
 		_ = watcher.Close()
 		t.Error("unreadable index produced a watcher")
@@ -342,24 +441,24 @@ func TestGitObservationFailurePreservesLastSuccessfulState(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 2 {
-		if changed, err := watcher.semanticStateChanged(); changed || err == nil {
-			t.Fatalf("failed observation = (%t, %v), want unchanged with cause", changed, err)
+		if changed, err := watcher.semanticStateChanged(); len(changed) > 0 || err == nil {
+			t.Fatalf("failed observation = (%v, %v), want unchanged with cause", changed, err)
 		}
 	}
 	if err := os.Remove(indexPath); err != nil {
 		t.Fatal(err)
 	}
-	if changed, err := watcher.semanticStateChanged(); changed || err != nil {
-		t.Fatalf("recovered identical state = (%t, %v)", changed, err)
+	if changed, err := watcher.semanticStateChanged(); len(changed) > 0 || err != nil {
+		t.Fatalf("recovered identical state = (%v, %v)", changed, err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "new.txt"), []byte("new"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	gitCommand(t, root, "add", "new.txt")
-	if changed, err := watcher.semanticStateChanged(); !changed || err != nil {
-		t.Fatalf("new staged state = (%t, %v)", changed, err)
+	if changed, err := watcher.semanticStateChanged(); len(changed) == 0 || err != nil {
+		t.Fatalf("new staged state = (%v, %v)", changed, err)
 	}
-	if changed, err := watcher.semanticStateChanged(); changed || err != nil {
-		t.Fatalf("repeated staged state = (%t, %v)", changed, err)
+	if changed, err := watcher.semanticStateChanged(); len(changed) > 0 || err != nil {
+		t.Fatalf("repeated staged state = (%v, %v)", changed, err)
 	}
 }

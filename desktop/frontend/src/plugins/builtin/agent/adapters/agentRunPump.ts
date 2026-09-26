@@ -5,6 +5,7 @@ import {
   settleWithinNextTask,
 } from "@/lib/asyncOwnership";
 import { queryClient } from "@/lib/queryClient";
+import { delayUntilAborted } from "@/lib/abortableDelay";
 import {
   RpcConnectionError,
   RpcProtocolError,
@@ -88,16 +89,20 @@ export function createAgentRunPump({
       };
       activeBatcher?.dispose();
       let eventBatcher: ReturnType<typeof createRunEventBatcher> | null = null;
-      let projectionRecovered = false;
+      let coldRecovered = false;
+      let lastDetachedPosition = position;
+      let noProgressRecoveries = 0;
       let events: AsyncIterable<RunEvent> | null = stream.events;
       try {
         while (events) {
           const projectionFailure = new AbortController();
+          let projectionAdvanced = false;
           eventBatcher = createRunEventBatcher({
             readEpoch,
             apply: applyEvents,
             onFailure: (error) => projectionFailure.abort(error),
             onApplied: (event) => {
+              projectionAdvanced ||= event.eventId !== position.lastEventId;
               position = { ...position, lastEventId: event.eventId };
             },
             onRunFinished: () => {
@@ -116,16 +121,15 @@ export function createAgentRunPump({
           eventBatcher.flush();
           eventBatcher.dispose();
           if (projectionFailure.signal.aborted) {
-            if (projectionRecovered || !reattach) {
+            if (!reattach) {
               throw new Error("run synchronization incomplete", {
                 cause: projectionFailure.signal.reason,
               });
             }
-            projectionRecovered = true;
             drained.finished = false;
             drained.recovery = "cold";
+            drained.error = projectionFailure.signal.reason;
           }
-          if (drained.recovery === "cold") position = { ...position, recovery: "cold" };
           if (
             currentPumpLease !== pumpLease ||
             drained.finished ||
@@ -134,6 +138,28 @@ export function createAgentRunPump({
             signal.aborted
           )
             break;
+          const advanced =
+            position.segmentId !== lastDetachedPosition.segmentId ||
+            position.lastEventId !== lastDetachedPosition.lastEventId;
+          noProgressRecoveries = advanced ? 0 : noProgressRecoveries + 1;
+          if (
+            (advanced && projectionAdvanced) ||
+            position.segmentId !== lastDetachedPosition.segmentId
+          ) {
+            coldRecovered = false;
+          }
+          lastDetachedPosition = position;
+          if (drained.recovery === "cold" || noProgressRecoveries >= 3) {
+            if (coldRecovered) {
+              throw new Error("run synchronization incomplete: recovery made no progress", {
+                cause: drained.error,
+              });
+            }
+            coldRecovered = true;
+            position = { ...position, recovery: "cold" };
+          }
+          await delayUntilAborted(Math.min(50 * 2 ** noProgressRecoveries, 1000), signal);
+          if (currentPumpLease !== pumpLease || isCancelled() || signal.aborted) break;
           const next = await reattach(position, signal);
           if (!next) break;
           if (currentPumpLease !== pumpLease || isCancelled() || signal.aborted) {
@@ -150,8 +176,10 @@ export function createAgentRunPump({
           events = next.events;
         }
       } catch (error) {
-        if (currentPumpLease === pumpLease && !isCancelled() && !signal.aborted)
+        if (currentPumpLease === pumpLease && !isCancelled() && !signal.aborted) {
+          console.warn("[agent] run synchronization failed:", { sessionId, ...position }, error);
           onSynchronizationFailed?.(error);
+        }
         throw error;
       } finally {
         eventBatcher?.dispose();
@@ -195,9 +223,10 @@ export function createAgentRunPump({
     rootSegmentId: SegmentId,
     signal: AbortSignal,
     eventBatcher: ReturnType<typeof createRunEventBatcher>,
-  ): Promise<{ finished: boolean; recovery: "replay" | "cold" }> {
+  ): Promise<{ finished: boolean; recovery: "replay" | "cold"; error?: unknown }> {
     let finished = false;
     let recovery: "replay" | "cold" = "replay";
+    let error: unknown;
     const iterator = events[Symbol.asyncIterator]();
     let iteratorDone = false;
     try {
@@ -221,12 +250,13 @@ export function createAgentRunPump({
         }
       }
     } catch (err) {
+      error = err;
       if (err instanceof RpcProtocolError) recovery = "cold";
       if (!isCancelled() && !signal.aborted && !(err instanceof RpcConnectionError))
         console.warn("[agent] run stream ended early:", sessionId, err);
     } finally {
       if (!iteratorDone) await disposeAsyncIterator(iterator);
     }
-    return { finished, recovery };
+    return { finished, recovery, error };
   }
 }

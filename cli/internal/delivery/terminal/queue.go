@@ -357,15 +357,7 @@ func (a *app) persistQueuedRuns() error {
 				continue
 			}
 			pendingState = pending.State
-			commands = append(commands, workbench.PendingRun{
-				State: pendingState,
-				Command: agent.StartRun{
-					CommandID: entry.CommandID, SessionID: entry.SessionID,
-					Message: entry.Message.Clone(), Options: entry.Options.Clone(),
-				},
-				Replay: pending.Replay, CancelCommandID: pending.CancelCommandID,
-				CancelReplay: pending.CancelReplay,
-			})
+			commands = append(commands, pending)
 			continue
 		}
 		commands = append(commands, workbench.PendingRun{

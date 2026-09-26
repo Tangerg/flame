@@ -2,9 +2,11 @@ package delivery
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -16,6 +18,254 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func TestWorkspaceSubscribe_ExternalContentTargets(t *testing.T) {
+	for _, repository := range []bool{false, true} {
+		t.Run(fmt.Sprintf("git=%t", repository), func(t *testing.T) {
+			root := t.TempDir()
+			canonicalRoot := canonicalWorkspacePath(t, root)
+			if repository {
+				fileWatchGitCommand(t, root, "init", "-q")
+			}
+			path := filepath.Join(root, "source.txt")
+			if err := os.WriteFile(path, []byte("before"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if repository {
+				fileWatchGitCommand(t, root, "add", "source.txt")
+			}
+			s := newWorkspaceHandler(root)
+			s.workspaceHub = newWorkspaceHub()
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			_, stream, err := s.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{
+				Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
+				Watches: []protocol.WatchSpec{{WatchID: "content", Workspace: protocol.WorkspaceRef{Path: root}, Paths: []string{"source.txt", "."}}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			events := drainSeq(ctx, stream)
+			check := func(path string) {
+				t.Helper()
+				deadline := time.After(3 * time.Second)
+				for {
+					select {
+					case event := <-events:
+						if event.Type != protocol.RuntimeFilesChanged || event.WatchID != "content" || event.Workspace == nil || event.Workspace.Path != canonicalRoot {
+							t.Fatalf("unexpected scoped event: %+v", event)
+						}
+						if slices.Contains(event.Paths, path) {
+							return
+						}
+					case <-deadline:
+						t.Fatalf("no external invalidation for %q", path)
+					}
+				}
+			}
+			if err := os.WriteFile(path, []byte("external write without git"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			check("source.txt")
+			if err := os.WriteFile(filepath.Join(root, "atomic.tmp"), []byte("atomic save"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Rename(filepath.Join(root, "atomic.tmp"), path); err != nil {
+				t.Fatal(err)
+			}
+			check("source.txt")
+			if err := os.Rename(path, filepath.Join(root, "renamed.txt")); err != nil {
+				t.Fatal(err)
+			}
+			check("source.txt")
+			if err := os.WriteFile(path, []byte("recreated"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			check("source.txt")
+			if err := os.Remove(path); err != nil {
+				t.Fatal(err)
+			}
+			check("source.txt")
+			if err := os.WriteFile(filepath.Join(root, "new-child.txt"), []byte("child"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			check(".")
+		})
+	}
+}
+
+func TestWorkspaceSubscribe_ContentScopeIsolationAndDirectoryRecreation(t *testing.T) {
+	first, second := t.TempDir(), t.TempDir()
+	canonicalSecond := canonicalWorkspacePath(t, second)
+	for _, root := range []string{first, second} {
+		if err := os.Mkdir(filepath.Join(root, "src"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s := newWorkspaceHandler(first)
+	s.workspaceHub = newWorkspaceHub()
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	_, stream, err := s.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{
+		Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged},
+		Watches: []protocol.WatchSpec{
+			{WatchID: "first", Workspace: protocol.WorkspaceRef{Path: first}, Paths: []string{"src"}},
+			{WatchID: "second", Workspace: protocol.WorkspaceRef{Path: second}, Paths: []string{"src"}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := drainSeq(ctx, stream)
+	check := func() {
+		t.Helper()
+		select {
+		case event := <-events:
+			if event.WatchID != "second" || event.Workspace == nil || event.Workspace.Path != canonicalSecond || !slices.Contains(event.Paths, "src") {
+				t.Fatalf("event crossed workspace scope: %+v", event)
+			}
+		case <-time.After(3 * time.Second):
+			t.Fatal("no directory event")
+		}
+	}
+	path := filepath.Join(second, "src", "same.txt")
+	if err := os.WriteFile(path, []byte("first"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	check()
+	if err := os.WriteFile(path, []byte("longer direct entry"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	check()
+	if err := os.RemoveAll(filepath.Dir(path)); err != nil {
+		t.Fatal(err)
+	}
+	check()
+	if err := os.Mkdir(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	check()
+	if err := os.WriteFile(path, []byte("after recreation"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	check()
+}
+
+func TestWorkspaceSubscribe_ContentObservationFailureEndsStream(t *testing.T) {
+	root := t.TempDir()
+	parent := filepath.Join(root, "src")
+	if err := os.Mkdir(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	s := newWorkspaceHandler(root)
+	s.workspaceHub = newWorkspaceHub()
+	_, stream, err := s.SubscribeRuntime(t.Context(), protocol.RuntimeSubscribeRequest{
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
+		Watches: []protocol.WatchSpec{{WatchID: "open-file", Workspace: protocol.WorkspaceRef{Path: root}, Paths: []string{"src/file.txt"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ended := make(chan error, 1)
+	go func() {
+		for _, err := range stream {
+			if err != nil {
+				ended <- err
+				return
+			}
+		}
+		ended <- nil
+	}()
+	if err := os.Remove(parent); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(parent, []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-ended:
+		if err == nil {
+			t.Fatal("observation failure became a clean end")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("unavailable observation left a silently live subscription")
+	}
+}
+
+func TestWorkspaceSubscribe_ContentRegistrationRejectsOutsideAlias(t *testing.T) {
+	root, outside := t.TempDir(), t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(root, "alias")); err != nil {
+		t.Fatal(err)
+	}
+	s := newWorkspaceHandler(root)
+	s.workspaceHub = newWorkspaceHub()
+	ack, stream, err := s.SubscribeRuntime(t.Context(), protocol.RuntimeSubscribeRequest{
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
+		Watches: []protocol.WatchSpec{{WatchID: "outside", Workspace: protocol.WorkspaceRef{Path: root}, Paths: []string{"alias/file.txt"}}},
+	})
+	if err == nil || ack != nil || stream != nil {
+		t.Fatalf("outside alias registered: (%v, %v)", ack, err)
+	}
+}
+
+func TestWorkspaceSubscribe_RebuildsReplacedWorkspaceRoot(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "workspace")
+	if err := os.MkdirAll(filepath.Join(root, "src"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "src", "file.txt")
+	if err := os.WriteFile(path, []byte("before"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := newWorkspaceHandler(root)
+	s.workspaceHub = newWorkspaceHub()
+	request := protocol.RuntimeSubscribeRequest{
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
+		Watches: []protocol.WatchSpec{{WatchID: "file", Workspace: protocol.WorkspaceRef{Path: root}, Paths: []string{"src/file.txt"}}},
+	}
+	_, stream, err := s.SubscribeRuntime(t.Context(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ended := make(chan error, 1)
+	go func() {
+		for _, err := range stream {
+			if err != nil {
+				ended <- err
+				return
+			}
+		}
+		ended <- nil
+	}()
+	if err := os.Rename(root, root+"-retired"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("replaced root"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-ended:
+		if err == nil {
+			t.Fatal("lost root identity was not reported")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("retired root remained silently observed")
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	_, stream, err = s.SubscribeRuntime(ctx, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	events := drainSeq(ctx, stream)
+	if err := os.WriteFile(path, []byte("edited new root"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	assertRuntimeEventType(t, events, protocol.RuntimeFilesChanged)
+}
 
 // TestWorkspaceSubscribe_GitWatch verifies that a real staged index transition
 // surfaces a debounced resync without recursively watching the working tree.

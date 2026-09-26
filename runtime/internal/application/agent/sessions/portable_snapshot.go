@@ -55,13 +55,16 @@ type PortableRun struct {
 	SpawnedByItemID string
 	// ParentRunID and RootRunID are the child edges. Together with
 	// SpawnedByItemID they preserve the execution tree exactly across export/import.
-	ParentRunID   string
-	RootRunID     string
-	Selection     modelref.Selection
-	Outcome       run.Outcome
-	Failure       *run.Failure
-	Metrics       run.Metrics
-	ContextTokens int64
+	ParentRunID string
+	RootRunID   string
+	Selection   modelref.Selection
+	Outcome     run.Outcome
+	Failure     *run.Failure
+	// UnresolvedEffects retains source execution identities as historical evidence.
+	// A portable Run has no checkpoint or continuation that could execute them.
+	UnresolvedEffects []run.UnresolvedEffect
+	Metrics           run.Metrics
+	ContextTokens     int64
 	// Capabilities is a pointer because an empty set is a known minimal Run while
 	// nil means the archive omitted the root-owned fact. A root must carry it; a
 	// child must not and inherits its root's value.
@@ -154,18 +157,19 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 				ParentRunID:     portable.ParentRunID,
 				RootRunID:       portable.RootRunID,
 			},
-			ModelSelection: portable.Selection,
-			State:          state,
-			Outcome:        &outcome,
-			Failure:        portable.Failure,
-			Metrics:        portable.Metrics,
-			ContextTokens:  portable.ContextTokens,
-			Capabilities:   capabilitySets[portable.rootID()],
-			Detail:         portable.Detail,
-			CreatedAt:      portable.CreatedAt,
-			FinishedAt:     portable.FinishedAt,
-			UpdatedAt:      portable.UpdatedAt,
-			MessageMark:    portable.MessageMark,
+			ModelSelection:    portable.Selection,
+			State:             state,
+			Outcome:           &outcome,
+			Failure:           portable.Failure,
+			UnresolvedEffects: portable.UnresolvedEffects,
+			Metrics:           portable.Metrics,
+			ContextTokens:     portable.ContextTokens,
+			Capabilities:      capabilitySets[portable.rootID()],
+			Detail:            portable.Detail,
+			CreatedAt:         portable.CreatedAt,
+			FinishedAt:        portable.FinishedAt,
+			UpdatedAt:         portable.UpdatedAt,
+			MessageMark:       portable.MessageMark,
 		})
 		if err != nil {
 			return Snapshot{}, fmt.Errorf("%w: run %q: %w", ErrInvalidPortableSnapshot, portable.ID, err)
@@ -251,20 +255,21 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 		}
 		failure, failed := run.Failure()
 		portableRun := PortableRun{
-			SessionID:       run.SessionID(),
-			ID:              run.ID(),
-			SpawnedByItemID: run.Lineage().SpawnedByItemID,
-			ParentRunID:     run.Lineage().ParentRunID,
-			RootRunID:       run.Lineage().RootRunID,
-			Selection:       run.ModelSelection(),
-			Outcome:         outcome,
-			Metrics:         run.Metrics(),
-			ContextTokens:   run.ContextTokens(),
-			Detail:          run.Detail(),
-			CreatedAt:       run.CreatedAt(),
-			FinishedAt:      run.FinishedAt(),
-			UpdatedAt:       run.UpdatedAt(),
-			MessageMark:     run.MessageMark(),
+			SessionID:         run.SessionID(),
+			ID:                run.ID(),
+			SpawnedByItemID:   run.Lineage().SpawnedByItemID,
+			ParentRunID:       run.Lineage().ParentRunID,
+			RootRunID:         run.Lineage().RootRunID,
+			Selection:         run.ModelSelection(),
+			Outcome:           outcome,
+			UnresolvedEffects: run.UnresolvedEffects(),
+			Metrics:           run.Metrics(),
+			ContextTokens:     run.ContextTokens(),
+			Detail:            run.Detail(),
+			CreatedAt:         run.CreatedAt(),
+			FinishedAt:        run.FinishedAt(),
+			UpdatedAt:         run.UpdatedAt(),
+			MessageMark:       run.MessageMark(),
 		}
 		if failed {
 			portableRun.Failure = &failure

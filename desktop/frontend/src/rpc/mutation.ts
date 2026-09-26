@@ -21,7 +21,14 @@ function retryableTransportFailure(error: unknown): error is RpcTransportError {
 export function mutationSettlementIsUnknown(error: unknown): boolean {
   if (error instanceof RpcProtocolError) return true;
   if (retryableTransportFailure(error)) return true;
-  return isErrorType(error, "idempotency_in_progress");
+  // These responses do not settle the original command. Preserve its identity for
+  // explicit recovery without expanding the separate automatic replay budget.
+  return (
+    isErrorType(error, "idempotency_in_progress") ||
+    isErrorType(error, "internal_error") ||
+    isErrorType(error, "idempotency_conflict") ||
+    isErrorType(error, "idempotency_store_mismatch")
+  );
 }
 
 function abortReason(signal: AbortSignal): unknown {

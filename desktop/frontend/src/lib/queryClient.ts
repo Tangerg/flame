@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, type QueryFilters } from "@tanstack/react-query";
 import type { RetirableTaskCohort } from "./taskQueue";
 
 export const queryClient = new QueryClient({
@@ -22,10 +22,7 @@ export async function repairCachedProjection(
   } catch {}
 }
 
-export function replaceCachedRead(options?: {
-  queryKey: readonly unknown[];
-  exact?: boolean;
-}): Promise<void> {
+export function replaceCachedRead(options?: QueryFilters): Promise<void> {
   void queryClient.cancelQueries(options);
   return queryClient.invalidateQueries(options);
 }

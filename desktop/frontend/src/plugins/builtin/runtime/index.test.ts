@@ -35,7 +35,13 @@ const discovery: DiscoverResponse = {
       idempotency: { namespace: "idp_test", retentionSeconds: 86_400 },
       runReplay: { scope: "runtimeInstanceRootSegment", maxEvents: 2048, maxBytes: 16_777_216 },
       mcpAuthorizationAttempts: { retentionSeconds: 600 },
-      runtimeSubscription: { maxTopics: 8, maxWatches: 8 },
+      runtimeSubscription: {
+        maxTopics: 8,
+        maxWatches: 8,
+        maxPaths: 256,
+        maxDirectoryEntries: 10000,
+        maxFileBytes: 1048576,
+      },
     },
   },
 };

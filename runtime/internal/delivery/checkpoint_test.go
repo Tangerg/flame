@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,28 +20,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
-
-// testCheckpointRestorer mirrors the composition root's restorer: it drives the
-// checkpoint adapter and maps its disabled/missing-snapshot sentinel onto the
-// sessions port sentinel, so a file rollback restores under the coordinator.
-type testCheckpointRestorer struct{ cp *workspace.Checkpoints }
-
-func (t testCheckpointRestorer) Restore(ctx context.Context, sessionID, cwd, runID string) error {
-	if err := t.cp.Restore(ctx, sessionID, cwd, runID); err != nil {
-		switch {
-		case errors.Is(err, workspace.ErrCheckpointUnavailable):
-			return sessions.ErrCheckpointUnavailable
-		case errors.Is(err, workspace.ErrCheckpointRestoreIncomplete):
-			return sessions.ErrCheckpointRestoreIncomplete
-		}
-		return err
-	}
-	return nil
-}
-
-func (t testCheckpointRestorer) DropSession(sessionID string) error {
-	return t.cp.DropSession(sessionID)
-}
 
 // checkpointHarness extends the rollback harness with a real shadow-git
 // checkpoint store and a session whose cwd is a populated temp dir. It returns
@@ -56,7 +35,7 @@ func checkpointHarness(t *testing.T) (*Handler, *stubRuntime, *workspace.Checkpo
 	cp := workspace.NewCheckpoints(t.TempDir())
 	// The restorer lives on the sessions coordinator now, so rebuild it over the
 	// real checkpoint store (newTestHandler wired a disabled one).
-	s.sessions = rt.sessionsCoordinatorWithRestorer(testCheckpointRestorer{cp: cp})
+	s.sessions = rt.sessionsCoordinatorWithRestorer(workspace.NewSessionCheckpoints(cp))
 	cwd := t.TempDir()
 	// Checkpoints only fire in a real git repo now (Checkpoints.Snapshot's gate,
 	// mirroring opencode): a repo's .gitignore is what bounds the whole-tree
@@ -108,6 +87,119 @@ func TestRollback_RestoreBoth(t *testing.T) {
 	}
 	if len(resp.DroppedRuns) != 1 || resp.DroppedRuns[0].Run.ID != "run2" {
 		t.Errorf("droppedRuns = %+v, want [run2]", resp.DroppedRuns)
+	}
+}
+
+func TestRollbackConflictPreservesFilesAndHistory(t *testing.T) {
+	for _, directory := range []bool{false, true} {
+		t.Run(map[bool]string{false: "oversized file", true: "ignored directory"}[directory], func(t *testing.T) {
+			s, rt, cp, sid, cwd := checkpointHarness(t)
+			writeCheckpointFile(t, cwd, "checkpoint")
+			if err := cp.Snapshot(t.Context(), sid, cwd, "run1"); err != nil {
+				t.Fatal(err)
+			}
+			putRun(t, rt, sid, "run1", 1, 1)
+			putRun(t, rt, sid, "run2", 2, 2)
+			path := filepath.Join(cwd, "a.txt")
+			material := strings.Repeat("x", (2<<20)+1)
+			if directory {
+				if err := os.Remove(path); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Mkdir(path, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(cwd, ".gitignore"), []byte("a.txt/\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				path = filepath.Join(path, "unarchived")
+				material = "unarchived directory material"
+			}
+			if err := os.WriteFile(path, []byte(material), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			_, err := s.RollbackSession(t.Context(), protocol.RollbackSessionRequest{
+				SessionID: sid, ToRunID: "run1", RestoreType: protocol.RestoreBoth,
+			})
+			if !errors.Is(err, protocol.ErrCheckpointConflict) {
+				t.Fatalf("rollback = %v, want checkpoint conflict", err)
+			}
+			if problem := ProjectError(err).Problem(); problem.Type != protocol.ErrCheckpointConflict.Error() {
+				t.Fatalf("rollback problem = %+v", problem)
+			}
+			if got, err := os.ReadFile(path); err != nil || string(got) != material {
+				t.Fatalf("conflict changed material: bytes = %d, error = %v", len(got), err)
+			}
+			runs, err := rt.runs.ListRuns(t.Context(), sid)
+			if err != nil || len(runs) != 2 {
+				t.Fatalf("runs = %v, error = %v; want unchanged history", runs, err)
+			}
+			pending, err := rt.muts.ListPending(t.Context())
+			if err != nil || len(pending) != 0 {
+				t.Fatalf("pending intents = %+v, error = %v; want completed refusal", pending, err)
+			}
+		})
+	}
+}
+
+func TestRollbackCleanupFailureDoesNotPublishDefinitiveCheckpointRefusal(t *testing.T) {
+	for _, refusal := range []error{sessions.ErrCheckpointUnavailable, sessions.ErrCheckpointConflict} {
+		cleanup := errors.New("intent cleanup failed")
+		err := wireRollbackErr(errors.Join(sessions.ErrRollbackRecoveryPending, refusal, cleanup), "ses_test")
+		problem := ProjectError(err).Problem()
+		if problem.Type != protocol.ProblemInternalError || !errors.Is(err, cleanup) {
+			t.Fatalf("failed cleanup = %+v / %v, want pending internal error with cleanup cause", problem, err)
+		}
+		if errors.Is(err, protocol.ErrCheckpointUnavailable) || errors.Is(err, protocol.ErrCheckpointConflict) {
+			t.Fatalf("failed cleanup exposes definitive checkpoint refusal: %v", err)
+		}
+	}
+}
+
+func TestRecoverRollbackKeepsIntentWhenUnarchivedMaterialBlocksCheckout(t *testing.T) {
+	s, rt, cp, sid, cwd := checkpointHarness(t)
+	writeCheckpointFile(t, cwd, "checkpoint")
+	if err := cp.Snapshot(t.Context(), sid, cwd, "run1"); err != nil {
+		t.Fatal(err)
+	}
+	putRun(t, rt, sid, "run1", 1, 1)
+	putRun(t, rt, sid, "run2", 2, 2)
+	material := strings.Repeat("x", (2<<20)+1)
+	writeCheckpointFile(t, cwd, material)
+	mutation := sessions.WorkspaceMutation{SessionID: sid, CWD: cwd, ToRunID: "run1", RestoreHistory: true}
+	if _, err := rt.muts.Record(t.Context(), mutation); err != nil {
+		t.Fatal(err)
+	}
+	_, err := s.RollbackSession(t.Context(), protocol.RollbackSessionRequest{
+		SessionID: sid, ToRunID: "run1", RestoreType: protocol.RestoreBoth,
+	})
+	if !errors.Is(err, sessions.ErrRollbackRecoveryPending) || ProjectError(err).Problem().Type != protocol.ProblemInternalError {
+		t.Fatalf("adopted rollback refusal = %v, want pending recovery", err)
+	}
+	coordinator := s.sessions.(*sessions.Coordinator)
+	if err := coordinator.RecoverWorkspaceMutations(t.Context()); !errors.Is(err, sessions.ErrCheckpointConflict) {
+		t.Fatalf("recover blocked rollback = %v", err)
+	}
+	if got, err := os.ReadFile(filepath.Join(cwd, "a.txt")); err != nil || string(got) != material {
+		t.Fatalf("recovery changed unarchived material: bytes = %d, error = %v", len(got), err)
+	}
+	if pending, err := rt.muts.ListPending(t.Context()); err != nil || len(pending) != 1 {
+		t.Fatalf("blocked recovery intents = %+v, error = %v", pending, err)
+	}
+	if runs, err := rt.runs.ListRuns(t.Context(), sid); err != nil || len(runs) != 2 {
+		t.Fatalf("blocked recovery history = %+v, error = %v", runs, err)
+	}
+	if err := os.Remove(filepath.Join(cwd, "a.txt")); err != nil {
+		t.Fatal(err)
+	}
+	if err := coordinator.RecoverWorkspaceMutations(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(filepath.Join(cwd, "a.txt")); err != nil || string(got) != "checkpoint" {
+		t.Fatalf("recovered file = %q, error = %v", got, err)
+	}
+	if pending, err := rt.muts.ListPending(t.Context()); err != nil || len(pending) != 0 {
+		t.Fatalf("completed recovery intents = %+v, error = %v", pending, err)
 	}
 }
 
@@ -272,7 +364,7 @@ func TestRecoverRollbacks(t *testing.T) {
 
 	// Simulate the crash: the intent is logged but neither resource is rolled back
 	// yet (tree still v2, run2 still in history).
-	if err := rt.muts.Record(ctx, sessions.WorkspaceMutation{
+	if _, err := rt.muts.Record(ctx, sessions.WorkspaceMutation{
 		SessionID: sid, CWD: cwd, ToRunID: "run1", RestoreHistory: true,
 	}); err != nil {
 		t.Fatalf("record intent: %v", err)
@@ -308,7 +400,7 @@ func TestRecoverRollbacks_Idempotent(t *testing.T) {
 	putRun(t, rt, sid, "run1", 1, 1)
 	// Only run1 in history (run2 already dropped by the pre-crash rollback), tree
 	// already at v1 — the "crashed after durable, before complete" state.
-	if err := rt.muts.Record(ctx, sessions.WorkspaceMutation{
+	if _, err := rt.muts.Record(ctx, sessions.WorkspaceMutation{
 		SessionID: sid, CWD: cwd, ToRunID: "run1", RestoreHistory: true,
 	}); err != nil {
 		t.Fatalf("record intent: %v", err)
@@ -343,7 +435,7 @@ func TestRecoverRollbacks_FilesOnly(t *testing.T) {
 	}
 	putRun(t, rt, sid, "run2", 2, 2)
 
-	if err := rt.muts.Record(ctx, sessions.WorkspaceMutation{
+	if _, err := rt.muts.Record(ctx, sessions.WorkspaceMutation{
 		SessionID: sid, CWD: cwd, ToRunID: "run1", RestoreHistory: false,
 	}); err != nil {
 		t.Fatalf("record intent: %v", err)
@@ -541,7 +633,7 @@ func TestRollback_NoCheckpointStore(t *testing.T) {
 	if !errors.Is(err, protocol.ErrCheckpointUnavailable) {
 		t.Fatalf("err = %v, want ErrCheckpointUnavailable", err)
 	}
-	// Atomic "both": the files step failed first, so run2 must still be present.
+	// The files step failed first, so run2 must still be present.
 	runs, _ := rt.runs.ListRuns(ctx, ses.ID())
 	if len(runs) != 2 {
 		t.Errorf("runs = %d, want 2 (history untouched after files failure)", len(runs))

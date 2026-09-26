@@ -95,7 +95,7 @@ func openExpected(
 	if err != nil {
 		return nil, nil, err
 	}
-	if !os.SameFile(source, opened) {
+	if !SameVersion(source, opened) {
 		return nil, nil, ErrChanged
 	}
 	if err := validateFile(opened, maximumBytes); err != nil {

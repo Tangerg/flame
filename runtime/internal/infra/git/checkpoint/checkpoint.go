@@ -6,8 +6,8 @@
 // The shadow repo's GIT_DIR lives under the Flame home, with the Session's cwd
 // as its work tree — the user's own .git is never touched (git addresses the
 // two independently, the classic dotfiles-repo pattern). Each Run boundary is
-// anchored by a lightweight tag named for the Run id, so a restore is a reset
-// to that tag. The only OS dependency is the git binary, which flame already
+// anchored by a lightweight tag named for the Run id, so a restore checks out
+// that tag. The only OS dependency is the git binary, which flame already
 // requires for workspace diffs — so this is platform-agnostic.
 //
 // To avoid re-hashing a project that git already has, a fresh shadow repo SEEDS
@@ -22,10 +22,13 @@ import (
 )
 
 var (
-	// ErrUnavailable means there is no snapshot to restore for the requested run
-	// (no shadow repo, or no tag at that boundary).
-	ErrUnavailable = errors.New("checkpoint: no snapshot for run")
-	// ErrRestoreIncomplete means reset started but did not complete, so callers
+	// ErrUnavailable means the requested boundary is absent or the workspace
+	// overlaps checkpoint storage and cannot be snapshotted or restored safely.
+	ErrUnavailable = errors.New("checkpoint: unavailable")
+	// ErrConflict means restoring the target would overwrite material absent
+	// from the pre-restore archive. The working tree has not been changed.
+	ErrConflict = errors.New("checkpoint: restore conflicts with unarchived working tree material")
+	// ErrRestoreIncomplete means checkout started but did not complete, so callers
 	// must retain their recovery intent: Git may already have changed part of the
 	// working tree even though the command returned an error.
 	ErrRestoreIncomplete = errors.New("checkpoint: working tree restore may be incomplete")

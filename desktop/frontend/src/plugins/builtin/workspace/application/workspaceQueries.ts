@@ -10,7 +10,8 @@ export interface WorkspaceProjectSummary {
 
 export interface WorkspaceFileChange {
   path: string;
-  change: "add" | "mod" | "del";
+  change: "add" | "mod" | "del" | "renamed";
+  previousPath?: string;
   added?: number;
   removed?: number;
   binary?: boolean;

@@ -27,6 +27,19 @@ func (a *app) cancel() {
 		a.finishQuestionnaire(true)
 		return
 	}
+	if a.operations.Active(inputPreparationOperation) {
+		a.operations.Cancel(inputPreparationOperation)
+		if entry, reserved := a.queue.Dispatching(a.session.current.ID); reserved {
+			pending, found := pendingRunByCommandID(a.workbench.PendingRuns(a.session.current.ID), entry.CommandID)
+			if found && pending.State == workbench.PendingRunQueued {
+				a.queue.ReleaseDispatch(a.session.current.ID)
+			}
+		}
+		a.syncQueue()
+		a.prompt.SetBusy(a.runAdmissionBlocked())
+		a.message("input preparation canceled; the prompt remains editable")
+		return
+	}
 	if a.execution.pendingCancel != nil {
 		a.status.doing = "retrying cancellation"
 		a.requestRuntimeCancellation(a.execution.pendingCancel.request, a.execution.pendingCancel.policy)
@@ -67,6 +80,12 @@ func (a *app) stageOpeningCancellation() (workbench.PendingRun, bool, error) {
 	}
 	if entry.CommandID == "" {
 		return workbench.PendingRun{}, false, errors.New("dispatching queue entry is no longer available")
+	}
+	if pending, found := pendingRunByCommandID(a.workbench.PendingRuns(a.session.current.ID), entry.CommandID); found &&
+		pending.State == workbench.PendingRunQueued {
+		// Input preparation has not published a dispatch intent. Closing the
+		// operation owner will discard its result without a Runtime mutation.
+		return workbench.PendingRun{}, false, nil
 	}
 	if _, err := a.workbench.MarkPendingRunCanceling(
 		a.session.current.ID, entry.CommandID, commandReplayGuard(a.runtimeProfile),

@@ -9,12 +9,13 @@ import (
 )
 
 // UtilityRole returns the live utility-model role; both empty when unset
-// (maintenance runs on the main Run model).
+// (maintenance uses the Runtime composition's default selection).
 func (c *Coordinator) UtilityRole() modelref.Role { return c.utilityRoleState.Role() }
 
 // SetUtilityRole repoints the maintenance services at (provider, model), persists
-// it, and swaps the live cell so the change takes effect at the next Run
-// boundary. An empty model clears the role back to the main Run model. A
+// it, and swaps the live cell so the next utility invocation sees the change,
+// even during an existing Run. In-flight calls retain their resolved model.
+// An empty model clears the role back to the Runtime composition's default. A
 // non-empty model is validated before persistence — an unsupported or
 // unconfigured provider fails here rather than silently degrading at the next
 // compaction.

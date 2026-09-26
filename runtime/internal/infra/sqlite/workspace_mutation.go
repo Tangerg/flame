@@ -26,10 +26,10 @@ type WorkspaceMutationRecord struct {
 // stores, its writes deliberately do NOT join an ambient transaction (they use
 // the *sql.DB directly, never conn(ctx)): the intent must commit on its own
 // before the working tree is touched, and the completion on its own after the
-// requested effects commit. The row protects a non-atomic multi-path Git reset
+// requested effects commit. The row protects a non-atomic multi-path Git checkout
 // and, when requested, the separate SQLite history transaction.
 //
-// A logged intent is the ONLY record that a reset may have changed part of a
+// A logged intent is the ONLY record that a checkout may have changed part of a
 // tree, so it owns recovery for that tree until it completes: Record refuses to
 // displace a different pending operation and Complete clears only the operation
 // it is given.
@@ -49,26 +49,28 @@ func NewWorkspaceMutationStore(db *sql.DB) *WorkspaceMutationStore {
 // Record logs a rollback's intent before the working tree is touched.
 // Re-logging the same operation is a no-op so an interrupted rollback can
 // re-drive its own intent; any other pending operation on this Session or tree
-// is [ErrWorkspaceMutationPending] rather than replaced.
-func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutationRecord) error {
+// is [ErrWorkspaceMutationPending] rather than replaced. The boolean reports
+// whether this call created the intent; an adopted intent may already have
+// changed files and cannot be retired as a pre-checkout refusal.
+func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutationRecord) (bool, error) {
 	if err := validateSessionResource("record workspace mutation", m.SessionID); err != nil {
-		return err
+		return false, err
 	}
 	if err := validateRunResource("record workspace mutation", m.ToRunID); err != nil {
-		return err
+		return false, err
 	}
 	tx, err := w.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("sqlite: record workspace mutation: %w", err)
+		return false, fmt.Errorf("sqlite: record workspace mutation: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	recorded, err := ownsPendingWorkspaceMutation(ctx, tx, m)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if recorded {
-		return nil
+		return false, nil
 	}
 	result, err := tx.ExecContext(ctx,
 		`INSERT INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history)
@@ -81,19 +83,19 @@ func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutation
 		m.SessionID,
 		m.CWD)
 	if err != nil {
-		return fmt.Errorf("sqlite: record workspace mutation: %w", err)
+		return false, fmt.Errorf("sqlite: record workspace mutation: %w", err)
 	}
 	changed, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("sqlite: inspect workspace mutation record: %w", err)
+		return false, fmt.Errorf("sqlite: inspect workspace mutation record: %w", err)
 	}
 	if changed != 1 {
-		return errors.New("sqlite: workspace mutation has no matching Run boundary")
+		return false, errors.New("sqlite: workspace mutation has no matching Run boundary")
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("sqlite: commit workspace mutation record: %w", err)
+		return false, fmt.Errorf("sqlite: commit workspace mutation record: %w", err)
 	}
-	return nil
+	return true, nil
 }
 
 func ownsPendingWorkspaceMutation(ctx context.Context, tx *sql.Tx, m WorkspaceMutationRecord) (bool, error) {

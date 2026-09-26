@@ -1,5 +1,5 @@
 import type { FlameClient } from "@/rpc";
-import { asRunId, asSegmentId, RpcConnectionError } from "@/rpc";
+import { asRunId, asSegmentId, RpcConnectionError, RpcProtocolError } from "@/rpc";
 import { agentRuntime } from "../application/ports/runtimeGateway";
 import type { RunStreamReattachment, RunStreamPosition } from "./agentRunPump";
 import { retireRunStream, settleRunStreamOpening } from "./runStreamOpening";
@@ -83,6 +83,7 @@ export function createRunStreamReattach({
         return null;
       }
       if (err instanceof RpcConnectionError) return null;
+      if (err instanceof RpcProtocolError) throw err;
       if (!agentRuntime().isReplayLost(err)) {
         console.warn("[agent] run reattach failed:", sessionId, err);
         return null;

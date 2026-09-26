@@ -67,6 +67,15 @@ func NewConversation() *Conversation {
 	}
 }
 
+// ValidateInteractionReview checks a frozen review against the current root's
+// complete waiting set. Each interaction retains its owning member Run ID.
+func (c *Conversation) ValidateInteractionReview(rootRunID string, interactions []Interaction) error {
+	if c.phase != ConversationWaiting || c.runID != rootRunID || !InteractionsEqual(c.interactions, interactions) {
+		return errors.New("interaction review no longer matches the waiting root")
+	}
+	return nil
+}
+
 func (c *Conversation) Blocks() []Block      { return cloneBlocks(c.blocks) }
 func (c *Conversation) Plan() *protocol.Plan { return ClonePlan(c.plan) }
 func (c *Conversation) PlanItems() []protocol.PlanStep {

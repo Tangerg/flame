@@ -61,7 +61,46 @@ func (a *activeDurationClock) elapsed(at time.Time) time.Duration {
 
 func (a *app) startRun(commandID agent.CommandID, message agent.Message, options agent.RunOptions, status string) bool {
 	input := agent.StartRun{CommandID: commandID, SessionID: a.session.current.ID, Message: message.Clone(), Options: options.Clone()}
-	replay, ready := a.prepareRunStart(input)
+	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
+	if !ok {
+		a.fail(errors.New("run is absent from the durable outbox"))
+		return false
+	}
+	if pending.State != workbench.PendingRunQueued {
+		return a.startPreparedRun(input, nil, status)
+	}
+	// The queue reservation owns this candidate while the existing operation
+	// owner reads and saves its bytes. Only the UI callback can publish dispatch:
+	// canceling preparation therefore leaves an ordinary editable queue entry.
+	started := a.runSessionAdmissionFence(inputPreparationOperation, false,
+		func(ctx context.Context) (*workbench.PreparedInput, error) {
+			blocks, err := a.runtime.PrepareInput(ctx, pending.Command.Message)
+			if err != nil {
+				return nil, err
+			}
+			return a.workbench.PrepareInput(ctx, pending.Command.Message, blocks)
+		},
+		func(prepared *workbench.PreparedInput, err error) {
+			if err == nil && a.startPreparedRun(input, prepared, status) {
+				return
+			}
+			a.queue.ReleaseDispatch(input.SessionID)
+			a.syncQueue()
+			a.prompt.SetBusy(a.runAdmissionBlocked())
+			if err != nil {
+				a.message("run start blocked: prepare input: " + err.Error())
+			}
+		},
+	)
+	if started {
+		a.prompt.SetBusy(true)
+		a.status.note("preparing input")
+	}
+	return started
+}
+
+func (a *app) startPreparedRun(input agent.StartRun, prepared *workbench.PreparedInput, status string) bool {
+	replay, ready := a.prepareRunStart(&input, prepared)
 	if !ready {
 		return false
 	}
@@ -103,13 +142,26 @@ func (a *app) startRun(commandID agent.CommandID, message agent.Message, options
 	return true
 }
 
-func (a *app) prepareRunStart(input agent.StartRun) (commandreplay.Guard, bool) {
+func (a *app) prepareRunStart(input *agent.StartRun, prepared *workbench.PreparedInput) (commandreplay.Guard, bool) {
+	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
+	if !ok {
+		a.fail(errors.New("run is absent from the durable outbox"))
+		return commandreplay.Guard{}, false
+	}
+	if pending.State != workbench.PendingRunQueued {
+		command, err := pending.ReplayCommand()
+		if err != nil {
+			a.fail(fmt.Errorf("recover pending run input: %w", err))
+			return commandreplay.Guard{}, false
+		}
+		*input = command
+	}
 	if err := a.execution.conversation.Starting(); err != nil {
 		a.fail(err)
 		return commandreplay.Guard{}, false
 	}
 	replay := commandReplayGuard(a.runtimeProfile)
-	if err := a.workbench.MarkPendingRunDispatching(input.SessionID, input.CommandID, replay); err != nil {
+	if err := a.workbench.MarkPendingRunDispatching(input.SessionID, input.CommandID, replay, prepared); err != nil {
 		rollbackErr := a.execution.conversation.CancelStarting()
 		a.message("run start blocked: save dispatching run: " + err.Error())
 		if rollbackErr != nil {
@@ -117,11 +169,12 @@ func (a *app) prepareRunStart(input agent.StartRun) (commandreplay.Guard, bool) 
 		}
 		return commandreplay.Guard{}, false
 	}
-	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
+	pending, ok = pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
 	if !ok {
 		a.fail(errors.New("dispatching run disappeared from the durable outbox"))
 		return commandreplay.Guard{}, false
 	}
+	*input = pending.Command.Clone()
 	return pending.Replay, true
 }
 
@@ -221,6 +274,7 @@ func (a *app) apply(event agent.RunEvent) error {
 		return err
 	}
 	a.applyPresentationEvent(event)
+	a.observeSteerEvent(event)
 	a.status.setRunningDescendants(a.execution.conversation.RunningDescendants())
 	switch event.Event.(type) {
 	case agent.SegmentStarted, agent.RunProgress, agent.RunInterrupted, agent.RunSuspended, agent.RunFinished:
@@ -325,6 +379,7 @@ func (a *app) finishFollowing() {
 	if settled && a.drainQueue() {
 		return
 	}
+	a.refreshSteerPresentation()
 	a.raiseAttention(outcomeAttention(a.execution.conversation.Outcome()))
 }
 

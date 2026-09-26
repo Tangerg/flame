@@ -306,7 +306,7 @@ func (s *sessionReadFailureRuntime) GetSession(ctx context.Context, sessionID st
 	return s.Runtime.GetSession(ctx, sessionID)
 }
 
-func TestRecoveredSessionRetriesATransientAttachRead(t *testing.T) {
+func TestRecoveredSessionRetriesATransientColdRead(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
@@ -320,7 +320,7 @@ func TestRecoveredSessionRetriesATransientAttachRead(t *testing.T) {
 	runtime := &sessionReadFailureRuntime{Runtime: base, failureAt: 2}
 	host, stop := runUIWithRuntimeChanges(t, runtime, nil, "ses_demo_1")
 	awaitState(t, "the recovered session attach retry", func() bool {
-		return runtime.reads.Load() >= 4
+		return runtime.reads.Load() >= 3
 	})
 	host.Shows(t, "recover attach")
 	stop()
@@ -884,7 +884,7 @@ func stageDispatchingRun(t *testing.T, store *workbench.Store, command agent.Sta
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, durableCommandReplayGuard(t)); err != nil {
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, durableCommandReplayGuard(t), nil); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -945,8 +945,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 				}
 				if err := store.MarkPendingRunDispatching(
 					command.SessionID, command.CommandID,
-					protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour)),
-				); err != nil {
+					protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour)), nil); err != nil {
 					t.Fatal(err)
 				}
 			},
@@ -969,7 +968,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 					Interactions: []agent.Interaction{approval},
 					Replay:       protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour)),
 				}
-				if err := store.StagePendingResume("ses_demo_1", pending); err != nil {
+				if err := store.StagePendingResume("ses_demo_1", pending, nil); err != nil {
 					t.Fatal(err)
 				}
 			},

@@ -36,6 +36,8 @@ func wireWorkspaceError(err error) error {
 	switch {
 	case err == nil:
 		return nil
+	case errors.Is(err, workspaceapp.ErrPromptSourceTooLarge):
+		return NewFailure(errors.Join(protocol.ErrPromptSourceTooLarge, err), "AGENTS.md instructions exceed the supported document or complete guidance budget; shorten the source documents before retrying")
 	case errors.Is(err, workspaceapp.ErrCWDUnavailable):
 		return NewFailure(errors.Join(protocol.ErrWorkspaceUnavailable, err), err.Error())
 	case errors.Is(err, workspaceapp.ErrPathOutsideRoot):
@@ -44,6 +46,7 @@ func wireWorkspaceError(err error) error {
 		return NewFailure(errors.Join(protocol.ErrUnsupportedMime, err), err.Error())
 	case errors.Is(err, tool.ErrInvalidArguments),
 		errors.Is(err, workspaceapp.ErrPathRequired),
+		errors.Is(err, workspaceapp.ErrWatchLimit),
 		errors.Is(err, workspaceapp.ErrInvalidFileRange),
 		errors.Is(err, workspaceapp.ErrFileReadTooLarge),
 		errors.Is(err, workspaceapp.ErrInvalidFileListPath),

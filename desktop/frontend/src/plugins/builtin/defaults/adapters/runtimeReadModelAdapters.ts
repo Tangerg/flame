@@ -40,7 +40,7 @@ const FILE_CHANGE: Record<RpcFileChange["status"], WorkspaceFileChangeSummary["c
   added: "add",
   untracked: "add",
   modified: "mod",
-  renamed: "mod",
+  renamed: "renamed",
   deleted: "del",
 };
 
@@ -48,6 +48,7 @@ export function toWorkspaceFileChangeSummary(change: RpcFileChange): WorkspaceFi
   return {
     path: change.path,
     change: FILE_CHANGE[change.status],
+    ...(change.previousPath ? { previousPath: change.previousPath } : {}),
     added: change.added,
     removed: change.removed,
     binary: change.binary,

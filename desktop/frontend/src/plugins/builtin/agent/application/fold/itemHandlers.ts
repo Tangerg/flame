@@ -6,7 +6,7 @@ import {
   foldCompaction,
   foldQuestion,
   foldReasoning,
-  foldText,
+  foldAgentMessage,
   patchRunBlock,
   updateTool,
   writeToolCall,
@@ -40,7 +40,7 @@ export function onItemStarted(
     case "userMessage":
       return appendUserMessage(state, item);
     case "agentMessage":
-      return foldText(state, item, blockStatus(item.status));
+      return foldAgentMessage(state, item, blockStatus(item.status));
     case "reasoning":
       return foldReasoning(state, item, blockStatus(item.status));
     case "toolCall": {
@@ -75,6 +75,7 @@ function assertItemProjectionIdentity(state: AgentSessionView, item: AgentItem):
     for (const block of message.blocks) {
       switch (block.kind) {
         case "text":
+        case "image":
           if (block.itemId === item.id)
             identities.push({ type: "agentMessage", runId: message.runId });
           break;
@@ -166,7 +167,7 @@ export function onItemCompleted(
     case "userMessage":
       return appendUserMessage(state, item);
     case "agentMessage":
-      return foldText(state, item, blockStatus(item.status));
+      return foldAgentMessage(state, item, blockStatus(item.status));
     case "reasoning":
       return foldReasoning(state, item, blockStatus(item.status));
     case "toolCall": {

@@ -270,8 +270,13 @@ func (a *app) confirmSkillProposalDecision(decision skillProposalDecision, appro
 	if approve {
 		verb, action = "Approve", "Approve and publish"
 	}
-	question := fmt.Sprintf("%s %s? %s", verb, decision.proposal.Key(), decision.proposal.Description)
-	a.confirmAction(verb+" Skill proposal", question, action, func() {
+	var content strings.Builder
+	content.WriteString("Revision: " + decision.reference.Revision + "\n\n")
+	for _, section := range skillProposalsDocument([]workspace.SkillProposal{decision.proposal}).Sections {
+		content.WriteString(section.Title + "\n" + section.Text + "\n\n")
+	}
+	question := "Decide this exact revision · PgUp/PgDn scroll"
+	a.confirmActionWithContent(verb+" Skill proposal", question, action, content.String(), func() {
 		a.decideSkillProposal(decision.reference, approve)
 	})
 }

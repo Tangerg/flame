@@ -17,17 +17,20 @@ import (
 // Replay metadata binds cold recovery to the runtime idempotency store that
 // first received the command.
 type PendingSteer struct {
-	sessionID string
-	command   agent.SteerRun
-	stagedAt  time.Time
-	replay    commandreplay.Guard
+	inputDigest  inputDigest
+	inputFailure error
+	sessionID    string
+	command      agent.SteerRun
+	stagedAt     time.Time
+	replay       commandreplay.Guard
 }
 
 type pendingSteerRecord struct {
-	SessionID string              `json:"sessionId"`
-	Command   agent.SteerRun      `json:"command"`
-	StagedAt  time.Time           `json:"stagedAt"`
-	Replay    commandreplay.Guard `json:"replay"`
+	InputDigest inputDigest         `json:"inputDigest,omitzero"`
+	SessionID   string              `json:"sessionId"`
+	Command     agent.SteerRun      `json:"command"`
+	StagedAt    time.Time           `json:"stagedAt"`
+	Replay      commandreplay.Guard `json:"replay"`
 }
 
 const steerSourcePrefix = "/steer "
@@ -55,6 +58,9 @@ func NewPendingSteer(
 
 // Validate enforces the complete persisted command and replay shape.
 func (p PendingSteer) Validate() error {
+	if err := p.inputDigest.validate(); err != nil {
+		return err
+	}
 	if err := runtimeprotocol.ValidateSessionID(p.sessionID); err != nil {
 		return fmt.Errorf("pending steer: %w", err)
 	}
@@ -98,12 +104,15 @@ func pendingSteerEqual(left, right PendingSteer) bool {
 
 func (p PendingSteer) record() pendingSteerRecord {
 	return pendingSteerRecord{
-		SessionID: p.sessionID, Command: p.command.Clone(), StagedAt: p.stagedAt, Replay: p.replay,
+		InputDigest: p.inputDigest,
+		SessionID:   p.sessionID, Command: p.command.Clone(), StagedAt: p.stagedAt, Replay: p.replay,
 	}
 }
 
 func restorePendingSteer(record pendingSteerRecord) (PendingSteer, error) {
-	return NewPendingSteer(record.SessionID, record.Command, record.StagedAt, record.Replay)
+	pending, err := NewPendingSteer(record.SessionID, record.Command, record.StagedAt, record.Replay)
+	pending.inputDigest = record.InputDigest
+	return pending, err
 }
 
 func (p PendingSteer) SessionID() string           { return p.sessionID }
@@ -139,11 +148,16 @@ func (s *Store) PendingSteer(sessionID string) (PendingSteer, bool) {
 // durable composer draft into a replayable runtime command. A crash therefore
 // observes either the editable attachments or the command journal, never an
 // empty gap between them.
-func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft agent.Message) error {
+func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft agent.Message, input *PreparedInput) error {
 	pending = pending.clone()
 	if err := pending.Validate(); err != nil {
 		return err
 	}
+	blocks, digest, err := input.bind(s, pending.command.Message)
+	if err != nil {
+		return err
+	}
+	pending.command.Input, pending.inputDigest = blocks, digest
 	sourceDraft = sourceDraft.Clone()
 	wantCommand := steerSourcePrefix + pending.command.Message.Text
 	if strings.TrimSpace(sourceDraft.Text) != wantCommand {

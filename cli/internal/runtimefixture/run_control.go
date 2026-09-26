@@ -349,28 +349,31 @@ func (r *Runtime) CancelRun(ctx context.Context, in agent.CancelRun) (agent.RunC
 	return agent.RunCancellation{Canceled: projected, Root: projected.Clone()}, nil
 }
 
-func (r *Runtime) SteerRun(ctx context.Context, in agent.SteerRun) error {
+func (r *Runtime) SteerRun(ctx context.Context, in agent.SteerRun) (protocol.SteerRunResponse, error) {
 	if err := in.Validate(); err != nil {
-		return fmt.Errorf("mock: %w", err)
+		return protocol.SteerRunResponse{}, fmt.Errorf("mock: %w", err)
 	}
 	if err := context.Cause(ctx); err != nil {
-		return err
+		return protocol.SteerRunResponse{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	run := r.runs[in.RunID]
 	if run == nil {
-		return fmt.Errorf("%w: %s", agent.ErrRunNotFound, in.RunID)
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, in.RunID)
 	}
 	if run.status != protocol.RunStatusRunning || run.active != in.SegmentID {
-		return fmt.Errorf("%w: run %s is not executing segment %s", agent.ErrStaleSegment, in.RunID, in.SegmentID)
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: run %s is not executing segment %s", agent.ErrStaleSegment, in.RunID, in.SegmentID)
 	}
 	if err := r.sessions[run.sessionID].requireRevisionCapacity(sessionEventRevisionChange()); err != nil {
-		return err
+		return protocol.SteerRunResponse{}, err
 	}
 	itemID := r.identities.next(itemIdentity)
-	return r.emitLocked(run, agent.BlockCompleted{Block: agent.Block{
+	if err := r.emitLocked(run, agent.BlockCompleted{Block: agent.Block{
 		ID: itemID, Kind: agent.BlockUser,
 		Text: in.Message.Text, Attachments: slices.Clone(in.Message.Attachments),
-	}})
+	}}); err != nil {
+		return protocol.SteerRunResponse{}, err
+	}
+	return protocol.SteerRunResponse{UserItemID: itemID}, nil
 }

@@ -137,12 +137,15 @@ func presentOutcome(run rundomain.Run) protocol.RunOutcome {
 	if failed {
 		problem = presentRunFailure(&failure)
 	}
-	effects := run.UnresolvedEffects()
+	return protocol.RunOutcome{Type: kind, Error: problem, Detail: run.Detail(), UnresolvedEffects: presentUnresolvedEffects(run.UnresolvedEffects())}
+}
+
+func presentUnresolvedEffects(effects []rundomain.UnresolvedEffect) []protocol.UnresolvedEffect {
 	projected := make([]protocol.UnresolvedEffect, 0, len(effects))
 	for _, effect := range effects {
 		projected = append(projected, protocol.UnresolvedEffect{ProcessID: effect.ProcessID(), EffectID: effect.EffectID(), Cause: effect.Cause(), Reason: effect.Reason(), Detail: effect.Detail()})
 	}
-	return protocol.RunOutcome{Type: kind, Error: problem, Detail: run.Detail(), UnresolvedEffects: projected}
+	return projected
 }
 
 func presentMetrics(metrics rundomain.Metrics) protocol.RunMetrics {

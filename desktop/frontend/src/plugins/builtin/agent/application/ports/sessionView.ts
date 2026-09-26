@@ -92,7 +92,12 @@ export interface AgentSessionViewPort {
   getSession(sessionId: string): AgentSessionViewEntry | undefined;
   sendToSession(sessionId: string, input: AgentInput, options?: AgentRunStartOptions): boolean;
   dropMessage(sessionId: string, messageId: string): void;
-  reconcileMessageIdentity(sessionId: string, fromId: string, toId: string): void;
+  reconcileMessageIdentity(
+    sessionId: string,
+    fromId: string,
+    toId: string,
+    steerRunId?: string,
+  ): void;
   appendLocalUserMessage(sessionId: string, messageId: string, input: AgentInput): void;
   beginViewRefresh(
     sessionId: string,

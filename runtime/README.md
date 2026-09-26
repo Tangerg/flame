@@ -18,6 +18,22 @@ All Runtime operations enter one delivery endpoint. The Go binding avoids JSON a
 
 RPC parameters and `_meta` use exact, case-sensitive schema field names. Unknown members, duplicate members, invalid Unicode, trailing JSON values, and explicit `null` in typed fields are rejected. Omit optional fields; use the declared change variants to clear configuration. Opaque tool arguments may contain `null`. Clients must not rely on case folding or replacement of malformed text.
 
+## Protocol 2026-09-26
+
+Upgrade Runtime, CLI, Desktop, and generated contract consumers together. This
+version adds bounded `WatchSpec.paths` with advertised subscription limits,
+`checkpoint_conflict` for a safely refused file restore, and
+`prompt_source_too_large` for an AGENTS.md cascade that cannot be included whole.
+The existing Run, Segment, Item, and command identities keep their meanings.
+
+Portable Session artifacts now require version 28 and preserve unresolved-effect
+evidence for every terminal outcome. Older artifact versions are rejected; export
+again from the updated Runtime. The SQLite history representation is unchanged.
+CLI attachment commands retain their prepared content with the original command
+and replay guard; an older dispatched or ambiguous command whose attachment bytes
+are unavailable remains unresolved and is never reconstructed from the current
+path. A queued command that has never been dispatched can still prepare its input.
+
 ## Open an in-process Runtime
 
 ```go
@@ -150,7 +166,15 @@ Waiting checkpoints declare the offloaded result IDs required by their continuat
 
 Unknown-effect observations retain the Effect IDs and the first available local failure diagnostic. The RunLost record preserves these details while keeping the outcome unknown; diagnostic text is never evidence that an external operation succeeded or failed.
 
+Portable Session artifacts preserve unresolved effects on every terminal outcome, including canceled and timed-out Runs. Artifact version 28 retains the exact source process and Effect identities, cause, reason, and detail through export and import. These are read-only historical evidence: imported Runs have no active Segment, open interrupt, or execution checkpoint, and the identities do not authorize resume or retry. Import accepts version 28 only; earlier development artifacts are rejected rather than treated as complete evidence.
+
 Unknown-effect termination closes every unfinished member in Run-tree postorder, retaining the same evidence on each lost Run. Completed members keep their outcomes. Each terminal commit settles open model attempts as unknown and abandons unfinished Tool Items without inventing model-visible results; the executor is released only after the terminal publication sequence.
+
+## Workspace observations
+
+`runtime.subscribe` accepts exact workspace-relative `watches[].paths`; `"."` names the workspace directory. Omitted paths request only Git HEAD/index observation. Explicit paths observe ordinary external writes, atomic replacements, removal, and recreation in Git and non-Git workspaces. A directory target observes its immediate entry names and metadata; it does not recursively watch children or follow their symlinks. An opened file needs its own target to observe content changes.
+
+Discovery publishes the subscription's total path budget, per-directory entry budget, and file hashing budget. Content up to that byte budget is hashed; larger files remain observable through size and modification metadata. Exceeding directory or registration bounds fails explicitly. Background content-observation failures end the subscription, and Git sampling failures retry with bounded backoff before ending it. Clients reopen the stream and revalidate their reads; this is an invalidation channel, not a durable filesystem log or atomic snapshot. Notifications retain workspace, watch, and path scope; overflow can widen them.
 
 ## Workspace search outcomes
 
@@ -164,6 +188,37 @@ Structured diff code rows always carry `code`, including `""` for a blank line; 
 
 Workspace diff responses require `baseline`: `head` and `mergeBase` include the exact resolved commit; `emptyTree` identifies an unborn repository. The comparison uses that resolved object, even if a branch reference moves later. Worktree mode includes untracked files; base mode compares tracked working-tree contents against the merge base. Neither mode attributes all edits to an Agent or provides an atomic snapshot of concurrent filesystem edits. Update consumers together; no stored diff migration is needed.
 
+## Workspace file rollback
+
+File checkpoints require physically separate workspace and checkpoint-storage
+trees, including through symlink aliases. Snapshot and restore reject either
+tree containing the other with `checkpoint_unavailable`, before creating or
+changing checkpoint state. With Runtime's standard `<DataDirectory>/checkpoints`
+layout, the data directory itself and its ancestors cannot serve as checkpointed
+workspaces: Runtime durability must not be archived as project material.
+
+`sessions.rollback` with `files` or `both` restores a Run's checkpoint for that
+Session and workspace. Checkpoints archive admitted regular files and symlinks,
+respect ignore rules for untracked paths, and exclude files larger than 2 MiB.
+They do not represent every file in the workspace. Before restoration, Runtime
+archives the currently admitted state and checks target paths against everything
+left unarchived, including ignored files, oversized files, and blocking
+directories. A conflict preserves the current files and history and reports
+`checkpoint_conflict` after the request's recovery intent has been cleared.
+Move conflicting material out of the target paths before issuing a new request.
+
+`both` restores files before committing the history cut. Once checkout begins,
+a failure can leave partial filesystem effects, so Runtime retains its durable
+intent for recovery. If cleanup of a refusal's intent fails, the response remains
+an internal failure with a pending recovery intent; it does not report a
+definitive `checkpoint_conflict` or `checkpoint_unavailable`. Re-driving an
+existing intent also retains it on refusal, since an earlier attempt may have
+already changed files. Consumers must keep
+the original command identity while its result is uncertain. Runtime serializes
+its own writers and uses Git's protection against overwriting untracked and
+ignored blockers. External filesystem writers do not share Runtime's guard;
+the operation is not an atomic filesystem or filesystem-plus-history transaction.
+
 ## Steer admission
 
 `runs.steer` and `Runtime.SteerRun` return `userItemId`, the identity reserved for that input. Success proves admission to the addressed active Segment, not model consumption. Only the matching committed user Item proves application at a model boundary. Clients reconcile by identity, including when the Item arrives before its receipt; identical text or attachments do not identify a command. A rejected steer must not silently become a new Run.
@@ -174,7 +229,9 @@ Protocol `2026-09-22` replaces the empty steer acknowledgement. Upgrade Runtime,
 
 Updating or manually firing a missing schedule returns `schedule_not_found`, with `refetch` recovery, consistent with other missing resources. Deleting an absent schedule remains successful and does not publish a change. Invalid schedule parameters remain `invalid_params`; stale edits remain `revision_conflict`. Schedule create/update and hook trust changes declare `workspace_unavailable` when their selected directory cannot be resolved.
 
-A successful start commits the Run, first Segment, and opening user Item. Resume commits the accepted interrupt responses and the new Segment opening. Neither promises a provider call has completed. Cancel is a settlement barrier: it returns the authoritative settled result, including a natural completion that won the race. Steer admission is described above. A missing receipt is an unknown command outcome, not permission to repeat it with a new identity.
+A successful start commits the Run, first Segment, and opening user Item. Resume commits the accepted interrupt responses and the new Segment opening. Neither promises a provider call has completed. Cancel is a settlement barrier: success proves a canceled Run; a natural completion that wins the race returns `run_finished`. Steer admission is described above. A missing receipt is an unknown command outcome, not permission to repeat it with a new identity.
+
+Disabling or deleting a schedule stops future occurrence claims. An already claimed occurrence retains its accepted input and may still start after that change; its Run must be canceled separately when required. Editing a schedule does not rewrite an occurrence already claimed from an earlier revision.
 
 Abrupt process-exit tests exercise claim, business commit, and receipt commit separately against a temporary SQLite database. A committed receipt replays the same identity without executing again. A claim without a receipt remains unresolved, including when the business effect committed: restart and elapsed time do not prove success or failure. Keep the original key and store namespace, inspect authoritative session state, and do not issue a fresh command to bypass the reservation. There is no general automatic reconciliation across command receipts and arbitrary business or external effects.
 
@@ -182,13 +239,13 @@ For an existing Session, omitting both provider and model uses that Session's st
 
 | Change | Effective boundary |
 | --- | --- |
-| Utility model | Future Run deployment; live and waiting execution retains its deployment |
+| Utility model | Next utility invocation, including during an existing Run; an in-flight invocation retains its resolved model |
 | Embedding model | Subsequent semantic searches |
 | MCP configuration | Persisted first; enabled servers connect in the background, and resource status reports readiness |
 | Project hook trust | Next Run opening; waiting resume is not a new Run |
 | Skill archive/restore | Subsequent resolution; existing conversation context is not erased |
 
-Saving configuration is not a universal live-reload guarantee. Restart recovery validates the retained model and tool deployment; it does not silently reinterpret an existing execution using arbitrary current settings.
+An unset utility role uses the Runtime composition's default model selection. It does not follow each Run's explicit main-model override. Changing the utility role does not replace the main-model deployment of a live or waiting Run. Saving configuration is not a universal live-reload guarantee. Restart recovery validates the retained model and tool deployment; it does not silently reinterpret an existing execution using arbitrary current settings.
 
 ## Discovered Skill inspection
 
@@ -200,7 +257,7 @@ Inspection distinguishes invalid names (`invalid_params`), absent skills (`skill
 
 ## Integration probes
 
-`models.list` treats endpoint discovery as authoritative, including an empty catalog. Endpoint failures and malformed or duplicate model identities return a sanitized `provider_error`, rather than `invalid_params` or a successful fallback catalog. Local registry and catalog defects remain internal failures; cancellation preserves its context identity for Go callers. Bundled metadata may enrich a discovered model but cannot change its provider/model identity.
+`models.list` treats endpoint discovery as authoritative, including an empty catalog. The endpoint adapter validates every advertised identity and collapses repeated identical model IDs; the public page contains each ID once in ascending order. Endpoint failures and malformed identities return a sanitized `provider_error`, rather than `invalid_params` or a successful fallback catalog. A duplicate returned by a custom model-lister implementation violates its unique-identity port contract; tests injecting such a result do not describe raw HTTP discovery. Local registry and catalog defects remain internal failures; cancellation preserves its context identity for Go callers. Bundled metadata may enrich a discovered model but cannot change its provider/model identity.
 
 Provider and MCP probes return sanitized inline verdicts. Provider authentication rejection uses `invalid_api_key`; MCP authentication rejection uses `mcp_authorization_required`; an internal probe deadline uses `timeout`. Unknown integration failures retain `provider_test_failed` or `mcp_dial_failed`. Caller cancellation remains a call error. Clients branch on these problem types, never on raw integration error strings.
 
@@ -212,10 +269,14 @@ Stored JSON uses the standard library's single-pass strict decoder. Columns requ
 
 ## Scope provider transport
 
-Runtime consumes released Scope v0.33.0 modules and tools v0.35.0. Provider `Call` and `Stream` use Scope's canonical streaming transport; complete calls aggregate that same validated stream. Runtime does not retain a unary provider fallback. MCP sessions use `github.com/Tangerg/go-sdk`, the same SDK as Scope MCP, so structured results preserve large integers, decimal values, and explicit empty objects through transport and Tool publication.
+Runtime consumes the released Scope modules pinned in `go.mod`. Provider `Call` and `Stream` use Scope's canonical streaming transport; complete calls aggregate that same validated stream. Runtime does not retain a unary provider fallback. MCP sessions use `github.com/Tangerg/go-sdk`, the same SDK as Scope MCP, so structured results preserve large integers, decimal values, and explicit empty objects through transport and Tool publication.
 
 Provider-reported token usage, durable conversation history, and model/Tool/execution telemetry are Scope contracts rather than Runtime restatements: `chat.Usage` survives whole to the protocol, the message store implements `history.Store`, and Scope's OpenTelemetry middleware instruments the provider, Tool, and execution-tree boundaries.
 
 MCP identity follows Scope's capability chain through Tool decorators for discovery, disabled-tool policy, and automatic approval. Invalid MCP identity declarations now reject the catalog instead of silently hiding entries or grouping them as built-ins. Persisted settings and public protocol shapes require no migration.
 
 `mcp.tools.list` returns the admitted connection catalog used for execution and connected Tool counts. Remote changes become visible after reconnect admits the replacement; listing no longer queries a separate live catalog. Invalid JSON Schemas, including unresolved references and oversized documents, now fail connection or probe admission through Scope rather than failing the next Run. Diagnostic and MCP schema projections preserve exact numeric literals and retain their existing protocol shape.
+
+## Complete AGENTS guidance
+
+Run guidance includes the complete discovered AGENTS.md cascade in source order, with provenance markers. The rendered cascade, including its heading and separators, must fit the 32 KiB guidance budget. An over-budget cascade fails preparation with `prompt_source_too_large`; Runtime does not silently remove ancestor instructions to retain only the most specific files. Shorten the authored documents before retrying. Discovery describes the current documents; it does not prove that a previous Run loaded them.

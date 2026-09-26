@@ -368,6 +368,10 @@ export const de: Record<string, string> = {
   "settings.connection.reset": "Auf Standard zurücksetzen",
   "settings.connection.status.checking": "Runtime wird geprüft…",
   "settings.connection.status.reconnecting": "Verbindung wird wiederhergestellt…",
+  "agent.steer.accepted": "Angenommen · wartet auf Modellkontext",
+  "agent.steer.applied": "In den Modellkontext aufgenommen",
+  "agent.steer.notApplied":
+    "Der Lauf endete, bevor eine angenommene Anweisung in den Modellkontext aufgenommen wurde.",
   "agent.inputNotApplied": "Noch nicht angewendet",
   "agent.synchronizationIncomplete":
     "Die Synchronisierung ist unvollständig. Öffnen Sie die Sitzung erneut.",
@@ -468,6 +472,7 @@ export const de: Record<string, string> = {
   "agent.runTree.status.finished": "Beendet",
   "agent.runTree.status.error": "Fehler",
   "agent.runTree.status.canceled": "Abgebrochen",
+  "agent.runOutcome.unresolvedEffects": "Vorgänge mit unbestätigtem Ergebnis",
   "agent.runOutcome.canceled": "Abgebrochen",
   "agent.steps_one": "{{count}} Schritt",
   "agent.steps_other": "{{count}} Schritte",
@@ -727,8 +732,8 @@ export const de: Record<string, string> = {
   "providers.fromEnv": "aus Umgebung",
   "providers.utility.title": "Hilfsmodell",
   "providers.utility.desc":
-    "Modell für Zusammenfassungen, Titel und Faktenextraktion. Ohne Auswahl wird das Hauptmodell verwendet. Gilt für neue Ausführungen.",
-  "providers.utility.main": "Hauptmodell verwenden",
+    "Modell für Zusammenfassungen, Titel und Faktenextraktion. Ohne Auswahl gilt der Runtime-Standard. Änderungen gelten ab dem nächsten Hilfsaufruf, auch innerhalb einer laufenden Ausführung.",
+  "providers.utility.main": "Runtime-Standard verwenden",
   "providers.utility.error": "Hilfsmodell konnte nicht gesetzt werden.",
   "providers.embedding.title": "Embedding-Modell",
   "providers.embedding.desc":
@@ -873,7 +878,7 @@ export const de: Record<string, string> = {
     "Öffne oder wähle eine Sitzung, um ihr Projektgedächtnis zu prüfen. Wechsle zu Benutzer für projektübergreifendes Gedächtnis.",
   "agentMemory.error": "Gedächtnis konnte nicht aktualisiert werden.",
   "schedules.intro":
-    "Führt einen gespeicherten Prompt nach Zeitplan aus. Jeder Lauf startet eine frische Sitzung, solange die Runtime läuft — die Ausgabe findest du in der Seitenleiste.",
+    "Führt einen gespeicherten Prompt nach Zeitplan aus. Jeder Lauf startet eine frische Sitzung, solange die Runtime läuft — die Ausgabe findest du in der Seitenleiste. Deaktivieren oder Löschen stoppt die künftige Planung. Bereits übernommene Ausführungen können noch starten und müssen separat abgebrochen werden.",
   "schedules.add": "Neuer Zeitplan",
   "schedules.save": "Speichern",
   "schedules.saving": "Speichern…",
@@ -886,7 +891,7 @@ export const de: Record<string, string> = {
   "schedules.delete": "Zeitplan löschen",
   "schedules.delete.title": "Diesen Zeitplan löschen?",
   "schedules.delete.body":
-    "„{{title}}“ und die zugehörigen Anweisungen verschwinden. Das lässt sich nicht rückgängig machen.",
+    "„{{title}}“ und die zugehörigen Anweisungen verschwinden. Das lässt sich nicht rückgängig machen. Bereits übernommene Ausführungen können noch starten und müssen separat abgebrochen werden.",
   "schedules.delete.confirm": "Löschen",
   "schedules.empty": "Keine Zeitpläne",
   "schedules.empty.sub":
@@ -897,7 +902,7 @@ export const de: Record<string, string> = {
   "schedules.model.default": "Runtime-Standard",
   "schedules.reasoning.default": "Modellstandard",
   "schedules.model.hint":
-    "Gilt für künftige geplante Ausführungen. Bereits laufende Aufgaben bleiben unverändert.",
+    "Gilt für die künftige Planung. Bereits übernommene Ausführungen behalten ihre angenommene Konfiguration.",
   "schedules.model.unavailable":
     "Das gespeicherte Modell fehlt im aktuellen Katalog. Die Auswahl bleibt erhalten, bis du sie änderst.",
   "schedules.form.title": "Titel (optional)",
@@ -937,6 +942,10 @@ export const de: Record<string, string> = {
   "rpcError.session_busy": "Sitzung ist beschäftigt — warte, bis der laufende Durchlauf endet.",
   "rpcError.checkpoint_unavailable":
     "Kein Datei-Checkpoint für diesen Zug — es wurde nichts geändert.",
+  "rpcError.checkpoint_conflict":
+    "Die Wiederherstellung wurde abgelehnt, um nicht im Checkpoint gespeicherte Dateien zu schützen. Es wurden keine Dateien geändert.",
+  "rpcError.prompt_source_too_large":
+    "Die Anweisungsdateien überschreiten die Größen- oder Anzahlgrenze. Kürze sie oder verwende weniger Dateien und versuche es erneut.",
   "rpcError.workspace_unavailable":
     "Dieser Workspace existiert nicht auf der Festplatte der Runtime.",
   "rpcError.vcs_unavailable": "Dieser Ordner ist kein Git-Repository.",
@@ -1256,5 +1265,6 @@ export const de: Record<string, string> = {
   "file.change.add": "Im Arbeitsbaum hinzugefügt",
   "file.change.mod": "Im Arbeitsbaum geändert",
   "file.change.del": "Im Arbeitsbaum gelöscht",
+  "file.change.renamed": "Umbenannt von {{path}}",
   "file.change.below": "Enthält Änderungen im Arbeitsbaum",
 };

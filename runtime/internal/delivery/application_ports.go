@@ -155,7 +155,7 @@ type workspaceHookUseCases interface {
 }
 
 type workspaceWatchUseCases interface {
-	Watch(cwds []string, notify func()) (io.Closer, error)
+	Watch(scopes []workspaceapp.WatchScope, notify func(workspaceapp.ObservationChange), report func(error)) (io.Closer, error)
 }
 
 type workspaceAuthoredWatchUseCases interface {

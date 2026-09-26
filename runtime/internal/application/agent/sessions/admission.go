@@ -6,7 +6,7 @@ import (
 )
 
 // Admissions is the session lifecycle's view of the shared run and
-// working-tree admission state. A file rollback's `git reset --hard` must see
+// working-tree admission state. A file rollback's checkout must see
 // both a sibling's segment admission and its already-live run on the same cwd.
 type Admissions interface {
 	AcquireSession(ctx context.Context, sessionID string) (release func(), ok bool, err error)

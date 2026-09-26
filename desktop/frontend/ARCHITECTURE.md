@@ -524,6 +524,24 @@ Session snapshot 的同步 Promise 在权威投影提交后结束；由该快照
 `replace-live` 读取新快照并恢复订阅，再放行下一条 Goal 命令；不能等待长任务的流结束。
 普通变更通知仍使用 `after-live`，合并到下一次空闲边界，避免和 live fold 并发写入。
 
+Run observation recovery stays in the existing pump. Repeated acknowledged streams ending
+at the same opaque cursor get two replay attempts with abortable exponential backoff, then
+one coherent snapshot and tail. A further failure without progress stops observation and
+reports incomplete synchronization while preserving the confirmed Run facts. Successfully
+folded progress or a successor Segment restores the cold recovery budget. Snapshot head
+changes alone do not forgive repeated projection failures. Connection loss remains owned by
+the Runtime connection controller; recovery never resubmits a user command.
+
+Steer receipts annotate only the exact reserved user Item. The local message shows accepted
+until its durable Item establishes application at a model boundary. Coherent refreshes retain
+accepted inputs while their Run remains active or waiting, and after-live terminal refreshes
+remove absent inputs with an explicit notification. No missing input is submitted to another
+Run. Applied annotations are session-local receipt evidence, not reconstructed from text.
+
+Terminal Run outcomes retain unresolved Effect evidence in every projection. Root narrative
+footers and delegated Run details expose the original identifiers and diagnostics without
+asserting success, failure, or rollback of those operations.
+
 默认 driver 由 `rpc-agent` 插件贡献（`AGENT_SOURCE`，走 JSON-RPC）；插件可替换成 mock / IPC / 本地模型等。
 
 ---

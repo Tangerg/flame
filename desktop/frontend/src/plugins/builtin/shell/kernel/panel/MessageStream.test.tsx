@@ -1,5 +1,5 @@
 import { type PropsWithChildren } from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import type { BlockCtx } from "@/plugins/builtin/chat/message/public/rendering";
@@ -112,6 +112,10 @@ describe("MessageStream terminal footer materialization", () => {
     );
     expect(screen.queryByTestId("root-run-outcome")).toBeNull();
 
+    // Settle the real lazy renderer before testing its visible reveal generation.
+    await act(async () => vi.dynamicImportSettled());
+    expect(screen.queryByTestId("root-run-outcome")).toBeNull();
+
     root.current = { running: false, terminalTurnIndex: () => 0 };
     rerender(
       <MessageStream rows={[transcriptRow("complete")]} ctx={CTX} sessionId="session-footer" />,
@@ -127,7 +131,7 @@ describe("MessageStream terminal footer materialization", () => {
     expect(await screen.findByTestId("root-run-outcome")).toBeTruthy();
   });
 
-  it("keeps a finished Run outcome with its exact turn while a successor user message is unassigned", () => {
+  it("keeps a finished Run outcome with its exact turn while a successor user message is unassigned", async () => {
     root.current = { running: false, terminalTurnIndex: () => 0 };
 
     render(
@@ -137,6 +141,8 @@ describe("MessageStream terminal footer materialization", () => {
         sessionId="session-footer"
       />,
     );
+
+    await act(async () => vi.dynamicImportSettled());
 
     expect(screen.getByTestId("root-run-outcome").closest("[data-turn-id]")?.dataset.turnId).toBe(
       "assistant-terminal-footer",

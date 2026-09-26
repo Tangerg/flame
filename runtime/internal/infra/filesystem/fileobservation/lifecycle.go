@@ -59,8 +59,13 @@ func (o *observerLifecycle) start(reconcile func(acceptance) error) {
 }
 
 func (o *observerLifecycle) run() {
-	defer recoverWatchDefect()
 	defer close(o.exited)
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			slog.Error("fileobservation: observer panicked", "panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+			o.report(errors.New("filesystem observation stopped after a defect"))
+		}
+	}()
 	timer := time.NewTimer(debounce)
 	if !timer.Stop() {
 		<-timer.C
@@ -84,11 +89,13 @@ func (o *observerLifecycle) run() {
 			return
 		case _, ok := <-o.fsw.Events:
 			if !ok {
+				o.report(errors.New("filesystem observation event channel closed"))
 				return
 			}
 			armAfter(debounce)
 		case _, ok := <-o.fsw.Errors:
 			if !ok {
+				o.report(errors.New("filesystem observation error channel closed"))
 				return
 			}
 			// Backend errors invalidate only the wake-up hint. Reconciliation
@@ -175,13 +182,4 @@ func (o *observerLifecycle) Close() error {
 		_ = o.fsw.Close()
 	})
 	return nil
-}
-
-// recoverWatchDefect keeps a defect in this detached watch from ending the
-// process. The watch stops, which every consumer already treats as a watch that
-// is no longer reporting; the stack goes to the operator.
-func recoverWatchDefect() {
-	if recovered := recover(); recovered != nil {
-		slog.Error("fileobservation: observer panicked", "panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
-	}
 }

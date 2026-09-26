@@ -32,6 +32,22 @@ function sameRunMetrics(left: AgentRunMetrics, right: AgentRunMetrics): boolean 
 
 function sameRunOutcome(left: AgentRunOutcome | null, right: AgentRunOutcome): boolean {
   if (!left || left.type !== right.type) return false;
+  const leftEffects = left.unresolvedEffects ?? [];
+  const rightEffects = right.unresolvedEffects ?? [];
+  if (
+    leftEffects.length !== rightEffects.length ||
+    leftEffects.some((effect, index) => {
+      const other = rightEffects[index]!;
+      return (
+        effect.processId !== other.processId ||
+        effect.effectId !== other.effectId ||
+        effect.cause !== other.cause ||
+        effect.reason !== other.reason ||
+        effect.detail !== other.detail
+      );
+    })
+  )
+    return false;
   if (left.type === "completed") return true;
   if (isAgentRunFailure(left) && isAgentRunFailure(right)) {
     return (

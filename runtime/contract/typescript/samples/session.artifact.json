@@ -1,5 +1,5 @@
 {
-  "version": 27,
+  "version": 28,
   "session": {
     "id": "ses_01",
     "title": "Refactor the runtime protocol",
@@ -19,7 +19,17 @@
       "provider": "anthropic",
       "reasoningEffort": "high",
       "outcome": {
-        "type": "completed"
+        "type": "canceled",
+        "detail": "user stopped execution",
+        "unresolvedEffects": [
+          {
+            "processId": "process_source_01",
+            "effectId": "effect_source_01",
+            "cause": "canceled",
+            "reason": "owner stopped",
+            "detail": "external result is unconfirmed"
+          }
+        ]
       },
       "createdAt": "2026-07-07T10:00:00Z",
       "finishedAt": "2026-07-07T10:00:20Z",

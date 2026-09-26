@@ -15,9 +15,9 @@ import (
 )
 
 // followRecoveredSession closes the read-then-subscribe gap when the terminal
-// opens an already-running session. The background owner attaches first, takes
-// a second authoritative read, atomically installs it on the UI thread, and
-// only then starts consuming the attached tail.
+// opens an already-running session. The background owner requests one coherent
+// snapshot subscription, installs its material and opaque head on the UI thread,
+// and only then starts consuming the successor tail.
 func (a *app) followRecoveredSession() {
 	dispatcher := a.loop.Dispatcher()
 	sessionID := a.session.current.ID

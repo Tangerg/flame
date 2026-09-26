@@ -376,6 +376,10 @@ export const fr: Record<string, string> = {
   "settings.connection.reset": "Réinitialiser",
   "settings.connection.status.checking": "Vérification du runtime…",
   "settings.connection.status.reconnecting": "Reconnexion…",
+  "agent.steer.accepted": "Acceptée · en attente du contexte du modèle",
+  "agent.steer.applied": "Ajoutée au contexte du modèle",
+  "agent.steer.notApplied":
+    "L’exécution s’est terminée avant qu’une instruction acceptée soit ajoutée au contexte du modèle.",
   "agent.inputNotApplied": "Pas encore appliqué",
   "agent.synchronizationIncomplete":
     "La synchronisation est incomplète. Rouvrez la session pour réessayer.",
@@ -478,6 +482,7 @@ export const fr: Record<string, string> = {
   "agent.runTree.status.finished": "Terminé",
   "agent.runTree.status.error": "Erreur",
   "agent.runTree.status.canceled": "Annulé",
+  "agent.runOutcome.unresolvedEffects": "Opérations dont le résultat n’est pas confirmé",
   "agent.runOutcome.canceled": "Annulé",
   "agent.steps_one": "{{count}} étape",
   "agent.steps_many": "{{count}} d’étapes",
@@ -750,8 +755,8 @@ export const fr: Record<string, string> = {
   "providers.fromEnv": "depuis l'environnement",
   "providers.utility.title": "Modèle utilitaire",
   "providers.utility.desc":
-    "Modèle pour les résumés, titres et extractions de faits. Sans sélection, le modèle principal est utilisé. S’applique aux nouvelles exécutions.",
-  "providers.utility.main": "Utiliser le modèle principal",
+    "Modèle pour les résumés, titres et extractions de faits. Sans sélection, le modèle par défaut de Runtime est utilisé. Les changements prennent effet au prochain appel auxiliaire, même pendant une exécution en cours.",
+  "providers.utility.main": "Utiliser le modèle par défaut de Runtime",
   "providers.utility.error": "Impossible de définir le modèle utilitaire.",
   "providers.embedding.title": "Modèle d'embedding",
   "providers.embedding.desc":
@@ -898,7 +903,7 @@ export const fr: Record<string, string> = {
     "Ouvrez ou sélectionnez une session pour examiner sa mémoire de projet. Passez à Utilisateur pour la mémoire inter-projets.",
   "agentMemory.error": "Impossible de mettre à jour la mémoire.",
   "schedules.intro":
-    "Exécute un prompt enregistré selon une planification. Chaque exécution démarre une nouvelle session tant que la runtime tourne — retrouvez sa sortie dans la barre latérale.",
+    "Exécute un prompt enregistré selon une planification. Chaque exécution démarre une nouvelle session tant que la runtime tourne — retrouvez sa sortie dans la barre latérale. La désactivation ou la suppression arrête la planification future. Les exécutions déjà acceptées peuvent encore démarrer et doivent être annulées séparément.",
   "schedules.add": "Nouvelle planification",
   "schedules.save": "Enregistrer",
   "schedules.saving": "Enregistrement…",
@@ -911,7 +916,7 @@ export const fr: Record<string, string> = {
   "schedules.delete": "Supprimer la planification",
   "schedules.delete.title": "Supprimer cette planification ?",
   "schedules.delete.body":
-    "« {{title}} » et ses instructions disparaissent. Cette action est irréversible.",
+    "« {{title}} » et ses instructions disparaissent. Cette action est irréversible. Les exécutions déjà acceptées peuvent encore démarrer et doivent être annulées séparément.",
   "schedules.delete.confirm": "Supprimer",
   "schedules.empty": "Aucune planification",
   "schedules.empty.sub":
@@ -923,7 +928,7 @@ export const fr: Record<string, string> = {
   "schedules.model.default": "Modèle par défaut du Runtime",
   "schedules.reasoning.default": "Valeur par défaut du modèle",
   "schedules.model.hint":
-    "S’applique aux prochaines exécutions planifiées, sans modifier celles déjà en cours.",
+    "S’applique à la planification future. Les exécutions déjà acceptées conservent leur configuration.",
   "schedules.model.unavailable":
     "Le modèle enregistré ne figure pas dans le catalogue actuel. La sélection est conservée tant que vous ne la modifiez pas.",
   "schedules.form.title": "Titre (facultatif)",
@@ -963,6 +968,10 @@ export const fr: Record<string, string> = {
   "rpcError.session_busy": "La session est occupée — attends la fin de l'exécution en cours.",
   "rpcError.checkpoint_unavailable":
     "Aucun point de restauration de fichiers pour ce tour — rien n'a été modifié.",
+  "rpcError.checkpoint_conflict":
+    "La restauration a été refusée pour protéger les fichiers absents du point de restauration. Aucun fichier n'a été modifié.",
+  "rpcError.prompt_source_too_large":
+    "Les fichiers d'instructions dépassent la limite de taille ou de nombre. Raccourcis-les ou utilise moins de fichiers, puis réessaie.",
   "rpcError.workspace_unavailable": "Cet espace de travail n'existe pas sur le disque du runtime.",
   "rpcError.vcs_unavailable": "Ce dossier n'est pas un dépôt git.",
   "rpcError.rate_limited":
@@ -1286,5 +1295,6 @@ export const fr: Record<string, string> = {
   "file.change.add": "Ajouté dans l'arbre de travail",
   "file.change.mod": "Modifié dans l'arbre de travail",
   "file.change.del": "Supprimé dans l'arbre de travail",
+  "file.change.renamed": "Renommé depuis {{path}}",
   "file.change.below": "Contient des modifications de l'arbre de travail",
 };

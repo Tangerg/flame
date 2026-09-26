@@ -2,7 +2,7 @@
   "openrpc": "1.3.2",
   "info": {
     "title": "Flame Runtime Protocol",
-    "version": "2026-09-22",
+    "version": "2026-09-26",
     "description": "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface."
   },
   "methods": [
@@ -645,6 +645,10 @@
           "message": "checkpoint_unavailable"
         },
         {
+          "code": -32037,
+          "message": "checkpoint_conflict"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -987,6 +991,10 @@
         {
           "code": -32023,
           "message": "session_has_active_run"
+        },
+        {
+          "code": -32038,
+          "message": "prompt_source_too_large"
         },
         {
           "code": -32011,
@@ -3075,6 +3083,10 @@
         {
           "code": -32005,
           "message": "workspace_unavailable"
+        },
+        {
+          "code": -32038,
+          "message": "prompt_source_too_large"
         }
       ],
       "x-flame-kind": "unary",
@@ -4571,6 +4583,10 @@
         {
           "code": -32036,
           "message": "schedule_not_found"
+        },
+        {
+          "code": -32038,
+          "message": "prompt_source_too_large"
         },
         {
           "code": -32006,

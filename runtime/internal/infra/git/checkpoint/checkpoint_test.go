@@ -556,7 +556,7 @@ func TestStore_RestoreUnknownRun(t *testing.T) {
 	}
 }
 
-func TestStore_ResetFailureReportsPossiblyIncompleteRestore(t *testing.T) {
+func TestStore_CheckoutFailureReportsPossiblyIncompleteRestore(t *testing.T) {
 	s, cwd := newTestStore(t)
 	ctx := context.Background()
 	write(t, cwd, "a.txt", "v1")
@@ -571,7 +571,7 @@ func TestStore_ResetFailureReportsPossiblyIncompleteRestore(t *testing.T) {
 	}
 	binDir := t.TempDir()
 	fakeGit := filepath.Join(binDir, "git")
-	script := fmt.Sprintf("#!/bin/sh\nif [ \"$1\" = reset ]; then echo forced-reset-failure >&2; exit 1; fi\nexec %q \"$@\"\n", realGit)
+	script := fmt.Sprintf("#!/bin/sh\nif [ \"$1\" = checkout ]; then echo forced-checkout-failure >&2; exit 1; fi\nexec %q \"$@\"\n", realGit)
 	if writeFileErr := os.WriteFile(fakeGit, []byte(script), 0o755); writeFileErr != nil {
 		t.Fatalf("write fake git: %v", writeFileErr)
 	}
@@ -581,7 +581,7 @@ func TestStore_ResetFailureReportsPossiblyIncompleteRestore(t *testing.T) {
 	if !errors.Is(err, ErrRestoreIncomplete) {
 		t.Fatalf("restore error = %v, want ErrRestoreIncomplete", err)
 	}
-	if !strings.Contains(err.Error(), "forced-reset-failure") {
+	if !strings.Contains(err.Error(), "forced-checkout-failure") {
 		t.Fatalf("restore error lost git detail: %v", err)
 	}
 }

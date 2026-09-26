@@ -14,9 +14,9 @@ export interface ModelInvocation {
   usage?: {
     inputTokens: number;
     outputTokens: number;
-    cacheReadTokens: number;
-    cacheWriteTokens: number;
-    reasoningTokens: number;
+    cacheReadTokens?: number;
+    cacheWriteTokens?: number;
+    reasoningTokens?: number;
   };
   callId: string;
   runId: string;

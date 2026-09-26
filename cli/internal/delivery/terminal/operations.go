@@ -13,6 +13,7 @@ type operationSlot string
 
 const (
 	streamOperation               operationSlot = "stream"
+	inputPreparationOperation     operationSlot = "input-preparation"
 	pendingRunRecoveryOperation   operationSlot = "pending-run-recovery"
 	pendingRunSettlementOperation operationSlot = "pending-run-settlement"
 	resumeSettlementOperation     operationSlot = "resume-settlement"
@@ -30,6 +31,7 @@ const (
 	approvalRuleOperation         operationSlot = "approval-rule"
 	cancelRunOperation            operationSlot = "cancel-run"
 	steerRunOperation             operationSlot = "steer-run"
+	steerReceiptReadOperation     operationSlot = "steer-receipt-read"
 	workspaceQueryOperation       operationSlot = "workspace-query"
 	runtimeChangesOperation       operationSlot = "runtime-changes"
 	sessionInvalidationOperation  operationSlot = "session-invalidation"

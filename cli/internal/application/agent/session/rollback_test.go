@@ -25,6 +25,69 @@ type recordingRuntime struct {
 	afterCall func()
 }
 
+type rollbackProblem struct {
+	kind  string
+	cause error
+}
+
+func (e rollbackProblem) Error() string                 { return e.kind }
+func (e rollbackProblem) Unwrap() error                 { return e.cause }
+func (e rollbackProblem) Problem() protocol.ProblemData { return protocol.ProblemData{Type: e.kind} }
+
+func TestFileRollbackRetiresOnlyDefinitiveRuntimeRefusals(t *testing.T) {
+	for _, scope := range []protocol.RestoreType{protocol.RestoreFiles, protocol.RestoreBoth} {
+		for _, refusal := range []error{protocol.ErrCheckpointUnavailable, protocol.ErrCheckpointConflict} {
+			for _, cleanupFailed := range []bool{false, true} {
+				name := string(scope) + "/" + refusal.Error()
+				if cleanupFailed {
+					name += "/cleanup failed"
+				}
+				t.Run(name, func(t *testing.T) {
+					underlying := runtimefixture.New()
+					snapshot, err := underlying.GetSession(t.Context(), "ses_demo_1")
+					if err != nil {
+						t.Fatal(err)
+					}
+					preview, err := PreviewRollback(snapshot, agent.RollbackSession{
+						SessionID: snapshot.Session.ID, ToRunID: snapshot.Runs[0].ID, Scope: scope,
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+					now := time.Date(2026, 9, 26, 10, 0, 0, 0, time.UTC)
+					policy := advertisedRollbackPolicy(t, "runtime", time.Hour, func() time.Time { return now })
+					store, err := openTestWorkbench(t.TempDir())
+					if err != nil {
+						t.Fatal(err)
+					}
+					kind := refusal.Error()
+					if cleanupFailed {
+						kind = protocol.ProblemInternalError
+					}
+					runtime := &recordingRuntime{Runtime: underlying, reject: rollbackProblem{kind: kind, cause: refusal}}
+					result, err := Rollback(t.Context(), runtime, store, preview, policy, fastBackoff(t))
+					want := mutation.Rejected
+					if cleanupFailed {
+						want = mutation.Unknown
+					}
+					if err == nil || result.Outcome != want || runtime.calls != 1 {
+						t.Fatalf("rollback = %s, error = %v, calls = %d; want %s", result.Outcome, err, runtime.calls, want)
+					}
+					err = RecoverRollbacks(t.Context(), runtime, store, policy, fastBackoff(t))
+					pending := store.PendingSessionRollbacks()
+					if cleanupFailed {
+						if err == nil || len(pending) != 1 || pending[0].CommandID != result.Pending.CommandID {
+							t.Fatalf("unknown recovery = %v, pending = %+v", err, pending)
+						}
+					} else if err != nil || len(pending) != 0 {
+						t.Fatalf("refused recovery = %v, pending = %+v", err, pending)
+					}
+				})
+			}
+		}
+	}
+}
+
 func protectedRollbackGuard(t *testing.T, namespace string, until time.Time) commandreplay.Guard {
 	t.Helper()
 	guard, err := commandreplay.NewProtectedGuard(namespace, until)

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { CurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
@@ -28,6 +28,35 @@ function completedRun(): AgentRunView {
 
 describe("RootRunOutcome", () => {
   afterEach(cleanup);
+
+  it.each(["canceled", "failed", "timedOut", "lost", "completed"] as const)(
+    "shows unresolved evidence independently of the %s outcome",
+    (type) => {
+      const run = completedRun();
+      const unresolvedEffects = [
+        {
+          processId: "process-external",
+          effectId: "effect-with-no-receipt",
+          cause: "unknown",
+          reason: "response_lost",
+          detail: "connection closed before a response",
+        },
+      ];
+      run.outcome = { type, error: { code: "run_lost" }, unresolvedEffects };
+      const material = CurrentRootMaterial.from(run);
+      const { rerender } = render(<RootRunOutcome material={material} />);
+      const details = screen.getByRole("button", { name: "Operations with unconfirmed outcomes" });
+      expect(screen.queryByText(/effect-with-no-receipt/)).toBeNull();
+      fireEvent.click(details);
+      expect(screen.getByText(/effect-with-no-receipt/).textContent).toBe(
+        JSON.stringify(unresolvedEffects, null, 2),
+      );
+      rerender(<RootRunOutcome material={material} />);
+      expect(
+        screen.getAllByRole("button", { name: "Operations with unconfirmed outcomes" }),
+      ).toHaveLength(1);
+    },
+  );
 
   it("does not append a completion-and-accounting footer after an ordinary turn", () => {
     const { container } = render(

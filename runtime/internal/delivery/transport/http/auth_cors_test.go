@@ -198,7 +198,7 @@ func TestCORSPreflight(t *testing.T) {
 	req, _ := netHTTP.NewRequest("OPTIONS", ts.URL+"/v2/rpc", nil)
 	req.Header.Set("Origin", "http://app")
 	req.Header.Set("Access-Control-Request-Method", "POST")
-	req.Header.Set("Access-Control-Request-Headers", "Authorization, Content-Type")
+	req.Header.Set("Access-Control-Request-Headers", "Authorization, Content-Type, Accept")
 	resp, err := netHTTP.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("do: %v", err)
@@ -212,6 +212,9 @@ func TestCORSPreflight(t *testing.T) {
 	}
 	if got := resp.Header.Get("Access-Control-Allow-Headers"); !strings.Contains(got, "Authorization") {
 		t.Fatalf("Allow-Headers = %q, must include Authorization", got)
+	}
+	if got := resp.Header.Get("Access-Control-Allow-Headers"); !strings.Contains(got, "Accept") {
+		t.Fatalf("Allow-Headers = %q, must include Accept for JSON and SSE clients", got)
 	}
 	if got := resp.Header.Get("Access-Control-Allow-Methods"); !strings.Contains(got, "POST") {
 		t.Fatalf("Allow-Methods = %q, must include POST", got)

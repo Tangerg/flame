@@ -15,7 +15,8 @@ import (
 // git runs one git command against the shadow GIT_DIR with cwd as the work tree
 // (workTree may be empty for repo-only operations like rev-parse). A fixed
 // identity + disabled signing keep commits independent of the user's global git
-// config.
+// config. Selected path names stay literal so glob syntax cannot expand the
+// snapshot's admitted set.
 func (s *Store) git(ctx context.Context, gitDir, workTree string, args ...string) (string, error) {
 	output, err := s.gitOutput(ctx, gitDir, workTree, args...)
 	return strings.TrimSpace(string(output)), err
@@ -27,6 +28,7 @@ func (s *Store) gitOutput(ctx context.Context, gitDir, workTree string, args ...
 		"GIT_AUTHOR_NAME=flame", "GIT_AUTHOR_EMAIL=flame@localhost",
 		"GIT_COMMITTER_NAME=flame", "GIT_COMMITTER_EMAIL=flame@localhost",
 		"GIT_CONFIG_GLOBAL=" + os.DevNull, "GIT_CONFIG_SYSTEM=" + os.DevNull,
+		"GIT_LITERAL_PATHSPECS=1",
 		"LC_ALL=C", "LANG=C",
 	}
 	if workTree != "" {

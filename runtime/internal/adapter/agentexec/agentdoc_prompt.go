@@ -25,18 +25,20 @@ type agentDocumentBlock struct {
 }
 
 func newAgentDocumentsPrompt(files []workspace.AgentDocFile, maxBytes int) (agentDocumentsPrompt, error) {
-	if len(files) == 0 || maxBytes <= 0 {
+	if len(files) == 0 {
 		return agentDocumentsPrompt{}, nil
 	}
 	if err := workspace.ValidateAgentDocumentCascade(files); err != nil {
 		return agentDocumentsPrompt{}, err
 	}
 	blocks, total := buildAgentDocumentBlocks(files)
-	selected, total, err := selectAgentDocumentBlocks(blocks, total, maxBytes)
-	if err != nil {
-		return agentDocumentsPrompt{}, err
+	if total > maxBytes {
+		return agentDocumentsPrompt{}, fmt.Errorf(
+			"%w: complete AGENTS.md cascade needs %d bytes, exceeds the %d-byte Run guidance budget; shorten the source documents",
+			workspace.ErrPromptSourceTooLarge, total, maxBytes,
+		)
 	}
-	return renderAgentDocumentBlocks(selected, total), nil
+	return renderAgentDocumentBlocks(blocks, total), nil
 }
 
 func buildAgentDocumentBlocks(files []workspace.AgentDocFile) ([]agentDocumentBlock, int) {
@@ -48,30 +50,6 @@ func buildAgentDocumentBlocks(files []workspace.AgentDocFile) ([]agentDocumentBl
 		total += len(text)
 	}
 	return blocks, total
-}
-
-func selectAgentDocumentBlocks(
-	blocks []agentDocumentBlock,
-	total int,
-	maxBytes int,
-) ([]agentDocumentBlock, int, error) {
-	start := 0
-	for start < len(blocks) && total > maxBytes {
-		total -= len(blocks[start].text)
-		if start+1 < len(blocks) {
-			total--
-		}
-		start++
-	}
-	if start == len(blocks) {
-		return nil, 0, fmt.Errorf(
-			"%w: agent document %q cannot fit the %d-byte Run guidance budget",
-			workspace.ErrPromptSourceTooLarge,
-			blocks[len(blocks)-1].path,
-			maxBytes,
-		)
-	}
-	return blocks[start:], total, nil
 }
 
 func renderAgentDocumentBlocks(blocks []agentDocumentBlock, total int) agentDocumentsPrompt {

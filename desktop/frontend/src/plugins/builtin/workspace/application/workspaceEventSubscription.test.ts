@@ -31,12 +31,41 @@ function subscriptionPorts(
     resolveWorkspaceCwd: vi.fn().mockResolvedValue({ status: "resolved", cwd: "/repo" }),
     reportResolutionError: vi.fn(),
     subscribeWorkspaceCwdInputs: vi.fn(() => vi.fn()),
+    readTargets: () => [],
+    subscribeReadTargets: () => () => {},
     loop,
     ...patch,
   };
 }
 
 describe("startWorkspaceEventSubscription", () => {
+  it("retargets mounted content paths when a file or directory panel changes", async () => {
+    let changed!: () => void;
+    let paths = ["src/first.ts"];
+    const ports = subscriptionPorts({
+      readTargets: () => [{ cwd: "/repo", paths }],
+      subscribeReadTargets: (listener) => {
+        changed = listener;
+        return () => {};
+      },
+    });
+    const stop = startWorkspaceEventSubscription(ports);
+    await tick();
+    expect(ports.loop.retarget).toHaveBeenLastCalledWith({
+      type: "workspace",
+      cwd: "/repo",
+      reads: [{ cwd: "/repo", paths: ["src/first.ts"] }],
+    });
+    paths = ["src", "src/second.ts"];
+    changed();
+    await tick();
+    expect(ports.loop.retarget).toHaveBeenLastCalledWith({
+      type: "workspace",
+      cwd: "/repo",
+      reads: [{ cwd: "/repo", paths }],
+    });
+    stop();
+  });
   it("starts immediately when the runtime advertises runtime.subscribe", () => {
     const ports = subscriptionPorts();
 

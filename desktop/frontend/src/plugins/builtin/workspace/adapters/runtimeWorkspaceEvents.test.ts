@@ -53,6 +53,60 @@ beforeEach(() => {
 });
 
 describe("runtime workspace event subscription", () => {
+  it("releases a scoped stream even before its first event is requested", async () => {
+    resolveWorkspace.mockResolvedValue({ ref: { path: "/repo" }, availability: "available" });
+    const release = vi.fn().mockResolvedValue({ done: true });
+    subscribe.mockResolvedValue({
+      events: { [Symbol.asyncIterator]: () => ({ next: vi.fn(), return: release }) },
+    });
+    const observed = await subscribeRuntimeWorkspaceEvents(
+      { type: "workspace", cwd: "/repo" },
+      new AbortController().signal,
+    );
+    await observed[Symbol.asyncIterator]().return?.();
+    expect(release).toHaveBeenCalledOnce();
+  });
+  it("observes mounted paths across workspaces and retains watch identity for Git resync", async () => {
+    resolveWorkspace.mockImplementation(async (ref: { path: string }) => ({
+      ref: { path: ref.path.replace("/alias", "/canonical") },
+      availability: "available",
+    }));
+    subscribe.mockResolvedValue({
+      events: (async function* () {
+        yield {
+          type: "resync",
+          sequence: 1,
+          topics: ["files.changed"],
+          watchIds: ["open-reads-1"],
+        };
+      })(),
+    });
+    const result = await subscribeRuntimeWorkspaceEvents(
+      {
+        type: "workspace",
+        cwd: "/alias/first",
+        reads: [
+          { cwd: "/alias/first", paths: ["src", "src/a.ts"] },
+          { cwd: "/second", paths: ["same.ts"] },
+        ],
+      },
+      new AbortController().signal,
+    );
+    expect(subscribe.mock.calls[0]?.[0].watches).toEqual([
+      {
+        watchId: "active-session",
+        workspace: { path: "/canonical/first" },
+        paths: ["src", "src/a.ts"],
+      },
+      { watchId: "open-reads-1", workspace: { path: "/second" }, paths: ["same.ts"] },
+    ]);
+    const received = [];
+    for await (const event of result) received.push(event);
+    expect(received[0]?.watchScopes).toEqual([
+      { watchId: "active-session", workspace: { path: "/canonical/first" }, cwd: "/alias/first" },
+      { watchId: "open-reads-1", workspace: { path: "/second" }, cwd: "/second" },
+    ]);
+  });
   it("uses the canonical available workspace as the file-watch scope", async () => {
     resolveWorkspace.mockResolvedValue({
       ref: { path: "/canonical/repo" },
@@ -61,9 +115,11 @@ describe("runtime workspace event subscription", () => {
     });
     const signal = new AbortController().signal;
 
-    await expect(
-      subscribeRuntimeWorkspaceEvents({ type: "workspace", cwd: "/linked/repo" }, signal),
-    ).resolves.toBe(events);
+    const observed = await subscribeRuntimeWorkspaceEvents(
+      { type: "workspace", cwd: "/linked/repo" },
+      signal,
+    );
+    expect(observed[Symbol.asyncIterator]).toBeTypeOf("function");
 
     expect(resolveWorkspace).toHaveBeenCalledWith({ path: "/linked/repo" }, signal);
     expect(subscribe).toHaveBeenCalledWith(

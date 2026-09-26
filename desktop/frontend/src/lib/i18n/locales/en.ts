@@ -352,8 +352,8 @@ export const en: Record<string, string> = {
   "providers.empty.sub": "The runtime reports no supported LLM providers.",
   "providers.utility.title": "Utility model",
   "providers.utility.desc":
-    "Model for summaries, titles, and fact extraction. Uses the main model when unset. Applies to new runs.",
-  "providers.utility.main": "Use main model",
+    "Model for summaries, titles, and fact extraction. Uses the Runtime default when unset. Changes apply to the next utility call, including in an existing run.",
+  "providers.utility.main": "Use Runtime default",
   "providers.utility.error": "Couldn't set the utility model.",
   "providers.embedding.title": "Embedding model",
   "providers.embedding.desc":
@@ -521,6 +521,9 @@ export const en: Record<string, string> = {
   "settings.connection.reset": "Reset to default",
   "settings.connection.status.checking": "Checking runtime…",
   "settings.connection.status.reconnecting": "Reconnecting…",
+  "agent.steer.accepted": "Accepted · waiting for model context",
+  "agent.steer.applied": "Entered model context",
+  "agent.steer.notApplied": "The run ended before an accepted instruction entered model context.",
   "agent.inputNotApplied": "Not yet applied",
   "agent.synchronizationIncomplete":
     "Run synchronization is incomplete. Reopen the session to retry.",
@@ -620,6 +623,7 @@ export const en: Record<string, string> = {
   "agent.runTree.status.finished": "Finished",
   "agent.runTree.status.error": "Error",
   "agent.runTree.status.canceled": "Canceled",
+  "agent.runOutcome.unresolvedEffects": "Operations with unconfirmed outcomes",
   "agent.runOutcome.canceled": "Canceled",
   "agent.steps_one": "{{count}} step",
   "agent.steps_other": "{{count}} steps",
@@ -753,7 +757,7 @@ export const en: Record<string, string> = {
     "Open or select a session to review its project memory. Switch to User for cross-project memory.",
   "agentMemory.error": "Couldn't update memory.",
   "schedules.intro":
-    "Run a saved prompt on a schedule. Each run starts a fresh session while the runtime is serving — find its output in the sidebar.",
+    "Run a saved prompt on a schedule. Each run starts a fresh session while the runtime is serving — find its output in the sidebar. Disabling or deleting stops future scheduling; already claimed runs may still start and require separate cancellation.",
   "schedules.add": "New schedule",
   "schedules.save": "Save",
   "schedules.saving": "Saving…",
@@ -765,7 +769,8 @@ export const en: Record<string, string> = {
   "schedules.edit": "Edit schedule",
   "schedules.delete": "Delete schedule",
   "schedules.delete.title": "Delete this schedule?",
-  "schedules.delete.body": '"{{title}}" and its instructions go away. This cannot be undone.',
+  "schedules.delete.body":
+    '"{{title}}" and its instructions go away. This cannot be undone. Already claimed runs may still start and require separate cancellation.',
   "schedules.delete.confirm": "Delete",
   "schedules.empty": "No schedules",
   "schedules.empty.sub":
@@ -776,7 +781,7 @@ export const en: Record<string, string> = {
   "schedules.model.default": "Runtime default",
   "schedules.reasoning.default": "Model default",
   "schedules.model.hint":
-    "Applies to future scheduled runs. Changing this does not affect a run already in progress.",
+    "Applies to future scheduling. Already claimed runs keep their accepted configuration.",
   "schedules.model.unavailable":
     "This saved model is not in the current catalog. Its selection is preserved until you change it.",
   "schedules.form.title": "Title (optional)",
@@ -930,6 +935,10 @@ export const en: Record<string, string> = {
   "rpcError.stale_segment": "That run has moved on — reload it to see where it stands.",
   "rpcError.session_busy": "Session is busy — wait for the current run to finish.",
   "rpcError.checkpoint_unavailable": "No file checkpoint for that turn — nothing was changed.",
+  "rpcError.checkpoint_conflict":
+    "Restore was refused to protect files not saved in the checkpoint. No files were changed.",
+  "rpcError.prompt_source_too_large":
+    "The instruction files exceed the size or count limit. Shorten them or use fewer files, then try again.",
   "rpcError.workspace_unavailable": "That workspace does not exist on the runtime's disk.",
   "rpcError.vcs_unavailable": "This folder isn't a git repository.",
   "rpcError.rate_limited":
@@ -1237,5 +1246,6 @@ export const en: Record<string, string> = {
   "file.change.add": "Added in the working tree",
   "file.change.mod": "Modified in the working tree",
   "file.change.del": "Deleted in the working tree",
+  "file.change.renamed": "Renamed from {{path}}",
   "file.change.below": "Contains working-tree changes",
 };

@@ -1,4 +1,4 @@
-import type { WorkspaceEventLoop } from "./workspaceEventLoop";
+import type { WorkspaceEventLoop, WorkspaceReadTarget } from "./workspaceEventLoop";
 import type { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/services";
 import { delayUntilAborted } from "@/lib/abortableDelay";
 
@@ -13,6 +13,8 @@ export interface WorkspaceEventSubscriptionPorts {
   resolveWorkspaceCwd: (signal: AbortSignal) => Promise<WorkspaceCwdResolution>;
   reportResolutionError: (error: unknown) => void;
   subscribeWorkspaceCwdInputs: (onChange: (change: WorkspaceCwdInputChange) => void) => () => void;
+  readTargets: () => readonly WorkspaceReadTarget[];
+  subscribeReadTargets: (onChange: () => void) => () => void;
   loop: WorkspaceEventLoop;
 }
 
@@ -76,9 +78,11 @@ export function startWorkspaceEventSubscription(
           if (lease !== retargetLease || attemptAbort.signal.aborted || controller.signal.aborted)
             return;
           if (resolution.status === "resolved") {
+            const reads = ports.readTargets();
             ports.loop.retarget({
               type: "workspace",
               ...(resolution.cwd ? { cwd: resolution.cwd } : {}),
+              ...(reads.length ? { reads } : {}),
             });
           } else {
             ports.loop.retarget({ type: "none" });
@@ -113,12 +117,14 @@ export function startWorkspaceEventSubscription(
   const unsubscribeConnection = ports.subscribeConnection(reconcileConnection);
   retarget("identity");
   const unsubscribeCwdInputs = ports.subscribeWorkspaceCwdInputs(retarget);
+  const unsubscribeReads = ports.subscribeReadTargets(() => retarget("projection"));
 
   return () => {
     retargetLease = {};
     resolutionAbort?.abort();
     unsubscribeConnection();
     unsubscribeCwdInputs();
+    unsubscribeReads();
     eventLoop.dispose();
     controller.abort();
   };

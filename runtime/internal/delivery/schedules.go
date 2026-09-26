@@ -51,7 +51,7 @@ func registerSchedules(registry *Registry) {
 
 	registry.command(MethodMeta{
 		Name: SchedulesRunNow, CapabilityRules: requires(protocol.FeatureSchedules),
-		Errors: []string{protocol.ErrScheduleNotFound.Error()},
+		Errors: []string{protocol.ErrScheduleNotFound.Error(), protocol.ErrPromptSourceTooLarge.Error()},
 	}, func(service interface {
 		RunScheduleNow(context.Context, protocol.RunScheduleNowRequest) (*protocol.RunScheduleNowResponse, error)
 	}, ctx context.Context, request protocol.RunScheduleNowRequest) (*protocol.RunScheduleNowResponse, error) {

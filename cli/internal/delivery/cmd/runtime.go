@@ -23,6 +23,7 @@ import (
 // Individual command implementations still accept narrower local interfaces
 // when they need only one operation.
 type Runtime interface {
+	PrepareInput(context.Context, agent.Message) ([]protocol.ContentBlock, error)
 	ListSessions(context.Context, agent.SessionQuery) (agent.SessionPage, error)
 	GetSession(context.Context, string) (agent.SessionSnapshot, error)
 	CreateSession(context.Context, agent.CreateSession) (agent.Session, error)
@@ -34,7 +35,7 @@ type Runtime interface {
 	StartRun(context.Context, agent.StartRun) (agent.SegmentStream, error)
 	ResumeRun(context.Context, agent.ResumeRun) (agent.SegmentStream, error)
 	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
-	SteerRun(context.Context, agent.SteerRun) error
+	SteerRun(context.Context, agent.SteerRun) (protocol.SteerRunResponse, error)
 	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
 	ListApprovalRules(context.Context, string) ([]protocol.ApprovalRule, error)
 	DeleteApprovalRule(context.Context, string) error

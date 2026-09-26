@@ -52,7 +52,7 @@ export class CurrentRootMaterial {
       this.status !== "finished" ||
       this.runId === null ||
       this.outcome === null ||
-      isAgentRunFailure(this.outcome)
+      (isAgentRunFailure(this.outcome) && !this.outcome.unresolvedEffects?.length)
     ) {
       return -1;
     }
