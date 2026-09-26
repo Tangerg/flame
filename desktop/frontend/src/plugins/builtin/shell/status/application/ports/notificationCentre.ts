@@ -1,6 +1,7 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
+import type { NotificationAuthorization } from "@/foundation/notificationAuthorization";
 
-export type NotificationAuthorization = "unsupported" | "default" | "granted" | "denied";
+export type { NotificationAuthorization } from "@/foundation/notificationAuthorization";
 
 export interface SystemNotification {
   id: string;

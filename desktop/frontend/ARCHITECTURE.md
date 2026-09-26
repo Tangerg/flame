@@ -28,7 +28,7 @@
 | 状态     | Zustand（多 store，无 context 链）                                |
 | 路由     | TanStack Router（route tree 动态构建）                            |
 | 数据     | TanStack React Query                                              |
-| 协议     | 自研 Flame Runtime Protocol v2（JSON-RPC 2.0，`src/rpc/`）        |
+| 协议     | 自研 Flame Runtime Protocol v2（JSON-RPC 2.0，`@flame/runtime-contract/client`）        |
 | 动画     | motion/react                                                      |
 | 桌面壳   | Wails v3 beta（Go 后端 + WebView 前端，版本钉死）                 |
 | 测试     | Vitest 4 + Testing Library + happy-dom                            |
@@ -137,16 +137,16 @@ src/
 会话用例 hook 不在 `lib/` —— 它们已经住进 agent 上下文的 `application/`（`input/chatSend`、
 `hitl/useApprovalSubmit`、`session/createSession` …）。markdown 渲染同理，住在 chat 上下文里。
 │
-├── rpc/                  Runtime Protocol boundary —— 唯一 outbound 副作用层
-│   ├── sdk.ts            createFlameClient(transport) — JSON-RPC client + typed methods
-│   ├── methods.ts        typed method 包装（runs.start / runs.resume / runs.cancel / items.list / …）
-│   ├── stream.ts         streamRunEvents —— 信封校验、代际去重与有界缓冲
-│   ├── transports/       http / memory（测试）
-│   └── client.ts / channel.ts / ids.ts / errors.ts
+├── platform/             actual client host: Wails or browser
+│   ├── host.ts           narrow native/window/bootstrap capabilities
+│   ├── clientHost.ts     selects the environment; lazy Wails import
+│   ├── desktopHost.ts    native binding validation
+│   └── browserHost.ts    same-origin bootstrap and browser downloads
 │
-├── main/                 composition root（DI）
-│   ├── container.ts      按 active endpoint/token 缓存 FlameClient；测试 setContainer 注入
-│   └── config.ts         local desktop shell URL / desktop client identity
+├── main/                 composition root
+│   ├── container.ts      owns host bootstrap and active protocol-client lifetime
+│   ├── renderer.ts       structured bootstrap/mount/connection shutdown
+│   └── runtimeProtocol.ts  surface identity and protocol capabilities
 │
 ├── styles/               globals.css（reset + 令牌 + keyframes + 机制类，唯一主样式；入口最后加载）
 │                         + markdown/overlays.css（只承载 StyleX 表达不了的后代规则）
@@ -154,43 +154,30 @@ src/
 └── test/                 测试 setup
 ```
 
-### 3.1 单向依赖与 outbound 边界
+### 3.1 Dependency and outbound boundaries
 
-Flame 大部分 UI ↔ 数据流已经通过插件系统解耦，真正需要"内外分层"的只有一处：**UI / 状态 / 插件不应直接发起 outbound 副作用**（HTTP、SSE、IPC）。这一层由 **`rpc/`（Runtime Protocol boundary）+ `main/container.ts`（composition root）** 承担。
+The reusable TypeScript protocol implementation lives beside its generated contract
+in `runtime/contract/typescript/client`. Desktop, Web, and the IDE import
+`@flame/runtime-contract/client`; there is no desktop protocol facade. The client
+owns JSON-RPC validation, HTTP/SSE, command settlement, and subscriptions. It owns
+no React state, plugin registry, Wails binding, or implicit process-global client.
 
-所有 outbound 都收敛成一个 JSON-RPC 协议客户端，但业务上下文不会直接依赖它：application 定义窄 port，adapter 在组合边界把 port 接到 `getContainer().client()`。协议 DTO 只在 adapter 或明确的 fold 反腐层出现。
+`platform/` owns actual host variation. `main/container.ts` completes the selected
+host's bootstrap before constructing the product. It caches the active protocol
+client by normalized address, in-memory token, and journal storage owner. Replacing
+that signature closes the predecessor synchronously before the successor starts
+work. Renderer shutdown joins connection teardown, without stopping Runtime.
 
-```
-        ┌────────────────────────────────────────────┐
-        │  rpc/                                        │
-        │   createFlameClient(transport)                │
-        │   JSON-RPC client + typed methods + shapes   │
-        │   transports（http / memory）+ stream 校验   │
-        │   独立层：只依赖外部库 + 自己（check-layers 强制）│
-        └────────────────────────────────────────────┘
-                          ▲ wires
-        ┌────────────────────────────────────────────┐
-        │  main/container.ts                           │
-        │   getContainer() 单例：client() / shell      │
-        │   可依赖任何东西                              │
-        └────────────────────────────────────────────┘
-                          ▲ via getContainer()
-        ┌────────────────────────────────────────────┐
-        │  builtin context adapters                     │
-        │   实现 application ports，经 getContainer()    │
-        │   接到 JSON-RPC client                         │
-        └────────────────────────────────────────────┘
-```
+Business applications continue to define narrow consumer-owned ports. Adapters
+connect those ports to the composition root and the reusable protocol client.
+Components and pages consume context public facades, stores, and selectors; they
+do not import the composition root or protocol client. Fold remains a pure
+wire-to-view projection and never depends on host or rendering infrastructure.
 
-**层依赖规则**（`scripts/check-layers.mjs` + `check-circular.mjs` 强制，alias-aware，`npm run check` 跑）：
-
-- `rpc/` 是独立层：只依赖外部库 + 自己，**禁** import `state` / `sdk` / `components` / `protocol` / `main` 任何 app 层。
-- `plugins/builtin/agent/application/fold/`（fold/viewState）可达 `rpc`（wire 类型）+ `sdk`（dispatcher seam）+ `lib`，**禁** UI / state / main。
-- `plugins/sdk` / `state` / `lib` **禁** import UI（`components` / `pages` / `builtin`）——锁住"平台/工具层不依赖它被消费的 UI"。
-- `components/` / `pages/` **禁** import `@/main`（composition root）或 `@/rpc`（协议客户端）——只经 context public facade / store selector / SDK selector 触业务。
-- **跨限界上下文只能走 `public/`**：`plugins/builtin/<ctx>/` 一旦有 `application/domain/adapters/presentation/ui/public` 任一目录即视为限界上下文；别的上下文只准 import 它的 `public/` facade，连它根目录下的松散文件也不行（`builtin/index.ts` manifest 作为插件组合根豁免）。`check-builtin-contexts.mjs` 再在这些合法的 public→public 边上查环。
-- **`settings/` 各面板的上下文形态**：统一 `ui/`（React 组件）+ `application/`（用例、读模型与 `ports/`）+ `adapters/`（gateway 实现），plugin 入口 `index.{ts,tsx}` 注册面板。只有被其他上下文消费的稳定查询才建立 `public/queries.ts`；其余面板保持叶子。
-- 业务用例依赖 application port；只有 adapter / composition root 调用 `getContainer().client().xxx(...)`。测试优先替换 port，协议 adapter 测试再用 `setContainer({ client })` / `resetContainer()`。
+The existing layer, context, publication, and circular-dependency checks enforce
+these directions. Cross-context collaboration still uses each context's `public/`
+facade. Shared protocol extraction does not move the plugin platform, stores,
+React Query, or UI into a general SDK.
 
 React Query 的 cache 与 provider lookup 是共享技术机制，留在 `lib/data/dataQuery.ts` 与 `queryClient.ts`。Session、Workspace、Approval、Provider、MCP、Hooks、Schedules、Usage 的 query key、read model 与 hook 均由所属上下文拥有；跨上下文消费必须经过该上下文的 `public/queries.ts`（或既有 public facade）。`lib/data` 不再充当全局业务模型仓库。
 
@@ -210,26 +197,36 @@ Application port 使用 `lib/ports/singletonPort.ts` 管理进程内绑定。每
 
 需要全局命令入口的 replaceable application owner 使用 `lib/publicationSlot.ts`：slot 只拥有 process-local exact object identity，先发布 successor、再同步退休 predecessor，并只允许 exact owner withdraw。它不能持有 task、cache、event、error 或任意业务状态；serialization、abort、projection repair、material generation 和 typed retired error 必须继续留在 concrete owner。Singleton port 复用同一 identity primitive，业务类不再各自复制 `static #active` lifecycle protocol。
 
-RPC mutation journal 只持久化 unresolved command identity，不持久化请求参数、renderer owner、generation、lease、heartbeat 或 settlement 状态。`durableMutationJournal.ts` 拥有当前唯一 storage codec、Runtime endpoint/namespace fencing 与 exact idempotency recovery；`mutationJournal.ts` 只用 renderer 进程内 exact object identity 决定 response/error/cleanup 是否仍有提交权。client replacement 必须先发布 successor 再同步退休 predecessor，旧结果和旧 disposer 不能清理 successor 复用的 identity。
+The shared client mutation journal persists only unresolved command identity. It
+owns strict storage encoding, Runtime namespace fencing and bounded replay.
+Each journal has one explicit client owner; constructing a different connection
+does not retire it. The composition root closes the predecessor client before
+publishing replacement effects. Closing synchronously retires that journal, so
+late responses and cleanup cannot settle a successor's reused identity. Mutation
+parameters are cloned once at command creation and every retry uses that prepared
+input. Desktop owns its storage adapter; the IDE additionally owns immutable
+prepared command records containing exact editor snapshots for restart recovery.
 
-Runtime endpoint 是 Runtime context 的应用配置：application 拥有默认值、HTTP(S)
-校验与 `applied | rejected` 结果语义，adapter 才把 consumer-owned port 接到 Host
-config/storage。`flame.builtin.runtime` 在 capability discovery 之前同步恢复 endpoint，
-`main/container.ts` 只通过 Runtime `public/endpoint` 读取 active endpoint，并按
-endpoint 与 Wails bootstrap 返回的 local token 缓存客户端。Connection 面板把稳定 rejection code 翻译为当前 locale
-文案。
-Endpoint replacement retires the previous connection, commits the new address, clears
-server-scoped projections, and immediately inspects the successor without reloading the renderer.
-The Runtime connection controller owns recovery: stream loss withdraws the current generation
-and schedules a bounded exponential retry. Successful discovery alone does not reset backoff;
-the connection must survive a full healthy polling interval. The workspace subscription reports
-failure and ends its generation instead of running a second reconnect loop.
+The Runtime context owns the active target and connection replacement. Its endpoint
+adapter restores the persisted address after host bootstrap, while credentials
+remain in memory and are valid only for that normalized address. URL parsing is
+shared with the reusable client: HTTP(S), no embedded credentials, query, or
+fragment. The browser's default is its serving origin; the Desktop default comes
+from Wails. There is no second frontend copy of the native default port.
 
-本地 token 属于 Wails DesktopHost；它不进入 Runtime Protocol，也不借 Runtime HTTP
-endpoint 建立第二套旁路 API。Desktop 不扫描或执行用户目录中的 JavaScript。
-Capability discovery application 只依赖 `RuntimeDiscovery.discoverCapabilities()`；
-adapter 调用 typed `client.runtime.discover()` 并移除 `DiscoverResponse` envelope。
-插件 unload 后迟到的 discovery result 不得重新发布 capability。
+Settings → Connection applies address or token changes inside the same connection
+replacement transaction. It retires the previous generation, commits the target,
+clears server projections, and immediately inspects the successor. Stream loss
+withdraws the generation and schedules bounded exponential reconnect. Workspace
+subscriptions report loss rather than running a competing reconnect loop.
+
+Navigation owns the workspace-selection dialog. New Session without an active
+Session opens that dialog; recent Session workspaces remain selectable through the
+existing project selector. The directory is explicitly on the connected Runtime
+and `sessions.create` validates it. Native browsing and filesystem Open/Reveal
+require the exact local endpoint handed over by Wails. A target replacement or
+plugin retirement clears the dialog and prevents late native results from touching
+a successor selection. Runtime authorization failure leaves Settings accessible.
 
 Workspace event context 是 `runtime.subscribe` 的唯一产品 consumer：global topics 在 active
 Session 工作区暂不可解析时仍保持在线，file watch 则 fail closed 为 `none`。Session adapter
@@ -243,7 +240,7 @@ public facade，不互相泄露抽象。
 
 1. 在 Runtime Contract Registry 声明 method、shape、error、capability 与 wire
    constraint，并从同一来源生成 schema、OpenRPC、API Reference 与 Desktop wire。
-2. `rpc/methods.ts` 只补不能由生成 metadata 表达的 typed transport 编排；禁止手写第二份
+2. `runtime/contract/typescript/client/methods.ts` 只补不能由生成 metadata 表达的 typed transport 编排；禁止手写第二份
    wire union，也禁止编辑 `wire.*.generated.ts`。
 3. 所属 bounded context 在 application 定义最小 consumer-owned port / use case，
    adapter 才通过 `getContainer().client().foo(...)` 实现它。
@@ -285,16 +282,12 @@ Base UI / browser-native semantics
 渲染原生交互标签或手写交互 role。测试文件可以直接渲染 DOM 以断言行为，但 production
 代码没有白名单和兼容出口。
 
-### 3.3 关于 monorepo（暂不拆）
+### 3.3 Reuse with concrete consumers
 
-`rpc/` `main/` `plugins/` 等完全可以拆成独立 workspace packages。**暂不拆**——package 边界的真正回报是当有第二个消费方时。**触发条件**任一命中才启动：
-
-1. 出现第二个 app（CLI / mobile / 嵌入式 web）。
-2. `sample-plugins/` 里有 ≥ 2 个非空 demo，且至少一个需要外部 publish。
-3. 团队扩到 3+ 人，需要按包做 CODEOWNERS。
-4. 任一 `packages/` 候选超过 ~200 文件且有 5+ 外部依赖。
-
-在那之前，TypeScript path alias + `check-layers` / `check-circular` 已给到等价的边界约束。
+Only the protocol client is extracted beside the Runtime contract because Desktop,
+Web, and the IDE consume it. The React workbench runs directly in both Wails and a
+browser. The repository keeps its existing top-level modules; shared packages are
+not a reason to rebuild the directory layout or duplicate business state.
 
 ---
 
@@ -421,7 +414,7 @@ manifest 和调用方，不留兼容 loader。
 #### 形状：Session projection + normalized Run tree
 
 ```
-FlameClient（rpc/）—— runs.start / runs.resume 流式返回 RunEvent
+FlameClient（shared protocol client）—— runs.start / runs.resume 流式返回 RunEvent
    │   useAgentSession → AgentRunPump：for await (event of stream.events)
    ▼
 useAgentStore.applyRunEvents(sessionId, batch)  ◄── rAF 批处理，~1 commit/帧
@@ -459,7 +452,7 @@ owner 冲突、`item.completed` 仍是 running 等不变量失败，fold fail cl
 不改写状态。每个注册 handler 独立隔离，错误进入 plugin diagnostics。
 
 `fold` 是 wire → published view language 的反腐层：协议 DTO 只在 fold / adapter
-边界出现，`AgentSessionView` 本身不持有 `@/rpc` 类型。连续 assistant-side Item
+边界出现，`AgentSessionView` 本身不持有 `@flame/runtime-contract/client` 类型。连续 assistant-side Item
 折成一个 UI turn，但 cursor 按 RunID 保存，因此 child 与 root 事件即使交错也不会拼进同一气泡。
 
 #### 对外 Run API 按真实 scope 命名
@@ -568,6 +561,28 @@ asserting success, failure, or rollback of those operations.
 
 每个 store 各自用 Zustand `persist` + 自己的 `version`；**schema 变了就 bump version 丢旧数据，不写 migration**（开发期无历史包袱）。
 
+Session references, composer drafts, and workspace dock material are partitioned by
+the canonical Runtime endpoint. Their stores defer hydration until the Runtime
+plugin restores the active address. Replacing that address saves the outgoing
+in-memory authoring state and restores the incoming bucket before Session lifecycle
+callbacks can prune it. The URL still owns the selected Session, main view, dock,
+and subagent; target replacement clears those selections through the Navigator.
+Abandoned-draft cleanup retains the target ownership of the previous selection,
+including delayed navigation, so it cannot delete a draft on the successor server.
+Pending image reads lose their staging ownership on an address change. Refreshing
+credentials or restarting the Runtime at the same address preserves local drafts.
+In-process switching retains attachments and input history; renderer restarts
+restore only the existing durable codecs, including composer text but not images.
+
+This is an intentional storage break: `agentSessionStore` advances from version 7
+to 8, `composerStore` from 2 to 3, and `contextDockStore` from 2 to 3. The old
+unscoped `flame.agent-session`, `flame.composer`, and `flame.context-dock` entries
+are discarded on first activation because they cannot establish server ownership.
+Previously saved local UI drafts, open Session references, and dock state in those
+entries are not migrated. Runtime databases, conversation history, and server-side
+Sessions are neither migrated nor deleted by this local storage change. Endpoint
+credentials remain in memory and never enter these storage keys or payloads.
+
 ---
 
 ### 5.4 主题系统（IDE 风格的"主题即插件"）
@@ -593,7 +608,7 @@ helper 自动补 shadow ladder + CTA defaults + `ctx.contribute(THEME, …)` 注
 
 - **安装时机**：独立 `observability` 插件**动态导入** `setup.ts` 并 always-on 安装——重 SDK 进懒 chunk、不碰首屏；trace context 传播又始终在线。
 - **可切换 exporter**（同后端）：本地有界内存 sink（dev 可见，`stores.ts`）始终在；配了 `otel.endpoint` config 才追加 OTLP（prod 切换，懒导入 + 批处理）。
-- **三信号**：①Traces——`tracing.ts` 给每个 run 开 span（`useAgentSession`），`rpc/transports/http.ts` 给每个 RPC 开 CLIENT span 并把 `traceparent` 注入 header（接上后端已有 trace，§6.2：trace 元数据走 header 不进 body）。**粗粒度**——绝不按 StreamEvent/token 开 span。②Metrics——`lib/metrics.ts` 的 histogram/counter。③Logs——`logBridge.ts` 把 `host.log.*` 也发成 OTel LogRecord（按 active span 关联）。
+- **三信号**：①Traces——`tracing.ts` 给每个 run 开 span（`useAgentSession`），`runtime/contract/typescript/client/transports/http.ts` 给每个 RPC 开 CLIENT span 并把 `traceparent` 注入 header（接上后端已有 trace，§6.2：trace 元数据走 header 不进 body）。**粗粒度**——绝不按 StreamEvent/token 开 span。②Metrics——`lib/metrics.ts` 的 histogram/counter。③Logs——`logBridge.ts` 把 `host.log.*` 也发成 OTel LogRecord（按 active span 关联）。
 - **性能/存储**：本地 sink 是**内存有界环形缓冲**（最新 N，非 localStorage/IndexedDB——高频遥测不该落前端，持久化交给 OTLP→collector），sink 批量刷新（一波一次 store commit）；Diagnostics view 三页（traces/metrics/logs）的 traces/logs 用 `@tanstack/react-virtual` 虚拟滚动。
 
 ---
@@ -741,9 +756,9 @@ Runtime fold 产生的 closed content-block union（text/image/reasoning/tool/ap
 - **store 是单 Zustand instance**——多 selector 订阅，不要把 store 包进 context。
 - **Agent projection 只有一个作者**——live fold 与 durable snapshot 投影共享规则；
   render 不回写 store，跨 context 只调用 Agent `public/` command/read model。
-- **components 不直连后端**——只经 context public facade / store selector / SDK selector，**禁** import `@/main` / `@/rpc`（`check:layers` 强制）。
+- **components 不直连后端**——只经 context public facade / store selector / SDK selector，**禁** import `@/main` / `@flame/runtime-contract/client`（`check:layers` 强制）。
 - **插件资源归结构化 lifetime**——setup 中用 `ctx.cleanup`，composition root 只停止自己持有的 exact Host generation。
-- **协议是唯一 outbound 边界**——不在 UI/store 里直接 `fetch` / 开 SSE / 调 IPC，都走 `rpc/`。
+- Runtime I/O uses the shared protocol client. Native I/O uses `platform/`. UI and stores do not call HTTP, SSE, or Wails directly.
 - **交互语义只向外组合**——Base UI / 原生标签只在 primitives；业务 UI 只用 atoms /
   agent primitives，复合内容用 `Pressable` 而不是反向撤销 `Button` 样式。
 
@@ -819,7 +834,7 @@ Runtime fold 产生的 closed content-block union（text/image/reasoning/tool/ap
   `hitl/useApprovalSubmit`、`session/createSession` …），由 layer-guard 守着。触发条件当时写的是
   "用例 hook 显著增多"，后来确实增多了。
 - **MessageStream 虚拟化**：长会话（1000+ 消息）目前无人抱怨。**触发条件**：实测 > 500 消息卡顿时引入 `@tanstack/react-virtual`。
-- **monorepo packages**：见 §3.2 的 4 个触发条件，目前一个都没命中。
+- Additional reusable packages require a concrete second consumer and an invariant or lifecycle to own; the protocol client already has those consumers.
 
 ### 12.3 反向不变量（已知错的方向，别再提）
 

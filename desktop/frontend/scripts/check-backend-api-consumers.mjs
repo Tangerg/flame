@@ -5,8 +5,8 @@ import { API, SymbolFlags, TypeFlags } from "typescript/unstable/sync";
 import * as ts from "typescript/unstable/ast";
 
 const ROOT = process.cwd();
-const METHODS_PATH = resolve(ROOT, "src/rpc/methods.ts");
-const SIDECAR_PATH = resolve(ROOT, "src/rpc/sidecar.ts");
+const METHODS_PATH = resolve(ROOT, "../../runtime/contract/typescript/client/methods.ts");
+const SIDECAR_PATH = resolve(ROOT, "../../runtime/contract/typescript/client/sidecar.ts");
 const MANIFEST_PATH = resolve(ROOT, "../../runtime/contract/manifest.json");
 const EVENT_POLICY_PATH = resolve(
   ROOT,

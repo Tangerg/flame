@@ -1,66 +1,68 @@
 import { z } from "zod";
-import { configuredRuntimeEndpoint, runtimeEndpointConfiguration } from "./ports/runtimeEndpoint";
-
-export const DEFAULT_RUNTIME_ENDPOINT = "http://127.0.0.1:17171";
+import { normalizeRuntimeEndpoint } from "@flame/runtime-contract/client/endpoint";
+import {
+  configuredRuntimeEndpoint,
+  runtimeEndpointConfiguration,
+  type RuntimeEndpointTarget,
+} from "./ports/runtimeEndpoint";
 
 const UrlSchema = z.url();
+const TokenSchema = z.string().regex(/^[\x21-\x7e]*$/);
 
-export type RuntimeEndpointRejection = "invalid_url" | "unsupported_scheme";
+export type RuntimeEndpointRejection = "invalid_url" | "unsupported_scheme" | "invalid_token";
 
 export type RuntimeEndpointChange =
-  | {
-      kind: "applied";
-      endpoint: string;
-      changed: boolean;
-    }
-  | {
-      kind: "rejected";
-      input: string;
-      reason: RuntimeEndpointRejection;
-    };
+  | { kind: "applied"; endpoint: string; changed: boolean }
+  | { kind: "rejected"; input: string; reason: RuntimeEndpointRejection };
 
-function acceptedEndpoint(input: string): string | null {
-  const result = UrlSchema.safeParse(input);
-  if (!result.success) return null;
-  const protocol = new URL(result.data).protocol;
-  return protocol === "http:" || protocol === "https:" ? result.data : null;
+export function configuredRuntimeTarget(): RuntimeEndpointTarget | null {
+  return configuredRuntimeEndpoint()?.read() ?? null;
 }
 
 export function currentRuntimeEndpoint(): string {
-  const configured = configuredRuntimeEndpoint()?.read()?.trim();
-  if (!configured) return DEFAULT_RUNTIME_ENDPOINT;
-  return acceptedEndpoint(configured) ?? DEFAULT_RUNTIME_ENDPOINT;
+  return runtimeEndpointConfiguration().read().endpoint;
 }
 
-export function applyRuntimeEndpoint(input: string): RuntimeEndpointChange {
+export function hasRuntimeAccessToken(): boolean {
+  return Boolean(runtimeEndpointConfiguration().read().localToken);
+}
+
+export function defaultRuntimeEndpoint(): string {
+  return runtimeEndpointConfiguration().defaultTarget().endpoint;
+}
+
+function replaceTarget(target: RuntimeEndpointTarget): RuntimeEndpointChange {
   const configuration = runtimeEndpointConfiguration();
-  const current = currentRuntimeEndpoint();
-  const trimmed = input.trim();
-  if (!trimmed) {
-    const changed = current !== DEFAULT_RUNTIME_ENDPOINT;
-    if (changed) configuration.replace(DEFAULT_RUNTIME_ENDPOINT);
-    return {
-      kind: "applied",
-      endpoint: DEFAULT_RUNTIME_ENDPOINT,
-      changed,
-    };
-  }
+  const current = configuration.read();
+  const changed = current.endpoint !== target.endpoint || current.localToken !== target.localToken;
+  if (changed) configuration.replace(target);
+  return { kind: "applied", endpoint: target.endpoint, changed };
+}
 
+export function applyRuntimeEndpoint(input: string, localToken?: string): RuntimeEndpointChange {
+  const configuration = runtimeEndpointConfiguration();
+  const trimmed = input.trim() || configuration.defaultTarget().endpoint;
+  if (localToken !== undefined && !TokenSchema.safeParse(localToken.trim()).success) {
+    return { kind: "rejected", input, reason: "invalid_token" };
+  }
   const parsed = UrlSchema.safeParse(trimmed);
-  if (!parsed.success) {
-    return { kind: "rejected", input, reason: "invalid_url" };
-  }
-
+  if (!parsed.success) return { kind: "rejected", input, reason: "invalid_url" };
   const protocol = new URL(parsed.data).protocol;
   if (protocol !== "http:" && protocol !== "https:") {
     return { kind: "rejected", input, reason: "unsupported_scheme" };
   }
-
-  const changed = current !== parsed.data;
-  if (changed) configuration.replace(parsed.data);
-  return { kind: "applied", endpoint: parsed.data, changed };
+  const endpoint = normalizeRuntimeEndpoint(trimmed);
+  if (!endpoint) return { kind: "rejected", input, reason: "invalid_url" };
+  const current = configuration.read();
+  const token =
+    localToken === undefined
+      ? current.endpoint === endpoint
+        ? current.localToken
+        : undefined
+      : localToken.trim() || undefined;
+  return replaceTarget({ endpoint, localToken: token });
 }
 
 export function resetRuntimeEndpoint(): RuntimeEndpointChange {
-  return applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT);
+  return replaceTarget(runtimeEndpointConfiguration().defaultTarget());
 }

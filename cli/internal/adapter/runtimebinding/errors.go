@@ -92,11 +92,16 @@ func classifyError(err error) error {
 		{protocol.ErrInvalidProtocolVersion, agent.ErrIncompatibleRuntime},
 		{protocol.ErrVcsUnavailable, workspace.ErrVersionControlUnavailable},
 		{flameruntime.ErrClosed, agent.ErrDisconnected},
+		{flameruntime.ErrDisconnected, agent.ErrDisconnected},
+		{flameruntime.ErrInvalidResponse, agent.ErrIncompatibleRuntime},
 	} {
 		if errors.Is(err, mapping.source) {
 			kind = mapping.target
 			break
 		}
+	}
+	if errors.Is(err, flameruntime.ErrAcknowledgementUnknown) {
+		kind = errors.Join(kind, agent.ErrCommandOutcomeUnknown)
 	}
 	var problem *protocol.ProblemData
 	if source, ok := errors.AsType[protocol.ProblemError](err); ok {

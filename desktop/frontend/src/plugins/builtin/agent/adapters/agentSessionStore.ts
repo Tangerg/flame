@@ -2,7 +2,7 @@ import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { disposeOnHmr } from "@/lib/hmr";
-import { discardOlderVersions } from "@/lib/persistedStore";
+import { discardOlderVersions, ScopedPersistence } from "@/lib/persistedStore";
 import { openSession, pruneDraftSessions } from "../application/session/sessionSelectionModel";
 
 const sessionPersistSchema = z.object({
@@ -30,13 +30,21 @@ interface AgentSessionActions {
   graduateDraft: (id: string) => void;
 }
 
+const persistence = new ScopedPersistence<AgentSessionState>("flame.agent-session");
+
+function emptySessionState(): AgentSessionState {
+  return {
+    openSessionIds: [],
+    lastSessionId: "",
+    draftSessionIds: new Set<string>(),
+    freshDraftSessionIds: new Set<string>(),
+  };
+}
+
 export const useAgentSessionStore = create<AgentSessionState & AgentSessionActions>()(
   persist(
     (set, get) => ({
-      openSessionIds: [],
-      lastSessionId: "",
-      draftSessionIds: new Set<string>(),
-      freshDraftSessionIds: new Set<string>(),
+      ...emptySessionState(),
 
       holdOpen: (id) => set({ openSessionIds: openSession(get().openSessionIds, id) }),
       release: (id) =>
@@ -60,26 +68,31 @@ export const useAgentSessionStore = create<AgentSessionState & AgentSessionActio
     }),
     {
       name: "flame.agent-session",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => persistence.storage),
+      skipHydration: true,
       partialize: (s) => ({
         openSessionIds: s.openSessionIds,
         lastSessionId: s.lastSessionId,
         draftSessionIds: [...s.draftSessionIds],
       }),
-      version: 7,
+      version: 8,
       migrate: discardOlderVersions,
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) useAgentSessionStore.setState(emptySessionState());
+      },
       merge: (persisted, current) => {
-        if (persisted === undefined) return current;
+        const defaults = { ...current, ...emptySessionState() };
+        if (persisted === undefined) return defaults;
         const parsed = sessionPersistSchema.safeParse(persisted);
         if (!parsed.success) {
           console.warn(
             "[agentSessionStore] discarding corrupted flame.agent-session:",
             parsed.error.issues,
           );
-          return current;
+          return defaults;
         }
         return {
-          ...current,
+          ...defaults,
           ...parsed.data,
           draftSessionIds: new Set(parsed.data.draftSessionIds),
         };
@@ -87,6 +100,10 @@ export const useAgentSessionStore = create<AgentSessionState & AgentSessionActio
     },
   ),
 );
+
+export function activateAgentSessionStorage(endpoint: string): boolean {
+  return persistence.activate(endpoint, useAgentSessionStore);
+}
 
 const unsubPruneSessionRefs = useAgentSessionStore.subscribe((state, prev) => {
   if (state.openSessionIds === prev.openSessionIds) return;

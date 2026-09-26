@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/Tangerg/oolong/components/headless"
@@ -55,6 +56,13 @@ type Config struct {
 	Host             program.Host
 	Settings         *settings.Config
 	StateDirectory   string
+	// LocalDirectory fixes client-side authoring to this absolute directory.
+	// Runtime workspace references then remain opaque to this client.
+	// When empty, an embedded Runtime's Session workspace is also local.
+	LocalDirectory string
+	// DetachOnExit leaves shared Runtime execution alive when the terminal exits.
+	// Explicit cancellation still owns its acknowledgement and settlement.
+	DetachOnExit bool
 }
 
 // Run opens and owns the terminal interface until the user leaves.
@@ -106,6 +114,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 				options:     prepared.options, keyBindings: prepared.keyBindings, queue: queue,
 				workbench: prepared.workbench, initialDraft: prepared.draft, editor: prepared.editor,
 				recoveredSteers: prepared.recoveryIssues.receipts,
+				localDirectory:  cfg.LocalDirectory, detachOnExit: cfg.DetachOnExit,
 			})
 			if prepared.rollbackRecovery != nil {
 				active.reportSessionRollbackRecovery(*prepared.rollbackRecovery)
@@ -201,6 +210,9 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 }
 
 func validatedSessionConfig(cfg Config) (*runtimebinding.Profile, settings.Config, keyBindings, error) {
+	if cfg.LocalDirectory != "" && !filepath.IsAbs(cfg.LocalDirectory) {
+		return nil, settings.Config{}, keyBindings{}, errors.New("session local directory is not absolute")
+	}
 	var profile *runtimebinding.Profile
 	if cfg.RuntimeProfile != nil {
 		value := *cfg.RuntimeProfile
@@ -272,7 +284,7 @@ func openPreparedSession(
 	if activateSessionStateErr := authoring.ActivateSessionState(opened.Session.ID); activateSessionStateErr != nil {
 		return preparedSession{}, fmt.Errorf("activate session authoring state: %w", activateSessionStateErr)
 	}
-	attachments, err := attachment.New(opened.Session.Workspace.Path)
+	attachments, err := attachment.New(authoringDirectory(cfg.LocalDirectory, opened.Session.Workspace.Path))
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("session attachments: %w", err)
 	}
@@ -299,6 +311,13 @@ func openPreparedSession(
 		workbench: authoring, draft: activation.Draft, editor: editor,
 		rollbackRecovery: activation.Rollback,
 	}, nil
+}
+
+func authoringDirectory(localDirectory, workspace string) string {
+	if localDirectory != "" {
+		return localDirectory
+	}
+	return workspace
 }
 
 func commandReplayPolicy(profile *runtimebinding.Profile) mutation.ReplayPolicy {

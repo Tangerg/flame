@@ -1,5 +1,10 @@
-import type { FlameClient } from "@/rpc";
-import { asRunId, asSegmentId, RpcConnectionError, RpcProtocolError } from "@/rpc";
+import type { FlameClient } from "@flame/runtime-contract/client";
+import {
+  asRunId,
+  asSegmentId,
+  RpcConnectionError,
+  RpcProtocolError,
+} from "@flame/runtime-contract/client";
 import { agentRuntime } from "../application/ports/runtimeGateway";
 import type { RunStreamReattachment, RunStreamPosition } from "./agentRunPump";
 import { retireRunStream, settleRunStreamOpening } from "./runStreamOpening";

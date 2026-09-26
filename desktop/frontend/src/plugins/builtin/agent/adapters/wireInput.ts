@@ -1,4 +1,4 @@
-import type { ContentBlock } from "@/rpc";
+import type { ContentBlock } from "@flame/runtime-contract/client";
 import type { AgentInput } from "../domain/input";
 
 export function agentInputToContentBlocks(input: AgentInput): ContentBlock[] {

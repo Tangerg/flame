@@ -1,4 +1,4 @@
-import { isErrorType } from "@/rpc";
+import { isErrorType } from "@flame/runtime-contract/client";
 import { configureWorkspaceErrorClassifier } from "../application/ports/workspaceErrorClassifier";
 import type { WorkspaceErrorClassifier } from "../application/ports/workspaceErrorClassifier";
 

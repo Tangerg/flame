@@ -6,9 +6,9 @@ import { queryClient } from "@/lib/queryClient";
 import { resetContainer, setContainer } from "@/main/container";
 import { useWorkspaceFileChanges } from "@/plugins/builtin/workspace/public/queries";
 import type { Disposable } from "@/plugins/sdk";
-import { createFlameClient } from "@/rpc";
-import { createMemoryTransport } from "@/rpc/transports/memory";
-import { respondSuccess } from "@/rpc/transports/memory.testkit";
+import { createFlameClient } from "@flame/runtime-contract/client";
+import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
+import { respondSuccess } from "@flame/runtime-contract/client/transports/memory.testkit";
 import { registerDefaultDataProviders } from "./runtimeDataProviders";
 import { contributeForTest } from "@/plugins/sdk/testKernel";
 

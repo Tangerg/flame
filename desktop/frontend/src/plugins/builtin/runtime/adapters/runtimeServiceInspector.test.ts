@@ -6,7 +6,7 @@ import {
   type DiscoverResponse,
   type FlameClient,
   type SidecarClient,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 import { runtimeServiceInspector } from "./runtimeServiceInspector";
 
 const discovery: DiscoverResponse = {

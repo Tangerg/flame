@@ -9,6 +9,6 @@ import (
 
 // ListAgentDocs returns the unique agent instruction-document cascade in prompt
 // render order.
-func (r *Runtime) ListAgentDocs(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.AgentDoc], error) {
+func (r *binding) ListAgentDocs(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.AgentDoc], error) {
 	return r.invoke[protocol.WorkspaceQuery, *protocol.Page[protocol.AgentDoc]](ctx, delivery.AgentDocsList, request, callOptions(options))
 }

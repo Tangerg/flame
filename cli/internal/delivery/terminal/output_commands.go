@@ -56,7 +56,8 @@ func (a *app) exportSession(argument string) error {
 	if err != nil {
 		return err
 	}
-	sessionID, workspace := a.session.current.ID, a.session.current.Workspace.Path
+	sessionID := a.session.current.ID
+	workspace := authoringDirectory(a.localDirectory, a.session.current.Workspace.Path)
 	title := a.session.current.Title
 	started := a.runApplicationOperation(sessionOutputOperation, false,
 		func(ctx context.Context) (sessionOutputResult, error) {

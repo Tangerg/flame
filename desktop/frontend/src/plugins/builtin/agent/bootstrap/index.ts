@@ -1,5 +1,5 @@
 import { definePlugin } from "@/plugins/sdk";
-import { installAbandonedDraftCleanup } from "../adapters/abandonedDraftCleanup";
+import { installAgentSessionScope } from "../adapters/agentSessionScope";
 import { installAgentDefaultSessionPort } from "../adapters/agentDefaultSessionPort";
 import { installAgentRuntimeGateway } from "../adapters/agentRuntimeGateway";
 import { installAgentStatePorts } from "../adapters/agentStatePorts";
@@ -11,11 +11,16 @@ import {
   subscribeAgentSessionLifecycle,
 } from "@/plugins/builtin/agent/public/session";
 import { AGENT_SESSIONS } from "@/plugins/builtin/agent/public/services";
-import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
+import {
+  RUNTIME_SERVER_SCOPE,
+  RUNTIME_STREAM,
+  followRuntimeGeneration,
+} from "@/plugins/builtin/runtime/public/services";
+import { currentRuntimeEndpoint } from "@/plugins/builtin/runtime/public/endpoint";
 
 export default definePlugin({
   name: "flame.builtin.agent-bootstrap",
-  requires: { runtime: RUNTIME_STREAM },
+  requires: { runtime: RUNTIME_STREAM, scope: RUNTIME_SERVER_SCOPE },
   provides: { sessions: AGENT_SESSIONS },
   setup(ctx) {
     const disposeState = installAgentStatePorts();
@@ -25,9 +30,9 @@ export default definePlugin({
       runtimeGateway.replaceRuntimeGeneration(),
     );
     const disposeInterruptResponses = installInterruptResponseCoordinator();
-    const disposeDraftCleanup = installAbandonedDraftCleanup();
+    const disposeSessionScope = installAgentSessionScope(ctx.scope, currentRuntimeEndpoint);
     ctx.cleanup(() => {
-      disposeDraftCleanup();
+      disposeSessionScope();
       disposeInterruptResponses();
       unsubscribeRuntime();
       runtimeGateway.dispose();

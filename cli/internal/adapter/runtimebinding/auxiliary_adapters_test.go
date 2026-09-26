@@ -213,12 +213,15 @@ func TestHookAndFeedbackAdaptersPreserveGovernanceAndTargeting(t *testing.T) {
 	}
 }
 
-func TestHookAdapterRejectsCatalogForAnotherProject(t *testing.T) {
-	workspace := t.TempDir()
-	hooks := &hookBindingStub{t: t, workspace: workspace, result: &protocol.HooksListResult{ProjectRoot: t.TempDir()}}
+func TestHookAdapterPreservesRuntimeFilesystemIdentity(t *testing.T) {
+	workspace := `C:\work\project\src`
+	project := `C:\work\project`
+	hooks := &hookBindingStub{t: t, workspace: workspace, result: &protocol.HooksListResult{ProjectRoot: project}}
 	adapter := &Hooks{runtime: &Connection{hooks: hooks, meta: requestMeta("test")}}
-	_, err := adapter.Catalog(t.Context(), workspace)
-	requireRuntimeContractViolation(t, err)
+	catalog, err := adapter.Catalog(t.Context(), workspace)
+	if err != nil || catalog.ProjectRoot != project {
+		t.Fatalf("remote hooks = %+v, %v", catalog, err)
+	}
 }
 
 type feedbackBindingStub struct {

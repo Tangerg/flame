@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { t } from "@/lib/i18n";
 import {
   selectAgentSession,
+  createSession,
+  getActiveSessionId,
   useActiveSessionId,
   useActiveSessionWorkspace,
   useCreateSession,
@@ -13,7 +14,6 @@ import {
 import { focusComposer } from "@/plugins/builtin/chat/composer/public/focus";
 import { showWorkspaceDock } from "@/plugins/builtin/workspace/public/navigation";
 import { openSettingsView } from "@/plugins/builtin/workspace/public/deeplinks";
-import { notifyError } from "@/plugins/sdk";
 import {
   runtimeCommandsAvailable,
   useRuntimeCommandsAvailable,
@@ -35,29 +35,15 @@ export interface WorkIndexActions {
   openSettings: () => void;
 }
 
-let pendingFolderSession: Promise<void> | null = null;
-
-function reportDirectorySelectionError(error: unknown): void {
-  notifyError(t("session.error.chooseWorkingDirectory"), {
-    description: error instanceof Error ? error.message : undefined,
-    source: "session",
+export function createNewSession(): void {
+  if (!runtimeCommandsAvailable()) return;
+  if (!getActiveSessionId()) {
+    workingDirectoryPicker().open();
+    return;
+  }
+  void createSession().then((sessionId) => {
+    if (sessionId) focusComposer();
   });
-}
-
-function createSessionInChosenFolder(create: ReturnType<typeof useCreateSession>): Promise<void> {
-  if (!runtimeCommandsAvailable()) return Promise.resolve();
-  if (pendingFolderSession) return pendingFolderSession;
-  const pending = (async () => {
-    const cwd = await workingDirectoryPicker().choose();
-    if (!cwd || !runtimeCommandsAvailable()) return;
-    if (await create({ cwd })) focusComposer();
-  })()
-    .catch(reportDirectorySelectionError)
-    .finally(() => {
-      if (pendingFolderSession === pending) pendingFolderSession = null;
-    });
-  pendingFolderSession = pending;
-  return pending;
 }
 
 export function useWorkIndexActions(): WorkIndexActions {
@@ -80,19 +66,12 @@ export function useWorkIndexActions(): WorkIndexActions {
           (activeWorkspaceStatus === "ready" && Boolean(activeCwd && activeCwd.trim()))),
       canCreateSessionInFolder: runtimeAvailable,
       createSession: () => {
-        if (!runtimeCommandsAvailable()) return;
-        if (!activeSessionId) {
-          focusComposer();
-          return;
-        }
-        if (activeWorkspaceStatus !== "ready" || !activeCwd?.trim()) return;
-        void create({ cwd: activeCwd, reuseFreshDraft: true }).then((sessionId) => {
-          if (sessionId) focusComposer();
-        });
+        if (activeSessionId && activeWorkspaceStatus !== "ready") return;
+        createNewSession();
       },
       chooseSessionFolder: () => {
         if (!runtimeCommandsAvailable()) return;
-        void createSessionInChosenFolder(create);
+        workingDirectoryPicker().open();
       },
       startSessionInFolder: (cwd) => {
         if (!runtimeCommandsAvailable()) return;

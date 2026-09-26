@@ -44,7 +44,7 @@ import {
 import type { DataProviderSpec, Contributor } from "@/plugins/sdk";
 import { getContainer } from "@/main/container";
 import { DATA_PROVIDER } from "@/plugins/sdk/kernelPoints";
-import { asSessionId, type FlameClient } from "@/rpc";
+import { asSessionId, type FlameClient } from "@flame/runtime-contract/client";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import {
   toWorkspaceFileChangeSummary,

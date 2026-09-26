@@ -4,7 +4,7 @@ import {
   RpcTransportError,
   type MutationAttemptOptions,
   type MutationPromise,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 
 afterEach(() => vi.useRealTimers());
 

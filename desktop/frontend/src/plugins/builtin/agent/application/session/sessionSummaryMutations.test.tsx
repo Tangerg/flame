@@ -6,7 +6,7 @@ import { useToggleFavorite } from "./favoriteSession";
 import { useRenameSession } from "./renameSession";
 import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "./sessionQueries";
 import { setContainer } from "@/main/container";
-import type { FlameClient } from "@/rpc";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { installAgentRuntimeGateway } from "../../adapters/agentRuntimeGateway";
 
 let restoreRuntime: (() => void) | undefined;

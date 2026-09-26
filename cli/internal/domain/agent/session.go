@@ -3,7 +3,6 @@ package agent
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -94,8 +93,8 @@ type SessionQuery struct {
 }
 
 // Normalize returns one exact session-catalog query. Search text and workspace
-// input are presentation values; a non-empty workspace is an exact absolute
-// identity because the Runtime binds it into the authoritative cursor query.
+// input are presentation values; Runtime owns workspace path interpretation
+// and binds the exact reference into the authoritative cursor query.
 func (s SessionQuery) Normalize() (SessionQuery, error) {
 	if _, err := s.PageSize.Rows(); err != nil {
 		return SessionQuery{}, fmt.Errorf("session query: %w", err)
@@ -113,9 +112,6 @@ func (s SessionQuery) Normalize() (SessionQuery, error) {
 	s.Workspace = strings.TrimSpace(s.Workspace)
 	if err := (workspace.ResolveRequest{Path: s.Workspace}).Validate(); err != nil {
 		return SessionQuery{}, fmt.Errorf("session query: %w", err)
-	}
-	if s.Workspace != "" && filepath.Clean(s.Workspace) != s.Workspace {
-		return SessionQuery{}, errors.New("session query: workspace path is not canonical")
 	}
 	return s, nil
 }

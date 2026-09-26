@@ -71,7 +71,7 @@ export default defineConfig({
           // The Wails runtime, which has to stay OFF the startup path: importing it has
           // side effects — it installs listeners and starts talking to a host — and this
           // same bundle runs in a plain browser and in the visual fixtures, where there
-          // is no host. `desktopHost.ts` imports it dynamically for exactly that reason,
+          // is no host. `platform/clientHost.ts` imports it dynamically for exactly that reason,
           // and naming its chunk is what makes the split reliable instead of incidental:
           // unnamed, it is a lone module Rolldown may fold into a big neighbour, which is
           // how the entry acquired a monolith twice already.

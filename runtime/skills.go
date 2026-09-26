@@ -8,41 +8,41 @@ import (
 )
 
 // ListDiscoveredSkills returns precedence-resolved Skills ordered by name.
-func (r *Runtime) ListDiscoveredSkills(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.SkillDiscovery, error) {
+func (r *binding) ListDiscoveredSkills(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.SkillDiscovery, error) {
 	return r.invoke[protocol.WorkspaceQuery, *protocol.SkillDiscovery](ctx, delivery.SkillsDiscoveredList, request, callOptions(options))
 }
 
 // ListManagedSkills returns user-scope Skills ordered by lifecycle and name.
-func (r *Runtime) ListManagedSkills(ctx context.Context, options CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
+func (r *binding) ListManagedSkills(ctx context.Context, options CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.ManagedSkill]](ctx, delivery.SkillsLibraryList, struct{}{}, callOptions(options))
 }
 
 // ArchiveSkill removes a managed Skill from active discovery.
-func (r *Runtime) ArchiveSkill(ctx context.Context, request protocol.SkillNameRequest, options CommandOptions) error {
+func (r *binding) ArchiveSkill(ctx context.Context, request protocol.SkillNameRequest, options CommandOptions) error {
 	return r.invokeAck(ctx, delivery.SkillsLibraryArchive, request, commandOptions(options))
 }
 
 // RestoreSkill restores an archived managed Skill.
-func (r *Runtime) RestoreSkill(ctx context.Context, request protocol.SkillNameRequest, options CommandOptions) error {
+func (r *binding) RestoreSkill(ctx context.Context, request protocol.SkillNameRequest, options CommandOptions) error {
 	return r.invokeAck(ctx, delivery.SkillsLibraryRestore, request, commandOptions(options))
 }
 
 // ListSkillProposals returns pending Skill proposals ordered by scope and name.
-func (r *Runtime) ListSkillProposals(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
+func (r *binding) ListSkillProposals(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
 	return r.invoke[protocol.WorkspaceQuery, *protocol.Page[protocol.SkillProposal]](ctx, delivery.SkillsProposalsList, request, callOptions(options))
 }
 
 // ApproveSkillProposal accepts one proposed Skill.
-func (r *Runtime) ApproveSkillProposal(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error {
+func (r *binding) ApproveSkillProposal(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error {
 	return r.invokeAck(ctx, delivery.SkillsProposalsApprove, request, commandOptions(options))
 }
 
 // RejectSkillProposal rejects one proposed Skill.
-func (r *Runtime) RejectSkillProposal(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error {
+func (r *binding) RejectSkillProposal(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error {
 	return r.invokeAck(ctx, delivery.SkillsProposalsReject, request, commandOptions(options))
 }
 
 // GetDiscoveredSkill reads the current precedence-resolved document on demand.
-func (r *Runtime) GetDiscoveredSkill(ctx context.Context, request protocol.SkillDetailRequest, options CallOptions) (*protocol.SkillDetail, error) {
+func (r *binding) GetDiscoveredSkill(ctx context.Context, request protocol.SkillDetailRequest, options CallOptions) (*protocol.SkillDetail, error) {
 	return r.invoke[protocol.SkillDetailRequest, *protocol.SkillDetail](ctx, delivery.SkillsDiscoveredGet, request, callOptions(options))
 }

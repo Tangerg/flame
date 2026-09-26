@@ -1,6 +1,6 @@
 import { useShellLayoutStore } from "./shellLayoutStore";
 import { WORKSPACE_DOCK_CATALOG } from "../application/navigation";
-import { useContextDockStore } from "./contextDockStore";
+import { activateContextDockStorage, useContextDockStore } from "./contextDockStore";
 import { navigator } from "@/lib/navigation";
 import { configureWorkspaceNavigationPort } from "../application/ports/navigationState";
 
@@ -23,7 +23,8 @@ function showDockView(id: string, arrival: DockArrival): void {
   navigator().go(arrival === "alone" ? { view: null, dock: id } : { dock: id });
 }
 
-export function installWorkspaceNavigationPort(): () => void {
+export function installWorkspaceNavigationPort(endpoint: () => string): () => void {
+  activateContextDockStorage(endpoint());
   return configureWorkspaceNavigationPort({
     useActiveViewId: () => navigator().use((location) => location.view),
     useDock: () => ({
@@ -106,12 +107,14 @@ export function installWorkspaceNavigationPort(): () => void {
       }
     },
     adoptSessionScope: (sessionId) => {
+      activateContextDockStorage(endpoint());
       const state = useContextDockStore.getState();
       state.activateSessionScope(sessionId);
       const located = navigator().get().dock;
       if (located !== null) state.adoptDockLocation(located);
     },
     activateSessionScope: (sessionId) => {
+      activateContextDockStorage(endpoint());
       const state = useContextDockStore.getState();
       if (state.activeSessionScopeId === sessionId) {
         const located = navigator().get().dock;
@@ -123,8 +126,10 @@ export function installWorkspaceNavigationPort(): () => void {
         navigator().go({ dock: remembered }, { replace: true });
       }
     },
-    forgetSessionScopes: (openSessionIds) =>
-      useContextDockStore.getState().forgetSessionScopes(openSessionIds),
+    forgetSessionScopes: (openSessionIds) => {
+      activateContextDockStorage(endpoint());
+      useContextDockStore.getState().forgetSessionScopes(openSessionIds);
+    },
   });
 }
 

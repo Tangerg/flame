@@ -1,28 +1,31 @@
 import { runtimeRequestMeta } from "@/main/runtimeProtocol";
 import { negotiatedCapabilities } from "@/plugins/builtin/runtime/public/capabilities";
-import { currentRuntimeEndpoint } from "@/plugins/builtin/runtime/public/endpoint";
+import { configuredRuntimeTarget } from "@/plugins/builtin/runtime/public/endpoint";
+import { createClientHost } from "@/platform/clientHost";
+import type { ClientBootstrap, ClientHost } from "@/platform/host";
 import { installedRuntimeMutationJournalStorage } from "@/plugins/builtin/runtime/public/mutationJournal";
 import { tupleKey } from "@/lib/tupleKey";
-import type { DesktopBootstrap, DesktopHostClient, FlameClient, SidecarClient } from "@/rpc";
+import type { FlameClient, SidecarClient } from "@flame/runtime-contract/client";
 import type { RuntimeMutationJournalStorage } from "@/plugins/builtin/runtime/public/mutationJournal";
 import {
-  createDesktopHostClient,
   createHttpTransport,
   createFlameClient,
   createMutationJournal,
   createSidecarClient,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 
 export interface Container {
   client: () => FlameClient;
   sidecar: () => SidecarClient;
-  desktop: DesktopHostClient;
+  host: ClientHost;
+  bootstrap(): ClientBootstrap;
+  localWorkspaceAvailable(): boolean;
 }
 
 interface DefaultContainerOwner {
   readonly container: Container;
-  initializeDesktopHost(desktop: DesktopHostClient): Promise<void>;
-  replaceDesktopHost(): void;
+  initializeClientHost(host: ClientHost): Promise<void>;
+  replaceClientHost(): void;
   dispose(): Promise<void>;
 }
 
@@ -34,12 +37,12 @@ function defaultContainer(): DefaultContainerOwner {
   } | null = null;
   let sidecar: { endpoint: string; client: SidecarClient } | null = null;
   const retiring = new Set<Promise<void>>();
-  let desktopBootstrap: DesktopBootstrap | null = null;
+  let hostBootstrap: (ClientBootstrap & { kind: ClientHost["kind"] }) | null = null;
   let bootstrapLease: object = {};
   let closed = false;
   let disposal: Promise<void> | undefined;
   const assertOpen = () => {
-    if (closed) throw new Error("Desktop container is closed");
+    if (closed) throw new Error("Client container is closed");
   };
   const retire = (client: FlameClient) => {
     let closing!: Promise<void>;
@@ -49,23 +52,22 @@ function defaultContainer(): DefaultContainerOwner {
       .finally(() => retiring.delete(closing));
     retiring.add(closing);
   };
-  const localTokenFor = (endpoint: string): string | undefined => {
-    const local = desktopBootstrap?.localRuntime;
-    if (!local) return undefined;
-    const normalized = endpoint.replace(/\/+$/, "");
-    return normalized === local.endpoint.replace(/\/+$/, "") ? local.localToken : undefined;
+  const bootstrap = (): ClientBootstrap => {
+    assertOpen();
+    if (!hostBootstrap) throw new Error("client host has not completed bootstrap");
+    return hostBootstrap;
   };
+  const target = () => configuredRuntimeTarget() ?? bootstrap().runtime;
   const container: Container = {
     client: () => {
       assertOpen();
-      const baseUrl = currentRuntimeEndpoint();
-      const localToken = localTokenFor(baseUrl);
+      const { endpoint: baseUrl, localToken } = target();
       const signature = tupleKey(baseUrl, localToken ?? "");
       const storage = installedRuntimeMutationJournalStorage();
       if (shared?.signature === signature && shared.storage === storage) return shared.client;
       if (shared) retire(shared.client);
       const client = createFlameClient(createHttpTransport({ baseUrl, localToken }), {
-        requestMeta: runtimeRequestMeta,
+        requestMeta: () => runtimeRequestMeta(hostBootstrap?.kind ?? container.host.kind),
         capabilities: negotiatedCapabilities,
         mutationJournal: storage
           ? createMutationJournal({
@@ -87,34 +89,39 @@ function defaultContainer(): DefaultContainerOwner {
     },
     sidecar: () => {
       assertOpen();
-      const endpoint = currentRuntimeEndpoint();
+      const { endpoint } = target();
       if (sidecar?.endpoint === endpoint) return sidecar.client;
       const client = createSidecarClient({ baseUrl: endpoint });
       sidecar = { endpoint, client };
       return client;
     },
-    desktop: createDesktopHostClient(),
+    host: createClientHost(),
+    bootstrap,
+    localWorkspaceAvailable: () => {
+      const local = hostBootstrap?.localFilesystemEndpoint;
+      return local != null && local.replace(/\/+$/, "") === target().endpoint.replace(/\/+$/, "");
+    },
   };
   return {
     container,
-    async initializeDesktopHost(desktop) {
+    async initializeClientHost(host) {
       assertOpen();
       const lease = (bootstrapLease = {});
-      desktopBootstrap = null;
-      const bootstrap = await desktop.bootstrap();
+      hostBootstrap = null;
+      const bootstrap = await host.bootstrap();
       if (closed || lease !== bootstrapLease) return;
-      desktopBootstrap = bootstrap;
+      hostBootstrap = { ...bootstrap, kind: host.kind };
     },
-    replaceDesktopHost() {
+    replaceClientHost() {
       assertOpen();
       bootstrapLease = {};
-      desktopBootstrap = null;
+      hostBootstrap = null;
     },
     dispose() {
       if (disposal) return disposal;
       closed = true;
       bootstrapLease = {};
-      desktopBootstrap = null;
+      hostBootstrap = null;
       if (shared) retire(shared.client);
       shared = null;
       sidecar = null;
@@ -132,14 +139,14 @@ export function getContainer(): Container {
 }
 
 export function setContainer(next: Partial<Container>): void {
-  if (next.desktop) defaultOwner.replaceDesktopHost();
+  if (next.host) defaultOwner.replaceClientHost();
   instance = { ...instance, ...next };
 }
 
-export async function initializeDesktopHost(): Promise<void> {
+export async function initializeClientHost(): Promise<void> {
   const owner = defaultOwner;
-  const desktop = instance.desktop;
-  await owner.initializeDesktopHost(desktop);
+  const host = instance.host;
+  await owner.initializeClientHost(host);
 }
 
 export function disposeContainer(): Promise<void> {

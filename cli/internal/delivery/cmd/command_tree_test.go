@@ -19,8 +19,10 @@ import (
 
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
+	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
@@ -58,7 +60,7 @@ func executeCommandWithRuntime(
 ) (string, string, error) {
 	t.Helper()
 	var out, errb bytes.Buffer
-	dependencies := Dependencies{OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
+	dependencies := Dependencies{OpenRuntime: func(context.Context, string) (Runtime, *runtimebinding.Profile, error) {
 		return runtime, profile, nil
 	}}
 	root := NewRoot(dependencies)
@@ -731,7 +733,9 @@ func TestSessionUpdateRejectsWorkspaceBeforeCallingAnUnnegotiatedRuntime(t *test
 	profile := commandRuntimeProfile(t, func(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) {
 		discovery.Capabilities.Features[protocol.FeatureRelocate] = protocol.FeatureCapability{}
 	})
-	provider := runtimeProvider{open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
+	configuration := viper.New()
+	setDefaults(configuration, settings.Default())
+	provider := runtimeProvider{configuration: configuration, open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
 		return base, new(profile), nil
 	}}
 	command := newSessionsUpdateCommand(provider)
@@ -882,7 +886,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	runtime := &postCommitDeleteRuntime{Runtime: base}
 	var output bytes.Buffer
 	root := NewRoot(Dependencies{
-		OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
+		OpenRuntime: func(context.Context, string) (Runtime, *runtimebinding.Profile, error) {
 			return runtime, nil, nil
 		},
 		StateDirectory: stateDirectory,
@@ -1093,7 +1097,7 @@ func TestCompletionCommand(t *testing.T) {
 // database, a socket, or anything else a real runtime needs.
 func TestHelpDoesNotResolveARuntime(t *testing.T) {
 	var resolved bool
-	root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
+	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, *runtimebinding.Profile, error) {
 		resolved = true
 		return instantRuntime(), nil, nil
 	}})

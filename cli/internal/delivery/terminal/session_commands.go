@@ -454,7 +454,7 @@ type sessionInstallation struct {
 }
 
 func (a *app) prepareSessionInstallation(snapshot agent.SessionSnapshot) (sessionInstallation, error) {
-	attachments, err := attachment.New(snapshot.Session.Workspace.Path)
+	attachments, err := attachment.New(authoringDirectory(a.localDirectory, snapshot.Session.Workspace.Path))
 	if err != nil {
 		return sessionInstallation{}, fmt.Errorf("session attachments: %w", err)
 	}

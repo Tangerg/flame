@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ServerCapabilities } from "@/rpc";
+import type { ServerCapabilities } from "@flame/runtime-contract/client";
 import {
   createRuntimeServiceController,
   RUNTIME_SERVICE_HEALTHY_POLL_MS,

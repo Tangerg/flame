@@ -8,9 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"path/filepath"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
@@ -94,16 +92,16 @@ func stashEqual(left, right Stash) bool {
 	return left.ID == right.ID && left.CreatedAt.Equal(right.CreatedAt) && left.Message.Equal(right.Message)
 }
 
-// Workspace is one recently used authoring root.
+// Workspace is one recently used Runtime reference. Its path is interpreted by
+// the selected Runtime, which may use another operating system.
 type Workspace struct {
 	Path       string    `json:"path"`
 	LastOpened time.Time `json:"lastOpened"`
 }
 
 func (w Workspace) Validate() error {
-	canonical := filepath.Clean(strings.TrimSpace(w.Path))
-	if canonical == "." || !filepath.IsAbs(canonical) || canonical != w.Path {
-		return errors.New("workspace path must be canonical and absolute")
+	if err := (runtimeprotocol.WorkspaceRef{Path: w.Path}).ValidateWire(); err != nil {
+		return fmt.Errorf("workspace reference: %w", err)
 	}
 	if w.LastOpened.IsZero() {
 		return errors.New("workspace last-opened time is empty")
@@ -469,7 +467,6 @@ func (s *Store) DeleteStash(id string) (bool, error) {
 
 // RememberWorkspace moves a workspace to the front of the recent list.
 func (s *Store) RememberWorkspace(path string) error {
-	path = filepath.Clean(strings.TrimSpace(path))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	workspace := Workspace{Path: path, LastOpened: s.now().UTC()}

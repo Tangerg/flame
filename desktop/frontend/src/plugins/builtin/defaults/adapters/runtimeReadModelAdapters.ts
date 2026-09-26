@@ -7,7 +7,7 @@ import type {
   Session,
   WorkspaceFileChange as RpcFileChange,
   WorkspaceSummary as RpcWorkspaceSummary,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 
 export function toAgentSessionSummary(session: Session): AgentSessionSummary {
   return {

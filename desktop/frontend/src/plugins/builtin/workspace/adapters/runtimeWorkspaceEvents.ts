@@ -1,6 +1,6 @@
-import type { RuntimeTopic } from "@/rpc";
+import type { RuntimeTopic } from "@flame/runtime-contract/client";
 import { getContainer } from "@/main/container";
-import { RUNTIME_SUBSCRIBE_METHOD } from "@/rpc/transport";
+import { RUNTIME_SUBSCRIBE_METHOD } from "@flame/runtime-contract/client/transport";
 import {
   runtimeCapability,
   runtimeSupportsStreamingMethod,

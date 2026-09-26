@@ -18,20 +18,17 @@ func newRuntimeOwnerAt(flameHome string) (*runtimebinding.Owner, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolve runtime home: %w", err)
 	}
-	configDirectories, err := runtimeConfigDirectories()
-	if err != nil {
-		return nil, err
-	}
 	return runtimebinding.NewOwner(runtimebinding.Config{
 		ProductRoot: flameHome, UserHomePath: userHome,
-		ConfigDirectories: configDirectories, ClientVersion: cmd.Version(),
+		ConfigDirectories: runtimeConfigDirectories(), ClientVersion: cmd.Version(),
+		RemoteToken: os.Getenv("FLAME_RUNTIME_TOKEN"),
 	}), nil
 }
 
 func runtimeDependencies(owner *runtimebinding.Owner, stateDirectory string) cmd.Dependencies {
 	return cmd.Dependencies{
-		OpenRuntime: func(ctx context.Context) (cmd.Runtime, *runtimebinding.Profile, error) {
-			connection, err := owner.Connection(ctx)
+		OpenRuntime: func(ctx context.Context, endpoint string) (cmd.Runtime, *runtimebinding.Profile, error) {
+			connection, err := owner.Connection(ctx, endpoint)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -39,7 +36,7 @@ func runtimeDependencies(owner *runtimebinding.Owner, stateDirectory string) cmd
 			return connection, &profile, nil
 		},
 		StartTerminal: func(ctx context.Context, request cmd.TerminalRequest) error {
-			connection, err := owner.Connection(ctx)
+			connection, err := owner.Connection(ctx, request.Settings.Runtime.Endpoint)
 			if err != nil {
 				return err
 			}
@@ -62,6 +59,10 @@ func startTerminal(ctx context.Context, connection *runtimebinding.Connection, r
 		InitialPrompt: request.InitialPrompt, Settings: &configured,
 		PluginSources:  []extensions.Source{sideload.New(configured.Plugins.Directories)},
 		StateDirectory: request.StateDirectory,
+	}
+	if configured.Runtime.Endpoint != "" {
+		cfg.LocalDirectory = request.LocalDirectory
+		cfg.DetachOnExit = true
 	}
 	if profile.Supports(protocol.FeatureGoals) {
 		cfg.Goals = connection

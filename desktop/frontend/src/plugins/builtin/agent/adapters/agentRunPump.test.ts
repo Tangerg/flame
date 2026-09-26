@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { RunEvent, RunRef } from "@/rpc";
-import { asRunId, asSegmentId, asSessionId, RpcConnectionError, RpcProtocolError } from "@/rpc";
+import type { RunEvent, RunRef } from "@flame/runtime-contract/client";
+import {
+  asRunId,
+  asSegmentId,
+  asSessionId,
+  RpcConnectionError,
+  RpcProtocolError,
+} from "@flame/runtime-contract/client";
 import {
   createAgentRunPump,
   type RunStream,

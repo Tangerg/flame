@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RpcError, RpcTransportError } from "@/rpc";
+import { RpcError, RpcTransportError } from "@flame/runtime-contract/client";
 import { agentProblemFromRpcFailure } from "./rpcProblem";
 
 describe("agent RPC problem projection", () => {

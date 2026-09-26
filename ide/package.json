@@ -1,0 +1,139 @@
+{
+  "name": "flame-ide",
+  "displayName": "Flame",
+  "description": "Attach VS Code to a shared Flame Runtime.",
+  "version": "0.1.0",
+  "publisher": "flame",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "vscode": "^1.109.0",
+    "node": ">=22.12.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "main": "./dist/extension.cjs",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "flame.connect",
+        "title": "Flame: Connect to Runtime"
+      },
+      {
+        "command": "flame.disconnect",
+        "title": "Flame: Disconnect"
+      },
+      {
+        "command": "flame.selectSession",
+        "title": "Flame: Select Session"
+      },
+      {
+        "command": "flame.createSession",
+        "title": "Flame: Create Session"
+      },
+      {
+        "command": "flame.sendPrompt",
+        "title": "Flame: Send Prompt"
+      },
+      {
+        "command": "flame.sendSelection",
+        "title": "Flame: Send Editor Selection"
+      },
+      {
+        "command": "flame.resume",
+        "title": "Flame: Respond to Waiting Run"
+      },
+      {
+        "command": "flame.cancelRun",
+        "title": "Flame: Cancel Run"
+      },
+      {
+        "command": "flame.retryCommand",
+        "title": "Flame: Retry Unresolved Command"
+      },
+      {
+        "command": "flame.refresh",
+        "title": "Flame: Refresh Session"
+      },
+      {
+        "command": "flame.reviewChanges",
+        "title": "Flame: Review Runtime Changes"
+      },
+      {
+        "command": "flame.openRuntimeFile",
+        "title": "Flame: Open Runtime File"
+      },
+      {
+        "command": "flame.compareContext",
+        "title": "Flame: Compare Submitted Buffer with Editor"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "flame.sendSelection",
+          "when": "editorHasSelection",
+          "group": "navigation"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "flame.sessions",
+          "name": "Flame Sessions"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Flame",
+      "properties": {
+        "flame.endpoint": {
+          "type": "string",
+          "default": "http://127.0.0.1:17171",
+          "scope": "application",
+          "description": "Runtime HTTP address. Connecting never starts or stops a Runtime process."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "node scripts/build.mjs",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build",
+    "vscode:prepublish": "npm run check",
+    "package": "vsce package --no-dependencies",
+    "lint": "oxlint src scripts --deny-warnings",
+    "format:check": "prettier --check src scripts package.json tsconfig.json"
+  },
+  "dependencies": {
+    "@flame/runtime-contract": "file:../runtime/contract/typescript"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "@types/vscode": "^1.109.0",
+    "@vscode/vsce": "^3.6.2",
+    "rolldown": "^1.2.10",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1",
+    "oxlint": "^1.85.0",
+    "prettier": "^3.9.9"
+  },
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tangerg/flame.git",
+    "directory": "ide"
+  }
+}

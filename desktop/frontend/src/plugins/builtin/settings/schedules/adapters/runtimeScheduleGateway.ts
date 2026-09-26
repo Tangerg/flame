@@ -2,7 +2,7 @@ import { getContainer } from "@/main/container";
 import { DATA_PROVIDER, type Contributor } from "@/plugins/sdk";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { SCHEDULES_KEY } from "../application/scheduleQueries";
-import type { CreateScheduleRequest, FlameClient, Schedule } from "@/rpc";
+import type { CreateScheduleRequest, FlameClient, Schedule } from "@flame/runtime-contract/client";
 import { ScheduleMutationOwner, type ScheduleGateway } from "../application/scheduleCommands";
 import type { ScheduleConfig, ScheduleConfigInput } from "../application/scheduleConfig";
 

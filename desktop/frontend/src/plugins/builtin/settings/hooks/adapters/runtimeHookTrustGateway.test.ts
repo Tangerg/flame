@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { resetContainer, setContainer } from "@/main/container";
-import type { FlameClient } from "@/rpc";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { setHookTrust } from "../application/hookTrust";
 import { HOOKS_KEY } from "../application/hookQueries";
 import { installHookTrustGateway } from "./runtimeHookTrustGateway";

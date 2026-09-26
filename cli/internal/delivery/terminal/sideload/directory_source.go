@@ -25,7 +25,7 @@ import (
 
 const (
 	manifestName              = "flame-plugin.json"
-	manifestSchemaVersion     = 2
+	manifestSchemaVersion     = 3
 	maxManifestBytes          = 1 << 20
 	defaultCommandTimeout     = 10 * time.Second
 	maxCommandTimeout         = 60 * time.Second

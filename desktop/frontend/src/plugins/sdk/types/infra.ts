@@ -7,7 +7,7 @@ import type {
   RunId,
   SegmentId,
   StreamingResult,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 
 export type NotificationLevel = "info" | "warn" | "error";
 

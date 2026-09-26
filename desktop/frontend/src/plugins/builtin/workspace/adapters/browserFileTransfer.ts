@@ -1,17 +1,8 @@
+import { downloadBlob } from "@/platform/download";
 import type { FileTransferPort } from "../application/ports/fileTransfer";
 
-const OBJECT_URL_REVOCATION_DELAY_MS = 1_000;
-
 function downloadFile(filename: string, content: string, mime: string): void {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), OBJECT_URL_REVOCATION_DELAY_MS);
+  downloadBlob(filename, new Blob([content], { type: mime }));
 }
 
 function pickTextFile(accept: string): Promise<string | null> {

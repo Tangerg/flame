@@ -1,6 +1,6 @@
 # Flame CLI
 
-Flame CLI provides scriptable commands and an interactive terminal client over the public in-process Flame Runtime.
+Flame CLI provides scriptable commands and an interactive terminal client over the public Flame Runtime bindings.
 
 ```sh
 cd cli
@@ -17,7 +17,7 @@ Running without a subcommand opens the Oolong terminal interface. Runtime owns d
 
 CLI preferences and Runtime configuration have separate owners.
 
-- `.flame.yaml` in the selected workspace (`.` or `-C`) is the project-local CLI preferences file.
+- `.flame.yaml` in the selected local directory (`.` or `-C`) is the project-local CLI preferences file.
 - The OS user configuration directory provides the default CLI preferences file.
 - `--config` selects an explicit CLI YAML file.
 - `FLAME_CLI_*` variables and flags override file values.
@@ -27,6 +27,54 @@ CLI preferences and Runtime configuration have separate owners.
 The process working directory is never an implicit Runtime configuration source. Source checkouts that use `runtime/config/config.yaml` select it explicitly with `FLAME_RUNTIME_CONFIG_DIR`.
 
 Run subscriptions reconnect with bounded backoff until canceled.
+
+## Connect to a shared Runtime
+
+With no endpoint configured, CLI owns one embedded Runtime and closes it on exit.
+Set `--runtime-url`, `FLAME_CLI_RUNTIME_ENDPOINT`, or `runtime.endpoint` in CLI YAML
+to attach to an already running Runtime through its HTTP/SSE binding. The value is
+the base URL, such as `http://127.0.0.1:17171`; the client appends `/v2/rpc`.
+`FLAME_RUNTIME_TOKEN` supplies the bearer credential separately from printable
+preferences. Endpoint failure or protocol incompatibility remains an error; it
+never starts a replacement Runtime or falls back to local storage.
+
+```sh
+flame --runtime-url http://127.0.0.1:17171 sessions ls
+flame --runtime-url http://127.0.0.1:17171 --session ses_example
+flame --runtime-url https://agent.example/flame -C ./local-context \
+  run --workspace /srv/project --file notes.md "review these notes"
+```
+
+For remote connections, `--workspace` names a path on the Runtime host. Omitting it
+uses the Runtime's default workspace when creating a Session. `-C` remains the
+client's local directory for CLI configuration and attached files. An existing
+Session keeps its Runtime workspace; attaching a file never reads that workspace
+through the client's filesystem. The terminal uses this same local directory for
+attachments, prompt editing, imports, and exports throughout Session switches.
+Remote workspace references retain their exact spelling and are interpreted and
+validated by the executing Runtime, including when it uses another operating system.
+
+Closing a terminal attached to a shared Runtime detaches its observations and saves
+its authoring state. It leaves accepted Runs running. `Ctrl-C` remains an explicit
+Run cancellation; one-shot `flame run` also cancels its own Run when interrupted.
+Neither action shuts down the shared Runtime. Drafts, outboxes, deletion journals,
+and history are stored separately for each configured endpoint beneath
+`$FLAME_HOME/cli/targets/`; embedded state retains `$FLAME_HOME/cli`.
+Runtime's durable idempotency namespace still guards command replay independently
+of that local endpoint partition. Changing an endpoint's spelling selects a new
+local partition; it does not migrate pending commands automatically.
+
+Dynamic value completion loads the effective configuration before opening Runtime
+so it cannot silently query another target. Completion-script generation and help
+remain independent of Runtime startup.
+
+Sideloaded command executables now use command protocol **2**. Requests carry
+`workspace` as the Runtime's opaque reference and `localDirectory` as the client's
+local authoring root. A command still executes from its discovered plugin directory;
+it must choose the appropriate reference explicitly instead of assuming the Runtime
+workspace exists on the client. Executables must respond with `protocol: 2` and
+declare manifest `schemaVersion: 3`, which rejects older command semantics before
+execution. The extension-host `apiVersion` remains `1`.
 
 ## Markdown, formulas, and diagrams
 
@@ -70,6 +118,11 @@ GOWORK=off go build ./...
 ```
 
 Use real Runtime scenarios for changed product flows and real PTY tests only when terminal behavior is the contract.
+When validating coordinated, unpublished Runtime and CLI changes, use the repository's
+`go.work` (`go test ./...`, `go vet ./...`, `go build ./...` from `cli`). The standalone
+`GOWORK=off` gate requires publishing the matching Runtime modules and updating their
+versions; a local checkout does not make new public Runtime APIs available to a
+previously published dependency.
 
 ## Module instructions
 
@@ -78,9 +131,9 @@ Flame CLI owns command routing, process behavior, terminal interaction, renderin
 Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), and [`ARCHITECTURE.md`](ARCHITECTURE.md) before changing this module.
 
 - Runtime remains authoritative for Session, Run, Segment, Item, Goal, Plan, Interrupt, provider/model selection, execution, persistence, compaction, and recovery. Do not mirror their states, validation, errors, feature catalogs, or lifecycle transitions in CLI-owned types.
-- Consume the public Runtime Go binding through narrow interfaces defined by CLI consumers. Use Runtime Protocol values at that boundary instead of translating them into a synonymous CLI data model.
+- Consume the public embedded or HTTP Runtime binding through narrow interfaces defined by CLI consumers. Use Runtime Protocol values at that boundary instead of translating them into a synonymous CLI data model.
 - CLI-owned models are limited to presentation and interaction concerns such as Conversation folding, selection, drafts, prompt history, queue intent, stash, rendering, and terminal focus. Give a local aggregate behavior when it owns legal transitions; keep Runtime projections and rendering inputs as data.
-- `main.go` opens at most one concrete Runtime, owns signals and streams, and closes it once. Do not pass a service bag or service locator through commands, workflows, or terminal state.
+- `main.go` selects one immutable Runtime target, owns signals and streams, and closes its binding once. It owns Runtime shutdown only for the embedded binding. Do not pass a service bag or service locator through commands, workflows, or terminal state.
 - Cobra and Viper stay in `cmd` and the process composition path. Commands construct fresh trees, parse typed input, call one CLI use case with `cmd.Context()`, and write through Cobra streams.
 - Oolong and terminal protocols stay in terminal delivery. Rendering reads state; it does not repair or advance Runtime state.
 - Organize packages around cohesive CLI workflows and durable local owners. Prefer several responsibility-named files in `run`, `session`, `command`, `conversation`, or `terminal` over packages for each action, interface, request, or response. Merge single-consumer forwarding packages into that consumer unless they isolate an external boundary.

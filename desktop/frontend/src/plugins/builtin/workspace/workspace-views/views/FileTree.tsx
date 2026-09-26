@@ -14,7 +14,10 @@ import {
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { type FileKind, fileKind } from "@/plugins/builtin/workspace/application/fileKind";
 import { useWorkingTreeFiles } from "@/plugins/builtin/workspace/application/workingTreeChanges";
-import { revealWorkspacePath } from "../../adapters/desktopReveal";
+import {
+  localWorkspaceActionsAvailable,
+  revealWorkspacePath,
+} from "../../adapters/localWorkspaceActions";
 import { color, corner, space, type as typeStep } from "@/styles/tokens.stylex";
 
 const KIND_ICON: Record<FileKind, IconName> = {
@@ -165,7 +168,7 @@ function TreeNode({
           <ContextMenu.IconItem icon="copy" onSelect={() => void copyText(entry.path)}>
             {t("file.copyPath")}
           </ContextMenu.IconItem>
-          {tree.cwd && (
+          {tree.cwd && localWorkspaceActionsAvailable() && (
             <ContextMenu.IconItem
               icon="folder-open"
               onSelect={() => void revealWorkspacePath(tree.cwd!, entry.path)}

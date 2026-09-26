@@ -265,7 +265,7 @@ export async function installVisualAgentFixture(
   });
   installVisualRuntimeServiceStatusPort(state === "runtime-down" ? "unavailable" : "ready");
   installAgentStatePorts();
-  installWorkspaceNavigationPort();
+  installWorkspaceNavigationPort(() => "https://visual.flame.test");
   configureAgentRuntimeGateway(visualAgentRuntimeGateway(state));
 
   useAgentSessionStore.setState({

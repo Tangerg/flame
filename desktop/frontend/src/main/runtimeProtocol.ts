@@ -1,6 +1,7 @@
-import { DESKTOP_CLIENT_INFO } from "@/main/config";
-import { PROTOCOL_VERSION } from "@/rpc";
-import type { ClientCapabilities, RequestMeta } from "@/rpc";
+import { CLIENT_VERSION } from "@/main/config";
+import { PRODUCT_SLUG } from "@/product";
+import { PROTOCOL_VERSION } from "@flame/runtime-contract/client";
+import type { ClientCapabilities, RequestMeta } from "@flame/runtime-contract/client";
 
 export const CLIENT_CAPABILITIES: ClientCapabilities = {
   features: {
@@ -10,10 +11,10 @@ export const CLIENT_CAPABILITIES: ClientCapabilities = {
   interruptTypes: ["approval", "question"],
 };
 
-export function runtimeRequestMeta(): RequestMeta {
+export function runtimeRequestMeta(surface: "desktop" | "web"): RequestMeta {
   return {
     protocolVersion: PROTOCOL_VERSION,
-    clientInfo: DESKTOP_CLIENT_INFO,
+    clientInfo: { name: `${PRODUCT_SLUG}-${surface}`, version: CLIENT_VERSION },
     clientCapabilities: CLIENT_CAPABILITIES,
   };
 }

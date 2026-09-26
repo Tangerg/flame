@@ -8,7 +8,7 @@ import {
   type FlameClient,
   type RunEvent,
   type RunRef,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 import { agentTextInput } from "@/plugins/builtin/agent/domain/input";
 import { resetContainer, setContainer } from "@/main/container";
 import { useAgentStore } from "./agentStore";

@@ -47,7 +47,7 @@ const hostPackage = "main"
 func TestDesktopHostMethodNamesMatchTheFrontend(t *testing.T) {
 	hostType := reflect.TypeFor[*DesktopHost]()
 
-	source, err := os.ReadFile("frontend/src/rpc/desktopHost.ts")
+	source, err := os.ReadFile("frontend/src/platform/desktopHost.ts")
 	if err != nil {
 		t.Fatalf("read the frontend's host bridge: %v", err)
 	}

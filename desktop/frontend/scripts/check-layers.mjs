@@ -14,6 +14,7 @@ import { execFileSync } from "node:child_process";
 import { closeSync, openSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { importsRuntimeClient } from "./runtime-client-imports.mjs";
 
 // Ordered longest-prefix-first: first match wins. Paths are relative to
 // src/ (how madge reports them when invoked with `src/`).
@@ -28,6 +29,7 @@ const LAYER_PREFIXES = [
   ["plugins/builtin/", "builtin"],
   ["plugins/", "plugins-glue"], // Slot / PluginProvider / etc. — UI glue
   ["main/", "main"],
+  ["platform/", "platform"],
   ["rpc/", "rpc"],
   ["lib/", "lib"],
   // The design system is three rings, and the direction between them is the
@@ -47,7 +49,10 @@ const LAYER_PREFIXES = [
 // bare entry files that sit beside them at src/ root.
 const UNGUARDED_ROOTS = new Set(["styles", "test"]);
 
+const RUNTIME_CLIENT_EDGE = "@flame/runtime-contract/client";
+
 function layerOf(path) {
+  if (path === RUNTIME_CLIENT_EDGE) return "rpc";
   for (const [prefix, layer] of LAYER_PREFIXES) if (path.startsWith(prefix)) return layer;
   return "other";
 }
@@ -57,6 +62,7 @@ function layerOf(path) {
  *  prevent, so it is reported rather than defaulted to "unguarded". */
 function undeclaredRoot(path) {
   const [root, ...rest] = path.split("/");
+  if (path === RUNTIME_CLIENT_EDGE) return null;
   if (rest.length === 0) return null; // bare entry file at src/ root
   if (root === "..") return null; // outside src/ — the runtime contract's sample fixtures
   if (UNGUARDED_ROOTS.has(root)) return null;
@@ -70,12 +76,15 @@ const UI = [...UI_RINGS, "pages", "builtin", "plugins-glue"];
 const FORBIDDEN = {
   // Consumer-neutral scalar values. This is the innermost app layer and may
   // import only external packages or itself.
-  foundation: [...UI, "main", "rpc", "sdk", "lib"],
+  foundation: [...UI, "main", "rpc", "sdk", "lib", "platform"],
+  // Environment effects may consume innermost scalar contracts; the reverse
+  // dependency remains forbidden so those values never import a host.
+  platform: [...UI, "main", "sdk", "lib"],
   // Standalone protocol layer — externals + its own files only.
-  rpc: [...UI, "main", "sdk", "lib"],
+  rpc: [...UI, "main", "sdk", "lib", "platform"],
   // The plugin SDK is a platform layer — it must not depend on the UI it
   // is consumed by (locks the MessageContext inversion fix).
-  sdk: [...UI],
+  sdk: [...UI, "platform"],
   // Utility layer. `rpc` stays allowed — it's the standalone protocol layer
   // below lib (see `rpc` above, which forbids lib), so mapping an error type to
   // copy from here runs downhill. Everything else is uphill and was the hole
@@ -84,14 +93,15 @@ const FORBIDDEN = {
   // `lib/highlight`, laundering the edge the `ui` rings forbid. A module in lib
   // that needs app state is not a utility; it either belongs to the context that
   // owns the state, or the value gets published down to it (`lib/appearance`).
-  lib: [...UI, "sdk", "main"],
+  lib: [...UI, "sdk", "main", "platform"],
   // Local design-system layer — presentation only, never backend wiring. `sdk`
   // is forbidden too: an atom that reads the plugin registry is an atom that can
   // only be dressed by this app.
-  ui: ["main", "rpc", "sdk", "plugins-glue", "builtin", "pages"],
+  ui: ["platform", "main", "rpc", "sdk", "plugins-glue", "builtin", "pages"],
   // Headless ring: Base UI re-exports and nothing else. It must not know about
   // the tokens, the atoms, or the shell that consume it.
   "ui-primitives": [
+    "platform",
     "main",
     "rpc",
     "ui",
@@ -104,14 +114,14 @@ const FORBIDDEN = {
   ],
   // Token-dressed controls. May reach primitives; must not reach the shell ring
   // above it, or anything outside the design system.
-  "ui-atoms": ["main", "rpc", "ui-agent", "pages", "builtin", "plugins-glue", "sdk"],
+  "ui-atoms": ["platform", "main", "rpc", "ui-agent", "pages", "builtin", "plugins-glue", "sdk"],
   // Shell composites. May reach atoms and primitives; still no wiring, and no
   // reaching back into the app that mounts it.
-  "ui-agent": ["main", "rpc", "pages", "builtin", "plugins-glue", "sdk"],
+  "ui-agent": ["platform", "main", "rpc", "pages", "builtin", "plugins-glue", "sdk"],
   // The view layer reaches the backend only through hooks — the SDK's
   // data-query hooks and selectors — never the composition root
   // (`main/container`) or the raw protocol client (`rpc`) directly.
-  pages: ["main", "rpc"],
+  pages: ["main", "rpc", "platform"],
 };
 
 // A directory named any of these under plugins/builtin/<ctx>/ marks <ctx> as a
@@ -225,8 +235,15 @@ function ringOf(path, contextRoot) {
 
 function ringViolation(file, dep, contextRoots) {
   const context = builtinContext(file, contextRoots);
-  if (!context || context !== builtinContext(dep, contextRoots)) return null;
+  if (!context) return null;
   const from = ringOf(file, context);
+  if (
+    layerOf(dep) === "platform" &&
+    ["domain", "application", "presentation", "ui"].includes(from)
+  ) {
+    return { from: `${context.replace("plugins/builtin/", "")}/${from}`, to: "platform" };
+  }
+  if (context !== builtinContext(dep, contextRoots)) return null;
   const to = ringOf(dep, context);
   if (!from || !to || from === to) return null;
   if (!RING_FORBIDS[from]?.includes(to)) return null;
@@ -281,6 +298,15 @@ if (moduleCount < MIN_MODULES || graphEdgeCount < MIN_EDGES) {
   );
   console.error("Module resolution broke — this run proves nothing.");
   process.exit(2);
+}
+
+// Package imports are omitted by madge. Preserve the same outbound boundary
+// now that Desktop and IDE consume the Runtime-owned client package.
+for (const [file, deps] of Object.entries(graph)) {
+  if (file.startsWith("../")) continue;
+  if (importsRuntimeClient(readFileSync(join("src", file), "utf8"))) {
+    deps.push(RUNTIME_CLIENT_EDGE);
+  }
 }
 
 const violations = [];

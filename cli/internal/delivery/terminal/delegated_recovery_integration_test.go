@@ -37,7 +37,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 				ProductRoot: t.TempDir(), DefaultWorkspacePath: workspace,
 				UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()}, ClientVersion: "test",
 			})
-			connection, err := owner.Connection(t.Context())
+			connection, err := owner.Connection(t.Context(), "")
 			if err != nil {
 				t.Fatal(err)
 			}

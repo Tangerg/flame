@@ -1,4 +1,4 @@
-import type { RunEvent } from "@/rpc";
+import type { RunEvent } from "@flame/runtime-contract/client";
 
 type ScheduleFrame = (flush: () => void) => number;
 type CancelFrame = (handle: number) => void;

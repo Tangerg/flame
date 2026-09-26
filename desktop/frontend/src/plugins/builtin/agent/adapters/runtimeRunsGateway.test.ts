@@ -8,10 +8,10 @@ import {
   type FlameClient,
   type MutationPromise,
   type RunEvent,
-} from "@/rpc";
-import { createMutationPromise } from "@/rpc/mutation";
+} from "@flame/runtime-contract/client";
+import { createMutationPromise } from "@flame/runtime-contract/client/mutation";
 import { runtimeRunsGateway } from "./runtimeRunsGateway";
-import { MUTATION_ATTEMPT_TIMEOUT_MS } from "@/rpc";
+import { MUTATION_ATTEMPT_TIMEOUT_MS } from "@flame/runtime-contract/client";
 
 afterEach(() => {
   resetContainer();

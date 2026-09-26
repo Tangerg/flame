@@ -42,6 +42,7 @@ type Config struct {
 // Runtime is a complete in-process Flame Runtime. It is safe for concurrent
 // calls. Do not copy a Runtime; Open always returns a pointer.
 type Runtime struct {
+	binding
 	mu       sync.RWMutex
 	stopping bool
 	instance *bootstrap.Instance
@@ -66,7 +67,9 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Runtime{instance: instance}, nil
+	runtime := &Runtime{instance: instance}
+	runtime.binding.caller = runtime
+	return runtime, nil
 }
 
 func (c Config) resolve() (Config, error) {

@@ -516,6 +516,11 @@ export const en: Record<string, string> = {
   "settings.connection.title": "Backend",
   "settings.connection.sub":
     "Where the Flame runtime is reachable. Applying reconnects the desktop app.",
+  "settings.connection.clearToken": "Clear token",
+  "settings.connection.token": "Access token",
+  "settings.connection.tokenPlaceholder": "Enter or replace the token",
+  "settings.connection.tokenHint":
+    "Kept only in this window for this Runtime address. Reloading clears it.",
   "settings.connection.url": "URL",
   "settings.connection.apply": "Apply",
   "settings.connection.reset": "Reset to default",
@@ -863,6 +868,7 @@ export const en: Record<string, string> = {
   "convExport.importFailed": "Couldn't import the conversation.",
   "convExport.importSuccess": 'Imported "{{title}}".',
 
+  "connection.error.token": "Enter a valid access token without spaces or control characters.",
   "connection.error.urlScheme": "Must start with http:// or https://",
 
   "command.chatSearch": "Find in chat",
@@ -981,6 +987,12 @@ export const en: Record<string, string> = {
   "rpcError.interrupt_not_open": "That request is no longer waiting for an answer.",
   "rpcError.idempotency_conflict": "The same request was already made with different contents.",
   "session.error.create": "Couldn't create the session.",
+  "session.directory.title": "New session",
+  "session.directory.description":
+    "Enter a workspace directory on the Runtime at {{endpoint}}. Flame validates it before creating the session.",
+  "session.directory.path": "Runtime workspace directory",
+  "session.directory.create": "Create session",
+  "session.directory.browse": "Browse this computer",
   "session.error.chooseWorkingDirectory": "Couldn't open the folder chooser.",
   "session.error.delete": "Couldn't delete the session.",
   "session.error.rename": "Couldn't rename the session.",

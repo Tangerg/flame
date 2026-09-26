@@ -8,7 +8,7 @@ import {
   type FlameClient,
   type MutationPromise,
   type RunEvent,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 import { definePlugin, pickAgentSource } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import {

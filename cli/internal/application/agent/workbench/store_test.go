@@ -119,6 +119,34 @@ func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
 	}
 }
 
+func TestStorePreservesRemoteWorkspaceIdentityAcrossRestart(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := []string{`C:\work\project`, `\\server\share\project`, "/remote/work/project"}
+	for _, path := range paths {
+		if err := store.RememberWorkspace(path); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = reopened.Close() })
+	workspaces := reopened.Workspaces()
+	for index, path := range paths {
+		if workspaces[len(paths)-index-1].Path != path {
+			t.Fatalf("reloaded Runtime workspace references = %+v", workspaces)
+		}
+	}
+}
+
 func TestStoreDoesNotMutateMemoryWhenPersistenceFails(t *testing.T) {
 	directory := t.TempDir()
 	store, err := OpenDirectory(directory, Config{})
@@ -862,10 +890,10 @@ func TestStoreRejectsInvalidDurableCatalogValues(t *testing.T) {
 				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:00Z","Message":{"Text":""}}]}`,
 		},
 		{
-			name: "relative workspace",
+			name: "empty workspace",
 			file: "workspaces.json",
 			body: `{"version":1,"value":[` +
-				`{"path":"relative/project","lastOpened":"2026-08-31T00:00:00Z"}]}`,
+				`{"path":"","lastOpened":"2026-08-31T00:00:00Z"}]}`,
 		},
 		{
 			name: "duplicate workspace",

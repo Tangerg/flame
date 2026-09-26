@@ -1,4 +1,7 @@
-import type { Plan as RuntimePlan, PlanStep as RuntimePlanStep } from "@/rpc";
+import type {
+  Plan as RuntimePlan,
+  PlanStep as RuntimePlanStep,
+} from "@flame/runtime-contract/client";
 import type { AgentPlan, PlanStep } from "@/plugins/sdk/types/agentSessionView";
 
 const PLAN_STATUS: Record<RuntimePlanStep["status"], PlanStep["status"]> = {

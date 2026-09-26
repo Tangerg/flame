@@ -2,27 +2,24 @@ export interface MountedRenderer {
   unmount(): void;
 }
 
-export interface DesktopRendererDependencies {
-  initializeDesktopHost(): Promise<void>;
+export interface ClientRendererDependencies {
+  initializeClientHost(): Promise<void>;
   prepareWindowChrome(): Promise<void>;
   watchWindowChrome(): () => void;
   mount(): MountedRenderer;
-  closeRuntime(): Promise<void>;
-  reportFailure(
-    scope: "host bootstrap" | "React root teardown" | "window chrome teardown",
-    error: unknown,
-  ): void;
+  closeConnection(): Promise<void>;
+  reportFailure(scope: "React root teardown" | "window chrome teardown", error: unknown): void;
 }
 
-export class DesktopRenderer {
-  readonly #dependencies: DesktopRendererDependencies;
+export class ClientRenderer {
+  readonly #dependencies: ClientRendererDependencies;
   #active = true;
   #startup: Promise<void> | undefined;
   #mounted: MountedRenderer | undefined;
   #stopWatchingWindowChrome: (() => void) | undefined;
   #closing: Promise<void> | undefined;
 
-  constructor(dependencies: DesktopRendererDependencies) {
+  constructor(dependencies: ClientRendererDependencies) {
     this.#dependencies = dependencies;
   }
 
@@ -38,11 +35,7 @@ export class DesktopRenderer {
   }
 
   async #startOwned(): Promise<void> {
-    try {
-      await this.#dependencies.initializeDesktopHost();
-    } catch (error) {
-      if (this.#active) this.#dependencies.reportFailure("host bootstrap", error);
-    }
+    await this.#dependencies.initializeClientHost();
     if (!this.#active) return;
 
     await this.#dependencies.prepareWindowChrome();
@@ -84,7 +77,7 @@ export class DesktopRenderer {
     }
 
     try {
-      this.#closing = this.#dependencies.closeRuntime();
+      this.#closing = this.#dependencies.closeConnection();
     } catch (error) {
       this.#closing = Promise.reject(error);
     }

@@ -1,7 +1,7 @@
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resetContainer, setContainer } from "@/main/container";
-import type { Goal, FlameClient, MutationPromise } from "@/rpc";
+import type { Goal, FlameClient, MutationPromise } from "@flame/runtime-contract/client";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import {

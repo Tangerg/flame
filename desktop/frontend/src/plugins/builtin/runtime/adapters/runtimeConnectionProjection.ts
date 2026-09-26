@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { createPublicationSlot } from "@/lib/publicationSlot";
-import type { ServerCapabilities, WireFeature } from "@/rpc";
+import type { ServerCapabilities, WireFeature } from "@flame/runtime-contract/client";
 import { configureRuntimeCapabilityPort } from "../application/ports/capabilities";
 import {
   configureRuntimeServiceStatusPort,

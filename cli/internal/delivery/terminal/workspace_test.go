@@ -82,6 +82,14 @@ func TestRecentWorkspacePickerCreatesAndSwitchesToTheSelectedRoot(t *testing.T) 
 			t.Fatal(err)
 		}
 	}
+	current, err := filepath.EvalSymlinks(current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recent, err = filepath.EvalSymlinks(recent)
+	if err != nil {
+		t.Fatal(err)
+	}
 	store, err := workbenchstate.Open(state)
 	if err != nil {
 		t.Fatal(err)
@@ -93,7 +101,7 @@ func TestRecentWorkspacePickerCreatesAndSwitchesToTheSelectedRoot(t *testing.T) 
 	backend.Instant = true
 	host, stop := runUIWithState(t, backend, current, "", state)
 	host.Shows(t, "Ask flame")
-	if opened := <-backend.created; !samePath(opened, current) {
+	if opened := <-backend.created; opened != current {
 		t.Fatalf("opening workspace = %s, want %s", opened, current)
 	}
 
@@ -103,7 +111,7 @@ func TestRecentWorkspacePickerCreatesAndSwitchesToTheSelectedRoot(t *testing.T) 
 	host.Type("recent-project")
 	host.Shows(t, "recent-project")
 	host.Press(input.Enter)
-	if selected := <-backend.created; !samePath(selected, recent) {
+	if selected := <-backend.created; selected != recent {
 		t.Fatalf("selected workspace = %s, want %s", selected, recent)
 	}
 	host.Shows(t, "session ·")

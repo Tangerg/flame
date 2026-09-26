@@ -10,7 +10,7 @@ import {
 import { toast } from "sonner";
 import { useT } from "@/lib/i18n";
 import { IconButton, LightboxDialog } from "@/ui";
-import { saveInlineImage } from "../adapters/desktopImageSave";
+import { saveInlineImage } from "../adapters/imageSave";
 import { MESSAGE_CONTENT_SELECTOR } from "./messageContent";
 import { color, corner, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 

@@ -8,6 +8,6 @@ import (
 )
 
 // Discover returns the protocol range and capabilities of this Runtime.
-func (r *Runtime) Discover(ctx context.Context, options CallOptions) (*protocol.DiscoverResponse, error) {
+func (r *binding) Discover(ctx context.Context, options CallOptions) (*protocol.DiscoverResponse, error) {
 	return r.invoke[struct{}, *protocol.DiscoverResponse](ctx, delivery.RuntimeDiscover, struct{}{}, callOptions(options))
 }

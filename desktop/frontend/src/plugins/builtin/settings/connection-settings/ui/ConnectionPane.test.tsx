@@ -7,11 +7,13 @@ const runtime = vi.hoisted(() => ({
   applyEndpoint: vi.fn(),
   refresh: vi.fn(),
   resetEndpoint: vi.fn(),
+  hasToken: false,
   snapshot: null as RuntimeServiceSnapshot | null,
 }));
 
 vi.mock("@/plugins/builtin/runtime/public/endpoint", () => ({
-  DEFAULT_RUNTIME_ENDPOINT: "http://127.0.0.1:17171",
+  hasRuntimeAccessToken: () => runtime.hasToken,
+  defaultRuntimeEndpoint: () => "http://127.0.0.1:17171",
   currentRuntimeEndpoint: () => "http://127.0.0.1:17171",
   applyRuntimeEndpoint: runtime.applyEndpoint,
   resetRuntimeEndpoint: runtime.resetEndpoint,
@@ -24,6 +26,7 @@ vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
 
 describe("ConnectionPane runtime status", () => {
   beforeEach(() => {
+    runtime.hasToken = false;
     runtime.applyEndpoint.mockReset().mockImplementation((endpoint: string) => ({
       kind: "applied",
       endpoint,
@@ -86,8 +89,25 @@ describe("ConnectionPane runtime status", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
-    expect(runtime.applyEndpoint).toHaveBeenCalledWith("http://127.0.0.1:27171");
+    expect(runtime.applyEndpoint).toHaveBeenCalledWith("http://127.0.0.1:27171", undefined);
     expect(reload).not.toHaveBeenCalled();
+  });
+
+  it("applies a token without persisting it in the editor and can clear it explicitly", () => {
+    runtime.hasToken = true;
+    runtime.snapshot = { phase: "unavailable", observation: null, failure: null };
+    render(<ConnectionPane />);
+    const token = screen.getByLabelText("Access token") as HTMLInputElement;
+    fireEvent.change(token, { target: { value: "window-token" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(runtime.applyEndpoint).toHaveBeenLastCalledWith(
+      "http://127.0.0.1:17171",
+      "window-token",
+    );
+    expect(token.value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "Clear token" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(runtime.applyEndpoint).toHaveBeenLastCalledWith("http://127.0.0.1:17171", "");
   });
 
   it("renders degraded identity, protocol, and failing dependency checks", () => {

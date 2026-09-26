@@ -1,6 +1,7 @@
-// Package runtime lets a Go program own a complete Flame Runtime in-process.
-// It exposes the same typed protocol operations as the HTTP binding without a
-// listener, authentication token, JSON-RPC envelope or SSE framing. Operation
-// errors support errors.Is against protocol sentinels and errors.As to
-// protocol.ProblemError.
+// Package runtime exposes Flame's typed Go operations. Open owns a complete
+// in-process Runtime; Connect attaches a Client to an existing HTTP Runtime.
+// Both bindings enter the same operation endpoint and expose protocol requests,
+// responses, and event iterators. Operation errors support errors.Is against
+// protocol sentinels and errors.As to protocol.ProblemError. Transport loss does
+// not establish the outcome of a dispatched mutation.
 package runtime

@@ -161,3 +161,26 @@ func TestLoadRejectsUnknownConfigurationFields(t *testing.T) {
 		t.Fatalf("Load unknown field error = %v", err)
 	}
 }
+
+func TestWebDirectoryUsesTheServerConfigurationSource(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, "config.yaml"), []byte("provider: anthropic\nserver:\n  webDirectory: /configured/web\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FLAME_SERVER_WEBDIRECTORY", "")
+	settings, err := Load([]string{directory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.Server.WebDirectory != "/configured/web" {
+		t.Fatalf("configured web directory = %q", settings.Server.WebDirectory)
+	}
+	t.Setenv("FLAME_SERVER_WEBDIRECTORY", "/environment/web")
+	settings, err = Load([]string{directory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.Server.WebDirectory != "/environment/web" {
+		t.Fatalf("environment web directory = %q", settings.Server.WebDirectory)
+	}
+}

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetContainer, setContainer } from "@/main/container";
-import type { FlameClient } from "@/rpc";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { exportConversationMarkdown } from "../application/conversationExport";
 import { installConversationArchiveGateway } from "./runtimeConversationArchiveGateway";
 

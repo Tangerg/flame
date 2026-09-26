@@ -3,7 +3,6 @@ package terminal
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -259,7 +258,7 @@ func paragraphDocument(title, detail string, lines []string) readerDocument {
 
 func codeDocument(title, detail, text, pathOrLanguage string, lineNumbers bool) readerDocument {
 	language := pathOrLanguage
-	if strings.Contains(pathOrLanguage, ".") || strings.ContainsRune(pathOrLanguage, filepath.Separator) {
+	if strings.ContainsAny(pathOrLanguage, `./\`) {
 		language = languageForPath(pathOrLanguage)
 	}
 	return readerDocument{Title: title, Detail: detail, Sections: []ToolSection{{Title: "Content", Style: toolSectionCode, Language: language, Text: text, LineNumbers: lineNumbers}}}

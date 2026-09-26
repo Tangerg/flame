@@ -6,7 +6,7 @@ import {
   asSessionId,
   createMutationSettler,
   type StartRunResponse,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 import type {
   RpcRunResumeParams,
   RpcRunsGateway,

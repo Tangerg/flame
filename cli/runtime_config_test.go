@@ -10,20 +10,22 @@ func TestRuntimeConfigDirectoriesUseOnlyExplicitSource(t *testing.T) {
 	explicitDirectory := t.TempDir()
 	t.Setenv(runtimeConfigDirectoryEnvironment, explicitDirectory)
 
-	directories, err := runtimeConfigDirectories()
-	if err != nil {
-		t.Fatalf("runtimeConfigDirectories: %v", err)
-	}
+	directories := runtimeConfigDirectories()
 	want := []string{explicitDirectory}
 	if len(directories) != len(want) || directories[0] != want[0] {
 		t.Fatalf("directories = %v, want %v", directories, want)
 	}
 }
 
-func TestRuntimeConfigDirectoriesRejectRelativeExplicitSource(t *testing.T) {
+func TestEmbeddedRuntimeValidatesItsConfigOnlyWhenSelected(t *testing.T) {
 	t.Setenv(runtimeConfigDirectoryEnvironment, "relative/config")
-	if _, err := runtimeConfigDirectories(); err == nil {
-		t.Fatal("relative runtime config directory was accepted")
+	owner, err := newRuntimeOwnerAt(t.TempDir())
+	if err != nil {
+		t.Fatalf("client construction interpreted an unselected Runtime config: %v", err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	if _, err := owner.Connection(t.Context(), ""); err == nil {
+		t.Fatal("embedded Runtime accepted relative configuration directory")
 	}
 }
 
@@ -48,10 +50,7 @@ func TestRuntimeConfigDirectoriesIgnoreWorkingDirectoryConfig(t *testing.T) {
 	}
 	t.Chdir(cliDirectory)
 
-	directories, err := runtimeConfigDirectories()
-	if err != nil {
-		t.Fatalf("runtimeConfigDirectories: %v", err)
-	}
+	directories := runtimeConfigDirectories()
 	if len(directories) != 0 {
 		t.Fatalf("directories = %v; a checkout beside the process must name nothing", directories)
 	}

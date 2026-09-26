@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RunEvent } from "@/rpc";
+import type { RunEvent } from "@flame/runtime-contract/client";
 import { createRunEventBatcher } from "./runEventBatcher";
 
 let sequence = 0;

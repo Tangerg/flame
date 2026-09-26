@@ -7,7 +7,8 @@ import {
   applyRuntimeEndpoint,
   currentRuntimeEndpoint,
   resetRuntimeEndpoint,
-  DEFAULT_RUNTIME_ENDPOINT,
+  defaultRuntimeEndpoint,
+  hasRuntimeAccessToken,
   type RuntimeEndpointRejection,
 } from "@/plugins/builtin/runtime/public/endpoint";
 import {
@@ -69,39 +70,48 @@ function rejectionMessage(reason: RuntimeEndpointRejection, translate: Translate
       return translate("connection.error.invalidUrl");
     case "unsupported_scheme":
       return translate("connection.error.urlScheme");
+    case "invalid_token":
+      return translate("connection.error.token");
   }
 }
 
 export function ConnectionPane() {
   const t = useT();
   const initial = currentRuntimeEndpoint();
+  const defaultEndpoint = defaultRuntimeEndpoint();
   const service = useRuntimeServiceStatus();
   const [url, setUrl] = useState(initial);
-  const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState("");
+  const [tokenEdited, setTokenEdited] = useState(false);
+  const [error, setError] = useState<RuntimeEndpointRejection | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const trimmed = url.trim();
-  const dirty = trimmed !== initial.trim();
-  const isDefault = trimmed === DEFAULT_RUNTIME_ENDPOINT;
+  const dirty = trimmed !== initial.trim() || tokenEdited;
+  const isDefault = trimmed === defaultEndpoint;
 
   const apply = (): boolean => {
-    const result = applyRuntimeEndpoint(url);
+    const result = applyRuntimeEndpoint(url, tokenEdited ? token : undefined);
     if (result.kind === "rejected") {
-      setError(rejectionMessage(result.reason, t));
+      setError(result.reason);
       return false;
     }
     setUrl(result.endpoint);
     setError(null);
+    setToken("");
+    setTokenEdited(false);
     return true;
   };
 
   const reset = () => {
     const result = resetRuntimeEndpoint();
     if (result.kind === "rejected") {
-      setError(rejectionMessage(result.reason, t));
+      setError(result.reason);
       return;
     }
     setUrl(result.endpoint);
+    setToken("");
+    setTokenEdited(false);
     setError(null);
   };
 
@@ -134,17 +144,19 @@ export function ConnectionPane() {
               font="mono"
               id="runtime-base-url"
               type="text"
-              invalid={error !== null}
+              invalid={error !== null && error !== "invalid_token"}
               aria-label={t("settings.connection.url")}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              aria-describedby={error ? "runtime-base-url-error" : undefined}
+              aria-describedby={
+                error && error !== "invalid_token" ? "runtime-connection-error" : undefined
+              }
               onKeyDown={(e) => {
                 if (e.key !== "Enter" || isImeKey(e.nativeEvent)) return;
                 e.preventDefault();
                 if (apply()) e.currentTarget.blur();
               }}
-              placeholder={DEFAULT_RUNTIME_ENDPOINT}
+              placeholder={defaultEndpoint}
               {...stylex.props(vocab.grow)}
               spellCheck={false}
             />
@@ -169,14 +181,47 @@ export function ConnectionPane() {
               {t("settings.connection.apply")}
             </Button>
           </div>
+          <label htmlFor="runtime-local-token" {...stylex.props(ss.captionInline, typeStep.uiMd)}>
+            {t("settings.connection.token")}
+          </label>
+          <div {...stylex.props(vocab.line)}>
+            <TextField
+              id="runtime-local-token"
+              type="password"
+              autoComplete="off"
+              aria-label={t("settings.connection.token")}
+              invalid={error === "invalid_token"}
+              aria-describedby={error === "invalid_token" ? "runtime-connection-error" : undefined}
+              value={token}
+              onChange={(event) => {
+                setToken(event.target.value);
+                setTokenEdited(true);
+              }}
+              placeholder={t("settings.connection.tokenPlaceholder")}
+              spellCheck={false}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!token && !hasRuntimeAccessToken()}
+              onClick={() => {
+                setToken("");
+                setTokenEdited(true);
+              }}
+              styles={vocab.hold}
+            >
+              {t("settings.connection.clearToken")}
+            </Button>
+          </div>
+          <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("settings.connection.tokenHint")}</p>
           {error ? (
             <div
-              id="runtime-base-url-error"
+              id="runtime-connection-error"
               role="alert"
               {...stylex.props(vocab.lineTight, vocab.negative, typeStep.uiSm)}
             >
               <StatusDot tone="err" />
-              <span>{error}</span>
+              <span>{rejectionMessage(error, t)}</span>
             </div>
           ) : null}
           <div {...stylex.props(cp.status)}>

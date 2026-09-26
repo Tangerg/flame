@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/main/container", () => ({
-  getContainer: () => ({ desktop: { saveImage: mocks.saveImage } }),
+  getContainer: () => ({ host: { saveImage: mocks.saveImage } }),
 }));
 
 const FIRST_PNG =

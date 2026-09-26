@@ -2,7 +2,6 @@ package terminal
 
 import (
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -154,7 +153,7 @@ func headerRightLabel(usage agent.Usage, changes int, known bool) string {
 }
 
 func displayWorkspace(value workspace.Workspace) string {
-	path := filepath.Clean(strings.TrimSpace(value.Path))
+	path := value.Path
 	if path == "." || path == "" {
 		return "workspace"
 	}

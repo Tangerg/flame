@@ -13,6 +13,7 @@ import { createMemoryNavigator } from "@/lib/navigation.testkit";
 import { installAgentDefaultSessionPort } from "@/plugins/builtin/agent/adapters/agentDefaultSessionPort";
 import { installAgentRuntimeGateway } from "@/plugins/builtin/agent/adapters/agentRuntimeGateway";
 import { installAgentStatePorts } from "@/plugins/builtin/agent/adapters/agentStatePorts";
+import { activateAgentSessionStorage } from "@/plugins/builtin/agent/adapters/agentSessionStore";
 import {
   getAgentSessionLifecycleSnapshot,
   getActiveSessionId,
@@ -34,12 +35,16 @@ const testAgentSessions: AgentSessions = {
   subscribeLifecycle: subscribeAgentSessionLifecycle,
 };
 
+const testEndpoint = () => "https://runtime.test";
+const testScope = { subscribeReplacement: () => () => undefined };
+
 configureNavigator(createMemoryNavigator());
+activateAgentSessionStorage(testEndpoint());
 installAgentStatePorts();
 installAgentDefaultSessionPort();
 installAgentRuntimeGateway();
-installComposerStatePorts(testAgentSessions);
-installWorkspaceNavigationPort();
+installComposerStatePorts(testAgentSessions, testEndpoint, testScope);
+installWorkspaceNavigationPort(testEndpoint);
 installRuntimeCapabilityPort();
 
 MotionGlobalConfig.skipAnimations = true;
@@ -47,11 +52,12 @@ MotionGlobalConfig.skipAnimations = true;
 beforeEach(async () => {
   await resetKernelForTest();
   configureNavigator(createMemoryNavigator());
+  activateAgentSessionStorage(testEndpoint());
   installAgentStatePorts();
   installAgentDefaultSessionPort();
   installAgentRuntimeGateway();
-  installComposerStatePorts(testAgentSessions);
-  installWorkspaceNavigationPort();
+  installComposerStatePorts(testAgentSessions, testEndpoint, testScope);
+  installWorkspaceNavigationPort(testEndpoint);
   resetRuntimeConnectionForTest();
   installRuntimeCapabilityPort();
   usePluginErrorStore.setState({ log: [] });

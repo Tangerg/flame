@@ -1,6 +1,6 @@
 import { getContainer } from "@/main/container";
 import type { AgentMemoryGateway } from "../application/ports/agentMemoryGateway";
-import type { AgentMemoryItem } from "@/rpc";
+import type { AgentMemoryItem } from "@flame/runtime-contract/client";
 import type { AgentMemoryEntry } from "../application/workspaceQueries";
 import { AgentMemoryMutationOwner } from "../application/agentMemoryMutationOwner";
 

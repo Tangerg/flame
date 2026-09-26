@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { RunEvent, RunOutcome, RunProtocolProfile, RunRef } from "@/rpc";
+import type {
+  RunEvent,
+  RunOutcome,
+  RunProtocolProfile,
+  RunRef,
+} from "@flame/runtime-contract/client";
 import {
   runtimeAgentEvent,
   runtimeCancelResult,

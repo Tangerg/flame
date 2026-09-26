@@ -126,6 +126,7 @@ func OutcomeUnknown(err error) bool {
 		errors.Is(err, agent.ErrCommandConflict) ||
 		errors.Is(err, agent.ErrCommandNotDispatched) ||
 		errors.Is(err, agent.ErrCommandInputUnavailable) ||
+		errors.Is(err, agent.ErrCommandOutcomeUnknown) ||
 		errors.Is(err, agent.ErrCommandStoreMismatch) ||
 		errors.Is(err, ErrReplayGuaranteeUnavailable)
 }

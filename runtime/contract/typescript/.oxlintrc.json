@@ -1,0 +1,10 @@
+{
+  "plugins": ["typescript", "unicorn", "oxc", "import", "promise", "vitest"],
+  "rules": {
+    "vitest/require-mock-type-parameters": "off",
+    "vitest/expect-expect": [
+      "error",
+      { "assertFunctionNames": ["expect", "expectTypeOf", "assert", "assertType", "expect*"] }
+    ]
+  }
+}

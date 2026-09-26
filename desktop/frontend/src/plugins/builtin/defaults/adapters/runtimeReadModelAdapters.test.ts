@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Session } from "@/rpc";
+import type { Session } from "@flame/runtime-contract/client";
 import { toAgentSessionSummary } from "./runtimeReadModelAdapters";
 
 function runtimeSession(availability: "available" | "missing"): Session {

@@ -68,10 +68,13 @@ baseURL: ""
 server:
   listen: 127.0.0.1:17171   # loopback endpoint for local protocol clients
   noLocalToken: false       # true = disable the local-process gate (dev / same-origin)
-  localTokenPath: ""        # default: $HOME/.flame/local-token; path owns the durable token
+  localTokenPath: ""        # default: $FLAME_HOME/runtime/local-token
   # Empty uses the exact Wails + repository Vite origins built into the Runtime.
   # Add origins only for a different browser client; "*" is development-only.
   corsOrigins: []
+  # Optional absolute path to desktop/frontend/dist. Assets are public, while
+  # /v2/rpc still requires the token. Overridden by FLAME_SERVER_WEBDIRECTORY.
+  webDirectory: ""
 
 # Optional provider-backed tool credentials (leave blank to disable).
 online:

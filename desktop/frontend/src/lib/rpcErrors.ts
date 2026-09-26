@@ -1,5 +1,5 @@
-import { errorDetail, errorType, isErrorType, RpcError } from "@/rpc";
-import type { ProblemData } from "@/rpc";
+import { errorDetail, errorType, isErrorType, RpcError } from "@flame/runtime-contract/client";
+import type { ProblemData } from "@flame/runtime-contract/client";
 import { t } from "./i18n";
 
 export const MAPPED_TYPES: readonly string[] = [

@@ -32,7 +32,7 @@ func TestOwnerRetainsFailedConnectionUntilCleanupCompletes(t *testing.T) {
 	if owner.connection != failed || !owner.closing {
 		t.Fatal("owner did not retain the incompletely closed Runtime")
 	}
-	if _, err := owner.Connection(t.Context()); !errors.Is(err, agent.ErrDisconnected) {
+	if _, err := owner.Connection(t.Context(), ""); !errors.Is(err, agent.ErrDisconnected) {
 		t.Fatalf("Connection during cleanup = %v, want ErrDisconnected", err)
 	}
 	if err := owner.Close(); err != nil {

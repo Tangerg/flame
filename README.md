@@ -1,17 +1,19 @@
 # Flame
 
-Flame is a local agent product with a Go Runtime, a Cobra/Oolong CLI, and a Wails desktop client.
+Flame is an agent product with a Go Runtime, a Cobra/Oolong CLI, a shared Web/Wails application, and a VS Code extension.
 
-Runtime owns durable product semantics and exposes the same behavior through an in-process Go binding and the Runtime Protocol. CLI and Desktop are consumers; Scope supplies the agent framework and provider libraries.
+Runtime owns durable product semantics and exposes the same behavior through an in-process Go binding and the Runtime Protocol. Clients own interaction and presentation; Scope supplies the agent framework and provider libraries.
 
 ## Repository
 
 | Path | Responsibility |
 | --- | --- |
-| `runtime/` | Domain model, use cases, execution adapters, persistence, protocol, and Go binding |
+| `runtime/` | Domain model, use cases, execution adapters, persistence, protocol, and local/remote Go bindings |
+| `runtime/contract/typescript/` | Generated contract and the shared TypeScript HTTP client |
 | `runtime/localruntime/` | Strict local Runtime credential handoff |
 | `cli/` | Command routing, one-shot output, terminal interaction, and CLI-local authoring state |
-| `desktop/` | Wails host and graphical presentation |
+| `desktop/` | Shared browser/desktop presentation and the Wails host |
+| `ide/` | Native VS Code interaction over the shared Runtime client |
 
 Each module's own `README.md` carries its boundaries and module instructions.
 
@@ -40,4 +42,19 @@ go vet ./runtime/... ./runtime/localruntime/... ./cli/...
 go build ./runtime/... ./runtime/localruntime/... ./cli/...
 ```
 
-Desktop frontend commands and Wails build instructions live under `desktop/`; Desktop is outside the current Runtime and CLI refactoring boundary.
+Graphical-client commands and Wails build instructions live under [`desktop/`](desktop/README.md). IDE commands and packaging live under [`ide/`](ide/README.md).
+
+## Share a Runtime
+
+Start one standalone Runtime with its own provider configuration and data directory. Every attached client names its base URL, such as `http://127.0.0.1:17171`; the shared clients append the generated `/v2/rpc` path. Runtime owns execution, credentials for providers, and filesystem paths. A remote client's environment does not reconfigure the running Runtime.
+
+```sh
+go run ./cli --runtime-url http://127.0.0.1:17171
+go run ./cli --runtime-url http://127.0.0.1:17171 run --workspace /server/project "Review this project"
+```
+
+Supply the existing Runtime bearer token through `FLAME_RUNTIME_TOKEN` for CLI, the connection dialog for Web, or the IDE connection command. The token never belongs in the URL. A CLI with no configured endpoint owns an embedded Runtime. An explicit remote connection failure never starts a local substitute.
+
+Closing an attached view releases that client's transport and projections. Explicit cancellation remains a Runtime command; one-shot CLI interruption cancels the Run it is driving. Only the process or host that opened a Runtime owns its shutdown. Multiple processes using the same database are not substitutes for attaching to the same live Runtime.
+
+To serve the graphical application from the Runtime's origin, build `desktop/frontend`, then set `server.webDirectory` (or `FLAME_SERVER_WEBDIRECTORY`) to the absolute path of its `dist` directory. Static assets are public; `/v2/rpc` retains its token gate. Browser clients choose paths on the Runtime host instead of treating a local file picker as a remote workspace.

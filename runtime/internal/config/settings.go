@@ -57,6 +57,7 @@ type Server struct {
 	NoLocalToken   bool
 	LocalTokenPath string
 	CORSOrigins    []string // empty → server falls back to the built-in dev allowlist
+	WebDirectory   string   // optional absolute path to the built browser application
 }
 
 // Online holds credentials for optional network-reaching tools. Empty

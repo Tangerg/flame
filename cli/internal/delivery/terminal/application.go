@@ -108,6 +108,8 @@ type app struct {
 	draftState     draftObservation
 	stopDraftSave  func()
 	editor         *draftEditor
+	localDirectory string
+	detachOnExit   bool
 
 	attachments        *attachment.Resolver
 	attachmentElements map[uint64]agent.Attachment
@@ -155,11 +157,13 @@ type appConfig struct {
 	recoveredSteers  []runworkflow.SteerResult
 	settings         settings.Config
 
-	options     agent.RunOptions
-	keyBindings keyBindings
-	queue       *promptqueue.Queue
-	workbench   *workbench.Store
-	editor      *draftEditor
+	options        agent.RunOptions
+	keyBindings    keyBindings
+	queue          *promptqueue.Queue
+	workbench      *workbench.Store
+	editor         *draftEditor
+	localDirectory string
+	detachOnExit   bool
 }
 
 type terminalAppearance struct {
@@ -213,6 +217,8 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		queue:              cfg.queue,
 		workbench:          cfg.workbench,
 		editor:             cfg.editor,
+		localDirectory:     cfg.localDirectory,
+		detachOnExit:       cfg.detachOnExit,
 		settings:           cfg.settings.Clone(),
 		options:            cfg.options,
 		syntax:             appearance.syntax,
@@ -369,7 +375,7 @@ func (a *app) Close(ctx context.Context) error {
 	if a.execution.pendingCancel != nil {
 		target, openingCommandID, cancelRuntime = a.execution.pendingCancel.request, a.execution.pendingCancel.openingCommandID, true
 		cancelReplay = a.execution.pendingCancel.replay
-	} else {
+	} else if !a.detachOnExit {
 		target, cancelRuntime = a.activeCancellation()
 		openingCommandID = a.openingCommandForRun(target.RunID)
 		cancelReplay = commandReplayGuard(a.runtimeProfile)
@@ -379,9 +385,18 @@ func (a *app) Close(ctx context.Context) error {
 		cancelOpening bool
 	)
 	if !cancelRuntime && closeErr == nil {
-		var err error
-		pendingStart, cancelOpening, err = a.stageOpeningCancellation()
-		closeErr = errors.Join(closeErr, err)
+		if a.detachOnExit {
+			for _, pending := range a.workbench.PendingRuns(a.session.current.ID) {
+				if pending.State == workbench.PendingRunCanceling {
+					pendingStart, cancelOpening = pending, true
+					break
+				}
+			}
+		} else {
+			var err error
+			pendingStart, cancelOpening, err = a.stageOpeningCancellation()
+			closeErr = errors.Join(closeErr, err)
+		}
 	}
 	a.dropStream()
 	a.operations.Cancel(completionOperation)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/contractcatalog"
 	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -50,6 +51,7 @@ func newTypeScript(set *schemaSet, notifications []string) string {
 	emitter.header()
 	emitter.protocolVersion()
 	emitter.httpEndpoints()
+	emitter.problemCodes()
 	emitter.notifications(notifications)
 
 	names := slices.Sorted(maps.Keys(set.defs))
@@ -67,6 +69,17 @@ func newTypeScript(set *schemaSet, notifications []string) string {
 	emitter.enumValues(names)
 	emitter.runEventSemantics()
 	return emitter.out.String()
+}
+
+func (t *tsEmitter) problemCodes() {
+	t.line("// RPC error codes and problem types describe one operation failure.")
+	t.line("export const PROBLEM_CODES = {")
+	codes := dispatch.ProblemCodes()
+	for _, name := range slices.Sorted(maps.Keys(codes)) {
+		t.line("  %s: %d,", strconv.Quote(name), codes[name])
+	}
+	t.line("} as const satisfies Partial<Record<ProblemData['type'], number>>;")
+	t.line("")
 }
 
 // httpEndpoints publishes transport locations from the same Delivery registry

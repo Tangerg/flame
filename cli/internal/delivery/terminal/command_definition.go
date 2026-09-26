@@ -175,12 +175,13 @@ func (a CommandAvailability) Enabled() bool { return a.reason == "" }
 // Reason states why the command cannot run, and is empty when it can.
 func (a CommandAvailability) Reason() string { return a.reason }
 
-// CommandRequest is the bounded product context given to an out-of-process
-// slash command.
+// CommandRequest separates Runtime workspace identity from the client directory
+// available to a contributed command. They can belong to different machines.
 type CommandRequest struct {
-	Argument  string
-	Workspace string
-	SessionID string
+	Argument       string
+	Workspace      string
+	LocalDirectory string
+	SessionID      string
 }
 
 // CommandResult is what an asynchronous slash command may surface in the

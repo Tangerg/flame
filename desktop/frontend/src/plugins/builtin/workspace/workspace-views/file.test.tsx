@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+import { getContainer } from "@/main/container";
 import { navigator } from "@/lib/navigation";
 import { openWorkspaceFile } from "../application/navigation";
 import { useContextDockStore } from "../adapters/contextDockStore";
@@ -18,7 +19,7 @@ import {
 } from "../application/workspaceQueries";
 import { FileViewTab } from "./file";
 import { FileTree } from "./views/FileTree";
-import { RpcError } from "@/rpc";
+import { RpcError } from "@flame/runtime-contract/client";
 
 const selection = vi.hoisted(() => ({
   current: { status: "ready" } as
@@ -78,6 +79,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   uninstallClassifier();
   cleanup();
   client.clear();
@@ -168,18 +170,23 @@ describe("workspace files panel", () => {
     expect(row.getAttribute("title")).toBe("src/main.go");
   });
 
-  it("names a file it cannot read as text and offers the platform's own exits", async () => {
-    selection.current = { status: "ready", cwd: "/work/project" };
-    readFile.mockRejectedValue(
-      new RpcError({ code: -32602, message: "binary", data: { type: "unsupported_mime" } }),
-    );
-    openWorkspaceFile("assets/logo.png");
-    mount(<FileViewTab />);
+  it.each([true, false])(
+    "offers native file actions only for a local Runtime (%s)",
+    async (local) => {
+      vi.spyOn(getContainer(), "localWorkspaceAvailable").mockReturnValue(local);
+      selection.current = { status: "ready", cwd: "/work/project" };
+      readFile.mockRejectedValue(
+        new RpcError({ code: -32602, message: "binary", data: { type: "unsupported_mime" } }),
+      );
+      openWorkspaceFile("assets/logo.png");
+      mount(<FileViewTab />);
 
-    expect(await screen.findByText("No image preview here yet")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Open" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Go to line" })).toBeNull();
-  });
+      expect(await screen.findByText("No image preview here yet")).toBeTruthy();
+      expect(Boolean(screen.queryByRole("button", { name: "Open" }))).toBe(local);
+      expect(Boolean(screen.queryByRole("button", { name: "Show in Finder" }))).toBe(local);
+      expect(screen.queryByRole("button", { name: "Go to line" })).toBeNull();
+    },
+  );
 });
 
 describe("workspace file tree keyboard model", () => {

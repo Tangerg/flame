@@ -17,7 +17,7 @@ import {
   type SegmentOutcome,
   type ToolInvocation,
   type Usage,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 import type {
   AgentCancelResult,
   AgentEventEnvelope,

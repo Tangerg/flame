@@ -39,8 +39,6 @@ const css = read("../src/styles/globals.css");
 const store = read("../src/plugins/builtin/theme/adapters/appearanceStore.ts");
 const painter = read("../src/plugins/builtin/theme/adapters/documentAppearance.ts");
 const shell = read("../../main.go");
-const host = read("../../desktop_host.go");
-const endpoint = read("../src/plugins/builtin/runtime/application/runtimeEndpoint.ts");
 
 const failures = [];
 
@@ -144,27 +142,6 @@ expect(
     shellCanvases[0] === canvasTokens[0] &&
     shellCanvases[1] === canvasTokens[1],
   `main.go opens the window ${shellCanvases.join(" / ")} where --color-bg is ${canvasTokens.join(" / ")}`,
-);
-
-// ── 6. Where the local Runtime listens ───────────────────────────────────────
-// Stated once in each language, and the two are compared by string: `container.ts` attaches
-// the local gate token ONLY to a client whose endpoint equals the one `Bootstrap()` handed
-// over. A drift between these does not fail to connect — it connects with no token, and
-// nothing on either side says why. The Runtime owns the port and publishes no constant for
-// it, so the shell cannot read the value; what it can do is stop stating it twice unwatched.
-const shellEndpoint = host.match(/localRuntimeEndpoint\s*=\s*"([^"]+)"/)?.[1];
-const appEndpoint = endpoint.match(/DEFAULT_RUNTIME_ENDPOINT\s*=\s*"([^"]+)"/)?.[1];
-// Said separately, the way the five extractions above say it. Without this the failure still
-// happens — `shellEndpoint === undefined` is false — but it reads as a DRIFT, "hands over
-// http://… where the app defaults to undefined", when what actually happened is that this
-// check stopped being able to find the constant.
-expect(
-  appEndpoint !== undefined,
-  "the app no longer declares DEFAULT_RUNTIME_ENDPOINT — this check reads nothing",
-);
-expect(
-  shellEndpoint !== undefined && shellEndpoint === appEndpoint,
-  `desktop_host.go hands over ${shellEndpoint} where the app defaults to ${appEndpoint}`,
 );
 
 // The runtime-derived mirrors — the type ladder, the depth step, the motion ladder and the

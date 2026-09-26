@@ -3,7 +3,6 @@ package runtimebinding
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -25,9 +24,6 @@ func (h *Hooks) Catalog(ctx context.Context, workspacePath string) (workspace.Ho
 	if workspacePath == "" {
 		return workspace.HookCatalog{}, errors.New("list hooks: workspace is empty")
 	}
-	if !filepath.IsAbs(workspacePath) {
-		return workspace.HookCatalog{}, errors.New("list hooks: workspace is not absolute")
-	}
 	result, err := r.hooks.ListHooks(ctx, protocol.ListHooksRequest{
 		Workspace: protocol.WorkspaceRef{Path: workspacePath},
 	}, r.callOptions())
@@ -37,29 +33,10 @@ func (h *Hooks) Catalog(ctx context.Context, workspacePath string) (workspace.Ho
 	if result == nil {
 		return workspace.HookCatalog{}, runtimeContractViolation("list hooks returned nil")
 	}
-	if !hookProjectRootContainsWorkspace(result.ProjectRoot, workspacePath) {
-		return workspace.HookCatalog{}, runtimeContractViolation(
-			"list hooks for workspace %q returned unrelated project root %q",
-			workspacePath,
-			result.ProjectRoot,
-		)
-	}
 	return workspace.HookCatalog{
 		ProjectRoot: result.ProjectRoot, ProjectTrusted: result.ProjectTrusted,
 		Hooks: slices.Clone(result.Hooks),
 	}, nil
-}
-
-func hookProjectRootContainsWorkspace(projectRoot, workspace string) bool {
-	projectRoot = strings.TrimSpace(projectRoot)
-	if projectRoot == "" || !filepath.IsAbs(projectRoot) {
-		return false
-	}
-	relative, err := filepath.Rel(filepath.Clean(projectRoot), filepath.Clean(workspace))
-	if err != nil || filepath.IsAbs(relative) {
-		return false
-	}
-	return relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
 func (h *Hooks) SetProjectTrust(ctx context.Context, projectRoot string, trusted bool) error {

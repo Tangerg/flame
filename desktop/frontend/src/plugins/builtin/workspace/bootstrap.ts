@@ -12,6 +12,7 @@ import {
 import { WORKSPACE_SCOPE } from "@/plugins/builtin/workspace/public/services";
 import { WORKSPACE_MUTATION_LIFECYCLE } from "@/plugins/builtin/workspace/public/services";
 import { RUNTIME_STREAM } from "@/plugins/builtin/runtime/public/services";
+import { currentRuntimeEndpoint } from "@/plugins/builtin/runtime/public/endpoint";
 
 export default definePlugin({
   name: "flame.builtin.workspace-bootstrap",
@@ -35,7 +36,7 @@ export default definePlugin({
       () => agentMemory.dispose(),
       () => skillCuration.dispose(),
       installWorkspaceErrorClassifier(),
-      installWorkspaceNavigationPort(),
+      installWorkspaceNavigationPort(currentRuntimeEndpoint),
     ];
     ctx.cleanup(() => {
       for (let index = disposers.length - 1; index >= 0; index--) disposers[index]!();

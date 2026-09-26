@@ -183,6 +183,12 @@ A failure the transport answers itself is not an operation's failure, and says s
 
 The Go binding does not serialize through HTTP, but it does not bypass product semantics. Protocol changes publish one current shape without aliases, fallback decoding, dual methods, or dual events.
 
+Public Go operation methods share one binding implementation between an owned `Runtime` and an attached `Client`. The local invocation enters Endpoint directly; the remote invocation translates the HTTP envelope, metadata, strict response decoding, and SSE lifetime. Neither path reconstructs admission, recovery, or execution policy. Remote close detaches only that client. Accepted execution remains owned by the serving Runtime.
+
+`contract/typescript/client` is the TypeScript protocol consumer shared by Web, Desktop, and IDE. It owns transport, exact wire values, command preparation, and replay evidence; renderer stores and native host APIs remain with their clients. Each client owns its command journal and retires it explicitly. Creating another client does not revoke an unrelated client's authority.
+
+The HTTP host may serve a built Web distribution on its origin. Bootstrap supplies the confined `infra/filesystem/webassets` handler; delivery owns routing and never opens filesystem paths. Static assets are independent of the protocol catalog and expose no product operations or credentials. The generated API routes retain their authentication and dispatch. Browser, CLI, and IDE workspace references are opaque server paths; client-local files and versioned editor buffers are separate input material.
+
 ## Composition and lifecycle
 
 Bootstrap constructs one endpoint and one resource graph. One Instance lifecycle owns startup rollback and ordered shutdown: stop delivery, join accepted operations and workers, stop Application producers, drain maintenance, join execution, and release resources. A caller timeout never cancels cleanup; a settled component failure allows a later Close attempt. Construction has no separate builder lifecycle. Public `runtime.Runtime` owns that Bootstrap instance and rejects new work after closing begins.

@@ -11,7 +11,7 @@ import type {
   MCPHeadersChange,
   FlameClient,
   UpdateMCPServerRequest,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 import type { MCPServerInput } from "../application/mcpServerInput";
 import type { MCPHandshakeTimeout } from "../application/mcpHandshakeTimeout";
 import { mcpServerSettings } from "./runtimeMcpServerProjection";

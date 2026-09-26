@@ -3,7 +3,6 @@ package agent
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -13,7 +12,7 @@ func ParseMemoryScope(value string) (protocol.AgentMemoryScope, error) {
 	scope := protocol.AgentMemoryScope(strings.TrimSpace(value))
 	workspace := ""
 	if scope == protocol.AgentMemoryScopeProject {
-		workspace = string(filepath.Separator)
+		workspace = "/"
 	}
 	if _, err := NewMemoryTarget(scope, workspace); err != nil {
 		return "", err
@@ -39,9 +38,6 @@ func (t MemoryTarget) Validate() error {
 	}
 	if err := protocol.ValidateWireTree(protocol.AgentMemoryListRequest{Scope: t.Scope, Workspace: workspace}); err != nil {
 		return fmt.Errorf("agent memory target: %w", err)
-	}
-	if t.Scope == protocol.AgentMemoryScopeProject && !filepath.IsAbs(t.Workspace) {
-		return errors.New("project agent memory workspace is not absolute")
 	}
 	return nil
 }

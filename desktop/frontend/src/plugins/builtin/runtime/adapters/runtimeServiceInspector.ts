@@ -6,7 +6,7 @@ import {
   type ReadinessStatus,
   type RuntimeInfo,
   type ServerCapabilities,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 import type {
   RuntimeConnectionInspector,
   RuntimeServiceHealth,

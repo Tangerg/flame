@@ -1,5 +1,5 @@
-import type { FlameClient } from "@/rpc";
-import { asRunId, asSegmentId, RpcConnectionError } from "@/rpc";
+import type { FlameClient } from "@flame/runtime-contract/client";
+import { asRunId, asSegmentId, RpcConnectionError } from "@flame/runtime-contract/client";
 import type { AgentRunView, AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { refreshAgentSessionProjection } from "../application/session/refreshSessionProjection";
 import { agentRuntime } from "../application/ports/runtimeGateway";

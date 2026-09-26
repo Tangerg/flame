@@ -1,6 +1,6 @@
 import { getContainer } from "@/main/container";
-import type { FlameClient } from "@/rpc";
-import { asItemId, asRunId, asSessionId } from "@/rpc";
+import type { FlameClient } from "@flame/runtime-contract/client";
+import { asItemId, asRunId, asSessionId } from "@flame/runtime-contract/client";
 import { MessageFeedbackOwner, type MessageFeedbackGateway } from "../application/feedback";
 
 function runtimeFeedbackGateway(client: FlameClient): MessageFeedbackGateway {

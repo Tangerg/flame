@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   activeWorkspace: { status: "ready", cwd: undefined } as
     { status: "ready"; cwd?: string } | { status: "resolving"; sessionId: string },
   runtimeAvailable: true,
-  choose: vi.fn(),
+  open: vi.fn(),
   create: vi.fn(),
   focusComposer: vi.fn(),
   notifyError: vi.fn(),
@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/plugins/builtin/agent/public/session", () => ({
   selectAgentSession: vi.fn(),
+  getActiveSessionId: () => mocks.activeSessionId,
+  createSession: mocks.create,
   useActiveSessionId: () => mocks.activeSessionId,
   useActiveSessionWorkspace: () => mocks.activeWorkspace,
   useCreateSession: () => mocks.create,
@@ -45,24 +47,25 @@ beforeEach(() => {
   mocks.activeSessionId = "";
   mocks.activeWorkspace = { status: "ready", cwd: undefined };
   mocks.runtimeAvailable = true;
-  mocks.choose.mockReset();
+  mocks.open.mockReset();
   mocks.create.mockReset().mockResolvedValue("session-new");
   mocks.focusComposer.mockReset();
   mocks.notifyError.mockReset();
-  disposePicker = configureWorkingDirectoryPicker({ choose: mocks.choose });
+  disposePicker = configureWorkingDirectoryPicker({ open: mocks.open });
 });
 
 afterEach(() => disposePicker());
 
 describe("useWorkIndexActions directory selection", () => {
-  it("keeps New on the explicit project-selection destination when no Session is active", () => {
+  it("opens workspace selection when creating the first Session", () => {
     const { result } = renderHook(() => useWorkIndexActions());
 
     act(() => result.current.createSession());
 
     expect(result.current.canCreateSession).toBe(true);
     expect(mocks.create).not.toHaveBeenCalled();
-    expect(mocks.focusComposer).toHaveBeenCalledOnce();
+    expect(mocks.open).toHaveBeenCalledOnce();
+    expect(mocks.focusComposer).not.toHaveBeenCalled();
   });
 
   it("withdraws every Session mutation while Runtime commands are unavailable", () => {
@@ -76,24 +79,19 @@ describe("useWorkIndexActions directory selection", () => {
     });
 
     expect(result.current.canCreateSession).toBe(false);
-    expect(mocks.choose).not.toHaveBeenCalled();
+    expect(mocks.open).not.toHaveBeenCalled();
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.focusComposer).not.toHaveBeenCalled();
   });
 
-  it("starts the global new-session action in the exact active project", async () => {
+  it("delegates the global new-session action to the active Session workspace owner", async () => {
     mocks.activeSessionId = "session-current";
     mocks.activeWorkspace = { status: "ready", cwd: "/tmp/current-project" };
     const { result } = renderHook(() => useWorkIndexActions());
 
     act(() => result.current.createSession());
 
-    await waitFor(() =>
-      expect(mocks.create).toHaveBeenCalledWith({
-        cwd: "/tmp/current-project",
-        reuseFreshDraft: true,
-      }),
-    );
+    await waitFor(() => expect(mocks.create).toHaveBeenCalledWith());
     expect(mocks.focusComposer).toHaveBeenCalledOnce();
   });
 
@@ -109,14 +107,11 @@ describe("useWorkIndexActions directory selection", () => {
     expect(mocks.focusComposer).not.toHaveBeenCalled();
   });
 
-  it("creates a session in the selected directory and focuses its composer", async () => {
-    mocks.choose.mockResolvedValue("/tmp/project");
+  it("opens the runtime workspace selector for a different directory", () => {
     const { result } = renderHook(() => useWorkIndexActions());
-
     act(() => result.current.chooseSessionFolder());
-
-    await waitFor(() => expect(mocks.create).toHaveBeenCalledWith({ cwd: "/tmp/project" }));
-    expect(mocks.focusComposer).toHaveBeenCalledOnce();
+    expect(mocks.open).toHaveBeenCalledOnce();
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it("keeps focus in the current session when project creation is rejected", async () => {
@@ -127,46 +122,5 @@ describe("useWorkIndexActions directory selection", () => {
 
     await waitFor(() => expect(mocks.create).toHaveBeenCalledWith({ cwd: "/tmp/project" }));
     expect(mocks.focusComposer).not.toHaveBeenCalled();
-  });
-
-  it("treats cancellation as no mutation", async () => {
-    mocks.choose.mockResolvedValue(null);
-    const { result } = renderHook(() => useWorkIndexActions());
-
-    act(() => result.current.chooseSessionFolder());
-
-    await waitFor(() => expect(mocks.choose).toHaveBeenCalledOnce());
-    expect(mocks.create).not.toHaveBeenCalled();
-    expect(mocks.focusComposer).not.toHaveBeenCalled();
-  });
-
-  it("coalesces repeated clicks into one picker and one session mutation", async () => {
-    let release!: (cwd: string) => void;
-    mocks.choose.mockImplementation(() => new Promise<string>((resolve) => (release = resolve)));
-    const { result } = renderHook(() => useWorkIndexActions());
-
-    act(() => {
-      result.current.chooseSessionFolder();
-      result.current.chooseSessionFolder();
-    });
-    expect(mocks.choose).toHaveBeenCalledOnce();
-
-    release("/tmp/project");
-    await waitFor(() => expect(mocks.create).toHaveBeenCalledOnce());
-    expect(mocks.create).toHaveBeenCalledWith({ cwd: "/tmp/project" });
-  });
-
-  it("reports native chooser failures without creating a default-cwd session", async () => {
-    mocks.choose.mockRejectedValue(new Error("dialog unavailable"));
-    const { result } = renderHook(() => useWorkIndexActions());
-
-    act(() => result.current.chooseSessionFolder());
-
-    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledOnce());
-    expect(mocks.create).not.toHaveBeenCalled();
-    expect(mocks.notifyError).toHaveBeenCalledWith(
-      "Couldn't open the folder chooser.",
-      expect.objectContaining({ description: "dialog unavailable", source: "session" }),
-    );
   });
 });

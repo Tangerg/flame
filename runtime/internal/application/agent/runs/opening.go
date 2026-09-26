@@ -301,15 +301,11 @@ func (c *Coordinator) claimFreshRun(ctx context.Context, sess session.Session) (
 	if leaseErr != nil {
 		return ownership.RunAdmission{}, leaseErr
 	}
-	if !ok {
-		// The in-process gate also guards working-tree mutations, so what it refuses is
-		// not always a Run and cannot always be named.
-		return ownership.RunAdmission{}, ErrRunAdmissionBusy
-	}
 	// A Run the Session already holds is reported WITH its identity: the caller has to
 	// choose between steering it, answering it and canceling it, and it cannot choose
 	// without knowing which run and what state. Waiting counts — a Run parked on a
-	// person is still the Session's Run.
+	// person is still the Session's Run. A live Run holds the admission lease, so
+	// the same durable read must also explain a refused claim.
 	active, err := c.activeRunConflict(ctx, sess.ID())
 	if err != nil {
 		runAdmission.Release()
@@ -318,6 +314,11 @@ func (c *Coordinator) claimFreshRun(ctx context.Context, sess session.Session) (
 	if active != nil {
 		runAdmission.Release()
 		return ownership.RunAdmission{}, active
+	}
+	if !ok {
+		// An opening not yet committed or a working-tree mutation has no durable
+		// active Run to name. Contention alone cannot manufacture that identity.
+		return ownership.RunAdmission{}, ErrRunAdmissionBusy
 	}
 	return runAdmission, nil
 }

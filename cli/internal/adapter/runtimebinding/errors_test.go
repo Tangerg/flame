@@ -5,10 +5,38 @@ import (
 	"strings"
 	"testing"
 
+	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
+
+func TestTransportAvailabilityAndMutationCertaintyRemainIndependent(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		cause     error
+		reconnect bool
+		unknown   bool
+	}{
+		{name: "observation loss", cause: flameruntime.ErrDisconnected, reconnect: true, unknown: true},
+		{name: "lost acknowledgement", cause: errors.Join(flameruntime.ErrDisconnected, flameruntime.ErrAcknowledgementUnknown), reconnect: true, unknown: true},
+		{name: "malformed acknowledgement", cause: errors.Join(flameruntime.ErrInvalidResponse, flameruntime.ErrAcknowledgementUnknown), unknown: true},
+		{name: "malformed observation", cause: flameruntime.ErrInvalidResponse},
+		{name: "authoritative refusal", cause: protocol.ErrRevisionConflict},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			classified := classifyError(test.cause)
+			if retry.IsReconnectable(classified) != test.reconnect || mutation.OutcomeUnknown(classified) != test.unknown {
+				t.Fatalf("classification = %v; reconnect %t, unknown %t", classified, retry.IsReconnectable(classified), mutation.OutcomeUnknown(classified))
+			}
+			if !errors.Is(classified, test.cause) {
+				t.Fatalf("classification lost its original cause: %v", classified)
+			}
+		})
+	}
+}
 
 type runtimeProblemError struct {
 	data  protocol.ProblemData

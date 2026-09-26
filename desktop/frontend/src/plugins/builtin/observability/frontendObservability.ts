@@ -1,4 +1,4 @@
-import { DESKTOP_CLIENT_INFO } from "@/main/config";
+import { CLIENT_VERSION } from "@/main/config";
 import { getConfig } from "@/plugins/sdk/config";
 import type { ObservabilityTeardown } from "./observabilityLifecycle";
 
@@ -7,7 +7,7 @@ export async function initFrontendObservability(): Promise<ObservabilityTeardown
   const configuredEndpoint = getConfig("otel.endpoint");
   await setupObservability({
     serviceName: "flame-frontend",
-    serviceVersion: DESKTOP_CLIENT_INFO.version,
+    serviceVersion: CLIENT_VERSION,
     otlpEndpoint: typeof configuredEndpoint === "string" ? configuredEndpoint : undefined,
   });
   return teardownObservability;

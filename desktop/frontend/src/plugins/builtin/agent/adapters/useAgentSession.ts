@@ -1,7 +1,7 @@
 import { t } from "@/lib/i18n";
 import { notifyError } from "@/plugins/sdk";
 import type { AgentDriver, AgentRunStartOptions } from "@/plugins/sdk/types";
-import { asItemId, asRunId, type InterruptResponse } from "@/rpc";
+import { asItemId, asRunId, type InterruptResponse } from "@flame/runtime-contract/client";
 import { useEffect, useEffectEvent } from "react";
 import { queryClient } from "@/lib/queryClient";
 import type { AgentInput } from "@/plugins/builtin/agent/domain/input";

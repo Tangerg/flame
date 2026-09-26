@@ -38,7 +38,7 @@ func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 		}
 		for _, declaration := range file.Decls {
 			function, ok := declaration.(*ast.FuncDecl)
-			if !ok || function.Recv == nil || receiverName(function.Recv) != "Runtime" || !function.Name.IsExported() {
+			if !ok || function.Recv == nil || receiverName(function.Recv) != "binding" || !function.Name.IsExported() {
 				continue
 			}
 			ast.Inspect(function.Body, func(node ast.Node) bool {
@@ -74,7 +74,6 @@ func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 		}
 	}
 
-	runtimeType := reflect.TypeFor[*Runtime]()
 	errorType := reflect.TypeFor[error]()
 	contextType := reflect.TypeFor[context.Context]()
 	for _, meta := range delivery.Contract().Metas() {
@@ -83,56 +82,58 @@ func TestPublicMethodsCoverExactOperationContract(t *testing.T) {
 			t.Errorf("operation %q has no public Runtime method", meta.Name)
 			continue
 		}
-		method, ok := runtimeType.MethodByName(methodName)
-		if !ok {
-			t.Errorf("Runtime method %s is not exported", methodName)
-			continue
-		}
-		if method.Type.In(1) != contextType {
-			t.Errorf("%s context parameter = %s", methodName, method.Type.In(1))
-		}
-		expectedInputs := 4
-		if meta.Params == reflect.TypeFor[struct{}]() {
-			expectedInputs = 3
-		}
-		if method.Type.NumIn() != expectedInputs {
-			t.Errorf("%s inputs = %d, want %d", methodName, method.Type.NumIn(), expectedInputs)
-			continue
-		}
-		requestIndex := 2
-		if meta.Params == reflect.TypeFor[struct{}]() {
-			requestIndex = -1
-		} else if method.Type.In(2) != meta.Params {
-			t.Errorf("%s request = %s, want %s", methodName, method.Type.In(2), meta.Params)
-		}
-		optionIndex := 2
-		if requestIndex >= 0 {
-			optionIndex = 3
-		}
-		if got, want := method.Type.In(optionIndex), optionType(meta); got != want {
-			t.Errorf("%s options = %s, want %s", methodName, got, want)
-		}
-
-		if meta.Kind == delivery.KindStream {
-			if method.Type.NumOut() != 3 || method.Type.Out(0) != meta.Result || method.Type.Out(2) != errorType {
-				t.Errorf("%s stream result does not match %s", methodName, meta.Name)
+		for _, bindingType := range []reflect.Type{reflect.TypeFor[*Runtime](), reflect.TypeFor[*Client]()} {
+			method, ok := bindingType.MethodByName(methodName)
+			if !ok {
+				t.Errorf("Runtime method %s is not exported", methodName)
 				continue
 			}
-			assertIteratorEvent(t, methodName, method.Type.Out(1), meta.Event)
-			continue
-		}
-		if meta.Result == nil {
-			if method.Type.NumOut() != 1 || method.Type.Out(0) != errorType {
-				t.Errorf("%s acknowledgement result does not match %s", methodName, meta.Name)
+			if method.Type.In(1) != contextType {
+				t.Errorf("%s context parameter = %s", methodName, method.Type.In(1))
 			}
-			continue
-		}
-		if method.Type.NumOut() != 2 || method.Type.Out(0) != meta.Result || method.Type.Out(1) != errorType {
-			t.Errorf("%s result does not match %s", methodName, meta.Name)
+			expectedInputs := 4
+			if meta.Params == reflect.TypeFor[struct{}]() {
+				expectedInputs = 3
+			}
+			if method.Type.NumIn() != expectedInputs {
+				t.Errorf("%s inputs = %d, want %d", methodName, method.Type.NumIn(), expectedInputs)
+				continue
+			}
+			requestIndex := 2
+			if meta.Params == reflect.TypeFor[struct{}]() {
+				requestIndex = -1
+			} else if method.Type.In(2) != meta.Params {
+				t.Errorf("%s request = %s, want %s", methodName, method.Type.In(2), meta.Params)
+			}
+			optionIndex := 2
+			if requestIndex >= 0 {
+				optionIndex = 3
+			}
+			if got, want := method.Type.In(optionIndex), optionType(meta); got != want {
+				t.Errorf("%s options = %s, want %s", methodName, got, want)
+			}
+
+			if meta.Kind == delivery.KindStream {
+				if method.Type.NumOut() != 3 || method.Type.Out(0) != meta.Result || method.Type.Out(2) != errorType {
+					t.Errorf("%s stream result does not match %s", methodName, meta.Name)
+					continue
+				}
+				assertIteratorEvent(t, methodName, method.Type.Out(1), meta.Event)
+				continue
+			}
+			if meta.Result == nil {
+				if method.Type.NumOut() != 1 || method.Type.Out(0) != errorType {
+					t.Errorf("%s acknowledgement result does not match %s", methodName, meta.Name)
+				}
+				continue
+			}
+			if method.Type.NumOut() != 2 || method.Type.Out(0) != meta.Result || method.Type.Out(1) != errorType {
+				t.Errorf("%s result does not match %s", methodName, meta.Name)
+			}
 		}
 	}
 	if len(bindings) != len(delivery.Contract().Metas()) {
-		t.Fatalf("in-process bindings = %d, operations = %d", len(bindings), len(delivery.Contract().Metas()))
+		t.Fatalf("typed Go bindings = %d, operations = %d", len(bindings), len(delivery.Contract().Metas()))
 	}
 }
 

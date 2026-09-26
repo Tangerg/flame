@@ -14,7 +14,7 @@ const EMPTY = {
 const dock = () => useContextDockStore.getState();
 
 beforeEach(() => {
-  localStorage.removeItem("flame.context-dock");
+  localStorage.removeItem(useContextDockStore.persist.getOptions().name!);
   useContextDockStore.setState({ ...EMPTY, sessionScopes: new Map() });
 });
 
@@ -224,7 +224,9 @@ describe("per-session scopes", () => {
       lastViewId: null,
     });
     await vi.waitFor(() => {
-      const persisted = JSON.parse(localStorage.getItem("flame.context-dock") ?? "null") as {
+      const persisted = JSON.parse(
+        localStorage.getItem(useContextDockStore.persist.getOptions().name!) ?? "null",
+      ) as {
         state: { sessionScopes: [string, unknown][] };
       };
       expect(persisted.state.sessionScopes.map(([sessionId]) => sessionId)).toEqual(["s1"]);
@@ -241,16 +243,21 @@ describe("per-session scopes", () => {
     dock().setFileViewer({ path: "src/runtime.ts", line: 42 });
     dock().revealTool("call-from-retired-renderer");
 
-    await vi.waitFor(() => expect(localStorage.getItem("flame.context-dock")).not.toBeNull());
-    const persisted = JSON.parse(localStorage.getItem("flame.context-dock") ?? "null") as {
+    await vi.waitFor(() =>
+      expect(localStorage.getItem(useContextDockStore.persist.getOptions().name!)).not.toBeNull(),
+    );
+    const persisted = JSON.parse(
+      localStorage.getItem(useContextDockStore.persist.getOptions().name!) ?? "null",
+    ) as {
       version: number;
       state: { sessionScopes: [string, { fileFocus: { revision: string } }][] };
     };
-    expect(persisted.version).toBe(2);
+    expect(persisted.version).toBe(3);
     expect(persisted.state.sessionScopes[0]?.[1].fileFocus.revision).toBe("1");
 
     vi.resetModules();
     const replacementModule = await import("./contextDockStore");
+    replacementModule.activateContextDockStorage("https://runtime.test");
     const replacement = replacementModule.useContextDockStore;
     const persistedReplacement = replacement as typeof replacement & {
       persist: { rehydrate: () => Promise<void> | void };
@@ -311,14 +318,16 @@ describe("renderer storage validation", () => {
 
   it("discards an older scope payload and restamps the current version", async () => {
     localStorage.setItem(
-      "flame.context-dock",
+      useContextDockStore.persist.getOptions().name!,
       JSON.stringify({ state: { sessionScopes: [["stale", {}]] }, version: 0 }),
     );
 
     await useContextDockStore.persist.rehydrate();
 
     expect(dock().sessionScopes.size).toBe(0);
-    const stored = JSON.parse(localStorage.getItem("flame.context-dock") ?? "null") as {
+    const stored = JSON.parse(
+      localStorage.getItem(useContextDockStore.persist.getOptions().name!) ?? "null",
+    ) as {
       version: number;
     };
     expect(stored.version).toBe(useContextDockStore.persist.getOptions().version);
@@ -326,7 +335,7 @@ describe("renderer storage validation", () => {
 
   it("falls back to empty memory when the current payload is malformed", async () => {
     localStorage.setItem(
-      "flame.context-dock",
+      useContextDockStore.persist.getOptions().name!,
       JSON.stringify({
         state: { sessionScopes: [["s1", { dockViewIds: "not-an-array" }]] },
         version: useContextDockStore.persist.getOptions().version,

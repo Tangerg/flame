@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { AGENT_SESSIONS_KEY } from "@/plugins/builtin/agent/public/session";
-import { RpcError } from "@/rpc";
+import { RpcError } from "@flame/runtime-contract/client";
 import { resolveActiveSessionWorkspaceCwd } from "./sessionWorkspaceCwd";
 
 const { getActiveSessionId, getSession } = vi.hoisted(() => ({

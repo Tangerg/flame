@@ -1,5 +1,5 @@
 import { describeProblem } from "@/lib/rpcErrors";
-import type { MCPServer } from "@/rpc";
+import type { MCPServer } from "@flame/runtime-contract/client";
 import { mcpServerIcon, type MCPServerSettings } from "../application/mcpServerQueries";
 import {
   boundedMCPHandshakeTimeout,

@@ -1,25 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
-import { DesktopRenderer, type DesktopRendererDependencies } from "./renderer";
+import { ClientRenderer, type ClientRendererDependencies } from "./renderer";
 
-function rendererDependencies(overrides: Partial<DesktopRendererDependencies> = {}) {
+function rendererDependencies(overrides: Partial<ClientRendererDependencies> = {}) {
   return {
-    initializeDesktopHost: vi.fn(async () => undefined),
+    initializeClientHost: vi.fn(async () => undefined),
     prepareWindowChrome: vi.fn(async () => undefined),
     watchWindowChrome: vi.fn(() => vi.fn()),
     mount: vi.fn(() => ({ unmount: vi.fn() })),
-    closeRuntime: vi.fn(async () => undefined),
+    closeConnection: vi.fn(async () => undefined),
     reportFailure: vi.fn(),
     ...overrides,
   };
 }
 
-describe("DesktopRenderer", () => {
+describe("ClientRenderer", () => {
   it("cannot mount after final close wins an in-flight bootstrap", async () => {
     const bootstrap = Promise.withResolvers<void>();
     const deps = rendererDependencies({
-      initializeDesktopHost: vi.fn(() => bootstrap.promise),
+      initializeClientHost: vi.fn(() => bootstrap.promise),
     });
-    const renderer = new DesktopRenderer(deps);
+    const renderer = new ClientRenderer(deps);
 
     const startup = renderer.start();
     const closing = renderer.dispose();
@@ -29,12 +29,12 @@ describe("DesktopRenderer", () => {
     expect(deps.prepareWindowChrome).not.toHaveBeenCalled();
     expect(deps.watchWindowChrome).not.toHaveBeenCalled();
     expect(deps.mount).not.toHaveBeenCalled();
-    expect(deps.closeRuntime).toHaveBeenCalledOnce();
+    expect(deps.closeConnection).toHaveBeenCalledOnce();
   });
 
   it("mounts once however many times start is called", async () => {
     const deps = rendererDependencies();
-    const renderer = new DesktopRenderer(deps);
+    const renderer = new ClientRenderer(deps);
 
     await Promise.all([renderer.start(), renderer.start()]);
     await renderer.start();
@@ -46,12 +46,12 @@ describe("DesktopRenderer", () => {
 
   it("does not start after the window has already been closed", async () => {
     const deps = rendererDependencies();
-    const renderer = new DesktopRenderer(deps);
+    const renderer = new ClientRenderer(deps);
 
     await renderer.dispose();
     await renderer.start();
 
-    expect(deps.initializeDesktopHost).not.toHaveBeenCalled();
+    expect(deps.initializeClientHost).not.toHaveBeenCalled();
     expect(deps.mount).not.toHaveBeenCalled();
   });
 
@@ -60,7 +60,7 @@ describe("DesktopRenderer", () => {
     const deps = rendererDependencies({
       prepareWindowChrome: vi.fn(() => chrome.promise),
     });
-    const renderer = new DesktopRenderer(deps);
+    const renderer = new ClientRenderer(deps);
 
     const startup = renderer.start();
     await vi.waitFor(() => expect(deps.prepareWindowChrome).toHaveBeenCalledOnce());
@@ -79,9 +79,9 @@ describe("DesktopRenderer", () => {
     const deps = rendererDependencies({
       watchWindowChrome: vi.fn(() => stopWatching),
       mount: vi.fn(() => ({ unmount })),
-      closeRuntime: vi.fn(() => runtimeClose.promise),
+      closeConnection: vi.fn(() => runtimeClose.promise),
     });
-    const renderer = new DesktopRenderer(deps);
+    const renderer = new ClientRenderer(deps);
     await renderer.start();
 
     const first = renderer.dispose();
@@ -90,8 +90,20 @@ describe("DesktopRenderer", () => {
     expect(second).toBe(first);
     expect(unmount).toHaveBeenCalledOnce();
     expect(stopWatching).toHaveBeenCalledOnce();
-    expect(deps.closeRuntime).toHaveBeenCalledOnce();
+    expect(deps.closeConnection).toHaveBeenCalledOnce();
     runtimeClose.resolve();
     await first;
   });
+});
+
+it("does not mount a client whose host bootstrap failed", async () => {
+  const deps = rendererDependencies({
+    initializeClientHost: vi.fn(async () => {
+      throw new Error("host unavailable");
+    }),
+  });
+  const renderer = new ClientRenderer(deps);
+  await expect(renderer.start()).rejects.toThrow("host unavailable");
+  expect(deps.mount).not.toHaveBeenCalled();
+  expect(deps.closeConnection).toHaveBeenCalledOnce();
 });

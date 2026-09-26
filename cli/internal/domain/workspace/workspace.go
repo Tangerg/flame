@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"errors"
-	"path/filepath"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -40,8 +39,8 @@ type ResolveRequest struct {
 }
 
 func (r ResolveRequest) Validate() error {
-	if r.Path != "" && !filepath.IsAbs(r.Path) {
-		return errors.New("workspace resolve path is not absolute")
+	if r.Path != "" {
+		return (protocol.WorkspaceRef{Path: r.Path}).ValidateWire()
 	}
 	return nil
 }

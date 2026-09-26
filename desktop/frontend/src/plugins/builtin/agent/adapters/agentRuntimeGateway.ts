@@ -1,5 +1,11 @@
 import { getContainer } from "@/main/container";
-import { asRunId, asSegmentId, asSessionId, createMutationSettler, isErrorType } from "@/rpc";
+import {
+  asRunId,
+  asSegmentId,
+  asSessionId,
+  createMutationSettler,
+  isErrorType,
+} from "@flame/runtime-contract/client";
 import { configureAgentRuntimeGateway } from "../application/ports/runtimeGateway";
 import type { AgentRuntimeGateway } from "../application/ports/runtimeGateway";
 import { agentInputToContentBlocks, contentBlocksToAgentInput } from "./wireInput";

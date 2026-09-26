@@ -1,4 +1,4 @@
-// Package runtimebinding adapts the public in-process Runtime binding and owns
+// Package runtimebinding adapts the public Runtime bindings and owns
 // the immutable capability profile negotiated for CLI consumers. Validated
 // management, catalog, and workspace results transfer ownership to the caller.
 // Retained profiles and live event projections acquire their own mutable values.
@@ -55,8 +55,8 @@ func requiredRunEventTypes() []protocol.StreamEventType {
 	}
 }
 
-// Config contains the process-owned paths and build identity needed to open one
-// in-process Runtime. Paths retain the semantics documented by flameruntime.Config.
+// Config contains local Runtime paths, remote authorization, and client identity.
+// Paths retain the semantics documented by flameruntime.Config.
 type Config struct {
 	// ProductRoot is FLAME_HOME. Runtime's durability lives at a segment beneath
 	// it that localruntime owns and publishes for every local surface, so this
@@ -66,6 +66,7 @@ type Config struct {
 	UserHomePath         string
 	ConfigDirectories    []string
 	ClientVersion        string
+	RemoteToken          string
 }
 
 type runtimeLifecycle interface {
@@ -74,6 +75,33 @@ type runtimeLifecycle interface {
 
 type discoveryBinding interface {
 	Discover(context.Context, flameruntime.CallOptions) (*protocol.DiscoverResponse, error)
+}
+
+// runtimeBinding is the composition boundary shared by the embedded Runtime
+// and its public HTTP client. Consumers continue to receive their narrow ports.
+type runtimeBinding interface {
+	runtimeLifecycle
+	discoveryBinding
+	modelCatalogBinding
+	approvalBinding
+	sessionCatalogBinding
+	snapshotBinding
+	runCatalogBinding
+	runBinding
+	sessionBinding
+	workspaceBinding
+	changeBinding
+	usageBinding
+	modelConfigBinding
+	goalBinding
+	skillBinding
+	mcpBinding
+	scheduleBinding
+	agentMemoryBinding
+	diagnosticToolBinding
+	authoringContextBinding
+	hookBinding
+	feedbackBinding
 }
 
 // Connection owns one negotiated Runtime binding and translates its protocol
@@ -108,7 +136,7 @@ type Connection struct {
 
 var _ changefeed.Source = (*Connection)(nil)
 
-func openConnection(ctx context.Context, cfg Config) (*Connection, error) {
+func openEmbeddedBinding(ctx context.Context, cfg Config) (*flameruntime.Runtime, error) {
 	dataDirectory, err := localruntime.DataDirectoryUnder(cfg.ProductRoot)
 	if err != nil {
 		return nil, fmt.Errorf("resolve runtime data directory: %w", err)
@@ -117,12 +145,22 @@ func openConnection(ctx context.Context, cfg Config) (*Connection, error) {
 	if len(configDirectories) == 0 {
 		configDirectories = []string{dataDirectory.Path()}
 	}
-	binding, err := flameruntime.Open(ctx, flameruntime.Config{
+	return flameruntime.Open(ctx, flameruntime.Config{
 		DataDirectory:        dataDirectory.Path(),
 		DefaultWorkspacePath: cfg.DefaultWorkspacePath,
 		UserHomePath:         cfg.UserHomePath,
 		ConfigDirectories:    configDirectories,
 	})
+}
+
+func openConnection(ctx context.Context, cfg Config, endpoint string) (*Connection, error) {
+	var binding runtimeBinding
+	var err error
+	if endpoint == "" {
+		binding, err = openEmbeddedBinding(ctx, cfg)
+	} else {
+		binding, err = flameruntime.Connect(ctx, flameruntime.RemoteConfig{Endpoint: endpoint, Token: cfg.RemoteToken})
+	}
 	if err != nil {
 		return nil, classifyError(err)
 	}
@@ -285,8 +323,8 @@ func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 	return nil
 }
 
-// Close completes the in-process Runtime teardown. Call it again when it returns
-// an error; flameruntime.Runtime.Close resumes incomplete teardown.
+// Close releases the selected binding. The embedded binding tears down its own
+// Runtime; the remote binding only detaches this client's calls and streams.
 func (r *Connection) Close() error {
 	return classifyError(r.lifecycle.Close())
 }
@@ -298,6 +336,7 @@ type Owner struct {
 	mu         sync.Mutex
 	config     Config
 	connection *Connection
+	endpoint   string
 	closing    bool
 }
 
@@ -306,7 +345,7 @@ func NewOwner(config Config) *Owner {
 	return &Owner{config: config}
 }
 
-func (o *Owner) Connection(ctx context.Context) (*Connection, error) {
+func (o *Owner) Connection(ctx context.Context, endpoint string) (*Connection, error) {
 	if o == nil {
 		return nil, errors.New("runtime connection owner is nil")
 	}
@@ -316,9 +355,12 @@ func (o *Owner) Connection(ctx context.Context) (*Connection, error) {
 		return nil, agent.ErrDisconnected
 	}
 	if o.connection != nil {
+		if endpoint != o.endpoint {
+			return nil, errors.New("runtime target cannot change during a CLI process")
+		}
 		return o.connection, nil
 	}
-	opened, err := openConnection(ctx, o.config)
+	opened, err := openConnection(ctx, o.config, endpoint)
 	if err != nil {
 		if opened != nil {
 			err = o.rejectOpen(opened, err)
@@ -326,6 +368,7 @@ func (o *Owner) Connection(ctx context.Context) (*Connection, error) {
 		return nil, err
 	}
 	o.connection = opened
+	o.endpoint = endpoint
 	return opened, nil
 }
 

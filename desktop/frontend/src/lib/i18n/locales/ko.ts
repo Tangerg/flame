@@ -351,6 +351,11 @@ export const ko: Record<string, string> = {
   "settings.connection.title": "백엔드",
   "settings.connection.sub":
     "Flame Runtime 주소. 적용하면 데스크톱 앱이 새 주소로 다시 연결됩니다.",
+  "settings.connection.clearToken": "토큰 지우기",
+  "settings.connection.token": "액세스 토큰",
+  "settings.connection.tokenPlaceholder": "토큰 입력 또는 교체",
+  "settings.connection.tokenHint":
+    "이 창에서 이 Runtime 주소에만 보관됩니다. 새로고침하면 삭제됩니다.",
   "settings.connection.url": "URL",
   "settings.connection.apply": "적용",
   "settings.connection.reset": "기본값 복원",
@@ -579,6 +584,7 @@ export const ko: Record<string, string> = {
     "Flame 세션 내보내기가 아닙니다 — '대화 내보내기'로 내보낸 JSON을 선택하세요.",
   "convExport.importFailed": "대화를 가져올 수 없습니다.",
   "convExport.importSuccess": "'{{title}}'을(를) 가져왔습니다.",
+  "connection.error.token": "공백이나 제어 문자가 없는 유효한 액세스 토큰을 입력하세요.",
   "connection.error.urlScheme": "http:// 또는 https://로 시작해야 합니다",
   "command.chatSearch": "채팅에서 찾기",
   "composer.key.sendDesc": "메시지 보내기",
@@ -943,6 +949,12 @@ export const ko: Record<string, string> = {
   "rpcError.interrupt_not_open": "해당 요청은 더 이상 답변을 기다리지 않습니다.",
   "rpcError.idempotency_conflict": "같은 요청이 다른 내용으로 이미 전송되었습니다.",
   "session.error.create": "세션을 만들 수 없습니다.",
+  "session.directory.title": "새 세션",
+  "session.directory.description":
+    "{{endpoint}}의 Runtime 작업 디렉터리를 입력하세요. 세션 생성 전에 확인합니다.",
+  "session.directory.path": "Runtime 작업 디렉터리",
+  "session.directory.create": "세션 만들기",
+  "session.directory.browse": "이 컴퓨터 찾아보기",
   "session.error.chooseWorkingDirectory": "폴더 선택기를 열 수 없습니다.",
   "session.error.delete": "세션을 삭제할 수 없습니다.",
   "session.error.rename": "세션 이름을 바꿀 수 없습니다.",

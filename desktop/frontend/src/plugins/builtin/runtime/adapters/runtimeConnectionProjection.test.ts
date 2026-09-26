@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { FeatureCapability, ServerCapabilities } from "@/rpc";
+import type { FeatureCapability, ServerCapabilities } from "@flame/runtime-contract/client";
 import {
   RUNTIME_SERVICE_RETRY_BASE_MS,
   type RuntimeConnectionInspection,

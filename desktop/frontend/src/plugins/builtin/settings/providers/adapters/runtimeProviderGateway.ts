@@ -1,6 +1,6 @@
 import { getContainer } from "@/main/container";
 import { describeProblem, rpcErrorText } from "@/lib/rpcErrors";
-import type { FlameClient, Provider, ProviderConfigChange } from "@/rpc";
+import type { FlameClient, Provider, ProviderConfigChange } from "@flame/runtime-contract/client";
 import type { ProviderGateway, ProviderSettingChange } from "../application/ports/providerGateway";
 import { ProviderConfiguration } from "../application/providerModels";
 import { ProviderMutationOwner } from "../application/providerMutationOwner";

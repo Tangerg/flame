@@ -6,7 +6,7 @@ import {
   type FlameClient,
   type SessionSnapshot,
   type MutationSettler,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { synchronizeMountedAgentSession } from "@/plugins/builtin/agent/public/session";
 import { registerAgentSessionSharedMaterial } from "@/plugins/builtin/agent/public/sessionMaterial";

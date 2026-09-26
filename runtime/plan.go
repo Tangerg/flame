@@ -8,6 +8,6 @@ import (
 )
 
 // GetPlan returns the current Plan for a Session.
-func (r *Runtime) GetPlan(ctx context.Context, request protocol.GetPlanRequest, options CallOptions) (*protocol.Plan, error) {
+func (r *binding) GetPlan(ctx context.Context, request protocol.GetPlanRequest, options CallOptions) (*protocol.Plan, error) {
 	return r.invoke[protocol.GetPlanRequest, *protocol.Plan](ctx, delivery.PlanGet, request, callOptions(options))
 }

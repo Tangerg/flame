@@ -9,6 +9,29 @@
     "./samples/*": "./samples/*",
     "./validate": "./wire.validate.generated.ts",
     "./wire": "./wire.generated.ts",
-    "./wire-check": "./wireCheck.ts"
+    "./wire-check": "./wireCheck.ts",
+    "./client": "./client/index.ts",
+    "./client/*": "./client/*.ts"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "eventsource-parser": "^4.1.1",
+    "zod": "^4.6.5"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "oxlint client --deny-warnings",
+    "format:check": "prettier --check client package.json tsconfig.json",
+    "knip": "knip",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run knip"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1",
+    "oxlint": "^1.85.0",
+    "prettier": "^3.9.9",
+    "knip": "^6.38.0"
   }
 }

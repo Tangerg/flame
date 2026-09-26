@@ -8,9 +8,9 @@ import {
   type Methods,
   type MutationPromise,
   MutationSettlementClosedError,
-} from "@/rpc";
-import { asRunId, asSegmentId, asSessionId } from "@/rpc";
-import { createMutationPromise } from "@/rpc/mutation";
+} from "@flame/runtime-contract/client";
+import { asRunId, asSegmentId, asSessionId } from "@flame/runtime-contract/client";
+import { createMutationPromise } from "@flame/runtime-contract/client/mutation";
 import * as runtimeCapabilities from "@/plugins/builtin/runtime/public/capabilities";
 import { agentRuntime } from "../application/ports/runtimeGateway";
 import { installAgentRuntimeGateway } from "./agentRuntimeGateway";

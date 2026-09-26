@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/webassets"
 	"github.com/Tangerg/flame/runtime/internal/infra/telemetry"
 	"github.com/Tangerg/flame/runtime/localruntime"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -89,6 +90,14 @@ func closeRuntimeInstance(instance runtimeCloser) error {
 
 // buildHTTPServer assembles the HTTP+SSE server from the resolved settings.
 func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, tokenValue string) (*flamehttp.Server, error) {
+	var web http.Handler
+	if srv.WebDirectory != "" {
+		assets, err := webassets.New(srv.WebDirectory)
+		if err != nil {
+			return nil, err
+		}
+		web = assets
+	}
 	info := instance.ServerInfo()
 	return flamehttp.NewServer(flamehttp.Config{
 		Endpoint:        instance.Endpoint(),
@@ -97,6 +106,7 @@ func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, tokenValue
 		ProtocolVersion: protocol.ProtocolVersion,
 		LocalToken:      tokenValue,
 		CORSOrigins:     srv.CORSOrigins,
+		WebApplication:  web,
 		HealthProbes:    []flamehttp.HealthProbe{storageHealthProbe(instance.CheckStorage)},
 	})
 }

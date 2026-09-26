@@ -6,7 +6,7 @@ import {
   subscribeAgentSessionProjection,
   type AgentSessionSummary,
 } from "@/plugins/builtin/agent/public/session";
-import { asSessionId, isErrorType } from "@/rpc";
+import { asSessionId, isErrorType } from "@flame/runtime-contract/client";
 import type {
   WorkspaceCwdInputChange,
   WorkspaceCwdResolution,

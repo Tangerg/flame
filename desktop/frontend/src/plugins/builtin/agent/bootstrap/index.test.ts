@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { resetContainer, setContainer } from "@/main/container";
-import type { FlameClient } from "@/rpc";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import {
   RuntimeConnectionGeneration,
   RUNTIME_STREAM,
+  RUNTIME_SERVER_SCOPE,
 } from "@/plugins/builtin/runtime/public/services";
+import * as runtimeEndpoint from "@/plugins/builtin/runtime/public/endpoint";
 import { forgetRules } from "../application/approvalPolicy";
 import { APPROVAL_RULES_KEY } from "../application/approvalPolicyQueries";
 import agentBootstrap from "./index";
@@ -15,6 +17,7 @@ import { rejected } from "@/test/rejected";
 
 afterEach(async () => {
   await resetKernelForTest();
+  vi.restoreAllMocks();
   resetContainer();
   queryClient.removeQueries({ queryKey: [APPROVAL_RULES_KEY] });
 });
@@ -30,9 +33,13 @@ describe("Agent bootstrap Runtime generation wiring", () => {
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.runtime-generation",
-      provides: { stream: RUNTIME_STREAM },
+      provides: { stream: RUNTIME_STREAM, scope: RUNTIME_SERVER_SCOPE },
       setup() {
+        vi.spyOn(runtimeEndpoint, "currentRuntimeEndpoint").mockReturnValue(
+          "https://bootstrap-agent.test",
+        );
         return {
+          scope: { subscribeReplacement: () => () => undefined },
           stream: {
             connectionGeneration: () => generation,
             subscribeConnection(onChange: () => void) {

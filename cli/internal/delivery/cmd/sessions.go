@@ -54,7 +54,7 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 				update.Title = &title
 			}
 			if cmd.Flags().Changed("workspace") {
-				resolved, err := canonicalWorkspacePath(workspace)
+				resolved, err := provider.workspacePath(workspace)
 				if err != nil {
 					return err
 				}
@@ -117,7 +117,7 @@ func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 			}
 			query.PageSize = pageSize
 			if query.Workspace != "" {
-				resolved, err := canonicalWorkspacePath(query.Workspace)
+				resolved, err := provider.workspacePath(query.Workspace)
 				if err != nil {
 					return err
 				}
@@ -285,7 +285,11 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 			if err != nil {
 				return err
 			}
-			authoring, err := workbenchstate.Open(stateDirectory)
+			targetDirectory, err := provider.stateDirectory(stateDirectory)
+			if err != nil {
+				return err
+			}
+			authoring, err := workbenchstate.Open(targetDirectory)
 			if err != nil {
 				return fmt.Errorf("open CLI workbench: %w", err)
 			}

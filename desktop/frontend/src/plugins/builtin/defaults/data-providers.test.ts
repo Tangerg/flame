@@ -7,10 +7,14 @@ import type {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resetContainer, setContainer } from "@/main/container";
 import { lookupDataProvider } from "@/plugins/sdk/selectors";
-import { createFlameClient, JSONRPC_VERSION } from "@/rpc";
-import { createMemoryTransport } from "@/rpc/transports/memory";
-import { respondSuccess, waitForRequest } from "@/rpc/transports/memory.testkit";
+import { createFlameClient, JSONRPC_VERSION } from "@flame/runtime-contract/client";
+import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
+import {
+  respondSuccess,
+  waitForRequest,
+} from "@flame/runtime-contract/client/transports/memory.testkit";
 import type { WireMethodName } from "@flame/runtime-contract/methods";
+import { PROBLEM_CODES } from "@flame/runtime-contract/wire";
 import { defaultDataProviders } from "./index";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { SelectableModel } from "@/plugins/builtin/settings/providers/public/queries";
@@ -429,8 +433,8 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
       jsonrpc: JSONRPC_VERSION,
       id: modelsRequest.id,
       error: {
-        code: -32603,
-        message: "Internal error",
+        code: PROBLEM_CODES.internal_error,
+        message: "internal_error",
         data: { type: "internal_error" },
       },
     });

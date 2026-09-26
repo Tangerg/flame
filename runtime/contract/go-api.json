@@ -9,11 +9,27 @@
       ],
       "variables": [
         {
+          "name": "ErrAcknowledgementUnknown",
+          "type": "error"
+        },
+        {
           "name": "ErrClosed",
+          "type": "error"
+        },
+        {
+          "name": "ErrDisconnected",
+          "type": "error"
+        },
+        {
+          "name": "ErrInvalidResponse",
           "type": "error"
         }
       ],
       "functions": [
+        {
+          "name": "Connect",
+          "signature": "func(ctx context.Context, cfg RemoteConfig) (*Client, error)"
+        },
         {
           "name": "Open",
           "signature": "func(ctx context.Context, cfg Config) (*Runtime, error)"
@@ -27,6 +43,352 @@
             {
               "name": "RequestMeta",
               "type": "protocol.RequestMeta"
+            }
+          ]
+        },
+        {
+          "name": "Client",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "AddAgentMemory",
+              "signature": "func(ctx context.Context, request protocol.AgentMemoryAddRequest, options CommandOptions) (*protocol.AgentMemoryItem, error)"
+            },
+            {
+              "name": "ApproveSkillProposal",
+              "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error"
+            },
+            {
+              "name": "ArchiveSkill",
+              "signature": "func(ctx context.Context, request protocol.SkillNameRequest, options CommandOptions) error"
+            },
+            {
+              "name": "CancelRun",
+              "signature": "func(ctx context.Context, request protocol.CancelRunRequest, options CommandOptions) (*protocol.CancelRunResponse, error)"
+            },
+            {
+              "name": "ClearGoal",
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options CommandOptions) error"
+            },
+            {
+              "name": "Close",
+              "signature": "func() error"
+            },
+            {
+              "name": "CreateFeedback",
+              "signature": "func(ctx context.Context, request protocol.FeedbackRequest, options CommandOptions) error"
+            },
+            {
+              "name": "CreateMCPAuthorizationAttempt",
+              "signature": "func(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options CommandOptions) (*protocol.MCPAuthorizationAttempt, error)"
+            },
+            {
+              "name": "CreateMCPServer",
+              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options CommandOptions) (*protocol.MCPServer, error)"
+            },
+            {
+              "name": "CreateSchedule",
+              "signature": "func(ctx context.Context, request protocol.CreateScheduleRequest, options CommandOptions) (*protocol.Schedule, error)"
+            },
+            {
+              "name": "CreateSession",
+              "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options CommandOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "DeleteAgentMemory",
+              "signature": "func(ctx context.Context, request protocol.AgentMemoryItemRequest, options CommandOptions) error"
+            },
+            {
+              "name": "DeleteMCPServer",
+              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options CommandOptions) error"
+            },
+            {
+              "name": "DeleteSchedule",
+              "signature": "func(ctx context.Context, request protocol.DeleteScheduleRequest, options CommandOptions) error"
+            },
+            {
+              "name": "DeleteSession",
+              "signature": "func(ctx context.Context, request protocol.DeleteSessionRequest, options CommandOptions) error"
+            },
+            {
+              "name": "Discover",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.DiscoverResponse, error)"
+            },
+            {
+              "name": "ExportSession",
+              "signature": "func(ctx context.Context, request protocol.ExportSessionRequest, options CallOptions) (*protocol.ExportSessionResponse, error)"
+            },
+            {
+              "name": "ForgetApprovalRule",
+              "signature": "func(ctx context.Context, request protocol.ForgetApprovalRuleRequest, options CommandOptions) error"
+            },
+            {
+              "name": "ForkSession",
+              "signature": "func(ctx context.Context, request protocol.ForkSessionRequest, options CommandOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "GetApprovalMode",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.ApprovalModeResult, error)"
+            },
+            {
+              "name": "GetDiscoveredSkill",
+              "signature": "func(ctx context.Context, request protocol.SkillDetailRequest, options CallOptions) (*protocol.SkillDetail, error)"
+            },
+            {
+              "name": "GetEmbeddingRole",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.EmbeddingRole, error)"
+            },
+            {
+              "name": "GetGoal",
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options CallOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "GetMCPAuthorizationAttempt",
+              "signature": "func(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options CallOptions) (*protocol.MCPAuthorizationAttempt, error)"
+            },
+            {
+              "name": "GetPlan",
+              "signature": "func(ctx context.Context, request protocol.GetPlanRequest, options CallOptions) (*protocol.Plan, error)"
+            },
+            {
+              "name": "GetRun",
+              "signature": "func(ctx context.Context, request protocol.GetRunRequest, options CallOptions) (*protocol.RunRef, error)"
+            },
+            {
+              "name": "GetSession",
+              "signature": "func(ctx context.Context, request protocol.GetSessionRequest, options CallOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "GetSessionSnapshot",
+              "signature": "func(ctx context.Context, request protocol.GetSessionSnapshotRequest, options CallOptions) (*protocol.SessionSnapshot, error)"
+            },
+            {
+              "name": "GetSessionUsage",
+              "signature": "func(ctx context.Context, request protocol.SessionUsageRequest, options CallOptions) (*protocol.Usage, error)"
+            },
+            {
+              "name": "GetUsageSummary",
+              "signature": "func(ctx context.Context, request protocol.UsageSummaryRequest, options CallOptions) (*protocol.UsageSummary, error)"
+            },
+            {
+              "name": "GetUtilityRole",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.UtilityRole, error)"
+            },
+            {
+              "name": "GetWorkspaceDiff",
+              "signature": "func(ctx context.Context, request protocol.GetDiffRequest, options CallOptions) (*protocol.Diff, error)"
+            },
+            {
+              "name": "GetWorkspaceFileHead",
+              "signature": "func(ctx context.Context, request protocol.GetFileHeadRequest, options CallOptions) (*protocol.FileHead, error)"
+            },
+            {
+              "name": "ImportSession",
+              "signature": "func(ctx context.Context, request protocol.ImportSessionRequest, options CommandOptions) (*protocol.ImportSessionResponse, error)"
+            },
+            {
+              "name": "InvokeTool",
+              "signature": "func(ctx context.Context, request protocol.InvokeToolRequest, options CommandOptions) (any, error)"
+            },
+            {
+              "name": "ListAgentDocs",
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.AgentDoc], error)"
+            },
+            {
+              "name": "ListAgentMemory",
+              "signature": "func(ctx context.Context, request protocol.AgentMemoryListRequest, options CallOptions) (*protocol.AgentMemoryList, error)"
+            },
+            {
+              "name": "ListApprovalRules",
+              "signature": "func(ctx context.Context, request protocol.ListApprovalRulesRequest, options CallOptions) (*protocol.ListApprovalRulesResult, error)"
+            },
+            {
+              "name": "ListDiscoveredSkills",
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.SkillDiscovery, error)"
+            },
+            {
+              "name": "ListHooks",
+              "signature": "func(ctx context.Context, request protocol.ListHooksRequest, options CallOptions) (*protocol.HooksListResult, error)"
+            },
+            {
+              "name": "ListInterrupts",
+              "signature": "func(ctx context.Context, request protocol.ListInterruptsRequest, options CallOptions) (*protocol.Page[protocol.PendingInterruptSet], error)"
+            },
+            {
+              "name": "ListItems",
+              "signature": "func(ctx context.Context, request protocol.ListItemsRequest, options CallOptions) (*protocol.ListItemsResponse, error)"
+            },
+            {
+              "name": "ListMCPServers",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.MCPServer], error)"
+            },
+            {
+              "name": "ListMCPTools",
+              "signature": "func(ctx context.Context, request protocol.MCPListToolsRequest, options CallOptions) (*protocol.Page[protocol.MCPTool], error)"
+            },
+            {
+              "name": "ListManagedSkills",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.ManagedSkill], error)"
+            },
+            {
+              "name": "ListModelInvocations",
+              "signature": "func(ctx context.Context, request protocol.ListModelInvocationsRequest, options CallOptions) (*protocol.Page[protocol.ModelInvocation], error)"
+            },
+            {
+              "name": "ListModels",
+              "signature": "func(ctx context.Context, request protocol.ListModelsRequest, options CallOptions) (*protocol.Page[protocol.Model], error)"
+            },
+            {
+              "name": "ListProviders",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.Provider], error)"
+            },
+            {
+              "name": "ListRuns",
+              "signature": "func(ctx context.Context, request protocol.ListRunsRequest, options CallOptions) (*protocol.Page[protocol.RunRef], error)"
+            },
+            {
+              "name": "ListSchedules",
+              "signature": "func(ctx context.Context, request protocol.PageQuery, options CallOptions) (*protocol.Page[protocol.Schedule], error)"
+            },
+            {
+              "name": "ListSessions",
+              "signature": "func(ctx context.Context, request protocol.ListSessionsRequest, options CallOptions) (*protocol.Page[protocol.Session], error)"
+            },
+            {
+              "name": "ListSkillProposals",
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.SkillProposal], error)"
+            },
+            {
+              "name": "ListTools",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.ToolSpec], error)"
+            },
+            {
+              "name": "ListWorkspaceFileChanges",
+              "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error)"
+            },
+            {
+              "name": "ListWorkspaceFiles",
+              "signature": "func(ctx context.Context, request protocol.ListFilesRequest, options CallOptions) (*protocol.Page[protocol.FileEntry], error)"
+            },
+            {
+              "name": "ListWorkspaces",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
+            },
+            {
+              "name": "ReadWorkspaceFile",
+              "signature": "func(ctx context.Context, request protocol.ReadFileRequest, options CallOptions) (*protocol.FileContent, error)"
+            },
+            {
+              "name": "ReconnectMCPServer",
+              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options CommandOptions) error"
+            },
+            {
+              "name": "RejectSkillProposal",
+              "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error"
+            },
+            {
+              "name": "ResolveWorkspace",
+              "signature": "func(ctx context.Context, request protocol.ResolveWorkspaceRequest, options CallOptions) (*protocol.WorkspaceInfo, error)"
+            },
+            {
+              "name": "RestoreSkill",
+              "signature": "func(ctx context.Context, request protocol.SkillNameRequest, options CommandOptions) error"
+            },
+            {
+              "name": "ResumeGoal",
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "ResumeRun",
+              "signature": "func(ctx context.Context, request protocol.ResumeRunRequest, options RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
+            },
+            {
+              "name": "ReviewAgentMemory",
+              "signature": "func(ctx context.Context, request protocol.AgentMemoryReviewRequest, options CommandOptions) error"
+            },
+            {
+              "name": "RollbackSession",
+              "signature": "func(ctx context.Context, request protocol.RollbackSessionRequest, options CommandOptions) (*protocol.RollbackSessionResponse, error)"
+            },
+            {
+              "name": "RunScheduleNow",
+              "signature": "func(ctx context.Context, request protocol.RunScheduleNowRequest, options CommandOptions) (*protocol.RunScheduleNowResponse, error)"
+            },
+            {
+              "name": "SearchWorkspaceFiles",
+              "signature": "func(ctx context.Context, request protocol.GrepRequest, options CallOptions) (*protocol.GrepResult, error)"
+            },
+            {
+              "name": "SetApprovalMode",
+              "signature": "func(ctx context.Context, request protocol.SetApprovalModeRequest, options CommandOptions) (*protocol.ApprovalModeResult, error)"
+            },
+            {
+              "name": "SetEmbeddingRole",
+              "signature": "func(ctx context.Context, request protocol.EmbeddingRole, options CommandOptions) (*protocol.EmbeddingRole, error)"
+            },
+            {
+              "name": "SetHookTrust",
+              "signature": "func(ctx context.Context, request protocol.SetHookTrustRequest, options CommandOptions) error"
+            },
+            {
+              "name": "SetUtilityRole",
+              "signature": "func(ctx context.Context, request protocol.UtilityRole, options CommandOptions) (*protocol.UtilityRole, error)"
+            },
+            {
+              "name": "StartGoal",
+              "signature": "func(ctx context.Context, request protocol.StartGoalRequest, options CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "StartRun",
+              "signature": "func(ctx context.Context, request protocol.StartRunRequest, options RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
+            },
+            {
+              "name": "SteerRun",
+              "signature": "func(ctx context.Context, request protocol.SteerRunRequest, options CommandOptions) (*protocol.SteerRunResponse, error)"
+            },
+            {
+              "name": "StopGoal",
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "SubscribeRun",
+              "signature": "func(ctx context.Context, request protocol.SubscribeRunRequest, options RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)"
+            },
+            {
+              "name": "SubscribeRuntime",
+              "signature": "func(ctx context.Context, request protocol.RuntimeSubscribeRequest, options SubscriptionOptions) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error)"
+            },
+            {
+              "name": "TestMCPServer",
+              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options CallOptions) (*protocol.MCPTestResult, error)"
+            },
+            {
+              "name": "TestProvider",
+              "signature": "func(ctx context.Context, request protocol.TestProviderRequest, options CallOptions) (*protocol.ProviderTestResult, error)"
+            },
+            {
+              "name": "UpdateAgentMemory",
+              "signature": "func(ctx context.Context, request protocol.AgentMemoryUpdateRequest, options CommandOptions) (*protocol.AgentMemoryItem, error)"
+            },
+            {
+              "name": "UpdateGoal",
+              "signature": "func(ctx context.Context, request protocol.UpdateGoalRequest, options CommandOptions) (*protocol.Goal, error)"
+            },
+            {
+              "name": "UpdateMCPServer",
+              "signature": "func(ctx context.Context, request protocol.UpdateMCPServerRequest, options CommandOptions) (*protocol.MCPServer, error)"
+            },
+            {
+              "name": "UpdateProvider",
+              "signature": "func(ctx context.Context, request protocol.UpdateProviderRequest, options CommandOptions) (*protocol.Provider, error)"
+            },
+            {
+              "name": "UpdateSchedule",
+              "signature": "func(ctx context.Context, request protocol.UpdateScheduleRequest, options CommandOptions) (*protocol.Schedule, error)"
+            },
+            {
+              "name": "UpdateSession",
+              "signature": "func(ctx context.Context, request protocol.UpdateSessionRequest, options CommandOptions) (*protocol.Session, error)"
             }
           ]
         },
@@ -67,6 +429,24 @@
             {
               "name": "ConfigDirectories",
               "type": "[]string"
+            }
+          ]
+        },
+        {
+          "name": "RemoteConfig",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Endpoint",
+              "type": "string"
+            },
+            {
+              "name": "Token",
+              "type": "string"
+            },
+            {
+              "name": "MaxMessageBytes",
+              "type": "int"
             }
           ]
         },
@@ -459,6 +839,30 @@
             {
               "name": "RequestMeta",
               "type": "protocol.RequestMeta"
+            }
+          ]
+        },
+        {
+          "name": "TransportError",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "StatusCode",
+              "type": "int"
+            },
+            {
+              "name": "Type",
+              "type": "string"
+            },
+            {
+              "name": "RequestID",
+              "type": "string"
+            }
+          ],
+          "methods": [
+            {
+              "name": "Error",
+              "signature": "func() string"
             }
           ]
         }

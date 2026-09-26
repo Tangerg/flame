@@ -1,4 +1,10 @@
-import type { Item, PendingInterruptSet, RunProtocolProfile, RunRef, StreamEvent } from "@/rpc";
+import type {
+  Item,
+  PendingInterruptSet,
+  RunProtocolProfile,
+  RunRef,
+  StreamEvent,
+} from "@flame/runtime-contract/client";
 import type { AgentEventEnvelope } from "@/plugins/sdk";
 import {
   runtimeAgentEvent,

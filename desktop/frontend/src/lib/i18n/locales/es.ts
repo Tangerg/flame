@@ -369,6 +369,11 @@ export const es: Record<string, string> = {
   "settings.connection.title": "Backend",
   "settings.connection.sub":
     "Dirección de Flame Runtime. Al aplicar, la aplicación de escritorio se vuelve a conectar.",
+  "settings.connection.clearToken": "Borrar token",
+  "settings.connection.token": "Token de acceso",
+  "settings.connection.tokenPlaceholder": "Introduce o reemplaza el token",
+  "settings.connection.tokenHint":
+    "Se conserva solo en esta ventana para esta dirección de Runtime. Se borra al recargar.",
   "settings.connection.url": "URL",
   "settings.connection.apply": "Aplicar",
   "settings.connection.reset": "Restaurar predeterminado",
@@ -622,6 +627,7 @@ export const es: Record<string, string> = {
     "No es una exportación de sesión de Flame — elige un JSON exportado mediante «Exportar conversación».",
   "convExport.importFailed": "No se pudo importar la conversación.",
   "convExport.importSuccess": "«{{title}}» importada.",
+  "connection.error.token": "Introduce un token válido sin espacios ni caracteres de control.",
   "connection.error.urlScheme": "Debe comenzar con http:// o https://",
   "command.chatSearch": "Buscar en el chat",
   "composer.key.sendDesc": "Enviar mensaje",
@@ -1011,6 +1017,12 @@ export const es: Record<string, string> = {
   "rpcError.interrupt_not_open": "Esa solicitud ya no espera respuesta.",
   "rpcError.idempotency_conflict": "La misma solicitud ya se envió con un contenido distinto.",
   "session.error.create": "No se pudo crear la sesión.",
+  "session.directory.title": "Nueva sesión",
+  "session.directory.description":
+    "Introduce un directorio del Runtime en {{endpoint}}. Flame lo valida antes de crear la sesión.",
+  "session.directory.path": "Directorio del Runtime",
+  "session.directory.create": "Crear sesión",
+  "session.directory.browse": "Explorar este equipo",
   "session.error.chooseWorkingDirectory": "No se pudo abrir el selector de carpetas.",
   "session.error.delete": "No se pudo borrar la sesión.",
   "session.error.rename": "No se pudo renombrar la sesión.",

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resetContainer, setContainer } from "@/main/container";
-import type { FlameClient } from "@/rpc";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { queryClient } from "@/lib/queryClient";
 import {
   setEmbeddingRole as saveEmbeddingRole,

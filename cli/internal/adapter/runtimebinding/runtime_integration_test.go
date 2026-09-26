@@ -464,7 +464,7 @@ func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
 		ProductRoot: t.TempDir(), DefaultWorkspacePath: workspace,
 		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()}, ClientVersion: "test",
 	})
-	runtime, err := owner.Connection(t.Context())
+	runtime, err := owner.Connection(t.Context(), "")
 	if err != nil {
 		t.Fatalf("open Runtime: %v", err)
 	}
@@ -861,11 +861,11 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 		ProductRoot: t.TempDir(), DefaultWorkspacePath: t.TempDir(),
 		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()}, ClientVersion: "test",
 	})
-	first, err := owner.Connection(t.Context())
+	first, err := owner.Connection(t.Context(), "")
 	if err != nil {
 		t.Fatalf("first Runtime: %v", err)
 	}
-	second, err := owner.Connection(t.Context())
+	second, err := owner.Connection(t.Context(), "")
 	if err != nil {
 		t.Fatalf("second Runtime: %v", err)
 	}
@@ -890,7 +890,7 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 	if err := owner.Close(); err != nil {
 		t.Fatalf("repeated Close: %v", err)
 	}
-	if _, err := owner.Connection(t.Context()); !errors.Is(err, agent.ErrDisconnected) {
+	if _, err := owner.Connection(t.Context(), ""); !errors.Is(err, agent.ErrDisconnected) {
 		t.Fatalf("Connection after Close = %v, want ErrDisconnected", err)
 	}
 }

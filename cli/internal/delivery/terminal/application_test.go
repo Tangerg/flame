@@ -2150,7 +2150,7 @@ func TestClosingDuringAnInvalidAcceptedStartCancelsTheRecoveredRun(t *testing.T)
 
 	starts, cancellations := invalid.attempts()
 	if len(starts) != 1 || len(cancellations) != 1 || cancellations[0].RunID == "" ||
-		cancellations[0].Reason != "terminal closed during start delivery" {
+		cancellations[0].Reason != "canceled while start delivery was unconfirmed" {
 		t.Fatalf("terminal-close invalid receipt cleanup = starts %+v, cancellations %+v", starts, cancellations)
 	}
 	if attempts := gate.startInputs(); len(attempts) != 2 || attempts[0].CommandID != started.CommandID ||
@@ -2196,51 +2196,55 @@ func TestClosingTheTerminalConfirmsCancellationWithOneIdentity(t *testing.T) {
 }
 
 func TestClosingDuringCancellationReusesThePendingCommandIdentity(t *testing.T) {
-	base := runtimefixture.New()
-	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
-		}}}
-	}
-	runtime := &blockingCloseCancellationRuntime{
-		Runtime: base, started: make(chan struct{}, 1), release: make(chan struct{}),
-	}
-	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan error, 1)
-	go func() {
-		done <- Run(ctx, Config{Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host})
-	}()
-	t.Cleanup(func() {
-		cancel()
-		select {
-		case <-runtime.release:
-		default:
-			close(runtime.release)
-		}
-		_ = host.Close()
-	})
+	for _, detach := range []bool{false, true} {
+		t.Run(fmt.Sprintf("detach=%t", detach), func(t *testing.T) {
+			base := runtimefixture.New()
+			base.Script = func(string) runtimefixture.Script {
+				return runtimefixture.Script{Prelude: []runtimefixture.Step{{
+					Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+				}}}
+			}
+			runtime := &blockingCloseCancellationRuntime{
+				Runtime: base, started: make(chan struct{}, 1), release: make(chan struct{}),
+			}
+			host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
+			ctx, cancel := context.WithCancel(t.Context())
+			done := make(chan error, 1)
+			go func() {
+				done <- Run(ctx, Config{Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host, DetachOnExit: detach})
+			}()
+			t.Cleanup(func() {
+				cancel()
+				select {
+				case <-runtime.release:
+				default:
+					close(runtime.release)
+				}
+				_ = host.Close()
+			})
 
-	host.Shows(t, "Ask flame")
-	host.Type("close during cancellation")
-	host.Press(input.Enter)
-	host.Shows(t, "working")
-	host.Press(input.Esc)
-	awaitSignal(t, runtime.started, "interactive cancellation start")
-	cancel()
-	close(runtime.release)
-	select {
-	case err := <-done:
-		if err != nil {
-			t.Fatal(err)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("terminal did not close while cancellation was pending")
-	}
-	attempts := runtime.cancelAttempts()
-	if len(attempts) != 2 || attempts[0].CommandID == "" || attempts[0].CommandID != attempts[1].CommandID ||
-		attempts[0].RunID != attempts[1].RunID {
-		t.Fatalf("close cancellation attempts = %+v", attempts)
+			host.Shows(t, "Ask flame")
+			host.Type("close during cancellation")
+			host.Press(input.Enter)
+			host.Shows(t, "working")
+			host.Press(input.Esc)
+			awaitSignal(t, runtime.started, "interactive cancellation start")
+			cancel()
+			close(runtime.release)
+			select {
+			case err := <-done:
+				if err != nil {
+					t.Fatal(err)
+				}
+			case <-time.After(2 * time.Second):
+				t.Fatal("terminal did not close while cancellation was pending")
+			}
+			attempts := runtime.cancelAttempts()
+			if len(attempts) != 2 || attempts[0].CommandID == "" || attempts[0].CommandID != attempts[1].CommandID ||
+				attempts[0].RunID != attempts[1].RunID {
+				t.Fatalf("close cancellation attempts = %+v", attempts)
+			}
+		})
 	}
 }
 

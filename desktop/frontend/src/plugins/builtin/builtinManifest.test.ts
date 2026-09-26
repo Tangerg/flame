@@ -4,10 +4,11 @@ import * as kernelPoints from "@/plugins/sdk/kernelPoints";
 import { publishedKernel } from "@/plugins/sdk/kernel";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import { installedRuntimeMutationJournalStorage } from "@/plugins/builtin/runtime/public/mutationJournal";
-import { resetContainer, setContainer } from "@/main/container";
-import type { FlameClient } from "@/rpc";
+import { initializeClientHost, resetContainer, setContainer } from "@/main/container";
+import type { FlameClient } from "@flame/runtime-contract/client";
 
-beforeEach(() => {
+beforeEach(async () => {
+  await initializeClientHost();
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
   vi.stubGlobal(
     "EventSource",

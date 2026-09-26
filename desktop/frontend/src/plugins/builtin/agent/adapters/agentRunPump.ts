@@ -14,7 +14,7 @@ import {
   type RunRef,
   type SegmentId,
   type StreamingResult,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 import { AGENT_SESSION_USAGE_KEY } from "../application/session/sessionUsage";
 import { createRunEventBatcher } from "./runEventBatcher";
 

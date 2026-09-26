@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import type { Item, RunEvent, RunRef, SegmentOutcome, StreamEvent } from "@/rpc";
+import type {
+  Item,
+  RunEvent,
+  RunRef,
+  SegmentOutcome,
+  StreamEvent,
+} from "@flame/runtime-contract/client";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { AgentViewRefreshOwner, useAgentStore } from "./agentStore";
 import { selectCurrentRootRun } from "../application/view/runTree";

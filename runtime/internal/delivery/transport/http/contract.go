@@ -51,6 +51,7 @@ const (
 )
 
 const (
+	endpointPrefix    = "/v2"
 	endpointRPC       = "rpc"
 	endpointInfo      = "info"
 	endpointLiveness  = "liveness"
@@ -99,7 +100,7 @@ var endpointRegistry = struct {
 				Name:             endpointRPC,
 				Kind:             EndpointKindRPC,
 				Method:           http.MethodPost,
-				Path:             "/v2/rpc",
+				Path:             endpointPrefix + "/rpc",
 				Authentication:   EndpointAuthenticationLocalToken,
 				ResponseStatuses: []int{http.StatusOK, http.StatusAccepted, http.StatusNoContent},
 			},
@@ -110,7 +111,7 @@ var endpointRegistry = struct {
 				Name:             endpointInfo,
 				Kind:             EndpointKindSidecar,
 				Method:           http.MethodGet,
-				Path:             "/v2/info",
+				Path:             endpointPrefix + "/info",
 				Authentication:   EndpointAuthenticationNone,
 				ResponseStatuses: []int{http.StatusOK},
 				ResponseType:     reflect.TypeFor[RuntimeInfo](),
@@ -122,7 +123,7 @@ var endpointRegistry = struct {
 				Name:             endpointLiveness,
 				Kind:             EndpointKindSidecar,
 				Method:           http.MethodGet,
-				Path:             "/v2/health/live",
+				Path:             endpointPrefix + "/health/live",
 				Authentication:   EndpointAuthenticationNone,
 				ResponseStatuses: []int{http.StatusOK},
 				ResponseType:     reflect.TypeFor[LivenessStatus](),
@@ -134,7 +135,7 @@ var endpointRegistry = struct {
 				Name:             endpointReadiness,
 				Kind:             EndpointKindSidecar,
 				Method:           http.MethodGet,
-				Path:             "/v2/health/ready",
+				Path:             endpointPrefix + "/health/ready",
 				Authentication:   EndpointAuthenticationNone,
 				ResponseStatuses: []int{http.StatusOK, http.StatusServiceUnavailable},
 				ResponseType:     reflect.TypeFor[ReadinessStatus](),

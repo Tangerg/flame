@@ -10,7 +10,7 @@ vi.mock("@/plugins/builtin/agent/public/session", () => ({ selectAgentSession: c
 vi.mock("@/plugins/builtin/workspace/public/navigation", () => ({
   selectWorkspaceChat: calls.chat,
 }));
-vi.mock("./adapters/desktopWindow", () => ({ revealDesktopWindow: calls.reveal }));
+vi.mock("./adapters/windowFocus", () => ({ revealClientWindow: calls.reveal }));
 vi.mock("./chime", () => ({ playCompletionChime: vi.fn() }));
 
 import { announceSettlement, startCompletionNotifications } from "./completionNotify";

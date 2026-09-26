@@ -1,5 +1,5 @@
 import type { AgentDriver } from "@/plugins/sdk";
-import { asItemId, asRunId } from "@/rpc";
+import { asItemId, asRunId } from "@flame/runtime-contract/client";
 import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_RPC_SESSION_ID,

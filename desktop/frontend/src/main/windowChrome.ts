@@ -6,7 +6,7 @@ const GUTTER_PROPERTY = "--window-controls-gutter";
 const CENTRE_PROPERTY = "--window-controls-centre";
 
 export async function applyWindowChrome(): Promise<void> {
-  const chrome = await getContainer().desktop.windowChrome();
+  const chrome = await getContainer().host.windowChrome();
   const root = document.documentElement;
   if (!chrome) {
     root.style.removeProperty(GUTTER_PROPERTY);

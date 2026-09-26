@@ -16,7 +16,11 @@ import {
   TextField,
 } from "@/ui";
 import { space, type as typeStep } from "@/styles/tokens.stylex";
-import { openWorkspacePath, revealWorkspacePath } from "../adapters/desktopReveal";
+import {
+  localWorkspaceActionsAvailable,
+  openWorkspacePath,
+  revealWorkspacePath,
+} from "../adapters/localWorkspaceActions";
 import { fileKind, isUnsupportedFileRead } from "../application/fileKind";
 import { useT } from "@/lib/i18n";
 import { FileView } from "./views/FileView";
@@ -185,7 +189,7 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
             title={t("file.copyPath")}
             onClick={() => void copyText(viewer.path)}
           />
-          {cwd && (
+          {cwd && localWorkspaceActionsAvailable() && (
             <IconButton
               icon="folder-open"
               size="sm"
@@ -209,7 +213,8 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
           title={t(kind === "image" ? "file.unsupported.image" : "file.unsupported.binary")}
           sub={t("file.unsupported.sub")}
           action={
-            cwd && (
+            cwd &&
+            localWorkspaceActionsAvailable() && (
               <Button size="sm" onClick={() => void openWorkspacePath(cwd, viewer.path)}>
                 {t("file.open")}
               </Button>

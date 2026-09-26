@@ -1,4 +1,4 @@
-import type { ToolInvocation } from "@/rpc";
+import type { ToolInvocation } from "@flame/runtime-contract/client";
 import { describe, expect, it } from "vitest";
 import { argsText, toolFields, toolLabel } from "./projections";
 

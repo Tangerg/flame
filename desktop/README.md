@@ -1,6 +1,6 @@
 # CLAUDE.md — project context for Claude Code
 
-> **Flame** — Wails 桌面应用（Go 壳 + React/TS 前端），由自研 **Flame Runtime Protocol v2**（JSON-RPC，Session→Run→Item 流式）驱动的插件化 agent client。
+> **Flame** — one React/TypeScript workbench for the Wails desktop host and the browser, driven by **Flame Runtime Protocol v2**. Runtime owns durable sessions and execution; each client owns presentation and its connection lifetime.
 > 结构看 `frontend/ARCHITECTURE.md`，主 UI 心智模型看 `docs/FRONTEND_AGENT_WORKSPACE_MODEL.md`，视觉规范看 `frontend/DESIGN.md`，桌面质感防回归清单看 `frontend/DESKTOP_UI_POLISH.md`，后端数据 ↔ 渲染意图的自包含规格看 `frontend/CONTENT_RENDERING.md`，协议看 `../runtime/contract/`。
 >
 > 本文件只放**法则 —— 只宏观、不写具体**（具体文件名 / 符号 / 版本 / 行数 / 历史会随演化变动，活在代码 / git / ARCHITECTURE.md 里，不进本则）。读法：先「两条法则」（总透镜）→ §1 架构心智 → §2-§5 写代码的判断与硬约定 → §6 别走的方向 → §7 怎么干活。
@@ -133,3 +133,52 @@ perf 排查沉淀的硬规则 —— 几个"看似没事其实在累积"的坑�
 - **质量门禁**（在 `frontend/` 跑）：`npm run check` —— 类型 / lint / 格式 / 测试 / 死码 / 架构守卫 / 视觉与文案守卫 / 产物体积，全绿才往下走（单项可单跑，名字见 `package.json` 的 `check:*`）。**不在这里列举守卫清单** —— 它只会漂：曾列 8 项时实际已有 14 项。
 - **会漂的量（测试数 / 插件数 / 文件数）直接跑命令查，不在本文件维护硬编码数字。**
 - **沟通约定**：中文回复（用户偏好），代码 / 注释保持英文；破坏性或结构性改动前先算爆炸半径（grep 所有消费方）+ 给方案 + 权衡，等用户确认再动；改动后跑 `npm run check`，commit message 写清 _why_，commit 后默认推送；commit trailer 用 `Co-Authored-By: Claude <当前实际模型名> <noreply@anthropic.com>`（署名以实际生成该 commit 的模型为准，不硬编码型号）。
+
+
+## Web and shared Runtime connections
+
+`frontend/` builds the same workbench for Desktop and Web. `platform/clientHost.ts`
+selects the actual environment before bootstrap. Wails supplies its local Runtime
+address and token through its native binding. A browser uses its serving origin;
+it never assumes that loopback or a path belongs to the Runtime machine. The
+shared protocol implementation lives in `../runtime/contract/typescript/client`
+and is consumed through `@flame/runtime-contract/client`.
+
+From the repository root, install the shared client before its UI consumer:
+
+```sh
+npm ci --prefix runtime/contract/typescript
+npm ci --prefix desktop/frontend
+npm run check --prefix runtime/contract/typescript
+npm run build --prefix desktop/frontend
+```
+
+The Wails dependency task installs these two packages in the same order, and its
+build task tracks shared TypeScript sources. Set the
+standalone Runtime's `FLAME_SERVER_WEBDIRECTORY` to the absolute `frontend/dist` path to
+serve the Web client beside its existing JSON-RPC and health endpoints. See the
+Runtime README for startup and local token configuration. For development, run
+`npm run dev` and configure the Runtime address in Settings → Connection; the
+Runtime must allow that development origin.
+
+Settings → Connection applies an explicit HTTP(S) Runtime address and, when the
+Runtime gate requires it, an access token. The endpoint is a preference. An entered token
+stays in memory, belongs only to that exact normalized address, and is cleared by
+reloading the window. Never put credentials in a URL. Changing either address or
+token retires the previous connection through the existing Runtime connection
+owner, then inspects the replacement. Closing a client only closes its connection;
+it does not shut down the external Runtime or cancel another client's Run.
+
+With no active Session, New Session opens a workspace directory dialog. New Session
+reuses the active Session's workspace when one is selected; Choose Folder opens the
+directory dialog explicitly.
+The entered path belongs to the connected Runtime and is validated by
+`sessions.create`; the browser does not read a local folder and pretend that it is
+a remote workspace. Existing sessions still supply the recent project list. The
+native folder browser, Open, and Reveal actions are available only when the active
+address matches the local Runtime that Wails bootstrapped. Changing the Runtime
+cancels an open directory selection and fences late native picker results.
+
+Browser image export uses a download of validated inline image bytes. Native image
+save, window geometry, notifications, and shell actions stay inside the platform
+boundary. Protocol clients contain no Wails import or UI state.

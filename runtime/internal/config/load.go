@@ -123,6 +123,7 @@ func Load(configDirectories []string) (Settings, error) {
 			NoLocalToken:   v.GetBool("server.noLocalToken"),
 			LocalTokenPath: v.GetString("server.localTokenPath"),
 			CORSOrigins:    v.GetStringSlice("server.corsOrigins"),
+			WebDirectory:   v.GetString("server.webDirectory"),
 		},
 	}, nil
 }

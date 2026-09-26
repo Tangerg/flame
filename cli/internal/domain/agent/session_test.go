@@ -42,7 +42,7 @@ func testPlanChanged(t testing.TB, revision uint64, steps []protocol.PlanStep) P
 	return PlanChanged{Plan: *testPlan(t, revision, steps)}
 }
 
-func TestSessionQueryNormalizesLocalFilterIdentity(t *testing.T) {
+func TestSessionQueryNormalizesFilterTextAndPreservesRuntimePath(t *testing.T) {
 	t.Parallel()
 
 	pageSize, err := NewPageSize(20)
@@ -59,8 +59,6 @@ func TestSessionQueryNormalizesLocalFilterIdentity(t *testing.T) {
 	}
 	for _, query := range []SessionQuery{
 		{PageSize: PageSize{kind: explicitPageSize, rows: -1}},
-		{PageSize: DefaultPageSize(), Workspace: "relative/workspace"},
-		{PageSize: DefaultPageSize(), Workspace: "/repo/../repo"},
 		{PageSize: DefaultPageSize(), Search: strings.Repeat("x", 1025)},
 		{PageSize: DefaultPageSize(), Search: "bad\x00query"},
 		{PageSize: DefaultPageSize(), Search: string([]byte{0xff})},
@@ -238,7 +236,6 @@ func TestSessionCreationAndForkResultsMustFulfillTheCommand(t *testing.T) {
 	}
 
 	for _, invalid := range []interface{ Validate() error }{
-		CreateSession{Workspace: "relative"},
 		CreateSession{Title: "   "},
 		ForkSession{},
 		ForkSession{SessionID: "ses_source", FromRunID: "   "},

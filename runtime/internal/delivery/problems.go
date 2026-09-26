@@ -186,11 +186,24 @@ func internalFailure() *Failure {
 }
 
 func failureFromData(data protocol.ProblemData) *Failure {
-	spec, ok := problemSpecForType(data.Type)
-	if !ok || protocol.ValidateWireTree(data) != nil {
+	failure, err := DecodeFailure(data)
+	if err != nil {
 		return internalFailure()
 	}
-	return &Failure{cause: spec.sentinel, data: cloneProblemData(data)}
+	return failure
+}
+
+// DecodeFailure restores a wire problem through the authoritative sentinel
+// registry. Invalid remote data is a decoding failure, not an operation failure.
+func DecodeFailure(data protocol.ProblemData) (*Failure, error) {
+	spec, ok := problemSpecForType(data.Type)
+	if !ok {
+		return nil, errors.New("unknown operation problem type")
+	}
+	if err := protocol.ValidateWireTree(data); err != nil {
+		return nil, err
+	}
+	return &Failure{cause: spec.sentinel, data: cloneProblemData(data)}, nil
 }
 
 func cloneProblemData(data protocol.ProblemData) protocol.ProblemData {

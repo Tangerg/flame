@@ -88,7 +88,7 @@ func (a *app) showLocalWorkspaceChoices() error {
 	for _, workspace := range workspaces {
 		choices = append(choices, workspaceChoice{
 			workspace: workspace,
-			current:   samePath(workspace.Path, a.session.current.Workspace.Path),
+			current:   workspace.Path == a.session.current.Workspace.Path,
 			available: true,
 		})
 	}
@@ -145,7 +145,7 @@ func mergeWorkspaceChoices(
 		}
 		byPath[summary.Workspace.Path] = workspaceChoice{
 			workspace: workbench.Workspace{Path: summary.Workspace.Path, LastOpened: lastOpened},
-			current:   samePath(summary.Workspace.Path, currentWorkspace),
+			current:   summary.Workspace.Path == currentWorkspace,
 			available: summary.Workspace.IsAvailable(), detail: detail,
 		}
 	}
@@ -154,7 +154,7 @@ func mergeWorkspaceChoices(
 			continue
 		}
 		byPath[remembered.Path] = workspaceChoice{
-			workspace: remembered, current: samePath(remembered.Path, currentWorkspace), available: true,
+			workspace: remembered, current: remembered.Path == currentWorkspace, available: true,
 		}
 	}
 	choices := make([]workspaceChoice, 0, len(byPath))
@@ -171,7 +171,7 @@ func mergeWorkspaceChoices(
 }
 
 func (a *app) resolveAndStartWorkspace(requested string) {
-	path, err := resolveWorkspace(a.session.current.Workspace.Path, requested)
+	path, err := a.resolveWorkspaceInput(requested)
 	if err != nil {
 		a.message(err.Error())
 		return
@@ -196,7 +196,7 @@ func (a *app) resolveAndStartWorkspace(requested string) {
 }
 
 func (a *app) createSessionInWorkspace(requested string) error {
-	workspace, err := resolveWorkspace(a.session.current.Workspace.Path, requested)
+	workspace, err := a.resolveWorkspaceInput(requested)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (a *app) RelocateSession(requested string) error {
 	if err := a.requireRuntimeFeature(protocol.FeatureRelocate); err != nil {
 		return err
 	}
-	path, err := resolveWorkspace(a.session.current.Workspace.Path, requested)
+	path, err := a.resolveWorkspaceInput(requested)
 	if err != nil {
 		return err
 	}
@@ -237,7 +237,7 @@ func (a *app) RelocateSession(requested string) error {
 }
 
 func (a *app) relocateSession(path string) {
-	if samePath(path, a.session.current.Workspace.Path) {
+	if path == a.session.current.Workspace.Path {
 		a.message("session already uses " + path)
 		return
 	}
@@ -332,20 +332,13 @@ func resolveWorkspace(current, requested string) (string, error) {
 	return resolved, nil
 }
 
-func samePath(left, right string) bool {
-	left, leftErr := canonicalPath(left)
-	right, rightErr := canonicalPath(right)
-	return leftErr == nil && rightErr == nil && left == right
-}
-
-func canonicalPath(path string) (string, error) {
-	absolute, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
+func (a *app) resolveWorkspaceInput(requested string) (string, error) {
+	if a.localDirectory == "" {
+		return resolveWorkspace(a.session.current.Workspace.Path, requested)
 	}
-	resolved, err := filepath.EvalSymlinks(absolute)
-	if err == nil {
-		absolute = resolved
+	ref := protocol.WorkspaceRef{Path: strings.TrimSpace(requested)}
+	if err := protocol.ValidateWireTree(ref); err != nil {
+		return "", fmt.Errorf("workspace reference: %w", err)
 	}
-	return filepath.Clean(absolute), nil
+	return ref.Path, nil
 }

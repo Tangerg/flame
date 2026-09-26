@@ -4,7 +4,6 @@ import (
 	"bytes"
 	jsonv1 "encoding/json"
 	"encoding/json/jsontext"
-	"path/filepath"
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
@@ -40,7 +39,7 @@ func projectToolResult(tool *agent.ToolCall, value any) {
 	for _, value := range changes {
 		change, _ := value.(map[string]any)
 		if path := toolText(change, "path"); path != "" {
-			paths = append(paths, filepath.ToSlash(path))
+			paths = append(paths, path)
 		}
 	}
 	if tool.Path == "" && len(paths) != 0 {

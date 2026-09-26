@@ -6,7 +6,7 @@
 # frontend/bindings, but the two methods that cross this boundary are already declared —
 # with Zod schemas that validate what comes back, which generated bindings do not do and
 # which this repo requires at a trust boundary. Generating them would put the shapes in
-# two places and validate in neither. See frontend/src/rpc/desktopHost.ts.
+# two places and validate in neither. See frontend/src/platform/desktopHost.ts.
 version: '3'
 
 tasks:
@@ -21,8 +21,22 @@ tasks:
     cmds:
       - go work sync
 
+  install:runtime-client:deps:
+    summary: Install the Runtime-owned TypeScript client dependencies
+    run: once
+    dir: ../runtime/contract/typescript
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.package-lock.json
+    cmds:
+      - npm ci
+
   install:frontend:deps:
     summary: Install frontend dependencies
+    deps:
+      - task: install:runtime-client:deps
     run: once
     dir: frontend
     sources:
@@ -34,7 +48,7 @@ tasks:
       - sh: npm version
         msg: "npm is missing. It ships with Node: https://nodejs.org/en/download/"
     cmds:
-      - npm install
+      - npm ci
 
   build:frontend:
     summary: Build the frontend project
@@ -45,7 +59,10 @@ tasks:
     dir: frontend
     sources:
       - "**/*"
+      - "../../runtime/contract/typescript/**/*.ts"
+      - "../../runtime/contract/typescript/package.json"
       - exclude: node_modules/**/*
+      - exclude: ../../runtime/contract/typescript/node_modules/**/*
     generates:
       - dist/**/*
     deps:

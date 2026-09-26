@@ -77,6 +77,47 @@ export interface HTTPSidecarResponses {
 
 export type HTTPSidecarEndpointName = keyof HTTPSidecarResponses;
 
+// RPC error codes and problem types describe one operation failure.
+export const PROBLEM_CODES = {
+  "capability_not_negotiated": -32006,
+  "checkpoint_conflict": -32037,
+  "checkpoint_unavailable": -32009,
+  "idempotency_conflict": -32020,
+  "idempotency_in_progress": -32021,
+  "idempotency_store_mismatch": -32033,
+  "internal_error": -32603,
+  "interrupt_not_open": -32014,
+  "invalid_params": -32602,
+  "invalid_protocol_version": -32016,
+  "invalid_request": -32600,
+  "item_not_found": -32004,
+  "mcp_authorization_attempt_not_found": -32032,
+  "mcp_server_already_exists": -32030,
+  "mcp_server_disabled": -32031,
+  "mcp_server_not_found": -32029,
+  "method_not_found": -32601,
+  "path_outside_root": -32013,
+  "prompt_source_too_large": -32038,
+  "provider_error": -32001,
+  "replay_cursor_invalid": -32027,
+  "replay_unavailable": -32028,
+  "revision_conflict": -32019,
+  "run_finished": -32025,
+  "run_not_found": -32003,
+  "run_not_root": -32022,
+  "run_waiting": -32024,
+  "schedule_not_found": -32036,
+  "session_busy": -32018,
+  "session_has_active_run": -32023,
+  "session_not_found": -32002,
+  "skill_not_found": -32034,
+  "skill_unavailable": -32035,
+  "stale_segment": -32026,
+  "unsupported_mime": -32011,
+  "vcs_unavailable": -32017,
+  "workspace_unavailable": -32005,
+} as const satisfies Partial<Record<ProblemData['type'], number>>;
+
 // The methods the runtime sends downstream. A client only ever subscribes.
 export const NOTIFICATIONS_RUN_EVENT = "notifications.run.event";
 export const NOTIFICATIONS_RUNTIME_EVENT = "notifications.runtime.event";

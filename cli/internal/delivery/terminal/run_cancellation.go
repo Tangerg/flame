@@ -16,7 +16,10 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-const runtimeControlTimeout = 5 * time.Second
+const (
+	runtimeControlTimeout              = 5 * time.Second
+	unconfirmedStartCancellationReason = "canceled while start delivery was unconfirmed"
+)
 
 func (a *app) cancel() {
 	if a.dialogs.approval != nil {
@@ -139,7 +142,7 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 			a.requestRuntimeCancellation(agent.CancelRun{
 				CommandID: pending.CancelCommandID,
 				RunID:     observed.RunID,
-				Reason:    "canceled while start delivery was unconfirmed",
+				Reason:    unconfirmedStartCancellationReason,
 			}, recoverCanceledOpening)
 		})
 	})
@@ -430,7 +433,7 @@ func (a *app) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.Pe
 	cancelErr := a.cancelRuntimeNow(ctx, agent.CancelRun{
 		CommandID: pending.CancelCommandID,
 		RunID:     opened.RunID,
-		Reason:    "terminal closed during start delivery",
+		Reason:    unconfirmedStartCancellationReason,
 	}, pending.CancelReplay)
 	if cancelErr != nil {
 		return errors.Join(err, validationErr, fmt.Errorf("cancel run opened during terminal close: %w", cancelErr))

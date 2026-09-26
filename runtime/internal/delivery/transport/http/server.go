@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -62,6 +63,7 @@ type Server struct {
 	healthProbes []*healthProbeRunner
 
 	router messageDispatcher
+	web    http.Handler
 
 	httpServer   *http.Server
 	handlerCtx   context.Context
@@ -99,6 +101,11 @@ type Config struct {
 	// CORSOrigins is the exact-match origin allowlist; "*" is honored
 	// (without credentials). Empty disables CORS — same-origin only.
 	CORSOrigins []string
+
+	// WebApplication handles public browser assets outside the protocol namespace.
+	// Bootstrap supplies its confined filesystem adapter; protocol authentication
+	// remains owned by this server. Nil disables browser application serving.
+	WebApplication http.Handler
 
 	// HealthProbes are the labeled readiness checks invoked on every
 	// GET /v2/health/ready. Empty list ⇒ the endpoint always returns ready.
@@ -148,6 +155,7 @@ func NewServer(cfg Config) (*Server, error) {
 		corsOrigins:  slices.Clone(cfg.CORSOrigins),
 		healthProbes: newHealthProbeRunners(cfg.HealthProbes),
 		router:       router,
+		web:          cfg.WebApplication,
 		handlerCtx:   handlerCtx,
 		stopHandlers: stopHandlers,
 		info:         newInfoResponse(cfg.ServerInfo, cfg.ProtocolVersion),
@@ -182,7 +190,17 @@ func (s *Server) Handler() http.Handler {
 	// flat JSON; the RPC entrypoint is the sole owner of envelope method identity.
 	registerEndpoints(r, s)
 
-	return s.withServerLifecycle(r)
+	if s.web == nil {
+		return s.withServerLifecycle(r)
+	}
+	web := s.instrumentRequests(s.web)
+	return s.withServerLifecycle(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == endpointPrefix || strings.HasPrefix(request.URL.Path, endpointPrefix+"/") {
+			r.ServeHTTP(w, request)
+			return
+		}
+		web.ServeHTTP(w, request)
+	}))
 }
 
 // withServerLifecycle cancels transport-owned request work when this server is

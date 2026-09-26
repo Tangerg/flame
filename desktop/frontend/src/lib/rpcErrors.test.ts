@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-contract/validate";
-import { RpcError, RpcTransportError, RPC_METHOD_NOT_FOUND } from "@/rpc";
+import { RpcError, RpcTransportError, RPC_METHOD_NOT_FOUND } from "@flame/runtime-contract/client";
 import { en } from "./i18n/locales/en";
 import {
   MAPPED_TYPES,

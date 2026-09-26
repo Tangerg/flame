@@ -1,8 +1,14 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 
+export interface RuntimeEndpointTarget {
+  endpoint: string;
+  localToken?: string;
+}
+
 interface RuntimeEndpointConfiguration {
-  read(): string | undefined;
-  replace(endpoint: string): void;
+  read(): RuntimeEndpointTarget;
+  defaultTarget(): RuntimeEndpointTarget;
+  replace(target: RuntimeEndpointTarget): void;
 }
 
 const port = createSingletonPort<RuntimeEndpointConfiguration>(

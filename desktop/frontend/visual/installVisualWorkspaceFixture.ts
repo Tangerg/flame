@@ -59,7 +59,7 @@ import {
 } from "@/plugins/builtin/workspace/workspace-views";
 import { DATA_PROVIDER, SHORTCUT, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
-import type { FeatureCapability, ServerCapabilities } from "@/rpc";
+import type { FeatureCapability, ServerCapabilities } from "@flame/runtime-contract/client";
 import {
   useContextDockStore,
   WorkspaceFileFocus,

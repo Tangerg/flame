@@ -1,4 +1,4 @@
-import type { ContentBlock } from "@/rpc";
+import type { ContentBlock } from "@flame/runtime-contract/client";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { OPTIMISTIC_USER_MESSAGE_PREFIX } from "../application/view/optimisticMessageIdentity";
 import { userContentBlocks } from "../application/fold/projections";

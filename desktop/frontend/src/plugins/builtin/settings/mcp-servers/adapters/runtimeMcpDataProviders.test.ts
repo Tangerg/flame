@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { PROBLEM_CODES } from "@flame/runtime-contract/wire";
 import { resetContainer, setContainer } from "@/main/container";
 import { definePlugin } from "@/plugins/sdk";
 import { lookupDataProvider } from "@/plugins/sdk/selectors";
-import { createFlameClient, JSONRPC_VERSION } from "@/rpc";
-import { createMemoryTransport } from "@/rpc/transports/memory";
-import { respondSuccess, waitForRequest } from "@/rpc/transports/memory.testkit";
+import { createFlameClient, JSONRPC_VERSION } from "@flame/runtime-contract/client";
+import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
+import {
+  respondSuccess,
+  waitForRequest,
+} from "@flame/runtime-contract/client/transports/memory.testkit";
 import type { MCPServerSettings, MCPToolSummary } from "../application/mcpServerQueries";
 import { registerMCPDataProviders } from "./runtimeMcpDataProviders";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
@@ -134,8 +138,8 @@ describe("runtime MCP data providers", () => {
       jsonrpc: JSONRPC_VERSION,
       id: request.id,
       error: {
-        code: -32601,
-        message: "Capability not negotiated",
+        code: PROBLEM_CODES.capability_not_negotiated,
+        message: "capability_not_negotiated",
         data: {
           type: "capability_not_negotiated",
           requiredCapabilities: [{ type: "feature", name: "mcp" }],

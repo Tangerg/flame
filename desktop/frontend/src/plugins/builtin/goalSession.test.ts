@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentDriver } from "@/plugins/sdk/types";
-import type { FlameClient, RunEvent, RunRef } from "@/rpc";
+import type { FlameClient, RunEvent, RunRef } from "@flame/runtime-contract/client";
 import { resetContainer, setContainer } from "@/main/container";
 import { useAgentStore } from "./agent/adapters/agentStore";
 import { useAgentSessionStore } from "./agent/adapters/agentSessionStore";

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -40,12 +41,31 @@ const (
 )
 
 type Config struct {
+	Runtime  Runtime             `json:"runtime" mapstructure:"runtime"`
 	Provider string              `json:"provider" mapstructure:"provider"`
 	Model    string              `json:"model"    mapstructure:"model"`
 	Approval Approval            `json:"approval" mapstructure:"approval"`
 	UI       UI                  `json:"ui"       mapstructure:"ui"`
 	Plugins  Plugins             `json:"plugins"  mapstructure:"plugins"`
 	Keys     map[string][]string `json:"keys"     mapstructure:"keys"`
+}
+
+// Runtime selects the process-owned embedded Runtime or an existing endpoint.
+// Credentials are process input and never part of printable CLI preferences.
+type Runtime struct {
+	Endpoint string `json:"endpoint" mapstructure:"endpoint"`
+}
+
+func (r Runtime) Validate() error {
+	if r.Endpoint == "" {
+		return nil
+	}
+	endpoint, err := url.Parse(r.Endpoint)
+	if err != nil || endpoint.Host == "" || (endpoint.Scheme != "http" && endpoint.Scheme != "https") ||
+		endpoint.User != nil || endpoint.RawQuery != "" || endpoint.Fragment != "" {
+		return errors.New("runtime.endpoint must be an HTTP or HTTPS URL without credentials, query, or fragment")
+	}
+	return nil
 }
 
 type Approval struct {
@@ -119,6 +139,7 @@ func Default() Config {
 
 func (c Config) Validate() error {
 	var problems []error
+	problems = append(problems, c.Runtime.Validate())
 	if _, err := c.RunOptions(); err != nil {
 		problems = append(problems, err)
 	}

@@ -29,14 +29,22 @@ func TestPublicGoAPICapturesExactRuntimeBinding(t *testing.T) {
 		t.Fatalf("Runtime public imports = %v", binding.Imports)
 	}
 
-	runtimeType := publicGoTypeByName(t, binding, "Runtime")
-	if got, want := len(runtimeType.Methods), len(delivery.Contract().Metas())+1; got != want {
-		t.Fatalf("Runtime methods = %d, want %d operations plus Close", got, want)
+	for _, typeName := range []string{"Runtime", "Client"} {
+		runtimeType := publicGoTypeByName(t, binding, typeName)
+		if got, want := len(runtimeType.Methods), len(delivery.Contract().Metas())+1; got != want {
+			t.Fatalf("Runtime methods = %d, want %d operations plus Close", got, want)
+		}
+		if !slices.ContainsFunc(runtimeType.Methods, func(method publicGoFunction) bool {
+			return method.Name == "Close" && method.Signature == "func() error"
+		}) {
+			t.Fatal("Runtime public API does not contain Close")
+		}
+
 	}
-	if !slices.ContainsFunc(runtimeType.Methods, func(method publicGoFunction) bool {
-		return method.Name == "Close" && method.Signature == "func() error"
+	if !slices.ContainsFunc(binding.Functions, func(function publicGoFunction) bool {
+		return function.Name == "Connect" && strings.Contains(function.Signature, "(*Client, error)")
 	}) {
-		t.Fatal("Runtime public API does not contain Close")
+		t.Fatal("Runtime public API does not contain Connect returning *Client")
 	}
 
 	localRuntime := publicGoPackageByPath(t, api, runtimeModulePath+"/localruntime")

@@ -174,7 +174,7 @@ export async function installVisualShellFixture(
 
   installVisualRuntimeServiceStatusPort();
   installAgentStatePorts();
-  installWorkspaceNavigationPort();
+  installWorkspaceNavigationPort(() => "https://visual.flame.test");
   useAgentSessionStore.setState({
     openSessionIds: state === "populated" ? [ACTIVE_SESSION_ID] : [],
     lastSessionId: "",

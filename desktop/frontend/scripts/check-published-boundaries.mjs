@@ -142,7 +142,9 @@ for (const file of files(SRC)) {
     // leaks the same dependency to every plugin handler. These were once spread
     // across live events, durable snapshots, cancel responses, and HITL reads,
     // so guard every inward/public ring and both neutral SDK event contracts.
-    const importsRuntimeWire = /from\s+["']@\/rpc(?:\/[^"']*)?["']/.test(code(text));
+    const importsRuntimeWire = /from\s+["']@flame\/runtime-contract\/client(?:\/[^"']*)?["']/.test(
+      code(text),
+    );
     if (
       importsRuntimeWire &&
       /^plugins\/builtin\/agent\/(?:application|domain|public)\//.test(rel)
@@ -327,7 +329,10 @@ for (const file of files(SRC)) {
     });
   }
 
-  if (rel.endsWith("plugins/builtin/chat/composer/public/input.ts") && /@\/rpc/.test(text)) {
+  if (
+    rel.endsWith("plugins/builtin/chat/composer/public/input.ts") &&
+    /@flame\/runtime-contract\/client/.test(text)
+  ) {
     violations.push({
       file: rel,
       reason: "composer public input must expose composer language, not runtime wire types",
@@ -336,7 +341,7 @@ for (const file of files(SRC)) {
 
   if (
     /plugins\/builtin\/.+\/public\/.+\.(ts|tsx)$/.test(rel) &&
-    /from\s+["']@\/rpc(?:\/[^"']*)?["']/.test(text)
+    /from\s+["']@flame\/runtime-contract\/client(?:\/[^"']*)?["']/.test(text)
   ) {
     violations.push({
       file: rel,
@@ -346,7 +351,7 @@ for (const file of files(SRC)) {
 
   if (
     /plugins\/builtin\/.+\/application\/.+(?:Queries|Data)\.ts$/.test(rel) &&
-    /from\s+["']@\/rpc(?:\/[^"']*)?["']/.test(text)
+    /from\s+["']@flame\/runtime-contract\/client(?:\/[^"']*)?["']/.test(text)
   ) {
     violations.push({
       file: rel,
@@ -484,7 +489,7 @@ for (const file of files(SRC)) {
   if (
     !isTest &&
     /plugins\/builtin\/.+\/application\/.+\.(ts|tsx)$/.test(rel) &&
-    /from\s+["']@\/rpc["']/.test(text) &&
+    /from\s+["']@flame\/runtime-contract\/client["']/.test(text) &&
     /\b(?:RpcClient|DiscoverResponse)\b/.test(code(text))
   ) {
     violations.push({
@@ -500,7 +505,7 @@ for (const file of files(SRC)) {
   if (
     !isTest &&
     /plugins\/builtin\/(?!runtime\/).+\/application\/.+\.(ts|tsx)$/.test(rel) &&
-    /from\s+["']@\/rpc["']/.test(text)
+    /from\s+["']@flame\/runtime-contract\/client["']/.test(text)
   ) {
     violations.push({
       file: rel,

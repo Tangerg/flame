@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { fileToInputImage } from "@/plugins/builtin/chat/composer/public/input";
 import { countLines } from "@/plugins/builtin/chat/composer/public/largePaste";
 import { t } from "@/lib/i18n";
-import { discardOlderVersions } from "@/lib/persistedStore";
+import { discardOlderVersions, ScopedPersistence } from "@/lib/persistedStore";
 import { notifyError } from "@/plugins/sdk";
 import type { ComposerImage } from "../domain/draft";
 import type { ComposerModelPreference } from "../application/ports/state";
@@ -36,16 +36,21 @@ interface ComposerActions {
   historyNext: () => boolean;
 }
 
+const persistence = new ScopedPersistence<ComposerState>(STORAGE_KEY);
+let stagingLease: object = {};
+
+function emptyComposerState(): ComposerState {
+  return { composer: Composer.empty(), modelPreference: { kind: "session" } };
+}
+
 export const useComposerStore = create<ComposerState & ComposerActions>()(
   persist(
     (set, get) => {
-      let stagingLease: object = {};
       const edit = (change: Parameters<Composer["edit"]>[0]) =>
         set((s) => ({ composer: s.composer.edit(change) }));
 
       return {
-        composer: Composer.empty(),
-        modelPreference: { kind: "session" },
+        ...emptyComposerState(),
 
         setValue: (value) => edit((draft) => draft.withValue(value)),
         setModel: (modelPreference) => set({ modelPreference }),
@@ -108,14 +113,24 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
     },
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
-      version: 2,
+      storage: createJSONStorage(() => persistence.storage),
+      skipHydration: true,
+      version: 3,
       migrate: discardOlderVersions,
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) useComposerStore.setState(emptyComposerState());
+      },
       partialize: (s) => ({ drafts: persistedComposerDrafts(s.composer) }),
       merge: (persisted, current) => {
         const composer = parsePersistedComposer(persisted);
-        return composer ? { ...current, composer } : current;
+        return { ...current, ...emptyComposerState(), ...(composer ? { composer } : {}) };
       },
     },
   ),
 );
+
+export function activateComposerStorage(endpoint: string): boolean {
+  if (persistence.isActive(endpoint)) return false;
+  stagingLease = {};
+  return persistence.activate(endpoint, useComposerStore);
+}

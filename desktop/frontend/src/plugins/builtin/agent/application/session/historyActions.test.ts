@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AgentRunFact as RunRef } from "@/plugins/sdk";
 import { setContainer } from "@/main/container";
-import type { FlameClient } from "@/rpc";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { navigator } from "@/lib/navigation";
 import { installAgentRuntimeGateway } from "../../adapters/agentRuntimeGateway";
 import {

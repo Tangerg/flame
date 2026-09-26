@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { initializeClientHost, resetContainer } from "@/main/container";
 import { builtinPlugins } from "./index";
 import { COMMAND, SHORTCUT } from "@/plugins/sdk/kernelPoints";
 import { lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import { dispatchBinding } from "@/lib/combo";
 
-beforeEach(() => {
+beforeEach(async () => {
+  await initializeClientHost();
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
   vi.stubGlobal(
     "EventSource",
@@ -24,6 +26,7 @@ const DELIBERATE_OVERRIDES = new Map<string, string>();
 
 afterEach(async () => {
   await resetKernelForTest();
+  await resetContainer();
 });
 
 describe("built-in shortcuts", () => {

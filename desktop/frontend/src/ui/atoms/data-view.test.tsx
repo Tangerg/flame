@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { RpcError, RpcTransportError } from "@/rpc/errors";
+import { RpcError, RpcTransportError } from "@flame/runtime-contract/client/errors";
 import { DataView } from "./data-view";
 
 const rows = (items: string[]) => <div>{items.join(",")}</div>;

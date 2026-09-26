@@ -1,4 +1,4 @@
-import type { SessionSnapshot } from "@/rpc";
+import type { SessionSnapshot } from "@flame/runtime-contract/client";
 import type { AgentSessionMaterialRead } from "../application/ports/runtimeGateway";
 import { stageAgentSessionSharedMaterial } from "../application/ports/sessionSharedMaterial";
 import { runtimePlan } from "./runtimePlan";

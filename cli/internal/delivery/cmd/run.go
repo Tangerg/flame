@@ -58,6 +58,8 @@ func (r *runFlags) register(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&r.approveAll, "approve-all", false, "Approve every request the run makes")
 	cmd.Flags().StringVarP(&r.sessionID, "session", "s", "", "Run inside an existing session instead of a new one")
 	cmd.Flags().StringArrayVarP(&r.files, "file", "f", nil, "Attach a local file (repeatable)")
+	cmd.Flags().String("workspace", "", "Workspace path on the selected Runtime (default: local directory when embedded, Runtime default when remote)")
+	cmd.MarkFlagsMutuallyExclusive("session", "workspace")
 }
 
 func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimeProvider, v *viper.Viper) error {
@@ -85,11 +87,18 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 		message agent.Message
 	)
 	if r.sessionID == "" {
-		workspacePath, workspaceErr := resolveWorkspace(cmd)
+		workspacePath, workspaceErr := resolveWorkspace(cmd, config)
 		if workspaceErr != nil {
 			return workspaceErr
 		}
-		message, err = r.buildMessage(cmd.Context(), messageText, workspacePath)
+		attachmentRoot := workspacePath
+		if config.Runtime.Endpoint != "" {
+			attachmentRoot, err = resolveLocalDirectory(cmd)
+			if err != nil {
+				return err
+			}
+		}
+		message, err = r.buildMessage(cmd.Context(), messageText, attachmentRoot)
 		if err != nil {
 			return err
 		}
@@ -105,7 +114,14 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 		}
 		opened, err = session.Open(cmd.Context(), runtime, r.sessionID, "")
 		if err == nil {
-			message, err = r.buildMessage(cmd.Context(), messageText, opened.Session.Workspace.Path)
+			attachmentRoot := opened.Session.Workspace.Path
+			if config.Runtime.Endpoint != "" {
+				attachmentRoot, err = resolveLocalDirectory(cmd)
+				if err != nil {
+					return err
+				}
+			}
+			message, err = r.buildMessage(cmd.Context(), messageText, attachmentRoot)
 		}
 	}
 	if err != nil {
@@ -218,12 +234,22 @@ func completeRunFile(provider runtimeProvider) func(*cobra.Command, []string, st
 }
 
 func runFileCompletionWorkspace(cmd *cobra.Command, provider runtimeProvider) (string, error) {
+	if err := provider.prepare(cmd); err != nil {
+		return "", err
+	}
+	config, err := readSettings(provider.configuration)
+	if err != nil {
+		return "", err
+	}
+	if config.Runtime.Endpoint != "" {
+		return resolveLocalDirectory(cmd)
+	}
 	sessionID, err := cmd.Flags().GetString("session")
 	if err != nil {
 		return "", err
 	}
 	if sessionID == "" {
-		return resolveWorkspace(cmd)
+		return resolveWorkspace(cmd, config)
 	}
 	runtime, err := provider.Runtime(cmd)
 	if err != nil {

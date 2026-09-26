@@ -7,6 +7,7 @@ Runtime is not another agent framework. Scope owns process execution, strategies
 ## Public surfaces
 
 - The module-root `runtime.Runtime` is the concrete in-process binding.
+- The module-root `runtime.Client` attaches to an existing Runtime over HTTP/SSE with the same typed operation methods.
 - `protocol` contains binding-neutral requests, responses, events, errors, and validation.
 - `contract` contains generated machine-readable protocol artifacts and the generated API reference.
 - `localruntime` owns the local deployment layout and the strict credential-file handoff.
@@ -56,7 +57,38 @@ if err != nil {
 
 Hosts must close each Runtime they open. Protocol errors support `errors.Is` against public sentinel errors and `errors.As` to `protocol.ProblemError` for structured recovery information.
 
+## Attach without owning the Runtime
+
+```go
+client, err := runtime.Connect(ctx, runtime.RemoteConfig{
+	Endpoint: "http://127.0.0.1:17171",
+	Token:    token,
+})
+if err != nil {
+	return err
+}
+defer client.Close()
+```
+
+`Client` uses the same typed methods and call options as `Runtime`. Its HTTP requests enter the serving Runtime's existing delivery endpoint. Closing it cancels its requests and subscriptions without shutting down the server or canceling accepted Runs. A connection failure never constructs an embedded Runtime. A caller that intends to cancel execution sends `CancelRun` explicitly.
+
+Operation methods require a non-nil binding returned by `Open` or `Connect`. Their shared implementation no longer supports invoking an operation through a nil `*Runtime`; callers must handle constructor errors before use. `Close` remains nil-safe, and operations on a closed binding return `ErrClosed`.
+
+`Endpoint` names a base URL, including any reverse-proxy prefix, without credentials, a query, or a fragment. Authorization travels in the bearer header. Workspace paths belong to the server's filesystem and operating system; the client does not clean them with its own platform's path rules. Client-local attachments must be read into command content before dispatch. Retries retain the original content, idempotency key, and durable namespace.
+
+## Serve the browser application
+
+The standalone Runtime can publish the built `desktop/frontend/dist` directory on its own HTTP origin. Set `server.webDirectory` or `FLAME_SERVER_WEBDIRECTORY` to that directory's absolute path. Startup rejects a missing distribution instead of presenting a partially configured browser endpoint.
+
+Static assets and application navigation are public. All Runtime calls still use the generated `/v2/rpc` endpoint and its existing bearer gate; static routing never replaces protocol or health routes. The asset server confines reads to the distribution, rejects hidden files and directory listings, and keeps application HTML revalidated on reload. No token is embedded in HTML or placed in a URL.
+
+The browser starts at its own origin and accepts the Runtime token in the connection dialog. Desktop uses its native bootstrap. Both consume the same TypeScript client from `contract/typescript/client`; Wails capabilities belong only to the desktop platform adapter.
+
+## Errors and acknowledgement certainty
+
 Operation failures separate the stable machine `type` from their human-readable `detail`; a bare category omits redundant detail. Clients render the type once and use structured field errors, capability requirements, and active-Run references when present. Go callers retain underlying causes without parsing the display text. Explicit and inferred failures pass the same wire validation before leaving the endpoint.
+
+Remote Go calls report malformed protocol replies through `ErrInvalidResponse`, transient connection loss through `ErrDisconnected`, and uncertain command acceptance independently through `ErrAcknowledgementUnknown`. A malformed reply can leave acceptance unknown without being safe to retry automatically. Recovery must retain the exact original command parameters, idempotency key, and namespace; the client never silently resends a command or follows an HTTP redirect.
 
 Cancellation failures returned by the Go binding also preserve `context.Canceled` or `context.DeadlineExceeded` for `errors.Is`. Request cancellation causes are local to that invocation; wire problems and persisted replay outcomes retain their protocol category and safe details.
 

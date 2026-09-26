@@ -1,4 +1,4 @@
-import type { CancelRunResponse, RunEvent, RunRef } from "@/rpc";
+import type { CancelRunResponse, RunEvent, RunRef } from "@flame/runtime-contract/client";
 import type {
   AgentViewRefreshToken,
   CancelRunAction,

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { resetContainer, setContainer } from "@/main/container";
-import type { FlameClient, Schedule } from "@/rpc";
+import type { FlameClient, Schedule } from "@flame/runtime-contract/client";
 import {
   createSchedule,
   runScheduleNow,

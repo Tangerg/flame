@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RpcConnectionError, RpcError, RpcProtocolError, type FlameClient } from "@/rpc";
-import { asRunId, asSegmentId } from "@/rpc";
+import {
+  RpcConnectionError,
+  RpcError,
+  RpcProtocolError,
+  type FlameClient,
+} from "@flame/runtime-contract/client";
+import { asRunId, asSegmentId } from "@flame/runtime-contract/client";
 import type { RunStream, RunStreamPosition } from "./agentRunPump";
 import { createRunStreamReattach } from "./runStreamReattach";
 

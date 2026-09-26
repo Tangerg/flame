@@ -13,7 +13,7 @@ import {
 } from "@/plugins/builtin/agent/public/run";
 import { selectAgentSession } from "@/plugins/builtin/agent/public/session";
 import { selectWorkspaceChat } from "@/plugins/builtin/workspace/public/navigation";
-import { revealDesktopWindow } from "./adapters/desktopWindow";
+import { revealClientWindow } from "./adapters/windowFocus";
 import { installNotificationCentre } from "./adapters/systemNotifier";
 import { definePlugin, READY_HANDLER } from "@/plugins/sdk";
 import { useCompletionSoundStore } from "./completionSound";
@@ -28,7 +28,7 @@ const SETTLEMENT_COPY = {
 } as const satisfies Record<RootRunSettlement["status"], readonly [string, string]>;
 
 function openSettledSession(sessionId: string): void {
-  void revealDesktopWindow().catch((error: unknown) =>
+  void revealClientWindow().catch((error: unknown) =>
     console.error("[notify] reveal window failed:", error),
   );
   selectAgentSession(sessionId);

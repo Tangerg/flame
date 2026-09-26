@@ -2720,6 +2720,17 @@ func TestStartRefusesASessionThatAlreadyHasARunAndNamesIt(t *testing.T) {
 				active: &active,
 			}
 			c := newUseCaseCoordinator(&fakeExecutor{}, &fakeExecutionPorts{}, sessions, effects)
+			if tt.state == run.Running {
+				admission, acquired, err := c.admission.AcquireRun(t.Context(), "ses_1", "/work")
+				if err != nil || !acquired || !admission.Admit("run_active") {
+					t.Fatalf("admit existing live Run: acquired=%v error=%v", acquired, err)
+				}
+				defer func() {
+					if release, ok := c.admission.BeginMaintenance("run_active"); ok {
+						release()
+					}
+				}()
+			}
 
 			_, err := c.Start(context.Background(), StartCommand{
 				SessionID:      "ses_1",

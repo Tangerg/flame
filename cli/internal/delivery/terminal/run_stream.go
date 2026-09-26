@@ -202,7 +202,7 @@ func (a *app) acceptStartedRun(input agent.StartRun, opened agent.SegmentStream)
 	a.requestRuntimeCancellation(agent.CancelRun{
 		CommandID: pending[0].CancelCommandID,
 		RunID:     opened.RunID,
-		Reason:    "canceled while start delivery was unconfirmed",
+		Reason:    unconfirmedStartCancellationReason,
 	}, applyRuntimeSettlement)
 }
 

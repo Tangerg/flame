@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RpcError, RpcTransportError, asRunId, asSegmentId, type RunEvent } from "@/rpc";
+import {
+  RpcError,
+  RpcTransportError,
+  asRunId,
+  asSegmentId,
+  type RunEvent,
+} from "@flame/runtime-contract/client";
 import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 import { createRunOpeningController } from "./runOpeningController";
 

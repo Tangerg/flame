@@ -1,8 +1,6 @@
 import { toggleThemeScheme } from "@/plugins/builtin/theme/public/scheme";
 import {
   closeActiveAgentSession,
-  createSession,
-  getActiveSessionId,
   stepActiveAgentSession,
 } from "@/plugins/builtin/agent/public/session";
 import {
@@ -16,23 +14,12 @@ import { focusComposer } from "@/plugins/builtin/chat/composer/public/focus";
 
 import { navigator } from "@/lib/navigation";
 import { defaultStaticCommands } from "./application/defaultContributions";
-import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
+import { createNewSession } from "@/plugins/builtin/navigation/public/workIndex";
 
 function closeFocusedSurface(): void {
   if (closeActiveWorkspaceView()) return;
   if (closeActiveWorkspaceDockView()) return;
   closeActiveAgentSession();
-}
-
-function openNewChatSession(): void {
-  if (!runtimeCommandsAvailable()) return;
-  if (!getActiveSessionId()) {
-    focusComposer();
-    return;
-  }
-  void createSession().then((sessionId) => {
-    if (sessionId) focusComposer();
-  });
 }
 
 export const defaultCommands = definePlugin({
@@ -42,7 +29,7 @@ export const defaultCommands = definePlugin({
       toggleSidebar: toggleWorkspaceSidebar,
       toggleDock: toggleWorkspaceDock,
       toggleTheme: toggleThemeScheme,
-      newChat: openNewChatSession,
+      newChat: createNewSession,
       closeFocused: closeFocusedSurface,
       focusComposer: () => focusComposer(),
       historyBack: () => navigator().back(),

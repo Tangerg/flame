@@ -1,5 +1,9 @@
 import { getContainer } from "@/main/container";
-import { asSessionId, type FlameClient, type SessionArtifact } from "@/rpc";
+import {
+  asSessionId,
+  type FlameClient,
+  type SessionArtifact,
+} from "@flame/runtime-contract/client";
 import { ConversationArchiveOwner } from "../application/conversationExport";
 import type { ConversationArchiveGateway } from "../application/ports/conversationArchiveGateway";
 import { browserFileTransfer } from "./browserFileTransfer";

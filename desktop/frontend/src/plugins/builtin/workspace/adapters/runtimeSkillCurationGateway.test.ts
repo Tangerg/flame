@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resetContainer, setContainer } from "@/main/container";
-import { RpcError, type FlameClient } from "@/rpc";
+import { RpcError, type FlameClient } from "@flame/runtime-contract/client";
 import {
   approveSkillProposal,
   archiveSkill,

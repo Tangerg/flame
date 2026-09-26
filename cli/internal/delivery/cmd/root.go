@@ -8,6 +8,8 @@ package cmd
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -34,7 +36,7 @@ const configIndependentAnnotation = "flame/config-independent"
 // not open sockets, databases, or other process-owned resources. Dynamic value
 // completion may resolve the Runtime when it needs authoritative catalog data.
 type Dependencies struct {
-	OpenRuntime    func(context.Context) (Runtime, *runtimebinding.Profile, error)
+	OpenRuntime    func(context.Context, string) (Runtime, *runtimebinding.Profile, error)
 	StartTerminal  func(context.Context, TerminalRequest) error
 	StateDirectory string
 }
@@ -44,6 +46,7 @@ type Dependencies struct {
 type TerminalRequest struct {
 	SessionID      string
 	Workspace      string
+	LocalDirectory string
 	InitialPrompt  string
 	Settings       settings.Config
 	StateDirectory string
@@ -52,7 +55,9 @@ type TerminalRequest struct {
 // runtimeProvider delays construction until a command needs the runtime. It
 // owns delivery-only diagnostics so factories remain independent of Cobra.
 type runtimeProvider struct {
-	open func(context.Context) (Runtime, *runtimebinding.Profile, error)
+	open          func(context.Context) (Runtime, *runtimebinding.Profile, error)
+	configuration *viper.Viper
+	prepare       func(*cobra.Command) error
 }
 
 func (r runtimeProvider) Runtime(cmd *cobra.Command) (Runtime, error) {
@@ -62,6 +67,11 @@ func (r runtimeProvider) Runtime(cmd *cobra.Command) (Runtime, error) {
 
 func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, *runtimebinding.Profile, error) {
 	ctx := cmd.Context()
+	if r.prepare != nil {
+		if err := r.prepare(cmd); err != nil {
+			return nil, nil, err
+		}
+	}
 	if r.open == nil {
 		return nil, nil, errors.New("runtime factory is required")
 	}
@@ -84,12 +94,34 @@ func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, *runtimebinding.Prof
 
 // NewRoot builds an isolated command tree from process-owned dependencies.
 func NewRoot(dependencies Dependencies) *cobra.Command {
-	provider := runtimeProvider{open: dependencies.OpenRuntime}
 	v := viper.New()
-	root := newRootCommand(v, dependencies.StartTerminal, dependencies.StateDirectory)
+	loaded := false
+	prepare := func(command *cobra.Command) error {
+		if loaded {
+			return nil
+		}
+		if err := loadConfig(v, command); err != nil {
+			return err
+		}
+		loaded = true
+		return nil
+	}
+	provider := runtimeProvider{configuration: v, prepare: prepare}
+	if dependencies.OpenRuntime != nil {
+		provider.open = func(ctx context.Context) (Runtime, *runtimebinding.Profile, error) {
+			configured, err := readSettings(v)
+			if err != nil {
+				return nil, nil, err
+			}
+			return dependencies.OpenRuntime(ctx, configured.Runtime.Endpoint)
+		}
+	}
+	root := newRootCommand(v, dependencies.StartTerminal, dependencies.StateDirectory, prepare)
 	configureRoot(v, root)
 	root.Flags().StringP("session", "s", "", "Open an existing session instead of a new one")
-	root.PersistentFlags().StringP("cwd", "C", "", "Workspace directory for a new session (default: current directory)")
+	root.PersistentFlags().StringP("cwd", "C", "", "Local directory for CLI configuration and attachments; also the embedded Runtime workspace")
+	root.Flags().String("workspace", "", "Workspace path on the selected Runtime (default: local directory when embedded, Runtime default when remote)")
+	root.MarkFlagsMutuallyExclusive("session", "workspace")
 	root.AddGroup(
 		&cobra.Group{ID: "work", Title: "Work:"},
 		&cobra.Group{ID: "manage", Title: "Manage:"},
@@ -103,6 +135,7 @@ func newRootCommand(
 	v *viper.Viper,
 	startTerminal func(context.Context, TerminalRequest) error,
 	stateDirectory string,
+	prepare func(*cobra.Command) error,
 ) *cobra.Command {
 	return &cobra.Command{
 		Use:   "flame [prompt...]",
@@ -129,7 +162,7 @@ func newRootCommand(
 			if configIndependent(cmd) {
 				return nil
 			}
-			return loadConfig(v, cmd)
+			return prepare(cmd)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config, err := readSettings(v)
@@ -142,8 +175,7 @@ func newRootCommand(
 }
 
 func configIndependent(cmd *cobra.Command) bool {
-	return cmd.Annotations[configIndependentAnnotation] == "true" ||
-		cmd.Name() == cobra.ShellCompRequestCmd
+	return cmd.Annotations[configIndependentAnnotation] == "true" || cmd.Name() == cobra.ShellCompRequestCmd
 }
 
 func addRootCommands(root *cobra.Command, provider runtimeProvider, v *viper.Viper, stateDirectory string) {
@@ -180,7 +212,11 @@ func runInteractive(
 	if startTerminal == nil {
 		return errors.New("terminal starter is required")
 	}
-	workspacePath, err := resolveWorkspace(cmd)
+	workspacePath, err := resolveWorkspace(cmd, config)
+	if err != nil {
+		return err
+	}
+	localDirectory, err := resolveLocalDirectory(cmd)
 	if err != nil {
 		return err
 	}
@@ -191,9 +227,10 @@ func runInteractive(
 	err = startTerminal(cmd.Context(), TerminalRequest{
 		SessionID:      sessionID,
 		Workspace:      workspacePath,
+		LocalDirectory: localDirectory,
 		InitialPrompt:  strings.TrimSpace(strings.Join(args, " ")),
 		Settings:       config.Clone(),
-		StateDirectory: stateDirectory,
+		StateDirectory: targetStateDirectory(stateDirectory, config.Runtime.Endpoint),
 	})
 	var unavailable interface {
 		error
@@ -205,8 +242,19 @@ func runInteractive(
 	return err
 }
 
-// resolveWorkspace resolves the directory a session works in.
-func resolveWorkspace(cmd *cobra.Command) (string, error) {
+// resolveWorkspace leaves remote filesystem interpretation with Runtime.
+func resolveWorkspace(cmd *cobra.Command, config settings.Config) (string, error) {
+	workspace, _ := cmd.Flags().GetString("workspace")
+	if config.Runtime.Endpoint != "" {
+		return workspace, nil
+	}
+	if workspace != "" {
+		return canonicalWorkspacePath(workspace)
+	}
+	return resolveLocalDirectory(cmd)
+}
+
+func resolveLocalDirectory(cmd *cobra.Command) (string, error) {
 	cwd, _ := cmd.Flags().GetString("cwd")
 	if cwd == "" {
 		var err error
@@ -216,6 +264,33 @@ func resolveWorkspace(cmd *cobra.Command) (string, error) {
 		}
 	}
 	return canonicalWorkspacePath(cwd)
+}
+
+func (r runtimeProvider) workspacePath(path string) (string, error) {
+	configured, err := readSettings(r.configuration)
+	if err != nil {
+		return "", err
+	}
+	if configured.Runtime.Endpoint != "" {
+		return path, nil
+	}
+	return canonicalWorkspacePath(path)
+}
+
+func (r runtimeProvider) stateDirectory(base string) (string, error) {
+	configured, err := readSettings(r.configuration)
+	if err != nil {
+		return "", err
+	}
+	return targetStateDirectory(base, configured.Runtime.Endpoint), nil
+}
+
+func targetStateDirectory(base, endpoint string) string {
+	if base == "" || endpoint == "" {
+		return base
+	}
+	identity := sha256.Sum256([]byte(endpoint))
+	return filepath.Join(base, "targets", hex.EncodeToString(identity[:]))
 }
 
 func canonicalWorkspacePath(path string) (string, error) {

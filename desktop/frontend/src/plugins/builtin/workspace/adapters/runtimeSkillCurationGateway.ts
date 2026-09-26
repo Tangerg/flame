@@ -1,5 +1,5 @@
 import { getContainer } from "@/main/container";
-import { isErrorType, type FlameClient } from "@/rpc";
+import { isErrorType, type FlameClient } from "@flame/runtime-contract/client";
 import { SkillCurationOwner } from "../application/skillCuration";
 import {
   SkillProposalRevisionConflictError,

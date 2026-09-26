@@ -1,5 +1,5 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
-import type { ServerCapabilities, WireFeature } from "@/rpc";
+import type { ServerCapabilities, WireFeature } from "@flame/runtime-contract/client";
 
 export interface RuntimeCapabilityPort {
   useCapability(capability: WireFeature): boolean;

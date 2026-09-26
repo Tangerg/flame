@@ -1,105 +1,14 @@
 package dispatch
 
 import (
-	"bytes"
 	"encoding/json/jsontext"
-	json "encoding/json/v2"
-	"errors"
-	"fmt"
-	"maps"
-	"reflect"
-	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 )
 
 func decodeParams(raw jsontext.Value, dst any) error {
 	if len(raw) == 0 {
 		return nil
 	}
-	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-		return errors.New("params must be an object, got null")
-	}
-	if err := json.Unmarshal(raw, dst, json.RejectUnknownMembers(true)); err != nil {
-		return fmt.Errorf("decode params: %w", err)
-	}
-	if err := rejectExplicitNulls(raw, reflect.TypeOf(dst).Elem(), "params"); err != nil {
-		return err
-	}
-	return nil
-}
-
-// rejectExplicitNulls keeps typed decoding aligned with the generated schema.
-// Pointers in protocol DTOs represent omission, not nullable JSON fields; the
-// standard decoder otherwise collapses both spellings to nil. Opaque JSON
-// values remain open and may contain null by contract.
-func rejectExplicitNulls(raw jsontext.Value, target reflect.Type, path string) error {
-	for target.Kind() == reflect.Pointer {
-		target = target.Elem()
-	}
-	if target == reflect.TypeFor[jsontext.Value]() || target.Kind() == reflect.Interface {
-		return nil
-	}
-	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
-		return fmt.Errorf("%s must be omitted instead of null", path)
-	}
-	if reflect.PointerTo(target).Implements(reflect.TypeFor[json.Unmarshaler]()) {
-		return nil
-	}
-
-	switch target.Kind() {
-	case reflect.Struct:
-		return rejectStructNulls(raw, target, path)
-	case reflect.Slice, reflect.Array:
-		if target.Elem().Kind() == reflect.Uint8 {
-			return nil
-		}
-		return rejectSequenceNulls(raw, target.Elem(), path)
-	case reflect.Map:
-		return rejectMapNulls(raw, target.Elem(), path)
-	}
-	return nil
-}
-
-func rejectStructNulls(raw jsontext.Value, target reflect.Type, path string) error {
-	var object map[string]jsontext.Value
-	if err := json.Unmarshal(raw, &object); err != nil {
-		return fmt.Errorf("decode %s: %w", path, err)
-	}
-	for _, field := range contractshape.Fields(target) {
-		value, present := object[field.Name]
-		if !present {
-			continue
-		}
-		if err := rejectExplicitNulls(value, field.Type, path+"."+field.Name); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func rejectSequenceNulls(raw jsontext.Value, element reflect.Type, path string) error {
-	var values []jsontext.Value
-	if err := json.Unmarshal(raw, &values); err != nil {
-		return fmt.Errorf("decode %s: %w", path, err)
-	}
-	for index, value := range values {
-		if err := rejectExplicitNulls(value, element, fmt.Sprintf("%s[%d]", path, index)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func rejectMapNulls(raw jsontext.Value, element reflect.Type, path string) error {
-	var values map[string]jsontext.Value
-	if err := json.Unmarshal(raw, &values); err != nil {
-		return fmt.Errorf("decode %s: %w", path, err)
-	}
-	for _, key := range slices.Sorted(maps.Keys(values)) {
-		if err := rejectExplicitNulls(values[key], element, path+"."+key); err != nil {
-			return err
-		}
-	}
-	return nil
+	return transport.DecodeValue(raw, dst, "params")
 }

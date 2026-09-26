@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
+import { discardOlderVersions, rehydrateOrDefault, ScopedPersistence } from "@/lib/persistedStore";
 import { WORKSPACE_DOCK_CATALOG } from "../application/navigation";
 import type { WorkspaceViewMemory } from "../application/ports/navigationState";
 import { DIFF_LAYOUTS, DIFF_MODES } from "../application/diffVocabulary";
@@ -114,6 +114,12 @@ function emptySessionScope(): ContextDockSessionScope {
   };
 }
 
+function emptyDockState(): ContextDockState {
+  return { activeSessionScopeId: null, sessionScopes: new Map(), ...emptySessionScope() };
+}
+
+const persistence = new ScopedPersistence<ContextDockState>(CONTEXT_DOCK_STORAGE_KEY);
+
 function cloneSessionScope(scope: ContextDockSessionScope): ContextDockSessionScope {
   return {
     fileFocus: scope.fileFocus,
@@ -162,14 +168,7 @@ function restorePersistedScope(scope: PersistedDockScope): ContextDockSessionSco
 export const useContextDockStore = create<ContextDockState & ContextDockActions>()(
   persist(
     (set, get) => ({
-      activeSessionScopeId: null,
-      sessionScopes: new Map<string, ContextDockSessionScope>(),
-      dockViewIds: [],
-      lastViewId: null,
-      fileFocus: WorkspaceFileFocus.empty(),
-      fileViewer: null,
-      expandedToolIds: new Set<string>(),
-      memory: EMPTY_MEMORY,
+      ...emptyDockState(),
 
       adoptDockLocation: (id) =>
         set((state) => ({
@@ -274,15 +273,27 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
     }),
     {
       name: CONTEXT_DOCK_STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => persistence.storage),
+      skipHydration: true,
       partialize: (state) => ({ sessionScopes: persistedSessionScopes(state) }),
-      version: 2,
+      version: 3,
       migrate: discardOlderVersions,
-      merge: rehydrateOrDefault(CONTEXT_DOCK_STORAGE_KEY, contextDockPersistSchema, (data) => ({
-        sessionScopes: new Map<string, ContextDockSessionScope>(
-          data.sessionScopes.map(([sessionId, scope]) => [sessionId, restorePersistedScope(scope)]),
-        ),
-      })),
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) useContextDockStore.setState(emptyDockState());
+      },
+      merge: (persisted, current) =>
+        rehydrateOrDefault(CONTEXT_DOCK_STORAGE_KEY, contextDockPersistSchema, (data) => ({
+          sessionScopes: new Map<string, ContextDockSessionScope>(
+            data.sessionScopes.map(([sessionId, scope]) => [
+              sessionId,
+              restorePersistedScope(scope),
+            ]),
+          ),
+        }))(persisted, { ...current, ...emptyDockState() }),
     },
   ),
 );
+
+export function activateContextDockStorage(endpoint: string): boolean {
+  return persistence.activate(endpoint, useContextDockStore);
+}

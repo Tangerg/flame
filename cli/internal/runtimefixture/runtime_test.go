@@ -421,7 +421,7 @@ func TestSessionCatalogRejectsInvalidLocalFilters(t *testing.T) {
 
 	runtime := New()
 	for _, query := range []agent.SessionQuery{
-		{PageSize: agent.DefaultPageSize(), Workspace: "relative/workspace"},
+		{PageSize: agent.DefaultPageSize(), Search: "bad\x00query"},
 	} {
 		if _, err := runtime.ListSessions(t.Context(), query); err == nil {
 			t.Fatalf("ListSessions accepted %+v", query)

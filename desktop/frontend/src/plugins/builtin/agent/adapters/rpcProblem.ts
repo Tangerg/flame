@@ -5,7 +5,7 @@ import {
   errorType,
   RpcError,
   RpcTransportError,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 
 export function agentProblemFromRpcFailure(error: unknown): AgentProblem | null {

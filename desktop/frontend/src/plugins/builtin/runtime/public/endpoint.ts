@@ -1,7 +1,9 @@
 export {
   applyRuntimeEndpoint,
   currentRuntimeEndpoint,
+  configuredRuntimeTarget,
+  defaultRuntimeEndpoint,
+  hasRuntimeAccessToken,
   resetRuntimeEndpoint,
-  DEFAULT_RUNTIME_ENDPOINT,
   type RuntimeEndpointRejection,
 } from "../application/runtimeEndpoint";

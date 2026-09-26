@@ -1,7 +1,7 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 
 interface WorkingDirectoryPicker {
-  choose(): Promise<string | null>;
+  open(): void;
 }
 
 const port = createSingletonPort<WorkingDirectoryPicker>(

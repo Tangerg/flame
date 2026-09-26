@@ -61,3 +61,4 @@ export { Switch } from "./switch";
 export { RichTooltip, Tooltip, TooltipProvider } from "./tooltip";
 export { VerticalTabs } from "./vertical-tabs";
 export { Well } from "./well";
+export { InputDialog } from "./input-dialog";

@@ -3,7 +3,7 @@ import {
   disposeAsyncIterable,
   settleBeforeAbort,
 } from "@/lib/asyncOwnership";
-import type { FlameClient } from "@/rpc";
+import type { FlameClient } from "@flame/runtime-contract/client";
 
 type RuntimeRunStream = Awaited<ReturnType<FlameClient["runs"]["subscribe"]>>;
 

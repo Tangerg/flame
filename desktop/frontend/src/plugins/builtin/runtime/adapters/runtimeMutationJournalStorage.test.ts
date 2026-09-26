@@ -1,10 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { getContainer, resetContainer } from "@/main/container";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { getContainer, initializeClientHost, resetContainer } from "@/main/container";
 import type { KeyValueStore } from "@/plugins/sdk";
 import { installedRuntimeMutationJournalStorage } from "../application/ports/mutationJournal";
 import { installRuntimeMutationJournalStorage } from "./runtimeMutationJournalStorage";
 
 const cleanups: Array<() => void> = [];
+
+beforeEach(initializeClientHost);
 
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();

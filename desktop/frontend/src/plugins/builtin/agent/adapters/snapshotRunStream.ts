@@ -1,4 +1,4 @@
-import { asRunId, asSegmentId, type FlameClient } from "@/rpc";
+import { asRunId, asSegmentId, type FlameClient } from "@flame/runtime-contract/client";
 import { revalidateAgentSessionMaterial } from "../application/session/refreshSessionProjection";
 import { runtimeSessionMaterial } from "./runtimeSessionMaterial";
 import { retireRunStream, settleRunStreamOpening } from "./runStreamOpening";

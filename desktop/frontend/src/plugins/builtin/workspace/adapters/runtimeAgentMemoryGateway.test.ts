@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { validateWire, type WireTypeName } from "@flame/runtime-contract/validate";
 import { resetContainer, setContainer } from "@/main/container";
-import type { FlameClient } from "@/rpc";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { queryClient } from "@/lib/queryClient";
 import {
   addAgentMemory,

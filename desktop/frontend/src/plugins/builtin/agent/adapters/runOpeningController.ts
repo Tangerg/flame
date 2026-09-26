@@ -1,5 +1,5 @@
 import { disposeAsyncIterable } from "@/lib/asyncOwnership";
-import type { RunEvent, RunId, SegmentId, StreamingResult } from "@/rpc";
+import type { RunEvent, RunId, SegmentId, StreamingResult } from "@flame/runtime-contract/client";
 import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 import { endSpan, startRunSpan, withSpan } from "@/lib/observability/tracing";
 import { agentProblemFromRpcFailure } from "./rpcProblem";

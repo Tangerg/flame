@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { initializeClientHost, resetContainer, setContainer } from "@/main/container";
 import {
   HTTP_ENDPOINTS,
   PROTOCOL_VERSION,
@@ -8,7 +8,7 @@ import {
   type Methods,
   type ReadinessStatus,
   type SidecarClient,
-} from "@/rpc";
+} from "@flame/runtime-contract/client";
 import {
   resetRuntimeConnectionForTest,
   useRuntimeConnectionStore,
@@ -77,9 +77,11 @@ function stubContainer(
   });
 }
 
+beforeEach(initializeClientHost);
+
 afterEach(async () => {
   await resetKernelForTest();
-  resetContainer();
+  await resetContainer();
   resetRuntimeConnectionForTest();
   vi.restoreAllMocks();
 });

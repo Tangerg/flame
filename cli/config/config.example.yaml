@@ -3,17 +3,24 @@
 # For one project:
 #   cp config/config.example.yaml .flame.yaml
 #
-# Without .flame.yaml in the selected workspace (`.` or `-C`), Flame reads
+# Without .flame.yaml in the selected local directory (`.` or `-C`), Flame reads
 # config.yaml from the OS user config directory under flame/. FLAME_CLI_*
 # environment variables and CLI flags override file values. `flame config path`
 # shows the selected file and `flame config show` prints the merged, validated
 # result.
 # CLI configuration must be a regular YAML file no larger than 256 KiB.
 #
-# This file configures the CLI consumer only. Provider credentials, custom
-# endpoints, utility/embedding roles, Runtime server, sandbox, MCP, and LSP are
+# This file configures the CLI consumer only. Provider credentials, provider
+# endpoints, utility/embedding roles, Runtime server settings, sandbox, MCP, and LSP are
 # Runtime-owned settings; inspect or change them from the interactive CLI with
 # /providers, /provider-config, and the related Runtime commands.
+
+# Empty uses a process-owned embedded Runtime. A base URL attaches to an
+# existing Runtime without taking over its lifecycle. FLAME_CLI_RUNTIME_ENDPOINT
+# or --runtime-url overrides this value. Supply authentication separately through
+# FLAME_RUNTIME_TOKEN; credentials never belong in this preferences file.
+runtime:
+  endpoint: ""
 
 # Omit provider/model to inherit the active Session's durable selection. To
 # override it for new Runs, set one exact pair; the fields move together.

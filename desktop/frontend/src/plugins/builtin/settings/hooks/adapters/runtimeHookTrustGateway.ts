@@ -1,5 +1,5 @@
 import { getContainer } from "@/main/container";
-import type { FlameClient } from "@/rpc";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { HookTrustMutationOwner, type HookTrustGateway } from "../application/hookTrust";
 
 function runtimeHookTrustGateway(client: FlameClient): HookTrustGateway {

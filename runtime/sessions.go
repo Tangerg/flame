@@ -8,51 +8,51 @@ import (
 )
 
 // ListSessions returns one cursor page of Sessions.
-func (r *Runtime) ListSessions(ctx context.Context, request protocol.ListSessionsRequest, options CallOptions) (*protocol.Page[protocol.Session], error) {
+func (r *binding) ListSessions(ctx context.Context, request protocol.ListSessionsRequest, options CallOptions) (*protocol.Page[protocol.Session], error) {
 	return r.invoke[protocol.ListSessionsRequest, *protocol.Page[protocol.Session]](ctx, delivery.SessionsList, request, callOptions(options))
 }
 
 // GetSession returns one Session by identity.
-func (r *Runtime) GetSession(ctx context.Context, request protocol.GetSessionRequest, options CallOptions) (*protocol.Session, error) {
+func (r *binding) GetSession(ctx context.Context, request protocol.GetSessionRequest, options CallOptions) (*protocol.Session, error) {
 	return r.invoke[protocol.GetSessionRequest, *protocol.Session](ctx, delivery.SessionsGet, request, callOptions(options))
 }
 
 // GetSessionSnapshot returns one transactionally coherent mounted-session read.
-func (r *Runtime) GetSessionSnapshot(ctx context.Context, request protocol.GetSessionSnapshotRequest, options CallOptions) (*protocol.SessionSnapshot, error) {
+func (r *binding) GetSessionSnapshot(ctx context.Context, request protocol.GetSessionSnapshotRequest, options CallOptions) (*protocol.SessionSnapshot, error) {
 	return r.invoke[protocol.GetSessionSnapshotRequest, *protocol.SessionSnapshot](ctx, delivery.SessionsSnapshot, request, callOptions(options))
 }
 
 // CreateSession creates a Session.
-func (r *Runtime) CreateSession(ctx context.Context, request protocol.CreateSessionRequest, options CommandOptions) (*protocol.Session, error) {
+func (r *binding) CreateSession(ctx context.Context, request protocol.CreateSessionRequest, options CommandOptions) (*protocol.Session, error) {
 	return r.invoke[protocol.CreateSessionRequest, *protocol.Session](ctx, delivery.SessionsCreate, request, commandOptions(options))
 }
 
 // UpdateSession applies a revision-checked Session edit.
-func (r *Runtime) UpdateSession(ctx context.Context, request protocol.UpdateSessionRequest, options CommandOptions) (*protocol.Session, error) {
+func (r *binding) UpdateSession(ctx context.Context, request protocol.UpdateSessionRequest, options CommandOptions) (*protocol.Session, error) {
 	return r.invoke[protocol.UpdateSessionRequest, *protocol.Session](ctx, delivery.SessionsUpdate, request, commandOptions(options))
 }
 
 // DeleteSession deletes a Session.
-func (r *Runtime) DeleteSession(ctx context.Context, request protocol.DeleteSessionRequest, options CommandOptions) error {
+func (r *binding) DeleteSession(ctx context.Context, request protocol.DeleteSessionRequest, options CommandOptions) error {
 	return r.invokeAck(ctx, delivery.SessionsDelete, request, commandOptions(options))
 }
 
 // ForkSession creates a Session from an existing history boundary.
-func (r *Runtime) ForkSession(ctx context.Context, request protocol.ForkSessionRequest, options CommandOptions) (*protocol.Session, error) {
+func (r *binding) ForkSession(ctx context.Context, request protocol.ForkSessionRequest, options CommandOptions) (*protocol.Session, error) {
 	return r.invoke[protocol.ForkSessionRequest, *protocol.Session](ctx, delivery.SessionsFork, request, commandOptions(options))
 }
 
 // RollbackSession rewinds Session history and, when requested, its workspace.
-func (r *Runtime) RollbackSession(ctx context.Context, request protocol.RollbackSessionRequest, options CommandOptions) (*protocol.RollbackSessionResponse, error) {
+func (r *binding) RollbackSession(ctx context.Context, request protocol.RollbackSessionRequest, options CommandOptions) (*protocol.RollbackSessionResponse, error) {
 	return r.invoke[protocol.RollbackSessionRequest, *protocol.RollbackSessionResponse](ctx, delivery.SessionsRollback, request, commandOptions(options))
 }
 
 // ExportSession returns a portable Session artifact.
-func (r *Runtime) ExportSession(ctx context.Context, request protocol.ExportSessionRequest, options CallOptions) (*protocol.ExportSessionResponse, error) {
+func (r *binding) ExportSession(ctx context.Context, request protocol.ExportSessionRequest, options CallOptions) (*protocol.ExportSessionResponse, error) {
 	return r.invoke[protocol.ExportSessionRequest, *protocol.ExportSessionResponse](ctx, delivery.SessionsExport, request, callOptions(options))
 }
 
 // ImportSession restores a portable Session artifact.
-func (r *Runtime) ImportSession(ctx context.Context, request protocol.ImportSessionRequest, options CommandOptions) (*protocol.ImportSessionResponse, error) {
+func (r *binding) ImportSession(ctx context.Context, request protocol.ImportSessionRequest, options CommandOptions) (*protocol.ImportSessionResponse, error) {
 	return r.invoke[protocol.ImportSessionRequest, *protocol.ImportSessionResponse](ctx, delivery.SessionsImport, request, commandOptions(options))
 }

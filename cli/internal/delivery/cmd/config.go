@@ -27,6 +27,7 @@ type flagBinding struct {
 }
 
 var settingFlagBindings = [...]flagBinding{
+	{key: "runtime.endpoint", flag: "runtime-url"},
 	{key: "provider", flag: "provider"},
 	{key: "model", flag: "model"},
 	{key: "ui.mouse", flag: "mouse"},
@@ -44,6 +45,7 @@ func configureRoot(v *viper.Viper, root *cobra.Command) {
 	v.AutomaticEnv()
 
 	flags := root.PersistentFlags()
+	flags.String("runtime-url", defaults.Runtime.Endpoint, "Connect to an existing Runtime base URL (default: own an embedded Runtime)")
 	flags.String("config", "", "YAML configuration file (default: <workspace>/.flame.yaml or the user config directory)")
 	flags.String("provider", defaults.Provider, "Optional provider override for new runs (must be paired with --model)")
 	flags.String("model", defaults.Model, "Optional model override for new runs (must be paired with --provider)")
@@ -55,6 +57,7 @@ func configureRoot(v *viper.Viper, root *cobra.Command) {
 }
 
 func setDefaults(v *viper.Viper, defaults settings.Config) {
+	v.SetDefault("runtime.endpoint", defaults.Runtime.Endpoint)
 	v.SetDefault("provider", defaults.Provider)
 	v.SetDefault("model", defaults.Model)
 	v.SetDefault("approval.remember", defaults.Approval.Remember)
@@ -103,7 +106,7 @@ func selectConfigSource(cmd *cobra.Command, explicitPath string) (string, bool, 
 		}
 		return explicitPath, true, nil
 	}
-	workspace, err := resolveWorkspace(cmd)
+	workspace, err := resolveLocalDirectory(cmd)
 	if err != nil {
 		return "", false, fmt.Errorf("resolve project configuration workspace: %w", err)
 	}

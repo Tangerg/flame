@@ -2,7 +2,6 @@ package terminal
 
 import (
 	"errors"
-	"path/filepath"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -49,9 +48,6 @@ func (s scheduleFormDraft) candidate() (protocol.CreateScheduleRequest, error) {
 	}
 	workspace := strings.TrimSpace(s.workspace)
 	if workspace != "" {
-		if !filepath.IsAbs(workspace) {
-			return protocol.CreateScheduleRequest{}, errors.New("workspace path is not absolute")
-		}
 		request.Workspace = &protocol.WorkspaceRef{Path: workspace}
 	}
 	if err := validateScheduleModelPair(request.Provider, request.Model); err != nil {
@@ -78,9 +74,6 @@ func (s scheduleFormDraft) patch(original protocol.Schedule) (protocol.UpdateSch
 		if workspace == "" {
 			request.WorkspaceMode = protocol.ScheduleWorkspaceDefault
 		} else {
-			if !filepath.IsAbs(workspace) {
-				return protocol.UpdateScheduleRequest{}, false, errors.New("workspace path is not absolute")
-			}
 			request.Workspace = &protocol.WorkspaceRef{Path: workspace}
 		}
 	}

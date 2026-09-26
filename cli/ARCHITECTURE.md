@@ -1,6 +1,6 @@
 # Flame CLI architecture
 
-Flame CLI is a consumer of the public in-process Runtime binding. It provides one-shot Cobra commands and an interactive Oolong terminal client without creating a second product backend.
+Flame CLI consumes the public embedded and HTTP Runtime bindings. It provides one-shot Cobra commands and an interactive Oolong terminal client without creating a second product backend.
 
 ## Ownership
 
@@ -45,7 +45,13 @@ CLI Domain types are behavior-rich only for CLI-owned invariants. A draft, queue
 
 ## Runtime path
 
-The production process opens at most one concrete Runtime, fans its binding adapter into consumer-owned ports, and closes the Runtime once. There is no environment-selected fake, loopback HTTP client, service locator, or alternate product implementation.
+The production process selects one target and fans its binding adapter into consumer-owned ports. An empty endpoint opens one embedded Runtime; an explicit endpoint connects Runtime's public HTTP/SSE client to an existing Runtime. Both bindings enter the same server delivery Endpoint. There is no environment-selected fake, service locator, alternate product implementation, or fallback between targets. The process closes the binding once; only the embedded binding owns Runtime shutdown.
+
+CLI preferences own endpoint selection, while process input owns its bearer credential. The endpoint is immutable after the first connection. The remote client performs transport framing, strict decoding, and schema validation at the public Runtime boundary. CLI retains one negotiation and one immutable Profile for either binding. Invalid remote replies become permanent incompatible-Runtime errors; transport loss preserves unknown mutation acknowledgement and the existing exact replay policy.
+
+Availability and mutation certainty are separate observations. A lost connection may be reattached or retried with the retained command identity. A malformed acknowledgement is permanent for that connection but still cannot prove that its mutation was refused: durable outboxes retain the unknown intent without retrying malformed data. Authoritative Runtime problem responses remain definitive refusals. Closing and later recovering an explicitly canceled but unacknowledged opening reuses one exact cancellation identity and payload.
+
+The remote terminal detaches on exit without canceling an observed or newly accepted Run. An explicitly requested cancellation retains its settlement and durable recovery obligations. One-shot execution retains its separate process-interruption policy: cancel the Run that invocation started, release observations, and leave the shared Runtime alive.
 
 `runtimebinding.Connection` owns binding lifecycle, capability negotiation, exact protocol translation, and safe error classification. It does not own product state. The adapter preserves exact provider/model identity and never stores credentials in CLI state, history, frames, errors, or logs.
 
@@ -96,6 +102,12 @@ A mode the composition root never produces is not a mode. The terminal always op
 Optional terminal state is asked about once, where the choice is made. A dialog, a draft writer or a pane that has not been opened is absent from the application state, and the code that reads it says so; the type itself assumes it exists rather than returning a zero answer that reads the same as "open, but empty". A presentation block that cannot render fails where it renders instead of drawing nothing.
 
 ## Local authoring
+
+Runtime workspace references and local authoring directories have separate owners. In remote mode, the Runtime validates and canonicalizes its filesystem paths, while a fixed client-local directory anchors attachment resolution, external editors, imports, and exports. Session switching never turns a remote workspace reference into a local file capability. Embedded composition may resolve the local working directory before sending it as a workspace. Recent Runtime workspace references are persisted unchanged, including foreign path syntax.
+
+Sideloaded command protocol 2 carries both the Runtime workspace reference and the local authoring directory. The executable remains rooted in its discovered plugin directory. Manifest schema version 3 declares these semantics so an older executable is rejected before invocation; responses must also declare command protocol 2. Extension-host API version 1 is unchanged.
+
+Remote authoring persistence is partitioned by the configured endpoint; embedded state keeps its existing directory. The terminal and command-side session deletion workflow use the same partition. Endpoint identity scopes local drafts and journals, while Runtime's advertised idempotency namespace and retention independently decide whether an exact command may replay. Neither a new process instance ID nor an endpoint spelling change authorizes migration of a pending mutation.
 
 Workbench persistence contains only CLI-authored facts. The workbench aggregate owns record names, the strict current shape, and recovery semantics; its narrow persistence port carries opaque bytes while the filesystem adapter owns rooted paths, regular-file checks, and atomic replacement. Records fail closed on unknown, malformed, oversized, truncated, or trailing content. Queue and replay are CLI aggregates with explicit identities and legal transitions; terminal code commands them instead of mutating slices and flags independently.
 

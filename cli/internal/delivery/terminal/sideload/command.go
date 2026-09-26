@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,11 +21,11 @@ import (
 )
 
 const (
-	commandProtocolVersion  = 1
+	commandProtocolVersion  = 2
 	maxCommandOutputBytes   = 1 << 20
 	maxCommandMessageBytes  = 4096
 	maxCommandArgumentBytes = 64 << 10
-	maxWorkspaceBytes       = 32 << 10
+	maxCommandPathBytes     = 32 << 10
 	maxCommandRequestBytes  = 128 << 10
 )
 
@@ -41,12 +43,13 @@ type executableSource struct {
 }
 
 type commandRequest struct {
-	Protocol  int    `json:"protocol"`
-	PluginID  string `json:"pluginId"`
-	Command   string `json:"command"`
-	Argument  string `json:"argument,omitzero"`
-	Workspace string `json:"workspace"`
-	SessionID string `json:"sessionId"`
+	Protocol       int    `json:"protocol"`
+	PluginID       string `json:"pluginId"`
+	Command        string `json:"command"`
+	Argument       string `json:"argument,omitzero"`
+	Workspace      string `json:"workspace"`
+	LocalDirectory string `json:"localDirectory"`
+	SessionID      string `json:"sessionId"`
 }
 
 type commandResponse struct {
@@ -78,6 +81,7 @@ func (e executableCommand) Execute(ctx context.Context, request terminal.Command
 	payload, err := json.Marshal(commandRequest{
 		Protocol: commandProtocolVersion, PluginID: e.pluginID, Command: e.command,
 		Argument: request.Argument, Workspace: request.Workspace, SessionID: request.SessionID,
+		LocalDirectory: request.LocalDirectory,
 	})
 	if err != nil {
 		return terminal.CommandResult{}, fmt.Errorf("encode plugin command request: %w", err)
@@ -116,8 +120,12 @@ func validateCommandRequest(request terminal.CommandRequest) error {
 	switch {
 	case len(request.Argument) > maxCommandArgumentBytes:
 		return fmt.Errorf("argument exceeds %d bytes", maxCommandArgumentBytes)
-	case len(request.Workspace) > maxWorkspaceBytes:
-		return fmt.Errorf("workspace exceeds %d bytes", maxWorkspaceBytes)
+	case len(request.Workspace) > maxCommandPathBytes:
+		return fmt.Errorf("workspace exceeds %d bytes", maxCommandPathBytes)
+	case len(request.LocalDirectory) > maxCommandPathBytes:
+		return fmt.Errorf("local directory exceeds %d bytes", maxCommandPathBytes)
+	case !filepath.IsAbs(request.LocalDirectory):
+		return errors.New("local directory is not absolute")
 	}
 	if request.SessionID != "" {
 		if err := protocol.ValidateSessionID(request.SessionID); err != nil {
@@ -148,7 +156,7 @@ func commandEnvironment(pluginID, command string) []string {
 		}
 	}
 	return append(environment,
-		"FLAME_PLUGIN_PROTOCOL=1",
+		"FLAME_PLUGIN_PROTOCOL="+strconv.Itoa(commandProtocolVersion),
 		"FLAME_PLUGIN_ID="+pluginID,
 		"FLAME_PLUGIN_COMMAND="+command,
 	)

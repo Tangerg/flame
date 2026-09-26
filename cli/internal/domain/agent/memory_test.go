@@ -19,7 +19,7 @@ func TestTargetOwnsScopeWorkspaceInvariant(t *testing.T) {
 		wantErr   bool
 	}{
 		{name: "project", scope: protocol.AgentMemoryScopeProject, workspace: "/repo"},
-		{name: "project with relative workspace", scope: protocol.AgentMemoryScopeProject, workspace: "repo", wantErr: true},
+		{name: "project on another operating system", scope: protocol.AgentMemoryScopeProject, workspace: `C:\repo`},
 		{name: "project without workspace", scope: protocol.AgentMemoryScopeProject, wantErr: true},
 		{name: "user", scope: protocol.AgentMemoryScopeUser},
 		{name: "user with workspace", scope: protocol.AgentMemoryScopeUser, workspace: "/repo", wantErr: true},

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { RpcError } from "@/rpc/errors";
+import { RpcError } from "@flame/runtime-contract/client/errors";
 import { useCommandAction } from "./commandAction";
 import { useNotificationStore } from "./notifications";
 
