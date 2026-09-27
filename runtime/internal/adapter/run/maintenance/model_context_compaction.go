@@ -2,10 +2,8 @@ package maintenance
 
 import (
 	"context"
-	"encoding/json/jsontext"
 	"errors"
 	"fmt"
-	"reflect"
 	"slices"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -41,7 +39,7 @@ func (c *Compactor) CompactModelContext(
 		if err != nil {
 			return executionadapter.ModelContextCompactionResult{}, fmt.Errorf("maintenance: read model context: %w", err)
 		}
-		candidatePrefix, matches, difference, err := semanticMessagePrefix(candidate, stored)
+		candidatePrefix, matches, difference, err := request.CompareDurableHistory(stored)
 		if err != nil {
 			return executionadapter.ModelContextCompactionResult{}, err
 		}
@@ -220,135 +218,6 @@ func cloneMessages(messages []chat.Message) []chat.Message {
 		cloned[index] = messages[index].Clone()
 	}
 	return cloned
-}
-
-type semanticMessage struct {
-	message   chat.Message
-	sourceEnd int
-}
-
-func semanticMessagePrefix(candidate, durable []chat.Message) (int, bool, string, error) {
-	candidateMessages, err := normalizedSemanticMessages(candidate, "Interaction conversation")
-	if err != nil {
-		return 0, false, "candidate_invalid", err
-	}
-	durableMessages, err := normalizedSemanticMessages(durable, "durable conversation")
-	if err != nil {
-		return 0, false, "durable_invalid", err
-	}
-	if len(candidateMessages) < len(durableMessages) {
-		return 0, false, fmt.Sprintf(
-			"semantic_message_count=%d/%d",
-			len(candidateMessages),
-			len(durableMessages),
-		), nil
-	}
-	for index := range durableMessages {
-		left := candidateMessages[index].message
-		right := durableMessages[index].message
-		if left.Role != right.Role {
-			return 0, false, fmt.Sprintf(
-				"message[%d].role=%s/%s",
-				index,
-				left.Role,
-				right.Role,
-			), nil
-		}
-		if len(left.Parts) != len(right.Parts) {
-			return 0, false, fmt.Sprintf(
-				"message[%d].part_count=%d/%d",
-				index,
-				len(left.Parts),
-				len(right.Parts),
-			), nil
-		}
-		for partIndex := range left.Parts {
-			leftPart := left.Parts[partIndex]
-			rightPart := right.Parts[partIndex]
-			if !semanticPartEqual(leftPart, rightPart) {
-				return 0, false, fmt.Sprintf(
-					"message[%d].part[%d] kind=%s/%s text_equal=%t reasoning_state_equal=%t media_equal=%t tool_call_equal=%t tool_result_equal=%t",
-					index,
-					partIndex,
-					leftPart.Kind,
-					rightPart.Kind,
-					leftPart.Text == rightPart.Text,
-					slices.Equal(leftPart.ReasoningState, rightPart.ReasoningState),
-					reflect.DeepEqual(leftPart.Media, rightPart.Media),
-					reflect.DeepEqual(leftPart.ToolCall, rightPart.ToolCall),
-					semanticToolResultEqual(leftPart.ToolResult, rightPart.ToolResult),
-				), nil
-			}
-		}
-	}
-	if len(durableMessages) == 0 {
-		return 0, true, "none", nil
-	}
-	return candidateMessages[len(durableMessages)-1].sourceEnd, true, "none", nil
-}
-
-func semanticPartEqual(left, right chat.Part) bool {
-	if left.Kind != chat.PartToolResult || right.Kind != chat.PartToolResult {
-		return reflect.DeepEqual(left, right)
-	}
-	if !semanticToolResultEqual(left.ToolResult, right.ToolResult) {
-		return false
-	}
-	left.ToolResult = nil
-	right.ToolResult = nil
-	return reflect.DeepEqual(left, right)
-}
-
-func semanticToolResultEqual(left, right *chat.ToolResult) bool {
-	if left == nil || right == nil {
-		return left == right
-	}
-	if left.ID != right.ID || left.Name != right.Name || left.IsError != right.IsError ||
-		!reflect.DeepEqual(left.Output.Content, right.Output.Content) {
-		return false
-	}
-	return semanticJSONEqual(left.Output.Details, right.Output.Details)
-}
-
-func semanticJSONEqual(left, right jsontext.Value) bool {
-	if slices.Equal(left, right) {
-		return true
-	}
-	if len(left) == 0 || len(right) == 0 {
-		return false
-	}
-	left = left.Clone()
-	right = right.Clone()
-	if err := left.Format(jsontext.ReorderRawObjects(true)); err != nil {
-		return false
-	}
-	if err := right.Format(jsontext.ReorderRawObjects(true)); err != nil {
-		return false
-	}
-	return slices.Equal(left, right)
-}
-
-func normalizedSemanticMessages(messages []chat.Message, owner string) ([]semanticMessage, error) {
-	normalized := make([]semanticMessage, 0, len(messages))
-	for index := range messages {
-		if err := messages[index].Validate(); err != nil {
-			return nil, fmt.Errorf("maintenance: %s message %d: %w", owner, index, err)
-		}
-		message := messages[index].Clone()
-		message.Metadata = nil
-		for partIndex := range message.Parts {
-			message.Parts[partIndex].Metadata = nil
-		}
-		if message.Role == chat.RoleTool && len(normalized) > 0 &&
-			normalized[len(normalized)-1].message.Role == chat.RoleTool {
-			last := &normalized[len(normalized)-1]
-			last.message.Parts = append(last.message.Parts, message.Parts...)
-			last.sourceEnd = index + 1
-			continue
-		}
-		normalized = append(normalized, semanticMessage{message: message, sourceEnd: index + 1})
-	}
-	return normalized, nil
 }
 
 var _ executionadapter.ModelContextCompactor = (*Compactor)(nil)

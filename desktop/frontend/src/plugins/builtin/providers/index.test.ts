@@ -16,6 +16,8 @@ import {
 } from "./application/providerModels";
 import { createProvidersPlugin } from ".";
 import { rejected } from "@/test/rejected";
+import { startKernel, stopKernel } from "@/plugins/sdk/bootstrap";
+import { ProviderMutationOwner } from "./application/providerMutationOwner";
 
 afterEach(async () => {
   await resetKernelForTest();
@@ -23,6 +25,51 @@ afterEach(async () => {
 });
 
 describe("providers plugin Runtime generation wiring", () => {
+  it("withdraws its gateway when a later setup step fails", async () => {
+    const runtime = definePlugin({
+      name: "test.failed-subscription",
+      provides: { stream: RUNTIME_STREAM },
+      setup: () => ({
+        stream: {
+          connectionGeneration: () => null,
+          subscribeConnection() {
+            throw new Error("subscription failed");
+          },
+          reportConnectionLoss() {},
+        },
+      }),
+    });
+
+    await expect(
+      startKernel([runtime, createProvidersPlugin(() => ({}) as FlameClient)]),
+    ).rejects.toThrow("subscription failed");
+
+    expect(() => ProviderMutationOwner.current()).toThrow("not installed");
+  });
+
+  it("withdraws its gateway even when the subscription teardown fails", async () => {
+    const unsubscribe = vi.fn(() => {
+      throw new Error("subscription teardown failed");
+    });
+    const runtime = definePlugin({
+      name: "test.failed-unsubscribe",
+      provides: { stream: RUNTIME_STREAM },
+      setup: () => ({
+        stream: {
+          connectionGeneration: () => null,
+          subscribeConnection: () => unsubscribe,
+          reportConnectionLoss() {},
+        },
+      }),
+    });
+    const host = await startKernel([runtime, createProvidersPlugin(() => ({}) as FlameClient)]);
+
+    await expect(stopKernel(host)).rejects.toThrow(/dispos|stop|teardown/i);
+
+    expect(unsubscribe).toHaveBeenCalledOnce();
+    expect(() => ProviderMutationOwner.current()).toThrow("not installed");
+  });
+
   it("retires an admitted command when the Runtime process generation changes", async () => {
     const retired = Promise.withResolvers<ProviderConfigurationSnapshot>();
     const update = vi.fn(() => retired.promise);

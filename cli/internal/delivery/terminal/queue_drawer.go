@@ -36,8 +36,7 @@ type queueHit struct {
 }
 
 type queuePresentation struct {
-	hits    []queueHit
-	rowRows int
+	hits []queueHit
 }
 
 type queuePointerGesture struct {
@@ -87,10 +86,9 @@ type queueDrawer struct {
 	keys    *keymap.Map
 	actions queueDrawerActions
 
-	snapshot   queue.Snapshot
-	selected   int
-	selectedID *queue.EntryID
-	viewport   int
+	entries  []queue.Entry
+	selected int
+	scroll   headless.Scroll
 
 	editingEntry   *queue.Entry
 	editingMessage prompt.Message
@@ -120,6 +118,7 @@ func (q *queueDrawer) SetActions(actions queueDrawerActions) { q.actions = actio
 func (q *queueDrawer) Set(snapshot queue.Snapshot) {
 	q.hovered = queueTarget{}
 	q.pointerGesture.cancel()
+	selected, hasSelected := q.selectedEntry()
 	entries := snapshot.Entries
 	editingIndex := -1
 	if q.Editing() {
@@ -134,27 +133,23 @@ func (q *queueDrawer) Set(snapshot queue.Snapshot) {
 	if !retainsEditor {
 		q.lifecycle.renew()
 	}
-	q.snapshot = snapshot
+	q.entries = entries
 	if q.Editing() && editingIndex < 0 {
 		if err := q.releaseEdit(); err != nil && !errors.Is(err, queue.ErrEntryNotFound) {
 			q.notice = err.Error()
 		}
 	}
 	if len(entries) == 0 {
-		q.selected, q.selectedID, q.viewport = 0, nil, 0
+		q.selected = 0
+		q.scroll.ToTop()
 		return
 	}
-	if q.selectedID != nil {
-		if index := queueEntryIndex(entries, *q.selectedID); index >= 0 {
+	q.selected = min(q.selected, len(entries)-1)
+	if hasSelected {
+		if index := queueEntryIndex(entries, selected.ID); index >= 0 {
 			q.selected = index
-		} else {
-			q.selected = min(q.selected, len(entries)-1)
 		}
-	} else {
-		q.selected = min(q.selected, len(entries)-1)
 	}
-	q.selectedID = new(entries[q.selected].ID)
-	q.ensureVisible()
 }
 
 func (q *queueDrawer) ResetNotice() { q.notice = "" }
@@ -200,7 +195,7 @@ func (q *queueDrawer) handleKey(key input.Key) bool {
 		q.selectIndex(0)
 		return true
 	case input.End:
-		q.selectIndex(len(q.snapshot.Entries) - 1)
+		q.selectIndex(len(q.entries) - 1)
 		return true
 	case input.Delete, input.Backspace:
 		q.removeSelected()
@@ -330,28 +325,21 @@ func (q *queueDrawer) Closed() {
 }
 
 func (q *queueDrawer) selectedEntry() (queue.Entry, bool) {
-	if q.selected < 0 || q.selected >= len(q.snapshot.Entries) {
+	if q.selected < 0 || q.selected >= len(q.entries) {
 		return queue.Entry{}, false
 	}
-	return q.snapshot.Entries[q.selected], true
+	return q.entries[q.selected], true
 }
 
 func (q *queueDrawer) selectIndex(index int) {
-	if len(q.snapshot.Entries) == 0 {
+	if len(q.entries) == 0 {
 		return
 	}
-	q.selected = min(max(index, 0), len(q.snapshot.Entries)-1)
-	q.selectedID = new(q.snapshot.Entries[q.selected].ID)
-	q.ensureVisible()
+	q.selected = min(max(index, 0), len(q.entries)-1)
 	q.hovered = queueTarget{}
 }
 
 func (q *queueDrawer) moveSelection(delta int) { q.selectIndex(q.selected + delta) }
-
-func (q *queueDrawer) ensureVisible() {
-	rows := max(q.presentation.Value().rowRows, 1)
-	q.viewport = visibleQueueStart(q.viewport, q.selected, rows, len(q.snapshot.Entries))
-}
 
 func (q *queueDrawer) beginEdit() {
 	entry, ok := q.selectedEntry()
@@ -480,7 +468,7 @@ func (q *queueDrawer) activate(target queueTarget) {
 }
 
 func (q *queueDrawer) selectID(id queue.EntryID) {
-	if index := queueEntryIndex(q.snapshot.Entries, id); index >= 0 {
+	if index := queueEntryIndex(q.entries, id); index >= 0 {
 		q.selectIndex(index)
 	}
 }
@@ -497,15 +485,4 @@ func (q *queueDrawer) hitAt(point image.Point) queueTarget {
 
 func queueEntryIndex(entries []queue.Entry, id queue.EntryID) int {
 	return slices.IndexFunc(entries, func(entry queue.Entry) bool { return entry.ID == id })
-}
-
-func visibleQueueStart(current, selected, rows, entries int) int {
-	rows = max(rows, 1)
-	if selected < current {
-		current = selected
-	}
-	if selected >= current+rows {
-		current = selected + 1 - rows
-	}
-	return min(max(current, 0), max(entries-rows, 0))
 }

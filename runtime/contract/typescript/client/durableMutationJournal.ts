@@ -20,7 +20,7 @@ export interface MutationJournalScope {
   retentionSeconds: number;
 }
 
-class MutationJournalError extends Error {
+export class MutationJournalError extends Error {
   override readonly name: string = "MutationJournalError";
 }
 
@@ -55,6 +55,14 @@ export interface DurableMutationIdentity {
 }
 
 export interface DurableMutationJournal {
+  prepare(method: string, params: unknown): DurableMutationIdentity;
+  inspect(
+    method: string,
+    params: unknown,
+    idempotencyKey: string,
+  ): DurableMutationIdentity | undefined;
+  recover(method: string, params: unknown, idempotencyKey: string): DurableMutationIdentity;
+  entries(): DurableMutationIdentity[];
   reserve(
     method: string,
     params: unknown,
@@ -100,7 +108,7 @@ function validEntry(value: unknown): value is JournalEntry {
   );
 }
 
-function entryKey(idempotencyKey: string): string {
+export function entryKey(idempotencyKey: string): string {
   return `${ENTRY_PREFIX}${encodeURIComponent(idempotencyKey)}`;
 }
 
@@ -152,12 +160,13 @@ function removeValue(storage: MutationJournalStorage, key: string): void {
 function loadEntries(storage: MutationJournalStorage): JournalEntry[] {
   return readKeys(storage)
     .filter((key) => key.startsWith(ENTRY_PREFIX))
-    .map((key) => {
+    .flatMap((key) => {
       const value = readValue(storage, key);
+      if (value === undefined) return [];
       if (!validEntry(value) || entryKey(value.idempotencyKey) !== key) {
         throw storageError(`Runtime mutation journal entry is corrupted: ${key}`);
       }
-      return value;
+      return [value];
     });
 }
 
@@ -210,6 +219,11 @@ function fingerprint(value: string): string {
 
 function fingerprintFields(...fields: readonly string[]): string {
   return fields.join(FINGERPRINT_FIELD_SEPARATOR);
+}
+
+function matchesCommand(entry: JournalEntry, method: string, params: unknown): boolean {
+  const command = fingerprintFields(method, canonicalJSON(params));
+  return entry.fingerprint === fingerprint(fingerprintFields(entry.salt, command));
 }
 
 function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
@@ -269,7 +283,60 @@ export function openDurableMutationJournal(
     }
   };
 
+  const createEntry = (
+    method: string,
+    params: unknown,
+    scope: MutationJournalScope,
+    idempotencyKey: string,
+  ) => {
+    const createdAt = options.now();
+    const salt = crypto.randomUUID();
+    const entry: JournalEntry = {
+      version: JOURNAL_VERSION,
+      salt,
+      namespace: scope.namespace,
+      fingerprint: fingerprint(
+        fingerprintFields(salt, fingerprintFields(method, canonicalJSON(params))),
+      ),
+      idempotencyKey,
+      createdAt,
+      expiresAt: createdAt + scope.retentionSeconds * MILLISECONDS_PER_SECOND,
+    };
+    persistEntry(entry);
+    return entry;
+  };
+
+  const inspect = (method: string, params: unknown, idempotencyKey: string) => {
+    const entry = readEntry(idempotencyKey);
+    if (!entry) return undefined;
+    if (!matchesCommand(entry, method, params)) {
+      throw new MutationJournalOwnershipError(
+        "Runtime mutation identity belongs to different prepared parameters",
+      );
+    }
+    return { entry };
+  };
+
   return {
+    prepare(method, params) {
+      const scope = currentScope();
+      if (loadEntries(options.storage).length >= MAX_ENTRIES) {
+        throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
+      }
+      return { entry: createEntry(method, params, scope, crypto.randomUUID()) };
+    },
+    inspect,
+    recover(method, params, idempotencyKey) {
+      const identity = inspect(method, params, idempotencyKey);
+      if (!identity) {
+        throw new MutationJournalOwnershipError(
+          "Runtime prepared mutation identity is no longer retained",
+        );
+      }
+      validateIdentity(identity, currentScope());
+      return identity;
+    },
+    entries: () => loadEntries(options.storage).map((entry) => ({ entry })),
     reserve(method, params, preferredKey, claimed) {
       const scope = options.scope();
       if (!validScope(scope)) return undefined;
@@ -277,7 +344,6 @@ export function openDurableMutationJournal(
         throw new MutationJournalError("Runtime mutation identity candidate is invalid");
       }
       const currentTime = options.now();
-      const retentionMs = scope.retentionSeconds * MILLISECONDS_PER_SECOND;
       let entries = loadEntries(options.storage);
       for (const entry of entries) {
         if (entry.expiresAt <= currentTime || entry.namespace !== scope.namespace) {
@@ -285,10 +351,8 @@ export function openDurableMutationJournal(
         }
       }
       entries = loadEntries(options.storage);
-      const canonicalCommand = fingerprintFields(method, canonicalJSON(params));
       const matches = (entry: JournalEntry) =>
-        entry.namespace === scope.namespace &&
-        entry.fingerprint === fingerprint(fingerprintFields(entry.salt, canonicalCommand));
+        entry.namespace === scope.namespace && matchesCommand(entry, method, params);
       const preferred =
         preferredKey === undefined
           ? undefined
@@ -311,17 +375,7 @@ export function openDurableMutationJournal(
         if (entries.length >= MAX_ENTRIES) {
           throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
         }
-        const salt = crypto.randomUUID();
-        entry = {
-          version: JOURNAL_VERSION,
-          salt,
-          namespace: scope.namespace,
-          fingerprint: fingerprint(fingerprintFields(salt, canonicalCommand)),
-          idempotencyKey: preferredKey ?? crypto.randomUUID(),
-          createdAt: currentTime,
-          expiresAt: currentTime + retentionMs,
-        };
-        persistEntry(entry);
+        entry = createEntry(method, params, scope, preferredKey ?? crypto.randomUUID());
       }
       return { entry };
     },

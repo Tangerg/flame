@@ -2,24 +2,27 @@ import { requireRuntimeEndpoint } from "@flame/runtime-contract/client/endpoint"
 import {
   createFlameClient,
   createHttpTransport,
-  createMutationJournal,
+  createPreparedMutationJournal,
   createSidecarClient,
   asRunId,
   type FlameClient,
 } from "@flame/runtime-contract/client";
-import { mutationSettlementIsUnknown } from "@flame/runtime-contract/client/mutation";
 import {
   PROTOCOL_VERSION,
   type DiscoverResponse,
   type RequestMeta,
 } from "@flame/runtime-contract/wire";
 import {
-  MutationJournalStorageError,
-  MutationJournalOwnershipError,
-  MutationJournalScopeUnavailableError,
-  type MutationJournal,
+  type MutationCommand,
+  type PreparedMutation,
+  type PreparedMutationJournal,
 } from "@flame/runtime-contract/client/mutationJournal";
-import { authorizeCommand, CommandStore, type Command, type PendingCommand } from "./commandStore";
+import { CommandStorage } from "./commandStore";
+
+export type Command = Extract<
+  MutationCommand,
+  { method: "sessions.create" | "runs.start" | "runs.resume" | "runs.cancel" }
+>;
 
 const REQUEST_META: RequestMeta = {
   protocolVersion: PROTOCOL_VERSION,
@@ -36,17 +39,19 @@ export class Connection {
   readonly endpoint: string;
   readonly signal: AbortSignal;
   readonly #lifetime = new AbortController();
-  readonly #commands: CommandStore;
+  readonly #journal: PreparedMutationJournal;
   #discovery?: DiscoverResponse;
   #executing = false;
-  #pending?: PendingCommand;
-  #journal?: MutationJournal;
+  #pending?: PreparedMutation;
   #closed?: Promise<void>;
 
   private constructor(endpoint: string, token: string | undefined, directory: string) {
     this.endpoint = endpoint;
     this.signal = this.#lifetime.signal;
-    this.#commands = new CommandStore(directory, endpoint);
+    this.#journal = createPreparedMutationJournal({
+      storage: new CommandStorage(directory, endpoint),
+      scope: () => this.#discovery?.capabilities.limits.idempotency,
+    });
     this.client = createFlameClient(createHttpTransport({ baseUrl: endpoint, localToken: token }), {
       requestMeta: () => REQUEST_META,
       capabilities: () => this.#discovery?.capabilities,
@@ -54,18 +59,9 @@ export class Connection {
         reserve: (method, params) => {
           const pending = this.#pending;
           if (!pending) throw new Error("IDE mutations require a prepared command");
-          authorizeCommand(pending, this.discovery.capabilities.limits.idempotency.namespace);
-          const reservation = this.#journal?.reserve(method, params, pending.id);
-          if (!reservation) throw new Error("Runtime omitted the command replay scope");
-          return {
-            ...reservation,
-            authorizeAttempt: () => {
-              authorizeCommand(pending, this.discovery.capabilities.limits.idempotency.namespace);
-              return reservation.authorizeAttempt();
-            },
-          };
+          return this.#journal.recover(pending.idempotencyKey, method, params);
         },
-        dispose: () => this.#journal?.dispose(),
+        dispose: () => this.#journal.dispose(),
       },
     });
   }
@@ -104,8 +100,8 @@ export class Connection {
     return this.#discovery;
   }
 
-  pendingCommands(): PendingCommand[] {
-    return this.#commands.list();
+  pendingCommands(): PreparedMutation[] {
+    return this.#journal.list();
   }
 
   async execute(command: Command): Promise<{ sessionId?: string; runId?: string }> {
@@ -113,86 +109,57 @@ export class Connection {
     if (this.#executing) throw new Error("a Runtime command is already in progress");
     if (this.#pending)
       throw new Error("retry the unresolved command before sending another command");
-    const { namespace, retentionSeconds } = this.discovery.capabilities.limits.idempotency;
-    return this.#executePending(this.#commands.prepare(namespace, retentionSeconds, command));
+    return this.#executePending(this.#journal.prepare(command));
   }
 
   async retry(id: string): Promise<{ sessionId?: string; runId?: string }> {
     this.signal.throwIfAborted();
     if (this.#executing) throw new Error("a Runtime command is already in progress");
-    const pending = this.#commands.read(id);
+    const pending = this.#journal.read(id);
     if (!pending) throw new Error("the command was already settled by another client");
     return this.#executePending(pending);
   }
 
-  async #executePending(pending: PendingCommand): Promise<{ sessionId?: string; runId?: string }> {
-    authorizeCommand(pending, this.discovery.capabilities.limits.idempotency.namespace);
-    this.#journal?.dispose();
-    const entries = new Map<string, unknown>();
-    this.#journal = createMutationJournal({
-      storage: {
-        get: (key) => structuredClone(entries.get(key)),
-        set: (key, value) => {
-          entries.set(key, structuredClone(value));
-        },
-        remove: (key) => {
-          entries.delete(key);
-        },
-        keys: () => [...entries.keys()],
-      },
-      scope: () => this.#discovery?.capabilities.limits.idempotency,
-    });
+  async #executePending(
+    pending: PreparedMutation,
+  ): Promise<{ sessionId?: string; runId?: string }> {
     this.#pending = pending;
     this.#executing = true;
     try {
-      let result;
-      try {
-        result = await this.#invoke(pending.command);
-      } catch (error) {
-        if (
-          !this.signal.aborted &&
-          !mutationSettlementIsUnknown(error) &&
-          !(error instanceof MutationJournalStorageError) &&
-          !(error instanceof MutationJournalOwnershipError) &&
-          !(error instanceof MutationJournalScopeUnavailableError)
-        ) {
-          this.#commands.settle(pending.id);
-          this.#pending = undefined;
-        }
-        throw error;
-      }
-      this.signal.throwIfAborted();
-      this.#commands.settle(pending.id);
-      this.#pending = undefined;
-      return result;
+      return await this.#invoke(pending);
     } finally {
       this.#executing = false;
+      if (!this.signal.aborted && !this.#journal.read(pending.idempotencyKey)) {
+        this.#pending = undefined;
+      }
     }
   }
 
-  async #invoke(command: Command): Promise<{ sessionId?: string; runId?: string }> {
-    switch (command.kind) {
-      case "createSession": {
+  async #invoke(command: PreparedMutation): Promise<{ sessionId?: string; runId?: string }> {
+    switch (command.method) {
+      case "sessions.create": {
         const session = await this.client.sessions.create(command.params, this.signal);
         return { sessionId: session.id };
       }
-      case "start": {
+      case "runs.start": {
         const accepted = await this.client.runs.start(command.params, this.signal);
         await accepted.events[Symbol.asyncIterator]().return?.();
         return { sessionId: command.params.sessionId, runId: accepted.result.runId };
       }
-      case "resume": {
+      case "runs.resume": {
         const accepted = await this.client.runs.resume(command.params, this.signal);
         await accepted.events[Symbol.asyncIterator]().return?.();
         return { runId: accepted.result.runId };
       }
-      case "cancel": {
+      case "runs.cancel": {
         const result = await this.client.runs.cancel(
           asRunId(command.params.runId),
           command.params.reason,
         );
         return { runId: result.run.id };
       }
+      default:
+        throw new Error("IDE does not expose this prepared Runtime command");
     }
   }
 

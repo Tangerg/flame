@@ -61,17 +61,12 @@ export function createMessageFeedbackPlugin(runtimeClient: () => FlameClient) {
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
       const gateway = installRuntimeFeedbackGateway(runtimeClient);
-      const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
-        gateway.replaceRuntimeGeneration(),
-      );
+      ctx.cleanup(() => gateway.dispose());
+      ctx.cleanup(followRuntimeGeneration(ctx.runtime, () => gateway.replaceRuntimeGeneration()));
       contributeLayout(ctx, "message.actions", {
         id: "feedback",
         order: 15,
         component: FeedbackButtons,
-      });
-      ctx.cleanup(() => {
-        unsubscribeRuntime();
-        gateway.dispose();
       });
     },
   });

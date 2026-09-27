@@ -500,6 +500,111 @@ func TestQueueDrawerReordersAndPromotesTheSelectedEntry(t *testing.T) {
 	}
 }
 
+func TestQueueDrawerNavigationKeepsActionsOnTheSelectedEntryAfterResizeAndReorder(t *testing.T) {
+	var messages []prompt.Message
+	for _, name := range []string{"first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth"} {
+		messages = append(messages, prompt.Message{Text: name + " queued prompt"})
+	}
+	drawer, prompts := testQueueDrawer(t, messages...)
+	selectedID := prompts.Snapshot("session").Entries[7].ID
+	root, _, _ := drawQueueDrawer(t, drawer, 72, 5)
+
+	for _, size := range []image.Point{{72, 5}, {24, 3}, {96, 5}} {
+		root.Handle(input.Key{Code: input.End})
+		surface := grid.NewSurface(size.X, size.Y)
+		root.Draw(surface.View())
+		if rendered := strings.Join(surface.Rows(), "\n"); !strings.Contains(rendered, "eighth queued") {
+			t.Fatalf("selected queue entry disappeared at %v:\n%s", size, rendered)
+		}
+	}
+
+	root.Handle(input.Key{Code: input.Character, Rune: 'K', Mods: input.Shift})
+	if entries := prompts.Snapshot("session").Entries; entries[6].ID != selectedID {
+		t.Fatalf("reorder moved another entry: %+v", entries)
+	}
+	surface := grid.NewSurface(96, 5)
+	root.Draw(surface.View())
+	remove := drawnTextOrigin(t, surface, "[remove]")
+	root.Handle(input.Mouse{Pos: remove, Action: input.MouseDown, Button: input.ButtonLeft})
+	root.Handle(input.Mouse{Pos: remove, Action: input.MouseUp, Button: input.ButtonLeft})
+	entries := prompts.Snapshot("session").Entries
+	if len(entries) != 7 || queueEntryIndex(entries, selectedID) >= 0 {
+		t.Fatalf("rendered remove action did not target the reordered selection: %+v", entries)
+	}
+}
+
+func TestQueueDrawerResizeKeepsTheSettledSelectionVisible(t *testing.T) {
+	drawer, prompts := testQueueDrawer(t,
+		prompt.Message{Text: "first prompt"}, prompt.Message{Text: "second prompt"}, prompt.Message{Text: "third prompt"},
+	)
+	root, surface, _ := drawQueueDrawer(t, drawer, 72, 5)
+	root.Handle(input.Key{Code: input.Down})
+	root.Handle(input.Key{Code: input.Down})
+	root.Draw(surface.View())
+
+	surface = grid.NewSurface(24, 3)
+	root.Draw(surface.View())
+	if rendered := strings.Join(surface.Rows(), "\n"); !strings.Contains(rendered, "third prompt") {
+		t.Fatalf("resize hid the selected prompt:\n%s", rendered)
+	}
+	root.Handle(input.Key{Code: input.Delete})
+	entries := prompts.Snapshot("session").Entries
+	if len(entries) != 2 || entries[0].Message.Text != "first prompt" || entries[1].Message.Text != "second prompt" {
+		t.Fatalf("delete did not target the visible selected prompt: %+v", entries)
+	}
+}
+
+type failingQueueFrame struct {
+	*queueDrawer
+	abort bool
+}
+
+func (f *failingQueueFrame) Draw(frame headless.Frame) {
+	f.queueDrawer.Draw(frame)
+	if f.abort {
+		panic("abort queue frame")
+	}
+}
+
+func TestQueueDrawerPublishesResizeScrollAndActionsOnlyWithACompleteFrame(t *testing.T) {
+	drawer, prompts := testQueueDrawer(t,
+		prompt.Message{Text: "first prompt"}, prompt.Message{Text: "second prompt"}, prompt.Message{Text: "third prompt"},
+	)
+	frame := &failingQueueFrame{queueDrawer: drawer}
+	root := headless.NewRoot(frame)
+	wide := grid.NewSurface(96, 5)
+	root.Draw(wide.View())
+	root.Handle(input.Key{Code: input.End})
+	root.Draw(wide.View())
+	remove := drawnTextOrigin(t, wide, "[remove]")
+	before := drawer.scroll.Offset()
+
+	frame.abort = true
+	func() {
+		defer func() {
+			if recovered := recover(); recovered != "abort queue frame" {
+				t.Fatalf("failed frame panic = %v", recovered)
+			}
+		}()
+		root.Draw(grid.NewSurface(48, 3).View())
+	}()
+	if got := drawer.scroll.Offset(); got != before {
+		t.Fatalf("aborted frame published scroll offset %d, want %d", got, before)
+	}
+	root.Handle(input.Mouse{Pos: remove, Action: input.MouseDown, Button: input.ButtonLeft})
+	root.Handle(input.Mouse{Pos: remove, Action: input.MouseUp, Button: input.ButtonLeft})
+	entries := prompts.Snapshot("session").Entries
+	if len(entries) != 2 || entries[1].Message.Text != "second prompt" {
+		t.Fatalf("aborted frame replaced the visible action target: %+v", entries)
+	}
+	frame.abort = false
+	narrow := grid.NewSurface(48, 3)
+	root.Draw(narrow.View())
+	if rendered := strings.Join(narrow.Rows(), "\n"); !strings.Contains(rendered, "second prompt") {
+		t.Fatalf("replacement frame did not publish the surviving selection:\n%s", rendered)
+	}
+}
+
 func TestQueueDrawerMouseActionsCommitOnlyOnAnUndraggedMatchingRelease(t *testing.T) {
 	drawer, prompts := testQueueDrawer(t, prompt.Message{Text: "first"}, prompt.Message{Text: "second"})
 	root, surface, _ := drawQueueDrawer(t, drawer, 80, 5)

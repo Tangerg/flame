@@ -68,12 +68,12 @@ connection and restores global notifications.
 
 ## Unresolved commands
 
-Before dispatch, the extension saves each mutation's exact prepared input, UUID,
-Runtime idempotency namespace and replay deadline in an immutable command record
-under VS Code's private extension storage. The UUID is the command's idempotency
-key. This covers Session creation, Run start, wait response and cancellation.
-The SDK freezes the wire parameters before the first attempt and reuses them
-through automatic or explicit retries.
+Before dispatch, the shared SDK freezes and validates each mutation's exact
+parameters and saves them with its durable replay identity in one immutable
+record. The extension supplies atomic file storage under VS Code's private
+extension directory. The SDK alone creates the idempotency key, records its
+original age and namespace, authorizes retries, and removes settled records.
+This covers Session creation, Run start, wait response and cancellation.
 
 A lost acknowledgement retains that record. After reconnecting, **Retry
 Unresolved Command** lists saved commands and replays the one explicitly chosen.
@@ -82,16 +82,25 @@ new key. Independent extension hosts publish different records atomically;
 settlement removes only the addressed UUID, and two clients recovering the same
 UUID rely on Runtime's durable idempotency admission.
 
-Retry refuses a different Runtime store or an expired advertised retention
-window. Read-only Session inspection remains available. The client does not
+Retry refuses a different Runtime store, a missing identity, or an expired
+retention window. It preserves the original creation time across reconnects and
+honors the shorter of the original deadline and the Runtime's current retention
+measured from that creation time. A refused retry retains the saved command for
+inspection. Read-only Session inspection remains available. The client does not
 infer execution failure from lost transport, restart a lost Run, or silently
 resend an expired command as new work. Saved source text stays local to extension
 storage until definitive settlement removes its record.
 
+The former IDE-owned command records are rejected. Resolve outstanding commands
+with the version that created them before upgrading. The new SDK does not infer
+their original creation time, replace their identity, or migrate them into a
+fresh replay window.
+
 ## Development boundary
 
 `src/connection.ts` owns construction, negotiation, prepared command dispatch and
-local shutdown. `src/commandStore.ts` owns immutable command records.
+local shutdown. `src/commandStore.ts` implements opaque, atomic file storage for
+the shared SDK's prepared mutation journal.
 `src/observation.ts` owns snapshot-before-tail observation, without a duplicate
 Run state machine. `src/extension.ts` translates VS Code UI and document APIs.
 Transport, generated wire validation, mutation replay and stream admission live

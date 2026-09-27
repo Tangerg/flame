@@ -1,77 +1,55 @@
 import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { authorizeCommand, CommandStore, type Command } from "./commandStore";
+import { afterEach, describe, expect, it } from "vitest";
+import { CommandStorage } from "./commandStore";
 
 const directories: string[] = [];
 const endpoint = "http://127.0.0.1:17171";
-const scope = { namespace: "idp_store", retentionSeconds: 3600 };
-const command: Command = {
-  kind: "start",
-  params: { sessionId: "ses_1", input: [{ type: "text", text: "exact unsaved input" }] },
-};
 function directory(): string {
   const value = mkdtempSync(join(tmpdir(), "flame-ide-"));
   directories.push(value);
   return value;
 }
 afterEach(() => {
-  vi.useRealTimers();
   for (const value of directories.splice(0)) rmSync(value, { recursive: true, force: true });
 });
 
-describe("prepared IDE command ownership", () => {
-  it("retains original command bytes and identity independently of later editor mutations", () => {
+describe("IDE command storage", () => {
+  it("publishes opaque SDK records atomically and keeps independent owners' records", () => {
     const root = directory();
-    const store = new CommandStore(root, endpoint);
-    const input = structuredClone(command);
-    const pending = store.prepare(scope.namespace, scope.retentionSeconds, input);
-    input.params = { sessionId: "different", input: [{ type: "text", text: "changed" }] };
-    const saved = new CommandStore(root, endpoint).read(pending.id)!;
-    expect(saved.id).toBe(pending.id);
-    expect(saved.command).toEqual(command);
+    const first = new CommandStorage(root, endpoint);
+    const second = new CommandStorage(root, endpoint);
+    first.set("first", { value: "exact source" });
+    second.set("second", { value: "another command" });
+    expect(new Set(first.keys())).toEqual(new Set(["first", "second"]));
+    expect(() => second.set("first", { value: "replacement" })).toThrow(/EEXIST/);
+    expect(first.get("first")).toEqual({ value: "exact source" });
+    second.remove("first");
+    first.remove("first");
+    expect(second.keys()).toEqual(["second"]);
+    expect(new CommandStorage(root, "https://other.example").keys()).toEqual([]);
   });
 
-  it("cannot overwrite another extension host's command or settle its successor", () => {
-    const root = directory();
-    const first = new CommandStore(root, endpoint);
-    const second = new CommandStore(root, endpoint);
-    const pendingFirst = first.prepare(scope.namespace, scope.retentionSeconds, command);
-    const pendingSecond = second.prepare(scope.namespace, scope.retentionSeconds, command);
-    expect(new Set(first.list().map((pending) => pending.id))).toEqual(
-      new Set([pendingFirst.id, pendingSecond.id]),
-    );
-    first.settle(pendingFirst.id);
-    second.settle(pendingFirst.id);
-    expect(second.list().map((pending) => pending.id)).toEqual([pendingSecond.id]);
-    expect(new CommandStore(root, "https://other.example").list()).toEqual([]);
+  it("encodes keys without granting filesystem traversal", () => {
+    const storage = new CommandStorage(directory(), endpoint);
+    const key = "../remote/command:你好";
+    storage.set(key, { input: "immutable" });
+    expect(storage.keys()).toEqual([key]);
+    expect(storage.get(key)).toEqual({ input: "immutable" });
+    storage.remove(key);
+    expect(storage.keys()).toEqual([]);
   });
 
-  it("refuses namespace substitution and does not extend retention after restart", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(1_000_000);
+  it("refuses damaged records and the replaced IDE-owned journal format", () => {
     const root = directory();
-    const store = new CommandStore(root, endpoint);
-    const pending = store.prepare(scope.namespace, 60, command);
-    expect(() => authorizeCommand(pending, "idp_replacement")).toThrow("different Runtime store");
-    vi.advanceTimersByTime(60_000);
-    const saved = new CommandStore(root, endpoint).read(pending.id)!;
-    expect(() => authorizeCommand(saved, scope.namespace)).toThrow("replay retention");
-  });
-
-  it("fails closed on corrupted saved parameters and refuses path-shaped identities", () => {
-    const root = directory();
-    const store = new CommandStore(root, endpoint);
-    const pending = store.prepare(scope.namespace, scope.retentionSeconds, command);
-    const target = join(root, readdirSync(root)[0]!, `${pending.id}.json`);
-    writeFileSync(
-      target,
-      JSON.stringify({ ...pending, command: { kind: "start", params: { input: [] } } }),
-    );
-    expect(() => new CommandStore(root, endpoint).read(pending.id)).toThrow(
-      "invalid pending IDE command parameters",
-    );
-    expect(() => store.settle("../other-file")).toThrow("invalid IDE command identity");
+    const storage = new CommandStorage(root, endpoint);
+    storage.set("current", { record: true });
+    const target = join(root, readdirSync(root)[0]!);
+    writeFileSync(join(target, readdirSync(target)[0]!), "{");
+    expect(() => storage.get("current")).toThrow(SyntaxError);
+    storage.remove("current");
+    writeFileSync(join(target, "00000000-0000-0000-0000-000000000000.json"), "{}");
+    expect(() => storage.keys()).toThrow("resolve saved commands before upgrading");
   });
 });

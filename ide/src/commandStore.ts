@@ -12,72 +12,9 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { validateWire } from "@flame/runtime-contract/validate";
-import type {
-  CancelRunRequest,
-  CreateSessionRequest,
-  ResumeRunRequest,
-  StartRunRequest,
-} from "@flame/runtime-contract/wire";
+import type { MutationJournalStorage } from "@flame/runtime-contract/client/mutationJournal";
 
-export type Command =
-  | { kind: "createSession"; params: CreateSessionRequest }
-  | { kind: "start"; params: StartRunRequest }
-  | { kind: "resume"; params: ResumeRunRequest }
-  | { kind: "cancel"; params: CancelRunRequest };
-
-export interface PendingCommand {
-  id: string;
-  namespace: string;
-  expiresAt: number;
-  command: Command;
-}
-
-const COMMAND_SHAPES = {
-  createSession: "CreateSessionRequest",
-  start: "StartRunRequest",
-  resume: "ResumeRunRequest",
-  cancel: "CancelRunRequest",
-} as const;
-const COMMAND_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
-function decode(text: string, id: string): PendingCommand {
-  const value: unknown = JSON.parse(text);
-  if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new Error("invalid IDE command storage");
-  const pending = value as Partial<PendingCommand>;
-  if (
-    Object.keys(pending).length !== 4 ||
-    pending.id !== id ||
-    typeof pending.namespace !== "string" ||
-    !pending.namespace ||
-    !Number.isSafeInteger(pending.expiresAt) ||
-    !pending.command
-  ) {
-    throw new Error("invalid pending IDE command");
-  }
-  const kind = pending.command.kind;
-  if (
-    !Object.hasOwn(COMMAND_SHAPES, kind) ||
-    validateWire(COMMAND_SHAPES[kind], pending.command.params).length > 0
-  ) {
-    throw new Error("invalid pending IDE command parameters");
-  }
-  return pending as PendingCommand;
-}
-
-export function authorizeCommand(pending: PendingCommand, namespace: string): void {
-  if (pending.namespace !== namespace)
-    throw new Error(
-      "unresolved IDE command belongs to a different Runtime store; reconnect to the original store before retrying",
-    );
-  if (Date.now() >= pending.expiresAt)
-    throw new Error(
-      "unresolved command exceeded the Runtime replay retention; inspect the original Session before sending another command",
-    );
-}
-
-export class CommandStore {
+export class CommandStorage implements MutationJournalStorage {
   readonly #directory: string;
 
   constructor(directory: string, endpoint: string) {
@@ -85,65 +22,76 @@ export class CommandStore {
     mkdirSync(this.#directory, { recursive: true, mode: 0o700 });
   }
 
-  list(): PendingCommand[] {
+  keys(): string[] {
     return readdirSync(this.#directory)
-      .filter((name) => name.endsWith(".json"))
-      .flatMap((name) => {
-        const pending = this.read(name.slice(0, -5));
-        return pending ? [pending] : [];
+      .filter((name) => !name.endsWith(".tmp"))
+      .map((name) => {
+        const match = /^record-([A-Za-z0-9_-]+)\.json$/.exec(name);
+        if (!match)
+          throw new Error(
+            "unsupported IDE command storage; resolve saved commands before upgrading",
+          );
+        const key = new TextDecoder("utf-8", { fatal: true }).decode(
+          Buffer.from(match[1]!, "base64url"),
+        );
+        if (this.#name(key) !== name) throw new Error("invalid IDE command storage key");
+        return key;
       });
   }
 
-  read(id: string): PendingCommand | undefined {
-    const path = this.#path(id);
+  get(key: string): unknown {
     try {
-      return decode(readFileSync(path, "utf8"), id);
+      return JSON.parse(readFileSync(this.#path(key), "utf8"));
     } catch (error) {
       if (hasCode(error, "ENOENT")) return undefined;
       throw error;
     }
   }
 
-  prepare(namespace: string, retentionSeconds: number, command: Command): PendingCommand {
-    const pending: PendingCommand = {
-      id: randomUUID(),
-      namespace,
-      expiresAt: Date.now() + retentionSeconds * 1_000,
-      command: structuredClone(command),
-    };
-    const path = this.#path(pending.id);
-    const temporary = `${path}.tmp`;
+  set(key: string, value: unknown): void {
+    const path = this.#path(key);
+    const temporary = `${path}.${randomUUID()}.tmp`;
     let descriptor: number | undefined;
     try {
       descriptor = openSync(temporary, "wx", 0o600);
-      writeFileSync(descriptor, JSON.stringify(pending));
+      writeFileSync(descriptor, JSON.stringify(value));
       fsyncSync(descriptor);
       closeSync(descriptor);
       descriptor = undefined;
       // Publication is atomic and exclusive; another extension host never reads partial input.
       linkSync(temporary, path);
-      if (process.platform !== "win32") {
-        descriptor = openSync(this.#directory, "r");
-        fsyncSync(descriptor);
-      }
+      this.#syncDirectory();
     } finally {
       if (descriptor !== undefined) closeSync(descriptor);
       if (existsSync(temporary)) unlinkSync(temporary);
     }
-    return pending;
   }
 
-  settle(id: string): void {
+  remove(key: string): void {
     try {
-      unlinkSync(this.#path(id));
+      unlinkSync(this.#path(key));
+      this.#syncDirectory();
     } catch (error) {
       if (!hasCode(error, "ENOENT")) throw error;
     }
   }
 
-  #path(id: string): string {
-    if (!COMMAND_ID.test(id)) throw new Error("invalid IDE command identity");
-    return join(this.#directory, `${id}.json`);
+  #syncDirectory(): void {
+    if (process.platform === "win32") return;
+    const descriptor = openSync(this.#directory, "r");
+    try {
+      fsyncSync(descriptor);
+    } finally {
+      closeSync(descriptor);
+    }
+  }
+
+  #name(key: string): string {
+    return `record-${Buffer.from(key).toString("base64url")}.json`;
+  }
+
+  #path(key: string): string {
+    return join(this.#directory, this.#name(key));
   }
 }
 

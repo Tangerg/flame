@@ -1,6 +1,11 @@
+import { SerialQueue } from "dougong";
+
+// A retired view must release callers even when a remote operation ignores cancellation.
+// Dougong owns sequencing; the cohort owns identity partitions and publication eligibility.
 export class RetirableTaskCohort {
   readonly #retiredError: Error;
   readonly #settlers = new Set<() => void>();
+  readonly #queues = new Map<string, SerialQueue>();
   #retired = false;
 
   constructor(retiredError: Error) {
@@ -48,31 +53,30 @@ export class RetirableTaskCohort {
     return value;
   }
 
+  runSerial<T>(identity: string, operation: () => PromiseLike<T>): Promise<T> {
+    return this.run(() => {
+      let queue = this.#queues.get(identity);
+      if (!queue) {
+        queue = new SerialQueue();
+        this.#queues.set(identity, queue);
+      }
+      const ownedQueue = queue;
+      const result = ownedQueue.run(() => this.run(operation));
+      const settlement = ownedQueue.settled;
+      void settlement.then(() => {
+        if (ownedQueue.settled === settlement && this.#queues.get(identity) === ownedQueue) {
+          this.#queues.delete(identity);
+        }
+      });
+      return result;
+    });
+  }
+
   retire(): void {
     if (this.#retired) return;
     this.#retired = true;
     for (const settle of [...this.#settlers]) settle();
     this.#settlers.clear();
-  }
-}
-
-export class SerialTaskChain {
-  readonly #tails = new Map<string, Promise<void>>();
-
-  chain<T>(identity: string, start: (tail: Promise<void>) => Promise<T>): Promise<T> {
-    const result = start(this.#tails.get(identity) ?? Promise.resolve());
-    const settlement = result.then(
-      () => undefined,
-      () => undefined,
-    );
-    this.#tails.set(identity, settlement);
-    void settlement.then(() => {
-      if (this.#tails.get(identity) === settlement) this.#tails.delete(identity);
-    });
-    return result;
-  }
-
-  clear(): void {
-    this.#tails.clear();
+    this.#queues.clear();
   }
 }

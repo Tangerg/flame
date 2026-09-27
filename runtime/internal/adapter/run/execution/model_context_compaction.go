@@ -268,6 +268,73 @@ func (m ModelContextCompaction) Candidate() []corechat.Message {
 	return cloneChatMessages(m.candidate)
 }
 
+// CompareDurableHistory matches persisted history against this candidate and
+// returns its end position in the candidate's original message coordinates.
+// Scope owns complete message identity; only unannotated Tool-result grouping
+// can differ between an Interaction and the Runtime's durable projection.
+func (m ModelContextCompaction) CompareDurableHistory(
+	durable []corechat.Message,
+) (prefix int, matches bool, difference string, err error) {
+	candidateMessages, err := normalizedModelContextMessages(m.candidate, "Interaction conversation")
+	if err != nil {
+		return 0, false, "candidate_invalid", err
+	}
+	durableMessages, err := normalizedModelContextMessages(durable, "durable conversation")
+	if err != nil {
+		return 0, false, "durable_invalid", err
+	}
+	if len(candidateMessages) < len(durableMessages) {
+		return 0, false, fmt.Sprintf(
+			"semantic_message_count=%d/%d",
+			len(candidateMessages),
+			len(durableMessages),
+		), nil
+	}
+	for index := range durableMessages {
+		equal, err := sameInteractionMessages(
+			[]corechat.Message{candidateMessages[index].message},
+			[]corechat.Message{durableMessages[index].message},
+		)
+		if err != nil {
+			return 0, false, "message_invalid", fmt.Errorf("execution: compare durable message %d: %w", index, err)
+		}
+		if !equal {
+			return 0, false, fmt.Sprintf("message[%d]", index), nil
+		}
+	}
+	if len(durableMessages) == 0 {
+		return 0, true, "none", nil
+	}
+	return candidateMessages[len(durableMessages)-1].sourceEnd, true, "none", nil
+}
+
+type modelContextMessage struct {
+	message   corechat.Message
+	sourceEnd int
+}
+
+func normalizedModelContextMessages(messages []corechat.Message, owner string) ([]modelContextMessage, error) {
+	normalized := make([]modelContextMessage, 0, len(messages))
+	for index := range messages {
+		if err := messages[index].Validate(); err != nil {
+			return nil, fmt.Errorf("execution: %s message %d: %w", owner, index, err)
+		}
+		message := messages[index].Clone()
+		// Scope groups unannotated Tool results that Runtime can persist one at
+		// a time. Message-scoped metadata gives a boundary its own meaning.
+		if message.Role == corechat.RoleTool && len(message.Metadata) == 0 && len(normalized) > 0 &&
+			normalized[len(normalized)-1].message.Role == corechat.RoleTool &&
+			len(normalized[len(normalized)-1].message.Metadata) == 0 {
+			last := &normalized[len(normalized)-1]
+			last.message.Parts = append(last.message.Parts, message.Parts...)
+			last.sourceEnd = index + 1
+			continue
+		}
+		normalized = append(normalized, modelContextMessage{message: message, sourceEnd: index + 1})
+	}
+	return normalized, nil
+}
+
 // Tools returns the exact model-visible Tool manifest for budget estimation.
 func (m ModelContextCompaction) Tools() []corechat.ToolDefinition {
 	tools := make([]corechat.ToolDefinition, len(m.tools))

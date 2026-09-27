@@ -26,10 +26,9 @@ export function createSchedulesPlugin(runtimeClient: () => FlameClient) {
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
       const gateway = installScheduleGateway(runtimeClient);
+      ctx.cleanup(() => gateway.dispose());
       registerScheduleDataProvider(ctx, runtimeClient);
-      const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
-        gateway.replaceRuntimeGeneration(),
-      );
+      ctx.cleanup(followRuntimeGeneration(ctx.runtime, () => gateway.replaceRuntimeGeneration()));
       registerSettingsPane(ctx, {
         id: SCHEDULES_PANE,
         label: "settings.pane.schedules",
@@ -42,10 +41,6 @@ export function createSchedulesPlugin(runtimeClient: () => FlameClient) {
       for (const key of SCHEDULE_STANDING_TOOLS) {
         ctx.contribute(TOOL_STANDING_SURFACE, SCHEDULES_PANE, { key });
       }
-      ctx.cleanup(() => {
-        unsubscribeRuntime();
-        gateway.dispose();
-      });
     },
   });
 }

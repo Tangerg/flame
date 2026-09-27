@@ -1,7 +1,6 @@
 import type { AnyPlugin, Host } from "dougong";
 import { definePlugin, type PluginContext } from "./definePlugin";
 import { startKernel, stopKernel } from "./bootstrap";
-import { trackInstalledPlugin } from "./kernel";
 
 let running: Host | undefined;
 
@@ -22,7 +21,6 @@ export async function addPluginsForTest(
   const change = host.change();
   for (const plugin of plugins) change.install(plugin);
   await change.commit();
-  for (const plugin of plugins) trackInstalledPlugin(host, plugin.name);
 }
 
 export async function contributeForTest(

@@ -13,7 +13,7 @@ const PersonalizationPane = lazy(() =>
 export default definePlugin({
   name: "flame.builtin.personalization",
   setup(ctx) {
-    const disposePreferences = installPersonalizationPreferencesPort();
+    ctx.cleanup(installPersonalizationPreferencesPort());
     registerSettingsPane(ctx, {
       id: PERSONALIZATION_PANE,
       label: "settings.pane.personalization",
@@ -23,6 +23,5 @@ export default definePlugin({
       order: 1,
       component: PersonalizationPane,
     });
-    ctx.cleanup(disposePreferences);
   },
 });

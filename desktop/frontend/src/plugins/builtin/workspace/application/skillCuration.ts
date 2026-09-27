@@ -1,7 +1,7 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { replaceCachedRead } from "@/lib/queryClient";
-import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
+import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
 import type { SkillCurationGateway, SkillProposalHandle } from "./ports/skillCurationGateway";
 import {
@@ -16,7 +16,6 @@ class SkillCurationGeneration {
   readonly #cohort = new RetirableTaskCohort(
     new GenerationRetiredError("skill_curation_generation"),
   );
-  readonly #chain = new SerialTaskChain();
 
   constructor(gateway: SkillCurationGateway) {
     this.#gateway = gateway;
@@ -40,30 +39,27 @@ class SkillCurationGeneration {
 
   retire(): void {
     this.#cohort.retire();
-    this.#chain.clear();
   }
 
   #run(identity: string, execute: () => Promise<void>): Promise<void> {
-    return this.#chain.chain(identity, (tail) =>
-      this.#cohort.settle(tail).then(async () => {
-        this.#cohort.assertCurrent();
-        try {
-          await this.#cohort.settle(execute());
-        } finally {
-          if (!this.#cohort.retired) {
-            await Promise.all(
-              [
-                WORKSPACE_SKILLS_KEY,
-                WORKSPACE_SKILL_DETAIL_KEY,
-                WORKSPACE_MANAGED_SKILLS_KEY,
-                WORKSPACE_SKILL_PROPOSALS_KEY,
-              ].map((key) => this.#cohort.settle(replaceCachedRead({ queryKey: [key] }))),
-            );
-          }
+    return this.#cohort.runSerial(identity, async () => {
+      this.#cohort.assertCurrent();
+      try {
+        await this.#cohort.settle(execute());
+      } finally {
+        if (!this.#cohort.retired) {
+          await Promise.all(
+            [
+              WORKSPACE_SKILLS_KEY,
+              WORKSPACE_SKILL_DETAIL_KEY,
+              WORKSPACE_MANAGED_SKILLS_KEY,
+              WORKSPACE_SKILL_PROPOSALS_KEY,
+            ].map((key) => this.#cohort.settle(replaceCachedRead({ queryKey: [key] }))),
+          );
         }
-        this.#cohort.assertCurrent();
-      }),
-    );
+      }
+      this.#cohort.assertCurrent();
+    });
   }
 }
 

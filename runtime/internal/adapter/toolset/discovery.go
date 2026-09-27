@@ -149,15 +149,14 @@ func (d *Discovery) Definition() chat.ToolDefinition {
 
 func (d *Discovery) Unwrap() toolcontract.Tool { return d.inner }
 
-// buildDescription folds the "N tools available but not loaded" reminder into the
-// tool the model always sees, listing names grouped by source so it has the
-// vocabulary to search or select. Only names (never schemas) are listed — that is
-// the whole point of deferral.
+// The definition is frozen for the Run, while Scope may subsequently advertise
+// any catalog entry. Describe the initial catalog without claiming its current
+// visibility, which only the execution strategy owns.
 func (d *Discovery) buildDescription() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Load additional built-in or integration tools on demand. %d tool(s) are available but omitted from the initial tool list to keep it focused. ",
 		len(d.entries))
-	b.WriteString("Search by capability (query=\"...\") or load exact tools (query=\"select:name1,name2\"); matches become directly callable on your next step.\n\nNot loaded:")
+	b.WriteString("Search by capability (query=\"...\") or load exact tools (query=\"select:name1,name2\"); matches become directly callable on your next step.\n\nInitially deferred catalog:")
 	lastSource := ""
 	first := true
 	for _, e := range d.entries {
@@ -333,9 +332,6 @@ func (d *Discovery) renderMatches(matches []discoverableTool) string {
 			b.WriteString(desc)
 		}
 		b.WriteByte('\n')
-	}
-	if remaining := len(d.entries) - len(matches); remaining > 0 {
-		fmt.Fprintf(&b, "%d other tool(s) remain unloaded — search again to load more.", remaining)
 	}
 	return strings.TrimRight(b.String(), "\n")
 }

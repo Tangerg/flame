@@ -226,6 +226,40 @@ func TestAdvertisementUsesExactFrozenToolNames(t *testing.T) {
 	}
 }
 
+func TestDiscoveryDoesNotInferRemainingVisibilityFromOneSearch(t *testing.T) {
+	search := newSearch(t, catalog())
+	advertised := make(map[string]bool)
+	ctx := toolset.WithToolAdvertiser(context.Background(), func(names ...string) error {
+		for _, name := range names {
+			advertised[name] = true
+		}
+		return nil
+	})
+	for _, name := range search.DeferredToolNames() {
+		arguments, err := json.Marshal(map[string]string{"query": "select:" + name})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := callTextTool(ctx, search, string(arguments)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(advertised) != len(catalog()) {
+		t.Fatalf("advertised = %v, want the complete catalog", advertised)
+	}
+
+	output, err := callTextTool(ctx, search, `{"query":"select:github_open_pr"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output, "github_open_pr") {
+		t.Fatalf("selected Tool missing from result: %s", output)
+	}
+	if strings.Contains(strings.ToLower(output), "unloaded") || strings.Contains(strings.ToLower(search.Definition().Description), "not loaded:") {
+		t.Fatalf("discovery claimed catalog entries remain hidden after every Tool was advertised:\n%s\n%s", search.Definition().Description, output)
+	}
+}
+
 func TestAdvertisementFailsClosedWithoutExecutionBinding(t *testing.T) {
 	search := newSearch(t, catalog())
 	if _, err := callTextTool(context.Background(), search, `{"query":"create issue"}`); err == nil {

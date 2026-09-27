@@ -72,6 +72,26 @@ describe("AgentCommandOwner", () => {
     expect(outcomeBeforeOldRPC).toBe("retired");
     successor.dispose();
   });
+
+  it("uses the accepted summary revision for the next queued edit", async () => {
+    const owner = AgentCommandOwner.install();
+    const first = Promise.withResolvers<{ revision: number }>();
+    const rename = vi.fn(() => first.promise);
+    const favorite = vi.fn(async (revision: number) => ({ revision: revision + 1 }));
+
+    const renamed = owner.settleSessionSummary("session_1", 3, rename);
+    const favorited = owner.settleSessionSummary("session_1", 3, favorite);
+    await Promise.resolve();
+    expect(rename).toHaveBeenCalledWith(3);
+    expect(favorite).not.toHaveBeenCalled();
+
+    first.resolve({ revision: 4 });
+
+    await renamed;
+    await expect(favorited).resolves.toEqual({ revision: 5 });
+    expect(favorite).toHaveBeenCalledWith(4);
+    owner.dispose();
+  });
 });
 
 async function flushMicrotasks(): Promise<void> {

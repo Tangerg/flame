@@ -27,7 +27,6 @@ class MessageFeedbackAggregate {
   #selected: MessageFeedbackRating | undefined;
   #latestLease: object = {};
   #latestResult: Promise<MessageFeedbackRating> | null = null;
-  #tail = Promise.resolve();
 
   constructor(
     target: MessageFeedbackTarget,
@@ -55,16 +54,14 @@ class MessageFeedbackAggregate {
     this.#selected = rating;
     this.#publish();
 
-    const result = this.#cohort.settle(this.#tail).then(() => this.#execute(lease, rating));
-    const settlement = result.then(
-      () => undefined,
-      () => undefined,
+    const result = this.#cohort.runSerial(messageFeedbackIdentity(this.#target), () =>
+      this.#execute(lease, rating),
     );
-    this.#tail = settlement;
     this.#latestResult = result;
-    void settlement.then(() => {
+    const release = () => {
       if (this.#latestResult === result) this.#latestResult = null;
-    });
+    };
+    void result.then(release, release);
     return result;
   }
 

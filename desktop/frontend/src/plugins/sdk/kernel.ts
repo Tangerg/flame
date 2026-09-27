@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { ContributionView, Host } from "dougong";
+import type { ContributionView, Host, HostSnapshot } from "dougong";
 import type { Contribution } from "./contracts";
 import type { ExtensionPoint } from "./types/extensions";
 
@@ -7,25 +7,15 @@ const NOTHING: ReadonlyArray<Contribution<never>> = Object.freeze([]);
 const EMPTY_NAMES: ReadonlyArray<string> = Object.freeze([]);
 
 let host: Host | undefined;
-let names: ReadonlyArray<string> = EMPTY_NAMES;
+let installations: { source: HostSnapshot; names: ReadonlyArray<string> } | undefined;
 const listeners = new Set<() => void>();
-const pluginNamesByHost = new WeakMap<Host, Set<string>>();
 
 let views = new Map<string, ContributionView<Contribution<unknown>>>();
 let releases: Array<() => void> = [];
 let entries = new Map<string, ReadonlyArray<Contribution<unknown>>>();
 
 function announce(): void {
-  names = Object.freeze([...(host ? pluginNamesFor(host) : [])].sort());
   for (const listener of [...listeners]) listener();
-}
-
-function pluginNamesFor(owner: Host): Set<string> {
-  const existing = pluginNamesByHost.get(owner);
-  if (existing) return existing;
-  const created = new Set<string>();
-  pluginNamesByHost.set(owner, created);
-  return created;
 }
 
 function retractViews(): void {
@@ -33,11 +23,14 @@ function retractViews(): void {
   releases = [];
   views = new Map();
   entries = new Map();
+  installations = undefined;
 }
 
 export function publishKernel(next: Host): void {
   retractViews();
   host = next;
+  const subscription = next.diagnostics.subscribe(announce);
+  releases.push(() => subscription.dispose());
   announce();
 }
 
@@ -51,11 +44,6 @@ export function retractKernel(owner: Host): boolean {
 
 export function publishedKernel(): Host | undefined {
   return host;
-}
-
-export function trackInstalledPlugin(owner: Host, name: string): void {
-  pluginNamesFor(owner).add(name);
-  if (host === owner) announce();
 }
 
 function viewOf<T>(point: ExtensionPoint<T>): ContributionView<Contribution<T>> | undefined {
@@ -114,7 +102,17 @@ export function subscribeContributions(listener: () => void): () => void {
 }
 
 function installedSnapshot(): ReadonlyArray<string> {
-  return names;
+  const source = host?.diagnostics.get();
+  if (!source) return EMPTY_NAMES;
+  if (installations?.source !== source) {
+    installations = {
+      source,
+      names: Object.freeze(
+        [...new Set([...source.installations.values()].map((entry) => entry.pluginName))].sort(),
+      ),
+    };
+  }
+  return installations.names;
 }
 
 export function useInstalledPlugins(): ReadonlyArray<string> {

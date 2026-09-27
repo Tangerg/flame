@@ -1,7 +1,7 @@
 import { createHost, type AnyPlugin, type Host } from "dougong";
 import { reportPluginError } from "./errors";
 import { kernelLogger } from "./hostLog";
-import { contributionsTo, publishKernel, retractKernel, trackInstalledPlugin } from "./kernel";
+import { contributionsTo, publishKernel, retractKernel } from "./kernel";
 import { READY_HANDLER } from "./kernelPoints";
 import { shellServices } from "./shellServices";
 
@@ -12,10 +12,7 @@ export function createKernel(plugins: ReadonlyArray<AnyPlugin>): Host {
     onError: (error) => reportPluginError("kernel", "setup", error),
   });
   host.install(shellServices);
-  for (const plugin of plugins) {
-    host.install(plugin);
-    trackInstalledPlugin(host, plugin.name);
-  }
+  for (const plugin of plugins) host.install(plugin);
   return host;
 }
 

@@ -1,10 +1,11 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
+import { tupleKey } from "@/lib/tupleKey";
 
-interface SessionSummaryQueue {
-  tail: Promise<void>;
-  revision: number | null;
+interface SessionSummaryMutation {
+  pending: Promise<unknown> | null;
+  revision: number;
 }
 
 export interface SessionRollbackLease {
@@ -21,12 +22,10 @@ export class AgentCommandOwner {
   readonly #creates = new Map<string, Promise<unknown>>();
   readonly #forks = new Map<string, Promise<unknown>>();
   readonly #rollbackSessions = new Set<string>();
-  readonly #sessionSummaryQueues = new Map<string, SessionSummaryQueue>();
+  readonly #sessionSummaries = new Map<string, SessionSummaryMutation>();
   readonly #effects = new Set<AgentCommandEffect>();
   readonly #retiredError = new GenerationRetiredError("agent_command_owner");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  #approvalModeTail: Promise<void> = Promise.resolve();
-  #approvalRulesTail: Promise<void> = Promise.resolve();
 
   private constructor() {}
 
@@ -88,55 +87,37 @@ export class AgentCommandOwner {
     execute: (revision: number) => Promise<T>,
   ): Promise<T> {
     this.assertCurrent();
-    const queue = this.#sessionSummaryQueues.get(sessionId) ?? {
-      tail: Promise.resolve(),
-      revision: null,
+    const summary = this.#sessionSummaries.get(sessionId) ?? {
+      pending: null,
+      revision: expectedRevision,
     };
-    this.#sessionSummaryQueues.set(sessionId, queue);
+    this.#sessionSummaries.set(sessionId, summary);
 
-    const result = queue.tail.then(() => {
+    const result = this.#cohort.runSerial(tupleKey("session-summary", sessionId), async () => {
       this.assertCurrent();
-      return this.settle(execute(Math.max(expectedRevision, queue.revision ?? expectedRevision)));
+      const value = await this.settle(execute(Math.max(expectedRevision, summary.revision)));
+      this.assertCurrent();
+      summary.revision = value.revision;
+      return value;
     });
-    const settled = result.then(
-      (value) => {
-        if (this.isCurrent()) queue.revision = value.revision;
-      },
-      () => undefined,
-    );
-    queue.tail = settled;
-    void settled.finally(() => {
-      if (this.#sessionSummaryQueues.get(sessionId)?.tail === settled) {
-        this.#sessionSummaryQueues.delete(sessionId);
+    summary.pending = result;
+    const release = () => {
+      if (this.#sessionSummaries.get(sessionId)?.pending === result) {
+        this.#sessionSummaries.delete(sessionId);
       }
-    });
+    };
+    void result.then(release, release);
     return result;
   }
 
   serializeApprovalMode<T>(execute: () => Promise<T>): Promise<T> {
     this.assertCurrent();
-    const result = this.#approvalModeTail.then(() => {
-      this.assertCurrent();
-      return this.settle(execute());
-    });
-    this.#approvalModeTail = result.then(
-      () => undefined,
-      () => undefined,
-    );
-    return result;
+    return this.#cohort.runSerial("approval-mode", execute);
   }
 
   serializeApprovalRules<T>(execute: () => Promise<T>): Promise<T> {
     this.assertCurrent();
-    const result = this.#approvalRulesTail.then(() => {
-      this.assertCurrent();
-      return this.settle(execute());
-    });
-    this.#approvalRulesTail = result.then(
-      () => undefined,
-      () => undefined,
-    );
-    return result;
+    return this.#cohort.runSerial("approval-rules", execute);
   }
 
   trackEffect(rollback: () => void): AgentCommandEffect {
@@ -186,9 +167,7 @@ export class AgentCommandOwner {
     this.#creates.clear();
     this.#forks.clear();
     this.#rollbackSessions.clear();
-    this.#sessionSummaryQueues.clear();
-    this.#approvalModeTail = Promise.resolve();
-    this.#approvalRulesTail = Promise.resolve();
+    this.#sessionSummaries.clear();
     for (const effect of [...this.#effects]) effect.rollback();
   }
 }

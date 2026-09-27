@@ -3,6 +3,7 @@ import {
   type AnyPlugin,
   type Awaitable,
   type PluginContext as ContractContext,
+  type Contribution as ContractContribution,
   type ProvidedServices,
   type Provisions,
   type Requirements,
@@ -12,10 +13,11 @@ import { notifyFrom } from "./notifications";
 import type { AmbientShell } from "./services";
 import { startTask } from "./tasksStore";
 import { createStorage } from "./storage";
-import type { Disposable } from "./types/common";
 import type { ExtensionContributionOptions, ExtensionPoint } from "./types/extensions";
 import type { NotificationLevel, TaskStartOptions } from "./types/infra";
 import { ExactSequence } from "@/foundation/exactSequence";
+
+type ExtensionContribution<T> = Pick<ContractContribution<T>, "dispose" | "update">;
 
 export type PluginContext<Requires extends Requirements = Requirements> = Omit<
   ContractContext<Requires>,
@@ -26,7 +28,7 @@ export type PluginContext<Requires extends Requirements = Requirements> = Omit<
       point: ExtensionPoint<T>,
       item: T,
       opts?: ExtensionContributionOptions,
-    ): Disposable;
+    ): ExtensionContribution<T>;
   };
 
 export interface PluginSpec<
@@ -68,10 +70,19 @@ function createContribute(ctx: ContractContext<Requirements>, name: string) {
     point: ExtensionPoint<T>,
     item: T,
     opts?: ExtensionContributionOptions,
-  ): Disposable => {
+  ): ExtensionContribution<T> => {
     const key = domainKey(point, item, opts);
     const envelope: Contribution<T> = { key, order: opts?.order, plugin: name, item };
-    return ctx.contribute(point.token, key, envelope);
+    const contribution = ctx.contribute(point.token, key, envelope);
+    return {
+      dispose: () => contribution.dispose(),
+      update(next) {
+        if (point.keying === "single" && domainKey(point, next, opts) !== key) {
+          throw new Error(`extension contribution "${point.id}" cannot change its key`);
+        }
+        contribution.update({ ...envelope, item: next });
+      },
+    };
   };
 }
 

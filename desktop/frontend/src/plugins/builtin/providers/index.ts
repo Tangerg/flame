@@ -17,10 +17,9 @@ export function createProvidersPlugin(runtimeClient: () => FlameClient) {
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
       const gateway = installProviderGateway(runtimeClient);
+      ctx.cleanup(() => gateway.dispose());
       registerProviderDataProviders(ctx, runtimeClient);
-      const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
-        gateway.replaceRuntimeGeneration(),
-      );
+      ctx.cleanup(followRuntimeGeneration(ctx.runtime, () => gateway.replaceRuntimeGeneration()));
       registerSettingsPane(ctx, {
         id: PROVIDERS_PANE,
         label: "settings.pane.providers",
@@ -34,10 +33,6 @@ export function createProvidersPlugin(runtimeClient: () => FlameClient) {
         icon: "spark",
         order: 50,
         component: ProvidersPane,
-      });
-      ctx.cleanup(() => {
-        unsubscribeRuntime();
-        gateway.dispose();
       });
     },
   });

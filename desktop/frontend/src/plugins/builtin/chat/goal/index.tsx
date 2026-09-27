@@ -37,14 +37,18 @@ export function createGoalPlugin(runtimeClient: () => FlameClient) {
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
       const composerMode = GoalComposerModeOwner.install();
+      ctx.cleanup(() => composerMode.dispose());
       const runtimeAdapter = installGoalRuntimeAdapter(
         runtimeClient,
         ctx.runtime.connectionGeneration() !== null,
       );
-      const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, (next) => {
-        if (next === null) runtimeAdapter.retireRuntimeGeneration();
-        else runtimeAdapter.replaceRuntimeGeneration();
-      });
+      ctx.cleanup(() => runtimeAdapter.dispose());
+      ctx.cleanup(
+        followRuntimeGeneration(ctx.runtime, (next) => {
+          if (next === null) runtimeAdapter.retireRuntimeGeneration();
+          else runtimeAdapter.replaceRuntimeGeneration();
+        }),
+      );
       contributeLayout(ctx, "composer.overlay.top", {
         id: "goal",
         order: 10,
@@ -75,11 +79,6 @@ export function createGoalPlugin(runtimeClient: () => FlameClient) {
         }),
       );
       ctx.contribute(SLASH_COMMAND, GOAL_SLASH_COMMAND, { key: "/goal" });
-      ctx.cleanup(() => {
-        unsubscribeRuntime();
-        composerMode.dispose();
-        runtimeAdapter.dispose();
-      });
     },
   });
 }

@@ -155,6 +155,27 @@ array identity. Removing and later reinstalling the same list must wait for the
 new Host to become ready. It stops only the Host it started, including when
 startup finishes after the installation has been retired.
 
+The installed-plugin list is a read-only projection of the current Host's
+diagnostics. Installing, removing, or rolling back a plugin changes the list
+through Dougong alone; the client has no separate registration path for names.
+
+Plugins transfer each acquired resource to `ctx.cleanup` immediately. Dougong
+owns rollback, reverse-order release, and failure aggregation; a plugin does not
+collect a second disposer stack. Plugin subscriptions follow the Host during
+renderer retirement and HMR. Only subscriptions created at module scope need a
+separate module HMR hook.
+
+Extension contribution handles preserve Dougong's `update` operation. The SDK
+translates the item into its existing envelope without withdrawing the
+contribution or changing its domain key, owner, or precedence. Dynamic appearance
+preferences update the same contribution, so readers never observe a temporary
+missing theme.
+
+Dougong's `SerialQueue` owns ordered execution. Client task cohorts partition
+queues by product identity and fence retired generations, releasing pending
+callers even when a remote operation ignores cancellation. Retirement cannot
+start queued dependencies or publish a late result into a successor generation.
+
 ## Query ownership
 
 React Query caching and `DATA_PROVIDER` lookup are shared mechanisms. Query keys,

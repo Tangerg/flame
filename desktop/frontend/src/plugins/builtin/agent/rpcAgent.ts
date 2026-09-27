@@ -13,17 +13,12 @@ export function createRpcAgentPlugin(runtimeClient: () => FlameClient) {
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
       const gateway = runtimeRunsGateway(runtimeClient);
-      const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
-        gateway.replaceRuntimeGeneration(),
-      );
+      ctx.cleanup(() => gateway.dispose());
+      ctx.cleanup(followRuntimeGeneration(ctx.runtime, () => gateway.replaceRuntimeGeneration()));
       ctx.contribute(
         AGENT_SOURCE,
         rpcAgentSource(t, getActiveSessionId, () => gateway),
       );
-      ctx.cleanup(() => {
-        unsubscribeRuntime();
-        gateway.dispose();
-      });
     },
   });
 }

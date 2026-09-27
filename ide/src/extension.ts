@@ -10,8 +10,7 @@ import type {
   Session,
   SessionSnapshot,
 } from "@flame/runtime-contract/wire";
-import { Connection } from "./connection";
-import type { Command } from "./commandStore";
+import { Connection, type Command } from "./connection";
 import { inputFromEditor, type EditorSnapshot } from "./editorContext";
 import { observeRun } from "./observation";
 
@@ -290,7 +289,10 @@ class Workbench implements vscode.TreeDataProvider<Session> {
         ignoreFocusOut: true,
       }));
     if (!path?.trim() || this.#connection !== connection) return;
-    await this.#execute({ kind: "createSession", params: { workspace: { path: path.trim() } } });
+    await this.#execute({
+      method: "sessions.create",
+      params: { workspace: { path: path.trim() } },
+    });
   }
 
   async #send(withEditor: boolean): Promise<void> {
@@ -324,7 +326,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
       return;
     if (snapshot) this.#submitted = snapshot;
     await this.#execute({
-      kind: "start",
+      method: "runs.start",
       params: { sessionId: session.id, input: inputFromEditor(prompt, snapshot) },
     });
   }
@@ -349,9 +351,9 @@ class Workbench implements vscode.TreeDataProvider<Session> {
     const connection = this.#connected();
     const selected = await vscode.window.showQuickPick(
       connection.pendingCommands().map((pending) => ({
-        label: pending.command.kind,
-        description: pending.id,
-        detail: JSON.stringify(pending.command.params),
+        label: pending.method,
+        description: pending.idempotencyKey,
+        detail: JSON.stringify(pending.params),
         pending,
       })),
       {
@@ -360,7 +362,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
       },
     );
     if (!selected || this.#connection !== connection) return;
-    const result = await connection.retry(selected.pending.id);
+    const result = await connection.retry(selected.pending.idempotencyKey);
     if (this.#connection !== connection) return;
     if (result.sessionId) {
       const session = await connection.client.sessions.get(
@@ -395,7 +397,10 @@ class Workbench implements vscode.TreeDataProvider<Session> {
       if (!response || this.#connection !== connection) return;
       responses.push(response);
     }
-    await this.#execute({ kind: "resume", params: { runId: selected.value.rootRunId, responses } });
+    await this.#execute({
+      method: "runs.resume",
+      params: { runId: selected.value.rootRunId, responses },
+    });
   }
 
   async #answer(interrupt: Interrupt): Promise<InterruptResponse | undefined> {
@@ -486,7 +491,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
     );
     if (!selected || this.#connection !== connection) return;
     await this.#execute({
-      kind: "cancel",
+      method: "runs.cancel",
       params: { runId: selected.run.id, reason: "Canceled from the IDE" },
     });
   }

@@ -1,6 +1,6 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
-import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
+import { RetirableTaskCohort } from "@/lib/taskQueue";
 import {
   type GoalCommandsGateway,
   type GoalCommandReceipt,
@@ -25,7 +25,6 @@ class GoalCommandGeneration {
   readonly #repairProjection: GoalProjectionRepair;
   readonly #retiredError = new GenerationRetiredError("goal_command_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #chain = new SerialTaskChain();
 
   constructor(gateway: GoalCommandsGateway, repairProjection: GoalProjectionRepair) {
     this.#gateway = gateway;
@@ -54,13 +53,10 @@ class GoalCommandGeneration {
 
   retire(): void {
     this.#cohort.retire();
-    this.#chain.clear();
   }
 
   #run(sessionId: string, command: () => Promise<GoalCommandReceipt>): Promise<void> {
-    return this.#chain.chain(sessionId, (tail) =>
-      this.#cohort.settle(tail).then(() => this.#mutate(sessionId, command)),
-    );
+    return this.#cohort.runSerial(sessionId, () => this.#mutate(sessionId, command));
   }
 
   async #mutate(sessionId: string, command: () => Promise<GoalCommandReceipt>): Promise<void> {

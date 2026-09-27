@@ -1,7 +1,7 @@
 import type { FlameClient, SidecarClient } from "@flame/runtime-contract/client";
 import type { RuntimeEndpointTarget } from "./application/ports/runtimeEndpoint";
 import { CONFIG, definePlugin } from "@/plugins/sdk";
-import { installRuntimeEndpointConfiguration } from "./adapters/runtimeEndpointConfiguration";
+import { bindRuntimeEndpointConfiguration } from "./adapters/runtimeEndpointConfiguration";
 import { installRuntimeMutationJournalStorage } from "./adapters/runtimeMutationJournalStorage";
 import { runtimeServiceInspector } from "./adapters/runtimeServiceInspector";
 import { startRuntimeConnection } from "./adapters/runtimeConnectionProjection";
@@ -22,20 +22,16 @@ export function createRuntimePlugin(
     requires: { config: CONFIG },
     setup(ctx) {
       let connection!: ReturnType<typeof startRuntimeConnection>;
-      const disposeEndpoint = installRuntimeEndpointConfiguration(
+      bindRuntimeEndpointConfiguration(
         ctx,
         (commit) => {
           void connection.replaceEndpoint(commit);
         },
         bootstrap(),
       );
-      const disposeMutationJournal = installRuntimeMutationJournalStorage(ctx);
+      ctx.cleanup(installRuntimeMutationJournalStorage(ctx));
       connection = startRuntimeConnection(runtimeServiceInspector(runtimeClient, runtimeSidecar));
-      ctx.cleanup(() => {
-        connection.dispose();
-        disposeMutationJournal();
-        disposeEndpoint();
-      });
+      ctx.cleanup(() => connection.dispose());
       return {
         serverScope: {
           subscribeReplacement: (onReplace: () => void) =>

@@ -18,9 +18,8 @@ export function createHooksPlugin(runtimeClient: () => FlameClient) {
     setup(ctx) {
       registerHookDataProviders(ctx, runtimeClient);
       const gateway = installHookTrustGateway(runtimeClient);
-      const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
-        gateway.replaceRuntimeGeneration(),
-      );
+      ctx.cleanup(() => gateway.dispose());
+      ctx.cleanup(followRuntimeGeneration(ctx.runtime, () => gateway.replaceRuntimeGeneration()));
       registerSettingsPane(ctx, {
         id: HOOKS_PANE,
         label: "settings.pane.hooks",
@@ -29,10 +28,6 @@ export function createHooksPlugin(runtimeClient: () => FlameClient) {
         icon: "lightning",
         order: 57,
         component: HooksPane,
-      });
-      ctx.cleanup(() => {
-        unsubscribeRuntime();
-        gateway.dispose();
       });
     },
   });

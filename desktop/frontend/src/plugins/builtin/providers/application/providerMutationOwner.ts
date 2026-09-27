@@ -1,7 +1,7 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
-import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
+import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
 import type { ProviderGateway, ProviderTestOutcome, ProviderUpdate } from "./ports/providerGateway";
 import type { ProviderConfiguration, ProviderRole } from "./providerModels";
@@ -17,7 +17,6 @@ class ProviderMutationGeneration {
   readonly #gateway: ProviderGateway;
   readonly #retiredError = new GenerationRetiredError("provider_mutation_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #chain = new SerialTaskChain();
 
   constructor(gateway: ProviderGateway) {
     this.#gateway = gateway;
@@ -53,19 +52,16 @@ class ProviderMutationGeneration {
 
   retire(): void {
     this.#cohort.retire();
-    this.#chain.clear();
   }
 
   #run<T>(identity: string, mutation: ProviderMutation<T>): Promise<T> {
-    return this.#chain.chain(identity, (tail) =>
-      this.#cohort.settle(tail).then(async () => {
-        const value = await this.#cohort.run(mutation.execute);
-        mutation.commit(value);
-        await repairCachedProjection(this.#cohort, mutation.repair);
-        this.#cohort.assertCurrent();
-        return value;
-      }),
-    );
+    return this.#cohort.runSerial(identity, async () => {
+      const value = await this.#cohort.run(mutation.execute);
+      mutation.commit(value);
+      await repairCachedProjection(this.#cohort, mutation.repair);
+      this.#cohort.assertCurrent();
+      return value;
+    });
   }
 }
 

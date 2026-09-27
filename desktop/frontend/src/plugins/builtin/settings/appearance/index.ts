@@ -11,7 +11,7 @@ const AppearancePane = lazy(() =>
 export default definePlugin({
   name: "flame.builtin.appearance",
   setup(ctx) {
-    const disposeFonts = installBrowserFontAvailability();
+    ctx.cleanup(installBrowserFontAvailability());
     registerSettingsPane(ctx, {
       id: APPEARANCE_PANE,
       label: "settings.pane.appearance",
@@ -36,6 +36,5 @@ export default definePlugin({
       order: 0,
       component: AppearancePane,
     });
-    ctx.cleanup(disposeFonts);
   },
 });

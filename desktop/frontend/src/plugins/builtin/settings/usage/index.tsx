@@ -13,7 +13,7 @@ export function createUsagePlugin(runtimeClient: () => FlameClient) {
   return definePlugin({
     name: "flame.builtin.usage-pane",
     setup(ctx) {
-      const disposeGateway = installUsageGateway(runtimeClient);
+      ctx.cleanup(installUsageGateway(runtimeClient));
       registerSettingsPane(ctx, {
         id: USAGE_PANE,
         label: "settings.pane.usage",
@@ -22,7 +22,6 @@ export function createUsagePlugin(runtimeClient: () => FlameClient) {
         order: 55,
         component: UsagePane,
       });
-      ctx.cleanup(disposeGateway);
     },
   });
 }

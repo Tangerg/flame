@@ -46,34 +46,29 @@ export function createWorkspaceEventsPlugin(runtimeClient: () => FlameClient) {
         },
       });
 
-      const disposeProjectIndex = installProjectIndexRefresh();
-      const disposeFocus = installWorkspaceFocusRefresh();
-      const disposeServerScope = ctx.serverScope.subscribeReplacement(replaceWorkspaceServerScope);
-      const disposeSubscription = startWorkspaceEventSubscription({
-        canSubscribe: canSubscribeWorkspaceEvents,
-        connectionGeneration: ctx.runtime.connectionGeneration,
-        subscribeConnection: ctx.runtime.subscribeConnection,
-        retireReadModels: () => {
-          ctx.mutationLifecycle.replaceRuntimeGeneration();
-          retireWorkspaceReadModels();
-        },
-        resolveWorkspaceCwd: (signal) =>
-          resolveActiveSessionWorkspaceCwd(runtimeClient, ctx.sessions, signal),
-        reportResolutionError: (error) =>
-          console.warn("[workspace-events] target resolution failed:", error),
-        subscribeWorkspaceCwdInputs: (onChange) =>
-          subscribeWorkspaceCwdInputs(ctx.sessions, onChange),
-        readTargets: workspaceReadTargets,
-        subscribeReadTargets: subscribeWorkspaceReadTargets,
-        loop,
-      });
-
-      ctx.cleanup(() => {
-        disposeSubscription();
-        disposeServerScope();
-        disposeProjectIndex();
-        disposeFocus();
-      });
+      ctx.cleanup(installProjectIndexRefresh());
+      ctx.cleanup(installWorkspaceFocusRefresh());
+      ctx.cleanup(ctx.serverScope.subscribeReplacement(replaceWorkspaceServerScope));
+      ctx.cleanup(
+        startWorkspaceEventSubscription({
+          canSubscribe: canSubscribeWorkspaceEvents,
+          connectionGeneration: ctx.runtime.connectionGeneration,
+          subscribeConnection: ctx.runtime.subscribeConnection,
+          retireReadModels: () => {
+            ctx.mutationLifecycle.replaceRuntimeGeneration();
+            retireWorkspaceReadModels();
+          },
+          resolveWorkspaceCwd: (signal) =>
+            resolveActiveSessionWorkspaceCwd(runtimeClient, ctx.sessions, signal),
+          reportResolutionError: (error) =>
+            console.warn("[workspace-events] target resolution failed:", error),
+          subscribeWorkspaceCwdInputs: (onChange) =>
+            subscribeWorkspaceCwdInputs(ctx.sessions, onChange),
+          readTargets: workspaceReadTargets,
+          subscribeReadTargets: subscribeWorkspaceReadTargets,
+          loop,
+        }),
+      );
     },
   });
 }

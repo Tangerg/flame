@@ -178,6 +178,38 @@ describe("kernel contribution reads", () => {
 
     expect(index.entries(THEME).map((e) => e.item.label)).toEqual(["Base"]);
   });
+
+  it("updates the contribution value without changing its ownership or overriding a later entry", async () => {
+    let update!: (theme: Theme) => void;
+    const base = definePlugin({
+      name: "test.updatable-base",
+      setup(ctx) {
+        update = ctx.contribute(THEME, { id: "dark", label: "Base" }).update;
+      },
+    });
+    const override = definePlugin({
+      name: "test.update-override",
+      setup(ctx) {
+        ctx.contribute(THEME, { id: "dark", label: "Override" });
+      },
+    });
+    host = stand([base]);
+    const installed = host.install(override);
+    await host.start();
+    publishKernel(host);
+
+    update({ id: "dark", label: "Updated base" });
+    expect(index.entries(THEME).map((entry) => entry.item.label)).toEqual(["Override"]);
+    expect(() => update({ id: "light", label: "Changed identity" })).toThrow(
+      "cannot change its key",
+    );
+
+    await installed.remove();
+
+    expect(index.entries(THEME).map((entry) => entry.item.label)).toEqual(["Updated base"]);
+    await host.stop();
+    expect(() => update({ id: "dark", label: "Late update" })).toThrow(/disposed/i);
+  });
 });
 
 describe("contribute policy", () => {

@@ -2,7 +2,7 @@ import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { SCHEDULES_KEY, useSchedules } from "./scheduleQueries";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
-import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
+import { RetirableTaskCohort } from "@/lib/taskQueue";
 import type { ScheduleConfig, ScheduleConfigInput, ScheduledRunIdentity } from "./scheduleConfig";
 import { selectAgentSession } from "@/plugins/builtin/agent/public/session";
 export type { ScheduleConfig, ScheduleConfigInput } from "./scheduleConfig";
@@ -24,7 +24,6 @@ class ScheduleMutationGeneration {
   readonly #gateway: ScheduleGateway;
   readonly #retiredError = new GenerationRetiredError("schedule_mutation_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #chain = new SerialTaskChain();
   readonly #accepted = new Map<string, ScheduleConfig>();
 
   constructor(gateway: ScheduleGateway) {
@@ -76,7 +75,6 @@ class ScheduleMutationGeneration {
 
   retire(): void {
     this.#cohort.retire();
-    this.#chain.clear();
     this.#accepted.clear();
   }
 
@@ -86,8 +84,8 @@ class ScheduleMutationGeneration {
     commit: (value: T) => void,
     afterRepair?: (value: T) => void,
   ): Promise<T> {
-    return this.#chain.chain(identity, (tail) =>
-      this.#cohort.settle(tail).then(() => this.#executeMutation(execute, commit, afterRepair)),
+    return this.#cohort.runSerial(identity, () =>
+      this.#executeMutation(execute, commit, afterRepair),
     );
   }
 

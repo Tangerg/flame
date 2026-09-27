@@ -22,9 +22,9 @@ import (
 // Validation follows the receiving boundary. The runtime receives
 // requests, and Go's typed decode already fixes their structure, so the generated
 // Go validator enforces the registered value, enum, union and conditional rules. A
-// client RECEIVES results and events with no typing left at runtime at all, so this
-// one additionally carries the whole structural tree: type keywords, nested
-// shapes, required members and union exclusivity.
+// client receives results, events, and stored prepared requests with no typing
+// left at runtime, so this one additionally carries the whole structural tree:
+// type keywords, nested shapes, required members and union exclusivity.
 //
 // Nothing here decides what a keyword means; `wireCheck.ts` does, once. This file
 // only states which keyword applies where — the same division as the generated Go
@@ -53,6 +53,7 @@ func newWireChecks(registry *delivery.Registry, shapes *dispatch.Shapes, set *sc
 	}
 	body.WriteString("};\n")
 	// Rendered before the import list, because these are what decide it.
+	methodParams := emitter.methodParams(registry)
 	methodResults := emitter.methodResults(registry)
 	httpResponses := emitter.httpResponses()
 	notifications := emitter.notifications(shapes)
@@ -76,6 +77,7 @@ func newWireChecks(registry *delivery.Registry, shapes *dispatch.Shapes, set *sc
 	}
 	out.WriteString("  ;\n\n")
 	out.WriteString(body.String())
+	out.WriteString(methodParams)
 	out.WriteString(methodResults)
 	out.WriteString(httpResponses)
 	out.WriteString(notifications)
@@ -134,6 +136,26 @@ export function validateWire(type: WireTypeName, value: unknown): WireViolation[
   return distinctViolations(out);
 }
 `
+
+// A durable client receives its prepared commands from storage. Bind their
+// admission to the same registry as delivery instead of a client-owned shape map.
+func (c *checkEmitter) methodParams(registry *delivery.Registry) string {
+	var out strings.Builder
+	out.WriteString("\nconst METHOD_PARAMS: Record<WireMethodName, WireCheck> = {\n")
+	for _, meta := range registry.Metas() {
+		fmt.Fprintf(&out, "  %s: %s,\n", strconv.Quote(meta.Name.String()), indent(c.compile(c.set.walk(meta.Params))))
+	}
+	out.WriteString("};\n")
+	out.WriteString(`
+/** Validate the request parameters carried by one registered method. */
+export function validateMethodParams(method: WireMethodName, value: unknown): WireViolation[] {
+  const out: WireViolation[] = [];
+  METHOD_PARAMS[method](value, ` + "`${method}.params`" + `, out);
+  return distinctViolations(out);
+}
+`)
+	return out.String()
+}
 
 // methodResults emits the terminal result check for every callable method. Ack-only
 // methods still have one wire result — the empty success object — so every entry is

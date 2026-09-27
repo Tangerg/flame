@@ -1,5 +1,5 @@
 import type { Host } from "dougong";
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createKernel, startKernel, stopKernel } from "./bootstrap";
 import { definePlugin } from "./definePlugin";
@@ -33,7 +33,10 @@ describe("kernel generation ownership", () => {
     hosts.push(await startKernel([plugin("test.old")]));
     hosts.push(await startKernel([plugin("test.successor")]));
 
-    expect(renderHook(() => useInstalledPlugins()).result.current).toEqual(["test.successor"]);
+    expect(renderHook(() => useInstalledPlugins()).result.current).toEqual([
+      "flame.kernel.shell",
+      "test.successor",
+    ]);
   });
 
   it("does not let a stale stop retract the successor generation", async () => {
@@ -44,7 +47,10 @@ describe("kernel generation ownership", () => {
     await stopKernel(old);
 
     expect(publishedKernel()).toBe(successor);
-    expect(renderHook(() => useInstalledPlugins()).result.current).toEqual(["test.successor"]);
+    expect(renderHook(() => useInstalledPlugins()).result.current).toEqual([
+      "flame.kernel.shell",
+      "test.successor",
+    ]);
   });
 
   it("keeps unpublished installations isolated from the active generation", async () => {
@@ -53,7 +59,49 @@ describe("kernel generation ownership", () => {
     hosts.push(active, unpublished);
 
     expect(publishedKernel()).toBe(active);
-    expect(renderHook(() => useInstalledPlugins()).result.current).toEqual(["test.active"]);
+    expect(renderHook(() => useInstalledPlugins()).result.current).toEqual([
+      "flame.kernel.shell",
+      "test.active",
+    ]);
+  });
+
+  it("follows Host installation and removal without a second registration path", async () => {
+    const host = await startKernel([plugin("test.active")]);
+    hosts.push(host);
+    const hook = renderHook(() => useInstalledPlugins());
+    const change = host.change();
+    const late = change.install(plugin("test.late"));
+
+    await act(() => change.commit());
+
+    expect(hook.result.current).toEqual(["flame.kernel.shell", "test.active", "test.late"]);
+
+    await act(() => late.remove());
+
+    expect(hook.result.current).toEqual(["flame.kernel.shell", "test.active"]);
+    hook.unmount();
+  });
+
+  it("reads the restored Host plan after a failed installation", async () => {
+    const host = await startKernel([plugin("test.active")]);
+    hosts.push(host);
+    const hook = renderHook(() => useInstalledPlugins());
+    const change = host.change();
+    change.install(
+      definePlugin({
+        name: "test.failed",
+        setup() {
+          throw new Error("setup failed");
+        },
+      }),
+    );
+
+    await act(async () => {
+      await expect(change.commit()).rejects.toThrow("setup failed");
+    });
+
+    expect(hook.result.current).toEqual(["flame.kernel.shell", "test.active"]);
+    hook.unmount();
   });
 
   it("rolls back a startup that was retired before its non-cooperative setup settled", async () => {

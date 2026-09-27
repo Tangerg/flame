@@ -27,22 +27,15 @@ export function createAgentBootstrapPlugin(runtimeClient: () => FlameClient) {
     provides: { sessions: AGENT_SESSIONS },
     setup(ctx) {
       registerAgentDataProviders(ctx, runtimeClient);
-      const disposeState = installAgentStatePorts();
-      const disposeDefaultSession = installAgentDefaultSessionPort(runtimeClient);
+      ctx.cleanup(installAgentStatePorts());
+      ctx.cleanup(installAgentDefaultSessionPort(runtimeClient));
       const runtimeGateway = installAgentRuntimeGateway(runtimeClient);
-      const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
-        runtimeGateway.replaceRuntimeGeneration(),
+      ctx.cleanup(() => runtimeGateway.dispose());
+      ctx.cleanup(
+        followRuntimeGeneration(ctx.runtime, () => runtimeGateway.replaceRuntimeGeneration()),
       );
-      const disposeInterruptResponses = installInterruptResponseCoordinator();
-      const disposeSessionScope = installAgentSessionScope(ctx.scope, currentRuntimeEndpoint);
-      ctx.cleanup(() => {
-        disposeSessionScope();
-        disposeInterruptResponses();
-        unsubscribeRuntime();
-        runtimeGateway.dispose();
-        disposeDefaultSession();
-        disposeState();
-      });
+      ctx.cleanup(installInterruptResponseCoordinator());
+      ctx.cleanup(installAgentSessionScope(ctx.scope, currentRuntimeEndpoint));
       return {
         sessions: {
           getActiveSessionId,

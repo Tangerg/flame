@@ -787,28 +787,6 @@ func TestDurableModelContextCompactionRejectsConversationDrift(t *testing.T) {
 	}
 }
 
-func TestDurableModelContextCompactionIgnoresProjectionMetadataDrift(t *testing.T) {
-	store := newCompactionTestStore()
-	const sessionID = "session:metadata-drift"
-	history := completeContextTurns()
-	history[1].Metadata = metadata.Map{"approval": []byte(`"accepted"`)}
-	if err := store.Write(t.Context(), sessionID, history...); err != nil {
-		t.Fatal(err)
-	}
-	candidate := cloneMessages(history)
-	candidate[1].Metadata = nil
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
-	request := durableContextRequest(t, sessionID, candidate, 0, nil)
-
-	result, err := compactor.CompactModelContext(t.Context(), request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Changed() {
-		t.Fatal("metadata-only projection drift triggered compaction")
-	}
-}
-
 func TestDurableModelContextCompactionAcceptsEquivalentToolMessageGrouping(t *testing.T) {
 	store := newCompactionTestStore()
 	const sessionID = "session:tool-grouping"
@@ -840,6 +818,38 @@ func TestDurableModelContextCompactionAcceptsEquivalentToolMessageGrouping(t *te
 	}
 }
 
+func TestDurableModelContextCompactionRetainsAnnotatedToolMessageBoundaries(t *testing.T) {
+	for _, grouped := range []bool{false, true} {
+		store := newCompactionTestStore()
+		const sessionID = "session:annotated-tool-grouping"
+		first := chat.ToolResult{ID: "call_1", Name: "read", Output: chat.NewTextToolOutput("one")}
+		second := chat.ToolResult{ID: "call_2", Name: "read", Output: chat.NewTextToolOutput("two")}
+		durable := []chat.Message{chat.NewToolMessage(first), chat.NewToolMessage(second)}
+		durable[0].Metadata = metadata.Map{"source": []byte(`"one"`)}
+		durable[1].Metadata = metadata.Map{"source": []byte(`"two"`)}
+		if err := store.Write(t.Context(), sessionID, durable...); err != nil {
+			t.Fatal(err)
+		}
+		candidate := cloneMessages(durable)
+		if grouped {
+			candidate = []chat.Message{chat.NewToolMessage(first, second)}
+		}
+		compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
+		request := durableContextRequest(t, sessionID, candidate, 0, nil)
+
+		result, err := compactor.CompactModelContext(t.Context(), request)
+		if grouped {
+			if !errors.Is(err, ErrModelContextDiverged) {
+				t.Fatalf("unannotated group error = %v, want ErrModelContextDiverged", err)
+			}
+			continue
+		}
+		if err != nil || result.Changed() || !reflect.DeepEqual(result.Messages(), candidate) {
+			t.Fatalf("annotated messages changed: result=%#v error=%v", result, err)
+		}
+	}
+}
+
 func TestDurableModelContextCompactionAcceptsEquivalentStructuredToolResultJSON(t *testing.T) {
 	store := newCompactionTestStore()
 	const sessionID = "session:tool-json-order"
@@ -863,6 +873,66 @@ func TestDurableModelContextCompactionAcceptsEquivalentStructuredToolResultJSON(
 	}
 	if result.Changed() || !reflect.DeepEqual(result.Messages(), candidate) {
 		t.Fatalf("equivalent structured result = changed:%t messages:%#v", result.Changed(), result.Messages())
+	}
+}
+
+func TestDurableModelContextCompactionUsesCanonicalMetadata(t *testing.T) {
+	for _, location := range []struct {
+		name   string
+		target func(*chat.Message) *metadata.Map
+	}{
+		{name: "message", target: func(message *chat.Message) *metadata.Map { return &message.Metadata }},
+		{name: "part", target: func(message *chat.Message) *metadata.Map { return &message.Parts[0].Metadata }},
+		{name: "tool content", target: func(message *chat.Message) *metadata.Map {
+			return &message.Parts[0].ToolResult.Output.Content[0].Metadata
+		}},
+	} {
+		for _, test := range []struct {
+			name     string
+			metadata string
+			diverged bool
+		}{
+			{name: "equivalent metadata", metadata: `{ "revision": 1, "id": 9007199254740992 }`},
+			{name: "different exact number", metadata: `{"id":9007199254740993,"revision":1}`, diverged: true},
+			{name: "removed metadata", diverged: true},
+		} {
+			t.Run(location.name+"/"+test.name, func(t *testing.T) {
+				store := newCompactionTestStore()
+				const sessionID = "session:canonical-tool-content"
+				stored := chat.NewToolMessage(chat.ToolResult{
+					ID: "call_1", Name: "read",
+					Output: chat.ToolOutput{Content: []chat.ToolContent{{
+						Kind: chat.PartText, Text: "file content",
+					}}},
+				})
+				*location.target(&stored) = metadata.Map{"source": []byte(`{"id":9007199254740992,"revision":1}`)}
+				if err := store.Write(t.Context(), sessionID, stored); err != nil {
+					t.Fatal(err)
+				}
+				candidate := stored.Clone()
+				if test.metadata == "" {
+					*location.target(&candidate) = nil
+				} else {
+					*location.target(&candidate) = metadata.Map{"source": []byte(test.metadata)}
+				}
+				compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
+				request := durableContextRequest(t, sessionID, []chat.Message{candidate}, 0, nil)
+
+				result, err := compactor.CompactModelContext(t.Context(), request)
+				if test.diverged {
+					if !errors.Is(err, ErrModelContextDiverged) {
+						t.Fatalf("error = %v, want ErrModelContextDiverged", err)
+					}
+					return
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if result.Changed() || !reflect.DeepEqual(result.Messages(), []chat.Message{candidate}) {
+					t.Fatal("equivalent canonical content changed the model context")
+				}
+			})
+		}
 	}
 }
 

@@ -2,7 +2,7 @@ import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { HOOKS_KEY } from "./hookQueries";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { repairCachedProjection } from "@/lib/queryClient";
-import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
+import { RetirableTaskCohort } from "@/lib/taskQueue";
 
 export interface HookTrustGateway {
   setProjectTrust(projectRoot: string, trusted: boolean): Promise<void>;
@@ -12,34 +12,30 @@ class HookTrustMutationGeneration {
   readonly #gateway: HookTrustGateway;
   readonly #retiredError = new GenerationRetiredError("hook_trust_mutation_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #chain = new SerialTaskChain();
 
   constructor(gateway: HookTrustGateway) {
     this.#gateway = gateway;
   }
 
   setProjectTrust(projectRoot: string, trusted: boolean): Promise<void> {
-    return this.#chain.chain(projectRoot, (tail) =>
-      this.#cohort.settle(tail).then(async () => {
-        this.#cohort.assertCurrent();
-        try {
-          await this.#cohort.settle(this.#gateway.setProjectTrust(projectRoot, trusted));
-        } catch (error) {
-          if (error === this.#retiredError) throw error;
-          await repairCachedProjection(this.#cohort, [HOOKS_KEY]);
-          this.#cohort.assertCurrent();
-          throw error;
-        }
-        this.#cohort.assertCurrent();
+    return this.#cohort.runSerial(projectRoot, async () => {
+      this.#cohort.assertCurrent();
+      try {
+        await this.#cohort.settle(this.#gateway.setProjectTrust(projectRoot, trusted));
+      } catch (error) {
+        if (error === this.#retiredError) throw error;
         await repairCachedProjection(this.#cohort, [HOOKS_KEY]);
         this.#cohort.assertCurrent();
-      }),
-    );
+        throw error;
+      }
+      this.#cohort.assertCurrent();
+      await repairCachedProjection(this.#cohort, [HOOKS_KEY]);
+      this.#cohort.assertCurrent();
+    });
   }
 
   retire(): void {
     this.#cohort.retire();
-    this.#chain.clear();
   }
 }
 

@@ -13,19 +13,16 @@ export default definePlugin({
       e.preventDefault();
     };
     document.addEventListener("contextmenu", onContextMenu);
+    ctx.cleanup(() => document.removeEventListener("contextmenu", onContextMenu));
 
     const syncFocus = () => {
       document.documentElement.toggleAttribute(WINDOW_INACTIVE_ATTR, !document.hasFocus());
     };
     syncFocus();
+    ctx.cleanup(() => document.documentElement.removeAttribute(WINDOW_INACTIVE_ATTR));
     addEventListener("focus", syncFocus);
+    ctx.cleanup(() => removeEventListener("focus", syncFocus));
     addEventListener("blur", syncFocus);
-
-    ctx.cleanup(() => {
-      document.removeEventListener("contextmenu", onContextMenu);
-      removeEventListener("focus", syncFocus);
-      removeEventListener("blur", syncFocus);
-      document.documentElement.removeAttribute(WINDOW_INACTIVE_ATTR);
-    });
+    ctx.cleanup(() => removeEventListener("blur", syncFocus));
   },
 });

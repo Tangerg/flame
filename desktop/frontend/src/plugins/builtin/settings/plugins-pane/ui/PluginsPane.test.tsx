@@ -2,10 +2,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Host } from "dougong";
 import { afterEach, describe, expect, it } from "vitest";
 import { reportPluginError, startKernel, stopKernel, usePluginErrorStore } from "@/plugins/sdk";
-import { trackInstalledPlugin } from "@/plugins/sdk/kernel";
+import { definePlugin } from "@/plugins/sdk";
 import { PluginsPane } from "./PluginsPane";
 
 let host: Host | undefined;
+const example = definePlugin({ name: "flame.builtin.example", setup() {} });
 
 afterEach(async () => {
   cleanup();
@@ -18,8 +19,7 @@ afterEach(async () => {
 
 describe("PluginsPane installation facts", () => {
   it("shows and clears kernel errors without requiring an installed plugin", async () => {
-    host = await startKernel([]);
-    trackInstalledPlugin(host, "flame.builtin.example");
+    host = await startKernel([example]);
     reportPluginError("kernel", "setup", new Error("Lifecycle hook failed"), "hook stack");
     const view = render(<PluginsPane />);
 
@@ -35,8 +35,7 @@ describe("PluginsPane installation facts", () => {
   });
 
   it("renders installed plugins from the active Host read model", async () => {
-    host = await startKernel([]);
-    trackInstalledPlugin(host, "flame.builtin.example");
+    host = await startKernel([example]);
 
     const view = render(<PluginsPane />);
 

@@ -83,6 +83,12 @@ The terminal package owns an explicit UI state tree and cohesive feature control
 
 Oolong owns terminal mode, input decoding, cell measurement, and low-level editing. Flame owns product interaction, including focus, keymaps, mouse press/release matching, overlays, composer behavior, attention signals, and stable stream presentation.
 
+Oolong's scroll owner supplies the queue drawer's frame-local layout and commits it
+with the complete root frame. Flame preserves selection by the queued entry's
+identity when a fresh snapshot arrives and requests that entry remain visible as
+the drawer resizes. Queue action hit regions are projections of that layout, not a
+separately calculated viewport.
+
 Oolong also owns Markdown parsing and streaming, syntax highlighting, LaTeX layout,
 and Mermaid's bounded browser execution. Flame supplies appearance and message
 lifetime: completed Markdown schedules diagram preparation, the terminal owner

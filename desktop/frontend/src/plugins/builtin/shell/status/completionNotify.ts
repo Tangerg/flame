@@ -1,6 +1,5 @@
 import type { ClientHost } from "@/platform/host";
 import { playCompletionChime } from "./chime";
-import { disposeOnHmr } from "@/lib/hmr";
 import { t } from "@/lib/i18n";
 import {
   onSystemNotificationOpened,
@@ -85,14 +84,10 @@ export function createCompletionNotifyPlugin(
   return definePlugin({
     name: "flame.builtin.completion-notify",
     setup(ctx) {
-      const uninstall = installNotificationCentre(host);
-      ctx.cleanup(uninstall);
-      let stop: (() => void) | undefined;
+      ctx.cleanup(installNotificationCentre(host));
       ctx.contribute(READY_HANDLER, () => {
-        stop = startCompletionNotifications(() => host.revealWindow());
-        disposeOnHmr(stop);
+        ctx.cleanup(startCompletionNotifications(() => host.revealWindow()));
       });
-      ctx.cleanup(() => stop?.());
     },
   });
 }

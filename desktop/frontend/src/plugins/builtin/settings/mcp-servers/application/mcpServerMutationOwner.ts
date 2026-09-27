@@ -1,7 +1,7 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
-import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
+import { RetirableTaskCohort } from "@/lib/taskQueue";
 import type { MCPServerInput } from "./mcpServerInput";
 import { MCP_SERVERS_KEY, MCP_TOOLS_KEY, type MCPServerSettings } from "./mcpServerQueries";
 import type { MCPServerGateway, MCPServerTestOutcome } from "./ports/mcpServerGateway";
@@ -18,7 +18,6 @@ class MCPServerMutationGeneration {
   readonly #lifetime = new AbortController();
   readonly #retiredError = new GenerationRetiredError("mcp_server_mutation_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #chain = new SerialTaskChain();
   readonly #reconnects = new Map<string, Promise<void>>();
 
   constructor(gateway: MCPServerGateway) {
@@ -95,20 +94,17 @@ class MCPServerMutationGeneration {
     if (this.#cohort.retired) return;
     this.#lifetime.abort(this.#retiredError);
     this.#cohort.retire();
-    this.#chain.clear();
     this.#reconnects.clear();
   }
 
   #run<T>(identity: string, mutation: MCPServerMutation<T>): Promise<T> {
-    return this.#chain.chain(identity, (tail) =>
-      this.#cohort.settle(tail).then(async () => {
-        const value = await this.#cohort.run(mutation.execute);
-        mutation.commit(value);
-        await repairCachedProjection(this.#cohort, [MCP_SERVERS_KEY, MCP_TOOLS_KEY]);
-        this.#cohort.assertCurrent();
-        return value;
-      }),
-    );
+    return this.#cohort.runSerial(identity, async () => {
+      const value = await this.#cohort.run(mutation.execute);
+      mutation.commit(value);
+      await repairCachedProjection(this.#cohort, [MCP_SERVERS_KEY, MCP_TOOLS_KEY]);
+      this.#cohort.assertCurrent();
+      return value;
+    });
   }
 
   #forgetReconnect(name: string, reconnect: Promise<void>): void {

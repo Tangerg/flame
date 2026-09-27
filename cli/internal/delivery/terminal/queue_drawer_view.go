@@ -3,7 +3,6 @@ package terminal
 import (
 	"fmt"
 	"image"
-	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/queue"
@@ -18,7 +17,7 @@ func (q *queueDrawer) Place(space image.Point) layout.Placement {
 	if space.X <= 0 || space.Y <= 0 {
 		return layout.Placement{}
 	}
-	innerRows := min(max(len(q.snapshot.Entries), 1), queueDrawerVisibleRows)
+	innerRows := min(max(len(q.entries), 1), queueDrawerVisibleRows)
 	if q.Editing() {
 		innerRows = 6
 	} else if entry, ok := q.selectedEntry(); ok {
@@ -50,15 +49,15 @@ func (q *queueDrawer) Draw(frame headless.Frame) {
 		return
 	}
 	q.editorRegion.Stage(frame, image.Rectangle{}, nil)
-	hits, rowRows := q.drawEntries(frame.View.Sub(inner))
+	hits := q.drawEntries(frame.Sub(inner))
 	for index := range hits {
 		hits[index].area = hits[index].area.Add(inner.Min)
 	}
-	q.presentation.Stage(frame, queuePresentation{hits: slices.Clone(hits), rowRows: rowRows})
+	q.presentation.Stage(frame, queuePresentation{hits: hits})
 }
 
 func (q *queueDrawer) title() string {
-	return "Queue · " + countedNoun(len(q.snapshot.Entries), "prompt")
+	return "Queue · " + countedNoun(len(q.entries), "prompt")
 }
 
 func (q *queueDrawer) footer() string {
@@ -91,29 +90,34 @@ func (q *queueDrawer) drawEditor(frame headless.Frame, inner image.Rectangle) {
 	q.editor.Draw(frame.Sub(field))
 }
 
-func (q *queueDrawer) drawEntries(view grid.View) ([]queueHit, int) {
-	width, height := view.Size()
+func (q *queueDrawer) drawEntries(frame headless.Frame) []queueHit {
+	width, height := frame.Size()
 	if width <= 0 || height <= 0 {
-		return nil, 0
+		return nil
 	}
-	entries := q.snapshot.Entries
-	if len(entries) == 0 {
-		view.Text(0, 0, "No queued prompts.", q.theme.Muted)
-		return nil, 0
+	if len(q.entries) == 0 {
+		frame.Text(0, 0, "No queued prompts.", q.theme.Muted)
+		return nil
 	}
 	hits := make([]queueHit, 0, queueDrawerVisibleRows*4)
-	y := q.drawSelectedPreview(view)
-	rowRows := min(queueDrawerVisibleRows, max(height-y, 1))
-	viewport := visibleQueueStart(q.viewport, q.selected, rowRows, len(entries))
-	end := min(viewport+rowRows, len(entries))
-	for index := viewport; index < end; index++ {
-		rowY := y + index - viewport
-		if rowY >= height {
+	y := q.drawSelectedPreview(frame.View)
+	rows := min(queueDrawerVisibleRows, max(height-y, 0))
+	// Queue actions must stay visible with their selected entry after a resize.
+	// Refine Oolong's frame-local scroll instead of advancing selection in Draw.
+	scroll := q.scroll.Stage(frame, len(q.entries), rows)
+	scroll.Reveal(q.selected, q.selected)
+	for row := range rows {
+		index := scroll.Offset() + row
+		if index >= len(q.entries) {
 			break
 		}
-		hits = append(hits, q.drawEntry(view, entries[index], index, rowY, width)...)
+		area := grid.Area(0, y+row, width, 1)
+		for _, hit := range q.drawEntry(frame.View.Sub(area), q.entries[index], index, index == q.selected) {
+			hit.area = hit.area.Add(area.Min)
+			hits = append(hits, hit)
+		}
 	}
-	return hits, rowRows
+	return hits
 }
 
 func (q *queueDrawer) drawSelectedPreview(view grid.View) int {
@@ -136,11 +140,12 @@ func (q *queueDrawer) drawSelectedPreview(view grid.View) int {
 	return 0
 }
 
-func (q *queueDrawer) drawEntry(view grid.View, entry queue.Entry, index, rowY, width int) []queueHit {
-	row := grid.Area(0, rowY, width, 1)
+func (q *queueDrawer) drawEntry(view grid.View, entry queue.Entry, index int, selected bool) []queueHit {
+	width, _ := view.Size()
+	row := grid.Area(0, 0, width, 1)
 	rowTarget := queueTarget{kind: queueTargetRow, id: entry.ID}
 	style := q.theme.Text
-	if index == q.selected || q.hovered.id == entry.ID {
+	if selected || q.hovered.id == entry.ID {
 		style = style.Merge(q.theme.Selection)
 		view.Fill(row, q.theme.Selection)
 	}
@@ -149,17 +154,17 @@ func (q *queueDrawer) drawEntry(view grid.View, entry queue.Entry, index, rowY, 
 	}
 	hits := []queueHit{{area: row, target: rowTarget}}
 	marker := " "
-	if index == q.selected {
+	if selected {
 		marker = q.glyphs.Marker
 	}
 	prefix := fmt.Sprintf("%s %d. ", marker, index+1)
 	right := width
-	if width >= 40 && (index == q.selected || q.hovered.id == entry.ID || q.pointerGesture.target.id == entry.ID) {
+	if width >= 40 && (selected || q.hovered.id == entry.ID || q.pointerGesture.target.id == entry.ID) {
 		right = q.drawActions(view, row, entry.ID, right, style, &hits)
 	}
-	view.Text(0, rowY, prefix, style.Merge(q.theme.Muted))
+	view.Text(0, 0, prefix, style.Merge(q.theme.Muted))
 	left := text.Width(prefix)
-	view.Text(left, rowY, text.Truncate(queueEntryLabel(entry), max(right-left, 1), q.glyphs.Ellipsis), style)
+	view.Text(left, 0, text.Truncate(queueEntryLabel(entry), max(right-left, 1), q.glyphs.Ellipsis), style)
 	return hits
 }
 

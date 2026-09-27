@@ -1,7 +1,6 @@
 import { colord } from "colord";
 import type { Scheme } from "@/lib/appearance";
-import { disposeOnHmr } from "@/lib/hmr";
-import { definePlugin, type Disposable } from "@/plugins/sdk";
+import { definePlugin } from "@/plugins/sdk";
 import { COLOR_THEME } from "@/plugins/sdk/kernelPoints";
 import { useAppearanceStore } from "../adapters/appearanceStore";
 import { colorThemeContribution } from "../kit/colorThemeContribution";
@@ -54,35 +53,18 @@ function deriveCustomSpec(ct: CustomTheme, accent: string, contrast: number): Co
 export default definePlugin({
   name: "flame.builtin.custom-theme",
   setup(ctx) {
-    let contribution: Disposable | undefined;
-    const register = () => {
+    const currentTheme = () => {
       const { customTheme, accent, contrast } = useAppearanceStore.getState();
       const spec = deriveCustomSpec(customTheme, accent, contrast);
-      contribution?.dispose();
-      contribution = ctx.contribute(
-        COLOR_THEME,
-        colorThemeContribution({
-          ...spec,
-          icon: "spark",
-          order: 99,
-        }),
-      );
+      return colorThemeContribution({ ...spec, icon: "spark", order: 99 });
     };
 
-    register();
-    const unsub = useAppearanceStore.subscribe((s, p) => {
-      if (s.customTheme !== p.customTheme || s.accent !== p.accent || s.contrast !== p.contrast)
-        register();
-    });
-    let stopped = false;
-    const stop = () => {
-      if (stopped) return;
-      stopped = true;
-      unsub();
-      contribution?.dispose();
-      contribution = undefined;
-    };
-    disposeOnHmr(stop);
-    ctx.cleanup(stop);
+    const contribution = ctx.contribute(COLOR_THEME, currentTheme());
+    ctx.cleanup(
+      useAppearanceStore.subscribe((s, p) => {
+        if (s.customTheme !== p.customTheme || s.accent !== p.accent || s.contrast !== p.contrast)
+          contribution.update(currentTheme());
+      }),
+    );
   },
 });

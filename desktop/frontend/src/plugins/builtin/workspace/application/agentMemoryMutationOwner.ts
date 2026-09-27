@@ -1,7 +1,7 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
-import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
+import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
 import type {
   AgentMemoryAddInput,
@@ -23,7 +23,6 @@ class AgentMemoryMutationGeneration {
   readonly #gateway: AgentMemoryGateway;
   readonly #retiredError = new GenerationRetiredError("agent_memory_mutation_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #chain = new SerialTaskChain();
 
   constructor(gateway: AgentMemoryGateway) {
     this.#gateway = gateway;
@@ -63,21 +62,18 @@ class AgentMemoryMutationGeneration {
 
   retire(): void {
     this.#cohort.retire();
-    this.#chain.clear();
   }
 
   #run<T>(identity: string, mutation: AgentMemoryMutation<T>): Promise<T> {
-    return this.#chain.chain(identity, (tail) =>
-      this.#cohort.settle(tail).then(async () => {
-        this.#cohort.assertCurrent();
-        const value = await this.#cohort.settle(mutation.execute());
-        this.#cohort.assertCurrent();
-        mutation.commit?.(value);
-        await repairCachedProjection(this.#cohort, [WORKSPACE_AGENT_MEMORY_KEY]);
-        this.#cohort.assertCurrent();
-        return value;
-      }),
-    );
+    return this.#cohort.runSerial(identity, async () => {
+      this.#cohort.assertCurrent();
+      const value = await this.#cohort.settle(mutation.execute());
+      this.#cohort.assertCurrent();
+      mutation.commit?.(value);
+      await repairCachedProjection(this.#cohort, [WORKSPACE_AGENT_MEMORY_KEY]);
+      this.#cohort.assertCurrent();
+      return value;
+    });
   }
 }
 

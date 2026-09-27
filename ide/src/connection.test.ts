@@ -2,15 +2,17 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import discovery from "@flame/runtime-contract/samples/method.discover.resp.json";
 import { HTTP_ENDPOINTS, PROTOCOL_VERSION } from "@flame/runtime-contract/wire";
-import { Connection } from "./connection";
-import { CommandStore } from "./commandStore";
+import { Connection, type Command } from "./connection";
+import { createPreparedMutationJournal } from "@flame/runtime-contract/client";
+import { CommandStorage } from "./commandStore";
 
 const disposers: Array<() => Promise<void> | void> = [];
 afterEach(async () => {
   for (const dispose of disposers.splice(0).reverse()) await dispose();
+  vi.restoreAllMocks();
 });
 
 async function fixture(
@@ -20,6 +22,7 @@ async function fixture(
     message: Record<string, unknown>,
   ) => boolean,
 ) {
+  const advertised = structuredClone(discovery);
   const requests: Array<{
     message: Record<string, unknown>;
     key?: string;
@@ -57,7 +60,7 @@ async function fixture(
     });
     if (handle?.(request, response, message)) return;
     response.setHeader("Content-Type", "application/json");
-    response.end(JSON.stringify({ jsonrpc: "2.0", id: message.id, result: discovery }));
+    response.end(JSON.stringify({ jsonrpc: "2.0", id: message.id, result: advertised }));
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
@@ -70,10 +73,50 @@ async function fixture(
         server.close((error) => (error ? reject(error) : resolve()));
       }),
   );
-  return { endpoint, directory, requests };
+  return { endpoint, directory, requests, advertised };
 }
 
 describe("IDE connection lifetime and replay", () => {
+  it("rejects malformed command parameters before saving or dispatching them", async () => {
+    const server = await fixture();
+    const connection = await Connection.open(server.endpoint, undefined, server.directory);
+    disposers.push(() => connection.close());
+    await expect(
+      connection.execute({ method: "runs.start", params: { input: [] } } as unknown as Command),
+    ).rejects.toThrow("parameters are invalid");
+    expect(connection.pendingCommands()).toEqual([]);
+    expect(server.requests.map(({ message }) => message.method)).toEqual(["runtime.discover"]);
+  });
+
+  it("refuses an aged unknown command when the same Runtime shortens retention on reconnect", async () => {
+    let now = Date.now();
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+    const server = await fixture((_request, response, message) => {
+      if (message.method !== "runs.start") return false;
+      response.writeHead(503);
+      response.end("acknowledgement lost");
+      return true;
+    });
+    const first = await Connection.open(server.endpoint, undefined, server.directory);
+    await expect(
+      first.execute({
+        method: "runs.start",
+        params: { sessionId: "ses_1", input: [{ type: "text", text: "original editor snapshot" }] },
+      }),
+    ).rejects.toThrow();
+    const saved = first.pendingCommands()[0]!;
+    await first.close();
+    now += 61_000;
+    server.advertised.capabilities.limits.idempotency.retentionSeconds = 60;
+    const successor = await Connection.open(server.endpoint, undefined, server.directory);
+    disposers.push(() => successor.close());
+    await expect(successor.retry(saved.idempotencyKey)).rejects.toThrow("expired");
+    expect(successor.pendingCommands()).toEqual([saved]);
+    expect(server.requests.filter(({ message }) => message.method === "runs.start")).toHaveLength(
+      2,
+    );
+  });
+
   it("does not retain the construction timeout after a successful connection", async () => {
     const server = await fixture();
     const opening = new AbortController();
@@ -117,7 +160,7 @@ describe("IDE connection lifetime and replay", () => {
       sessionId: "ses_1",
       input: [{ type: "text" as const, text: "unsaved version 17" }],
     };
-    const started = first.execute({ kind: "start", params });
+    const started = first.execute({ method: "runs.start", params });
     params.input[0]!.text = "unsaved version 18";
     await expect(started).rejects.toThrow();
     const saved = first.pendingCommands()[0]!;
@@ -125,14 +168,14 @@ describe("IDE connection lifetime and replay", () => {
     recover = true;
     const successor = await Connection.open(server.endpoint, "test-local-token", server.directory);
     disposers.push(() => successor.close());
-    await expect(successor.retry(saved.id)).resolves.toEqual({
+    await expect(successor.retry(saved.idempotencyKey)).resolves.toEqual({
       sessionId: "ses_1",
       runId: "run_1",
     });
     const starts = server.requests.filter((request) => request.message.method === "runs.start");
     expect(starts).toHaveLength(3);
     for (const request of starts) {
-      expect(request.key).toBe(saved.id);
+      expect(request.key).toBe(saved.idempotencyKey);
       expect(request.namespace).toBe(discovery.capabilities.limits.idempotency.namespace);
       expect(request.authorization).toBe("Bearer test-local-token");
       expect(request.message.params).toMatchObject({
@@ -165,14 +208,16 @@ describe("IDE connection lifetime and replay", () => {
       );
       return true;
     });
-    const store = new CommandStore(server.directory, server.endpoint);
-    const scope = discovery.capabilities.limits.idempotency;
-    const pending = store.prepare(scope.namespace, scope.retentionSeconds, {
-      kind: "createSession",
+    const store = createPreparedMutationJournal({
+      storage: new CommandStorage(server.directory, server.endpoint),
+      scope: () => discovery.capabilities.limits.idempotency,
+    });
+    const pending = store.prepare({
+      method: "sessions.create",
       params: { workspace: { path: "/runtime" } },
     });
-    const other = store.prepare(scope.namespace, scope.retentionSeconds, {
-      kind: "createSession",
+    const other = store.prepare({
+      method: "sessions.create",
       params: { workspace: { path: "/other" } },
     });
     const first = await Connection.open(server.endpoint, undefined, server.directory);
@@ -181,11 +226,11 @@ describe("IDE connection lifetime and replay", () => {
       () => first.close(),
       () => second.close(),
     );
-    await Promise.all([first.retry(pending.id), second.retry(pending.id)]);
-    expect(store.list().map((command) => command.id)).toEqual([other.id]);
+    await Promise.all([first.retry(pending.idempotencyKey), second.retry(pending.idempotencyKey)]);
+    expect(store.list().map((command) => command.idempotencyKey)).toEqual([other.idempotencyKey]);
     const mutations = server.requests.filter(
       (request) => request.message.method === "sessions.create",
     );
-    expect(mutations.every((request) => request.key === pending.id)).toBe(true);
+    expect(mutations.every((request) => request.key === pending.idempotencyKey)).toBe(true);
   });
 });

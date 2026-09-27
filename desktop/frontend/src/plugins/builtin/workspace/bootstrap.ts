@@ -34,19 +34,14 @@ export function createWorkspaceBootstrapPlugin(
     setup(ctx) {
       registerWorkspaceDataProviders(ctx, runtimeClient);
       const agentMemory = installAgentMemoryGateway(runtimeClient);
+      ctx.cleanup(() => agentMemory.dispose());
       const skillCuration = installSkillCurationGateway(runtimeClient);
+      ctx.cleanup(() => skillCuration.dispose());
       const conversationArchive = installConversationArchiveGateway(runtimeClient);
-      const disposers = [
-        installLocalWorkspaceActions(host, canAccessLocalWorkspace),
-        () => conversationArchive.dispose(),
-        () => agentMemory.dispose(),
-        () => skillCuration.dispose(),
-        installWorkspaceErrorClassifier(),
-        installWorkspaceNavigationPort(currentRuntimeEndpoint),
-      ];
-      ctx.cleanup(() => {
-        for (let index = disposers.length - 1; index >= 0; index--) disposers[index]!();
-      });
+      ctx.cleanup(() => conversationArchive.dispose());
+      ctx.cleanup(installLocalWorkspaceActions(host, canAccessLocalWorkspace));
+      ctx.cleanup(installWorkspaceErrorClassifier());
+      ctx.cleanup(installWorkspaceNavigationPort(currentRuntimeEndpoint));
       return {
         scopes: {
           adoptSessionScope: adoptWorkspaceSessionScope,
